@@ -1,0 +1,29 @@
+name: CI - Build WAR
+
+on:
+  push:
+    branches: [ "main", "beta", "dev" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Build (server profile)
+        run: mvn -B -Pserver -DskipTests=false clean package
+
+      - name: Upload WAR artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ams-war
+          path: target/*.war
