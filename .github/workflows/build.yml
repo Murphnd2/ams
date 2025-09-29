@@ -1,29 +1,58 @@
-name: CI - Build WAR
+name: Build WAR for Tomcat 10
 
 on:
   push:
-    branches: [ "main", "beta", "dev" ]
+    branches: [ "beta", "main", "dev" ]
   workflow_dispatch:
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Set up JDK 21
+      - name: Setup Java 17 (Temurin)
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '21'
+          java-version: "17"
           cache: maven
 
       - name: Build (server profile)
-        run: mvn -B -Pserver -DskipTests=false clean package
+        run: mvn -B -Pserver -DskipTests clean package
+
+      - name: Verify migration tool exists
+        run: |
+          test -f tools/tomcat-jakartaee-migration.jar || {
+            echo "Missing tools/tomcat-jakartaee-migration.jar in repo"; exit 1;
+          }
+
+      - name: Migrate WAR for Tomcat 10 (javax → jakarta)
+        shell: bash
+        run: |
+          WAR=$(ls target/*.war | head -n 1)
+          echo "Converting $WAR"
+          java -jar tools/tomcat-jakartaee-migration.jar --rewrite "$WAR"
+
+      - name: Rename artifact
+        shell: bash
+        run: |
+          WAR=$(ls target/*.war | head -n 1)
+          OUT="target/ams-${GITHUB_REF_NAME}-${{ github.run_number }}-${GITHUB_SHA::7}.war"
+          cp "$WAR" "$OUT"
+          echo "OUT=$OUT" >> $GITHUB_ENV
 
       - name: Upload WAR artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ams-war
-          path: target/*.war
+          name: ams-${{ github.ref_name }}-${{ github.run_number }}
+          path: ${{ env.OUT }}
+          retention-days: 14
