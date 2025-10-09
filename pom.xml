@@ -98,11 +98,7 @@
         </dependency>
 
         <!-- Mail/Activation -->
-        <dependency>
-            <groupId>jakarta.mail</groupId>
-            <artifactId>jakarta.mail-api</artifactId>
-            <version>2.0.1</version>
-        </dependency>
+
         <dependency>
             <groupId>org.eclipse.angus</groupId>
             <artifactId>jakarta.mail</artifactId>
@@ -186,9 +182,21 @@
                     <execution>
                         <id>select-persistence</id>
                         <phase>process-resources</phase>
-                        <goals><goal>run</goal></goals>
+                        <goals>
+                            <goal>run</goal>
+                        </goals>
                         <configuration>
                             <target>
+                                <echo>Using persistence profile: ${persistence.src}</echo>
+
+                                <!-- Guard: ensure the source exists -->
+                                <condition property="persistence.file.exists">
+                                    <available file="${basedir}/src/main/resources/META-INF/persistence-${persistence.src}.xml"/>
+                                </condition>
+                                <fail unless="persistence.file.exists">
+                                    Missing file: src/main/resources/META-INF/persistence-${persistence.src}.xml
+                                </fail>
+
                                 <mkdir dir="${project.build.outputDirectory}/META-INF"/>
                                 <copy file="${basedir}/src/main/resources/META-INF/persistence-${persistence.src}.xml"
                                       tofile="${project.build.outputDirectory}/META-INF/persistence.xml"
@@ -198,8 +206,51 @@
                     </execution>
                 </executions>
             </plugin>
+
+            <!-- Guardrail: ban legacy javax.mail / javax.activation so TLS doesn't break again -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-enforcer-plugin</artifactId>
+                <version>3.4.1</version>
+                <executions>
+                    <execution>
+                        <id>no-direct-persistence-xml</id>
+                        <goals><goal>enforce</goal></goals>
+                        <configuration>
+                            <rules>
+                                <requireFilesDontExist>
+                                    <files>
+                                        <file>${basedir}/src/main/resources/META-INF/persistence.xml</file>
+                                    </files>
+                                    <message>Do not check in src/main/resources/META-INF/persistence.xml. Use persistence-*.xml + profile.</message>
+                                </requireFilesDontExist>
+                            </rules>
+                            <fail>true</fail>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>ban-legacy-mail</id>
+                        <goals><goal>enforce</goal></goals>
+                        <configuration>
+                            <rules>
+                                <bannedDependencies>
+                                    <searchTransitive>true</searchTransitive>
+                                    <excludes>
+                                        <!-- legacy Mail APIs/impls to forbid -->
+                                        <exclude>javax.mail:mail</exclude>
+                                        <exclude>javax.mail:javax.mail-api</exclude>
+                                        <exclude>javax.activation:activation</exclude>
+                                    </excludes>
+                                </bannedDependencies>
+                            </rules>
+                            <fail>true</fail>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
         </plugins>
     </build>
+
 
     <!-- Profiles: local (dev DB) and server (VPS DB) -->
     <profiles>
