@@ -1,0 +1,137 @@
+package net.superiorstate.ams;
+
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.EntityManagerFactory;
+import jakarta.persistence.Persistence;
+import jakarta.persistence.Query;
+import jakarta.servlet.*;
+import jakarta.servlet.http.*;
+import jakarta.servlet.annotation.*;
+import net.superiorstate.ams.data.AmsDataGlobal;
+import net.superiorstate.ams.model.Constant;
+
+import java.sql.Date;
+import java.time.LocalDate;
+
+@WebListener
+public class EmfListener implements ServletContextListener, HttpSessionListener, HttpSessionAttributeListener {
+
+    public EmfListener() {
+    }
+
+    @Override
+    public void contextInitialized(ServletContextEvent sce) {
+        try {
+            EntityManagerFactory emf = Persistence.createEntityManagerFactory("default");
+            sce.getServletContext().setAttribute("emf", emf);
+
+            EntityManager em = emf.createEntityManager();
+            Query q = em.createQuery("SELECT c FROM Constant c WHERE c.name=:name");
+            q.setParameter("name", "SSL_PORT");
+
+            Constant c;
+            try {
+                c = (Constant) q.getSingleResult();
+            } catch (Exception e) {
+                c = null;
+            }
+
+            if (c == null || c.getValue() == null || !c.getValue().equals("443")) {
+                System.out.println("🔁 Skipping global data load – database not initialized");
+            } else {
+                AmsDataGlobal global = new AmsDataGlobal();
+                global.initializeGlobalData(em);
+                sce.getServletContext().setAttribute("global", global);
+                System.out.println("✅ Global data loaded");
+            }
+
+            em.close();
+        } catch (Throwable t) {
+            try {
+                // Log to file directly
+                java.nio.file.Files.writeString(
+                        java.nio.file.Path.of("C:/Program Files/Apache Software Foundation/Tomcat 10.1/logs/emf_error.log"),
+                        "❌ Exception in contextInitialized:\n" + getStackTrace(t)
+                );
+            } catch (Exception fileEx) {
+                fileEx.printStackTrace();
+            }
+
+            throw new RuntimeException("Startup failed", t);
+        }
+    }
+
+    private static String getStackTrace(Throwable t) {
+        java.io.StringWriter sw = new java.io.StringWriter();
+        java.io.PrintWriter pw = new java.io.PrintWriter(sw);
+        t.printStackTrace(pw);
+        return sw.toString();
+    }
+
+
+
+
+    @Override
+    public void contextDestroyed(ServletContextEvent sce) {
+        /* This method is called when the servlet Context is undeployed or Application Server shuts down. */
+        EntityManagerFactory emf = (EntityManagerFactory) sce.getServletContext().getAttribute("emf");
+        emf.close();
+    }
+
+    @Override
+    public void sessionCreated(HttpSessionEvent se) {
+        /* Session is created. */
+        EntityManagerFactory emf = (EntityManagerFactory) se.getSession().getServletContext().getAttribute("emf");
+        EntityManager em = emf.createEntityManager();
+        se.getSession().setAttribute("thisMonth",getThisMonth());
+        se.getSession().setAttribute("lastMonth",getLastMonth());
+        se.getSession().setAttribute("twoMonth",getTwoMonths());
+        Query q = em.createQuery("SELECT c FROM Constant c WHERE c.name=:name");
+        q.setParameter("name","SSL_PORT");
+        Constant c;
+        try{
+            c = (Constant) q.getSingleResult();
+        } catch (Exception e){
+            c=null;
+        }
+        if(c==null || c.getValue()==null || !c.getValue().equals("443"))
+            se.getSession().setAttribute("uninitialized",0);
+        else
+            se.getSession().setAttribute("uninitialized",1);
+        em.close();
+    }
+
+    private LocalDate getThisMonthLd(){
+        return LocalDate.of(LocalDate.now().getYear(), LocalDate.now().getMonthValue(), 1);
+    }
+    private Date getThisMonth(){
+        return Date.valueOf(LocalDate.of(LocalDate.now().getYear(), LocalDate.now().getMonthValue(), 1));
+    }
+    private Date getLastMonth(){
+        return Date.valueOf(getThisMonthLd().minusMonths(1L));
+    }
+    private Date getTwoMonths(){
+        return Date.valueOf(getThisMonthLd().minusMonths(2L));
+    }
+
+    @Override
+    public void sessionDestroyed(HttpSessionEvent se) {
+        /* Session is destroyed. */
+
+    }
+
+    @Override
+    public void attributeAdded(HttpSessionBindingEvent sbe) {
+        /* This method is called when an attribute is added to a session. */
+    }
+
+    @Override
+    public void attributeRemoved(HttpSessionBindingEvent sbe) {
+        /* This method is called when an attribute is removed from a session. */
+    }
+
+    @Override
+    public void attributeReplaced(HttpSessionBindingEvent sbe) {
+        /* This method is called when an attribute is replaced in a session. */
+    }
+}
