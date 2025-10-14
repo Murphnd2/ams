@@ -173,40 +173,6 @@
                 </configuration>
             </plugin>
 
-            <!-- Copy & RENAME persistence-<profile>.xml -> META-INF/persistence.xml -->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-antrun-plugin</artifactId>
-                <version>3.1.0</version>
-                <executions>
-                    <execution>
-                        <id>select-persistence</id>
-                        <phase>process-resources</phase>
-                        <goals>
-                            <goal>run</goal>
-                        </goals>
-                        <configuration>
-                            <target>
-                                <echo>Using persistence profile: ${persistence.src}</echo>
-
-                                <!-- Guard: ensure the source exists -->
-                                <condition property="persistence.file.exists">
-                                    <available file="${basedir}/src/main/resources/META-INF/persistence-${persistence.src}.xml"/>
-                                </condition>
-                                <fail unless="persistence.file.exists">
-                                    Missing file: src/main/resources/META-INF/persistence-${persistence.src}.xml
-                                </fail>
-
-                                <mkdir dir="${project.build.outputDirectory}/META-INF"/>
-                                <copy file="${basedir}/src/main/resources/META-INF/persistence-${persistence.src}.xml"
-                                      tofile="${project.build.outputDirectory}/META-INF/persistence.xml"
-                                      overwrite="true"/>
-                            </target>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-
             <!-- Guardrail: ban legacy javax.mail / javax.activation so TLS doesn't break again -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -236,7 +202,6 @@
                                 <bannedDependencies>
                                     <searchTransitive>true</searchTransitive>
                                     <excludes>
-                                        <!-- legacy Mail APIs/impls to forbid -->
                                         <exclude>javax.mail:mail</exclude>
                                         <exclude>javax.mail:javax.mail-api</exclude>
                                         <exclude>javax.activation:activation</exclude>
@@ -251,18 +216,68 @@
         </plugins>
     </build>
 
-
-    <!-- Profiles: local (dev DB) and server (VPS DB) -->
+    <!-- Profiles: choose which persistence file becomes META-INF/persistence.xml -->
     <profiles>
+        <!-- Default: server (JNDI) -->
         <profile>
             <id>server</id>
             <activation><activeByDefault>true</activeByDefault></activation>
-            <properties><persistence.src>server</persistence.src></properties>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-antrun-plugin</artifactId>
+                        <version>3.1.0</version>
+                        <executions>
+                            <execution>
+                                <id>copy-server-persistence</id>
+                                <phase>process-resources</phase>
+                                <goals><goal>run</goal></goals>
+                                <configuration>
+                                    <target>
+                                        <mkdir dir="${project.build.outputDirectory}/META-INF"/>
+                                        <copy file="${basedir}/src/main/resources/META-INF/persistence-server.xml"
+                                              tofile="${project.build.outputDirectory}/META-INF/persistence.xml"
+                                              overwrite="true"/>
+                                    </target>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
         </profile>
+
+        <!-- Local dev: direct JDBC -->
         <profile>
             <id>local</id>
-            <properties><persistence.src>local</persistence.src></properties>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-antrun-plugin</artifactId>
+                        <version>3.1.0</version>
+                        <executions>
+                            <execution>
+                                <id>copy-local-persistence</id>
+                                <phase>process-resources</phase>
+                                <goals><goal>run</goal></goals>
+                                <configuration>
+                                    <target>
+                                        <mkdir dir="${project.build.outputDirectory}/META-INF"/>
+                                        <copy file="${basedir}/src/main/resources/META-INF/persistence-local.xml"
+                                              tofile="${project.build.outputDirectory}/META-INF/persistence.xml"
+                                              overwrite="true"/>
+                                    </target>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
         </profile>
     </profiles>
+
+
 </project>
 

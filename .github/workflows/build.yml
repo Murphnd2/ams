@@ -2,7 +2,7 @@ name: Build WAR for Tomcat 10
 
 on:
   push:
-    branches: [ "beta", "main", "dev" ]
+    branches: [ "beta", "main", "dev", "charlie" ]
   workflow_dispatch:
 
 concurrency:
