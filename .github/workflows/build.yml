@@ -12,7 +12,6 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -28,19 +27,6 @@ jobs:
 
       - name: Build (server profile)
         run: mvn -B -Pserver -DskipTests clean package
-
-      - name: Verify migration tool exists
-        run: |
-          test -f tools/tomcat-jakartaee-migration.jar || {
-            echo "Missing tools/tomcat-jakartaee-migration.jar in repo"; exit 1;
-          }
-
-      - name: Migrate WAR for Tomcat 10 (javax → jakarta)
-        shell: bash
-        run: |
-          WAR=$(ls target/*.war | head -n 1)
-          echo "Converting $WAR"
-          java -jar tools/tomcat-jakartaee-migration.jar --rewrite "$WAR"
 
       - name: Rename artifact
         shell: bash
