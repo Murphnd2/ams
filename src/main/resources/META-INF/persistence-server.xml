@@ -4,7 +4,7 @@
 
         <!-- Use your Tomcat DataSource via JNDI (non-JTA on Tomcat) -->
         <non-jta-data-source>java:comp/env/jdbc/ssa</non-jta-data-source>
-
+        <exclude-unlisted-classes>false</exclude-unlisted-classes>
         <properties>
             <property name="eclipselink.logging.level" value="WARNING"/>
             <property name="eclipselink.weaving" value="false"/>

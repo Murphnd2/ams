@@ -10,14 +10,17 @@ import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.AmsDataGlobal;
 import net.superiorstate.ams.model.Constant;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.sql.Date;
 import java.time.LocalDate;
 
 @WebListener
 public class EmfListener implements ServletContextListener, HttpSessionListener, HttpSessionAttributeListener {
 
-    public EmfListener() {
-    }
+    public EmfListener() {}
 
     @Override
     public void contextInitialized(ServletContextEvent sce) {
@@ -25,39 +28,57 @@ public class EmfListener implements ServletContextListener, HttpSessionListener,
             EntityManagerFactory emf = Persistence.createEntityManagerFactory("ssaPU");
             sce.getServletContext().setAttribute("emf", emf);
 
-            EntityManager em = emf.createEntityManager();
-            Query q = em.createQuery("SELECT c FROM Constant c WHERE c.name=:name");
-            q.setParameter("name", "SSL_PORT");
-
-            Constant c;
+            EntityManager em = null;
             try {
-                c = (Constant) q.getSingleResult();
-            } catch (Exception e) {
-                c = null;
-            }
+                em = emf.createEntityManager();
 
-            if (c == null || c.getValue() == null || !c.getValue().equals("443")) {
-                System.out.println("🔁 Skipping global data load – database not initialized");
-            } else {
-                AmsDataGlobal global = new AmsDataGlobal();
-                global.initializeGlobalData(em);
-                sce.getServletContext().setAttribute("global", global);
-                System.out.println("✅ Global data loaded");
-            }
+                // Guard: if metamodel is empty, JPQL may fail — catch and continue
+                Constant c = null;
+                try {
+                    Query q = em.createQuery("SELECT c FROM Constant c WHERE c.name=:name");
+                    q.setParameter("name", "SSL_PORT");
+                    c = (Constant) q.getSingleResult();
+                } catch (Exception ignored) {
+                    // JPQL can fail if entities aren't discovered (e.g., exclude-unlisted-classes=true),
+                    // or if the table/row doesn't exist yet. We treat this as "not initialized".
+                }
 
-            em.close();
+                if (c == null || c.getValue() == null || !"443".equals(c.getValue())) {
+                    System.out.println("🔁 Skipping global data load – database not initialized");
+                } else {
+                    AmsDataGlobal global = new AmsDataGlobal();
+                    global.initializeGlobalData(em);
+                    sce.getServletContext().setAttribute("global", global);
+                    System.out.println("✅ Global data loaded");
+                }
+            } finally {
+                if (em != null && em.isOpen()) {
+                    em.close();
+                }
+            }
         } catch (Throwable t) {
-            try {
-                // Log to file directly
-                java.nio.file.Files.writeString(
-                        java.nio.file.Path.of("C:/Program Files/Apache Software Foundation/Tomcat 10.1/logs/emf_error.log"),
-                        "❌ Exception in contextInitialized:\n" + getStackTrace(t)
-                );
-            } catch (Exception fileEx) {
-                fileEx.printStackTrace();
-            }
+            // Log the error to catalina.base/logs, but DO NOT fail startup on Linux due to a path issue.
+            logStartupError(t);
 
-            throw new RuntimeException("Startup failed", t);
+            // If you prefer fail-fast when EMF can’t be created, uncomment the next line:
+            // throw new RuntimeException("Startup failed", t);
+        }
+    }
+
+    private static void logStartupError(Throwable t) {
+        try {
+            Path logPath = Paths.get(System.getProperty("catalina.base", "."),
+                    "logs", "emf_error.log");
+            Files.createDirectories(logPath.getParent());
+            Files.writeString(
+                    logPath,
+                    "❌ Exception in contextInitialized:\n" + getStackTrace(t) + "\n",
+                    java.nio.file.StandardOpenOption.CREATE,
+                    java.nio.file.StandardOpenOption.APPEND
+            );
+        } catch (IOException ignored) {
+            // Last resort: print to stderr
+            t.printStackTrace();
         }
     }
 
@@ -68,70 +89,69 @@ public class EmfListener implements ServletContextListener, HttpSessionListener,
         return sw.toString();
     }
 
-
-
-
     @Override
     public void contextDestroyed(ServletContextEvent sce) {
-        /* This method is called when the servlet Context is undeployed or Application Server shuts down. */
         EntityManagerFactory emf = (EntityManagerFactory) sce.getServletContext().getAttribute("emf");
-        emf.close();
+        if (emf != null && emf.isOpen()) {
+            try {
+                emf.close();
+            } catch (Exception ignored) {}
+        }
     }
 
     @Override
     public void sessionCreated(HttpSessionEvent se) {
-        /* Session is created. */
-        EntityManagerFactory emf = (EntityManagerFactory) se.getSession().getServletContext().getAttribute("emf");
-        EntityManager em = emf.createEntityManager();
-        se.getSession().setAttribute("thisMonth",getThisMonth());
-        se.getSession().setAttribute("lastMonth",getLastMonth());
-        se.getSession().setAttribute("twoMonth",getTwoMonths());
-        Query q = em.createQuery("SELECT c FROM Constant c WHERE c.name=:name");
-        q.setParameter("name","SSL_PORT");
-        Constant c;
-        try{
-            c = (Constant) q.getSingleResult();
-        } catch (Exception e){
-            c=null;
+        HttpSession session = se.getSession();
+        session.setAttribute("thisMonth", getThisMonth());
+        session.setAttribute("lastMonth", getLastMonth());
+        session.setAttribute("twoMonth", getTwoMonths());
+
+        EntityManagerFactory emf = (EntityManagerFactory) session.getServletContext().getAttribute("emf");
+        if (emf == null) {
+            session.setAttribute("uninitialized", 0);
+            return;
         }
-        if(c==null || c.getValue()==null || !c.getValue().equals("443"))
-            se.getSession().setAttribute("uninitialized",0);
-        else
-            se.getSession().setAttribute("uninitialized",1);
-        em.close();
+
+        EntityManager em = null;
+        try {
+            em = emf.createEntityManager();
+            Constant c = null;
+            try {
+                Query q = em.createQuery("SELECT c FROM Constant c WHERE c.name=:name");
+                q.setParameter("name", "SSL_PORT");
+                c = (Constant) q.getSingleResult();
+            } catch (Exception ignored) {
+                // Same rationale as above — treat as uninitialized
+            }
+            session.setAttribute("uninitialized",
+                    (c == null || c.getValue() == null || !"443".equals(c.getValue())) ? 0 : 1);
+        } finally {
+            if (em != null && em.isOpen()) {
+                em.close();
+            }
+        }
     }
 
-    private LocalDate getThisMonthLd(){
-        return LocalDate.of(LocalDate.now().getYear(), LocalDate.now().getMonthValue(), 1);
+    private LocalDate getThisMonthLd() {
+        LocalDate now = LocalDate.now();
+        return LocalDate.of(now.getYear(), now.getMonthValue(), 1);
     }
-    private Date getThisMonth(){
-        return Date.valueOf(LocalDate.of(LocalDate.now().getYear(), LocalDate.now().getMonthValue(), 1));
+
+    private Date getThisMonth() {
+        return Date.valueOf(getThisMonthLd());
     }
-    private Date getLastMonth(){
+
+    private Date getLastMonth() {
         return Date.valueOf(getThisMonthLd().minusMonths(1L));
     }
-    private Date getTwoMonths(){
+
+    private Date getTwoMonths() {
         return Date.valueOf(getThisMonthLd().minusMonths(2L));
     }
 
-    @Override
-    public void sessionDestroyed(HttpSessionEvent se) {
-        /* Session is destroyed. */
-
-    }
-
-    @Override
-    public void attributeAdded(HttpSessionBindingEvent sbe) {
-        /* This method is called when an attribute is added to a session. */
-    }
-
-    @Override
-    public void attributeRemoved(HttpSessionBindingEvent sbe) {
-        /* This method is called when an attribute is removed from a session. */
-    }
-
-    @Override
-    public void attributeReplaced(HttpSessionBindingEvent sbe) {
-        /* This method is called when an attribute is replaced in a session. */
-    }
+    @Override public void sessionDestroyed(HttpSessionEvent se) {}
+    @Override public void attributeAdded(HttpSessionBindingEvent sbe) {}
+    @Override public void attributeRemoved(HttpSessionBindingEvent sbe) {}
+    @Override public void attributeReplaced(HttpSessionBindingEvent sbe) {}
 }
+
