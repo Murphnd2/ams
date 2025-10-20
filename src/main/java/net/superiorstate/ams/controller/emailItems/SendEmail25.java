@@ -1,6 +1,4 @@
 package net.superiorstate.ams.controller.emailItems;
-
-
 import com.microsoft.graph.models.Message;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
@@ -26,7 +24,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-
 import com.microsoft.aad.msal4j.*;
 import okhttp3.Request;
 import org.jetbrains.annotations.NotNull;
@@ -44,11 +41,182 @@ public class SendEmail25 extends HttpServlet {
     }
 
     public String getAccessToken() throws Exception {
+        String tenant = System.getenv("AZURE_TENANT_ID");
+        String clientId = System.getenv("AZURE_CLIENT_ID");
+        String clientSecret = System.getenv("AZURE_CLIENT_SECRET");
 
-        return null;
+        String authority = "https://login.microsoftonline.com/" + tenant;
+
+        ConfidentialClientApplication app = ConfidentialClientApplication.builder(
+                        clientId,
+                        ClientCredentialFactory.createFromSecret(clientSecret))
+                .authority(authority)
+                .build();
+
+        ClientCredentialParameters params = ClientCredentialParameters.builder(
+                        Collections.singleton("https://graph.microsoft.com/.default"))
+                .build();
+
+        IAuthenticationResult result = app.acquireToken(params).get();
+        System.out.println("[Auth] ACCESS TOKEN: " + result.accessToken());
+        return result.accessToken();
     }
 
+    public void iSendEmail(Email e1) throws Exception{
+        // Assumes: String getAccessToken(); Email e1;
+
+        final String accessToken = getAccessToken();
+
+        // Graph auth provider (token we already acquired)
+        final IAuthenticationProvider authProvider = url ->
+                java.util.concurrent.CompletableFuture.completedFuture(accessToken);
+
+        // Build Graph client
+        final GraphServiceClient<okhttp3.Request> graphClient =
+                GraphServiceClient.builder()
+                        .authenticationProvider(authProvider)
+                        .buildClient();
+
+        // 1) Fixed service sender in your tenant (MUST be a licensed mailbox)
+        final String senderUpn = "noreply@superiorstate.net"; // TODO: set to your service mailbox UPN
+
+        // 2) Build the message
+        final Message message = new Message();
+        message.subject = e1.getSubject();
+
+        final ItemBody body = new ItemBody();
+        body.contentType = BodyType.HTML;            // HTML is safer for signatures/markup
+        body.content = e1.getDetail();
+        message.body = body;
+
+        // Collect recipients (skip blanks)
+        final java.util.List<Recipient> to = new java.util.ArrayList<>();
+        for (Person rec : e1.getRecipientList()) {
+            if (rec == null || rec.getEmail() == null) continue;
+            final String addr = rec.getEmail().trim();
+            if (addr.isEmpty()) continue;
+
+            final Recipient r = new Recipient();
+            r.emailAddress = new EmailAddress();
+            r.emailAddress.address = addr;
+            to.add(r);
+        }
+        message.toRecipients = to;
+
+        // Optional: Reply-To back to the originator (human)
+        if (e1.getCreatedBy() != null && e1.getCreatedBy().getEmail() != null) {
+            final String replyToAddr = e1.getCreatedBy().getEmail().trim();
+            if (!replyToAddr.isEmpty()) {
+                final Recipient replyTo = new Recipient();
+                replyTo.emailAddress = new EmailAddress();
+                replyTo.emailAddress.address = replyToAddr;
+                message.replyTo = java.util.List.of(replyTo);
+            }
+        }
+
+        // IMPORTANT: do NOT set message.from for sendMail
+        // (Graph derives sender from /users/{id} you call)
+
+        // Guard: must have at least one recipient
+        if (message.toRecipients == null || message.toRecipients.isEmpty()) {
+            throw new IllegalArgumentException("No recipients to send to.");
+        }
+
+        // 3) Send (and save to Sent Items)
+        final UserSendMailParameterSet parameterSet = new UserSendMailParameterSet();
+        parameterSet.message = message;
+        parameterSet.saveToSentItems = true;
+
+        try {
+            graphClient
+                    .users(senderUpn)                 // send AS the service mailbox
+                    .sendMail(parameterSet)
+                    .buildRequest()
+                    .post();
+
+            System.out.println("[SendEmail25] sendMail OK (202)");
+        } catch (com.microsoft.graph.http.GraphServiceException gse) {
+            System.out.println("[SendEmail25] GraphServiceException");
+            try {
+                System.out.println("  status: " + gse.getResponseCode());
+            } catch (Throwable t) {
+                System.out.println("  status: <unknown>");
+            }
+            System.out.println("  msg:    " + gse.getMessage());
+            gse.printStackTrace();
+            throw gse; // keep your emailSent=false behavior
+        } catch (com.microsoft.graph.core.ClientException ce) {
+            System.out.println("[SendEmail25] ClientException: " + ce.getMessage());
+            ce.printStackTrace();
+            throw ce;
+        }
+
+    }
     public void sendEmail(Email e1) throws Exception {
+        /**
+        System.out.println("[SendEmail25] 0 enter sendEmail");
+
+        final String accessToken = getAccessToken();
+        System.out.println("[SendEmail25] 1 token len=" + (accessToken == null ? 0 : accessToken.length()));
+
+        var authProvider = (com.microsoft.graph.authentication.IAuthenticationProvider) url ->
+                java.util.concurrent.CompletableFuture.completedFuture(accessToken);
+
+        System.out.println("[SendEmail25] 2 building client");
+        com.microsoft.graph.requests.GraphServiceClient<okhttp3.Request> graph =
+                com.microsoft.graph.requests.GraphServiceClient.builder()
+                        .authenticationProvider(authProvider)
+                        .buildClient();
+
+        // IMPORTANT: set this to a REAL, licensed mailbox UPN in YOUR tenant
+        final String senderUpn = "kevin@superiorstate.net";
+        System.out.println("[SendEmail25] 3 senderUpn=" + senderUpn);
+
+        com.microsoft.graph.models.Message message = new com.microsoft.graph.models.Message();
+        message.subject = "[AMS Test] " + e1.getSubject();
+
+        com.microsoft.graph.models.ItemBody body = new com.microsoft.graph.models.ItemBody();
+        body.contentType = com.microsoft.graph.models.BodyType.HTML;
+        body.content = "<p>Test at " + java.time.OffsetDateTime.now() + "</p>";
+        message.body = body;
+
+        java.util.List<com.microsoft.graph.models.Recipient> to = new java.util.ArrayList<>();
+        com.microsoft.graph.models.Recipient me = new com.microsoft.graph.models.Recipient();
+        me.emailAddress = new com.microsoft.graph.models.EmailAddress();
+        me.emailAddress.address = senderUpn; // self-send to prove pipeline works
+        to.add(me);
+        message.toRecipients = to;
+
+        com.microsoft.graph.models.UserSendMailParameterSet send =
+                new com.microsoft.graph.models.UserSendMailParameterSet();
+        send.message = message;
+        send.saveToSentItems = true;
+
+        try {
+            System.out.println("[SendEmail25] 4 about to POST sendMail");
+            graph.users(senderUpn).sendMail(send).buildRequest().post();
+            System.out.println("[SendEmail25] 5 POST returned (no exception)");
+        } catch (com.microsoft.graph.http.GraphServiceException gse) {
+            System.out.println("[SendEmail25] X GraphServiceException");
+            try { System.out.println("  status: " + gse.getResponseCode()); } catch (Throwable t) { System.out.println("  status:<unknown>"); }
+            System.out.println("  msg:    " + gse.getMessage());
+            gse.printStackTrace();
+            Throwable c = gse.getCause();
+            while (c != null) {
+                System.out.println("  cause:  " + c.getClass().getName() + ": " + c.getMessage());
+                c = c.getCause();
+            }
+            throw gse; // keeps your emailSent=false behavior
+        } catch (com.microsoft.graph.core.ClientException ce) {
+            System.out.println("[SendEmail25] X ClientException: " + ce.getMessage());
+            ce.printStackTrace();
+            throw ce;
+        }
+        */
+
+
+
+
         String accessToken = getAccessToken(); // Make sure this method returns a Graph API token
 
         // Setup authentication for Graph API
@@ -72,7 +240,7 @@ public class SendEmail25 extends HttpServlet {
         com.microsoft.graph.models.Message message = new Message();
         message.subject = e1.getSubject();
         message.body = new ItemBody();
-        message.body.contentType = BodyType.TEXT; // or BodyType.HTML for HTML emails
+        message.body.contentType = BodyType.HTML; // or BodyType.HTML for HTML emails
         message.body.content = e1.getDetail();
         List<Recipient> rList = new ArrayList<>();
         Recipient r;
@@ -104,6 +272,12 @@ public class SendEmail25 extends HttpServlet {
         } catch (Exception e) {
             System.out.println("Error sending email: " + e.getMessage());
         }
+
+
+
+
+
+
     }
 
     private void sendMessage(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
