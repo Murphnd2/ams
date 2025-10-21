@@ -111,43 +111,111 @@ public class SendAutomationEmailFinal extends HttpServlet {
         em.getTransaction().commit();
     }
     private void sendAutoEmail(HttpServletRequest request, HttpServletResponse response) throws MessagingException {
-        EntityManagerFactory emf = (EntityManagerFactory)getServletContext().getAttribute("emf");
+        EntityManagerFactory emf = (EntityManagerFactory) getServletContext().getAttribute("emf");
         EntityManager em = emf.createEntityManager();
+
         SessionVar sVar = (SessionVar) request.getSession().getAttribute("sVar");
-        Activity a;
-        if(sVar.getCurrentActivity()!=null)
-            a = sVar.getCurrentActivity();
-        else
-            a = (Activity) request.getSession().getAttribute("currentActivity");
-        Person user;
-        if(sVar.getCurrentPerson()!=null)
-            user = sVar.getCurrentPerson();
-        else
-            user = (Person) request.getSession().getAttribute("currentPerson");
+        Activity a = (sVar != null && sVar.getCurrentActivity() != null)
+                ? sVar.getCurrentActivity()
+                : (Activity) request.getSession().getAttribute("currentActivity");
 
-        int isWebLink = Integer.parseInt(request.getSession().getAttribute("webLinkTask").toString());
+        Person user = (sVar != null && sVar.getCurrentPerson() != null)
+                ? sVar.getCurrentPerson()
+                : (Person) request.getSession().getAttribute("currentPerson");
 
-        if(isWebLink==1){
+        int isWebLink = Integer.parseInt(String.valueOf(request.getSession().getAttribute("webLinkTask")));
+
+        if (isWebLink == 1) {
             String docName = request.getParameter("aInput-0");
             String docPath = request.getParameter("aInput-1");
-            createTaskAndWebLink(request,em, a, user, docName, docPath);
+            createTaskAndWebLink(request, em, a, user, docName, docPath);
         } else {
             setCurrentActivity(a);
-            List<String> subjectAndBody = prepareMessageContent(request,em);
+
+            // Build subject/body from your template pipeline
+            List<String> subjectAndBody = prepareMessageContent(request, em);
             String subject = subjectAndBody.get(0);
-            if(subject.equals(""))
-                subject= request.getSession().getAttribute("automationTitle").toString();
-            String message = subjectAndBody.get(1);
-            ActivityStatus as = dM.getActivityStatusById(em,1);
-            Email email = StdAuto.createEmail(request,em,a,subject,message,as,user);
-            Email email1 = dM.getEmailById(em,email.getId());
-            dbEmail.sendEmail(email1,em);
-            String shouldClose = request.getSession().getAttribute("shouldClose").toString();
-            processShouldClose(em,a,shouldClose,user);
+            if (subject == null || subject.isBlank()) {
+                subject = String.valueOf(request.getSession().getAttribute("automationTitle"));
+            }
+            String messageHtml = subjectAndBody.get(1);
+
+            // Persist Email entity (unchanged)
+            ActivityStatus as = dM.getActivityStatusById(em, 1);
+            Email email = StdAuto.createEmail(request, em, a, subject, messageHtml, as, user);
+
+            // Re-load with relationships
+            Email email1 = dM.getEmailById(em, email.getId());
+
+            // Build final HTML (add “attachments” WebLinks section)
+            String htmlBody = buildHtmlBody(email1, em);
+
+            // Collect TO recipients from Email entity
+            List<String> toWhoList = new ArrayList<>();
+            if (email1.getRecipientList() != null) {
+                for (Person r : email1.getRecipientList()) {
+                    if (r != null && r.getEmail() != null && !r.getEmail().isBlank()) {
+                        toWhoList.add(r.getEmail().trim());
+                    }
+                }
+            }
+
+            // CC from session if <cc> was used on the form
+            List<String> ccList = collectCcList(request);
+
+            // FromWho = human (Reply-To). SMTP “From/Envelope” comes from dbEmail (SMTP_FROM).
+            String fromWho = (email1.getCreatedBy() != null) ? String.valueOf(email1.getCreatedBy().getEmail()) : "";
+
+            try {
+                System.out.println("[AutoEmail] about to send via SMTP2GO");
+                dbEmail.sendEmail(fromWho, toWhoList, ccList, java.util.Collections.emptyList(),
+                        subject, htmlBody, em);
+                System.out.println("[AutoEmail] sent OK");
+
+            } catch (MessagingException mex) {
+                System.out.println("[SendAutomationEmailFinal] SMTP2GO send FAILED: " + mex.getMessage());
+                mex.printStackTrace();
+                throw mex; // keep your existing error handling / navigation
+            }
+
+            // Close task if <<close>> was set
+            String shouldClose = String.valueOf(request.getSession().getAttribute("shouldClose"));
+            processShouldClose(em, a, shouldClose, user);
         }
-        ViewSelectedActivity.setActivityView(request,em,a);
+
+        ViewSelectedActivity.setActivityView(request, em, a);
         em.close();
     }
+    private List<String> collectCcList(HttpServletRequest request) {
+        Object useCc = request.getSession().getAttribute("useCcList");
+        boolean wantCc = (useCc != null && Integer.parseInt(String.valueOf(useCc)) == 1);
+        if (!wantCc) return java.util.Collections.emptyList();
+
+        String ccCsv = (String) request.getSession().getAttribute("ccList");
+        if (ccCsv == null || ccCsv.isBlank()) return java.util.Collections.emptyList();
+
+        List<String> cc = new ArrayList<>();
+        for (String s : ccCsv.split("[;,]")) {
+            String addr = s.trim();
+            if (!addr.isEmpty() && dbEmail.isValidEmail(addr)) cc.add(addr);
+        }
+        return cc;
+    }
+
+    private String buildHtmlBody(Email email, EntityManager em) {
+        String html = (email.getDetail() != null) ? email.getDetail() : "";
+        List<WebLink> links = email.getWebLinkList();
+        if (links != null && !links.isEmpty()) {
+            StringBuilder atts = new StringBuilder("<p><b><u>Attachments</u></b><br/><ul>");
+            for (WebLink l : links) {
+                atts.append("<li>").append(l.getExternalAnchorTag(em)).append("</li>");
+            }
+            atts.append("</ul></p>");
+            html += atts;
+        }
+        return html;
+    }
+
 
     private void processShouldClose(EntityManager em, Activity a, String shouldClose, Person currentPerson){
         int indexOfDash = shouldClose.indexOf("-");

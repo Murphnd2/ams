@@ -44,3 +44,6 @@ build/
 # Tomcat artifacts
 **/webapps/
 **/*.war
+
+# Never commit local jars
+src/main/webapp/WEB-INF/lib/
