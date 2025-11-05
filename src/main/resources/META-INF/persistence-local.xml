@@ -1,15 +1,21 @@
 <persistence xmlns="https://jakarta.ee/xml/ns/persistence" version="3.0">
-    <persistence-unit name="ssaPU" transaction-type="RESOURCE_LOCAL">
-        <provider>org.eclipse.persistence.jpa.PersistenceProvider</provider>
-        <properties>
-            <property name="jakarta.persistence.jdbc.driver" value="com.mysql.cj.jdbc.Driver"/>
-            <property name="jakarta.persistence.jdbc.url"
-                      value="jdbc:mysql://127.0.0.1:3306/beta_ssa?useSSL=false&amp;serverTimezone=UTC"/>
-            <property name="jakarta.persistence.jdbc.user" value="LOCAL_USER"/>
-            <property name="jakarta.persistence.jdbc.password" value="LOCAL_PASS"/>
-            <property name="eclipselink.logging.level" value="INFO"/>
-            <property name="eclipselink.ddl-generation" value="none"/>
-        </properties>
+<persistence-unit name="ssaPU" transaction-type="RESOURCE_LOCAL">
+  <provider>org.eclipse.persistence.jpa.PersistenceProvider</provider>
+  <exclude-unlisted-classes>false</exclude-unlisted-classes>
 
-    </persistence-unit>
+  <properties>
+    <!-- JDBC: change values to your DB -->
+    <property name="jakarta.persistence.jdbc.driver" value="com.mysql.cj.jdbc.Driver"/>
+    <property name="jakarta.persistence.jdbc.url"    value="jdbc:mysql://127.0.0.1:3306/beta_ssa?useSSL=false&amp;serverTimezone=UTC"/>
+    <property name="jakarta.persistence.jdbc.user"   value="root"/>
+    <property name="jakarta.persistence.jdbc.password" value="Passw0rd!"/>
+
+
+    <property name="eclipselink.logging.level" value="WARNING"/>
+    <property name="eclipselink.logging.parameters" value="true"/>
+    <property name="eclipselink.weaving" value="false"/>
+    <!-- remove this line entirely, or use the FQCN if you insist -->
+    <!-- <property name="eclipselink.target-server" value="org.eclipse.persistence.platform.server.tomcat.TomcatPlatform"/> -->
+  </properties>
+</persistence-unit>
 </persistence>

@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
@@ -11,119 +12,282 @@
     <description>Superior State Administrators - Activity Management System</description>
 
     <properties>
-        <maven.compiler.source>21</maven.compiler.source>
-        <maven.compiler.target>21</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <failOnMissingWebXml>false</failOnMissingWebXml>
+        <maven.compiler.release>17</maven.compiler.release>
+        <junit.version>5.8.2</junit.version>
     </properties>
 
-    <!-- Make sure IntelliJ/Maven can resolve everything -->
-    <repositories>
-        <repository>
-            <id>central</id>
-            <name>Maven Central</name>
-            <url>https://repo1.maven.org/maven2/</url>
-        </repository>
-    </repositories>
-    <pluginRepositories>
-        <pluginRepository>
-            <id>central-plugins</id>
-            <name>Maven Central Plugins</name>
-            <url>https://repo1.maven.org/maven2/</url>
-        </pluginRepository>
-    </pluginRepositories>
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>software.amazon.awssdk</groupId>
+                <artifactId>bom</artifactId>
+                <version>2.20.69</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
     <dependencies>
-        <!-- JPA / EclipseLink -->
+        <!-- Servlet/JSP APIs provided by Tomcat at runtime -->
         <dependency>
-            <groupId>org.eclipse.persistence</groupId>
-            <artifactId>org.eclipse.persistence.jpa</artifactId>
-            <version>4.0.4</version>
+            <groupId>jakarta.servlet</groupId>
+            <artifactId>jakarta.servlet-api</artifactId>
+            <version>5.0.0</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>jakarta.servlet.jsp</groupId>
+            <artifactId>jakarta.servlet.jsp-api</artifactId>
+            <version>3.0.0</version>
+            <scope>provided</scope>
         </dependency>
 
-        <!-- MySQL driver (needed for local profile; server uses Tomcat's JAR in /usr/share/tomcat10/lib) -->
+        <!-- JSTL (final release) -->
+        <dependency>
+            <groupId>org.glassfish.web</groupId>
+            <artifactId>jakarta.servlet.jsp.jstl</artifactId>
+            <version>2.0.0</version>
+        </dependency>
+
+        <!-- Logging: Log4j2 + bridge SLF4J -> Log4j2 -->
+        <dependency>
+            <groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-core</artifactId>
+            <version>2.20.0</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-api</artifactId>
+            <version>2.20.0</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-slf4j2-impl</artifactId>
+            <version>2.20.0</version>
+        </dependency>
+
+        <!-- Apache POI -->
+        <dependency>
+            <groupId>org.apache.poi</groupId>
+            <artifactId>poi</artifactId>
+            <version>5.2.3</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.poi</groupId>
+            <artifactId>poi-ooxml</artifactId>
+            <version>5.2.3</version>
+        </dependency>
+
+        <!-- CSV -->
+        <dependency>
+            <groupId>com.opencsv</groupId>
+            <artifactId>opencsv</artifactId>
+            <version>5.9</version>
+        </dependency>
+
+        <!-- MySQL driver -->
         <dependency>
             <groupId>com.mysql</groupId>
             <artifactId>mysql-connector-j</artifactId>
             <version>8.4.0</version>
         </dependency>
 
+        <!-- AWS S3 -->
         <dependency>
-            <groupId>com.google.protobuf</groupId>
-            <artifactId>protobuf-java</artifactId>
-            <version>3.25.5</version>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>s3</artifactId>
         </dependency>
 
-
-        <!-- Servlet API provided by Tomcat 10 (Jakarta EE 10) -->
+        <!-- JPA (EclipseLink) -->
         <dependency>
-            <groupId>jakarta.servlet</groupId>
-            <artifactId>jakarta.servlet-api</artifactId>
-            <version>6.0.0</version>
-            <scope>provided</scope>
+            <groupId>org.eclipse.persistence</groupId>
+            <artifactId>org.eclipse.persistence.jpa</artifactId>
+            <version>3.0.2</version>
+        </dependency>
+
+        <!-- Jakarta Mail / Activation (Angus implementations ONLY) -->
+        <dependency>
+            <groupId>org.eclipse.angus</groupId>
+            <artifactId>jakarta.mail</artifactId>
+            <version>2.0.3</version>
+        </dependency>
+        <dependency>
+            <groupId>org.eclipse.angus</groupId>
+            <artifactId>angus-activation</artifactId>
+            <version>2.0.2</version>
+        </dependency>
+
+        <!-- Microsoft Graph + MSAL -->
+        <dependency>
+            <groupId>com.microsoft.azure</groupId>
+            <artifactId>msal4j</artifactId>
+            <version>1.21.0</version>
+        </dependency>
+        <dependency>
+            <groupId>com.microsoft.graph</groupId>
+            <artifactId>microsoft-graph</artifactId>
+            <version>5.52.0</version>
+            <scope>compile</scope>
+        </dependency>
+
+        <!-- JetBrains annotations -->
+        <dependency>
+            <groupId>org.jetbrains</groupId>
+            <artifactId>annotations</artifactId>
+            <version>24.1.0</version>
+            <scope>compile</scope>
+        </dependency>
+
+        <!-- Tests -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-api</artifactId>
+            <version>${junit.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-engine</artifactId>
+            <version>${junit.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Version alignment helpers (to satisfy upper bounds) -->
+        <dependency>
+            <groupId>org.jetbrains.kotlin</groupId>
+            <artifactId>kotlin-stdlib</artifactId>
+            <version>1.6.20</version>
+        </dependency>
+        <dependency>
+            <groupId>org.jetbrains.kotlin</groupId>
+            <artifactId>kotlin-stdlib-common</artifactId>
+            <version>1.6.20</version>
+        </dependency>
+        <dependency>
+            <groupId>org.reactivestreams</groupId>
+            <artifactId>reactive-streams</artifactId>
+            <version>1.0.4</version>
         </dependency>
     </dependencies>
 
     <build>
-        <finalName>ams</finalName>
         <plugins>
+            <!-- Java 17 -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.13.0</version>
+                <version>3.11.0</version>
                 <configuration>
-                    <release>21</release>
+                    <release>17</release>
                 </configuration>
             </plugin>
 
+            <!-- WAR packaging -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-war-plugin</artifactId>
-                <version>3.4.0</version>
+                <version>3.3.2</version>
                 <configuration>
                     <failOnMissingWebXml>false</failOnMissingWebXml>
+
                 </configuration>
             </plugin>
 
+            <!-- Guardrails -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-resources-plugin</artifactId>
-                <version>3.3.1</version>
+                <artifactId>maven-enforcer-plugin</artifactId>
+                <version>3.4.1</version>
+                <executions>
+                    <!-- Don’t allow a raw persistence.xml to be checked in -->
+                    <execution>
+                        <id>no-direct-persistence-xml</id>
+                        <goals><goal>enforce</goal></goals>
+                        <configuration>
+                            <rules>
+                                <requireFilesDontExist>
+                                    <files>
+                                        <file>${basedir}/src/main/resources/META-INF/persistence.xml</file>
+                                    </files>
+                                    <message>Do not check in src/main/resources/META-INF/persistence.xml. Use persistence-*.xml + profile.</message>
+                                </requireFilesDontExist>
+                            </rules>
+                            <fail>true</fail>
+                        </configuration>
+                    </execution>
+
+                    <!-- Ban legacy & API-only mail/activation to prevent provider clashes -->
+                    <execution>
+                        <id>ban-legacy-mail</id>
+                        <goals><goal>enforce</goal></goals>
+                        <configuration>
+                            <rules>
+                                <bannedDependencies>
+                                    <searchTransitive>true</searchTransitive>
+                                    <excludes>
+                                        <!-- Legacy javax mail/activation (must not appear) -->
+                                        <exclude>javax.mail:mail</exclude>
+                                        <exclude>javax.mail:javax.mail-api</exclude>
+                                        <exclude>com.sun.mail:javax.mail</exclude>
+                                        <exclude>javax.activation:activation</exclude>
+                                        <exclude>activation:activation</exclude>
+                                        <exclude>com.sun.activation:javax.activation</exclude>
+
+                                        <!-- Old Jakarta Activation impl (we don't want this one) -->
+                                        <exclude>jakarta.activation:jakarta.activation</exclude>
+
+                                        <!-- NOTE: DO NOT ban jakarta.activation:jakarta.activation-api
+                                             Angus Mail needs the API jar. -->
+                                    </excludes>
+                                </bannedDependencies>
+                            </rules>
+                            <fail>true</fail>
+                        </configuration>
+                    </execution>
+
+
+                    <!-- Avoid transitive downgrades/version conflicts -->
+                    <execution>
+                        <id>require-upper-bounds</id>
+                        <goals><goal>enforce</goal></goals>
+                        <configuration>
+                            <rules>
+                                <requireUpperBoundDeps/>
+                            </rules>
+                            <fail>true</fail>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>
 
     <!-- Profiles: choose which persistence file becomes META-INF/persistence.xml -->
     <profiles>
-        <!-- Default for CI/server builds: JNDI -->
+        <!-- Default: server (JNDI) -->
         <profile>
             <id>server</id>
-            <activation>
-                <activeByDefault>true</activeByDefault>
-            </activation>
+            <activation><activeByDefault>true</activeByDefault></activation>
             <build>
                 <plugins>
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-resources-plugin</artifactId>
+                        <artifactId>maven-antrun-plugin</artifactId>
+                        <version>3.1.0</version>
                         <executions>
                             <execution>
-                                <id>use-server-persistence</id>
+                                <id>copy-server-persistence</id>
                                 <phase>process-resources</phase>
-                                <goals>
-                                    <goal>copy-resources</goal>
-                                </goals>
+                                <goals><goal>run</goal></goals>
                                 <configuration>
-                                    <outputDirectory>${project.build.outputDirectory}/META-INF</outputDirectory>
-                                    <resources>
-                                        <resource>
-                                            <directory>src/main/resources/META-INF</directory>
-                                            <includes>
-                                                <include>persistence-server.xml</include>
-                                            </includes>
-                                        </resource>
-                                    </resources>
-                                    <overwrite>true</overwrite>
+                                    <target>
+                                        <mkdir dir="${project.build.outputDirectory}/META-INF"/>
+                                        <copy file="${basedir}/src/main/resources/META-INF/persistence-server.xml"
+                                              tofile="${project.build.outputDirectory}/META-INF/persistence.xml"
+                                              overwrite="true"/>
+                                    </target>
                                 </configuration>
                             </execution>
                         </executions>
@@ -132,32 +296,27 @@
             </build>
         </profile>
 
-        <!-- Local dev (Alpha): direct JDBC to local beta_ssa -->
+        <!-- Local dev: direct JDBC -->
         <profile>
             <id>local</id>
             <build>
                 <plugins>
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-resources-plugin</artifactId>
+                        <artifactId>maven-antrun-plugin</artifactId>
+                        <version>3.1.0</version>
                         <executions>
                             <execution>
-                                <id>use-local-persistence</id>
+                                <id>copy-local-persistence</id>
                                 <phase>process-resources</phase>
-                                <goals>
-                                    <goal>copy-resources</goal>
-                                </goals>
+                                <goals><goal>run</goal></goals>
                                 <configuration>
-                                    <outputDirectory>${project.build.outputDirectory}/META-INF</outputDirectory>
-                                    <resources>
-                                        <resource>
-                                            <directory>src/main/resources/META-INF</directory>
-                                            <includes>
-                                                <include>persistence-local.xml</include>
-                                            </includes>
-                                        </resource>
-                                    </resources>
-                                    <overwrite>true</overwrite>
+                                    <target>
+                                        <mkdir dir="${project.build.outputDirectory}/META-INF"/>
+                                        <copy file="${basedir}/src/main/resources/META-INF/persistence-local.xml"
+                                              tofile="${project.build.outputDirectory}/META-INF/persistence.xml}
+                          " overwrite="true"/>
+                                    </target>
                                 </configuration>
                             </execution>
                         </executions>
@@ -167,4 +326,5 @@
         </profile>
     </profiles>
 </project>
+
 

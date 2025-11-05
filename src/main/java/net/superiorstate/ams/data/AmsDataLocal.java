@@ -1,0 +1,1509 @@
+package net.superiorstate.ams.data;
+
+import jakarta.mail.*;
+import jakarta.mail.internet.InternetAddress;
+import jakarta.mail.internet.MimeBodyPart;
+import jakarta.mail.internet.MimeMessage;
+import jakarta.mail.internet.MimeMultipart;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.NoResultException;
+import jakarta.persistence.Query;
+import jakarta.persistence.TypedQuery;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.Part;
+import net.superiorstate.ams.model.*;
+import net.superiorstate.ams.previous.data.V;
+import net.superiorstate.ams.previous.data.checklist.dbRec;
+import net.superiorstate.ams.previous.data.misc.dP;
+import net.superiorstate.ams.previous.data.model.getByIds.dM;
+import net.superiorstate.ams.previous.model.activity.Activity;
+import net.superiorstate.ams.previous.model.activity.checklist.CheckList;
+import net.superiorstate.ams.previous.model.activity.checklist.sequences.UpcomingSequence;
+import net.superiorstate.ams.previous.model.activity.checklist.sequences.support.TemplatePurpose;
+import net.superiorstate.ams.previous.model.activity.checklist.tasks.ToDo;
+import net.superiorstate.ams.previous.model.activity.checklist.tasks.ToDoOut;
+import net.superiorstate.ams.previous.model.activity.note.Email;
+import net.superiorstate.ams.previous.model.activity.note.Note;
+import net.superiorstate.ams.previous.model.activity.renewal.Renewal;
+import net.superiorstate.ams.previous.model.activity.renewal.RenewalEmployer;
+import net.superiorstate.ams.previous.model.activity.renewal.RenewalItem;
+import net.superiorstate.ams.previous.model.activity.ticket.Ticket;
+import net.superiorstate.ams.previous.model.activity.ticket.setup.Setup;
+import net.superiorstate.ams.previous.model.general.*;
+import net.superiorstate.ams.previous.model.sales.application.ApplicationModule;
+import net.superiorstate.ams.previous.model.summit.archive.Benefit;
+import net.superiorstate.ams.previous.model.summit.archive.Employee;
+import net.superiorstate.ams.previous.model.summit.archive.Employer;
+
+import java.sql.Date;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.util.*;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+
+public class AmsDataLocal {
+    private boolean userIsIn;
+    private final int RENEWAL_DAYS_OUT = 120;
+    private List<TimeStretch> myTimeHistory;
+    private User currentUser;
+    private Person currentPerson;
+    private List<Activity25u> activitiesAllOpen;
+    private List<Activity25p> activitiesWithDependencies;
+
+    private List<Activity25u> filteredActivityList;
+    private List<Checklist25u> checklistsAll;
+    private List<Checklist25u> checklistsCurrent;
+    private List<Checklist25u> checklistsClosed;
+    private List<Checklist25u> checklistsFuture;
+
+    private List<RenewalEmployer> renewalEmployers;
+    private CurrentActivity currentActivity;
+    private CurrentChecklist currentChecklist;
+
+    private CurrentEmail currentEmail;
+    private ActivityFilter activityFilter;
+    private int daysSinceContactWarning;
+    private String nextView;
+    private boolean isPspAdmin;
+    private boolean isAuthenticated;
+
+    private ToDoOut currentToDoOut;
+    private ToDo currentToDo;
+
+    public AmsDataLocal(){};
+
+    public void intializeLocalData(EntityManager em, HttpServletRequest request){
+        AmsDataGlobal global = (AmsDataGlobal) request.getServletContext().getAttribute("global");
+        Person p = (Person) request.getSession().getAttribute("currentPerson");
+        setCurrentPerson(p);
+        setCurrentUser(getUserFromPerson(em,getCurrentPerson()));
+        setCurrentActivity(new CurrentActivity());
+        setCurrentChecklist(new CurrentChecklist());
+        setDaysSinceContactWarning(global.getDaysSinceWarning());
+        setActivityFilter(new ActivityFilter());
+        getActivityFilter().initializeFilter();
+        setCurrentEmail(new CurrentEmail());
+        getCurrentEmail().initializeEmail();
+        setActivitiesAllOpen(global.getActivitiesAllOpen());
+        setActivitiesWithDependencies(global.getActivitiesWithDelegation());
+        setFilteredActivityList(filterActivityListing());
+        setChecklistsAll(retrieveMyChecklists(em));
+        setRenewalEmployers(fillRenewalEmployers(em));
+        splitChecklists();
+        global.setWebPath(global.getConstantValue(em,"WEB_PATH"));
+    }
+
+
+    public void refreshRenewals(EntityManager em){
+        setRenewalEmployers(fillRenewalEmployers(em));
+    }
+
+    public CurrentEmail getCurrentEmail() {
+        return currentEmail;
+    }
+
+    public List<RenewalEmployer> getRenewalEmployers() {
+        return renewalEmployers;
+    }
+
+    public void setRenewalEmployers(List<RenewalEmployer> renewalEmployers) {
+        this.renewalEmployers = renewalEmployers;
+    }
+
+    public void setCurrentEmail(CurrentEmail currentEmail) {
+        this.currentEmail = currentEmail;
+    }
+
+    public ToDo getCurrentToDo() {
+        return currentToDo;
+    }
+
+    public void setCurrentToDo(ToDo currentToDo) {
+        this.currentToDo = currentToDo;
+    }
+
+    public ToDoOut getCurrentToDoOut() {
+        return currentToDoOut;
+    }
+
+    public void setCurrentToDoOut(ToDoOut currentToDoOut) {
+        this.currentToDoOut = currentToDoOut;
+    }
+
+    public boolean isUserIsIn() {
+        return userIsIn;
+    }
+
+    public void setUserIsIn(boolean userIsIn) {
+        this.userIsIn = userIsIn;
+    }
+
+    public List<TimeStretch> getMyTimeHistory() {
+        return myTimeHistory;
+    }
+
+    public void setMyTimeHistory(List<TimeStretch> myTimeHistory) {
+        this.myTimeHistory = myTimeHistory;
+    }
+
+    public User getCurrentUser() {
+        return currentUser;
+    }
+    public void setCurrentUser(User currentUser) {
+        this.currentUser = currentUser;
+    }
+    public Person getCurrentPerson() {
+        return currentPerson;
+    }
+    public void setCurrentPerson(Person currentPerson) {
+        this.currentPerson = currentPerson;
+    }
+    public List<Activity25u> getActivitiesAllOpen() {
+        return activitiesAllOpen;
+    }
+    public void setActivitiesAllOpen(List<Activity25u> activitiesAllOpen) {
+        this.activitiesAllOpen = activitiesAllOpen;
+    }
+    public List<Activity25p> getActivitiesWithDependencies() {
+        return activitiesWithDependencies;
+    }
+    public void setActivitiesWithDependencies(List<Activity25p> activitiesWithDependencies) {
+        this.activitiesWithDependencies = activitiesWithDependencies;
+    }
+    public List<Checklist25u> getChecklistsAll() {
+        return checklistsAll;
+    }
+    public void setChecklistsAll(List<Checklist25u> checklistsAll) {
+        this.checklistsAll = checklistsAll;
+    }
+    public CurrentActivity getCurrentActivity() {
+        return currentActivity;
+    }
+    public void setCurrentActivity(CurrentActivity currentActivity) {
+        this.currentActivity = currentActivity;
+    }
+    public CurrentChecklist getCurrentChecklist() {
+        return currentChecklist;
+    }
+    public void setCurrentChecklist(CurrentChecklist currentChecklist) {
+        this.currentChecklist = currentChecklist;
+    }
+    public ActivityFilter getActivityFilter() {
+        return activityFilter;
+    }
+    public void setActivityFilter(ActivityFilter activityFilter) {
+        this.activityFilter = activityFilter;
+    }
+    public int getDaysSinceContactWarning() {
+        return daysSinceContactWarning;
+    }
+    public void setDaysSinceContactWarning(int daysSinceContactWarning) {
+        this.daysSinceContactWarning = daysSinceContactWarning;
+    }
+    public void setFilteredActivityList(List<Activity25u> filteredActivityList) {
+        this.filteredActivityList = filteredActivityList;
+    }
+
+    public List<Checklist25u> getChecklistsCurrent() {
+        return checklistsCurrent;
+    }
+
+    public void setChecklistsCurrent(List<Checklist25u> checklistsCurrent) {
+        this.checklistsCurrent = checklistsCurrent;
+    }
+
+    public List<Checklist25u> getChecklistsClosed() {
+        return checklistsClosed;
+    }
+
+    public void setChecklistsClosed(List<Checklist25u> checklistsClosed) {
+        this.checklistsClosed = checklistsClosed;
+    }
+
+    public List<Checklist25u> getChecklistsFuture() {
+        return checklistsFuture;
+    }
+
+    public void setChecklistsFuture(List<Checklist25u> checklistsFuture) {
+        this.checklistsFuture = checklistsFuture;
+    }
+
+    public List<Activity25u> getFilteredActivityList() {
+        return filteredActivityList;
+    }
+
+    public String getNextView() {
+        return nextView;
+    }
+    public void setNextView(String nextView) {
+        this.nextView = nextView;
+    }
+
+    public boolean isPspAdmin() {
+        return isPspAdmin;
+    }
+
+    public void setPspAdmin(boolean pspAdmin) {
+        isPspAdmin = pspAdmin;
+    }
+
+    public boolean isAuthenticated() {
+        return isAuthenticated;
+    }
+
+    public void setAuthenticated(boolean authenticated) {
+        isAuthenticated = authenticated;
+    }
+
+    private User getUserFromPerson(EntityManager em, Person p){
+        Query q = em.createQuery("SELECT u FROM User u WHERE u.person.id = :id");
+        q.setParameter("id",p.getId());
+        User u;
+        try{
+            u = (User) q.getSingleResult();
+        } catch (NoResultException e){return null;}
+        return u;
+    }
+
+    public List<Activity25u> filterActivityListing(){
+
+        Set<Long> otherIds = retrieveMyDependentActivities().stream().map(other->other.getActivity().getId()).collect(Collectors.toSet());
+        List<Activity25u> filterList = new ArrayList<>(getActivitiesAllOpen());
+        filterList.forEach(au->au.setDelegated(otherIds.contains(au.getActivity().getId())));
+        System.out.println("-----------FILTERING WITH FILTER ID # " + getActivityFilter().getOwnershipFilter() + " -------------------");
+
+        System.out.println("A: List Count = "+filterList.size());
+
+        if(getActivityFilter().getOwnershipFilter()==1 || getActivityFilter().getOwnershipFilter()==2){ // Filter the List to those assigned to the user
+            filterList = filterList.stream().filter(a->a.getActivity().getAssignedTo().getId().equals(getCurrentPerson().getId())).collect(Collectors.toList());
+            System.out.println("B: List Count = "+filterList.size());
+        }
+        if(getActivityFilter().getOwnershipFilter()==3) { // Clear all items in the list so only the participating can be added back
+            filterList = new ArrayList<>();
+            System.out.println("C: List Count = " + filterList.size());
+        }
+
+        if(getActivityFilter().getOwnershipFilter()==1 || getActivityFilter().getOwnershipFilter() ==3){ // Add the participating items back to the list
+            for(Activity25u a: retrieveMyDependentActivities())
+                if(!filterList.contains(a)) {
+                    a.setDelegated(true);
+                    if((a.getdType().equals("Renewal") && getActivityFilter().isViewRenewal()) || (a.getdType().equals("Setup") && getActivityFilter().isViewSetup()) ||(a.getdType().equals("Ticket")&&getActivityFilter().isViewTicket()) )
+                        filterList.add(a);
+                }
+            System.out.println("D: List Count = "+filterList.size());
+        }
+
+        if(!getActivityFilter().isViewRenewal())
+            filterList = filterList.stream().filter(a -> !a.getdType().equals("Renewal")).collect(Collectors.toList());
+        if(!getActivityFilter().isViewSetup())
+            filterList = filterList.stream().filter(a -> !a.getdType().equals("Setup")).collect(Collectors.toList());
+        if(!getActivityFilter().isViewTicket())
+            filterList = filterList.stream().filter(a-> !a.getdType().equals("Ticket")).collect(Collectors.toList());
+        System.out.println("E: List Count = "+filterList.size());
+
+        if(getActivityFilter().isViewNeedsContact() || getActivityFilter().isViewWaitingOnUs()){
+            Predicate<Activity25u> predWaitOnUs = Activity25u::isWaitingOnUs;
+            Predicate<Activity25u> predNeedsContact = (a -> a.getDaysSinceContact()>getDaysSinceContactWarning());
+            if(getActivityFilter().isViewNeedsContact() && getActivityFilter().isViewWaitingOnUs())
+                filterList = filterList.stream().filter(predNeedsContact.or(predWaitOnUs)).collect(Collectors.toList());
+            else if(getActivityFilter().isViewNeedsContact())
+                filterList = filterList.stream().filter(predNeedsContact).collect(Collectors.toList());
+            else
+                filterList = filterList.stream().filter(predWaitOnUs).collect(Collectors.toList());
+            System.out.println("F: List Count = "+filterList.size());
+        }
+
+
+        if(!getActivityFilter().isSortAlphabetically()){
+            filterList.sort(new Comparator<Activity25u>() {
+                @Override
+                public int compare(Activity25u o1, Activity25u o2) {
+                    return o1.getDueDate().compareTo(o2.getDueDate());
+                }
+            });
+        } else Collections.sort(filterList);
+        System.out.println("G: List Count = "+filterList.size());
+        return filterList;
+    }
+    private List<Activity25u> retrieveMyDependentActivities(){
+        List<Activity25u> startList = getActivitiesAllOpen().stream().map(au->{Activity25u newAu = new Activity25u(au); newAu.setDelegated(true); return newAu;}).toList();
+        List<Activity25p> pList = getActivitiesWithDependencies().stream().filter(obj1 -> obj1.getTaskOwner().getId().equals(getCurrentPerson().getId())).toList();
+        Set<Long> keySet = pList.stream().map(obj2->obj2.getActivity().getId()).collect(Collectors.toSet());
+        return startList.stream().filter(obj1 -> keySet.contains(obj1.getActivity().getId())).toList();
+    }
+    private List<Checklist25u> retrieveMyChecklists(EntityManager em){
+        Query q= em.createQuery("SELECT c FROM Checklist25 c where c.owner.id = :id");
+        q.setParameter("id",getCurrentPerson().getId());
+        List<Checklist25> checklist25s;
+        try{
+            checklist25s = (List<Checklist25>) q.getResultList();
+        } catch (NoResultException e){return new ArrayList<>();}
+        List<Checklist25u> checklist25us = new ArrayList<>();
+        for(Checklist25 c:checklist25s) {
+            em.refresh(c);
+            checklist25us.add(new Checklist25u(c));
+        }
+        return  checklist25us;
+    }
+    private List<RenewalEmployer> fillRenewalEmployers(EntityManager em){
+        List<Employer> employerList = new ArrayList<>();
+        List<RenewalEmployer> renewalEmployerList = new ArrayList<>();
+        Date cutOff = Date.valueOf(LocalDate.ofInstant(Instant.now(), ZoneId.systemDefault()).plusDays(RENEWAL_DAYS_OUT));
+        Date stage2 = Date.valueOf(LocalDate.ofInstant(Instant.now(),ZoneId.systemDefault()));
+        Date stage1 = Date.valueOf(LocalDate.ofInstant(Instant.now(),ZoneId.systemDefault()).plusDays(30));
+        Query q = em.createQuery("SELECT b FROM Benefit b WHERE b.isActive = true AND b.nextRenewalDue < :date");
+        q.setParameter("date",cutOff);
+        List<Benefit> benefitList;
+        try{
+            benefitList = (List<Benefit>) q.getResultList();
+        } catch (NoResultException e){
+            benefitList = new ArrayList<>();
+        }
+        RenewalEmployer re;
+        for(Benefit b:benefitList){
+            int newStage;
+            if(b.getNextRenewalDue().before(stage2))
+                newStage = 0;
+            else if(b.getNextRenewalDue().before(stage1))
+                newStage = 1;
+            else newStage = 2;
+            if(!employerList.contains(b.getEmployer())){
+                employerList.add(b.getEmployer());
+                re = new RenewalEmployer();
+                re.setEmployer(b.getEmployer());
+                re.setLastRenewed(b.getLastRenewed());
+                re.setStage(newStage);
+                renewalEmployerList.add(re);
+                continue;
+            }
+            for(RenewalEmployer r:renewalEmployerList){
+                if (r.getEmployer().equals(b.getEmployer()) && r.getStage()>newStage){
+                    r.setStage(newStage);
+                    break; // Exit the loop once the correct RenewalEmployer is found
+                }
+            }
+        }
+
+        Collections.sort(renewalEmployerList);
+        System.out.println("RENEWAL ITEMS COUNT: " + renewalEmployerList.size());
+        return renewalEmployerList;
+    }
+    public void respondToActivityUpdate(EntityManager em, String action, Object o){
+        Long activityId;
+        Activity25u au;
+        Note n;
+        Long toDoId;
+        ToDoOut25 t;
+        Long checklistId;
+        int index;
+
+        switch (action) {
+            case "CHECK_UNDO" -> {
+                CheckList  c = (CheckList) o;
+                Checklist25u cu = retrieveChecklist25uFromList(getChecklistsAll(),c.getId());
+                cu.setSortKey(1);
+                cu.setComplete(false);
+                cu.getActivity().setComplete(false);
+                cu.getActivity().setDateCompleted(null);
+                cu.getActivity().setCompletedBy(null);
+                if(c.getRecurringTaskList()!=null){
+                    getChecklistsAll().remove(cu);
+                    List<Checklist25u> myList = new ArrayList<>(getChecklistsAll());
+                    myList = myList.stream().filter(obj->obj.getRecurringTaskList()!=null).collect(Collectors.toList());
+                    Optional<Checklist25u> cu1 = myList.stream().filter(obj->obj.getRecurringTaskList().getId().equals(c.getRecurringTaskList().getId())).findFirst();
+                    if(cu1.isPresent()){
+                        Checklist25u cu2 = cu1.get();
+                        getChecklistsAll().remove(cu2);
+                        getChecklistsAll().add(cu);
+                    }
+                }
+                getChecklistsAll().sort(new Comparator<Checklist25u>() {
+                    @Override
+                    public int compare(Checklist25u o1, Checklist25u o2) {
+                        if(o1.getSortKey()<o2.getSortKey())
+                            return -1;
+                        else if(o1.getSortKey()>o2.getSortKey())
+                            return 1;
+                        else return o1.getDueDate().compareTo(o2.getDueDate());
+                    }
+                });
+                splitChecklists();
+            }
+            case "CHECK_REMINDER" ->{
+                CheckList c = (CheckList) o;
+                Query q = em.createQuery("SELECT c FROM Checklist25 c WHERE c.activity.id = :id");
+                q.setParameter("id",c.getId());
+                Checklist25 c25 = (Checklist25) q.getSingleResult();
+                em.refresh(c25);
+                Checklist25u c25u = new Checklist25u(c25);
+                getChecklistsAll().add(c25u);
+                getChecklistsAll().sort(new Comparator<Checklist25u>() {
+                    @Override
+                    public int compare(Checklist25u o1, Checklist25u o2) {
+                        if(o1.getSortKey()==o2.getSortKey())
+                            return  o1.getDueDate().compareTo(o2.getDueDate());
+                        if(o1.getSortKey()<o2.getSortKey())
+                            return -1;
+                        return 1;
+                    }
+                });
+                splitChecklists();
+
+            }
+            case "CHECK_DATE" -> {
+
+                CheckList c = (CheckList) o;
+                Query q = em.createQuery("SELECT c FROM Checklist25 c WHERE c.activity.id = :id");
+                q.setParameter("id",c.getId());
+                Checklist25 c25 = (Checklist25) q.getSingleResult();
+                em.refresh(c25);
+                System.out.println("GOT HERE: CLUY");
+                System.out.println(c25.getDueDate());
+                System.out.println(c25.getSortKey());
+                List<Checklist25u> cl1 = new ArrayList<>(getChecklistsAll());
+                for(Checklist25u cu: cl1){
+                    if(c25.getActivity().getId().equals(cu.getActivity().getId())){
+                        Checklist25u c25u = new Checklist25u(c25);
+                        cl1.remove(cu);
+                        cl1.add(c25u);
+                        break;
+                    }
+                }
+                cl1.sort(new Comparator<Checklist25u>() {
+                    @Override
+                    public int compare(Checklist25u o1, Checklist25u o2) {
+                        if(o1.getSortKey()==o2.getSortKey())
+                            return  o1.getDueDate().compareTo(o2.getDueDate());
+                        if(o1.getSortKey()<o2.getSortKey())
+                            return -1;
+                        return 1;
+                    }
+                });
+                setChecklistsAll(cl1);
+                splitChecklists();
+            }
+            case "CHECK_OWNER" -> {
+                CheckList c = (CheckList) o;
+                Checklist25u cu = retrieveChecklist25uFromList(getChecklistsAll(),c.getId());
+                getChecklistsAll().remove(cu);
+                splitChecklists();
+            }
+            case "CHECK_CLOSE" -> {
+                CheckList c = (CheckList) o;
+                if(c.getRecurringTaskList()!=null) { // Recurring Task Needing Regeneration
+                    UpcomingSequence us = dbRec.getUpcomingSequence(em,c.getRecurringTaskList());
+                    if(us!=null){
+                        CheckList c1 = dbRec.createNewRecurringChecklist(em,us, getCurrentPerson());
+                        Query q = em.createQuery("SELECT c FROM Checklist25 c WHERE c.activity.id = :id");
+                        q.setParameter("id",c1.getId());
+                        Checklist25 c25 = (Checklist25) q.getSingleResult();
+                        Checklist25u c25u = new Checklist25u(c25);
+                        getChecklistsAll().add(c25u);
+                    }
+                }
+                List<Checklist25u> newList = new ArrayList<>(getChecklistsAll());
+                newList = newList.stream().filter(obj-> !Objects.equals(obj.getActivity().getId(), c.getId())).collect(Collectors.toList());
+                TypedQuery<Checklist25> q = em.createQuery("SELECT c FROM Checklist25 c WHERE c.activity.id = :id",Checklist25.class);
+                q.setParameter("id",c.getId());
+                Checklist25 c25 = q.getSingleResult();
+                Checklist25u c25u = new Checklist25u(c25);
+                c25u.setSortKey(2);
+                c25u.setComplete(true);
+                newList.add(c25u);
+                setChecklistsAll(newList);
+                splitChecklists();
+            }
+            case "VIEW_ACTIVITY" -> {
+                activityId = (Long) o;
+                getCurrentActivity().intializeActivity(em, activityId);
+                setNextView("activityDetail");
+            }
+            case "VIEW_CHECKLIST" -> {
+                checklistId = (Long) o;
+                getCurrentActivity().intializeActivity(em,checklistId);
+                setNextView("checklistDetail");
+            }
+            case "NOTE" -> {
+                n = (Note) o;
+                // Add note to the current activity history
+                List<Note> newNoteList = new ArrayList<>(getCurrentActivity().getNotes());
+                newNoteList.add(0, n);
+                getCurrentActivity().setNotes(newNoteList);
+                // Determine if Activity25u should be updated
+                getCurrentActivity().setReFilterOnExit(n.getReasonCreated().isOutbound() || n.getStatus().getId() != 2);
+                Optional<Activity25u> au1 = getActivitiesAllOpen().stream().filter(obj-> Objects.equals(obj.getActivity().getId(), getCurrentActivity().getActivity().getId())).findFirst();
+                if(au1.isPresent() && getCurrentActivity().isReFilterOnExit()){
+                    Activity25u activity25u = au1.get();
+                    if(n.getReasonCreated().isOutbound())
+                        activity25u.setDaysSinceContact(0);
+                    if(n.getStatus().getId()==1)
+                        activity25u.setWaitingOnUs(false);
+                    else if (n.getStatus().getId()==3)
+                        activity25u.setWaitingOnUs(true);
+                    List<Activity25u> newList = getActivitiesAllOpen().stream().filter(a->a.getActivity().getId()!=activity25u.getActivity().getId()).collect(Collectors.toList());
+                    newList.add(activity25u);
+                    setActivitiesAllOpen(newList);
+
+                }
+                setNextView("activityDetail");
+                System.out.println("Refilter?: " + getCurrentActivity().isReFilterOnExit());
+            }
+            case "AUTO_CLOSE" -> {
+                Automation a = (Automation) o;
+                long taskId = a.getId();
+                Optional<ToDoOut25> tdo = getCurrentActivity().getToDoList().stream().filter(obj->obj.getTask().getId()==taskId).findFirst();
+                if(tdo.isPresent()){
+                    ToDo toDo = dM.getToDoById(em,tdo.get().getToDo().getId());
+                    if(toDo!=null) {
+                        em.getTransaction().begin();
+                        toDo.setComplete(true);
+                        toDo.setCompletedBy(getCurrentPerson());
+                        toDo.setDateCompleted(Date.valueOf(LocalDate.now()));
+                        em.persist(toDo);
+                        em.getTransaction().commit();
+                        em.refresh(toDo);
+                    }
+                    t = retrieveToDoOutFromList(getCurrentActivity().getToDoList(),toDo.getId());
+                    t.setComplete(true);
+                    t.getToDo().setDateCompleted(Date.valueOf(LocalDate.now()));
+                    t.getToDo().setCompletedBy(getCurrentPerson());
+                    t.getToDo().setComplete(true);
+                    getCurrentActivity().getToDoList().remove(t);
+                    getCurrentActivity().getToDoList().add(t);
+                }
+            }
+            case "TODO_CLOSE" -> {
+                toDoId = (Long) o;
+                t = retrieveToDoOutFromList(getCurrentActivity().getToDoList(), toDoId);
+                if (t != null) {
+                    t.setComplete(true);
+                    t.getToDo().setDateCompleted(Date.valueOf(LocalDate.now()));
+                    t.getToDo().setCompletedBy(getCurrentPerson());
+                    t.getToDo().setComplete(true);
+
+                    getCurrentActivity().getToDoList().remove(t);
+                    getCurrentActivity().getToDoList().add(t);
+                }
+                setNextView("activityDetail");
+            }
+            case "TODO_REOPEN" -> {
+                toDoId = (Long) o;
+                t = retrieveToDoOutFromList(getCurrentActivity().getToDoList(), toDoId);
+                if (t != null) {
+                    t.setComplete(false);
+                    t.getToDo().setComplete(false);
+                    t.getToDo().setDateCompleted(null);
+                    t.getToDo().setCompletedBy(null);
+                    index = getIndexOfInsertLocation(getCurrentActivity().getToDoList(), t);
+                    getCurrentActivity().getToDoList().remove(t);
+                    getCurrentActivity().getToDoList().add(index, t);
+                }
+                setNextView("activityDetail");
+            }
+            case "TODO_ADD" -> {
+                toDoId = (Long) o;
+                t = retrieveToDoOutFromList(getCurrentActivity().getToDoList(), toDoId);
+                if (t != null) {
+                    index = getIndexOfInsertLocation(getCurrentActivity().getToDoList(), t);
+                    List<ToDoOut25> newList = new ArrayList<>(getCurrentActivity().getToDoList());
+                    newList.add(index,t);
+                    getCurrentActivity().setToDoList(newList);
+                }
+                setNextView("activityDetail");
+            }
+            case "TD_ADD" ->{
+                ToDo toDo = (ToDo) o;
+                List<ToDoOut25> openList = getCurrentActivity().getToDoList().stream().filter(obj -> !obj.isComplete()).toList();
+                OptionalInt location = IntStream.range(0,openList.size()).filter(i-> openList.get(i).getSortOrder()>toDo.getSortOrder()).findFirst();
+                int i =  location.isPresent() ? location.getAsInt() : openList.size();
+                List<ToDoOut25> newList = new ArrayList<>(getCurrentActivity().getToDoList());
+                ToDoOut25 t25 = new ToDoOut25(toDo);
+                newList.add(i,t25);
+                getCurrentActivity().setToDoList(newList);
+            }
+            case "CLOSE_ACTIVITY" -> {
+                Activity activity = (Activity) o;
+
+
+            }
+            case "CLOSE_CHECK" -> {
+                CheckList c = (CheckList) o;
+                if(c.getRecurringTaskList()!=null) { // Recurring Task Needing Regeneration
+                    UpcomingSequence us = dbRec.getUpcomingSequence(em,c.getRecurringTaskList());
+                    if(us!=null){
+                        CheckList c1 = dbRec.createNewRecurringChecklist(em,us, getCurrentPerson());
+                        Query q = em.createQuery("SELECT c FROM Checklist25 c WHERE c.activity.id = :id");
+                        q.setParameter("id",c1.getId());
+                        Checklist25 c25 = (Checklist25) q.getSingleResult();
+                        Checklist25u c25u = new Checklist25u(c25);
+                        getChecklistsAll().add(c25u);
+                    }
+                }
+
+                Checklist25u cu = retrieveChecklist25uFromList(getChecklistsAll(),c.getId());
+                if(cu!=null){
+                    cu.setComplete(true);
+                    cu.getActivity().setComplete(true);
+                    cu.getActivity().setCompletedBy(getCurrentPerson());
+                    cu.getActivity().setDateCompleted(Date.valueOf(LocalDate.now()));
+                    cu.setSortKey(2);
+                }
+                splitChecklists();
+            }
+            case "OWNER" -> {
+                Person p = (Person) o;
+
+            }
+            case "DATE" -> {
+                Date date1 = (Date) o;
+                getCurrentActivity().getActivity().setDueDate(date1);
+                if(getCurrentActivity().getActivity().getClass().getSimpleName().equals("CheckList")){
+                    CheckList c = (CheckList) getCurrentActivity().getActivity();
+                    Query q = em.createQuery("SELECT c FROM Checklist25 c WHERE c.activity.id = :id");
+                    q.setParameter("id",c.getId());
+                    Checklist25 c25 = (Checklist25) q.getSingleResult();
+                    em.refresh(c25);
+                    Checklist25u cu = retrieveChecklist25uFromList(getChecklistsAll(),c.getId());
+                    cu.setDueDate(date1);
+                    cu.setSortKey(c25.getSortKey());
+                    getChecklistsAll().sort(new Comparator<Checklist25u>() {
+                        @Override
+                        public int compare(Checklist25u o1, Checklist25u o2) {
+                            if(o1.getSortKey()==o2.getSortKey())
+                                return  o1.getDueDate().compareTo(o2.getDueDate());
+                            if(o1.getSortKey()<o2.getSortKey())
+                                return -1;
+                            return 1;
+                        }
+                    });
+                    splitChecklists();
+                } else {
+                    au = retrieveActivity25uFromList(getActivitiesAllOpen(), getCurrentActivity().getActivity().getId());
+                    if (au != null) {
+                        au.setDueDate(date1);
+                        au.getActivity().setDueDate(date1);
+                    }
+                    getCurrentActivity().setReFilterOnExit(true);
+                    setNextView("activityDetail");
+                }
+            }
+            case "ADD_TICKET" -> {
+                Ticket tk = (Ticket) o;
+                Query q = em.createQuery("SELECT a FROM Activity25 a WHERE a.activity.id = :id");
+                q.setParameter("id",tk.getId());
+                Activity25 ap = (Activity25) q.getSingleResult();
+                au = new Activity25u(ap);
+                getActivitiesAllOpen().add(au);
+                getCurrentActivity().setReFilterOnExit(true);
+            }
+            case "ADD_RENEWAL" -> {
+                Renewal rn = (Renewal) o;
+                Query q = em.createQuery("SELECT a FROM Activity25 a WHERE a.activity.id = :id");
+                q.setParameter("id",rn.getId());
+                Activity25 ap = (Activity25) q.getSingleResult();
+                au = new Activity25u(ap);
+                getActivitiesAllOpen().add(au);
+                getCurrentActivity().setReFilterOnExit(true);
+            }
+            case "ADD_SETUP" -> {
+                Setup st = (Setup) o;
+                Query q = em.createQuery("SELECT a FROM Activity25 a WHERE a.activity.id = :id");
+                q.setParameter("id",st.getId());
+                Activity25 ap = (Activity25) q.getSingleResult();
+                au = new Activity25u(ap);
+                List<Activity25u> listToModify = new ArrayList<>(getActivitiesAllOpen());
+                listToModify.add(au);
+                setActivitiesAllOpen(listToModify);
+                getCurrentActivity().setReFilterOnExit(true);
+            }
+            case "REMOVE_CONTACT" -> {
+                Person p = (Person) o;
+                List<Person> newList = new ArrayList<>(getCurrentActivity().getAdditionalContacts());
+                newList = newList.stream().filter(obj-> !Objects.equals(obj.getId(), p.getId())).collect(Collectors.toList());
+                getCurrentActivity().setAdditionalContacts(newList);
+            }
+            case "ADD_CONTACT" -> {
+                Person p = (Person) o;
+                boolean hasThatEmail = false;
+                if(getCurrentActivity().getAdditionalContacts()==null)
+                    getCurrentActivity().setAdditionalContacts(new ArrayList<>());
+                if(p.getEmail()!=null)
+                  hasThatEmail = getCurrentActivity().getAdditionalContacts().stream().anyMatch(obj->p.getEmail().equalsIgnoreCase(obj.getEmail()));
+
+                if(!hasThatEmail)
+                    getCurrentActivity().getAdditionalContacts().add(p);
+
+                hasThatEmail = getCurrentEmail().getRecipientList().stream().anyMatch((obj->p.getEmail().equalsIgnoreCase(obj.getEmail())));
+                if(!hasThatEmail)
+                    getCurrentEmail().getRecipientList().add(p);
+            }
+            case "SWAP_CONTACT" -> {
+                Person p = (Person) o;
+                Person cp = getCurrentActivity().getPrimaryContact();
+                getCurrentActivity().setPrimaryContact(p);
+                List<Person> newList = getCurrentActivity().getAdditionalContacts().stream().filter(obj-> !Objects.equals(obj.getEmail(), p.getEmail())).collect(Collectors.toList());
+                getCurrentActivity().setAdditionalContacts(newList);
+                boolean hasThatEmail = getCurrentActivity().getAdditionalContacts().stream().anyMatch(obj->cp.getEmail().equalsIgnoreCase(obj.getEmail()));
+                if(!hasThatEmail)
+                    getCurrentActivity().getAdditionalContacts().add(cp);
+            }
+        }
+
+    }
+    public Activity25u getActivity25u(EntityManager em, Renewal r){
+        Query q = em.createQuery("SELECT a FROM Activity25 a WHERE a.activity.id = :id");
+        q.setParameter("id",r.getId());
+        Activity25 ap = (Activity25) q.getSingleResult();
+        return new Activity25u(ap);
+    }
+    private int getIndexOfInsertLocation(List<ToDoOut25> toDoOuts, ToDoOut25 t){
+        List<ToDoOut25> openList = toDoOuts.stream().filter(obj -> !obj.isComplete()).toList();
+        OptionalInt location = IntStream.range(0,openList.size()).filter(i-> openList.get(i).getSortOrder()>t.getSortOrder()).findFirst();
+        return location.isPresent() ? location.getAsInt() : openList.size();
+
+    }
+    private Activity25u retrieveActivity25uFromList(List<Activity25u> openList, Long a){
+        Optional<Activity25u> auo = openList.stream().filter(obj-> Objects.equals(obj.getActivity().getId(), a)).findFirst();
+        return auo.orElse(null);
+    }
+    private ToDoOut25 retrieveToDoOutFromList(List<ToDoOut25> toDoOuts, Long toDoId){
+        Optional<ToDoOut25> toDoOutO = toDoOuts.stream().filter(obj->obj.getToDo().getId().equals(toDoId)).findFirst();
+        return toDoOutO.orElse(null);
+    }
+    public Checklist25u retrieveChecklist25uFromList(List<Checklist25u> checklist25us, Long checklistId){
+        Optional<Checklist25u> checklist25u = checklist25us.stream().filter(obj->obj.getActivity().getId().equals(checklistId)).findFirst();
+        return checklist25u.orElse(null);
+    }
+    public void splitChecklists(){
+        List<Checklist25u> list1;
+        list1 = getChecklistsAll().stream().filter(obj->obj.getSortKey()==1).toList();
+        setChecklistsCurrent(list1);
+
+        list1 = getChecklistsAll().stream().filter(obj->obj.getSortKey()==2).toList();
+        setChecklistsClosed(list1);
+
+        list1 = getChecklistsAll().stream().filter(obj->obj.getSortKey()==3).toList();
+        setChecklistsFuture(list1);
+    }
+    public class CurrentChecklist{
+        private CheckList checkList;
+        private List<Note> notes;
+        private List<ToDoOut25> toDoList;
+
+        private List<ToDoOut25> currentToDos;
+        private List<ToDoOut25> closedToDos;
+        private List<ToDoOut25> futureToDos;
+        private String reassignUrl;
+
+        public String getReassignUrl() {
+            return reassignUrl;
+        }
+
+        public void setReassignUrl(String reassignUrl) {
+            this.reassignUrl = reassignUrl;
+        }
+
+        public CurrentChecklist (){}
+
+        public CheckList getCheckList() {
+            return checkList;
+        }
+
+        public void setCheckList(CheckList checkList) {
+            this.checkList = checkList;
+        }
+
+        public List<Note> getNotes() {
+            return notes;
+        }
+
+        public void setNotes(List<Note> notes) {
+            this.notes = notes;
+        }
+
+        public List<ToDoOut25> getToDoList() {
+            return toDoList;
+        }
+
+        public void setToDoList(List<ToDoOut25> toDoList) {
+            this.toDoList = toDoList;
+        }
+
+        public void initializeCurrentCheckList(EntityManager em, Long id){
+            setCheckList(dM.getCheckListById(em,id));
+            setToDoList(getToDosForCurrentActivity(em));
+            setNotes(getNotesForActivity(em));
+        }
+        private List<ToDoOut25> getToDosForCurrentActivity(EntityManager em){
+            Query q= em.createQuery("SELECT t FROM ToDo t WHERE t.checkList.id = :id");
+            q.setParameter("id",getCheckList().getId());
+            List<ToDo> toDos;
+            try{
+                toDos = (List<ToDo>) q.getResultList();
+            } catch (Exception e){return new ArrayList<>();}
+            List<ToDoOut25> toDoOut25s = new ArrayList<>();
+            for(ToDo t:toDos)
+                toDoOut25s.add(new ToDoOut25(t));
+            return toDoOut25s;
+        }
+        private List<Note> getNotesForActivity(EntityManager em){
+            Query q= em.createQuery("SELECT n FROM Note n where n.activity.id = :id order by n.id desc");
+            q.setParameter("id",getCheckList().getId());
+            List<Note> notes;
+            try{
+                notes = (List<Note>) q.getResultList();
+            } catch (Exception e){return new ArrayList<>();}
+            return notes;
+        }
+
+
+    }
+    public class CurrentActivity{
+        private Activity activity;
+        private List<Note> notes;
+        private List<ToDoOut25> toDoList;
+        private List<Activity> pastActivities;
+        private List<Employee> employees;
+        private Person primaryContact;
+        private List<Person> additionalContacts;
+        private List<Benefit> benefitsNotInRenewal;
+        private boolean reFilterOnExit;
+        private CheckList checkList;
+
+        private List<TemplatePurpose> modsNotInSetup;
+        private List<TemplatePurpose> modsInSetup;
+
+        public CurrentActivity(){};
+
+        public Activity getActivity() {
+            return activity;
+        }
+
+        public void setActivity(Activity activity) {
+            this.activity = activity;
+        }
+
+        public List<Note> getNotes() {
+            return notes;
+        }
+
+        public void setNotes(List<Note> notes) {
+            this.notes = notes;
+        }
+
+        public List<ToDoOut25> getToDoList() {
+            return toDoList;
+        }
+
+        public void setToDoList(List<ToDoOut25> toDoList) {
+            this.toDoList = toDoList;
+        }
+
+        public List<Activity> getPastActivities() {
+            return pastActivities;
+        }
+
+        public void setPastActivities(List<Activity> pastActivities) {
+            this.pastActivities = pastActivities;
+        }
+
+        public List<Employee> getEmployees() {
+            return employees;
+        }
+
+        public void setEmployees(List<Employee> employees) {
+            this.employees = employees;
+        }
+
+        public CheckList getCheckList() {
+            return checkList;
+        }
+
+        public void setCheckList(CheckList checkList) {
+            this.checkList = checkList;
+        }
+
+        public boolean isReFilterOnExit() {
+            return reFilterOnExit;
+        }
+
+        public void setReFilterOnExit(boolean reFilterOnExit) {
+            this.reFilterOnExit = reFilterOnExit;
+        }
+
+        public List<Benefit> getBenefitsNotInRenewal() {
+            return benefitsNotInRenewal;
+        }
+
+        public void setBenefitsNotInRenewal(List<Benefit> benefitsNotInRenewal) {
+            this.benefitsNotInRenewal = benefitsNotInRenewal;
+        }
+
+        public Person getPrimaryContact() {
+            return primaryContact;
+        }
+
+        public void setPrimaryContact(Person primaryContact) {
+            this.primaryContact = primaryContact;
+        }
+
+        public List<Person> getAdditionalContacts() {
+            return additionalContacts;
+        }
+
+        public void setAdditionalContacts(List<Person> additionalContacts) {
+            this.additionalContacts = additionalContacts;
+        }
+
+        public List<TemplatePurpose> getModsNotInSetup() {
+            return modsNotInSetup;
+        }
+
+        public void setModsNotInSetup(List<TemplatePurpose> modsNotInSetup) {
+            this.modsNotInSetup = modsNotInSetup;
+        }
+
+        public List<TemplatePurpose> getModsInSetup() {
+            return modsInSetup;
+        }
+
+        public void setModsInSetup(List<TemplatePurpose> modsInSetup) {
+            this.modsInSetup = modsInSetup;
+        }
+
+        public void intializeActivity(EntityManager em, Long activityId){
+            System.out.println("** INITIALIZATION OF ACTIVITY **");
+            setActivity(dM.getActivityById(em,activityId));
+            if(getActivity().getClass().getSimpleName().equals("CheckList")){
+                CheckList c = (CheckList) getActivity();
+                setCheckList(c);
+                getCurrentChecklist().setCheckList(c);
+            } else {
+                setCheckList(getChecklistByActivity(em,getActivity()));
+                fillPrimaryContacts(em);
+            }
+            setNotes(getNotesForActivity(em,getActivity()));
+            setToDoList(getToDosForCurrentActivity(em,getCheckList()));
+            if(getActivity().getClass().getSimpleName().equals("Renewal")){
+                fillEmployeeList(em);
+                setBenefitsNotInRenewal(getBenefitsNotInRenewal(em));
+            }
+            else if(getActivity().getClass().getSimpleName().equalsIgnoreCase("Ticket")){
+                fillEmployeeList(em);
+            }
+            else if(getActivity().getClass().getSimpleName().equalsIgnoreCase("Setup")) {
+                fillModsNotInSetup(em);
+                Setup s = (Setup) getActivity();
+                setModsInSetup(getModsInSetup(s));
+            }
+            setPastActivities(fillPastActivities(em));
+        }
+
+        private List<TemplatePurpose> getModsInSetup(Setup s) {
+            if (s == null || s.getApplication() == null || s.getApplication().getApplicationModuleList() == null) {
+                return Collections.emptyList();
+            }
+
+            return s.getApplication()
+                    .getApplicationModuleList()
+                    .stream()
+                    .map(ApplicationModule::getTemplatePurpose)
+                    .filter(Objects::nonNull)
+                    .distinct()
+                    .collect(Collectors.toList());
+        }
+
+
+        private void fillModsNotInSetup(EntityManager em) {
+            Setup s = (Setup) getActivity();
+            if (s == null || s.getApplication() == null || s.getApplication().getApplicationModuleList() == null) {
+                setModsNotInSetup(Collections.emptyList());
+                return;
+            }
+
+            List<TemplatePurpose> allMods = em.createQuery(
+                    "SELECT t FROM TemplatePurpose t WHERE t.templateGroup.id = 2 ORDER BY t.sortOrder",
+                    TemplatePurpose.class
+            ).getResultList();
+
+            if (allMods.isEmpty()) {
+                setModsNotInSetup(Collections.emptyList());
+                return;
+            }
+
+            Set<TemplatePurpose> modsInSetup = s.getApplication()
+                    .getApplicationModuleList()
+                    .stream()
+                    .map(ApplicationModule::getTemplatePurpose)
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toSet());
+
+            List<TemplatePurpose> modsNotInSetup = allMods.stream()
+                    .filter(tp -> !modsInSetup.contains(tp))
+                    .collect(Collectors.toList());
+
+            setModsNotInSetup(modsNotInSetup);
+        }
+
+
+
+        private List<Benefit> getBenefitsNotInRenewal(EntityManager em){
+            Renewal r = (Renewal) getActivity();
+            List<Benefit> allEmployerBenefits;
+            Query q1 = em.createQuery("SELECT b FROM Benefit b WHERE b.employer.id = :id and b.isActive=true");
+            q1.setParameter("id",r.getEmployer().getId());
+            try{
+                allEmployerBenefits = (List<Benefit>) q1.getResultList();
+            } catch (NoResultException e1){
+                return new ArrayList<>();
+            }
+            System.out.println("ALL ER BEN COUNT: " + allEmployerBenefits.size());
+
+            Query q2 = em.createQuery("SELECT r FROM Renewal r WHERE r.isComplete = false AND r.employer.id = :id");
+            q2.setParameter("id",r.getEmployer().getId());
+            List<Renewal> openRenewals;
+            try{
+                openRenewals = (List<Renewal>) q2.getResultList();
+            } catch (NoResultException e2){
+                return allEmployerBenefits;
+            }
+            if(openRenewals==null || openRenewals.size()==0)
+                return allEmployerBenefits;
+            List<RenewalItem> allRenewalItems = openRenewals.stream().filter(renewal -> !renewal.isComplete()).flatMap(renewal->renewal.getRenewalItemList().stream()).collect(Collectors.toList());
+            System.out.println("ALL REN ITEM COUNT: "+ allRenewalItems.size());
+            Set<Integer> associatedBenefitIds = allRenewalItems.stream().map(item -> item.getBenefit().getId()).collect(Collectors.toSet());
+            List<Benefit> benefitList = allEmployerBenefits.stream().filter(benefit -> !associatedBenefitIds.contains(benefit.getId())).collect(Collectors.toList());
+            System.out.println("BEN LIST FINAL COUNT: "+benefitList.size());
+            return benefitList;
+        }
+        private void fillEmployeeList(EntityManager em){
+            List<Employee> employeeList = new ArrayList<>();
+            setEmployees(employeeList);
+            Employer er;
+            if(getActivity().getClass().getSimpleName().equals("Renewal")){
+                Renewal r = (Renewal) getActivity();
+                er = r.getEmployer();
+            } else if(getActivity().getClass().getSimpleName().equals("Ticket")){
+                if(getActivity().getPrimaryContact().getEmployee()==null)
+                    return;
+                Employee ee = getActivity().getPrimaryContact().getEmployee();
+                er = ee.getEmployer();
+            } else return;
+            try{
+                Query q = em.createQuery("SELECT e FROM Employee e WHERE e.employer.id = :id order by  e.lastName,e.firstName");
+                q.setParameter("id",er.getId());
+                employeeList = (List<Employee>) q.getResultList();
+
+            } catch (Exception e){
+                return;
+            }
+            if(employeeList.size()>0)
+                setEmployees(employeeList);
+        }
+        private void fillPrimaryContacts(EntityManager em){
+            if(getCurrentActivity()==null || getActivity()==null)
+                return;
+            //Primary Contact First
+            if(getActivity().getPrimaryContact()!=null) {
+                System.out.println("** PRIMARY NOT NULL **");
+                setPrimaryContact(getActivity().getPrimaryContact());
+            }
+            else {
+                Renewal r = null;
+                Setup s = null;
+                Ticket t = null;
+                if (getActivity().getClass().getSimpleName().equals("Renewal"))
+                    r = (Renewal) getActivity();
+                else if (getActivity().getClass().getSimpleName().equals("Setup"))
+                    s = (Setup) getActivity();
+                else if (getActivity().getClass().getSimpleName().equals("Ticket"))
+                    t = (Ticket) getActivity();
+                if (t != null && t.getContact() != null)
+                    setPrimaryContact(t.getContact());
+                else if (s != null && s.getPrimaryContactSetup() != null)
+                    setPrimaryContact(s.getPrimaryContactSetup());
+                else if (getActivity().getAssigneeContactList() != null && getActivity().getAssigneeContactList().size() > 0)
+                    setPrimaryContact(getActivity().getAssigneeContactList().get(0));
+                else if(r!=null){
+                    System.out.println("** Is a Renewal **");
+                    if(r.getEmployer()!=null) {
+                        if (r.getEmployer().getContactList() != null) {
+                            if (r.getEmployer().getContactList().size() > 0) {
+                                System.out.println("------------ CHECKING EMPLOYER CONTACT LIST -----------------------");
+                                Employee ee = r.getEmployer().getContactList().get(0);
+                                Person p = dP.getPersonByEmployee(em, ee);
+                                if (p != null)
+                                    setPrimaryContact(p);
+                            }
+                            else System.out.println("SIZE NOT GREATER THAN ZERO");
+                        }
+                        else System.out.println("CONTACT LIST IS NULL");
+                    }
+                    else System.out.println("EMPLOYER IS NULL");
+
+                }
+            }
+            // Additional Contacts
+            List<Person> newList;
+            if(getActivity()!=null && getActivity().getAssigneeContactList()!=null && getActivity().getAssigneeContactList().size()>0 ) {
+                newList = new ArrayList<>(getActivity().getAssigneeContactList());
+                if(newList.contains(getPrimaryContact()))
+                    newList.remove(getPrimaryContact());
+                setAdditionalContacts(getActivity().getAssigneeContactList());
+            }
+            else {
+                Query q = em.createQuery("SELECt a FROM Activity a JOIN FETCH a.assigneeContactList where a.id = :id");
+                q.setParameter("id",getActivity().getId());
+                Activity a = null;
+                try{
+                    a = (Activity) q.getSingleResult();
+                } catch (Exception ignored){}
+                if(a!=null)
+                    em.refresh(a);
+                if(a!=null && a.getAssigneeContactList()!=null && a.getAssigneeContactList().size()>0) {
+                    newList = new ArrayList<>(a.getAssigneeContactList());
+                    if (newList.contains(getPrimaryContact()))
+                        newList.remove(getPrimaryContact());
+                    setAdditionalContacts(newList);
+                }
+            }
+
+
+        }
+
+        private List<Activity> fillPastActivities(EntityManager em){
+            List<Activity> pastActivities = new ArrayList<>();
+            Activity a = getActivity();
+            String dType = a.getClass().getSimpleName();
+            Query q;
+            try{
+                switch (dType) {
+                    case "Renewal":
+                        Renewal r = (Renewal) a;
+                        q = em.createQuery("SELECT r FROM Renewal r WHERE r.employer.id = :eId AND r.id <> :rId order by r.id desc");
+                        q.setParameter("eId", r.getEmployer().getId());
+                        q.setParameter("rId", r.getId());
+                        break;
+                    case "Setup":
+                        Setup s = (Setup) a;
+                        q = em.createQuery("SELECT s FROM Setup s WHERE s.primaryContact.email = :email1 or s.primaryContactSetup.email = :email2 order by s.id desc ");
+                        q.setParameter("email1", s.getPrimaryContact().getEmail());
+                        q.setParameter("email2", s.getPrimaryContactSetup().getEmail());
+                        break;
+                    case "Ticket":
+                        Ticket t = (Ticket) a;
+                        q = em.createQuery("SELECT t FROM Ticket t WHERE t.primaryContact.email = :email or t.contact.email = :email1 order by t.id desc");
+                        q.setParameter("email", t.getPrimaryContact().getEmail());
+                        q.setParameter("email1",t.getContact().getEmail());
+                        break;
+                    default:
+                        return pastActivities;
+                }
+            } catch (Exception ex){
+                return pastActivities;
+            }
+
+            try{
+                pastActivities = (List<Activity>) q.getResultList();
+            } catch (NoResultException e){
+                return pastActivities;
+            }
+            return pastActivities;
+
+        }
+        private List<ToDoOut25> getToDosForCurrentActivity(EntityManager em, CheckList c){
+            Query q= em.createQuery("SELECT t FROM ToDo t WHERE t.checkList.id  = :id order by t.isComplete, t.sortOrder, t.id");
+            q.setParameter("id",c.getId());
+            List<ToDo> toDos;
+            try{
+                toDos = (List<ToDo>) q.getResultList();
+            } catch (Exception e){return new ArrayList<>();}
+            List<ToDoOut25> toDoOut25s = new ArrayList<>();
+            for(ToDo t: toDos)
+                toDoOut25s.add(new ToDoOut25(t));
+            return toDoOut25s;
+        }
+        private List<Note> getNotesForActivity(EntityManager em, Activity a){
+            Query q= em.createQuery("SELECT n FROM Note n where n.activity.id = :id order by n.id desc");
+            q.setParameter("id",a.getId());
+            List<Note> notes;
+            try{
+                notes = (List<Note>) q.getResultList();
+            } catch (Exception e){return new ArrayList<>();}
+            return notes;
+        }
+        private CheckList getChecklistByActivity(EntityManager em, Activity a){
+            Query q = em.createQuery("SELECT c FROM  CheckList c WHERE c.assignedTo.id = :id");
+            q.setParameter("id",a.getId());
+            CheckList c;
+            try{
+                c = (CheckList) q.getSingleResult();
+            } catch (Exception e){
+                return null;
+            }
+            return c;
+        }
+
+        public void clearCurrentActivityContent(){
+
+        }
+
+
+    }
+    public class CurrentEmail{
+        private List<Person> recipientList;
+        private String subject;
+        private String body;
+        private Person sender;
+        private Activity activity;
+        private List<WebLink> attachments;
+        private String emailToAdd;
+
+        private String firstName;
+        private String lastName;
+
+        private boolean personNotFound;
+        private WebLink attachmentToAdd;
+        private boolean messageSent;
+
+        private String fileUploadText;
+
+        private Part filePart;
+
+        public CurrentEmail(){}
+
+        public void initializeEmail(){
+            setSender(getCurrentPerson());
+            clearEmailForm();
+        }
+        public void clearEmailForm(){
+            setRecipientList(new ArrayList<>());
+            setSubject("");
+            setBody("");
+            setActivity(null);
+            setAttachments(new ArrayList<>());
+            setEmailToAdd(null);
+            setAttachmentToAdd(null);
+        }
+
+        public List<Person> getRecipientList() {
+            return recipientList;
+        }
+
+        public void setRecipientList(List<Person> recipientList) {
+            this.recipientList = recipientList;
+        }
+
+        public String getFirstName() {
+            return firstName;
+        }
+
+        public void setFirstName(String firstName) {
+            this.firstName = firstName;
+        }
+
+        public String getLastName() {
+            return lastName;
+        }
+
+        public void setLastName(String lastName) {
+            this.lastName = lastName;
+        }
+
+        public String getSubject() {
+            return subject;
+        }
+
+        public void setSubject(String subject) {
+            this.subject = subject;
+        }
+
+        public String getBody() {
+            return body;
+        }
+
+        public void setBody(String body) {
+            this.body = body;
+        }
+
+        public boolean isPersonNotFound() {
+            return personNotFound;
+        }
+
+        public void setPersonNotFound(boolean personNotFound) {
+            this.personNotFound = personNotFound;
+        }
+
+        public Person getSender() {
+            return sender;
+        }
+
+        public void setSender(Person sender) {
+            this.sender = sender;
+        }
+
+        public Part getFilePart() {
+            return filePart;
+        }
+
+        public void setFilePart(Part filePart) {
+            this.filePart = filePart;
+        }
+
+        public Activity getActivity() {
+            return activity;
+        }
+
+        public void setActivity(Activity activity) {
+            this.activity = activity;
+        }
+
+        public List<WebLink> getAttachments() {
+            return attachments;
+        }
+
+        public void setAttachments(List<WebLink> attachments) {
+            this.attachments = attachments;
+        }
+
+        public String getEmailToAdd() {
+            return emailToAdd;
+        }
+
+        public void setEmailToAdd(String emailToAdd) {
+            this.emailToAdd = emailToAdd;
+        }
+
+        public WebLink getAttachmentToAdd() {
+            return attachmentToAdd;
+        }
+
+        public void setAttachmentToAdd(WebLink attachmentToAdd) {
+            this.attachmentToAdd = attachmentToAdd;
+        }
+
+        public boolean isMessageSent() {
+            return messageSent;
+        }
+
+        public void setMessageSent(boolean messageSent) {
+            this.messageSent = messageSent;
+        }
+
+        public String getFileUploadText() {
+            return fileUploadText;
+        }
+
+        public void setFileUploadText(String fileUploadText) {
+            this.fileUploadText = fileUploadText;
+        }
+
+        private Email createEmailNotPersisted(){
+            Email e = new Email();
+            e.setCreatedBy(getSender());
+            e.setRecipientList(getRecipientList());
+            e.setSubject(getSubject());
+            e.setDetail(getBody());
+            e.setDateGenerated(Date.valueOf(LocalDate.now()));
+            e.setWebLinkList(getAttachments());
+            return e;
+        }
+        private Email createEmail(EntityManager em){
+            em.getTransaction().begin();
+            Email email = createEmailNotPersisted();
+            email.setStatus(dM.getActivityStatusById(em,1));
+            email.setReasonCreated(dM.getReasonById(em,7));
+            em.persist(email);
+            em.getTransaction().commit();
+            return email;
+        }
+        private Message getMessage(AmsDataGlobal global){
+            Properties prop = new Properties();
+            prop.put("mail.smtp.auth",true);
+            prop.put("mail.smtp.starttls.enable","true");
+            prop.put("mail.smtp.host",global.getSmtpServer());
+            prop.put("mail.smtp.port",global.getSmtpPort());
+            prop.put("mail.smtp.ssl.trust",global.getSmtpServer());
+            Session session = Session.getInstance(prop, new Authenticator() {
+                @Override
+                protected PasswordAuthentication getPasswordAuthentication(){
+                    return new PasswordAuthentication(global.getSmtpUser(),global.getSmtpPassword());
+                }
+            });
+            return new MimeMessage(session);
+        }
+
+        private boolean isReadyToSend(){
+            if(getSender()==null || getSender().getEmail()==null || !V.isValidEmail(getSender().getEmail()))
+                return false;
+            if(getSubject()==null || getSubject().equals("") || getBody()==null || getBody().equals(""))
+                return false;
+            if(getRecipientList()==null || getRecipientList().size()==0)
+                return false;
+            boolean foundValidEmail = false;
+            for(Person p: getRecipientList())
+                if(p.getEmail()!=null && V.isValidEmail(p.getEmail())){
+                    foundValidEmail = true;
+                    break;
+                }
+            return foundValidEmail;
+        }
+        public void sendEmail(EntityManager em, AmsDataGlobal global){
+            setMessageSent(true);
+            if(!isReadyToSend()){
+                setMessageSent(false);
+                return;
+            }
+            try{
+                Message m = getMessage(global);
+                m.setFrom(new InternetAddress(getSender().getEmail()));
+                StringBuilder whoToArray= new StringBuilder();
+                for(Person p:getRecipientList()){
+                    whoToArray.append(p.getEmail().toLowerCase().trim()).append(",");
+                }
+                String whoTo = whoToArray.toString();
+                whoTo = whoTo.substring(0,whoTo.length()-1);
+                InternetAddress[] parse = InternetAddress.parse(whoTo,true);
+                m.setRecipients(Message.RecipientType.TO,parse);
+                m.setSubject(getSubject());
+                MimeBodyPart mimeBodyPart = new MimeBodyPart();
+                mimeBodyPart.setContent(getBody(),"text/html; charset=utf-8");
+                Multipart multipart = new MimeMultipart();
+                multipart.addBodyPart(mimeBodyPart);
+                m.setContent(multipart);
+                Transport.send(m);
+            } catch (MessagingException e) {
+                setMessageSent(false);
+                throw new RuntimeException(e);
+            }
+            Email e = createEmail(em);
+            if(getCurrentActivity().getActivity()!=null)
+                respondToActivityUpdate(em,"NOTE",e);
+        }
+        public void fillRecipientList(){
+            List<Person> recipients = new ArrayList<>();
+            // Add primary contact if valid
+            Person primary = getCurrentActivity().getPrimaryContact();
+            if (isValidPerson(primary)) {
+                recipients.add(primary);
+            }
+
+            // Add valid additional contacts
+            List<Person> additional = getCurrentActivity().getAdditionalContacts();
+            if (additional != null) {
+                for (Person p : additional) {
+                    if (isValidPerson(p)) {
+                        recipients.add(p);
+                    }
+                }
+            }
+            setRecipientList(recipients);
+        }
+        private boolean isValidPerson(Person person) {
+            return person != null && person.getEmail() != null && V.isValidEmail(person.getEmail());
+        }
+    }
+}

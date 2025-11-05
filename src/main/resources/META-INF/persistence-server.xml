@@ -1,10 +1,17 @@
 <persistence xmlns="https://jakarta.ee/xml/ns/persistence" version="3.0">
-    <persistence-unit name="ssaPU" transaction-type="JTA">
+    <persistence-unit name="ssaPU" transaction-type="RESOURCE_LOCAL">
         <provider>org.eclipse.persistence.jpa.PersistenceProvider</provider>
-        <jta-data-source>java:comp/env/jdbc/ssa</jta-data-source>
+
+        <!-- Use your Tomcat DataSource via JNDI (non-JTA on Tomcat) -->
+        <non-jta-data-source>java:comp/env/jdbc/ssa</non-jta-data-source>
+        <exclude-unlisted-classes>false</exclude-unlisted-classes>
         <properties>
-            <property name="eclipselink.logging.level" value="INFO"/>
-            <property name="eclipselink.target-server" value="Tomcat"/>
+            <property name="eclipselink.logging.level" value="WARNING"/>
+            <property name="eclipselink.weaving" value="false"/>
+            <!-- OPTIONAL: you can omit target-server entirely on Tomcat
+                 If you insist, use FQCN (not "Tomcat"):
+                 org.eclipse.persistence.platform.server.tomcat.TomcatPlatform -->
         </properties>
     </persistence-unit>
 </persistence>
+

@@ -1,0 +1,15 @@
+<persistence xmlns="https://jakarta.ee/xml/ns/persistence" version="3.0">
+    <persistence-unit name="ssaPU" transaction-type="RESOURCE_LOCAL">
+        <provider>org.eclipse.persistence.jpa.PersistenceProvider</provider>
+        <properties>
+            <property name="jakarta.persistence.jdbc.driver" value="com.mysql.cj.jdbc.Driver"/>
+            <property name="jakarta.persistence.jdbc.url"
+                      value="jdbc:mysql://127.0.0.1:3306/beta_ssa?useSSL=false&amp;serverTimezone=UTC"/>
+            <property name="jakarta.persistence.jdbc.user" value="LOCAL_USER"/>
+            <property name="jakarta.persistence.jdbc.password" value="LOCAL_PASS"/>
+            <property name="eclipselink.logging.level" value="INFO"/>
+            <property name="eclipselink.ddl-generation" value="none"/>
+        </properties>
+
+    </persistence-unit>
+</persistence>
