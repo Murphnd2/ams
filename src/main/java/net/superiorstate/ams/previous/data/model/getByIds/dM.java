@@ -40,16 +40,21 @@ import org.jetbrains.annotations.NotNull;
 
 public abstract class dM {
 
-    public static Activity getActivityById(EntityManager em, Long id){
-        Query q = em.createQuery("SELECT a FROM Activity a WHERE a.id = :id");
-        q.setParameter("id",id);
-        Activity a;
-        try{
-            a = (Activity) q.getSingleResult();
-        } catch (NoResultException e){
+    // File: src/main/java/net/superiorstate/ams/previous/data/model/getByIds/dM.java | Lines 9-18
+    public static Activity getActivityById(EntityManager em, Long id) {
+        String jpql = """
+        SELECT a FROM Activity a
+        LEFT JOIN FETCH a.noteList
+        LEFT JOIN FETCH a.primaryContact
+        WHERE a.id = :id
+        """;
+        Query q = em.createQuery(jpql);
+        q.setParameter("id", id);
+        try {
+            return (Activity) q.getSingleResult();
+        } catch (NoResultException e) {
             return null;
         }
-        return a;
     }
 
     public static ActivityStatus getActivityStatusById(EntityManager em, int id){
@@ -155,16 +160,20 @@ public abstract class dM {
         }
         return billingGroup;
     }
-    public static CheckList getCheckListById(EntityManager em, Long id){
-        Query q = em.createQuery("SELECT c FROM CheckList c WHERE c.id = :id");
-        q.setParameter("id",id);
-        CheckList checkList;
-        try{
-            checkList = (CheckList) q.getSingleResult();
-        } catch (NoResultException e){
+    public static CheckList getCheckListById(EntityManager em, Long id) {
+        String jpql = """
+        SELECT c FROM CheckList c
+        LEFT JOIN FETCH c.noteList
+        LEFT JOIN FETCH c.toDoList
+        WHERE c.id = :id
+        """;
+        Query q = em.createQuery(jpql);
+        q.setParameter("id", id);
+        try {
+            return (CheckList) q.getSingleResult();
+        } catch (NoResultException e) {
             return null;
         }
-        return checkList;
     }
     public static CheckList getCheckListByAssignee(EntityManager em, Assignee a){
         Query q = em.createQuery("SELECT c FROM CheckList c WHERE c.assignedTo.id = :id");

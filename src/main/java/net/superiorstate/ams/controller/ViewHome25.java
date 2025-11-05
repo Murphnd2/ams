@@ -1,9 +1,14 @@
 package net.superiorstate.ams.controller;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.EntityManagerFactory;
 import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.AmsDataLocal;
+import net.superiorstate.ams.model.ToDoOut25;
+import net.superiorstate.ams.previous.data.model.getByIds.dM;
+import net.superiorstate.ams.previous.model.activity.checklist.tasks.ToDo;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -41,6 +46,31 @@ public class ViewHome25 extends HttpServlet {
         local.getCurrentEmail().setAttachments(new ArrayList<>());
         local.getCurrentEmail().setSubject("");
         local.getCurrentEmail().setBody("");
+
+        // File: src/main/java/net/superiorstate/ams/controller/ViewHome25.java
+        if (local.getCurrentActivity().isReFilterOnExit()) {
+            EntityManagerFactory emf = (EntityManagerFactory) getServletContext().getAttribute("emf");
+            EntityManager em = emf.createEntityManager();
+            try {
+                em.getTransaction().begin();
+                for (ToDoOut25 t : local.getCurrentActivity().getToDoList()) {
+                    if (t.isComplete() != t.wasComplete() && t.getToDo().getId() != null) {
+                        ToDo managed = em.find(ToDo.class, t.getToDo().getId());
+                        if (managed != null) {
+                            managed.setComplete(t.isComplete());
+                            managed.setCompletedBy(t.getToDo().getCompletedBy());
+                            managed.setDateCompleted(t.getToDo().getDateCompleted());
+                        }
+                    }
+                }
+                em.getTransaction().commit();
+            } catch (Exception e) {
+                if (em.getTransaction().isActive()) em.getTransaction().rollback();
+                e.printStackTrace();
+            } finally {
+                if (em.isOpen()) em.close();
+            }
+        }
         request.getSession().setAttribute("local", local);
     }
 

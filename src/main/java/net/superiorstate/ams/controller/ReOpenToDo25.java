@@ -1,75 +1,47 @@
+// File: src/main/java/net/superiorstate/ams/controller/ReOpenToDo25.java
 package net.superiorstate.ams.controller;
 
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.EntityManagerFactory;
 import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
-import net.superiorstate.ams.data.AmsDataGlobal;
 import net.superiorstate.ams.data.AmsDataLocal;
-import net.superiorstate.ams.previous.data.model.getByIds.dM;
-import net.superiorstate.ams.previous.model.activity.checklist.tasks.ToDo;
+import net.superiorstate.ams.model.ToDoOut25;
 
 import java.io.IOException;
 
 @WebServlet(name = "ReOpenToDo25", value = "/ReOpenToDo25")
 public class ReOpenToDo25 extends HttpServlet {
-    @Override
-    protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-        processToDoClosure(request);
-        goToPage(request,response);
-    }
 
     @Override
-    protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-        processToDoClosure(request);
-        goToPage(request,response);
-    }
+    protected void doPost(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
 
-    private void goToPage(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-        RequestDispatcher dispatcher = getServletContext().getNamedDispatcher("ViewActivity25");
-        dispatcher.forward(request,response);
-    }
-
-    private void processToDoClosure(HttpServletRequest request){
-        String toDoIdString;
-        try{
-            toDoIdString = request.getParameter("btnToDo").toString();
-        } catch (Exception e){
+        String toDoIdParam = request.getParameter("btnToDo");
+        if (toDoIdParam == null) {
+            response.setStatus(400);
             return;
         }
-        long toDoId = Long.parseLong(toDoIdString);
+
+        long toDoId = Long.parseLong(toDoIdParam);
         AmsDataLocal local = (AmsDataLocal) request.getSession().getAttribute("local");
-        EntityManagerFactory emf = (EntityManagerFactory)getServletContext().getAttribute("emf");
-        EntityManager em = emf.createEntityManager();
-
-        // Close the ToDo
-        ToDo toDo = dM.getToDoById(em,toDoId);
-        if(toDo==null){
-            em.close();
+        if (local == null) {
+            response.setStatus(400);
             return;
         }
-        em.getTransaction().begin();
-        toDo.setComplete(false);
-        toDo.setDateCompleted(null);
-        toDo.setCompletedBy(null);
-        em.persist(toDo);
-        em.getTransaction().commit();
-        em.refresh(toDo);
 
-        // If the task had delegation, refilter the activity list to update status
-        if(toDo.getTask().hasOwner() && toDo.getTask().getOwner()!=null && !toDo.getTask().getOwner().getId().equals(local.getCurrentActivity().getActivity().getId())){
-            AmsDataGlobal global = (AmsDataGlobal) request.getServletContext().getAttribute("global");
-            global.setActivitiesWithDelegation(global.retrieveActivitiesWithDependencies(em));
-            local.setActivitiesWithDependencies(global.getActivitiesWithDelegation());
-            local.getCurrentActivity().setReFilterOnExit(true);
-            request.getServletContext().setAttribute("global",global);
+        ToDoOut25 t = local.retrieveToDoOutFromList(local.getCurrentActivity().getToDoList(), toDoId);
+        if (t != null) {
+            // IN-MEMORY REOPEN
+            t.setComplete(false);
+            t.getToDo().setComplete(false);
+            t.getToDo().setCompletedBy(null);
+            t.getToDo().setDateCompleted(null);
         }
 
-        local.respondToActivityUpdate(em,"TODO_REOPEN",toDoId);
+        local.respondToActivityUpdate(null, "TODO_TOGGLE", toDoId);
 
-        em.close();
-
-        request.getSession().setAttribute("local",local);
+        // Return JSON
+        response.setContentType("application/json");
+        response.getWriter().write("{\"success\": true}");
     }
 }

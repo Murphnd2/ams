@@ -32,6 +32,8 @@ public class ToDoOut25 {
     private WebLink infoLink;
     private boolean hasFutureBlock;
 
+    private boolean wasComplete;
+
     public ToDoOut25(){}
 
     public ToDoOut25(ToDo t){
@@ -58,6 +60,7 @@ public class ToDoOut25 {
         setHasInfo(t.getTask().hasInfo());
         setInfoLink(t.getTask().getInfoLink());
         setHasFutureBlock(false);
+        this.wasComplete = toDo.isComplete();
     }
 
     public int getSequenceId() {
@@ -243,4 +246,7 @@ public class ToDoOut25 {
     public void setHasFutureBlock(boolean hasFutureBlock) {
         this.hasFutureBlock = hasFutureBlock;
     }
+
+    public boolean wasComplete() { return wasComplete; }
+    public void setWasComplete(boolean b) { this.wasComplete = b; }
 }

@@ -5,10 +5,7 @@ import jakarta.mail.internet.InternetAddress;
 import jakarta.mail.internet.MimeBodyPart;
 import jakarta.mail.internet.MimeMessage;
 import jakarta.mail.internet.MimeMultipart;
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.NoResultException;
-import jakarta.persistence.Query;
-import jakarta.persistence.TypedQuery;
+import jakarta.persistence.*;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.Part;
 import net.superiorstate.ams.model.*;
@@ -44,7 +41,8 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-public class AmsDataLocal {
+public class AmsDataLocal implements AutoCloseable {
+    private final EntityManager em;
     private boolean userIsIn;
     private final int RENEWAL_DAYS_OUT = 120;
     private List<TimeStretch> myTimeHistory;
@@ -73,7 +71,10 @@ public class AmsDataLocal {
     private ToDoOut currentToDoOut;
     private ToDo currentToDo;
 
-    public AmsDataLocal(){};
+    public AmsDataLocal(){
+        EntityManagerFactory emf = Persistence.createEntityManagerFactory("ssaPU");
+        this.em = emf.createEntityManager();
+    };
 
     public void intializeLocalData(EntityManager em, HttpServletRequest request){
         AmsDataGlobal global = (AmsDataGlobal) request.getServletContext().getAttribute("global");
@@ -603,6 +604,7 @@ public class AmsDataLocal {
                 }
                 setNextView("activityDetail");
             }
+            case "TODO_TOGGLE" -> {getCurrentActivity().setReFilterOnExit(true);}
             case "TODO_ADD" -> {
                 toDoId = (Long) o;
                 t = retrieveToDoOutFromList(getCurrentActivity().getToDoList(), toDoId);
@@ -769,7 +771,7 @@ public class AmsDataLocal {
         Optional<Activity25u> auo = openList.stream().filter(obj-> Objects.equals(obj.getActivity().getId(), a)).findFirst();
         return auo.orElse(null);
     }
-    private ToDoOut25 retrieveToDoOutFromList(List<ToDoOut25> toDoOuts, Long toDoId){
+    public ToDoOut25 retrieveToDoOutFromList(List<ToDoOut25> toDoOuts, Long toDoId){
         Optional<ToDoOut25> toDoOutO = toDoOuts.stream().filter(obj->obj.getToDo().getId().equals(toDoId)).findFirst();
         return toDoOutO.orElse(null);
     }
@@ -788,6 +790,14 @@ public class AmsDataLocal {
         list1 = getChecklistsAll().stream().filter(obj->obj.getSortKey()==3).toList();
         setChecklistsFuture(list1);
     }
+
+    @Override
+    public void close() {
+        if (em != null && em.isOpen()) {
+            em.close();
+        }
+    }
+
     public class CurrentChecklist{
         private CheckList checkList;
         private List<Note> notes;
@@ -1506,4 +1516,5 @@ public class AmsDataLocal {
             return person != null && person.getEmail() != null && V.isValidEmail(person.getEmail());
         }
     }
+
 }
