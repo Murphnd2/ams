@@ -7,92 +7,85 @@ import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.AmsDataGlobal;
 import net.superiorstate.ams.data.AmsDataLocal;
-import net.superiorstate.ams.model.ToDoOut25;
+import net.superiorstate.ams.previous.data.model.getByIds.dM;
 import net.superiorstate.ams.previous.model.activity.checklist.tasks.ToDo;
 
 import java.io.IOException;
 import java.sql.Date;
 import java.time.LocalDate;
-import java.util.List;
 
 @WebServlet(name = "CloseToDo25", value = "/CloseToDo25")
 public class CloseToDo25 extends HttpServlet {
 
-    @Override protected void doGet(HttpServletRequest r, HttpServletResponse s)
-            throws ServletException, IOException { doPost(r, s); }
-
-    @Override protected void doPost(HttpServletRequest req, HttpServletResponse resp)
-            throws ServletException, IOException {
-
-        boolean ajax = "XMLHttpRequest".equals(req.getHeader("X-Requested-With"));
-        boolean newState = toggleInMemory(req);               // <-- core logic
-
-        if (ajax) {
-            resp.setContentType("application/json");
-            resp.getWriter().print("{\"success\":true,\"complete\":" + newState + "}");
-            return;                                            // STOP – no forward
-        }
-
-        // non-AJAX (old forms) – keep old behaviour
-        getServletContext().getNamedDispatcher("ViewActivity25")
-                .forward(req, resp);
+    @Override
+    protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        processToDoClosure(request);
+        goToPage(request, response);
     }
 
-    /** In-memory toggle – returns the *new* complete flag */
-    private boolean toggleInMemory(HttpServletRequest req) {
-        String idParam = req.getParameter("btnToDo");
-        if (idParam == null) return false;
+    @Override
+    protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        processToDoClosure(request);
+        goToPage(request, response);
+    }
+
+    private void goToPage(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        RequestDispatcher dispatcher = getServletContext().getNamedDispatcher("ViewActivity25");
+        dispatcher.forward(request, response);
+    }
+
+    private void processToDoClosure(HttpServletRequest request) {
+        String toDoIdParam = request.getParameter("btnToDo");
+        if (toDoIdParam == null) return;
 
         long toDoId;
-        try { toDoId = Long.parseLong(idParam); }
-        catch (NumberFormatException e) { return false; }
+        try {
+            toDoId = Long.parseLong(toDoIdParam);
+        } catch (NumberFormatException e) {
+            return;
+        }
 
-        AmsDataLocal local = (AmsDataLocal) req.getSession().getAttribute("local");
-        if (local == null) return false;
-
-        List<ToDoOut25> list = local.getCurrentActivity().getToDoList();
-        ToDoOut25 wrapper = list.stream()
-                .filter(t -> t.getToDo() != null && t.getToDo().getId() == toDoId)
-                .findFirst().orElse(null);
-        if (wrapper == null) return false;
-
-        boolean newState = !wrapper.isComplete();
-        wrapper.setComplete(newState);
-        ToDo entity = wrapper.getToDo();
-        entity.setComplete(newState);
-        entity.setCompletedBy(newState ? local.getCurrentPerson() : null);
-        entity.setDateCompleted(newState ? Date.valueOf(LocalDate.now()) : null);
-
-        local.getCurrentActivity().setReFilterOnExit(true);   // <-- batch later
-        local.respondToActivityUpdate(null, "TODO_TOGGLE", toDoId);
-
-        // optional delegation refresh (unchanged)
-        refreshDelegationIfNeeded(req, local, entity);
-
-        req.getSession().setAttribute("local", local);
-        return newState;
-    }
-
-    private void refreshDelegationIfNeeded(HttpServletRequest req,
-                                           AmsDataLocal local, ToDo toDo) {
-        if (!toDo.getTask().hasOwner() || toDo.getTask().getOwner() == null) return;
-        if (toDo.getTask().getOwner().getId()
-                .equals(local.getCurrentActivity().getActivity().getId())) return;
-
+        AmsDataLocal local = (AmsDataLocal) request.getSession().getAttribute("local");
         AmsDataGlobal global = (AmsDataGlobal) getServletContext().getAttribute("global");
         EntityManagerFactory emf = (EntityManagerFactory) getServletContext().getAttribute("emf");
+        EntityManager em = emf.createEntityManager();
 
-        EntityManager em = null;
         try {
-            em = emf.createEntityManager();
-            global.setActivitiesWithDelegation(global.retrieveActivitiesWithDependencies(em));
-            getServletContext().setAttribute("global", global);
-        } catch (Exception e) {
-            e.printStackTrace();
+            ToDo toDo = dM.getToDoById(em, toDoId);
+            if (toDo == null) return;
+
+            em.getTransaction().begin();
+            toDo.setComplete(true);
+            toDo.setDateCompleted(Date.valueOf(LocalDate.now()));
+            toDo.setCompletedBy(local.getCurrentPerson());
+            em.persist(toDo);
+            em.getTransaction().commit();
+            em.refresh(toDo);
+
+            if (requiresDelegationRefresh(toDo, local)) {
+                refreshDelegation(global, local, em);
+                request.getServletContext().setAttribute("global", global);
+            }
+
+            local.respondToActivityUpdate(em, "TODO_CLOSE", toDoId);
+            request.getSession().setAttribute("local", local);
         } finally {
-            if (em != null) {
-                try { em.close(); } catch (Exception ignored) {}
+            if (em.isOpen()) {
+                em.close();
             }
         }
+
+    }
+
+    private boolean requiresDelegationRefresh(ToDo toDo, AmsDataLocal local) {
+        return toDo.getTask().hasOwner()
+                && toDo.getTask().getOwner() != null
+                && !toDo.getTask().getOwner().getId().equals(local.getCurrentActivity().getActivity().getId());
+    }
+
+    private void refreshDelegation(AmsDataGlobal global, AmsDataLocal local, EntityManager em) {
+        global.setActivitiesWithDelegation(global.retrieveActivitiesWithDependencies(em));
+        local.setActivitiesWithDependencies(global.getActivitiesWithDelegation());
+        local.getCurrentActivity().setReFilterOnExit(true);
     }
 }
