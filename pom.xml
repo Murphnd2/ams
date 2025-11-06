@@ -314,8 +314,8 @@
                                     <target>
                                         <mkdir dir="${project.build.outputDirectory}/META-INF"/>
                                         <copy file="${basedir}/src/main/resources/META-INF/persistence-local.xml"
-                                              tofile="${project.build.outputDirectory}/META-INF/persistence.xml}
-                          " overwrite="true"/>
+                                              tofile="${project.build.outputDirectory}/META-INF/persistence.xml"
+                                              overwrite="true"/>
                                     </target>
                                 </configuration>
                             </execution>
