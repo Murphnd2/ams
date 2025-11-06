@@ -161,8 +161,11 @@
             <c:set var="blockFuture" value="${true}"></c:set>
           </c:if>
         </c:if>
-
       </c:forEach>
     </div>
   </div>
 </div>
+<!-- Auto-save on page unload -->
+<form id="autoSaveForm" method="post" action="PersistChecklist25" style="display:none;">
+  <input type="hidden" name="autoSave" value="true">
+</form>

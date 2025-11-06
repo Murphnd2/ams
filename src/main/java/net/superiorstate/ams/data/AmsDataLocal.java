@@ -51,6 +51,7 @@ public class AmsDataLocal implements AutoCloseable {
     private List<Activity25u> activitiesAllOpen;
     private List<Activity25p> activitiesWithDependencies;
 
+    private final Set<Long> pendingCloseIds = new HashSet<>();
     private List<Activity25u> filteredActivityList;
     private List<Checklist25u> checklistsAll;
     private List<Checklist25u> checklistsCurrent;
@@ -150,6 +151,18 @@ public class AmsDataLocal implements AutoCloseable {
         this.myTimeHistory = myTimeHistory;
     }
 
+    public void markToDoClosed(long toDoId) {
+        this.pendingCloseIds.add(toDoId);
+    }
+
+    // Replace the getter
+    public Set<Long> getPendingCloseIds() {
+        return new HashSet<>(this.pendingCloseIds); // mutable copy
+    }
+
+    public void clearPendingCloseIds() {
+        this.pendingCloseIds.clear();
+    }
     public User getCurrentUser() {
         return currentUser;
     }

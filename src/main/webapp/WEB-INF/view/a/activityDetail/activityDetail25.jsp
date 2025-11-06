@@ -62,5 +62,44 @@
     </c:when>
   </c:choose>
 </div>
+<script>
+  let hasUnsaved = false;
+
+  // Track if we have pending closes
+  function checkUnsaved() {
+    const pending = ${not empty sessionScope.local.pendingCloseIds};
+    hasUnsaved = pending;
+    return pending;
+  }
+
+  // Submit on manual Save button (existing)
+  document.querySelector('form[action="PersistChecklist25"] button')?.addEventListener('click', () => {
+    hasUnsaved = false;
+  });
+
+  // Auto-submit on page unload
+  window.addEventListener('beforeunload', (e) => {
+    if (hasUnsaved || checkUnsaved()) {
+      // Trigger form submit
+      document.getElementById('autoSaveForm').submit();
+      // Optional: show brief message
+      // e.returnValue = 'Saving changes...';
+    }
+  });
+
+  // Also catch navigation via links/back button
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden' && (hasUnsaved || checkUnsaved())) {
+      navigator.sendBeacon('PersistChecklist25', new FormData(document.getElementById('autoSaveForm')));
+    }
+  });
+
+  // Update flag when closing todo
+  document.addEventListener('submit', (e) => {
+    if (e.target.action.includes('CloseToDo25')) {
+      setTimeout(checkUnsaved, 100); // after redirect
+    }
+  });
+</script>
 </body>
 </html>

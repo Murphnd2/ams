@@ -40,6 +40,7 @@ public class AmsDataGlobal {
     private List<ReasonCreated> reasonsCreated;
     private List<ContactMethod> contactMethods;
 
+    private volatile boolean delegationDirty = false;
     private List<TicketCategory> ticketCategories;
     private List<TicketSubCategory> ticketSubCategories;
     private List<TaskFrequency> taskFrequencies;
@@ -255,6 +256,17 @@ public class AmsDataGlobal {
 
     public void setTemplatePurposes(List<TemplatePurpose> templatePurposes) {
         this.templatePurposes = templatePurposes;
+    }
+    public void markDelegationDirty() {
+        this.delegationDirty = true;
+    }
+
+    public boolean isDelegationDirty() {
+        return this.delegationDirty;
+    }
+
+    public void clearDelegationDirty() {
+        this.delegationDirty = false;
     }
 
     public void setReasonsCreated(List<ReasonCreated> reasonsCreated) {

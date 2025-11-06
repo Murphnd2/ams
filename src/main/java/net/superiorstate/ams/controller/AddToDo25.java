@@ -55,11 +55,10 @@ public class AddToDo25 extends HttpServlet {
             toDoDescription = request.getParameter("toDoName");
             positionId = Long.parseLong(request.getParameter("insertWhere"));
         } catch (Exception e) {
-            return; // Invalid parameters
+            return;
         }
 
-        EntityManagerFactory emf = (EntityManagerFactory) getServletContext().getAttribute("emf");
-        EntityManager em = emf.createEntityManager();
+        EntityManager em = getOpenEntityManager(request);
 
         try {
             em.getTransaction().begin();
@@ -71,7 +70,6 @@ public class AddToDo25 extends HttpServlet {
             ToDo toDo = createToDo(task, checkList, sortOrder);
             em.persist(toDo);
             em.getTransaction().commit();
-            em.refresh(toDo);
 
             local.respondToActivityUpdate(em, "TD_ADD", toDo);
             request.getSession().setAttribute("local", local);
@@ -122,6 +120,12 @@ public class AddToDo25 extends HttpServlet {
         toDo.setCheckList(checkList);
         toDo.setSortOrder(sortOrder);
         return toDo;
+    }
+
+    private EntityManager getOpenEntityManager(HttpServletRequest request) {
+        EntityManagerFactory emf =
+                (EntityManagerFactory) request.getServletContext().getAttribute("emf");
+        return emf.createEntityManager();
     }
 }
 

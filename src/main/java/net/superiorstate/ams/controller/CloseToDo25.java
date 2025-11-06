@@ -47,32 +47,36 @@ public class CloseToDo25 extends HttpServlet {
 
         AmsDataLocal local = (AmsDataLocal) request.getSession().getAttribute("local");
         AmsDataGlobal global = (AmsDataGlobal) getServletContext().getAttribute("global");
-        EntityManagerFactory emf = (EntityManagerFactory) getServletContext().getAttribute("emf");
-        EntityManager em = emf.createEntityManager();
+        EntityManager em = getOpenEntityManager(request);
 
         try {
             ToDo toDo = dM.getToDoById(em, toDoId);
             if (toDo == null) return;
 
-            em.getTransaction().begin();
-            toDo.setComplete(true);
-            toDo.setDateCompleted(Date.valueOf(LocalDate.now()));
-            toDo.setCompletedBy(local.getCurrentPerson());
-            em.persist(toDo);
-            em.getTransaction().commit();
-            em.refresh(toDo);
+            // === IN-MEMORY UPDATE ===
+            // Update ToDoOut25 in session
+            local.getCurrentActivity().getToDoList().stream()
+                    .filter(out -> out.getToDo().getId() == toDoId)
+                    .findFirst()
+                    .ifPresent(out -> {
+                        out.getToDo().setComplete(true);
+                        out.getToDo().setDateCompleted(java.sql.Date.valueOf(java.time.LocalDate.now()));
+                        out.getToDo().setCompletedBy(local.getCurrentPerson());
+                    });
 
+            // Mark for later DB save
+            local.markToDoClosed(toDoId);
+
+            // Delegation flag
             if (requiresDelegationRefresh(toDo, local)) {
-                refreshDelegation(global, local, em);
-                request.getServletContext().setAttribute("global", global);
+                global.markDelegationDirty();
+                local.getCurrentActivity().setReFilterOnExit(true);
             }
 
             local.respondToActivityUpdate(em, "TODO_CLOSE", toDoId);
             request.getSession().setAttribute("local", local);
         } finally {
-            if (em.isOpen()) {
-                em.close();
-            }
+            em.close();
         }
     }
 
@@ -86,5 +90,11 @@ public class CloseToDo25 extends HttpServlet {
         global.setActivitiesWithDelegation(global.retrieveActivitiesWithDependencies(em));
         local.setActivitiesWithDependencies(global.getActivitiesWithDelegation());
         local.getCurrentActivity().setReFilterOnExit(true);
+    }
+
+    private EntityManager getOpenEntityManager(HttpServletRequest request) {
+        EntityManagerFactory emf =
+                (EntityManagerFactory) request.getServletContext().getAttribute("emf");
+        return emf.createEntityManager();
     }
 }
