@@ -74,7 +74,6 @@ public class CloseToDo25 extends HttpServlet {
                 em.close();
             }
         }
-
     }
 
     private boolean requiresDelegationRefresh(ToDo toDo, AmsDataLocal local) {
