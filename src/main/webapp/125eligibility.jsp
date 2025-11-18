@@ -175,7 +175,7 @@
         <input type="hidden" name="affiliatedany" id="affiliatedany" value="No">
     </div>
 
-    <!-- Affiliated Detail -->
+    <!-- Affiliated Detail Below -->
     <div id="affiliatedBlock" class="section hidden">
         <label>You indicated one or more affiliations above.<br>Are any employees of the affiliated entities covered by THIS Section 125 plan?</label>
         <select name="affiliatedcovered" onchange="toggleAffDetail()">
