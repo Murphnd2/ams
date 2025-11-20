@@ -5,19 +5,45 @@
 
     String idParam = request.getParameter("id");
     long assigneeId;
-    try { assigneeId = Long.parseLong(idParam); }
-    catch (Exception e) {
+    try {
+        assigneeId = Long.parseLong(idParam);
+    } catch (Exception e) {
 %>
-<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Invalid Link</title>
-<style>body{font-family:Arial;text-align:center;margin-top:100px;color:#555;}
-.box{max-width:600px;margin:0 auto;padding:40px;border:2px solid #ddd;border-radius:10px;}</style>
-</head><body><div class="box"><h1 style="color:#c33">Invalid Link</h1>
-<p>The test ID is not valid.</p></div></body></html>
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Invalid Link</title>
+    <style>
+        body{font-family:Arial;text-align:center;margin-top:100px;color:#555;}
+        .box{max-width:600px;margin:0 auto;padding:40px;border:2px solid #ddd;border-radius:10px;}
+    </style>
+</head>
+<body>
+<div class="box">
+    <h1 style="color:#c33">Invalid Link</h1>
+    <p>The test ID is not valid.</p>
+</div>
+</body>
+</html>
 <%
         return;
     }
 
-    EntityManager em = null;
+    // Build returnUrl pointing to a servlet under this webapp's context path
+    // e.g. https://host/app/Eligibility125Complete
+    String scheme  = request.getScheme();       // http or https
+    String server  = request.getServerName();   // host
+    int    port    = request.getServerPort();   // 80, 443, etc.
+    String context = request.getContextPath();  // "" or "/beta", "/ams", etc.
+
+    String base = scheme + "://" + server +
+            ((port == 80 || port == 443) ? "" : (":" + port)) +
+            context;
+
+    String returnUrl = base + "/Eligibility125Complete";
+
+
     String businessName = "Unknown Employer";
     String dtype = "";
     boolean isSetup = false;
@@ -25,23 +51,43 @@
     LocalDate planEnd = null;
     Set<String> precheckedBenefits = new HashSet<>();
 
+    String planPeriod = "";
+    String planYear = "";
+    int hceThreshold = 155000;
+    String lookbackYear = "2025";
+
+    EntityManager em = null;
+
     try {
         EntityManagerFactory emf = Persistence.createEntityManagerFactory("ssaPU");
         em = emf.createEntityManager();
 
         @SuppressWarnings("unchecked")
         List<Object[]> main = em.createNativeQuery(
-                        "SELECT a.full_name, a.DTYPE FROM assignee a WHERE a.id = ? AND a.DTYPE IN ('Renewal','Setup') AND a.is_complete = 0")
+                        "SELECT a.full_name, a.DTYPE FROM assignee a " +
+                                "WHERE a.id = ? AND a.DTYPE IN ('Renewal','Setup') AND a.is_complete = 0")
                 .setParameter(1, assigneeId)
                 .getResultList();
 
         if (main.isEmpty()) {
 %>
-<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Test Not Available</title>
-<style>body{font-family:Arial;text-align:center;margin-top:100px;color:#555;}
-.box{max-width:600px;margin:0 auto;padding:40px;border:2px solid #ddd;border-radius:10px;}</style>
-</head><body><div class="box"><h1 style="color:#c33">Test Not Available</h1>
-<p>This test (ID <%=assigneeId%>) is either completed, not a Renewal/Setup, or no longer active.</p></div></body></html>
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Test Not Available</title>
+    <style>
+        body{font-family:Arial;text-align:center;margin-top:100px;color:#555;}
+        .box{max-width:600px;margin:0 auto;padding:40px;border:2px solid #ddd;border-radius:10px;}
+    </style>
+</head>
+<body>
+<div class="box">
+    <h1 style="color:#c33">Test Not Available</h1>
+    <p>This test (ID <%=assigneeId%>) is either completed, not a Renewal/Setup, or no longer active.</p>
+</div>
+</body>
+</html>
 <%
         return;
     }
@@ -53,58 +99,100 @@
     isSetup = "Setup".equals(dtype);
 
     if (!isSetup) {
+        // Get plan start from renewal items
         @SuppressWarnings("unchecked")
-        List<Object[]> renewalData = em.createNativeQuery(
-                        "SELECT ri.date_for FROM renewalitem ri JOIN benefit b ON ri.benefit_id = b.benefit_id WHERE ri.renewal_id = ? AND b.plan_type_id IN (1,2,4,5,1001,1005,1007) ORDER BY ri.renewal_item_id ASC LIMIT 1")
+        List<java.sql.Date> renewalData = em.createNativeQuery(
+                        "SELECT ri.date_for FROM renewalitem ri " +
+                                "JOIN benefit b ON ri.benefit_id = b.benefit_id " +
+                                "WHERE ri.renewal_id = ? " +
+                                "AND b.plan_type_id IN (1,2,4,5,1001,1005,1007) " +
+                                "ORDER BY ri.renewal_item_id ASC LIMIT 1")
                 .setParameter(1, assigneeId)
                 .getResultList();
 
         if (!renewalData.isEmpty()) {
-            planStart = ((java.sql.Date) renewalData.get(0)[0]).toLocalDate();
-            planEnd = planStart.plusYears(1).minusDays(1);
+            java.sql.Date dateObj = renewalData.get(0);
+            if (dateObj != null) {
+                planStart = dateObj.toLocalDate();
+                planEnd = planStart.plusYears(1).minusDays(1);
+            }
         }
 
+        // Get plan types for pre-checked benefits
         @SuppressWarnings("unchecked")
-        List<Integer> planTypeIds = em.createNativeQuery(
-                        "SELECT DISTINCT b.plan_type_id FROM renewalitem ri JOIN benefit b ON ri.benefit_id = b.benefit_id WHERE ri.renewal_id = ? AND b.plan_type_id IN (1,2,4,5,1001,1005,1007)")
+        List<Number> planTypeIds = em.createNativeQuery(
+                        "SELECT DISTINCT b.plan_type_id FROM renewalitem ri " +
+                                "JOIN benefit b ON ri.benefit_id = b.benefit_id " +
+                                "WHERE ri.renewal_id = ? " +
+                                "AND b.plan_type_id IN (1,2,4,5,1001,1005,1007)")
                 .setParameter(1, assigneeId)
                 .getResultList();
 
-        Map<Integer,String> benefitMap = new HashMap<>() {{
-            put(1, "Medical"); put(2, "Dental"); put(4, "Vision");
-            put(5, "HSA"); put(1001, "HealthFSA"); put(1005, "DepCare"); put(1007, "Other");
-        }};
+        Map<Integer,String> benefitMap = new HashMap<>();
+        benefitMap.put(1, "Medical");
+        benefitMap.put(2, "Dental");
+        benefitMap.put(4, "Vision");
+        benefitMap.put(5, "HSA");
+        benefitMap.put(1001, "HealthFSA");
+        benefitMap.put(1005, "DepCare");
+        benefitMap.put(1007, "Other");
 
-        for (Integer ptid : planTypeIds) {
+        for (Number n : planTypeIds) {
+            int ptid = n.intValue();
             String type = benefitMap.getOrDefault(ptid, "");
             if (!type.isEmpty()) precheckedBenefits.add(type);
         }
     }
 
+    if (planStart != null) {
+        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("M/d/yyyy");
+        planPeriod = planStart.format(fmt) + " – " + planEnd.format(fmt);
+        planYear = String.valueOf(planStart.getYear());
+    }
+
+    // HCE threshold based on plan year (if known)
+    if ("2027".equals(planYear)) hceThreshold = 160000;
+    else if ("2028".equals(planYear)) hceThreshold = 165000;
+
+    // Lookback year: if planYear blank, default as if 2026
+    lookbackYear = String.valueOf(Integer.parseInt(planYear.isEmpty() ? "2026" : planYear) - 1);
+
 } catch (Exception e) {
     e.printStackTrace();
+    String debugFlag = request.getParameter("debug");
 %>
-<!DOCTYPE html><html><head><meta charset="UTF-8"><title>System Error</title></head>
-<body style="text-align:center;margin-top:100px"><h1 style="color:#c33">System Error</h1>
-<p>Please contact support.</p></body></html>
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>System Error</title>
+</head>
+<body style="font-family:Arial;max-width:900px;margin:30px auto;">
+<%
+    if ("1".equals(debugFlag)) {
+%>
+<h1 style="color:#c33;">System Error (Debug)</h1>
+<p>The following exception occurred:</p>
+<pre>
+<%
+    e.printStackTrace(new java.io.PrintWriter(out));
+%>
+    </pre>
+<%
+} else {
+%>
+<h1 style="color:#c33;">System Error</h1>
+<p>Please contact support.</p>
+<%
+    }
+%>
+</body>
+</html>
 <%
         return;
     } finally {
         if (em != null) try { em.close(); } catch (Exception ignored) {}
     }
-
-    String planPeriod = "";
-    if (planStart != null) {
-        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("M/d/yyyy");
-        planPeriod = planStart.format(fmt) + " – " + planEnd.format(fmt);
-    }
-    String planYear = planStart != null ? String.valueOf(planStart.getYear()) : "";
-
-    int hceThreshold = 155000;
-    if ("2027".equals(planYear)) hceThreshold = 160000;
-    else if ("2028".equals(planYear)) hceThreshold = 165000;
-
-    String lookbackYear = String.valueOf(Integer.parseInt(planYear.isEmpty()?"2026":planYear)-1);
 %>
 
 <!DOCTYPE html>
@@ -113,48 +201,100 @@
     <meta charset="UTF-8">
     <title>125 Eligibility Test #<%=assigneeId%></title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+          rel="stylesheet"
+          integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH"
+          crossorigin="anonymous">
     <style>
-        body{font-family:Arial;max-width:900px;margin:30px auto;padding:20px;line-height:1.5;}
-        h1,h2{color:#0066cc;}
+        body{font-family:Arial, sans-serif;max-width:960px;margin:30px auto;padding:20px;}
         .section{background:#f9f9f9;padding:20px;margin:20px 0;border-radius:8px;border:1px solid #ddd;}
-        label{display:block;margin:15px 0 5px;font-weight:bold;}
-        input,select,textarea{width:100%;padding:8px;box-sizing:border-box;}
-        .hidden{display:none;}
-        button{background:#0066cc;color:white;padding:15px 30px;font-size:18px;border:none;border-radius:5px;cursor:pointer;}
-        button:hover{background:#0052a3;}
         .important{font-weight:bold;color:#c33;}
     </style>
 </head>
 <body>
 
-<h1>125 Eligibility Test</h1>
+<h1 class="mb-4 text-primary">§125 Eligibility Test</h1>
 
-<form action="<%=GOOGLE_SCRIPT_URL%>" method="POST">
-    <input type="hidden" name="assignee_id" value="<%=assigneeId%>">
+<form action="<%=request.getContextPath()%>/Eligibility125Submit"
+      method="POST"
+      class="card p-4 shadow-sm mb-5"
+      onsubmit="return validateForm()">
+ <!-- Hidden identifiers -->
+    <input type="hidden" name="guid" value="<%=assigneeId%>">
     <input type="hidden" name="originalname" value="<%=businessName%>">
     <input type="hidden" name="namechanged" id="namechanged" value="No">
 
+    <!-- Basic info -->
     <div class="section">
-        <label>Business Name <button type="button" onclick="document.getElementById('bn').removeAttribute('readonly');document.getElementById('namechanged').value='Yes'">Edit</button></label>
-        <input type="text" name="businessname" id="bn" value="<%=businessName%>" readonly>
+        <!-- Business name with inline Edit button -->
+        <div class="mb-3">
+            <label class="form-label">Business Name</label>
+            <div class="input-group">
+                <input type="text"
+                       name="businessname"
+                       id="bn"
+                       class="form-control"
+                       value="<%=businessName%>"
+                       readonly>
+                <button type="button"
+                        class="btn btn-outline-secondary"
+                        onclick="document.getElementById('bn').removeAttribute('readonly');document.getElementById('namechanged').value='Yes';document.getElementById('bn').focus();">
+                    Edit
+                </button>
+            </div>
+            <small class="form-text text-muted">
+                This is the employer name we have on file. Click Edit if you need to correct it.
+            </small>
+        </div>
 
-        <label>Your Email</label>
-        <input type="email" name="email" required>
+        <!-- Contact Email -->
+        <div class="mb-3">
+            <label class="form-label">Your Email</label>
+            <input type="email" name="email" class="form-control" required>
+        </div>
 
-        <% if (isSetup) { %>
-        <label>For the Upcoming Plan Year Ending</label>
-        <input type="date" name="planend" required>
-        <% } else { %>
-        <label>For the Upcoming Plan Year Ending</label>
-        <input type="text" value="<%=planPeriod%>" readonly>
-        <input type="hidden" name="planyear" value="<%=planYear%>">
-        <% } %>
+        <!-- Tax classification -->
+        <div class="mb-3">
+            <label class="form-label">Tax Classification of the Business</label>
+            <select name="taxclass" class="form-select" required onchange="updateOwnershipBlocks()">
+                <option value="">— Select —</option>
+                <option value="C-Corp">C-Corp</option>
+                <option value="S-Corp">S-Corp</option>
+                <option value="LLC taxed as Partnership">LLC taxed as Partnership</option>
+                <option value="LLC taxed as C-Corp">LLC taxed as C-Corp</option>
+                <option value="Non-Profit">Non-Profit</option>
+                <option value="Government">Government</option>
+                <option value="Partnership">Partnership</option>
+                <option value="Sole Proprietor">Sole Proprietor</option>
+            </select>
+        </div>
+
+        <!-- Plan year -->
+        <div class="mb-3">
+            <label class="form-label">Plan Year</label>
+            <% if (!isSetup && planStart != null) { %>
+            <input type="text" class="form-control mb-2" value="<%=planPeriod%>" readonly>
+            <input type="hidden" name="planyear" value="<%=planYear%>">
+            <input type="hidden" name="planend"
+                   value="<%=planEnd != null ? planEnd.toString() : ""%>">
+            <small class="form-text text-muted">
+                This is the upcoming plan year period for testing.
+            </small>
+            <% } else { %>
+            <label class="form-label">Upcoming Plan Year Start</label>
+            <input type="date" class="form-control mb-2" id="planstartInput" name="planstart" required>
+            <input type="hidden" name="planend" id="planend">
+            <small class="form-text text-muted">
+                Select the first day of the new plan year. The plan year end date will be derived automatically.
+            </small>
+            <% } %>
+        </div>
     </div>
 
-    <!-- ALL LOCKED-IN SECTIONS BELOW -->
-
-    <!-- 5 Controlled-Group Questions -->
+    <!-- Controlled-Group Questions -->
     <div class="section">
+        <h5>Controlled Group / Affiliated Service Group</h5>
         <%
             String[] cgQuestions = {
                     "Is this business a subsidiary of another business?",
@@ -165,148 +305,518 @@
             };
             for (int i = 1; i <= 5; i++) {
         %>
-        <label><%= cgQuestions[i-1] %></label>
-        <select name="cg<%=i%>" onchange="checkAffiliated()">
-            <option value="">— Select —</option>
-            <option value="Yes">Yes</option>
-            <option value="No">No</option>
-        </select>
+        <div class="mb-3">
+            <label class="form-label"><%= cgQuestions[i-1] %></label>
+            <select name="cg<%=i%>" class="form-select" onchange="checkAffiliated()" required>
+                <option value="">— Select —</option>
+                <option value="Yes">Yes</option>
+                <option value="No">No</option>
+            </select>
+        </div>
         <% } %>
         <input type="hidden" name="affiliatedany" id="affiliatedany" value="No">
     </div>
 
-    <!-- Affiliated Detail Below -->
-    <div id="affiliatedBlock" class="section hidden">
-        <label>You indicated one or more affiliations above.<br>Are any employees of the affiliated entities covered by THIS Section 125 plan?</label>
-        <select name="affiliatedcovered" onchange="toggleAffDetail()">
-            <option value="No">No</option>
-            <option value="Yes">Yes</option>
-        </select>
+    <!-- Affiliated Detail (always shown when any CG answer is Yes) -->
+    <div id="affiliatedBlock" class="section d-none">
+        <h5>Affiliated Entities</h5>
 
-        <div id="affDetail" class="hidden">
-            <label>Total W-2 employees at affiliated entities (not covered):</label>
-            <input type="number" name="afftotalw2" min="0" value="0">
-            <p class="note">(Only employees who receive a W-2 paycheck – do NOT include pure K-1 owners)</p>
+        <div class="mb-3">
+            <label class="form-label">
+                Are any employees of the affiliated entities covered by THIS Section 125 plan?
+            </label>
+            <select name="affiliatedcovered" class="form-select">
+                <option value="No">No</option>
+                <option value="Yes">Yes</option>
+            </select>
+        </div>
 
-            <label>Of those, how many had <%=lookbackYear%> compensation > $<%=String.format("%,d", hceThreshold)%>?</label>
-            <input type="number" name="affhighearners" min="0" value="0">
+        <div id="affDetail">
+            <div class="mb-3">
+                <label class="form-label">Total W-2 employees at affiliated entities (not covered):</label>
+                <input type="number" name="afftotalw2" class="form-control" min="0" value="0">
+                <div class="form-text">
+                    Only employees who receive a W-2 paycheck – do NOT include pure K-1 owners.
+                </div>
+            </div>
 
-            <label>Of those, how many are >5% owners, officers, or their family (even if paid less than $<%=String.format("%,d", hceThreshold)%>)?</label>
-            <input type="number" name="affownershiphce" min="0" value="0">
+            <div class="mb-3">
+                <label class="form-label">
+                    Of those, how many had <%=lookbackYear%> compensation &gt; $<%=String.format("%,d", hceThreshold)%>?
+                </label>
+                <input type="number" name="affhighearners" class="form-control" min="0" value="0">
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">
+                    Of those, how many are &gt;5% owners, officers, or their family
+                    (even if paid less than $<%=String.format("%,d", hceThreshold)%>)?
+                </label>
+                <input type="number" name="affownershiphce" class="form-control" min="0" value="0">
+            </div>
         </div>
     </div>
 
     <!-- Headcount & Eligibility -->
     <div class="section">
-        <p class="important">IMPORTANT – NO DOUBLE-COUNTING<br>
-            Answer each question using only employees NOT already counted in a previous question.</p>
+        <h5>Headcount & Eligibility</h5>
+        <p class="important">
+            IMPORTANT – NO DOUBLE-COUNTING<br>
+            Answer each question using only employees NOT already counted in a previous question.
+        </p>
 
-        <label>Total W-2 employees at the entity(ies) actually covered by this plan:</label>
-        <input type="number" name="totalw2" id="totalw2" min="1" required onchange="calcRemaining()">
-
-        <div id="partnershipBlock" class="hidden">
-            <label>Employees who are >2% Owners</label>
-            <input type="number" name="partowners" min="0" value="0" onchange="calcRemaining()">
-            <label>(of those any INELIGIBLE?)</label>
-            <input type="number" name="partownersineligible" min="0" value="0">
-
-            <label>Employees who are Spouses or Children of >2% Owners</label>
-            <input type="number" name="partfamily" min="0" value="0" onchange="calcRemaining()">
-            <label>(of those any INELIGIBLE?)</label>
-            <input type="number" name="partfamilyineligible" min="0" value="0">
+        <div class="mb-3">
+            <label class="form-label">Total W-2 employees at the entity(ies) actually covered by this plan:</label>
+            <input type="number" name="totalw2" id="totalw2" class="form-control" min="1" required onchange="calcRemaining()">
         </div>
 
-        <div id="corpBlock" class="hidden">
-            <label>Employees who are Officers of the Company</label>
-            <input type="number" name="corpofficers" min="0" value="0" onchange="calcRemaining()">
-            <label>(of those any INELIGIBLE?)</label>
-            <input type="number" name="corpofficersineligible" min="0" value="0">
+        <!-- Partnership block -->
+        <div id="partnershipBlock" class="mb-3 d-none">
+            <label class="form-label">Employees who are &gt;2% Owners</label>
+            <input type="number" name="partowners" class="form-control mb-2" min="0" value="0" onchange="calcRemaining()">
+            <label class="form-label">(of those any INELIGIBLE?)</label>
+            <input type="number" name="partownersineligible" class="form-control mb-3" min="0" value="0">
 
-            <label>Employees who are Spouses or Children of Officers of the Company</label>
-            <input type="number" name="corpfamily" min="0" value="0" onchange="calcRemaining()">
-            <label>(of those any INELIGIBLE?)</label>
-            <input type="number" name="corpfamilyineligible" min="0" value="0">
+            <label class="form-label">Employees who are Spouses or Children of &gt;2% Owners</label>
+            <input type="number" name="partfamily" class="form-control mb-2" min="0" value="0" onchange="calcRemaining()">
+            <label class="form-label">(of those any INELIGIBLE?)</label>
+            <input type="number" name="partfamilyineligible" class="form-control" min="0" value="0">
         </div>
 
-        <label>Employees who make > $<%=String.format("%,d", hceThreshold)%> (total including bonuses) per Year<br>(do NOT count anyone above):</label>
-        <input type="number" name="highearners" min="0" value="0" onchange="calcRemaining()">
-        <label>(of those any INELIGIBLE?)</label>
-        <input type="number" name="highearnersineligible" min="0" value="0">
+        <!-- Corporate block -->
+        <div id="corpBlock" class="mb-3 d-none">
+            <label class="form-label">Employees who are Officers of the Company</label>
+            <input type="number" name="corpofficers" class="form-control mb-2" min="0" value="0" onchange="calcRemaining()">
+            <label class="form-label">(of those any INELIGIBLE?)</label>
+            <input type="number" name="corpofficersineligible" class="form-control mb-3" min="0" value="0">
 
-        <label>Remaining Employees not included above (auto-calculated):</label>
-        <input type="text" id="remaining" readonly style="background:#eee;">
-        <label>(of those any INELIGIBLE?)</label>
-        <input type="number" name="remainingineligible" min="0" value="0">
+            <label class="form-label">Employees who are Spouses or Children of Officers of the Company</label>
+            <input type="number" name="corpfamily" class="form-control mb-2" min="0" value="0" onchange="calcRemaining()">
+            <label class="form-label">(of those any INELIGIBLE?)</label>
+            <input type="number" name="corpfamilyineligible" class="form-control" min="0" value="0">
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">
+                Employees who make &gt; $<%=String.format("%,d", hceThreshold)%>
+                (total including bonuses) per Year<br>
+                <small>(do NOT count anyone above):</small>
+            </label>
+            <input type="number" name="highearners" class="form-control mb-2" min="0" value="0" onchange="calcRemaining()">
+            <label class="form-label">(of those any INELIGIBLE?)</label>
+            <input type="number" name="highearnersineligible" class="form-control" min="0" value="0">
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Remaining Employees not included above (auto-calculated):</label>
+            <input type="text" id="remaining" name="remaining" class="form-control mb-2" readonly style="background:#eee;">
+            <label class="form-label">(of those any INELIGIBLE?)</label>
+            <input type="number" name="remainingineligible" class="form-control" min="0" value="0">
+        </div>
     </div>
 
     <!-- Benefits Offered -->
     <div class="section">
-        <label>Check ANY/ALL Benefits that are/will be pre-taxed through this plan.</label>
-        <label><input type="checkbox" name="benefits" value="Medical" <%=precheckedBenefits.contains("Medical")?"checked":""%>> Medical Insurance Premiums</label>
-        <label><input type="checkbox" name="benefits" value="Dental" <%=precheckedBenefits.contains("Dental")?"checked":""%>> Dental Insurance Premiums</label>
-        <label><input type="checkbox" name="benefits" value="Vision" <%=precheckedBenefits.contains("Vision")?"checked":""%>> Vision Insurance Premiums</label>
-        <label><input type="checkbox" name="benefits" value="HSA" <%=precheckedBenefits.contains("HSA")?"checked":""%>> Health Savings Account Deposits</label>
-        <label><input type="checkbox" name="benefits" value="HealthFSA" <%=precheckedBenefits.contains("HealthFSA")?"checked":""%>> Health FSA Contributions</label>
-        <label><input type="checkbox" name="benefits" value="DepCare" <%=precheckedBenefits.contains("DepCare")?"checked":""%>> Dependent Care Contributions</label>
+        <h5>Benefits Offered Under the Plan</h5>
+        <p>Select any/all pre-tax benefits, or explain changes below.</p>
 
-        <label>Plan or Benefit Offering Changes since Last Year</label>
-        <textarea name="benefitchanges" rows="3"></textarea>
+        <div class="form-check">
+            <input class="form-check-input" type="checkbox" name="benefits" value="Medical"
+                <%=precheckedBenefits.contains("Medical") ? "checked" : ""%>>
+            <label class="form-check-label">Medical Insurance Premiums</label>
+        </div>
+        <div class="form-check">
+            <input class="form-check-input" type="checkbox" name="benefits" value="Dental"
+                <%=precheckedBenefits.contains("Dental") ? "checked" : ""%>>
+            <label class="form-check-label">Dental Insurance Premiums</label>
+        </div>
+        <div class="form-check">
+            <input class="form-check-input" type="checkbox" name="benefits" value="Vision"
+                <%=precheckedBenefits.contains("Vision") ? "checked" : ""%>>
+            <label class="form-check-label">Vision Insurance Premiums</label>
+        </div>
+        <div class="form-check">
+            <input class="form-check-input" type="checkbox" name="benefits" value="HSA"
+                <%=precheckedBenefits.contains("HSA") ? "checked" : ""%>>
+            <label class="form-check-label">Health Savings Account Deposits</label>
+        </div>
+        <div class="form-check">
+            <input class="form-check-input" type="checkbox" name="benefits" value="HealthFSA"
+                <%=precheckedBenefits.contains("HealthFSA") ? "checked" : ""%>>
+            <label class="form-check-label">Health FSA Contributions</label>
+        </div>
+        <div class="form-check mb-3">
+            <input class="form-check-input" type="checkbox" name="benefits" value="DepCare"
+                <%=precheckedBenefits.contains("DepCare") ? "checked" : ""%>>
+            <label class="form-check-label">Dependent Care Contributions</label>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Plan or Benefit Offering Changes since Last Year</label>
+            <textarea name="benefitchanges" class="form-control" rows="3"></textarea>
+            <div class="form-text">
+                If you do not check any benefits above, please describe the plan or expected offerings here.
+            </div>
+        </div>
     </div>
 
     <!-- Uniform Benefit Safe-Harbor -->
     <div class="section">
-        <label>Are employer contributions to the plan IDENTICAL (at each benefit tier) for ALL EMPLOYEES?</label>
-        <select name="uniform1" onchange="checkUniform()"><option>Yes</option><option>No</option></select>
+        <h5>Uniform Benefit / Safe Harbor Questions</h5>
 
-        <label>Are benefits UNIFORM regardless of age, years of service, or compensation?</label>
-        <select name="uniform2" onchange="checkUniform()"><option>Yes</option><option>No</option></select>
-
-        <label>Are the SAME BENEFITS offered to all eligible employees?</label>
-        <select name="uniform3" onchange="checkUniform()"><option>Yes</option><option>No</option></select>
-
-        <label>Are WAITING PERIODS IDENTICAL for all groups of employees?</label>
-        <select name="uniform4" onchange="checkUniform()"><option>Yes</option><option>No</option></select>
-
-        <div id="uniformExplain" class="hidden">
-            <label>You answered NO to at least one question above. Please describe why benefits vary in this way and exactly how they vary in the space below.</label>
-            <textarea name="uniformexplain" rows="4"></textarea>
+        <div class="mb-3">
+            <label class="form-label">
+                Are employer contributions to the plan IDENTICAL (at each benefit tier) for ALL EMPLOYEES?
+            </label>
+            <select name="uniform1" class="form-select" onchange="checkUniform()" required>
+                <option value="">— Select —</option>
+                <option value="Yes">Yes</option>
+                <option value="No">No</option>
+            </select>
         </div>
 
-        <div id="participationBlock" class="hidden">
-            <label>Of the officers/key managers and high earners who are eligible, how many will actually participate?</label>
-            <input type="number" name="officersparticipating" min="0">
+        <div class="mb-3">
+            <label class="form-label">
+                Are benefits UNIFORM regardless of age, years of service, or compensation?
+            </label>
+            <select name="uniform2" class="form-select" onchange="checkUniform()" required>
+                <option value="">— Select —</option>
+                <option value="Yes">Yes</option>
+                <option value="No">No</option>
+            </select>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">
+                Are the SAME BENEFITS offered to all eligible employees?
+            </label>
+            <select name="uniform3" class="form-select" onchange="checkUniform()" required>
+                <option value="">— Select —</option>
+                <option value="Yes">Yes</option>
+                <option value="No">No</option>
+            </select>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">
+                Are WAITING PERIODS IDENTICAL for all groups of employees?
+            </label>
+            <select name="uniform4" class="form-select" onchange="checkUniform()" required>
+                <option value="">— Select —</option>
+                <option value="Yes">Yes</option>
+                <option value="No">No</option>
+            </select>
+        </div>
+
+        <div id="uniformExplain" class="mb-3 d-none">
+            <label class="form-label">
+                You answered NO to at least one question above. Please describe why benefits vary and exactly how.
+            </label>
+            <textarea name="uniformexplain" class="form-control" rows="4"></textarea>
+        </div>
+
+        <div id="participationBlock" class="mb-3 d-none">
+            <label class="form-label">
+                Of the officers/key managers and high earners who are eligible, how many will actually participate?
+            </label>
+            <input type="number" name="officersparticipating" class="form-control" min="0" value="0">
         </div>
     </div>
 
-    <button type="submit">Submit Eligibility Test</button>
+    <div class="text-center">
+        <button type="submit" class="btn btn-primary btn-lg mt-3">
+            Submit Eligibility Test
+        </button>
+    </div>
 </form>
 
 <script>
     function checkAffiliated() {
         const anyYes = Array.from(document.querySelectorAll("[name^='cg']")).some(s => s.value === "Yes");
         document.getElementById("affiliatedany").value = anyYes ? "Yes" : "No";
-        document.getElementById("affiliatedBlock").classList.toggle("hidden", !anyYes);
+        document.getElementById("affiliatedBlock").classList.toggle("d-none", !anyYes);
     }
-    function toggleAffDetail() {
-        const cov = document.querySelector("[name='affiliatedcovered']").value;
-        document.getElementById("affDetail").classList.toggle("hidden", cov === "Yes");
+
+    function updatePlanEndFromStart() {
+        const startInput = document.getElementById("planstartInput");
+        const endInput = document.getElementById("planend");
+        if (!startInput || !endInput || !startInput.value) return;
+
+        const parts = startInput.value.split("-");
+        if (parts.length !== 3) return;
+
+        const year  = parseInt(parts[0], 10);
+        const month = parseInt(parts[1], 10) - 1; // JS month 0–11
+        const day   = parseInt(parts[2], 10);
+
+        const startDate = new Date(year, month, day);
+        const endDate = new Date(startDate);
+        endDate.setFullYear(endDate.getFullYear() + 1);
+        endDate.setDate(endDate.getDate() - 1);
+
+        const yyyy = endDate.getFullYear();
+        const mm   = String(endDate.getMonth() + 1).padStart(2, "0");
+        const dd   = String(endDate.getDate()).padStart(2, "0");
+
+        endInput.value = `${yyyy}-${mm}-${dd}`;
     }
+
     function calcRemaining() {
-        const total = parseInt(document.getElementById("totalw2").value) || 0;
-        const part = parseInt(document.querySelector("[name='partowners']")?.value || 0);
-        const fam = parseInt(document.querySelector("[name='partfamily']")?.value || 0);
-        const corp = parseInt(document.querySelector("[name='corpofficers']")?.value || 0);
-        const high = parseInt(document.querySelector("[name='highearners']")?.value || 0);
-        const rem = total - part - fam - corp - high;
-        document.getElementById("remaining").value = rem < 0 ? 0 : rem;
+        const totalField = document.getElementById("totalw2");
+        const remainingField = document.getElementById("remaining");
+        if (!totalField || !remainingField) return;
+
+        const total = parseInt(totalField.value || "0", 10);
+
+        function getInt(selector) {
+            const el = document.querySelector(selector);
+            if (!el) return 0;
+            const v = parseInt(el.value || "0", 10);
+            return isNaN(v) ? 0 : v;
+        }
+
+        // Partnership counts
+        const partOwners  = getInt("[name='partowners']");
+        const partFamily  = getInt("[name='partfamily']");
+
+        // Corporate counts
+        const corpOfficers = getInt("[name='corpofficers']");
+        const corpFamily   = getInt("[name='corpfamily']");
+
+        // High earners
+        const highEarners  = getInt("[name='highearners']");
+
+        let rem = total
+            - partOwners
+            - partFamily
+            - corpOfficers
+            - corpFamily
+            - highEarners;
+
+        if (rem < 0) rem = 0;
+        remainingField.value = rem;
     }
+
+    function updateOwnershipBlocks() {
+        const taxSelect = document.querySelector("[name='taxclass']");
+        const corpBlock = document.getElementById("corpBlock");
+        const partnershipBlock = document.getElementById("partnershipBlock");
+        if (!taxSelect || !corpBlock || !partnershipBlock) return;
+
+        const v = taxSelect.value;
+        const isCorpType = (v === "C-Corp" || v === "S-Corp" || v === "LLC taxed as C-Corp");
+
+        function resetNumericInputs(block) {
+            if (!block) return;
+            const nums = block.querySelectorAll("input[type='number']");
+            nums.forEach(el => { el.value = "0"; });
+        }
+
+        if (!v) {
+            resetNumericInputs(corpBlock);
+            resetNumericInputs(partnershipBlock);
+            corpBlock.classList.add("d-none");
+            partnershipBlock.classList.add("d-none");
+        } else if (isCorpType) {
+            resetNumericInputs(partnershipBlock);
+            partnershipBlock.classList.add("d-none");
+            corpBlock.classList.remove("d-none");
+        } else {
+            resetNumericInputs(corpBlock);
+            corpBlock.classList.add("d-none");
+            partnershipBlock.classList.remove("d-none");
+        }
+
+        calcRemaining();
+    }
+
     function checkUniform() {
-        const anyNo = ["uniform1","uniform2","uniform3","uniform4"].some(n => document.querySelector("[name='"+n+"']").value === "No");
-        document.getElementById("uniformExplain").classList.toggle("hidden", !anyNo);
-        document.getElementById("participationBlock").classList.toggle("hidden", !anyNo);
+        const anyNo = ["uniform1","uniform2","uniform3","uniform4"]
+            .some(n => document.querySelector("[name='"+n+"']").value === "No");
+
+        document.getElementById("uniformExplain").classList.toggle("d-none", !anyNo);
+        document.getElementById("participationBlock").classList.toggle("d-none", !anyNo);
     }
+
+    function validateForm() {
+        // Ensure plan year start is selected when applicable
+        const planstartInput = document.getElementById("planstartInput");
+        if (planstartInput) {
+            if (!planstartInput.value) {
+                alert("Please select the plan year start date.");
+                planstartInput.focus();
+                return false;
+            }
+            updatePlanEndFromStart();
+            const planendInput = document.getElementById("planend");
+            if (!planendInput || !planendInput.value) {
+                alert("There was an issue deriving the plan year end from the start date. Please re-select the plan year start.");
+                planstartInput.focus();
+                return false;
+            }
+        }
+
+        function getIntByName(name) {
+            const el = document.querySelector("[name='"+name+"']");
+            if (!el) return 0;
+            const v = parseInt(el.value || "0", 10);
+            return isNaN(v) ? 0 : v;
+        }
+
+        // --- Affiliated entity validations ---
+        const affiliatedBlock = document.getElementById("affiliatedBlock");
+        if (affiliatedBlock && !affiliatedBlock.classList.contains("d-none")) {
+            const totalAff = getIntByName("afftotalw2");
+            const affHigh = getIntByName("affhighearners");
+            const affOwner = getIntByName("affownershiphce");
+
+            if (affHigh > totalAff) {
+                alert("In the affiliated entity section, the number of employees with compensation above the threshold cannot exceed the total W-2 employees at affiliated entities.");
+                const fld = document.querySelector("[name='affhighearners']");
+                if (fld) fld.focus();
+                return false;
+            }
+
+            if (affOwner > (totalAff - affHigh)) {
+                alert("In the affiliated entity section, the number of >5% owners/officers/family cannot exceed the remaining employees after those with compensation above the threshold.");
+                const fld = document.querySelector("[name='affownershiphce']");
+                if (fld) fld.focus();
+                return false;
+            }
+        }
+
+        // --- Headcount & eligibility validations ---
+        const totalW2Field = document.getElementById("totalw2");
+        if (totalW2Field) {
+            const totalW2 = parseInt(totalW2Field.value || "0", 10);
+            const highEarners = getIntByName("highearners");
+            const highEarnersIn = getIntByName("highearnersineligible");
+
+            const partnershipBlock = document.getElementById("partnershipBlock");
+            const corpBlock = document.getElementById("corpBlock");
+
+            const partOwners = getIntByName("partowners");
+            const partOwnersIn = getIntByName("partownersineligible");
+            const partFamily = getIntByName("partfamily");
+            const partFamilyIn = getIntByName("partfamilyineligible");
+
+            const corpOfficers = getIntByName("corpofficers");
+            const corpOfficersIn = getIntByName("corpofficersineligible");
+            const corpFamily = getIntByName("corpfamily");
+            const corpFamilyIn = getIntByName("corpfamilyineligible");
+
+            if (highEarners > totalW2) {
+                alert("Employees who make more than the HCE threshold cannot exceed the total W-2 employees covered by this plan.");
+                const fld = document.querySelector("[name='highearners']");
+                if (fld) fld.focus();
+                return false;
+            }
+
+            if (highEarnersIn > highEarners) {
+                alert("The number of ineligible high earners cannot exceed the number of high earners.");
+                const fld = document.querySelector("[name='highearnersineligible']");
+                if (fld) fld.focus();
+                return false;
+            }
+
+            if (partnershipBlock && !partnershipBlock.classList.contains("d-none")) {
+                if (partOwnersIn > partOwners) {
+                    alert("In the partnership section, ineligible >2% owners cannot exceed the total >2% owners.");
+                    const fld = document.querySelector("[name='partownersineligible']");
+                    if (fld) fld.focus();
+                    return false;
+                }
+                if (partFamilyIn > partFamily) {
+                    alert("In the partnership section, ineligible spouses/children of >2% owners cannot exceed the total spouses/children of >2% owners.");
+                    const fld = document.querySelector("[name='partfamilyineligible']");
+                    if (fld) fld.focus();
+                    return false;
+                }
+                if ((partOwners + partFamily) > totalW2) {
+                    alert("In the partnership section, the combined count of >2% owners and their spouses/children cannot exceed the total W-2 employees covered by this plan.");
+                    const fld = document.querySelector("[name='partowners']");
+                    if (fld) fld.focus();
+                    return false;
+                }
+            }
+
+            if (corpBlock && !corpBlock.classList.contains("d-none")) {
+                if (corpOfficersIn > corpOfficers) {
+                    alert("In the corporate section, ineligible officers cannot exceed the total officers.");
+                    const fld = document.querySelector("[name='corpofficersineligible']");
+                    if (fld) fld.focus();
+                    return false;
+                }
+                if (corpFamilyIn > corpFamily) {
+                    alert("In the corporate section, ineligible spouses/children of officers cannot exceed the total spouses/children of officers.");
+                    const fld = document.querySelector("[name='corpfamilyineligible']");
+                    if (fld) fld.focus();
+                    return false;
+                }
+                if ((corpOfficers + corpFamily) > totalW2) {
+                    alert("In the corporate section, the combined count of officers and their spouses/children cannot exceed the total W-2 employees covered by this plan.");
+                    const fld = document.querySelector("[name='corpofficers']");
+                    if (fld) fld.focus();
+                    return false;
+                }
+            }
+
+            let countedOwners = 0;
+            if (partnershipBlock && !partnershipBlock.classList.contains("d-none")) {
+                countedOwners += partOwners + partFamily;
+            }
+            if (corpBlock && !corpBlock.classList.contains("d-none")) {
+                countedOwners += corpOfficers + corpFamily;
+            }
+            const combinedKeyGroup = countedOwners + highEarners;
+            if (combinedKeyGroup > totalW2) {
+                alert("The combined count of >2% owners, their spouses/children, officers, their spouses/children, and high earners cannot exceed the total W-2 employees covered by this plan.");
+                totalW2Field.focus();
+                return false;
+            }
+
+            const remainingField = document.getElementById("remaining");
+            let remaining = 0;
+            if (remainingField) {
+                remaining = parseInt(remainingField.value || "0", 10);
+            }
+            const remainingIn = getIntByName("remainingineligible");
+
+            if (remainingIn > remaining) {
+                alert("The number of ineligible remaining employees cannot exceed the auto-calculated remaining employee count.");
+                const fld = document.querySelector("[name='remainingineligible']");
+                if (fld) fld.focus();
+                return false;
+            }
+        }
+
+        // Benefits offered: require at least one checkbox OR explanatory text
+        const benefitChecks = document.querySelectorAll("input[name='benefits']:checked");
+        const benefitNotesEl = document.querySelector("[name='benefitchanges']");
+        const benefitNotes = (benefitNotesEl && benefitNotesEl.value) ? benefitNotesEl.value.trim() : "";
+
+        if (benefitChecks.length === 0 && benefitNotes === "") {
+            alert("Please either check at least one benefit that will be pre-taxed through this plan, or describe the plan/benefit offering changes in the text box.");
+            const firstCheck = document.querySelector("input[name='benefits']");
+            if (firstCheck) firstCheck.focus();
+            return false;
+        }
+
+        return true;
+    }
+
+    // Wire up initial behaviors
+    const planstartInputInit = document.getElementById("planstartInput");
+    if (planstartInputInit) {
+        planstartInputInit.addEventListener("change", updatePlanEndFromStart);
+    }
+
     checkAffiliated();
+    updateOwnershipBlocks();
 </script>
 
 </body>
 </html>
+
+
+
