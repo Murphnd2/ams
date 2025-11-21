@@ -31,7 +31,6 @@
     }
 
     // Build returnUrl pointing to a servlet under this webapp's context path
-    // e.g. https://host/app/Eligibility125Complete
     String scheme  = request.getScheme();       // http or https
     String server  = request.getServerName();   // host
     int    port    = request.getServerPort();   // 80, 443, etc.
@@ -42,7 +41,6 @@
             context;
 
     String returnUrl = base + "/Eligibility125Complete";
-
 
     String businessName = "Unknown Employer";
     String dtype = "";
@@ -129,13 +127,13 @@
                 .getResultList();
 
         Map<Integer,String> benefitMap = new HashMap<>();
-        benefitMap.put(1, "Medical");
-        benefitMap.put(2, "Dental");
-        benefitMap.put(4, "Vision");
-        benefitMap.put(5, "HSA");
-        benefitMap.put(1001, "HealthFSA");
-        benefitMap.put(1005, "DepCare");
-        benefitMap.put(1007, "Other");
+        benefitMap.put(1005, "Medical");
+        benefitMap.put(1007, "HSA");
+        benefitMap.put(2, "HealthFSA");
+        benefitMap.put(1, "DepCare");
+        benefitMap.put(5, "LPFSA");
+        benefitMap.put(4,"HSA");
+        benefitMap.put(1001, "PRA");
 
         for (Number n : planTypeIds) {
             int ptid = n.intValue();
@@ -177,7 +175,7 @@
 <%
     e.printStackTrace(new java.io.PrintWriter(out));
 %>
-    </pre>
+</pre>
 <%
 } else {
 %>
@@ -220,7 +218,8 @@
       method="POST"
       class="card p-4 shadow-sm mb-5"
       onsubmit="return validateForm()">
- <!-- Hidden identifiers -->
+
+    <!-- Hidden identifiers -->
     <input type="hidden" name="guid" value="<%=assigneeId%>">
     <input type="hidden" name="originalname" value="<%=businessName%>">
     <input type="hidden" name="namechanged" id="namechanged" value="No">
@@ -366,34 +365,91 @@
         </p>
 
         <div class="mb-3">
-            <label class="form-label">Total W-2 employees at the entity(ies) actually covered by this plan:</label>
-            <input type="number" name="totalw2" id="totalw2" class="form-control" min="1" required onchange="calcRemaining()">
+            <label class="form-label">
+                Total W-2 employees at the entity(ies) actually covered by this plan:
+            </label>
+            <input type="number" name="totalw2" id="totalw2"
+                   class="form-control" min="1" required
+                   onchange="calcRemaining()">
         </div>
 
-        <!-- Partnership block -->
+        <!-- S-Corp >2% owner block -->
         <div id="partnershipBlock" class="mb-3 d-none">
-            <label class="form-label">Employees who are &gt;2% Owners</label>
-            <input type="number" name="partowners" class="form-control mb-2" min="0" value="0" onchange="calcRemaining()">
-            <label class="form-label">(of those any INELIGIBLE?)</label>
-            <input type="number" name="partownersineligible" class="form-control mb-3" min="0" value="0">
+            <label class="form-label">
+                W-2 employees who are &gt;2% S-Corp shareholders
+            </label>
+            <input type="number" name="partowners"
+                   class="form-control mb-2" min="0" value="0"
+                   onchange="calcRemaining()">
+            <label class="form-label">
+                Of those &gt;2% S-Corp shareholders, how many are NOT allowed to participate
+                in this Section 125 plan under your rules?
+                <small>(Most employers: all of them.)</small>
+            </label>
+            <input type="number" name="partownersineligible"
+                   class="form-control mb-3" min="0" value="0">
 
-            <label class="form-label">Employees who are Spouses or Children of &gt;2% Owners</label>
-            <input type="number" name="partfamily" class="form-control mb-2" min="0" value="0" onchange="calcRemaining()">
-            <label class="form-label">(of those any INELIGIBLE?)</label>
-            <input type="number" name="partfamilyineligible" class="form-control" min="0" value="0">
+            <label class="form-label">
+                W-2 employees who are the spouse, parent, or child of a &gt;2% S-Corp shareholder
+            </label>
+            <input type="number" name="partfamily"
+                   class="form-control mb-2" min="0" value="0"
+                   onchange="calcRemaining()">
+            <label class="form-label">
+                Of those family members, how many are NOT allowed to participate
+                in this Section 125 plan under your rules?
+                <small>(Most employers: all of them.)</small>
+            </label>
+            <input type="number" name="partfamilyineligible"
+                   class="form-control" min="0" value="0">
         </div>
 
-        <!-- Corporate block -->
+        <!-- C-Corp / LLC (C-Corp) >5% owner block -->
         <div id="corpBlock" class="mb-3 d-none">
-            <label class="form-label">Employees who are Officers of the Company</label>
-            <input type="number" name="corpofficers" class="form-control mb-2" min="0" value="0" onchange="calcRemaining()">
-            <label class="form-label">(of those any INELIGIBLE?)</label>
-            <input type="number" name="corpofficersineligible" class="form-control mb-3" min="0" value="0">
+            <label class="form-label">
+                W-2 employees who own more than 5% of the company
+                (C-Corp or LLC taxed as C-Corp)
+            </label>
+            <input type="number" name="corpofficers"
+                   class="form-control mb-2" min="0" value="0"
+                   onchange="calcRemaining()">
+            <label class="form-label">
+                Of those &gt;5% owners, how many are NOT allowed to participate
+                in this Section 125 plan under your rules?
+                <small>(Most employers: usually 0.)</small>
+            </label>
+            <input type="number" name="corpofficersineligible"
+                   class="form-control mb-3" min="0" value="0">
 
-            <label class="form-label">Employees who are Spouses or Children of Officers of the Company</label>
-            <input type="number" name="corpfamily" class="form-control mb-2" min="0" value="0" onchange="calcRemaining()">
-            <label class="form-label">(of those any INELIGIBLE?)</label>
-            <input type="number" name="corpfamilyineligible" class="form-control" min="0" value="0">
+            <label class="form-label">
+                W-2 employees who are the spouse, parent, or child of a &gt;5% owner
+            </label>
+            <input type="number" name="corpfamily"
+                   class="form-control mb-2" min="0" value="0"
+                   onchange="calcRemaining()">
+            <label class="form-label">
+                Of those family members, how many are NOT allowed to participate
+                in this Section 125 plan under your rules?
+            </label>
+            <input type="number" name="corpfamilyineligible"
+                   class="form-control" min="0" value="0">
+        </div>
+
+        <!-- LLC taxed as Partnership / General Partnership family of >5% partners -->
+        <div id="partnerFamilyBlock" class="mb-3 d-none">
+            <label class="form-label">
+                W-2 employees who are the spouse, parent, or child of a partner
+                who owns more than 5% of the business
+            </label>
+            <input type="number" name="partnerfamily"
+                   class="form-control mb-2" min="0" value="0"
+                   onchange="calcRemaining()">
+            <label class="form-label">
+                Of those family members, how many are NOT allowed to participate
+                in this Section 125 plan under your rules?
+            </label>
+            <input type="number" name="partnerfamilyineligible"
+                   class="form-control" min="0" value="0">
         </div>
 
         <div class="mb-3">
@@ -402,16 +458,29 @@
                 (total including bonuses) per Year<br>
                 <small>(do NOT count anyone above):</small>
             </label>
-            <input type="number" name="highearners" class="form-control mb-2" min="0" value="0" onchange="calcRemaining()">
-            <label class="form-label">(of those any INELIGIBLE?)</label>
-            <input type="number" name="highearnersineligible" class="form-control" min="0" value="0">
+            <input type="number" name="highearners"
+                   class="form-control mb-2" min="0" value="0"
+                   onchange="calcRemaining()">
+            <label class="form-label">
+                Of those high earners, how many are NOT allowed to participate
+                in this Section 125 plan under your rules?
+            </label>
+            <input type="number" name="highearnersineligible"
+                   class="form-control" min="0" value="0">
         </div>
 
         <div class="mb-3">
-            <label class="form-label">Remaining Employees not included above (auto-calculated):</label>
-            <input type="text" id="remaining" name="remaining" class="form-control mb-2" readonly style="background:#eee;">
-            <label class="form-label">(of those any INELIGIBLE?)</label>
-            <input type="number" name="remainingineligible" class="form-control" min="0" value="0">
+            <label class="form-label">
+                Remaining Employees not included above (auto-calculated):
+            </label>
+            <input type="text" id="remaining" name="remaining"
+                   class="form-control mb-2" readonly style="background:#eee;">
+            <label class="form-label">
+                Of those remaining employees, how many are NOT allowed to participate
+                in this Section 125 plan under your rules?
+            </label>
+            <input type="number" name="remainingineligible"
+                   class="form-control" min="0" value="0">
         </div>
     </div>
 
@@ -449,6 +518,16 @@
             <input class="form-check-input" type="checkbox" name="benefits" value="DepCare"
                 <%=precheckedBenefits.contains("DepCare") ? "checked" : ""%>>
             <label class="form-check-label">Dependent Care Contributions</label>
+        </div>
+        <div class="form-check mb-3">
+            <input class="form-check-input" type="checkbox" name="benefits" value="LPFSA"
+                <%=precheckedBenefits.contains("LPFSA") ? "checked" : ""%>>
+            <label class="form-check-label">Limited Purpose FSA Contributions</label>
+        </div>
+        <div class="form-check mb-3">
+            <input class="form-check-input" type="checkbox" name="benefits" value="PRA"
+                <%=precheckedBenefits.contains("PRA") ? "checked" : ""%>>
+            <label class="form-check-label">Premium Reimbursement Account</label>
         </div>
 
         <div class="mb-3">
@@ -575,13 +654,16 @@
             return isNaN(v) ? 0 : v;
         }
 
-        // Partnership counts
+        // S-Corp >2% owners & family
         const partOwners  = getInt("[name='partowners']");
         const partFamily  = getInt("[name='partfamily']");
 
-        // Corporate counts
-        const corpOfficers = getInt("[name='corpofficers']");
-        const corpFamily   = getInt("[name='corpfamily']");
+        // C-Corp / LLC (C-Corp) >5% owners & family
+        const corpOwners = getInt("[name='corpofficers']");
+        const corpFamily = getInt("[name='corpfamily']");
+
+        // LLC taxed as Partnership / Partnership family of >5% partners
+        const partnerFamily = getInt("[name='partnerfamily']");
 
         // High earners
         const highEarners  = getInt("[name='highearners']");
@@ -589,8 +671,9 @@
         let rem = total
             - partOwners
             - partFamily
-            - corpOfficers
+            - corpOwners
             - corpFamily
+            - partnerFamily
             - highEarners;
 
         if (rem < 0) rem = 0;
@@ -600,11 +683,11 @@
     function updateOwnershipBlocks() {
         const taxSelect = document.querySelector("[name='taxclass']");
         const corpBlock = document.getElementById("corpBlock");
-        const partnershipBlock = document.getElementById("partnershipBlock");
-        if (!taxSelect || !corpBlock || !partnershipBlock) return;
+        const partnershipBlock = document.getElementById("partnershipBlock"); // S-Corp >2% owners
+        const partnerFamilyBlock = document.getElementById("partnerFamilyBlock"); // LLC P/Partnership family
+        if (!taxSelect || !corpBlock || !partnershipBlock || !partnerFamilyBlock) return;
 
         const v = taxSelect.value;
-        const isCorpType = (v === "C-Corp" || v === "S-Corp" || v === "LLC taxed as C-Corp");
 
         function resetNumericInputs(block) {
             if (!block) return;
@@ -612,19 +695,30 @@
             nums.forEach(el => { el.value = "0"; });
         }
 
+        // Hide everything and reset
+        resetNumericInputs(corpBlock);
+        resetNumericInputs(partnershipBlock);
+        resetNumericInputs(partnerFamilyBlock);
+        corpBlock.classList.add("d-none");
+        partnershipBlock.classList.add("d-none");
+        partnerFamilyBlock.classList.add("d-none");
+
         if (!v) {
-            resetNumericInputs(corpBlock);
-            resetNumericInputs(partnershipBlock);
-            corpBlock.classList.add("d-none");
-            partnershipBlock.classList.add("d-none");
-        } else if (isCorpType) {
-            resetNumericInputs(partnershipBlock);
-            partnershipBlock.classList.add("d-none");
-            corpBlock.classList.remove("d-none");
-        } else {
-            resetNumericInputs(corpBlock);
-            corpBlock.classList.add("d-none");
+            calcRemaining();
+            return;
+        }
+
+        if (v === "S-Corp") {
+            // S-Corp → >2% shareholders & family
             partnershipBlock.classList.remove("d-none");
+        } else if (v === "C-Corp" || v === "LLC taxed as C-Corp") {
+            // C-Corp / LLC taxed as C-Corp → >5% owners & family
+            corpBlock.classList.remove("d-none");
+        } else if (v === "LLC taxed as Partnership" || v === "Partnership") {
+            // LLC taxed as Partnership / General Partnership → family of >5% partners
+            partnerFamilyBlock.classList.remove("d-none");
+        } else {
+            // Sole Proprietor, Non-Profit, Government → no ownership/family blocks
         }
 
         calcRemaining();
@@ -694,16 +788,20 @@
 
             const partnershipBlock = document.getElementById("partnershipBlock");
             const corpBlock = document.getElementById("corpBlock");
+            const partnerFamilyBlock = document.getElementById("partnerFamilyBlock");
 
             const partOwners = getIntByName("partowners");
             const partOwnersIn = getIntByName("partownersineligible");
             const partFamily = getIntByName("partfamily");
             const partFamilyIn = getIntByName("partfamilyineligible");
 
-            const corpOfficers = getIntByName("corpofficers");
-            const corpOfficersIn = getIntByName("corpofficersineligible");
+            const corpOwners = getIntByName("corpofficers");
+            const corpOwnersIn = getIntByName("corpofficersineligible");
             const corpFamily = getIntByName("corpfamily");
             const corpFamilyIn = getIntByName("corpfamilyineligible");
+
+            const partnerFamily = getIntByName("partnerfamily");
+            const partnerFamilyIn = getIntByName("partnerfamilyineligible");
 
             if (highEarners > totalW2) {
                 alert("Employees who make more than the HCE threshold cannot exceed the total W-2 employees covered by this plan.");
@@ -721,19 +819,19 @@
 
             if (partnershipBlock && !partnershipBlock.classList.contains("d-none")) {
                 if (partOwnersIn > partOwners) {
-                    alert("In the partnership section, ineligible >2% owners cannot exceed the total >2% owners.");
+                    alert("In the S-Corp section, ineligible >2% shareholders cannot exceed the total >2% shareholders.");
                     const fld = document.querySelector("[name='partownersineligible']");
                     if (fld) fld.focus();
                     return false;
                 }
                 if (partFamilyIn > partFamily) {
-                    alert("In the partnership section, ineligible spouses/children of >2% owners cannot exceed the total spouses/children of >2% owners.");
+                    alert("In the S-Corp section, ineligible spouses/children of >2% shareholders cannot exceed the total spouses/children of >2% shareholders.");
                     const fld = document.querySelector("[name='partfamilyineligible']");
                     if (fld) fld.focus();
                     return false;
                 }
                 if ((partOwners + partFamily) > totalW2) {
-                    alert("In the partnership section, the combined count of >2% owners and their spouses/children cannot exceed the total W-2 employees covered by this plan.");
+                    alert("In the S-Corp section, the combined count of >2% shareholders and their spouses/children cannot exceed the total W-2 employees covered by this plan.");
                     const fld = document.querySelector("[name='partowners']");
                     if (fld) fld.focus();
                     return false;
@@ -741,21 +839,36 @@
             }
 
             if (corpBlock && !corpBlock.classList.contains("d-none")) {
-                if (corpOfficersIn > corpOfficers) {
-                    alert("In the corporate section, ineligible officers cannot exceed the total officers.");
+                if (corpOwnersIn > corpOwners) {
+                    alert("In the >5% owner section, ineligible >5% owners cannot exceed the total >5% owners.");
                     const fld = document.querySelector("[name='corpofficersineligible']");
                     if (fld) fld.focus();
                     return false;
                 }
                 if (corpFamilyIn > corpFamily) {
-                    alert("In the corporate section, ineligible spouses/children of officers cannot exceed the total spouses/children of officers.");
+                    alert("In the >5% owner section, ineligible spouses/children of >5% owners cannot exceed the total spouses/children of >5% owners.");
                     const fld = document.querySelector("[name='corpfamilyineligible']");
                     if (fld) fld.focus();
                     return false;
                 }
-                if ((corpOfficers + corpFamily) > totalW2) {
-                    alert("In the corporate section, the combined count of officers and their spouses/children cannot exceed the total W-2 employees covered by this plan.");
+                if ((corpOwners + corpFamily) > totalW2) {
+                    alert("In the >5% owner section, the combined count of >5% owners and their spouses/children cannot exceed the total W-2 employees covered by this plan.");
                     const fld = document.querySelector("[name='corpofficers']");
+                    if (fld) fld.focus();
+                    return false;
+                }
+            }
+
+            if (partnerFamilyBlock && !partnerFamilyBlock.classList.contains("d-none")) {
+                if (partnerFamilyIn > partnerFamily) {
+                    alert("In the partnership section, ineligible family of >5% partners cannot exceed the total family of >5% partners.");
+                    const fld = document.querySelector("[name='partnerfamilyineligible']");
+                    if (fld) fld.focus();
+                    return false;
+                }
+                if (partnerFamily > totalW2) {
+                    alert("The number of family members of >5% partners cannot exceed the total W-2 employees covered by this plan.");
+                    const fld = document.querySelector("[name='partnerfamily']");
                     if (fld) fld.focus();
                     return false;
                 }
@@ -766,11 +879,14 @@
                 countedOwners += partOwners + partFamily;
             }
             if (corpBlock && !corpBlock.classList.contains("d-none")) {
-                countedOwners += corpOfficers + corpFamily;
+                countedOwners += corpOwners + corpFamily;
+            }
+            if (partnerFamilyBlock && !partnerFamilyBlock.classList.contains("d-none")) {
+                countedOwners += partnerFamily;
             }
             const combinedKeyGroup = countedOwners + highEarners;
             if (combinedKeyGroup > totalW2) {
-                alert("The combined count of >2% owners, their spouses/children, officers, their spouses/children, and high earners cannot exceed the total W-2 employees covered by this plan.");
+                alert("The combined count of >2% S-Corp shareholders, their family, >5% owners, their family, family of >5% partners, and high earners cannot exceed the total W-2 employees covered by this plan.");
                 totalW2Field.focus();
                 return false;
             }
@@ -817,6 +933,5 @@
 
 </body>
 </html>
-
 
 

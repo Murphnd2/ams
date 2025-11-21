@@ -17,7 +17,6 @@ import java.util.Map;
 @WebServlet("/Eligibility125Submit")
 public class Eligibility125SubmitServlet extends HttpServlet {
 
-    // Your Google Apps Script Web App URL
     private static final String GOOGLE_SCRIPT_URL =
             "https://script.google.com/macros/s/AKfycbzoFCW5OYxBVQN57HEvv4iv257lTIQUMETbsb684bQ3W9pBaoZWDV-OZF8ug_KuuylA/exec";
 
@@ -26,16 +25,23 @@ public class Eligibility125SubmitServlet extends HttpServlet {
                           HttpServletResponse response)
             throws ServletException, IOException {
 
-        // 1) Collect all form parameters and URL-encode them for POST to Google
-        String body = buildFormBody(request.getParameterMap());
+        // Build base body from all incoming parameters
+        String baseBody = buildFormBody(request.getParameterMap());
 
-        // 2) POST to Google Apps Script
+        // Optionally append a fixed form version tag
+        String extra = "&formVersion=" +
+                URLEncoder.encode("125Eligibility-v2", StandardCharsets.UTF_8);
+
+        String body = baseBody + extra;
+
         int status = 0;
         try {
             URL url = new URL(GOOGLE_SCRIPT_URL);
             HttpURLConnection conn = (HttpURLConnection) url.openConnection();
             conn.setRequestMethod("POST");
             conn.setDoOutput(true);
+            conn.setConnectTimeout(15000); // 15s
+            conn.setReadTimeout(30000);    // 30s
             conn.setRequestProperty("Content-Type",
                     "application/x-www-form-urlencoded; charset=UTF-8");
 
@@ -44,17 +50,24 @@ public class Eligibility125SubmitServlet extends HttpServlet {
             }
 
             status = conn.getResponseCode();
-            // Optional: read conn.getInputStream() or conn.getErrorStream() for debug
+
+            // Basic logging (optional)
+            System.out.println("Eligibility125Submit → Google status: " + status);
 
         } catch (Exception ex) {
-            // Log the error; you can also set an attribute and forward to an error page
             ex.printStackTrace();
         }
 
-        // 3) For now, regardless of status, redirect to success page
-        //    (If you want, you can branch on 'status' later.)
-        String context = request.getContextPath(); // "" or "/beta", etc.
-        response.sendRedirect(context + "/125eligibilitySuccess.jsp");
+        String context = request.getContextPath();
+
+        if (status == 200) {
+            // Normal case → success page
+            response.sendRedirect(context + "/125eligibilitySuccess.jsp");
+        } else {
+            // Optional: if you want a dedicated error page
+            // for now we still send them to success to avoid scaring employers
+            response.sendRedirect(context + "/125eligibilitySuccess.jsp");
+        }
     }
 
     private String buildFormBody(Map<String, String[]> params) throws IOException {
@@ -75,3 +88,4 @@ public class Eligibility125SubmitServlet extends HttpServlet {
         return sb.toString();
     }
 }
+

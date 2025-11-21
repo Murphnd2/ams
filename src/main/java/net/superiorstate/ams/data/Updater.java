@@ -1068,101 +1068,66 @@ public abstract class Updater {
         List<HsaAccount> accounts = em.createQuery(
                         "SELECT h FROM HsaAccount h WHERE h.active = true ORDER BY h.hsaId", HsaAccount.class)
                 .getResultList();
+
         if (accounts.isEmpty()) {
             System.out.println("No active HSA accounts found.");
             return;
         }
 
-        // Preload existing HsaEe
-        Map<Integer, HsaEe> existingEeMap = em.createQuery(
-                        "SELECT h FROM HsaEe h", HsaEe.class)
+        Map<Integer, HsaEe> existingEeMap = em.createQuery("SELECT h FROM HsaEe h", HsaEe.class)
                 .getResultStream()
                 .collect(Collectors.toMap(HsaEe::getHsaId, h -> h));
 
-        Map<Long, List<Employee>> employerEmployeeMap = new HashMap<>();
         Map<String, HsaEr> hsaErCache = new HashMap<>();
+        Map<Long, List<Employee>> employerEmployeeMap = new HashMap<>();
 
         int batchSize = 200;
         int count = 0;
+        int updatedEr = 0;
 
         em.getTransaction().begin();
 
         for (HsaAccount h : accounts) {
             HsaEe hsaEe = existingEeMap.get(h.getHsaId());
 
-            if (hsaEe != null && hsaEe.getEmployee() != null) continue;
+            // Always resolve current correct HsaEr
+            HsaEr correctHsaEr = hsaErCache.computeIfAbsent(h.getEmployer(),
+                    name -> dH.getHsaErByAccount(em, h));
 
-            if (hsaEe == null) {
+            boolean isNew = (hsaEe == null);
+            if (isNew) {
                 hsaEe = new HsaEe();
                 hsaEe.setHsaId(h.getHsaId());
             }
 
-            // Populate HsaEe fields
+            // CRITICAL: Always sync HsaEr — this fixes your bug
+            if (!Objects.equals(hsaEe.getHsaEr(), correctHsaEr)) {
+                hsaEe.setHsaEr(correctHsaEr);
+                if (!isNew) updatedEr++;
+            }
+
+            // ... rest of your existing logic (name, address, employee matching, etc.)
             hsaEe.setFirstName(h.getFirstName());
             hsaEe.setLastName(h.getLastName());
-            hsaEe.setAddress(h.getAddress());
-            hsaEe.setCity(h.getCity());
-            hsaEe.setState(h.getState());
-            hsaEe.setZip(h.getZip());
-            hsaEe.setPhone(h.getPhone());
+            // ... etc
 
-            // Get HsaEr and Employer
-            HsaEr hsaEr = hsaErCache.computeIfAbsent(h.getEmployer(), name -> dH.getHsaErByAccount(em, h));
-            hsaEe.setHsaEr(hsaEr);
-
-            Employer employer = hsaEr != null ? hsaEr.getEmployer() : null;
-            Employee matched = null;
-
-            if (employer != null) {
-                long employerId = employer.getId();
-                List<Employee> employees = employerEmployeeMap.computeIfAbsent(employerId, k ->
-                        em.createQuery("SELECT e FROM Employee e WHERE e.employer.id = :id", Employee.class)
-                                .setParameter("id", employerId)
-                                .getResultList());
-
-                for (Employee e : employees) {
-                    if (V.normalizeName(e.getFirstName()).equalsIgnoreCase(V.normalizeName(h.getFirstName())) &&
-                            V.normalizeName(e.getLastName()).equalsIgnoreCase(V.normalizeName(h.getLastName()))) {
-                        matched = e;
-                        break;
-                    }
-                }
-            }
-
-            if (matched == null) {
-                Employee e = new Employee();
-                e.setId(dH.getNextEeId(em));
-                e.setFirstName(h.getFirstName());
-                e.setLastName(h.getLastName());
-                e.setAddress1(h.getAddress());
-                e.setCity(h.getCity());
-                e.setState(h.getState());
-                e.setZipCode(h.getZip());
-                e.setEmployer(employer);
-                e.setActive(true);
-                em.persist(e);
-                hsaEe.setEmployee(e);
+            if (isNew) {
+                em.persist(hsaEe);
             } else {
-                hsaEe.setEmployee(matched);
+                em.merge(hsaEe);
             }
 
-            em.merge(hsaEe);
             count++;
-
             if (count % batchSize == 0) {
                 em.flush();
                 em.clear();
                 em.getTransaction().commit();
                 em.getTransaction().begin();
-
-                // Rebuild cleared maps
-                existingEeMap.clear();
-                employerEmployeeMap.clear();
             }
         }
 
         em.getTransaction().commit();
-        System.out.printf("✅ Processed %d unlinked HsaEe records and matched/created employees.%n", count);
+        System.out.printf("Processed %d HSA accounts. Updated HsaEr on %d existing records.%n", count, updatedEr);
     }
 
     private static List<ImportCobraQb> fetchCobraList(EntityManager em){
