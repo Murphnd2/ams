@@ -362,48 +362,71 @@ public class AmsDataLocal implements AutoCloseable {
         }
         return  checklist25us;
     }
-    private List<RenewalEmployer> fillRenewalEmployers(EntityManager em){
-        List<Employer> employerList = new ArrayList<>();
-        List<RenewalEmployer> renewalEmployerList = new ArrayList<>();
-        Date cutOff = Date.valueOf(LocalDate.ofInstant(Instant.now(), ZoneId.systemDefault()).plusDays(RENEWAL_DAYS_OUT));
-        Date stage2 = Date.valueOf(LocalDate.ofInstant(Instant.now(),ZoneId.systemDefault()));
-        Date stage1 = Date.valueOf(LocalDate.ofInstant(Instant.now(),ZoneId.systemDefault()).plusDays(30));
-        Query q = em.createQuery("SELECT b FROM Benefit b WHERE b.isActive = true AND b.nextRenewalDue < :date");
-        q.setParameter("date",cutOff);
-        List<Benefit> benefitList;
-        try{
-            benefitList = (List<Benefit>) q.getResultList();
-        } catch (NoResultException e){
-            benefitList = new ArrayList<>();
-        }
-        RenewalEmployer re;
-        for(Benefit b:benefitList){
-            int newStage;
-            if(b.getNextRenewalDue().before(stage2))
-                newStage = 0;
-            else if(b.getNextRenewalDue().before(stage1))
-                newStage = 1;
-            else newStage = 2;
-            if(!employerList.contains(b.getEmployer())){
-                employerList.add(b.getEmployer());
-                re = new RenewalEmployer();
-                re.setEmployer(b.getEmployer());
-                re.setLastRenewed(b.getLastRenewed());
-                re.setStage(newStage);
-                renewalEmployerList.add(re);
-                continue;
+    private List<RenewalEmployer> fillRenewalEmployers(EntityManager entityManager) {
+        LocalDate today = LocalDate.now();
+        Date todayDate = Date.valueOf(today);
+        Date cutoffDate = Date.valueOf(today.plusDays(RENEWAL_DAYS_OUT));
+        Date stage1Cutoff = Date.valueOf(today.plusDays(30));
+
+        // Query for qualifying benefits: active, not terminated, employer active, due soon, not in active renewal
+        String jpql = "SELECT b FROM Benefit b " +
+                "JOIN FETCH b.employer e " +
+                "WHERE b.isActive = true " +
+                "AND e.isActive = true " +
+                "AND b.nextRenewalDue < :cutoff " +
+                "AND (b.terminationDate IS NULL OR b.terminationDate >= :today) " +
+                "AND NOT EXISTS (SELECT ri FROM RenewalItem ri " +
+                "WHERE ri.benefit = b AND ri.renewal.isComplete = false)";
+        Query query = entityManager.createQuery(jpql);
+        query.setParameter("cutoff", cutoffDate);
+        query.setParameter("today", todayDate);
+        List<Benefit> benefits = query.getResultList();
+
+        // Group by employer and aggregate
+        Map<Employer, List<Benefit>> benefitsByEmployer = benefits.stream()
+                .collect(Collectors.groupingBy(Benefit::getEmployer));
+
+        List<RenewalEmployer> renewalEmployers = new ArrayList<>();
+        for (Map.Entry<Employer, List<Benefit>> entry : benefitsByEmployer.entrySet()) {
+            Employer employer = entry.getKey();
+            List<Benefit> empBenefits = entry.getValue();
+
+            // Earliest nextRenewalDue for stage
+            Date earliestNextDue = empBenefits.stream()
+                    .map(Benefit::getNextRenewalDue)
+                    .filter(Objects::nonNull)
+                    .min(Date::compareTo)
+                    .orElse(null);
+
+            if (earliestNextDue == null) continue; // Skip if no valid dates
+
+            int stage;
+            if (earliestNextDue.before(todayDate)) {
+                stage = 0;
+            } else if (earliestNextDue.before(stage1Cutoff)) {
+                stage = 1;
+            } else {
+                stage = 2;
             }
-            for(RenewalEmployer r:renewalEmployerList){
-                if (r.getEmployer().equals(b.getEmployer()) && r.getStage()>newStage){
-                    r.setStage(newStage);
-                    break; // Exit the loop once the correct RenewalEmployer is found
-                }
-            }
+
+            // Max lastRenewed (most recent); handle nulls by ignoring or setting to a default if needed
+            Date latestLastRenewed = empBenefits.stream()
+                    .map(Benefit::getLastRenewed)
+                    .filter(Objects::nonNull)
+                    .max(Date::compareTo)
+                    .orElse(null); // Or use effectiveDate from a Benefit if null
+
+            RenewalEmployer renewalEmployer = new RenewalEmployer();
+            renewalEmployer.setEmployer(employer);
+            renewalEmployer.setLastRenewed(latestLastRenewed);
+            renewalEmployer.setStage(stage);
+            renewalEmployers.add(renewalEmployer);
         }
 
-        Collections.sort(renewalEmployerList);
-        System.out.println("RENEWAL ITEMS COUNT: " + renewalEmployerList.size());
-        return renewalEmployerList;
+        Collections.sort(renewalEmployers);
+        System.out.println("RENEWAL ITEMS COUNT: " + renewalEmployers.size()); // Replace with logger
+
+        return renewalEmployers;
     }
     public void respondToActivityUpdate(EntityManager em, String action, Object o){
         Long activityId;
