@@ -1,5 +1,7 @@
 package net.superiorstate.ams.controller;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.EntityManagerFactory;
 import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
@@ -31,6 +33,7 @@ public class FilterActivities25 extends HttpServlet {
         AmsDataLocal local = (AmsDataLocal) request.getSession().getAttribute("local");
         String viewAll = request.getParameter("viewAllActivities");
         ActivityFilter af = local.getActivityFilter();
+
         if(viewAll!=null && viewAll.equals("ALL")){
             af.setViewWaitingOnUs(false);
             af.setViewNeedsContact(false);
@@ -85,7 +88,7 @@ public class FilterActivities25 extends HttpServlet {
         }
 
         local.setActivityFilter(af);
-        local.setFilteredActivityList(local.filterActivityListing());
+        local.setFilteredActivityList(local.filterActivityListing());   // ← this is the correct line
 
         request.getSession().setAttribute("local",local);
     }

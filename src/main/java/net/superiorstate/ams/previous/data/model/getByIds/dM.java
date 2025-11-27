@@ -43,15 +43,46 @@ public abstract class dM {
     // File: src/main/java/net/superiorstate/ams/previous/data/model/getByIds/dM.java | Lines 9-18
     public static Activity getActivityById(EntityManager em, Long id) {
         String jpql = """
-        SELECT a FROM Activity a
-        LEFT JOIN FETCH a.noteList
-        LEFT JOIN FETCH a.primaryContact
-        WHERE a.id = :id
-        """;
-        Query q = em.createQuery(jpql);
+            SELECT DISTINCT a FROM Activity a
+            LEFT JOIN FETCH a.noteList
+            LEFT JOIN FETCH a.primaryContact
+            LEFT JOIN FETCH a.assigneeContactList
+            WHERE a.id = :id
+            """;
+
+        Query q = em.createQuery(jpql, Activity.class);
         q.setParameter("id", id);
+
         try {
-            return (Activity) q.getSingleResult();
+            Activity activity = (Activity) q.getSingleResult();
+
+            // Force initialization of the few remaining lazy collections
+            // (EclipseLink understands .size() perfectly and it's the standard way)
+            if (activity instanceof CheckList cl && cl.getToDoList() != null) {
+                cl.getToDoList().size();
+            }
+            if (activity instanceof Renewal) {
+                Renewal r = (Renewal) activity;
+                if (r.getRenewalItemList() != null) r.getRenewalItemList().size();
+                if (r.getEmployer() != null && r.getEmployer().getContactList() != null) {
+                    r.getEmployer().getContactList().size();
+                }
+            }
+            if (activity instanceof Setup) {
+                Setup s = (Setup) activity;
+                if (s.getApplication() != null && s.getApplication().getApplicationModuleList() != null) {
+                    s.getApplication().getApplicationModuleList().size();
+                }
+            }
+            if (activity instanceof Ticket) {
+                Ticket t = (Ticket) activity;
+                if (t.getContact() != null) {
+                    // just touch it
+                    t.getContact().getEmail();
+                }
+            }
+
+            return activity;
         } catch (NoResultException e) {
             return null;
         }

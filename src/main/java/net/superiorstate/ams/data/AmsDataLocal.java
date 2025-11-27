@@ -284,27 +284,34 @@ public class AmsDataLocal implements AutoCloseable {
 
     public List<Activity25u> filterActivityListing(){
 
-        Set<Long> otherIds = retrieveMyDependentActivities().stream().map(other->other.getActivity().getId()).collect(Collectors.toSet());
+        Set<Long> otherIds = retrieveMyDependentActivities().stream()
+                .map(other->other.getActivity().getId())
+                .collect(Collectors.toSet());
+
         List<Activity25u> filterList = new ArrayList<>(getActivitiesAllOpen());
         filterList.forEach(au->au.setDelegated(otherIds.contains(au.getActivity().getId())));
-        System.out.println("-----------FILTERING WITH FILTER ID # " + getActivityFilter().getOwnershipFilter() + " -------------------");
 
+        System.out.println("-----------FILTERING WITH FILTER ID # " + getActivityFilter().getOwnershipFilter() + " -------------------");
         System.out.println("A: List Count = "+filterList.size());
 
-        if(getActivityFilter().getOwnershipFilter()==1 || getActivityFilter().getOwnershipFilter()==2){ // Filter the List to those assigned to the user
-            filterList = filterList.stream().filter(a->a.getActivity().getAssignedTo().getId().equals(getCurrentPerson().getId())).collect(Collectors.toList());
+        if(getActivityFilter().getOwnershipFilter()==1 || getActivityFilter().getOwnershipFilter()==2){
+            filterList = filterList.stream()
+                    .filter(a->a.getActivity().getAssignedTo().getId().equals(getCurrentPerson().getId()))
+                    .collect(Collectors.toList());
             System.out.println("B: List Count = "+filterList.size());
         }
-        if(getActivityFilter().getOwnershipFilter()==3) { // Clear all items in the list so only the participating can be added back
+        if(getActivityFilter().getOwnershipFilter()==3) {
             filterList = new ArrayList<>();
             System.out.println("C: List Count = " + filterList.size());
         }
 
-        if(getActivityFilter().getOwnershipFilter()==1 || getActivityFilter().getOwnershipFilter() ==3){ // Add the participating items back to the list
+        if(getActivityFilter().getOwnershipFilter()==1 || getActivityFilter().getOwnershipFilter() ==3){
             for(Activity25u a: retrieveMyDependentActivities())
                 if(!filterList.contains(a)) {
                     a.setDelegated(true);
-                    if((a.getdType().equals("Renewal") && getActivityFilter().isViewRenewal()) || (a.getdType().equals("Setup") && getActivityFilter().isViewSetup()) ||(a.getdType().equals("Ticket")&&getActivityFilter().isViewTicket()) )
+                    if((a.getdType().equals("Renewal") && getActivityFilter().isViewRenewal()) ||
+                            (a.getdType().equals("Setup") && getActivityFilter().isViewSetup()) ||
+                            (a.getdType().equals("Ticket")&&getActivityFilter().isViewTicket()) )
                         filterList.add(a);
                 }
             System.out.println("D: List Count = "+filterList.size());
@@ -330,7 +337,6 @@ public class AmsDataLocal implements AutoCloseable {
             System.out.println("F: List Count = "+filterList.size());
         }
 
-
         if(!getActivityFilter().isSortAlphabetically()){
             filterList.sort(new Comparator<Activity25u>() {
                 @Override
@@ -339,6 +345,7 @@ public class AmsDataLocal implements AutoCloseable {
                 }
             });
         } else Collections.sort(filterList);
+
         System.out.println("G: List Count = "+filterList.size());
         return filterList;
     }
@@ -620,12 +627,11 @@ public class AmsDataLocal implements AutoCloseable {
                     t.getToDo().setDateCompleted(Date.valueOf(LocalDate.now()));
                     t.getToDo().setCompletedBy(getCurrentPerson());
                     t.getToDo().setComplete(true);
-
-                    getCurrentActivity().getToDoList().remove(t);
-                    getCurrentActivity().getToDoList().add(t);
                 }
-                setNextView("activityDetail");
+                getCurrentActivity().reSortToDoList();                     // ← new line
+                setNextView(null);                    // ← stay on same page
             }
+
             case "TODO_REOPEN" -> {
                 toDoId = (Long) o;
                 t = retrieveToDoOutFromList(getCurrentActivity().getToDoList(), toDoId);
@@ -634,13 +640,16 @@ public class AmsDataLocal implements AutoCloseable {
                     t.getToDo().setComplete(false);
                     t.getToDo().setDateCompleted(null);
                     t.getToDo().setCompletedBy(null);
-                    index = getIndexOfInsertLocation(getCurrentActivity().getToDoList(), t);
-                    getCurrentActivity().getToDoList().remove(t);
-                    getCurrentActivity().getToDoList().add(index, t);
                 }
-                setNextView("activityDetail");
+                getCurrentActivity().reSortToDoList();                     // ← new line
+                setNextView(null);                    // ← stay on same page
             }
-            case "TODO_TOGGLE" -> {getCurrentActivity().setReFilterOnExit(true);}
+
+            case "TODO_TOGGLE" -> {
+                // this case is only used for the “toggle all” button — keep your existing logic
+                getCurrentActivity().setReFilterOnExit(true);
+                setNextView(null);
+            }
             case "TODO_ADD" -> {
                 toDoId = (Long) o;
                 t = retrieveToDoOutFromList(getCurrentActivity().getToDoList(), toDoId);
@@ -791,6 +800,7 @@ public class AmsDataLocal implements AutoCloseable {
         }
 
     }
+
     public Activity25u getActivity25u(EntityManager em, Renewal r){
         Query q = em.createQuery("SELECT a FROM Activity25 a WHERE a.activity.id = :id");
         q.setParameter("id",r.getId());
@@ -1292,7 +1302,12 @@ public class AmsDataLocal implements AutoCloseable {
             }
             return c;
         }
-
+        private void reSortToDoList() {
+            getToDoList().sort(Comparator
+                    .comparing(ToDoOut25::isComplete)           // false (open) first
+                    .thenComparing(t -> t.getToDo().getSortOrder())
+                    .thenComparing(t -> t.getToDo().getId()));
+        }
         public void clearCurrentActivityContent(){
 
         }
