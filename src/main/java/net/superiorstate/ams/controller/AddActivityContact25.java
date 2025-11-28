@@ -14,6 +14,7 @@ import net.superiorstate.ams.previous.data.model.getByIds.dM;
 import net.superiorstate.ams.previous.model.activity.Activity;
 import net.superiorstate.ams.previous.model.general.Person;
 import net.superiorstate.ams.previous.model.summit.archive.Employee;
+import net.superiorstate.ams.service.PersonResolutionService;
 
 import java.io.IOException;
 
@@ -74,18 +75,29 @@ public class AddActivityContact25 extends HttpServlet {
     private Person determineContactPerson(HttpServletRequest request, EntityManager em, String buttonClicked) {
         try {
             if ("2".equals(buttonClicked)) {
-                int eeId = Integer.parseInt(request.getParameter("addEmployeeList"));
+                // ───── Employee selected from dropdown ─────
+                String param = request.getParameter("addEmployeeList");
+                if (param == null || param.isBlank()) return null;
+
+                int eeId = Integer.parseInt(param);
                 Employee ee = dM.getEmployeeById(em, eeId);
-                return dActivity.getEmployeePerson(em, ee);
-            } else if ("1".equals(buttonClicked)) {
-                String email = request.getParameter("contactEmail");
-                if (dbEmail.isValidEmail(email)) {
-                    Person p = eV.getBestPersonFromString(em, email);
-                    return (p != null) ? p : eV.createPersonFromEmail(em, email);
-                }
+                if (ee == null) return null;
+
+                // NEW: use our clean, tested, thread-safe method
+                return PersonResolutionService.getInstance()
+                        .getOrCreatePersonForEmployee(em, ee);
+            }
+
+            if ("1".equals(buttonClicked)) {
+                // ───── Free-text / email path (already perfect) ─────
+                String input = request.getParameter("contactEmail");
+                if (input == null || input.trim().isBlank()) return null;
+
+                return PersonResolutionService.getInstance()
+                        .resolveOrCreatePerson(em, input.trim());
             }
         } catch (Exception e) {
-            // Log if needed
+            e.printStackTrace(); // TODO: replace with proper logger later
         }
         return null;
     }

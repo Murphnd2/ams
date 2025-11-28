@@ -13,11 +13,14 @@
           </div>
           <c:set var="sName" value="${sessionScope.local.getCurrentActivity().getToDoList().get(0).getTask().getServletName()}"></c:set>
           <c:set var="testName" value="SendAutoE"></c:set>
-          <c:if test="${sName.substring(0,9) == testName}">
-            <c:set var="newLink" value="PreviewServlet"></c:set>
-            <c:set var="newPath" value="${newLink}${sName.substring(13)}"></c:set>
-            <a class="btn btn-outline-warning text-primary border-primary pe-none" href="${newPath}">
-              <i class="bi bi-eyeglasses"></i>
+          <c:if test="${sessionScope.local.getCurrentActivity().getToDoList().get(0).getTask().hasAutomation()
+                        && sessionScope.local.getCurrentActivity().getToDoList().get(0).getTask().getAutomation() != null}">
+            <c:set var="autoId" value="${sessionScope.local.getCurrentActivity().getToDoList().get(0).getTask().getAutomation().id}" />
+            <a href="PreviewAutomation?aeId=${autoId}"
+               class="btn btn-outline-info border-info"
+               title="Preview Email"
+               target="_blank">
+              <i class="bi bi-eye"></i>
             </a>
           </c:if>
           <c:choose>

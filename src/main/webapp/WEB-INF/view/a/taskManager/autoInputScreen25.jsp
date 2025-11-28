@@ -1,4 +1,6 @@
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
+<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
+<%@ taglib prefix="fn" uri="http://java.sun.com/jsp/jstl/functions" %>
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
 <!DOCTYPE html>
 <html>
@@ -14,12 +16,20 @@
     <div class="col-lg-6 col-md-9 border border-secondary rounded-3">
       <h4 class="mt-3 mb-2">${sessionScope.a1autoName}</h4>
       <form method="post" action="SendAutoFinal25">
+        <input type="hidden" name="csrf" value="${sessionScope.csrfToken}" />
+        <input type="hidden" name="sendAutoEmail" value="1" />
         <c:forEach var="input" items="${sessionScope.a1inputLabels}" varStatus="loop">
           <div class="row mb-3">
             <div class="col">
               <div class="input-group">
-                <span class="input-group-text"><c:out value="${input}" /></span>
-                <input type="text" class="form-control" name="aInput-${loop.index}" id="aInput-${loop.index}" required >
+                <span class="input-group-text">
+                    ${fn:escapeXml(input.replaceAll('<[^>]*>', ''))}
+                </span>
+                <input type="text"
+                       class="form-control"
+                       name="aInput-${loop.index}"
+                       id="aInput-${loop.index}"
+                       required>
               </div>
             </div>
           </div>

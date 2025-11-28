@@ -139,7 +139,12 @@
             <version>24.1.0</version>
             <scope>compile</scope>
         </dependency>
-
+        <!-- JSoup – HTML cleaner for safe email output -->
+        <dependency>
+            <groupId>org.jsoup</groupId>
+            <artifactId>jsoup</artifactId>
+            <version>1.17.2</version>
+        </dependency>
         <!-- Tests -->
         <dependency>
             <groupId>org.junit.jupiter</groupId>

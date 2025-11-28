@@ -13,8 +13,9 @@ import net.superiorstate.ams.previous.model.activity.Activity;
 import net.superiorstate.ams.previous.model.activity.note.Email;
 import net.superiorstate.ams.previous.model.general.Automation;
 import net.superiorstate.ams.previous.model.summit.archive.Employer;
-
+import net.superiorstate.ams.util.AutoSafe;
 import jakarta.mail.MessagingException;
+
 import java.io.IOException;
 import java.sql.Date;
 import java.time.LocalDate;
@@ -42,6 +43,13 @@ public class SendAutoFinal25 extends HttpServlet {
     }
 
     private void sendAutoEmail(HttpServletRequest request, HttpServletResponse response) throws MessagingException, ServletException, IOException {
+        // CSRF PROTECTION — MUST BE FIRST
+        String token = (String) request.getSession().getAttribute("csrfToken");
+        if (token == null || !token.equals(request.getParameter("csrf"))) {
+            response.sendError(403, "CSRF protection failed");
+            return;
+        }
+        // =============================================
         AmsDataLocal local = (AmsDataLocal) request.getSession().getAttribute("local");
         Activity a = local.getCurrentActivity().getActivity();
         System.out.println("GOT HERE");
@@ -56,8 +64,21 @@ public class SendAutoFinal25 extends HttpServlet {
         String remainingText = request.getSession().getAttribute("a1content").toString();
 
         //Process Any Inputs Present in the Content
-        if (inputCount > 0)
-            remainingText = auto.processInputs(request, remainingText);
+        // ──────────────────────────────────────────────────────
+        // Safe input processing – only allow expected indices
+        // ──────────────────────────────────────────────────────
+        if (inputCount > 0) {
+            for (int i = 0; i < inputCount; i++) {
+                String rawValue = request.getParameter("aInput-" + i);
+                String safeValue = AutoSafe.getInput(rawValue, inputCount - 1, i);
+
+                remainingText = remainingText.replace("<[{" + i + "}]>", safeValue);
+            }
+        }
+        // Remove any leftover placeholders (user left blank)
+        for (int i = 0; i < inputCount; i++) {
+            remainingText = remainingText.replace("<[{" + i + "}]>", "");
+        }
 
         //Process any #erName Hashtags
         if (remainingText.contains("<<#erName>>")) {

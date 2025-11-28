@@ -82,10 +82,15 @@ public class SendAuto25 extends HttpServlet {
         request.getSession().setAttribute("a1inputTypes",inputType);
         request.getSession().setAttribute("a1content",processedText.toString());
         request.getSession().setAttribute("a1inputCount",count);
-
+        // === FORCE CSRF TOKEN CREATION (so the JSP always has it) ===
+        HttpSession session = request.getSession();
+        if (session.getAttribute("csrfToken") == null) {
+            session.setAttribute("csrfToken", java.util.UUID.randomUUID().toString());
+        }
         RequestDispatcher d = getServletContext().getNamedDispatcher("SendAutoFinal25");
         if(count>0)
             d = request.getRequestDispatcher("/WEB-INF/view/a/taskManager/autoInputScreen25.jsp");
+
         d.forward(request,response);
     }
 
