@@ -44,7 +44,7 @@ import java.util.stream.IntStream;
 public class AmsDataLocal implements AutoCloseable {
     private final EntityManager em;
     private boolean userIsIn;
-    private final int RENEWAL_DAYS_OUT = 120;
+    private final int RENEWAL_DAYS_OUT = 45;
     private List<TimeStretch> myTimeHistory;
     private User currentUser;
     private Person currentPerson;

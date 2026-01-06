@@ -1,0 +1,298 @@
+package net.superiorstate.ams.data;
+
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.EntityManagerFactory;
+import jakarta.persistence.Query;
+import net.superiorstate.ams.model.ActivityLandingFilter;
+import net.superiorstate.ams.model.ActivityLandingRow;
+
+import java.sql.Date;
+import java.sql.Timestamp;
+import java.util.ArrayList;
+import java.util.List;
+
+public class ActivityLandingDao {
+
+    private final EntityManagerFactory emf;
+
+    public ActivityLandingDao(EntityManagerFactory emf) {
+        this.emf = emf;
+    }
+
+    public List<ActivityLandingRow> fetchLandingRows(
+            long mePersonId,
+            int daysSinceWarn,
+            ActivityLandingFilter f
+    ) {
+        EntityManager em = emf.createEntityManager();
+        try {
+            String sql = buildSql();
+
+            Query q = em.createNativeQuery(sql);
+
+            // params CTE (1..9)
+            q.setParameter(1, mePersonId);
+            q.setParameter(2, daysSinceWarn);
+
+            q.setParameter(3, f.myOpenOnly ? 1 : 0);
+            q.setParameter(4, f.includeRenewal ? 1 : 0);
+            q.setParameter(5, f.includeSetup ? 1 : 0);
+            q.setParameter(6, f.includeTicket ? 1 : 0);
+
+            q.setParameter(7, f.viewNeedsContact ? 1 : 0);
+            q.setParameter(8, f.viewWaitingOnUs ? 1 : 0);
+
+            q.setParameter(9, f.sortAlphabetically ? 1 : 0);
+
+            // LIMIT/OFFSET (10..11)
+            q.setParameter(10, f.pageSize);
+            q.setParameter(11, f.offset);
+
+            @SuppressWarnings("unchecked")
+            List<Object[]> rows = q.getResultList();
+
+            List<ActivityLandingRow> out = new ArrayList<>(rows.size());
+            for (Object[] r : rows) {
+                long activityId = ((Number) r[0]).longValue();
+                String dtype = (String) r[1];
+                String fullName = (String) r[2];
+
+                Long assignedToId =
+                        (r[3] == null) ? null : ((Number) r[3]).longValue();
+
+                Date dueDate = toSqlDate(r[4]);
+
+                boolean waitingOnUs =
+                        (r[5] != null) && ((Number) r[5]).intValue() == 1;
+
+                int daysSinceContact =
+                        (r[6] == null) ? 9999 : ((Number) r[6]).intValue();
+
+                boolean delegatedToMe =
+                        (r[7] != null) && ((Number) r[7]).intValue() == 1;
+
+                int dueBucket =
+                        (r[8] == null) ? 0 : ((Number) r[8]).intValue();
+
+                String ticketEmployerNameLc = (String) r[9];
+
+                out.add(new ActivityLandingRow(
+                        activityId,
+                        dtype,
+                        fullName,
+                        assignedToId,
+                        dueDate,
+                        waitingOnUs,
+                        daysSinceContact,
+                        delegatedToMe,
+                        dueBucket,
+                        ticketEmployerNameLc
+                ));
+            }
+
+            return out;
+        } finally {
+            if (em.isOpen()) {
+                em.close();
+            }
+        }
+    }
+
+    private Date toSqlDate(Object v) {
+        if (v == null) return null;
+        if (v instanceof Date d) return d;
+        if (v instanceof Timestamp ts) return new Date(ts.getTime());
+        if (v instanceof java.util.Date ud) return new Date(ud.getTime());
+        throw new IllegalArgumentException("Unsupported date type: " + v.getClass());
+    }
+
+    private String buildSql() {
+        return """
+WITH
+params AS (
+  SELECT
+    ? AS me,
+    ? AS daysSinceWarn,
+    ? AS myOpenOnly,
+    ? AS incRenewal,
+    ? AS incSetup,
+    ? AS incTicket,
+    ? AS viewNeedsContact,
+    ? AS viewWaitingOnUs,
+    ? AS sortAlpha
+),
+
+open_act AS (
+  SELECT
+    a.id,
+    a.DTYPE,
+    a.full_name,
+    a.assigned_to_id,
+    a.due_date,
+    a.checklist_id,
+    a.primary_contact
+  FROM assignee a
+  WHERE a.is_complete = 0
+    AND a.DTYPE IN ('Renewal', 'Setup', 'Ticket')
+),
+
+last_outbound AS (
+  SELECT
+    n.activity_id,
+    MAX(COALESCE(n.date_generated, DATE(n.date_created))) AS last_contact_date
+  FROM note n
+  JOIN reasoncreated rc
+    ON rc.use_id = n.reason_id
+   AND rc.outbound = 1
+  GROUP BY n.activity_id
+),
+
+last_status_note AS (
+  SELECT
+    n.activity_id,
+    MAX(n.note_id) AS max_note_id
+  FROM note n
+  WHERE n.status_id IN (1, 3)
+  GROUP BY n.activity_id
+),
+
+last_status AS (
+  SELECT
+    n.activity_id,
+    n.status_id
+  FROM note n
+  JOIN last_status_note lsn
+    ON lsn.max_note_id = n.note_id
+),
+
+ticket_extra AS (
+  SELECT
+    t.id AS ticket_id,
+    LOWER(er.employer_name) AS ticket_employer_name_lc
+  FROM open_act t
+  JOIN assignee p
+    ON p.id = t.primary_contact
+   AND p.DTYPE = 'Person'
+  JOIN employee e
+    ON e.employee_id = p.employee_id
+  JOIN employer er
+    ON er.organization_id = e.employer_id
+  WHERE t.DTYPE = 'Ticket'
+),
+
+base AS (
+  SELECT
+    oa.id AS activity_id,
+    oa.DTYPE AS dtype,
+    oa.full_name AS full_name,
+    oa.assigned_to_id AS assigned_to_id,
+    oa.due_date AS due_date,
+
+    CASE
+      WHEN ls.status_id = 1 THEN 0
+      WHEN ls.status_id = 3 THEN 1
+      ELSE 1
+    END AS waiting_on_us,
+
+    CASE
+      WHEN lo.last_contact_date IS NULL THEN 9999
+      ELSE DATEDIFF(CURDATE(), lo.last_contact_date)
+    END AS days_since_contact,
+
+    CASE
+      WHEN oa.assigned_to_id = p.me THEN 0
+      WHEN EXISTS (
+        SELECT 1
+        FROM todo td
+        JOIN task tsk
+          ON tsk.task_id = td.task_id
+        WHERE td.checklist_id = oa.checklist_id
+          AND td.is_complete = 0
+          AND tsk.has_owner = 1
+          AND (tsk.owner_id = p.me OR tsk.source_owner = p.me)
+        LIMIT 1
+      ) THEN 1
+      ELSE 0
+    END AS delegated_to_me,
+
+    CASE
+      WHEN oa.due_date IS NULL THEN 0
+      WHEN DATE_SUB(oa.due_date, INTERVAL DAYOFMONTH(oa.due_date)-1 DAY)
+           > DATE_ADD(DATE_SUB(CURDATE(), INTERVAL DAYOFMONTH(CURDATE())-1 DAY),
+                      INTERVAL 1 MONTH)
+        THEN 0
+      WHEN DATE_SUB(oa.due_date, INTERVAL DAYOFMONTH(oa.due_date)-1 DAY)
+           > DATE_SUB(CURDATE(), INTERVAL DAYOFMONTH(CURDATE())-1 DAY)
+        THEN 1
+      WHEN DATE_SUB(oa.due_date, INTERVAL DAYOFMONTH(oa.due_date)-1 DAY)
+           > DATE_SUB(DATE_SUB(CURDATE(), INTERVAL DAYOFMONTH(CURDATE())-1 DAY),
+                      INTERVAL 1 MONTH)
+        THEN 2
+      ELSE 3
+    END AS due_bucket,
+
+    te.ticket_employer_name_lc AS ticket_employer_name_lc,
+
+    CASE
+      WHEN lo.last_contact_date IS NULL THEN 1
+      WHEN DATEDIFF(CURDATE(), lo.last_contact_date) > p.daysSinceWarn THEN 1
+      ELSE 0
+    END AS needs_contact
+
+  FROM open_act oa
+  CROSS JOIN params p
+  LEFT JOIN last_outbound lo
+    ON lo.activity_id = oa.id
+  LEFT JOIN last_status ls
+    ON ls.activity_id = oa.id
+  LEFT JOIN ticket_extra te
+    ON te.ticket_id = oa.id
+)
+
+SELECT
+  b.activity_id,
+  b.dtype,
+  b.full_name,
+  b.assigned_to_id,
+  b.due_date,
+  b.waiting_on_us,
+  b.days_since_contact,
+  b.delegated_to_me,
+  b.due_bucket,
+  b.ticket_employer_name_lc
+FROM base b
+CROSS JOIN params p
+WHERE 1 = 1
+
+  AND (p.myOpenOnly = 0 OR b.assigned_to_id = p.me)
+
+  AND (
+    (p.incRenewal = 1 AND b.dtype = 'Renewal')
+    OR (p.incSetup = 1 AND b.dtype = 'Setup')
+    OR (p.incTicket = 1 AND b.dtype = 'Ticket')
+  )
+
+  AND (
+    (p.viewNeedsContact = 0 AND p.viewWaitingOnUs = 0)
+    OR (p.viewNeedsContact = 1 AND p.viewWaitingOnUs = 1
+        AND (b.needs_contact = 1 OR b.waiting_on_us = 1))
+    OR (p.viewNeedsContact = 1 AND p.viewWaitingOnUs = 0
+        AND b.needs_contact = 1)
+    OR (p.viewNeedsContact = 0 AND p.viewWaitingOnUs = 1
+        AND b.waiting_on_us = 1)
+  )
+
+ORDER BY
+  /* sortAlpha=1 => name sort; sortAlpha=0 => due date sort */
+  CASE WHEN p.sortAlpha = 1 THEN b.full_name END ASC,
+  CASE WHEN p.sortAlpha = 0 THEN (b.due_date IS NULL) END ASC,
+  CASE WHEN p.sortAlpha = 0 THEN b.due_date END ASC,
+
+  /* stable tie-breakers (always) */
+  b.full_name ASC,
+  b.activity_id DESC
+
+LIMIT ? OFFSET ?
+""";
+    }
+}
