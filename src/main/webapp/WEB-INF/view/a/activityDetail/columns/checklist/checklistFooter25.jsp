@@ -3,10 +3,9 @@
 <c:if test="${sessionScope.local.getCurrentActivity().getToDoList().size()>0 && sessionScope.local.getCurrentActivity().getToDoList().get(0).isComplete()==false}">
     <c:set var="allDone" value="disabled"></c:set>
 </c:if>
-<%--
 <c:if test="${sessionScope.isPspAdmin==true}">
     <c:set var="allDone" value=""></c:set>
-</c:if>--%>
+</c:if>
 <form method="post" action="CloseActivity25">
     <div class="row mt-2">
         <div class="col-6">
