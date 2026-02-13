@@ -21,6 +21,23 @@ public class InitializeDataBase extends HttpServlet {
 
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        // Security check: require deployment key
+        String deploymentKey = request.getParameter("deploymentKey");
+        String expectedKey = System.getenv("DB_INIT_KEY");
+
+        if (expectedKey == null || expectedKey.isEmpty()) {
+            response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+                    "Server configuration error: DB_INIT_KEY environment variable not set");
+            return;
+        }
+
+        if (deploymentKey == null || !deploymentKey.equals(expectedKey)) {
+            response.sendError(HttpServletResponse.SC_FORBIDDEN,
+                    "Invalid deployment key");
+            return;
+        }
+
+        // Original initialization code
         System.out.println("GOT HERE");
         EntityManagerFactory emf = (EntityManagerFactory)getServletContext().getAttribute("emf");
         EntityManager em = emf.createEntityManager();

@@ -37,6 +37,10 @@
       <div class="row">
         <div class="col">
           <form method="post" action="InitializeDataBase">
+            <div class="input-group input-group-sm">
+              <label for="deploymentKey" class="input-group-text">Deployment Key</label>
+              <input type="password" class="form-control" name="deploymentKey" id="deploymentKey" required>
+            </div>
             <div class="row">
               <div class="col-12">
                 <div class="input-group input-group-sm">
