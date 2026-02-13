@@ -43,15 +43,17 @@ public class AuthenticateUser extends HttpServlet {
             if (validatedLogin(request)){
                 goToPage(request,response);
             } else {
-                displayLoginFailure(request);
+                displayLoginFailure(request,response);
             }
         } catch (NoSuchAlgorithmException | ServletException | IOException e) {
             throw new RuntimeException(e);
         }
     }
 
-    private void displayLoginFailure(HttpServletRequest request){
-        //FIXME: show user the problem, maybe go to the login help page?
+    private void displayLoginFailure(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        request.setAttribute("errorMessage", "Invalid username or password");
+        RequestDispatcher dispatcher = request.getRequestDispatcher("/index.jsp");
+        dispatcher.forward(request, response);
     }
 
     private void goToPage(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
@@ -85,67 +87,6 @@ public class AuthenticateUser extends HttpServlet {
 
         request.getSession().setAttribute("local",local);
     }
-
-
-
-    private void loadSessionData(HttpServletRequest se, EntityManager em, User u){
-        Person currentPerson = dbAuth.getPersonByUser(em,u);
-        se.getSession().setAttribute("isAuthenticated",true);
-        se.getSession().setAttribute("currentUser",u);
-        se.getSession().setAttribute("currentPerson",currentPerson);
-        se.getSession().setAttribute("psp",currentPerson.getPsp());
-        List<Person> userList = dbRec.getPspUserList(em,currentPerson.getPsp());
-        List<LOS> losList = dPSP.getLOS(currentPerson.getPsp());
-        List<Rate> rateList = dG.getRateList(em,Integer.parseInt(currentPerson.getPsp().getId().toString()));
-        se.getSession().setAttribute("losList",losList);
-        se.getSession().setAttribute("rateList",rateList);
-        se.getSession().setAttribute("pspUserList",userList);
-        PSP psp = dM.getPspById(em,4);
-        se.getSession().setAttribute("psp",psp);
-        dbAuth.assignUserRoles(se,u);
-        List<TemplateGroup> templateGroupList = ddC.getTemplateGroups(em);
-        List<TemplatePurpose> templatePurposeList = ddC.getTemplatePurposes(em);
-        List<TaskFrequency> taskFrequencyList = dbCheck.getTaskFrequencies(em);
-        String savePath = "C:\\Users\\kevinmurphy.SUPERIORSTATE\\IdeaProjects\\km_web_100\\src\\main\\webapp\\WEB-INF\\view\\weblink\\linkfiles\\";
-        se.getSession().setAttribute("savePath",savePath);
-        se.getSession().setAttribute("templateGroupList",templateGroupList);
-        se.getSession().setAttribute("templatePurposeList",templatePurposeList);
-        se.getSession().setAttribute("taskFrequencyList", taskFrequencyList);
-        se.getSession().setAttribute("ticketSubCategories", dbTicket.getTicketSubCategoryList(em));
-        se.getSession().setAttribute("ticketCategories",dbTicket.getTicketCategories(em));
-        se.getSession().setAttribute("ticketReasonList", dbTicket.getTicketSubCats(em));
-        se.getSession().setAttribute("contactMethods",dbTicket.getContactMethods(em));
-        se.getSession().setAttribute("statusList", dbTicket.getActivityStatuses(em));
-        se.getSession().setAttribute("reasonList",dbTicket.getReasons(em));
-        se.getSession().setAttribute("setupModules", ddC.getSetupModuleList(em));
-        se.getSession().setAttribute("insertLinkList",dbTicket.getInsertLinkList(em));
-        se.getSession().setAttribute("onlyPast","N");
-        se.getSession().setAttribute("fS","");
-        se.getSession().setAttribute("fR","");
-        se.getSession().setAttribute("fT","");
-        se.getSession().setAttribute("fU","checked");
-        se.getSession().setAttribute("renewalListView",1);
-        se.getSession().setAttribute("hasCurrentRate", false);
-        se.getSession().setAttribute("hasCurrentLos",false);
-        se.getSession().setAttribute("hasCurrentModule",false);
-        se.getSession().setAttribute("hasCurrentPriceItem",false);
-        se.getSession().setAttribute("hasCurrentServiceItem",false);
-        se.getSession().setAttribute("hasCurrentAgency",false);
-        se.getSession().setAttribute("sortHow","DATE");
-        se.getSession().setAttribute("vA","MINE");
-        se.getSession().setAttribute("vR", "ON");
-        se.getSession().setAttribute("vS","ON");
-        se.getSession().setAttribute("vT","ON");
-        se.getSession().setAttribute("onUs",0);
-        se.getSession().setAttribute("followUp",0);
-        se.getSession().setAttribute("rFlag","");
-        se.getSession().setAttribute("vRn","1");
-        se.getSession().setAttribute("vSt","3");
-        se.getSession().setAttribute("vTk","5");
-        se.getSession().setAttribute("qNwf","1");
-        se.getSession().setAttribute("bpoUserList",getBpoUsers(em));
-    }
-
 
     private static List<Person> getBpoUsers(EntityManager em){
         return getUsersByRole(em,101);
