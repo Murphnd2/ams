@@ -1,10 +1,11 @@
 package net.superiorstate.ams.previous.filter;
 
 import jakarta.servlet.*;
+import jakarta.servlet.annotation.WebFilter;
 import jakarta.servlet.http.*;
 import java.io.IOException;
 import java.util.UUID;
-
+@WebFilter("/*")
 public class CsrfFilter implements Filter {
     @Override
     public void doFilter(ServletRequest req, ServletResponse resp, FilterChain chain)
