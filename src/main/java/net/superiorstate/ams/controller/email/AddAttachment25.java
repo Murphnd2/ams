@@ -1,4 +1,4 @@
-package net.superiorstate.ams.controller.emailItems;
+package net.superiorstate.ams.controller.email;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;

@@ -1,4 +1,4 @@
-package net.superiorstate.ams.controller;
+package net.superiorstate.ams.controller.checklist;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;

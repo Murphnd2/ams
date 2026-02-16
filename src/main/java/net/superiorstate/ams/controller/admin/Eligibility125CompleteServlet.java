@@ -1,4 +1,4 @@
-package net.superiorstate.ams.controller;
+package net.superiorstate.ams.controller.admin;
 
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
