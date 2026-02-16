@@ -1,4 +1,4 @@
-package net.superiorstate.ams.previous.controller.authentication;
+package net.superiorstate.ams.controller.authentication;
 
 import jakarta.servlet.*;
 import jakarta.servlet.http.*;

@@ -4,7 +4,7 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.NoResultException;
 import jakarta.persistence.Query;
 import jakarta.servlet.http.HttpServletRequest;
-import net.superiorstate.ams.previous.controller.authentication.HelpUserLogin;
+import net.superiorstate.ams.controller.authentication.HelpUserLogin;
 import net.superiorstate.ams.previous.model.general.*;
 import net.superiorstate.ams.previous.model.summit.archive.Employee;
 
