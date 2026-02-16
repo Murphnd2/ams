@@ -1,4 +1,4 @@
-package net.superiorstate.ams.data;
+package net.superiorstate.ams.controller.data;
 
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
