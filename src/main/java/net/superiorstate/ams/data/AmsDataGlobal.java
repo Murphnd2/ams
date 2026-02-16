@@ -7,7 +7,7 @@ import net.superiorstate.ams.model.Activity25;
 import net.superiorstate.ams.model.Activity25p;
 import net.superiorstate.ams.model.Activity25u;
 import net.superiorstate.ams.model.Constant;
-import net.superiorstate.ams.previous.controller.authentication.AuthenticateUser;
+import net.superiorstate.ams.controller.authentication.AuthenticateUser;
 import net.superiorstate.ams.previous.data.checklist.dbCheck;
 import net.superiorstate.ams.previous.data.checklist.dbRec;
 import net.superiorstate.ams.previous.data.misc.dbTicket;

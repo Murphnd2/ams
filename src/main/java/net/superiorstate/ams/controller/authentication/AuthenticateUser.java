@@ -1,4 +1,4 @@
-package net.superiorstate.ams.previous.controller.authentication;
+package net.superiorstate.ams.controller.authentication;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
