@@ -1,4 +1,4 @@
-package net.superiorstate.ams.util;
+package net.superiorstate.ams.data.util;
 
 import jakarta.servlet.ServletContext;
 import java.nio.file.Files;

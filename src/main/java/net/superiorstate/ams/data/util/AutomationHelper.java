@@ -1,9 +1,10 @@
-package net.superiorstate.ams.data;
+package net.superiorstate.ams.data.util;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.NoResultException;
 import jakarta.persistence.Query;
 import jakarta.servlet.http.HttpServletRequest;
+import net.superiorstate.ams.data.AmsDataLocal;
 import net.superiorstate.ams.data.util.Validator;
 import net.superiorstate.ams.data.dao.EmailDAO;
 import net.superiorstate.ams.previous.model.activity.Activity;
@@ -16,7 +17,7 @@ import net.superiorstate.ams.previous.model.summit.archive.Employer;
 import java.util.ArrayList;
 import java.util.List;
 
-public abstract class auto {
+public abstract class AutomationHelper {
 
 
     public static List<Person> getRecipientList(EntityManager em, AmsDataLocal local, String ccList){

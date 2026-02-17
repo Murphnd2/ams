@@ -3,7 +3,7 @@ package net.superiorstate.ams.data.service;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.NoResultException;
 import jakarta.persistence.Query;
-import net.superiorstate.ams.data.Helper;
+import net.superiorstate.ams.data.util.BillingHelper;
 import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.previous.model.summit.archive.Benefit;
 import net.superiorstate.ams.previous.model.summit.archive.BenefitTier;
@@ -404,7 +404,7 @@ public abstract class SummitSync {
     public static void closeInactiveBenefits(EntityManager em){
         Query q = em.createQuery("SELECT b FROM Benefit b INNER JOIN sBenefit sb ON sb.benefitId=b.id " +
                 "WHERE b.isActive=true AND (sb.planStatus='Inactive' OR b.terminationDate < :dt)");
-        q.setParameter("dt", Helper.getMonthFor());
+        q.setParameter("dt", BillingHelper.getMonthFor());
         List<Benefit> benefitList;
         try{
             benefitList = (List<Benefit>) q.getResultList();

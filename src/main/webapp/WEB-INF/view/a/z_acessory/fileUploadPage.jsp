@@ -3,7 +3,7 @@
 <%@ page import="jakarta.servlet.jsp.JspWriter" %>
 <%@ page import="java.util.List" %>
 <%@ page import="com.google.gson.Gson" %>
-<%@ page import="net.superiorstate.ams.data.Importer.TableMapping" %>
+<%@ page import="net.superiorstate.ams.data.service.Importer.TableMapping" %>
 <%@ page import="java.util.stream.Collectors" %>
 <%@ page import="java.util.Map" %>
 <!DOCTYPE html>

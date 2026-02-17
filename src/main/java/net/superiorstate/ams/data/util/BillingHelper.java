@@ -1,4 +1,4 @@
-package net.superiorstate.ams.data;
+package net.superiorstate.ams.data.util;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.NoResultException;
@@ -24,7 +24,7 @@ import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
 
-public abstract class Helper {
+public abstract class BillingHelper {
     public static final String CSV_DIR = "C:/ams/uploads";
     public static final String PROCESSED_DIR = "C:/ams/uploads/processed";
     public static final String SKIPPED_DIR = "C:/ams/uploads/failures";

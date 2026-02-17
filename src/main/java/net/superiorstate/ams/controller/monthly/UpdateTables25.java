@@ -8,6 +8,8 @@ import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import net.superiorstate.ams.data.*;
+import net.superiorstate.ams.data.service.Updater;
+import net.superiorstate.ams.data.util.BillingHelper;
 
 import java.io.IOException;
 
@@ -40,8 +42,8 @@ public class UpdateTables25 extends HttpServlet {
             Updater.updateEeCobraStatus(em);
             Updater.ensurePrimaryContactEmployee(em);
             Updater.mergeNegativeToPositiveEmployees(em);
-            Updater.processNewBenefitI4Fast(em, Helper.SKIPPED_DIR);
-            Updater.processNewBenefitI7Fast(em, Helper.SKIPPED_DIR);
+            Updater.processNewBenefitI4Fast(em, BillingHelper.SKIPPED_DIR);
+            Updater.processNewBenefitI7Fast(em, BillingHelper.SKIPPED_DIR);
             Updater.syncBenefit(em);
             Updater.processBenefitTiersFromI7Import(em);
             Updater.processHsaErFromAccounts(em);

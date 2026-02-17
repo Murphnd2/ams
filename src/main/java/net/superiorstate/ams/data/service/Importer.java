@@ -1,4 +1,4 @@
-package net.superiorstate.ams.data;
+package net.superiorstate.ams.data.service;
 
 
 import com.opencsv.CSVParserBuilder;
@@ -9,6 +9,7 @@ import com.opencsv.exceptions.CsvValidationException;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.NoResultException;
 import jakarta.persistence.Query;
+import net.superiorstate.ams.data.util.BillingHelper;
 import net.superiorstate.ams.previous.model.activity.checklist.sequences.support.TemplateGroup;
 import net.superiorstate.ams.previous.model.activity.checklist.sequences.support.TemplatePurpose;
 import net.superiorstate.ams.previous.model.billing.BillingGroup;
@@ -798,7 +799,7 @@ public abstract class Importer {
 
     public static void importAllMatchingFilesInMappingOrder(EntityManager em, File uploadDir, File processedDir) throws Exception {
         if (!processedDir.exists()) processedDir.mkdirs();
-        File unknownDir = new File(Helper.UNKNOWN_DIR);
+        File unknownDir = new File(BillingHelper.UNKNOWN_DIR);
         if (!unknownDir.exists()) unknownDir.mkdirs();
 
         List<File> availableFiles = Arrays.stream(Objects.requireNonNull(uploadDir.listFiles((dir, name) ->

@@ -5,9 +5,9 @@ import jakarta.persistence.EntityManagerFactory;
 import jakarta.servlet.*;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.*;
-import net.superiorstate.ams.data.Helper;
-import net.superiorstate.ams.data.Importer;
-import net.superiorstate.ams.data.Importer.TableMapping;
+import net.superiorstate.ams.data.util.BillingHelper;
+import net.superiorstate.ams.data.service.Importer;
+import net.superiorstate.ams.data.service.Importer.TableMapping;
 
 import java.io.File;
 import java.io.IOException;
@@ -34,8 +34,8 @@ public class RunSelectedImportsServlet extends HttpServlet {
             }
         }
 
-        File uploadDir = new File(Helper.CSV_DIR);
-        File processedDir = new File(Helper.PROCESSED_DIR);
+        File uploadDir = new File(BillingHelper.CSV_DIR);
+        File processedDir = new File(BillingHelper.PROCESSED_DIR);
 
         try {
             em.getTransaction().begin();

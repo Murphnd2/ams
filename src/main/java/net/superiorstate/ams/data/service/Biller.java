@@ -1,8 +1,9 @@
-package net.superiorstate.ams.data;
+package net.superiorstate.ams.data.service;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.NoResultException;
 import jakarta.persistence.Query;
+import net.superiorstate.ams.data.util.BillingHelper;
 import net.superiorstate.ams.previous.model.billing.BillingMonth;
 
 import java.util.Date;
@@ -29,7 +30,7 @@ public abstract class Biller {
     }
 
     protected int resolveMonthId() {
-        Date monthFor = Helper.getMonthFor();
+        Date monthFor = BillingHelper.getMonthFor();
         try {
             BillingMonth bm = em.createQuery("SELECT bm FROM BillingMonth bm WHERE bm.fullDate = :fullDate", BillingMonth.class)
                     .setParameter("fullDate", monthFor)
@@ -48,7 +49,7 @@ public abstract class Biller {
 
     protected void clearCoverageStatus() {
         Query q = em.createQuery("DELETE FROM CoverageStatus cs WHERE cs.monthFor = :mf");
-        q.setParameter("mf", Helper.getMonthFor());
+        q.setParameter("mf", BillingHelper.getMonthFor());
         q.executeUpdate();
     }
 }

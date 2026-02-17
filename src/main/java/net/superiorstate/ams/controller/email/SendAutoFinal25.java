@@ -6,14 +6,14 @@ import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.AmsDataLocal;
-import net.superiorstate.ams.data.auto;
+import net.superiorstate.ams.data.util.AutomationHelper;
 import net.superiorstate.ams.data.dao.EmailDAO;
 import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.previous.model.activity.Activity;
 import net.superiorstate.ams.previous.model.activity.note.Email;
 import net.superiorstate.ams.previous.model.general.Automation;
 import net.superiorstate.ams.previous.model.summit.archive.Employer;
-import net.superiorstate.ams.util.AutoSafe;
+import net.superiorstate.ams.data.util.AutoSafe;
 import jakarta.mail.MessagingException;
 
 import java.io.IOException;
@@ -82,7 +82,7 @@ public class SendAutoFinal25 extends HttpServlet {
 
         //Process any #erName Hashtags
         if (remainingText.contains("<<#erName>>")) {
-            Employer er = auto.getEmployerForActivity(em, a);
+            Employer er = AutomationHelper.getEmployerForActivity(em, a);
             if (er != null)
                 remainingText = remainingText.replace("<<#erName>>", er.getEmployerName());
             else remainingText = remainingText.replace("<<#erName>>", "");
@@ -93,22 +93,22 @@ public class SendAutoFinal25 extends HttpServlet {
             remainingText = remainingText.replace("<<#activityType>>", local.getCurrentActivity().getActivity().getClass().getSimpleName().toString());
 
         //Format into proper HTML (Swap <br/> for <p></p> and <nl> for <br/>
-        remainingText = auto.processBreaksAndNewLines(remainingText);
+        remainingText = AutomationHelper.processBreaksAndNewLines(remainingText);
 
         //Process any Reference Links (<rf></rf>)
-        remainingText = auto.processReferenceLinks(remainingText, a, em);
+        remainingText = AutomationHelper.processReferenceLinks(remainingText, a, em);
 
         //Extract any ccList from Inputs
         String ccListString = (String) request.getSession().getAttribute("ccListString");
 
         //Set Email Items
-        List<String> subjectBodyList = auto.getSubjectAndBody(remainingText);
+        List<String> subjectBodyList = AutomationHelper.getSubjectAndBody(remainingText);
         local.getCurrentEmail().setSubject(subjectBodyList.get(0));
         if (subjectBodyList.get(0).equals(""))
             local.getCurrentEmail().setSubject(a1autoName);
         local.getCurrentEmail().setBody(subjectBodyList.get(1));
         local.getCurrentEmail().setAttachments(new ArrayList<>());
-        local.getCurrentEmail().setRecipientList(auto.getRecipientList(em, local, ccListString));
+        local.getCurrentEmail().setRecipientList(AutomationHelper.getRecipientList(em, local, ccListString));
         String userSignature = "<p> " + local.getCurrentPerson().getFirstName() + " " + local.getCurrentPerson().getLastName() + "<br/>";
         userSignature += local.getCurrentPerson().getPsp().getFullName() + "</p>";
 

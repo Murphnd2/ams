@@ -1,4 +1,4 @@
-package net.superiorstate.ams.util;
+package net.superiorstate.ams.data.util;
 
 import org.jsoup.Jsoup;
 import org.jsoup.safety.Safelist;

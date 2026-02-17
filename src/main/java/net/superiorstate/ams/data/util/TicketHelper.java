@@ -1,7 +1,8 @@
-package net.superiorstate.ams.data;
+package net.superiorstate.ams.data.util;
 
 import jakarta.persistence.EntityManager;
-import net.superiorstate.ams.data.util.Validator;
+import net.superiorstate.ams.data.AmsDataGlobal;
+import net.superiorstate.ams.data.AmsDataLocal;
 import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.previous.model.activity.checklist.CheckList;
 import net.superiorstate.ams.previous.model.activity.checklist.tasks.Task;
@@ -16,7 +17,7 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
-public abstract class tix {
+public abstract class TicketHelper {
 
     public static Person resolveContactEmail(EntityManager em, Person p, AmsDataLocal local, AmsDataGlobal global){
         if(p.getEmployee()==null)
@@ -90,7 +91,7 @@ public abstract class tix {
         CheckList c = createCheckListForSummitEmployeeChange(em,local);
 
         String desc = "Update "+ oldFirst + " " + oldLast + " in Summit";
-        Task t1 = tix.createTask(em,desc,local);
+        Task t1 = TicketHelper.createTask(em,desc,local);
         WebLink w = getWeblinkForTaskOne(em,p,global,desc);
         em.getTransaction().begin();
         t1.setHasGoTo(true);
@@ -98,23 +99,23 @@ public abstract class tix {
         em.persist(t1);
         em.getTransaction().commit();
 
-        ToDo td1 = tix.createToDo(em,t1,10,c);
+        ToDo td1 = TicketHelper.createToDo(em,t1,10,c);
         List<ToDo> toDoList = new ArrayList<>();
         toDoList.add(td1);
 
         if(!oldFirst.equalsIgnoreCase(local.getCurrentActivity().getPrimaryContact().getFirstName())){
             desc = "FIRST: " +oldFirst.toLowerCase()+" -> "+local.getCurrentActivity().getPrimaryContact().getFirstName().toUpperCase();
-            ToDo td2 = tix.createToDo(em,desc,20,local,c);
+            ToDo td2 = TicketHelper.createToDo(em,desc,20,local,c);
             toDoList.add(td2);
         }
         if(!oldLast.equalsIgnoreCase(local.getCurrentActivity().getPrimaryContact().getLastName())){
             desc = "LAST: " + oldLast.toLowerCase() + " -> " + local.getCurrentActivity().getPrimaryContact().getLastName().toUpperCase();
-            ToDo td3 = tix.createToDo(em,desc,30,local,c);
+            ToDo td3 = TicketHelper.createToDo(em,desc,30,local,c);
             toDoList.add(td3);
         }
         if(!oldEmail.equalsIgnoreCase(local.getCurrentActivity().getPrimaryContact().getEmail())){
             desc = "EMAIL: " + local.getCurrentActivity().getPrimaryContact().getEmail().toLowerCase();
-            ToDo td4 = tix.createToDo(em, desc,40,local, c);
+            ToDo td4 = TicketHelper.createToDo(em, desc,40,local, c);
             toDoList.add(td4);
         }
 

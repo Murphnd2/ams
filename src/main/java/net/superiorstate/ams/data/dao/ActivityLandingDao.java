@@ -1,4 +1,4 @@
-package net.superiorstate.ams.data;
+package net.superiorstate.ams.data.dao;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;

@@ -6,7 +6,7 @@ import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import net.superiorstate.ams.data.Importer;
+import net.superiorstate.ams.data.service.Importer;
 
 import java.io.IOException;
 

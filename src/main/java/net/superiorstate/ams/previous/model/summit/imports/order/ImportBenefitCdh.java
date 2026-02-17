@@ -1,7 +1,7 @@
 package net.superiorstate.ams.previous.model.summit.imports.order;
 
 import jakarta.persistence.*;
-import net.superiorstate.ams.data.Helper;
+import net.superiorstate.ams.data.util.BillingHelper;
 
 import java.sql.Date;
 import java.time.LocalDate;
@@ -189,14 +189,14 @@ public class ImportBenefitCdh {
     }
 
     private int findMonth(String dateString){
-        return Helper.parseDateParts(dateString) [0];
+        return BillingHelper.parseDateParts(dateString) [0];
     }
 
     private int findDay(String dateString){
-        return Helper.parseDateParts(dateString) [1];
+        return BillingHelper.parseDateParts(dateString) [1];
     }
 
     private int findYear(String dateString){
-        return Helper.parseDateParts(dateString) [2];
+        return BillingHelper.parseDateParts(dateString) [2];
     }
 }

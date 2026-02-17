@@ -1,4 +1,5 @@
 <%@ page import="java.util.*, net.superiorstate.ams.model.upload.UploadPreviewResult" %>
+<%@ page import="net.superiorstate.ams.data.service.Importer" %>
 <%@ page contentType="text/html;charset=UTF-8" %>
 <html>
 <head>
@@ -58,7 +59,7 @@
         <select name="override_<%= r.fileName %>">
           <option value="">-- Auto Detect --</option>
           <%
-            for (String prefix : net.superiorstate.ams.data.Importer.TABLE_MAPPINGS.stream().map(m -> m.filePrefix()).toList()) {
+            for (String prefix : Importer.TABLE_MAPPINGS.stream().map(m -> m.filePrefix()).toList()) {
           %>
           <option value="<%= prefix %>"><%= prefix %></option>
           <%

@@ -1,4 +1,4 @@
-package net.superiorstate.ams.data;
+package net.superiorstate.ams.data.service;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceException;

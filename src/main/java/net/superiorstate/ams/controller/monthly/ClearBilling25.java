@@ -8,8 +8,8 @@ import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import net.superiorstate.ams.data.Cleaner;
-import net.superiorstate.ams.data.Helper;
+import net.superiorstate.ams.data.service.Cleaner;
+import net.superiorstate.ams.data.util.BillingHelper;
 
 import java.io.IOException;
 
@@ -35,10 +35,10 @@ public class ClearBilling25 extends HttpServlet {
             Cleaner cleaner = new Cleaner(em) {}; // anonymous or subclass
             em.getTransaction().begin();
 
-            int monthId = Helper.resolveMonthId(em);
+            int monthId = BillingHelper.resolveMonthId(em);
             if (monthId != -1) {
                 cleaner.deleteByMonthId("BillingGrid", "billingMonth.monthId", monthId);
-                cleaner.deleteByMonthDate("CoverageStatus", "monthFor", Helper.getMonthFor());
+                cleaner.deleteByMonthDate("CoverageStatus", "monthFor", BillingHelper.getMonthFor());
                 cleaner.deleteByMonthId("BillingMonth", "monthId", monthId);
             }
 

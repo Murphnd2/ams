@@ -8,7 +8,7 @@ import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.AmsDataGlobal;
 import net.superiorstate.ams.data.AmsDataLocal;
-import net.superiorstate.ams.data.tix;
+import net.superiorstate.ams.data.util.TicketHelper;
 import net.superiorstate.ams.model.Activity25;
 import net.superiorstate.ams.model.Activity25u;
 import net.superiorstate.ams.data.util.Validator;
@@ -126,7 +126,7 @@ public class ModifyContact25 extends HttpServlet {
         local.getCurrentActivity().setActivity(a);
 
         if(isEmployee)
-            tix.createTicket(em, local.getCurrentActivity().getPrimaryContact(), currentEmail,currentFirst,currentLast,local, global);
+            TicketHelper.createTicket(em, local.getCurrentActivity().getPrimaryContact(), currentEmail,currentFirst,currentLast,local, global);
         if(isEmployee && local.getCurrentActivity().getActivity().getClass().getSimpleName().equals("Ticket") && (!currentLast.equalsIgnoreCase(newLast) || !currentFirst.equalsIgnoreCase(newFirst))){
             Query q = em.createQuery("SELECT a FROM Activity25 a WHERE a.activity.id = :id");
             q.setParameter("id",local.getCurrentActivity().getActivity().getId());

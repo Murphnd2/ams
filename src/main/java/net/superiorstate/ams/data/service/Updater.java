@@ -1,8 +1,9 @@
-package net.superiorstate.ams.data;
+package net.superiorstate.ams.data.service;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.NoResultException;
 import jakarta.persistence.Query;
+import net.superiorstate.ams.data.util.BillingHelper;
 import net.superiorstate.ams.data.util.Validator;
 import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.data.util.HsaBillingHelper;
@@ -160,8 +161,8 @@ public abstract class Updater {
                 emp.setId(newId);
 
                 if (i2row != null) {
-                    emp.setFirstName(Helper.trimForDb(i2row.getFirstName(), 50));
-                    emp.setLastName(Helper.trimForDb(i2row.getLastName(), 50));
+                    emp.setFirstName(BillingHelper.trimForDb(i2row.getFirstName(), 50));
+                    emp.setLastName(BillingHelper.trimForDb(i2row.getLastName(), 50));
                     emp.setEmail(i2row.getEmail());
                     emp.setAddress1(i2row.getAddress1());
                     emp.setCity(i2row.getCity());
@@ -174,8 +175,8 @@ public abstract class Updater {
                         emp.setEmployer(em.find(Employer.class, i2row.getImportEmployer().getOrganizationId()));
                     }
                 } else if (i3row != null) {
-                    emp.setFirstName(Helper.trimForDb(i3row.getParticipantFirst(), 50));
-                    emp.setLastName(Helper.trimForDb(i3row.getParticipantLast(), 50));
+                    emp.setFirstName(BillingHelper.trimForDb(i3row.getParticipantFirst(), 50));
+                    emp.setLastName(BillingHelper.trimForDb(i3row.getParticipantLast(), 50));
                     emp.setUserId(i3row.getUserId());
                     emp.setActive("Active".equalsIgnoreCase(i3row.getUserStatus()));
                     emp.setEeStatusId(i3row.getParticipantStatusId());
@@ -437,9 +438,9 @@ public abstract class Updater {
         // Step 1: From ImportCobTerm (COBRA Termed = 1)
         List<ImportCobTerm> cobTerms = em.createQuery("SELECT t FROM ImportCobTerm t", ImportCobTerm.class).getResultList();
         for (ImportCobTerm t : cobTerms) {
-            int employeeId = Helper.matchByCustomId(em, t);
-            if (employeeId == 0) employeeId = Helper.matchBySsn(em, t);
-            if (employeeId == 0) employeeId = Helper.matchByName(em, t);
+            int employeeId = BillingHelper.matchByCustomId(em, t);
+            if (employeeId == 0) employeeId = BillingHelper.matchBySsn(em, t);
+            if (employeeId == 0) employeeId = BillingHelper.matchByName(em, t);
             if (employeeId != 0) {
                 cobraStatusMap.merge(employeeId, 1, Math::max); // 1 = Termed
             }
@@ -569,8 +570,8 @@ public abstract class Updater {
             contact.setId(nextId--);
             contact.setEmployer(employer);
             contact.setEmail(contactEmail);
-            contact.setFirstName(Helper.trimForDb(firstName, 50));
-            contact.setLastName(Helper.trimForDb(lastName, 50));
+            contact.setFirstName(BillingHelper.trimForDb(firstName, 50));
+            contact.setLastName(BillingHelper.trimForDb(lastName, 50));
             contact.setActive(true);
 
             em.persist(contact);
@@ -736,7 +737,7 @@ public abstract class Updater {
 
                 Employer employer = em.find(Employer.class, i.getImportEmployer().getOrganizationId());
                 Date effDate = i.getPlanEffectiveDate();
-                Date renDue = Helper.getNextRenewalDate(effDate);
+                Date renDue = BillingHelper.getNextRenewalDate(effDate);
 
                 Benefit b = new Benefit();
                 b.setId(i.getBenefitId());
@@ -762,7 +763,7 @@ public abstract class Updater {
             }
         }
 
-        Helper.writeSkippedToCsv(skippedRecords, savePath);
+        BillingHelper.writeSkippedToCsv(skippedRecords, savePath);
 
         System.out.println("✅ Inserted " + inserted + " new CDH benefits.");
         System.out.println("⏭️ Skipped " + skipped + " benefits due to invalid PlanType. See CSV at: " + savePath);
@@ -801,7 +802,7 @@ public abstract class Updater {
 
                 Employer employer = em.find(Employer.class, i.getImportEmployer().getOrganizationId());
                 Date effDate = i.getEffectiveDate();
-                Date renDue = Helper.getNextRenewalDate(effDate);
+                Date renDue = BillingHelper.getNextRenewalDate(effDate);
                 Date termDate = i.getEndDate();
 
                 Benefit b = new Benefit();
@@ -830,7 +831,7 @@ public abstract class Updater {
         }
 
         if (!skippedRecords.isEmpty()) {
-            String fullPath = Helper.writeSkippedPbToCsv(skippedRecords, saveFolderPath);
+            String fullPath = BillingHelper.writeSkippedPbToCsv(skippedRecords, saveFolderPath);
             System.out.println("⏭️ Skipped " + skipped + " PB benefits due to invalid PlanType. See CSV at: " + fullPath);
         }
 
@@ -839,7 +840,7 @@ public abstract class Updater {
     public static void syncBenefit(EntityManager em) {
         System.out.println("🔥 Starting syncBenefit");
 
-        Date cutoff = Helper.getMonthFor(); // Start of current month
+        Date cutoff = BillingHelper.getMonthFor(); // Start of current month
         Date today = Date.valueOf(LocalDate.now());
         LocalDate lastDayPrevMonth = LocalDate.now().withDayOfMonth(1).minusDays(1);
         Date i7TermDate = java.sql.Date.valueOf(lastDayPrevMonth);

@@ -1,7 +1,8 @@
-package net.superiorstate.ams.data;
+package net.superiorstate.ams.data.service;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.NoResultException;
+import net.superiorstate.ams.data.util.BillingHelper;
 import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.previous.model.billing.BillingGrid;
 import net.superiorstate.ams.previous.model.billing.BillingGroup;
@@ -43,7 +44,7 @@ public class MonthlyBiller extends Biller {
         logCoverageStatusForThisMonthPB(0);
         clearBillingGridForMonth();
         fillBillingGrid(0);
-        BillingMonth bm = getBillingMonthByDate(Helper.getMonthFor());
+        BillingMonth bm = getBillingMonthByDate(BillingHelper.getMonthFor());
         fillHsaBillingGrid(bm);
         fillBillingLinks();
         fillDualParticipantGrid();
@@ -126,7 +127,7 @@ public class MonthlyBiller extends Biller {
                 e.setImportBenefitCdh(ib);
                 e.setImportBenefitYear(ie.getImportBenefitYear());
                 e.setBillingGroup(ib.getPlanType().getBillingGroup());
-                e.setCurrentMonth(Helper.getMonthFor());
+                e.setCurrentMonth(BillingHelper.getMonthFor());
                 e.setTermDate(Date.valueOf(ie.getTermDate()));
                 e.setStartDate(Date.valueOf(ie.getImportBenefitYear().getPlanYearStart()));
                 e.setEndDate(Date.valueOf(ie.getImportBenefitYear().getPlanYearEnd()));
@@ -163,14 +164,14 @@ public class MonthlyBiller extends Biller {
     protected void clearCoverageStatusForMonth() {
         em.getTransaction().begin();
         em.createQuery("DELETE FROM CoverageStatus cs WHERE cs.monthFor = :month")
-                .setParameter("month", Helper.getMonthFor())
+                .setParameter("month", BillingHelper.getMonthFor())
                 .executeUpdate();
         em.getTransaction().commit();
     }
     @SuppressWarnings("unchecked")
     protected void fillBillingCoverageTableAlt(int erId) {
         int coverageId = (erId != 0) ? 99999 : 0;
-        Date monthFor = Helper.getMonthFor();
+        Date monthFor = BillingHelper.getMonthFor();
         int count = 0, skipped = 0;
 
         // Step 1: Load existing CoverageStatus keys to skip duplicates
@@ -318,7 +319,7 @@ public class MonthlyBiller extends Biller {
     }
     @SuppressWarnings("unchecked")
     protected void fillBillingGrid(int erId) {
-        Date targetMonth = Helper.getMonthFor();
+        Date targetMonth = BillingHelper.getMonthFor();
 
         // Fetch all active CoverageStatus records for the billing month
         List<CoverageStatus> statuses = em.createQuery(
@@ -384,7 +385,7 @@ public class MonthlyBiller extends Biller {
         }
     }
     protected void addCoverageStatusToBillingGrid(CoverageStatus cs, BillingGrid bg) {
-        bg.setBillingMonth(getBillingMonthByDate(Helper.getMonthFor()));
+        bg.setBillingMonth(getBillingMonthByDate(BillingHelper.getMonthFor()));
         bg.setEmployee(cs.getEmployee());
         bg.setEmployer(cs.getEmployer());
         bg.setCurrentStatus("TBD");
@@ -450,7 +451,7 @@ public class MonthlyBiller extends Biller {
     }
     @SuppressWarnings("unchecked")
     protected void fillDualParticipantGrid() {
-        BillingMonth bm = getBillingMonthByDate(Helper.getMonthFor());
+        BillingMonth bm = getBillingMonthByDate(BillingHelper.getMonthFor());
 
         List<BillingGrid> grids = em.createQuery(
                         "SELECT bg FROM BillingGrid bg WHERE bg.billingMonth.monthId = :id", BillingGrid.class)
