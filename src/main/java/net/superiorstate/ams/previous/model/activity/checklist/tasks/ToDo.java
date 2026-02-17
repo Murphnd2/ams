@@ -93,42 +93,5 @@ public class ToDo {
         this.checkList = checkList;
     }
 
-    public String getWebDescription(String yOrN_isOnlyOwner, String fontSize, String isOwner){
-        if((!yOrN_isOnlyOwner.equals("Y") || isOwner.equals("1")) && getTask().hasGoTo() && getTask().getGoToLink()!=null && getTask().getGoToLink().getLinkPath()!=null && !isComplete()){
-            return "<a href=\"" + getTask().getGoToLink().getLinkPath() + "\" target=\"_blank\" style=\"font-size:" + fontSize + "\">" + getTask().getDescription() + "</a>";
-        } else return "<span style=\"font-size:" + fontSize + "\">" + getTask().getDescription() + "</span>";
-    }
 
-    public String getWebDescription(boolean allowNonOwner1, String fontSize, boolean isOwner1){
-        if((allowNonOwner1 || isOwner1) && getTask().hasGoTo() && getTask().getGoToLink()!=null && getTask().getGoToLink().getLinkPath()!=null && !isComplete()){
-            return "<a href=\"" + getTask().getGoToLink().getLinkPath() + "\" target=\"_blank\" style=\"font-size:" + fontSize + "\">" + getTask().getDescription() + "</a>";
-        } else return "<span style=\"font-size:" + fontSize + "\">" + getTask().getDescription() + "</span>";
-    }
-
-    public String getToDoButton(String yOrN_isActive, long toDoId, String biCode, String hasOwner, String isSourced){
-        String btn = "";
-        if(!isComplete() && yOrN_isActive.equals("Y") && (hasOwner.equals("Y") || isSourced.equals("Y"))){
-            btn = "<button type=\"submit\" class=\"btn btn-outline-cb border-white border-0 m-0 p-0\" name=\"btnToDo\" id=\"btn" + toDoId + "\" value=\"" + toDoId + "\">";
-            btn +="<i class=\"bi bi-box-arrow-up-left\" style=\"font-size: 1.4rem\"></i></button>";
-        } else if(!isComplete() && yOrN_isActive.equals("Y")){
-            btn = "<button type=\"submit\" class=\"btn btn-outline-cb border-white border-0 m-0 p-0\" name=\"btnToDo\" id=\"btn" + toDoId + "\" value=\"" + toDoId + "\">";
-            btn +="<i class=\"bi bi-square\" style=\"font-size: 1.4rem\"></i></button>";
-        } else if(!isComplete()){
-            btn = "<button type=\"submit\" class=\"btn btn-outline-cb border-white border-0 m-0 pe-none p-0\" name=\"btnToDo\" id=\"btn" + toDoId + "\" value=\"" + toDoId + "\" disabled >";
-            btn +="<i class=\"bi bi-" + biCode + "\" style=\"font-size: 1.4rem\"></i></button>";
-        } else if(yOrN_isActive.equals("Y")){
-            btn  ="<button type=\"submit\" class=\"btn btn-outline-cb border-white border-0 m-0 p-0\" name=\"btnToDo\" id=\"btn" + toDoId + "\" value=\"" + toDoId + "\">";
-            btn +="<i class=\"bi bi-x-square\" style=\"font-size: 1.4rem\"></i></button>";
-        } else {
-            btn  ="<button type=\"submit\" class=\"btn btn-outline-cb border-white border-0 pe-none m-0 p-0\" name=\"btnToDo\" id=\"btn" + toDoId + "\" disabled value=\"" + toDoId + "\">";
-            btn +="<i class=\"bi bi-x-square\" style=\"font-size: 1.4rem\"></i></button>";
-        }
-        return btn;
-    }
-
-    public String getFormServlet(){
-        if(isComplete())
-            return "ReOpenToDo";
-        return "CloseToDo";
-    }
 }
