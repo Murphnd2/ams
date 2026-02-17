@@ -1,112 +1,84 @@
-# Cleanup Sweep Summary — Full Session
+# Cleanup Sweep Summary — Full Session (February 17, 2026)
 
-**Date:** February 17, 2026  
 **Branch:** `refactor/modernize-architecture`  
-**Build Verified:** ✅ `mvn clean package` — SUCCESS (after each batch)
+**Build Verified:** ✅ `mvn clean package` — SUCCESS (verified after each batch)
 
 ---
 
 ## Phase 1: Archive Package Sweep (20 files)
-
 **Entire `previous.archive` package deleted.**
 
-### Root — `previous/archive/` (5 files)
-| File | Find Usages | Status |
-|------|-------------|--------|
-| changeDueDate.java | 0 external | DELETED |
-| changeOwner.java | 0 external | DELETED |
-| createTicketNew.java | 0 external | DELETED |
-| removeContactFromActivity.java | 0 external | DELETED |
-| sendAutomation.java | 0 external | DELETED |
-
-### `previous/archive/activityDetail/` (1 file)
-| File | Find Usages | Status |
-|------|-------------|--------|
-| goActivityDetail.java | 0 external | DELETED |
-
-### `previous/archive/activityDetail/actions/` (8 files)
-| File | Find Usages | Status |
-|------|-------------|--------|
-| addContactToActivity.java | 0 external | DELETED |
-| addNoteToItem.java | 0 external | DELETED |
-| addToDoToList.java | 0 external | DELETED |
-| closeActivity.java | 0 external | DELETED |
-| closeToDoOut.java | 0 external | DELETED |
-| manageTask.java | 0 external | DELETED |
-| modContactForm.java | 0 external | DELETED |
-| reOpenToDoOut.java | 0 external | DELETED |
-
-### `previous/archive/checklistDetail/` (4 files)
-| File | Find Usages | Status |
-|------|-------------|--------|
-| createReminder.java | 0 external | DELETED |
-| createSimpleChecklist.java | 0 external | DELETED |
-| doCheckListAction.java | 0 external | DELETED |
-| goCheckListDetail.java | 0 external | DELETED |
-
-### `previous/archive/pspHome/` (2 files)
-| File | Find Usages | Status |
-|------|-------------|--------|
-| createTicket3.java | 0 external | DELETED |
-| goPspHome.java | 0 external | DELETED |
-
----
+| Subpackage | Files |
+|------------|-------|
+| Root (5) | changeDueDate, changeOwner, createTicketNew, removeContactFromActivity, sendAutomation |
+| activityDetail/ (1) | goActivityDetail |
+| activityDetail/actions/ (8) | addContactToActivity, addNoteToItem, addToDoToList, closeActivity, closeToDoOut, manageTask, modContactForm, reOpenToDoOut |
+| checklistDetail/ (4) | createReminder, createSimpleChecklist, doCheckListAction, goCheckListDetail |
+| pspHome/ (2) | createTicket3, goPspHome |
 
 ## Phase 2: Empty/Placeholder Files (4 files)
-
-| File | Type | Find Usages | Status |
-|------|------|-------------|--------|
-| HomeServlet.java | Servlet (empty doGet/doPost) | 0 | DELETED |
-| toDoIsCompleteMain.jsp | JSP (empty template) | 0 | DELETED |
-| ttt.jsp | JSP (empty template) | 0 | DELETED |
-| detailPastLabel25.jsp | JSP (empty template) | 0 | DELETED |
-
----
+- HomeServlet.java, toDoIsCompleteMain.jsp, ttt.jsp, detailPastLabel25.jsp
 
 ## Phase 3: Duplicate Servlet Consolidation (3 files)
-
-| Deleted (Legacy) | Replaced By (Modern) | Find Usages | Status |
-|------------------|---------------------|-------------|--------|
-| TaskBuilder.java | TaskBuilder25 | 0 external | DELETED |
-| ClearGrid.java | ClearGrid25 | 0 external | DELETED |
-| MakeRecurringFromChecklist.java | MakeRecurringFromChecklist25 | 0 external | DELETED |
-
----
+- TaskBuilder.java → TaskBuilder25
+- ClearGrid.java → ClearGrid25
+- MakeRecurringFromChecklist.java → MakeRecurringFromChecklist25
 
 ## Phase 4: Orphaned Legacy JSPs (11 files)
+- Parent JSPs: activityDetail.jsp, checklistDetail.jsp (zero usages)
+- Column JSPs (9): checklistAutomation, checklistBasic, checklistFooter, detailHeader, detailPrimaryContact, detailDetail, detailAddNote, detailFooter, historyDetail
 
-**Discovery:** The 9 column JSPs were referenced only by `activityDetail.jsp` and `checklistDetail.jsp` — both of which had zero usages themselves (replaced by "25" versions). Entire chain confirmed dead.
+## Phase 5: previous/controller/xtra/ (4 files)
+- FixEmployeeList, FixRenewal, GarbageIt, RefreshPersonNames
 
-### Parent JSPs (2 files)
-| File | Find Usages | Status |
-|------|-------------|--------|
-| activityDetail.jsp | 0 | DELETED |
-| checklistDetail.jsp | 0 | DELETED |
+## Phase 6: TestServlet (1 file)
+- TestServlet.java
 
-### Column JSPs (9 files)
-| File | Referenced By | Status |
-|------|--------------|--------|
-| checklistAutomation.jsp | activityDetail.jsp, checklistDetail.jsp | DELETED |
-| checklistBasic.jsp | activityDetail.jsp, checklistDetail.jsp | DELETED |
-| checklistFooter.jsp | activityDetail.jsp, checklistDetail.jsp | DELETED |
-| detailHeader.jsp | activityDetail.jsp, checklistDetail.jsp | DELETED |
-| detailPrimaryContact.jsp | activityDetail.jsp, checklistDetail.jsp | DELETED |
-| detailDetail.jsp | activityDetail.jsp | DELETED |
-| detailAddNote.jsp | activityDetail.jsp, checklistDetail.jsp | DELETED |
-| detailFooter.jsp | activityDetail.jsp, checklistDetail.jsp | DELETED |
-| historyDetail.jsp | activityDetail.jsp, checklistDetail.jsp | DELETED |
+## Phase 7: general/admin Show* Filters (10 files)
+- ShowAllActivities, ShowFollowUps, ShowFsaRenewals, ShowHraRenewals, ShowOnUsActivities, ShowPopRenewals, ShowRenewalActivities, ShowSetupActivities, ShowSortedByDate, ShowTicketActivities
+
+## Phase 8: general/admin Orphaned Servlets (20 files)
+- UpdateRenewalContact, ViewSelectedRenewal, ChangeActivityOwner, ChangeActivityDueDate, CreateInsertLink, CreateNewEmployer, DeleteSingleItemRenewal, PunchClock, XferDpi, RefreshTicketEmployees
+- AddNoteToActivity, AddRenewalContact, AddSetupContact, AddToDoToChecklist, AssignBenefitToRenewal, CloseSingleItemChecklist, CloseToDo, ReOpenToDo, RemoveItemFromRenewal, RemoveRenewalContact, RemoveSetupContact
+- Also removed dead `getFormServlet()` method from ToDo.java
+- ViewEmailHistory
+
+## Phase 9: general/admin/q/ Package (25 files)
+- AddDocTask, AddHasQbTask, AddHsaQuick, AddHsaToPop, AddTaskToChecklist, CheckIfHsaIsRight, ConfirmAddHSA, CreateTicketTemplate, DelTask, ProcessAutomationContent
+- Send105Reminder, Send125Initial, Send125Reminder, SendAutoEmail, SendCobraReminder, SendEligibilityTestInitial, SendFsaReminder, SendHSAWelcomeSetup, SendInvoiceFollowUp, SendKeyman, SendKeymanReminder, SendOeReminder, SendRenewalWelcome, SendRenewalWelcome2, SendTestCompleted, SendWelcomeFSA, WelcomeNewPop
+
+## Phase 10: previous/controller/activity/ (8 files)
+- DownloadActivityDoc, ModifyContactForm, RefreshCurrentActivity, RemoveContactFromOther, ViewPastActivity
+- AddReminder, AddSimpleChecklist, ChangeChecklistDueDate
 
 ---
+
+## Files Confirmed ACTIVE (Do Not Delete)
+
+| File | Why Active |
+|------|-----------|
+| ViewEmail.java | Referenced by multiple JSPs (historyDetail25, emailList, etc.) |
+| ViewSelectedActivity.java | 131 usages — core utility with static helpers |
+| ViewSelectedChecklist.java | 27 usages — core utility (getToDoListByChecklistId) |
+| StdAuto.java | Referenced by SendEmployerBillingDetail |
+| AddContactToActivity.java | Static method used by billing servlets |
+| SendQuote1.java | Kept — needs further text search verification |
 
 ## Session Totals
 
-| Phase | Files Deleted |
-|-------|--------------|
-| Archive package sweep | 20 |
-| Empty/placeholder files | 4 |
+| Category | Files Deleted |
+|----------|--------------|
+| Archive package | 20 |
+| Empty/placeholder | 4 |
 | Duplicate servlets | 3 |
 | Orphaned legacy JSPs | 11 |
-| **This Session Total** | **38 files** |
+| xtra/ package | 4 |
+| TestServlet | 1 |
+| Show* filters | 10 |
+| general/admin orphans | 21 |
+| general/admin/q/ | 25 |
+| activity/ orphans | 8 |
+| **This Session Total** | **107 files** |
 
 ## Cumulative Cleanup Progress (All Sessions)
 
@@ -114,13 +86,32 @@
 |---------|--------------|
 | GoAdminHome ecosystem | 14 |
 | Email workflow cleanup | 19 |
-| Archive + empty + duplicates + JSPs (this session) | 38 |
-| **Grand Total** | **71 files** |
+| This session | 107 |
+| **Grand Total** | **140 files** |
 
 ---
 
-## Files That Couldn't Be Deleted
-None — all files had zero active usages.
+## What Remains in previous/controller/ (To Sweep Next)
 
-## Recovery
-All files preserved in Git history on the `refactor/modernize-architecture` branch.
+### general/admin/ — DONE (4 active files remain)
+- ViewEmail, ViewSelectedActivity, ViewSelectedChecklist, q/StdAuto
+
+### activity/ — Partially Done
+- AddContactToActivity.java (ACTIVE — billing dependency)
+- activity/checklist/sequence/ (11 files — NOT YET CHECKED)
+- activity/checklist/task/ (3 files — NOT YET CHECKED)
+- activity/renewal/ (6 files — NOT YET CHECKED)
+- activity/setup/ (4 files — NOT YET CHECKED)
+- activity/ticket/ (3 files — NOT YET CHECKED)
+
+### Other Unchecked Subpackages
+- billing/ (13 files)
+- checklist/ (10 files)
+- psp/admin/ + psp/admin/agency/ + psp/admin/rates/ (~25 files)
+- summit/ (2 files: InitializeDataBase, RefreshData)
+- Root: CreateTpa, ShowFileUpload, UploadFileServlet, ViewFileUpload
+
+### Also Unchecked
+- previous/data/ (~30 files — DAOs, likely still referenced)
+- previous/model/ (~70 files — JPA entities, likely still referenced)
+- previous/filter/ (1 file: CsrfFilter)
