@@ -311,20 +311,7 @@ public abstract class dM {
         }
         return linkType;
     }
-    public static LOS getLosById(int id){
-        String sId = String.valueOf(id);
-        Long lId = Long.parseLong(sId);
-        QueryPair qp = new QueryPair("los_id",lId);
-        return (LOS) dGen.getObject("LOS.getById",qp);
-    }
-    public static LOS getLosById(Long id){
-        QueryPair qp = new QueryPair("los_id",id);
-        return (LOS) dGen.getObject("LOS.getById",qp);
-    }
 
-    public static LOS getLosById(EntityManager em, int id){
-        return getLosById(em,intToLong(id));
-    }
     public static LOS getLosById(EntityManager em, Long id){
         Query q = em.createQuery("SELECT l FROM LOS l WHERE l.id = :id");
         q.setParameter("id",id);
