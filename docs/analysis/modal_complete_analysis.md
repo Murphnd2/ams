@@ -120,9 +120,11 @@
 | UpdateTables | previous.controller.summit.twtw | ⚠️ stub |
 | CreateMonthlyBilling | previous.controller.summit.twtw | ⚠️ |
 
-**Total unique modal servlets: 29**
-- ✅ Modern (controller): 24 (83%)
-- ⚠️ Legacy (previous.controller): 5 (17%)
+**Total unique modal servlets: 24**
+- ✅ Modern (controller): 24 (100%)
+- ⚠️ Legacy (previous.controller): 0 (0%)
+
+**All legacy servlets removed — 100% modern ✅**
 
 ---
 
@@ -133,14 +135,32 @@
 2. ~~**AddUrlToActivity**~~ — already at `controller.activity` ✅
 3. ~~**EmployerRenewalDetailView**~~ — migrated to `controller.activity.renewal` ✅
 
-### Priority 2 — Admin (infrequent, superUser only)
-4. **RefreshToDoAutomation** — `previous.controller.general.admin.q` → `controller.admin`
-5. **CreateMonthlyBilling** — `previous.controller.summit.twtw` → `controller.monthly`
-6. **ClearMonthlyBilling** — replace with existing `ClearBilling25` at `controller.monthly`
+### ✅ Priority 2 — COMPLETE (deleted, not migrated)
+4. ~~**RefreshToDoAutomation**~~ — deleted (not part of billing workflow)
+5. ~~**CreateMonthlyBilling**~~ — deleted (replaced by `CreateBilling25` ✅)
+6. ~~**ClearMonthlyBilling**~~ — deleted (replaced by `ClearBilling25` ✅)
 
-### Priority 3 — Stubs (empty bodies, low urgency)
-7. **ClearImport** (`ClearImportTables`) — empty; migrate or delete
-8. **UpdateTables** — empty; migrate or delete
+**Note:** Monthly billing workflow uses modern servlets: `WipeTables25`, `ShowUploadPage`, `ImportCsvFiles25`, `UpdateTables25`, `ClearBilling25`, `CreateBilling25` — all at `controller` packages ✅
+
+### ✅ Priority 3 — COMPLETE (deleted)
+7. ~~**ClearImport**~~ (`ClearImportTables`) — deleted (empty stub, replaced by `WipeTables25` ✅)
+8. ~~**UpdateTables**~~ (no "25") — deleted (empty stub, replaced by `UpdateTables25` ✅)
+
+---
+
+## ✅ MIGRATION & CLEANUP SUMMARY
+
+**Priority 1 (user-facing):** ✅ COMPLETE
+- 3 servlets — all confirmed already modern or successfully migrated
+
+**Priority 2 (admin billing):** ✅ COMPLETE  
+- 3 servlets — all deleted (replaced by modern equivalents)
+
+**Priority 3 (empty stubs):** ✅ COMPLETE
+- 2 servlets — both deleted
+
+**Admin menu cleanup:** ✅ COMPLETE
+- Removed entire superUser-only section from `adminMenuOC.jsp` (5 buttons calling legacy servlets)
 
 ---
 
@@ -150,8 +170,10 @@
 |------|---------------|--------|--------|----------|
 | Dashboard modals | 8 | 8 | 0 | 100% ✅ |
 | Activity detail modals | 11 | 11 | 0 | 100% ✅ |
-| Admin menu (direct) | 10 | 7 | 3 | 70% |
-| **All modal servlets** | **29** | **24** | **5** | **83%** |
+| Admin menu (direct) | 5 | 5 | 0 | 100% ✅ |
+| **All modal servlets** | **24** | **24** | **0** | **100%** ✅ |
+
+**Note:** Admin menu reduced from 10 to 5 buttons — deleted 5 legacy billing servlets that were replaced by modern equivalents
 
 ---
 
@@ -168,5 +190,8 @@
 ---
 
 **Analysis Status:** ✅ COMPLETE — All modals on pspHome25.jsp and activityDetail25.jsp fully mapped
-**Priority 1 Migration:** ✅ COMPLETE — EmployerRenewalDetailView migrated, AddDocumentToActivity + AddUrlToActivity confirmed already modern
-**Remaining legacy (admin-only):** 5 servlets in Priority 2 & 3
+**Migration Status:** ✅ COMPLETE — All priorities finished
+- Priority 1: `EmployerRenewalDetailView` migrated, `AddDocumentToActivity` + `AddUrlToActivity` confirmed already modern
+- Priority 2: 3 legacy billing servlets deleted (replaced by modern equivalents)
+- Priority 3: 2 empty stub servlets deleted
+**Result:** 100% of modal servlets now modern — zero legacy code remains ✅
