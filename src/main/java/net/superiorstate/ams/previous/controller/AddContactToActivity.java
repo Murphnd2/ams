@@ -11,6 +11,7 @@ import net.superiorstate.ams.data.dao.ActivityDAO;
 import net.superiorstate.ams.data.resolver.PersonResolver;
 import net.superiorstate.ams.data.dao.EmailDAO;
 import net.superiorstate.ams.data.resolver.EntityLookup;
+import net.superiorstate.ams.data.util.ActivityViewHelper;
 import net.superiorstate.ams.previous.model.activity.Activity;
 import net.superiorstate.ams.previous.model.activity.renewal.Renewal;
 import net.superiorstate.ams.previous.model.general.Person;
@@ -78,7 +79,7 @@ public class AddContactToActivity extends HttpServlet {
         }
         if(p!=null && p.getEmail()!=null && EmailDAO.isValidEmail(p.getEmail()) && makePrimary)
             makeContactPrimary(em,p,a);
-        ViewSelectedActivity.setActivityView(request,em,a);
+        ActivityViewHelper.setActivityView(request,em,a);
         em.close();
     }
 

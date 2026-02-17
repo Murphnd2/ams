@@ -9,6 +9,7 @@ import net.superiorstate.ams.data.dao.ActivityDAO;
 import net.superiorstate.ams.data.dao.SalesDAO;
 import net.superiorstate.ams.data.dao.ApplicationTaskDAO;
 import net.superiorstate.ams.data.resolver.EntityLookup;
+import net.superiorstate.ams.data.util.ActivityViewHelper;
 import net.superiorstate.ams.previous.model.activity.checklist.CheckList;
 import net.superiorstate.ams.previous.model.activity.checklist.sequences.support.TemplatePurpose;
 import net.superiorstate.ams.previous.model.activity.checklist.tasks.SortedTask;
@@ -64,7 +65,7 @@ public class GenerateProp extends HttpServlet {
         Setup setup = createSetup(request,em,prospect,application,checkList);
         fillToDoList(em,setup);
 
-        ViewSelectedActivity.setActivityView(request,em,setup);
+        ActivityViewHelper.setActivityView(request,em,setup);
 
         em.close();
 

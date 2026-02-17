@@ -8,6 +8,7 @@ import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.dao.AuthDAO;
 import net.superiorstate.ams.data.dao.TicketQueryDAO;
 import net.superiorstate.ams.data.resolver.EntityLookup;
+import net.superiorstate.ams.data.util.ActivityViewHelper;
 import net.superiorstate.ams.previous.model.activity.checklist.CheckList;
 import net.superiorstate.ams.previous.model.activity.checklist.tasks.SortedTask;
 import net.superiorstate.ams.previous.model.activity.checklist.tasks.ToDo;
@@ -217,7 +218,7 @@ public class CreateTicket extends HttpServlet {
         em.persist(t);
         em.getTransaction().commit();
 
-        ViewSelectedActivity.setActivityView(request,em,t);
+        ActivityViewHelper.setActivityView(request,em,t);
         em.close();
     }
 
