@@ -8,7 +8,7 @@ import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.AmsDataLocal;
-import net.superiorstate.ams.previous.controller.activity.checklist.sequence.AddRecurringSequence;
+import net.superiorstate.ams.previous.controller.AddRecurringSequence;
 import net.superiorstate.ams.previous.data.checklist.dbRec;
 import net.superiorstate.ams.previous.data.model.getByIds.dM;
 import net.superiorstate.ams.previous.model.activity.checklist.CheckList;
