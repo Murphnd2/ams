@@ -89,16 +89,6 @@ public class WebLink {
         this.email = email;
     }
 
-    public String getAnchorTag(){
-        String anchorTag = "<a href = \"";
-        if(getLinkType().getId()==1){
-            anchorTag += "ViewFileUpload\"?doc=" + getLinkPath();
-        } else if (getLinkType().getId()==2) {
-            anchorTag += getLinkPath() + "\"";
-        }
-        anchorTag +=" target = \"blank\">" + getPlainText() + "</a>";
-        return anchorTag;
-    }
 
     public String getExternalAnchorTag(EntityManager em){
         String anchorTag = "<a href = \"";
@@ -111,35 +101,7 @@ public class WebLink {
         return anchorTag;
 
     }
-    public String getInternalAnchorTag(EntityManager em){
-        String anchorTag = "<a class=\"btn btn-primary\" href = \"";
-        if(getLinkType().getId()==1){
-            anchorTag += dbA.getWebPath(em) + "ViewFileUpload\"";
-        } else if (getLinkType().getId()==2) {
-            anchorTag += getLinkPath() + "\"";
-        }
-        anchorTag +=" target = \"blank\">CLICK TO DOWNLOAD</a>";
-        return anchorTag;
-    }
 
-    public String getActivityHref(EntityManager em){
-        if(getLinkType().getId()==1)
-            return dbA.getWebPath(em) + "DownloadActivityDoc?fileId=" + getLinkPath();
-        return getLinkPath();
-    }
-
-    public String getActivityListAnchorTag(EntityManager em){
-        String words = "Download";
-        String anchorTag = "<a class=\"btn btn-sm btn-primary\" href = \"";
-        if(getLinkType().getId()==1){
-            anchorTag += dbA.getWebPath(em) + "ViewFileUpload\"";
-        } else if (getLinkType().getId()==2) {
-            anchorTag += getLinkPath() + "\"";
-            words="View";
-        }
-        anchorTag +=" target = \"blank\">" + words + "</a>";
-        return anchorTag;
-    }
 
     public boolean isActive() {
         return active;
@@ -153,7 +115,5 @@ public class WebLink {
         return listOfAssigneesWithThisWebLink;
     }
 
-    public void setListOfAssigneesWithThisWebLink(List<Assignee> listOfAssigneesWithThisWebLink) {
-        this.listOfAssigneesWithThisWebLink = listOfAssigneesWithThisWebLink;
-    }
+
 }
