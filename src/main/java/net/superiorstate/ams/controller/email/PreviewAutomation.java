@@ -3,7 +3,7 @@ package net.superiorstate.ams.controller.email;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.*;
-import net.superiorstate.ams.previous.data.model.getByIds.dM;
+import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.previous.model.general.Automation;
 import net.superiorstate.ams.util.AutoSafe;
 
@@ -32,7 +32,7 @@ public class PreviewAutomation extends HttpServlet {
             return;
         }
 
-        Automation a = dM.getAutomationById(em, autoId);
+        Automation a = EntityLookup.getAutomationById(em, autoId);
         em.close();
 
         if (a == null) {

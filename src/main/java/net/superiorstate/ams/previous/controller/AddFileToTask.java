@@ -6,8 +6,8 @@ import jakarta.persistence.Persistence;
 import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
-import net.superiorstate.ams.previous.data.misc.ddC;
-import net.superiorstate.ams.previous.data.model.getByIds.dM;
+import net.superiorstate.ams.data.dao.SequenceDAO;
+import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.previous.model.general.LinkType;
 import net.superiorstate.ams.previous.model.general.WebLink;
 import net.superiorstate.ams.previous.model.activity.checklist.tasks.Task;
@@ -60,14 +60,14 @@ public class AddFileToTask extends HttpServlet {
         webLink.setLinkPath(newFileName);
 
         webLink.setPlainText(fileDescription);
-        LinkType linkType = ddC.getLinkTypeById(em,1);
+        LinkType linkType = SequenceDAO.getLinkTypeById(em,1);
         webLink.setLinkType(linkType);
         em.getTransaction().begin();
         em.persist(webLink);
         em.getTransaction().commit();
 
         em.getTransaction().begin();
-        Task task = dM.getTaskById(em,currentTask.getId());
+        Task task = EntityLookup.getTaskById(em,currentTask.getId());
         task.addWebLink(webLink);
         em.persist(task);
         em.persist(webLink);

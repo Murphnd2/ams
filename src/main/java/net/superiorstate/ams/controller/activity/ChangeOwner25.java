@@ -9,7 +9,7 @@ import net.superiorstate.ams.data.AmsDataGlobal;
 import net.superiorstate.ams.data.AmsDataLocal;
 import net.superiorstate.ams.model.Activity25u;
 import net.superiorstate.ams.model.Checklist25u;
-import net.superiorstate.ams.previous.data.model.getByIds.dM;
+import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.previous.model.activity.Activity;
 import net.superiorstate.ams.previous.model.activity.checklist.CheckList;
 import net.superiorstate.ams.previous.model.general.Person;
@@ -42,7 +42,7 @@ public class ChangeOwner25 extends HttpServlet {
         EntityManagerFactory emf = (EntityManagerFactory)getServletContext().getAttribute("emf");
         EntityManager em = emf.createEntityManager();
 
-        Person newOwner = dM.getPersonById(em,userId);
+        Person newOwner = EntityLookup.getPersonById(em,userId);
         if(newOwner == null){
             em.close();
             return;
@@ -50,7 +50,7 @@ public class ChangeOwner25 extends HttpServlet {
         AmsDataLocal local = (AmsDataLocal) request.getSession().getAttribute("local");
         AmsDataGlobal global = (AmsDataGlobal) request.getServletContext().getAttribute("global");
 
-        Activity a = dM.getActivityById(em,local.getCurrentActivity().getActivity().getId());
+        Activity a = EntityLookup.getActivityById(em,local.getCurrentActivity().getActivity().getId());
         if(a==null) {
             em.close();
             return;

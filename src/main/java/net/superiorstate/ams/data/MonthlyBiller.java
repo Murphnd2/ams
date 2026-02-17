@@ -2,7 +2,7 @@ package net.superiorstate.ams.data;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.NoResultException;
-import net.superiorstate.ams.previous.data.model.getByIds.dM;
+import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.previous.model.billing.BillingGrid;
 import net.superiorstate.ams.previous.model.billing.BillingGroup;
 import net.superiorstate.ams.previous.model.billing.BillingLink;
@@ -185,7 +185,7 @@ public class MonthlyBiller extends Biller {
 
         // Step 2: Load employers
         List<Employer> employers = (erId != 0)
-                ? Collections.singletonList(dM.getEmployerById(em, erId))
+                ? Collections.singletonList(EntityLookup.getEmployerById(em, erId))
                 : em.createQuery("SELECT er FROM Employer er WHERE er.hasPb = true", Employer.class)
                 .getResultList();
 
@@ -204,7 +204,7 @@ public class MonthlyBiller extends Biller {
             if (benefits.isEmpty()) continue;
 
             Benefit b = benefits.get(0);
-            BillingGroup group = dM.getBillingGroupById(em, 3);
+            BillingGroup group = EntityLookup.getBillingGroupById(em, 3);
 
             List<Employee> employees = em.createQuery("""
             SELECT ee FROM Employee ee
@@ -258,8 +258,8 @@ public class MonthlyBiller extends Biller {
         int count = 0;
 
         for (Enrollment2 e : list) {
-            Benefit b = dM.getBenefitById(em, e.getImportBenefitCdh().getBenefitId());
-            Employee ee = dM.getEmployeeById(em, e.getImportEmployee().getId());
+            Benefit b = EntityLookup.getBenefitById(em, e.getImportBenefitCdh().getBenefitId());
+            Employee ee = EntityLookup.getEmployeeById(em, e.getImportEmployee().getId());
 
             CoverageStatus cs = new CoverageStatus();
             cs.setId(e.getCurrentMonth() + "-" + b.getId() + "-" + ee.getId());
@@ -291,8 +291,8 @@ public class MonthlyBiller extends Biller {
         for (Coverage coverage : coverages) {
             if (erId != 0 && coverage.getSummitOrganization().getId() != erId) continue;
 
-            Benefit b = dM.getBenefitById(em, coverage.getPbBenefitId());
-            Employee ee = dM.getEmployeeById(em, coverage.getSummitEmployee().getId());
+            Benefit b = EntityLookup.getBenefitById(em, coverage.getPbBenefitId());
+            Employee ee = EntityLookup.getEmployeeById(em, coverage.getSummitEmployee().getId());
 
             if (b == null || ee == null) continue;
 

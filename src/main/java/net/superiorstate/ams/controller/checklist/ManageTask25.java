@@ -7,7 +7,7 @@ import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.AmsDataLocal;
-import net.superiorstate.ams.previous.data.model.getByIds.dM;
+import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.previous.model.activity.checklist.tasks.ToDoOut;
 
 import java.io.IOException;
@@ -53,7 +53,7 @@ public class ManageTask25 extends HttpServlet {
         }
         AmsDataLocal local = (AmsDataLocal) request.getSession().getAttribute("local");
         local.setCurrentToDoOut(toDoOut);
-        local.setCurrentToDo(dM.getToDoById(em,toDoOut.getToDo().getId()));
+        local.setCurrentToDo(EntityLookup.getToDoById(em,toDoOut.getToDo().getId()));
         request.getSession().setAttribute("local",local);
         em.close();
 

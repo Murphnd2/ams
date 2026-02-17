@@ -1,8 +1,8 @@
 package net.superiorstate.ams.data;
 
 import jakarta.persistence.EntityManager;
-import net.superiorstate.ams.previous.data.V;
-import net.superiorstate.ams.previous.data.model.getByIds.dM;
+import net.superiorstate.ams.data.util.Validator;
+import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.previous.model.activity.checklist.CheckList;
 import net.superiorstate.ams.previous.model.activity.checklist.tasks.Task;
 import net.superiorstate.ams.previous.model.activity.checklist.tasks.ToDo;
@@ -49,18 +49,18 @@ public abstract class tix {
         String trueLast = null;
         boolean updatePerson = false;
         boolean updateEmployee = false;
-        if(V.isValidEmail(hEmail) && !hEmail.equalsIgnoreCase(pEmail) && !hEmail.equalsIgnoreCase(eEmail)){
+        if(Validator.isValidEmail(hEmail) && !hEmail.equalsIgnoreCase(pEmail) && !hEmail.equalsIgnoreCase(eEmail)){
             updateEmployee = true;
             updatePerson = true;
             trueEmail = hEmail;
-        } else if(V.isValidEmail(hEmail) && !hEmail.equalsIgnoreCase(pEmail)){
+        } else if(Validator.isValidEmail(hEmail) && !hEmail.equalsIgnoreCase(pEmail)){
             updatePerson = true;
             trueEmail = hEmail;
-        } else if(V.isValidEmail(eEmail) && !eEmail.equalsIgnoreCase(pEmail)){
+        } else if(Validator.isValidEmail(eEmail) && !eEmail.equalsIgnoreCase(pEmail)){
             updateEmployee = true;
             updatePerson = true;
             trueEmail = eEmail;
-        } else if(V.isValidEmail(pEmail)){
+        } else if(Validator.isValidEmail(pEmail)){
             updateEmployee = true;
             trueEmail = pEmail;
         }
@@ -131,7 +131,7 @@ public abstract class tix {
         String path = global.getSummitPath() + "/Area/Participant/ParticipantList?employerId=" + er.getAltId();
         em.getTransaction().begin();
         WebLink w = new WebLink();
-        w.setLinkType(dM.getLinkTypeById(em,2));
+        w.setLinkType(EntityLookup.getLinkTypeById(em,2));
         w.setPlainText(desc);
         w.setLinkPath(path);
         w.setActive(true);
@@ -186,7 +186,7 @@ public abstract class tix {
         return toDo;
     }
     private static Person updatePerson(EntityManager em, Person p, String first, String last, String email, Employee ee){
-        Person x = dM.getPersonById(em,p.getId());
+        Person x = EntityLookup.getPersonById(em,p.getId());
         em.getTransaction().begin();
         x.setEmail(email);
         x.setFirstName(first);
@@ -198,7 +198,7 @@ public abstract class tix {
         return x;
     }
     private static Employee updateEmployee(EntityManager em, Employee ee, String first, String last, String email){
-        Employee e = dM.getEmployeeById(em,ee.getId());
+        Employee e = EntityLookup.getEmployeeById(em,ee.getId());
         em.getTransaction().begin();
         e.setEmail(email);
         e.setHrEmail(email);

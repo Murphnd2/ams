@@ -6,8 +6,8 @@ import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.AmsDataLocal;
-import net.superiorstate.ams.previous.data.misc.ddC;
-import net.superiorstate.ams.previous.data.model.getByIds.dM;
+import net.superiorstate.ams.data.dao.SequenceDAO;
+import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.previous.model.activity.Activity;
 import net.superiorstate.ams.previous.model.general.LinkType;
 import net.superiorstate.ams.previous.model.general.WebLink;
@@ -47,7 +47,7 @@ public class AddUrlToActivity extends HttpServlet {
 
             WebLink newLink = createAndPersistWebLink(em, description, urlPath);
 
-            Activity refreshedActivity = dM.getActivityById(em, currentActivity.getId());
+            Activity refreshedActivity = EntityLookup.getActivityById(em, currentActivity.getId());
             if (refreshedActivity == null) return;
 
             attachLinkToActivity(em, refreshedActivity, newLink);
@@ -65,7 +65,7 @@ public class AddUrlToActivity extends HttpServlet {
     }
 
     private WebLink createAndPersistWebLink(EntityManager em, String description, String urlPath) {
-        LinkType linkType = ddC.getLinkTypeById(em, 2);
+        LinkType linkType = SequenceDAO.getLinkTypeById(em, 2);
         WebLink link = new WebLink();
         link.setPlainText(description);
         link.setLinkPath(urlPath);

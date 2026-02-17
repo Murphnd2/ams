@@ -1,7 +1,7 @@
 package net.superiorstate.ams.previous.model.summit.archive;
 
 import jakarta.persistence.*;
-import net.superiorstate.ams.previous.data.misc.dbEmail;
+import net.superiorstate.ams.data.dao.EmailDAO;
 import software.amazon.awssdk.annotations.Immutable;
 
 @Entity
@@ -55,9 +55,9 @@ public class EmployeeV {
     }
 
     public String getEmail(){
-        if(getEmailSystem()!=null && dbEmail.isValidEmail(getEmailSystem()))
+        if(getEmailSystem()!=null && EmailDAO.isValidEmail(getEmailSystem()))
             return getEmailSystem();
-        else if(getEmailSummit()!=null && dbEmail.isValidEmail(getEmailSummit()))
+        else if(getEmailSummit()!=null && EmailDAO.isValidEmail(getEmailSummit()))
             return getEmailSummit();
         return null;
     }

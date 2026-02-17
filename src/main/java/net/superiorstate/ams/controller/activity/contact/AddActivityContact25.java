@@ -6,11 +6,8 @@ import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.AmsDataLocal;
-import net.superiorstate.ams.previous.data.V;
-import net.superiorstate.ams.previous.data.activity.dActivity;
-import net.superiorstate.ams.previous.data.eV;
-import net.superiorstate.ams.previous.data.misc.dbEmail;
-import net.superiorstate.ams.previous.data.model.getByIds.dM;
+import net.superiorstate.ams.data.util.Validator;
+import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.previous.model.activity.Activity;
 import net.superiorstate.ams.previous.model.general.Person;
 import net.superiorstate.ams.previous.model.summit.archive.Employee;
@@ -46,7 +43,7 @@ public class AddActivityContact25 extends HttpServlet {
         EntityManager em = emf.createEntityManager();
 
         try {
-            Activity a = dM.getActivityById(em, activity.getId());
+            Activity a = EntityLookup.getActivityById(em, activity.getId());
             if (a == null) return;
 
             Person p = determineContactPerson(request, em, buttonClicked);
@@ -80,7 +77,7 @@ public class AddActivityContact25 extends HttpServlet {
                 if (param == null || param.isBlank()) return null;
 
                 int eeId = Integer.parseInt(param);
-                Employee ee = dM.getEmployeeById(em, eeId);
+                Employee ee = EntityLookup.getEmployeeById(em, eeId);
                 if (ee == null) return null;
 
                 // NEW: use our clean, tested, thread-safe method
@@ -128,9 +125,9 @@ public class AddActivityContact25 extends HttpServlet {
     }
 
     private String getValidEmail(Person p) {
-        if (p.getEmployee() != null && V.isValidEmail(p.getEmployee().getEmail())) {
+        if (p.getEmployee() != null && Validator.isValidEmail(p.getEmployee().getEmail())) {
             return p.getEmployee().getEmail();
-        } else if (V.isValidEmail(p.getEmail())) {
+        } else if (Validator.isValidEmail(p.getEmail())) {
             return p.getEmail();
         }
         return null;

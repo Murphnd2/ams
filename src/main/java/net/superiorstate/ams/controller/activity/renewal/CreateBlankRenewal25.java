@@ -8,8 +8,8 @@ import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.AmsDataGlobal;
 import net.superiorstate.ams.data.AmsDataLocal;
 import net.superiorstate.ams.model.Activity25u;
-import net.superiorstate.ams.previous.data.model.getByIds.dM;
-import net.superiorstate.ams.previous.data.renewal.dR;
+import net.superiorstate.ams.data.resolver.EntityLookup;
+import net.superiorstate.ams.data.service.RenewalService;
 import net.superiorstate.ams.previous.model.activity.renewal.Renewal;
 import net.superiorstate.ams.previous.model.general.Person;
 import net.superiorstate.ams.previous.model.summit.archive.Employer;
@@ -44,11 +44,11 @@ public class CreateBlankRenewal25 extends HttpServlet {
             AmsDataLocal local = (AmsDataLocal) request.getSession().getAttribute("local");
             AmsDataGlobal global = (AmsDataGlobal) getServletContext().getAttribute("global");
 
-            Employer employer = dM.getEmployerById(em, employerId);
+            Employer employer = EntityLookup.getEmployerById(em, employerId);
             Person currentPerson = local.getCurrentPerson();
 
-            Renewal renewal = dR.createRenewal(em, employer, currentPerson);
-            dR.createCheckListForRenewal(em, renewal, currentPerson);
+            Renewal renewal = RenewalService.createRenewal(em, employer, currentPerson);
+            RenewalService.createCheckListForRenewal(em, renewal, currentPerson);
             AddRenewal25.assignPrimaryContact(em, renewal);
 
             updateSessionAndGlobalState(request, em, local, global, renewal);

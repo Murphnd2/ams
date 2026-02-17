@@ -6,7 +6,7 @@ import jakarta.persistence.Query;
 import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
-import net.superiorstate.ams.previous.data.misc.dbAuth;
+import net.superiorstate.ams.data.dao.AuthDAO;
 import net.superiorstate.ams.previous.model.general.Person;
 import net.superiorstate.ams.previous.model.general.User;
 
@@ -114,14 +114,14 @@ public class OneTimeUserLogin extends HttpServlet {
     private void authenticateUserNow(HttpServletRequest request, User user){
         EntityManagerFactory emf = (EntityManagerFactory)getServletContext().getAttribute("emf");
         EntityManager em = emf.createEntityManager();
-        User currentUser = dbAuth.getUserByUserName(em,user.getUserName());
-        Person currentPerson = dbAuth.getPersonByUser(em,currentUser);
+        User currentUser = AuthDAO.getUserByUserName(em,user.getUserName());
+        Person currentPerson = AuthDAO.getPersonByUser(em,currentUser);
         request.getSession().setAttribute("isAuthenticated",true);
         request.getSession().setAttribute("currentUser",currentUser);
         request.getSession().setAttribute("currentPerson",currentPerson);
         request.getSession().setAttribute("psp",currentPerson.getPsp());
-        dbAuth.assignUserRoles(request,currentUser);
-        request.getSession().setAttribute("staffList",dbAuth.getPspStaff(em,currentPerson.getPsp()));
+        AuthDAO.assignUserRoles(request,currentUser);
+        request.getSession().setAttribute("staffList", AuthDAO.getPspStaff(em,currentPerson.getPsp()));
         em.close();
     }
     private void setInitialVariables(HttpServletRequest request){

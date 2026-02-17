@@ -3,7 +3,7 @@ package net.superiorstate.ams.data;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.NoResultException;
 import jakarta.persistence.Query;
-import net.superiorstate.ams.previous.data.V;
+import net.superiorstate.ams.data.util.Validator;
 import net.superiorstate.ams.previous.model.summit.archive.Employee;
 import net.superiorstate.ams.previous.model.summit.archive.Employer;
 import net.superiorstate.ams.previous.model.summit.imports.order.ImportBenefitCdh;
@@ -217,8 +217,8 @@ public abstract class Helper {
          */
         public static Employee findMatchingEmployee(EntityManager em, String email, String firstName, String lastName, Employer employer) {
             String normEmail = (email != null) ? email.trim().toLowerCase() : null;
-            String normFirst = V.normalizeName(firstName);
-            String normLast = V.normalizeName(lastName);
+            String normFirst = Validator.normalizeName(firstName);
+            String normLast = Validator.normalizeName(lastName);
 
             // 1. Email match with same employer, positive ID only
             if (normEmail != null && !normEmail.isBlank()) {
@@ -241,8 +241,8 @@ public abstract class Helper {
                     .getResultList();
 
             for (Employee e : employerEmployees) {
-                if (V.normalizeName(e.getFirstName()).equals(normFirst) &&
-                        V.normalizeName(e.getLastName()).equals(normLast)) {
+                if (Validator.normalizeName(e.getFirstName()).equals(normFirst) &&
+                        Validator.normalizeName(e.getLastName()).equals(normLast)) {
                     return e;
                 }
             }

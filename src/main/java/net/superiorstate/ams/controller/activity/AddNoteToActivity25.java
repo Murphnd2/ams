@@ -8,7 +8,7 @@ import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.AmsDataGlobal;
 import net.superiorstate.ams.data.AmsDataLocal;
 import net.superiorstate.ams.model.Activity25u;
-import net.superiorstate.ams.previous.data.model.getByIds.dM;
+import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.previous.model.activity.Activity;
 import net.superiorstate.ams.previous.model.activity.note.Note;
 
@@ -102,8 +102,8 @@ public class AddNoteToActivity25 extends HttpServlet {
             Note note = new Note();
             note.setDetail(noteText);
             note.setActivity(local.getCurrentActivity().getActivity());
-            note.setStatus(dM.getActivityStatusById(em, statusId));
-            note.setReasonCreated(dM.getReasonById(em, reasonId));
+            note.setStatus(EntityLookup.getActivityStatusById(em, statusId));
+            note.setReasonCreated(EntityLookup.getReasonById(em, reasonId));
             note.setDateGenerated(Date.valueOf(LocalDate.now()));
             note.setCreatedBy(local.getCurrentPerson());
             return note;
@@ -120,7 +120,7 @@ public class AddNoteToActivity25 extends HttpServlet {
 
     private void updateActivityWithNote(EntityManager em, Long activityId, Note note) {
         em.getTransaction().begin();
-        Activity activity = dM.getActivityById(em, activityId);
+        Activity activity = EntityLookup.getActivityById(em, activityId);
         if (activity != null && activity.getNoteList() != null) {
             activity.getNoteList().add(note);
             em.persist(activity);

@@ -4,9 +4,9 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.NoResultException;
 import jakarta.persistence.Query;
 import jakarta.servlet.http.HttpServletRequest;
-import net.superiorstate.ams.previous.data.misc.dP;
-import net.superiorstate.ams.previous.data.misc.dbEmail;
-import net.superiorstate.ams.previous.data.model.getByIds.dM;
+import net.superiorstate.ams.data.dao.PersonDAO;
+import net.superiorstate.ams.data.dao.EmailDAO;
+import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.previous.model.activity.Activity;
 import net.superiorstate.ams.previous.model.activity.checklist.CheckList;
 import net.superiorstate.ams.previous.model.activity.checklist.tasks.ToDo;
@@ -33,8 +33,8 @@ public abstract class StdAuto {
                 List<tEmployee> contactList = (List<tEmployee>) request.getSession().getAttribute("contactList");
                 if (contactList != null && contactList.size() > 0) {
                     for (tEmployee te : contactList) {
-                        Employee e = dM.getEmployeeById(em, te.getId());
-                        Person person = dP.getPersonByEe(em, e, getPSP(request));
+                        Employee e = EntityLookup.getEmployeeById(em, te.getId());
+                        Person person = PersonDAO.getPersonByEe(em, e, getPSP(request));
                         if(person!=null && !recipientList.contains(person))
                             recipientList.add(person);
                     }
@@ -148,13 +148,13 @@ public abstract class StdAuto {
         e.setSubject(subject);
         e.setDateGenerated(getNow());
         e.setStatus(status);
-        e.setReasonCreated(dM.getReasonById(em,8));
+        e.setReasonCreated(EntityLookup.getReasonById(em,8));
         e.setCreatedBy(user);
         e.setDetail(message);
         em.persist(e);
         em.getTransaction().commit();
         em.getTransaction().begin();
-        Activity activity = dM.getActivityById(em,a.getId());
+        Activity activity = EntityLookup.getActivityById(em,a.getId());
         activity.getNoteList().add(e);
         em.persist(activity);
         em.getTransaction().commit();
@@ -178,7 +178,7 @@ public abstract class StdAuto {
             while(unprocessed.contains(";")){
                 int scLoc = unprocessed.indexOf(";");
                 String email = unprocessed.substring(0,scLoc);
-                if(dbEmail.isValidEmail(email.trim())){
+                if(EmailDAO.isValidEmail(email.trim())){
                     Person p = getPersonByEmail(em, email.trim());
                     if(p!=null)
                         returnList.add(p);
@@ -190,7 +190,7 @@ public abstract class StdAuto {
             }
         } else {
             System.out.println("RECOGNIZED NO SEMI COLON-----------------------------------");
-            if(dbEmail.isValidEmail(ccList.trim())){
+            if(EmailDAO.isValidEmail(ccList.trim())){
                 Person p = getPersonByEmail(em,ccList.trim());
                 System.out.println("GOT HERE: " + p.getFullName());
                 if(p!=null)
@@ -215,7 +215,7 @@ public abstract class StdAuto {
     }
 
     public static Email createEmail(HttpServletRequest request, EntityManager em, Activity a, String subject, String message, int statusId, Person user){
-        return createEmail(request,em,a,subject,message, dM.getActivityStatusById(em,statusId),user);
+        return createEmail(request,em,a,subject,message, EntityLookup.getActivityStatusById(em,statusId),user);
     }
 
 
@@ -235,8 +235,8 @@ public abstract class StdAuto {
         for(int j = 0; j < recipientList.size(); j++){
             em.getTransaction().begin();
 
-            Person person = dM.getPersonById(em,recipientList.get(j).getId());
-            Email email1 = dM.getEmailById(em,e.getId());
+            Person person = EntityLookup.getPersonById(em,recipientList.get(j).getId());
+            Email email1 = EntityLookup.getEmailById(em,e.getId());
             if(!email1.getRecipientList().contains(person))
                 email1.addRecipient(person);
             em.persist(email1);

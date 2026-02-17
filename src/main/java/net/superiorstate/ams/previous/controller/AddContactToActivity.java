@@ -7,10 +7,10 @@ import jakarta.persistence.Query;
 import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
-import net.superiorstate.ams.previous.data.activity.dActivity;
-import net.superiorstate.ams.previous.data.eV;
-import net.superiorstate.ams.previous.data.misc.dbEmail;
-import net.superiorstate.ams.previous.data.model.getByIds.dM;
+import net.superiorstate.ams.data.dao.ActivityDAO;
+import net.superiorstate.ams.data.resolver.PersonResolver;
+import net.superiorstate.ams.data.dao.EmailDAO;
+import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.previous.model.activity.Activity;
 import net.superiorstate.ams.previous.model.activity.renewal.Renewal;
 import net.superiorstate.ams.previous.model.general.Person;
@@ -52,9 +52,9 @@ public class AddContactToActivity extends HttpServlet {
         Person p = null;
         if(buttonClicked.equals("2")){
             int eeId = Integer.parseInt(request.getParameter("addEmployeeList"));
-            Employee ee = dM.getEmployeeById(em,eeId);
-            p = dActivity.getEmployeePerson(em,ee);
-            Activity activity = dM.getActivityById(em,a.getId());
+            Employee ee = EntityLookup.getEmployeeById(em,eeId);
+            p = ActivityDAO.getEmployeePerson(em,ee);
+            Activity activity = EntityLookup.getActivityById(em,a.getId());
             em.getTransaction().begin();
             assert activity != null;
             activity.addAssigneeContact(p);
@@ -62,13 +62,13 @@ public class AddContactToActivity extends HttpServlet {
             em.getTransaction().commit();
         } else if(buttonClicked.equals("1")){
             String email = request.getParameter("contactEmail");
-            if(dbEmail.isValidEmail(email)){
-                p = eV.getBestPersonFromString(em,email);
+            if(EmailDAO.isValidEmail(email)){
+                p = PersonResolver.getBestPersonFromString(em,email);
 
                 if(p==null)
-                    p = eV.createPersonFromEmail(em,email);
+                    p = PersonResolver.createPersonFromEmail(em,email);
 
-                Activity activity = dM.getActivityById(em,a.getId());
+                Activity activity = EntityLookup.getActivityById(em,a.getId());
                 em.getTransaction().begin();
                 assert activity != null;
                 activity.addAssigneeContact(p);
@@ -76,14 +76,14 @@ public class AddContactToActivity extends HttpServlet {
                 em.getTransaction().commit();
             }
         }
-        if(p!=null && p.getEmail()!=null && dbEmail.isValidEmail(p.getEmail()) && makePrimary)
+        if(p!=null && p.getEmail()!=null && EmailDAO.isValidEmail(p.getEmail()) && makePrimary)
             makeContactPrimary(em,p,a);
         ViewSelectedActivity.setActivityView(request,em,a);
         em.close();
     }
 
     public static Person investigateEmail(EntityManager em, String email, Employer er){
-        if(!dbEmail.isValidEmail(email))
+        if(!EmailDAO.isValidEmail(email))
             return null;
         Person p;
         p = checkEmployeeList(em,er,email);
@@ -93,7 +93,7 @@ public class AddContactToActivity extends HttpServlet {
             em.getTransaction().begin();
             p = new Person();
             p.setEmail(email);
-            p.setPsp(dM.getPspById(em,4));
+            p.setPsp(EntityLookup.getPspById(em,4));
             p.setFirstName(findFirstName(email));
             p.setLastName(findLastName(email));
             p.setFullName(findFirstName(email) + " " + findLastName(email));
@@ -104,8 +104,8 @@ public class AddContactToActivity extends HttpServlet {
     }
 
     private void makeContactPrimary(EntityManager em, Person np, Activity a){
-        Person cp = dActivity.getPrimaryContact(em,a);
-        Activity activity = dM.getActivityById(em,a.getId());
+        Person cp = ActivityDAO.getPrimaryContact(em,a);
+        Activity activity = EntityLookup.getActivityById(em,a.getId());
         em.getTransaction().begin();
         assert activity != null;
         activity.setPrimaryContact(np);
@@ -172,9 +172,9 @@ public class AddContactToActivity extends HttpServlet {
             return null;
         for(Employee e: employeeList){
             if(e.getHrEmail()!=null && e.getHrEmail().equalsIgnoreCase(email))
-                return dActivity.getEmployeePerson(em,e);
+                return ActivityDAO.getEmployeePerson(em,e);
             else if(e.getEmail()!=null && e.getEmail().equalsIgnoreCase(email))
-                return dActivity.getEmployeePerson(em,e);
+                return ActivityDAO.getEmployeePerson(em,e);
         }
         return null;
     }
@@ -196,9 +196,9 @@ public class AddContactToActivity extends HttpServlet {
         List<Employee> employees = (List<Employee>) q.getResultList();
         for(Employee e:employees){
             if(e.getHrEmail()!=null && e.getHrEmail().equalsIgnoreCase(email))
-                return dActivity.getEmployeePerson(em,e);
+                return ActivityDAO.getEmployeePerson(em,e);
             else if(e.getEmail()!=null && e.getEmail().equals(email))
-                return dActivity.getEmployeePerson(em,e);
+                return ActivityDAO.getEmployeePerson(em,e);
         }
         return null;
     }

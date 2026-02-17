@@ -6,8 +6,8 @@ import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.AmsDataLocal;
-import net.superiorstate.ams.previous.data.checklist.dbRec;
-import net.superiorstate.ams.previous.data.model.getByIds.dM;
+import net.superiorstate.ams.data.dao.RecurringChecklistDAO;
+import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.previous.model.activity.checklist.CheckList;
 import net.superiorstate.ams.previous.model.activity.checklist.sequences.RecurringTaskList;
 import net.superiorstate.ams.previous.model.activity.checklist.sequences.support.DoW;
@@ -46,20 +46,20 @@ public class ModifyRecurringTask25 extends HttpServlet {
         String sequenceName = request.getParameter("sequenceName");
         Date effectiveDate = Date.valueOf(request.getParameter("startDate"));
         int daysInAdvance = Integer.parseInt(request.getParameter("daysInAdvance"));
-        Person assignedTo = dM.getPersonById(em,Long.parseLong(request.getParameter("userList")));
-        TaskFrequency taskFrequency = dM.getTaskFrequencyById(em,Integer.parseInt(request.getParameter("frequencyList")));
+        Person assignedTo = EntityLookup.getPersonById(em,Long.parseLong(request.getParameter("userList")));
+        TaskFrequency taskFrequency = EntityLookup.getTaskFrequencyById(em,Integer.parseInt(request.getParameter("frequencyList")));
         CheckList c = local.getCurrentChecklist().getCheckList();
         int buttonValue = Integer.parseInt(request.getParameter("btnRecurring"));
         if(buttonValue==0){
             RecurringTaskList rtl = c.getRecurringTaskList();
             em.getTransaction().begin();
-            RecurringTaskList r = dbRec.getRecurringListById(em, rtl.getId());
+            RecurringTaskList r = RecurringChecklistDAO.getRecurringListById(em, rtl.getId());
             r.setInActive(true);
             em.persist(r);
             em.getTransaction().commit();
         } else {
             em.getTransaction().begin();
-            RecurringTaskList rtl = dbRec.getRecurringListById(em,c.getRecurringTaskList().getId());
+            RecurringTaskList rtl = RecurringChecklistDAO.getRecurringListById(em,c.getRecurringTaskList().getId());
             rtl.setDescription(sequenceName);
             rtl.setAssignee(assignedTo);
             rtl.setDateStart(effectiveDate);
@@ -79,10 +79,10 @@ public class ModifyRecurringTask25 extends HttpServlet {
                 DoW d1 = new DoW();
                 em.getTransaction().begin();
                 if(newDowList.size()==0){
-                    rtl.addDayOfWeek(dbRec.getDoWByWeekdayInt(em,1));
+                    rtl.addDayOfWeek(RecurringChecklistDAO.getDoWByWeekdayInt(em,1));
                 }else{
                     for(DoW dow: newDowList){
-                        d1=dbRec.getDoWByWeekdayInt(em,dow.getWeekdayId());
+                        d1= RecurringChecklistDAO.getDoWByWeekdayInt(em,dow.getWeekdayId());
                         rtl.addDayOfWeek(d1);
                     }
                 }
@@ -102,22 +102,22 @@ public class ModifyRecurringTask25 extends HttpServlet {
         String sThursday = request.getParameter("cbThursday");
         String sFriday = request.getParameter("cbFriday");
         if(!(sMonday==null || sMonday.equals("")))
-            dowList.add(dbRec.getDoWByWeekdayInt(em,1));
+            dowList.add(RecurringChecklistDAO.getDoWByWeekdayInt(em,1));
 
         if(!(sTuesday==null || sTuesday.equals("")))
-            dowList.add(dbRec.getDoWByWeekdayInt(em,2));
+            dowList.add(RecurringChecklistDAO.getDoWByWeekdayInt(em,2));
 
         if(!(sWednesday==null || sWednesday.equals("")))
-            dowList.add(dbRec.getDoWByWeekdayInt(em,3));
+            dowList.add(RecurringChecklistDAO.getDoWByWeekdayInt(em,3));
 
         if(!(sThursday==null || sThursday.equals("")))
-            dowList.add(dbRec.getDoWByWeekdayInt(em,4));
+            dowList.add(RecurringChecklistDAO.getDoWByWeekdayInt(em,4));
 
         if(!(sFriday==null || sFriday.equals("")))
-            dowList.add(dbRec.getDoWByWeekdayInt(em,5));
+            dowList.add(RecurringChecklistDAO.getDoWByWeekdayInt(em,5));
 
         if(dowList.size() == 0)
-            dowList.add(dbRec.getDoWByWeekdayInt(em,1));
+            dowList.add(RecurringChecklistDAO.getDoWByWeekdayInt(em,1));
 
         return dowList;
     }

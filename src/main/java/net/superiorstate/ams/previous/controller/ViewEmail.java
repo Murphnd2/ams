@@ -5,7 +5,7 @@ import jakarta.persistence.EntityManagerFactory;
 import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
-import net.superiorstate.ams.previous.data.model.getByIds.dM;
+import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.previous.model.activity.note.Email;
 
 import java.io.IOException;
@@ -18,7 +18,7 @@ public class ViewEmail extends HttpServlet {
         Long emailId = Long.parseLong(idString);
         EntityManagerFactory emf = (EntityManagerFactory)getServletContext().getAttribute("emf");
         EntityManager em = emf.createEntityManager();
-        Email theEmail = dM.getEmailById(em, emailId);
+        Email theEmail = EntityLookup.getEmailById(em, emailId);
         em.close();
         request.getSession().setAttribute("currentEmail", theEmail);
         request.getSession().setAttribute("recipientList2", theEmail.getRecipientList());

@@ -6,8 +6,8 @@ import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.AmsDataLocal;
-import net.superiorstate.ams.previous.data.model.getByIds.dM;
-import net.superiorstate.ams.previous.data.renewal.dR;
+import net.superiorstate.ams.data.resolver.EntityLookup;
+import net.superiorstate.ams.data.service.RenewalService;
 import net.superiorstate.ams.previous.model.activity.renewal.RenewalItem;
 
 import java.io.IOException;
@@ -35,8 +35,8 @@ public class RemoveItemFromRenewal25 extends HttpServlet {
         EntityManagerFactory emf = (EntityManagerFactory) getServletContext().getAttribute("emf");
         EntityManager em = emf.createEntityManager();
         Long renewalItemId = Long.parseLong(request.getParameter("btnRemoveItem"));
-        RenewalItem ri = dM.getRenewalItemById(em,renewalItemId);
-        dR.removeBenefitFromRenewal(request,em,ri);
+        RenewalItem ri = EntityLookup.getRenewalItemById(em,renewalItemId);
+        RenewalService.removeBenefitFromRenewal(request,em,ri);
 
         local.getCurrentActivity().intializeActivity(em,local.getCurrentActivity().getActivity().getId());
         local.refreshRenewals(em);

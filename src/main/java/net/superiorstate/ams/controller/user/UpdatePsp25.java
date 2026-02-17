@@ -6,8 +6,8 @@ import jakarta.persistence.Query;
 import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
-import net.superiorstate.ams.previous.data.misc.dbEmail;
-import net.superiorstate.ams.previous.data.model.getByIds.dM;
+import net.superiorstate.ams.data.dao.EmailDAO;
+import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.previous.model.general.Address;
 import net.superiorstate.ams.previous.model.general.PSP;
 import net.superiorstate.ams.previous.model.general.Person;
@@ -64,7 +64,7 @@ public class UpdatePsp25 extends HttpServlet {
 
         private void updatePspInfo() {
             // Update PSP Table
-            PSP psp = dM.getPspById(em, 4L);
+            PSP psp = EntityLookup.getPspById(em, 4L);
             if (companyName != null) {
                 em.getTransaction().begin();
                 psp.setFullName(companyName);
@@ -73,7 +73,7 @@ public class UpdatePsp25 extends HttpServlet {
             }
 
             // Update Address Table
-            Address a = dM.getAddressById(em, 3L);
+            Address a = EntityLookup.getAddressById(em, 3L);
             boolean goodAddress = false;
             if (address1 != null && city != null && state != null && zipCode != null) {
                 em.getTransaction().begin();
@@ -89,7 +89,7 @@ public class UpdatePsp25 extends HttpServlet {
             }
 
             // Update Employer Table
-            Employer er = dM.getEmployerById(em, -1);
+            Employer er = EntityLookup.getEmployerById(em, -1);
             if (companyName != null) {
                 em.getTransaction().begin();
                 er.setEmployerName(companyName);
@@ -98,12 +98,12 @@ public class UpdatePsp25 extends HttpServlet {
             }
 
             // Update Employee Table
-            Employee ee = dM.getEmployeeById(em, -1);
-            Person p = dM.getPersonById(em, 104L);
+            Employee ee = EntityLookup.getEmployeeById(em, -1);
+            Person p = EntityLookup.getPersonById(em, 104L);
             updatePersonAndEmployee(primaryLastName, primaryFirstName, primaryEmail, p, ee);
 
-            Employee eu = dM.getEmployeeById(em, -2);
-            Person u = dM.getPersonById(em, 105L);
+            Employee eu = EntityLookup.getEmployeeById(em, -2);
+            Person u = EntityLookup.getPersonById(em, 105L);
             updatePersonAndEmployee(userLastName, userFirstName, userEmail, u, eu);
 
             // Update Agency Table
@@ -216,7 +216,7 @@ public class UpdatePsp25 extends HttpServlet {
 
             String pEmail = request.getParameter("emailPrimary");
             primaryEmail = null;
-            if (dbEmail.isValidEmail(pEmail))
+            if (EmailDAO.isValidEmail(pEmail))
                 primaryEmail = pEmail;
 
             String sLn = request.getParameter("lastNameS");
@@ -231,7 +231,7 @@ public class UpdatePsp25 extends HttpServlet {
 
             String sEmail = request.getParameter("emailSecondary");
             userEmail = null;
-            if (dbEmail.isValidEmail(sEmail))
+            if (EmailDAO.isValidEmail(sEmail))
                 userEmail = sEmail;
 
             accessCode = request.getParameter("accessCode");

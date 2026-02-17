@@ -6,8 +6,8 @@ import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.AmsDataLocal;
-import net.superiorstate.ams.previous.data.misc.ddC;
-import net.superiorstate.ams.previous.data.model.getByIds.dM;
+import net.superiorstate.ams.data.dao.SequenceDAO;
+import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.previous.model.activity.Activity;
 import net.superiorstate.ams.previous.model.activity.checklist.CheckList;
 import net.superiorstate.ams.previous.model.activity.note.Email;
@@ -297,8 +297,8 @@ public class SendEmail25 extends HttpServlet {
             email.setActivity(a);
             email.setSubject(local.getCurrentEmail().getSubject());
             email.setDateGenerated(Date.valueOf(LocalDate.now()));
-            email.setStatus(dM.getActivityStatusById(em,1));
-            email.setReasonCreated(dM.getReasonById(em,7));
+            email.setStatus(EntityLookup.getActivityStatusById(em,1));
+            email.setReasonCreated(EntityLookup.getReasonById(em,7));
             email.setCreatedBy(local.getCurrentPerson());
             email.setDetail(local.getCurrentEmail().getBody() + userSignature);
             em.persist(email);
@@ -308,20 +308,20 @@ public class SendEmail25 extends HttpServlet {
             List<WebLink> attachmentList = local.getCurrentEmail().getAttachments();
             for (WebLink webLink : attachmentList) {
                 em.getTransaction().begin();
-                WebLink w = ddC.getWebLinkById(em, webLink.getId());
+                WebLink w = SequenceDAO.getWebLinkById(em, webLink.getId());
                 w.setEmail(email);
                 em.persist(w);
                 em.getTransaction().commit();
 
                 em.getTransaction().begin();
-                Email e = dM.getEmailById(em, email.getId());
+                Email e = EntityLookup.getEmailById(em, email.getId());
                 e.getWebLinkList().add(w);
                 em.persist(e);
                 em.getTransaction().commit();
             }
             System.out.println("PROCESSED ATTACHMENTS------------");
 
-            Activity activityToAppend = dM.getActivityById(em,a.getId());
+            Activity activityToAppend = EntityLookup.getActivityById(em,a.getId());
             em.getTransaction().begin();
             assert activityToAppend != null;
             activityToAppend.addNote(email);
@@ -334,8 +334,8 @@ public class SendEmail25 extends HttpServlet {
 
             for (Person p1 : recipientList) {
                 em.getTransaction().begin();
-                Person person = dM.getPersonById(em, p1.getId());
-                Email email1 = dM.getEmailById(em, email.getId());
+                Person person = EntityLookup.getPersonById(em, p1.getId());
+                Email email1 = EntityLookup.getEmailById(em, email.getId());
                 email1.addRecipient(person);
                 em.persist(email1);
                 em.persist(person);
@@ -344,7 +344,7 @@ public class SendEmail25 extends HttpServlet {
 
             System.out.println("PROCESSED RECIPIENTS ");
 
-            e1 = dM.getEmailById(em,email.getId());
+            e1 = EntityLookup.getEmailById(em,email.getId());
 
             System.out.println("RETRIEVED UPDATED EMAIL");
 

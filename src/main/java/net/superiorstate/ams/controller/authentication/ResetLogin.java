@@ -7,7 +7,7 @@ import jakarta.persistence.Query;
 import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
-import net.superiorstate.ams.previous.data.misc.dbAuth;
+import net.superiorstate.ams.data.dao.AuthDAO;
 import net.superiorstate.ams.previous.model.general.User;
 
 import java.io.IOException;
@@ -61,8 +61,8 @@ public class ResetLogin extends HttpServlet {
         EntityManagerFactory emf = Persistence.createEntityManagerFactory("default");
         EntityManager em = emf.createEntityManager();
         try {
-            String salt = dbAuth.generateSalt();
-            String hash = dbAuth.generatePasswordHash(passwordToHash,salt);
+            String salt = AuthDAO.generateSalt();
+            String hash = AuthDAO.generatePasswordHash(passwordToHash,salt);
             Query q = em.createQuery("SELECT u FROM User u WHERE u.userName = :username");
             q.setParameter("username",user.getUserName());
             User currentUser = (User) q.getSingleResult();

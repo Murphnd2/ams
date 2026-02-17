@@ -11,8 +11,8 @@ import net.superiorstate.ams.model.Activity25p;
 import net.superiorstate.ams.model.Activity25u;
 import net.superiorstate.ams.model.Checklist25;
 import net.superiorstate.ams.model.Checklist25u;
-import net.superiorstate.ams.previous.data.checklist.dbRec;
-import net.superiorstate.ams.previous.data.model.getByIds.dM;
+import net.superiorstate.ams.data.dao.RecurringChecklistDAO;
+import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.previous.model.activity.Activity;
 import net.superiorstate.ams.previous.model.activity.checklist.CheckList;
 import net.superiorstate.ams.previous.model.activity.checklist.sequences.RecurringTaskList;
@@ -52,7 +52,7 @@ public class CloseActivity25 extends HttpServlet {
             AmsDataLocal local = (AmsDataLocal) request.getSession().getAttribute("local");
             AmsDataGlobal global = (AmsDataGlobal) request.getServletContext().getAttribute("global");
 
-            Activity activity = dM.getActivityById(em, local.getCurrentActivity().getActivity().getId());
+            Activity activity = EntityLookup.getActivityById(em, local.getCurrentActivity().getActivity().getId());
             if (activity == null) return;
 
             closeActivityInDatabase(em, activity, local);
@@ -113,14 +113,14 @@ public class CloseActivity25 extends HttpServlet {
 
     private void handleRecurringChecklist(CheckList checklist, AmsDataLocal local, EntityManager em) {
         if (checklist.getRecurringTaskList() != null && !checklist.getRecurringTaskList().isInActive()) {
-            UpcomingSequence us = dbRec.getUpcomingSequence(em, checklist.getRecurringTaskList());
+            UpcomingSequence us = RecurringChecklistDAO.getUpcomingSequence(em, checklist.getRecurringTaskList());
             if (us != null) {
                 RecurringTaskList rtl = checklist.getRecurringTaskList();
                 Person owner = (rtl != null && rtl.getAssignee() != null)
                         ? rtl.getAssignee()
                         : local.getCurrentPerson();
 
-                CheckList newChecklist = dbRec.createNewRecurringChecklist(em, us, owner);
+                CheckList newChecklist = RecurringChecklistDAO.createNewRecurringChecklist(em, us, owner);
                 Checklist25 newChecklist25 = (Checklist25) em.createQuery(
                                 "SELECT c FROM Checklist25 c WHERE c.activity.id = :id")
                         .setParameter("id", newChecklist.getId())

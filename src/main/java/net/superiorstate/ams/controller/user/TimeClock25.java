@@ -7,7 +7,7 @@ import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.AmsDataLocal;
-import net.superiorstate.ams.previous.data.misc.dbTime;
+import net.superiorstate.ams.data.dao.TimeTrackingDAO;
 import net.superiorstate.ams.previous.model.general.TimeLog;
 
 import java.io.IOException;
@@ -63,8 +63,8 @@ public class TimeClock25 extends HttpServlet {
     }
 
     private void refreshTime(EntityManager em, AmsDataLocal local){
-        local.setUserIsIn(dbTime.getMyLastPunch(em,local.getCurrentUser()).isIn());
-        local.setMyTimeHistory(dbTime.getTodaysTimeHistory(em,local.getCurrentPerson()));
+        local.setUserIsIn(TimeTrackingDAO.getMyLastPunch(em,local.getCurrentUser()).isIn());
+        local.setMyTimeHistory(TimeTrackingDAO.getTodaysTimeHistory(em,local.getCurrentPerson()));
     }
 
 }

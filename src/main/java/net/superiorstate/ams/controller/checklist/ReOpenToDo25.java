@@ -9,8 +9,7 @@ import net.superiorstate.ams.data.AmsDataLocal;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
 import net.superiorstate.ams.data.AmsDataGlobal;
-import net.superiorstate.ams.data.AmsDataLocal;
-import net.superiorstate.ams.previous.data.model.getByIds.dM;
+import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.previous.model.activity.checklist.tasks.ToDo;
 
 import java.io.IOException;
@@ -47,7 +46,7 @@ public class ReOpenToDo25 extends HttpServlet {
 
         try {
             // Close the ToDo
-            ToDo toDo = dM.getToDoById(em,toDoId);
+            ToDo toDo = EntityLookup.getToDoById(em,toDoId);
             if(toDo==null){
                 return;
             }

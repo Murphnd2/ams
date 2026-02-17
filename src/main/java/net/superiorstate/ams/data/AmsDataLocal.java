@@ -9,10 +9,10 @@ import jakarta.persistence.*;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.Part;
 import net.superiorstate.ams.model.*;
-import net.superiorstate.ams.previous.data.V;
-import net.superiorstate.ams.previous.data.checklist.dbRec;
-import net.superiorstate.ams.previous.data.misc.dP;
-import net.superiorstate.ams.previous.data.model.getByIds.dM;
+import net.superiorstate.ams.data.util.Validator;
+import net.superiorstate.ams.data.dao.RecurringChecklistDAO;
+import net.superiorstate.ams.data.dao.PersonDAO;
+import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.previous.model.activity.Activity;
 import net.superiorstate.ams.previous.model.activity.checklist.CheckList;
 import net.superiorstate.ams.previous.model.activity.checklist.sequences.UpcomingSequence;
@@ -33,9 +33,7 @@ import net.superiorstate.ams.previous.model.summit.archive.Employee;
 import net.superiorstate.ams.previous.model.summit.archive.Employer;
 
 import java.sql.Date;
-import java.time.Instant;
 import java.time.LocalDate;
-import java.time.ZoneId;
 import java.util.*;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -538,9 +536,9 @@ public class AmsDataLocal implements AutoCloseable {
             case "CHECK_CLOSE" -> {
                 CheckList c = (CheckList) o;
                 if(c.getRecurringTaskList()!=null) { // Recurring Task Needing Regeneration
-                    UpcomingSequence us = dbRec.getUpcomingSequence(em,c.getRecurringTaskList());
+                    UpcomingSequence us = RecurringChecklistDAO.getUpcomingSequence(em,c.getRecurringTaskList());
                     if(us!=null){
-                        CheckList c1 = dbRec.createNewRecurringChecklist(em,us, getCurrentPerson());
+                        CheckList c1 = RecurringChecklistDAO.createNewRecurringChecklist(em,us, getCurrentPerson());
                         Query q = em.createQuery("SELECT c FROM Checklist25 c WHERE c.activity.id = :id");
                         q.setParameter("id",c1.getId());
                         Checklist25 c25 = (Checklist25) q.getSingleResult();
@@ -600,7 +598,7 @@ public class AmsDataLocal implements AutoCloseable {
                 long taskId = a.getId();
                 Optional<ToDoOut25> tdo = getCurrentActivity().getToDoList().stream().filter(obj->obj.getTask().getId()==taskId).findFirst();
                 if(tdo.isPresent()){
-                    ToDo toDo = dM.getToDoById(em,tdo.get().getToDo().getId());
+                    ToDo toDo = EntityLookup.getToDoById(em,tdo.get().getToDo().getId());
                     if(toDo!=null) {
                         em.getTransaction().begin();
                         toDo.setComplete(true);
@@ -679,9 +677,9 @@ public class AmsDataLocal implements AutoCloseable {
             case "CLOSE_CHECK" -> {
                 CheckList c = (CheckList) o;
                 if(c.getRecurringTaskList()!=null) { // Recurring Task Needing Regeneration
-                    UpcomingSequence us = dbRec.getUpcomingSequence(em,c.getRecurringTaskList());
+                    UpcomingSequence us = RecurringChecklistDAO.getUpcomingSequence(em,c.getRecurringTaskList());
                     if(us!=null){
-                        CheckList c1 = dbRec.createNewRecurringChecklist(em,us, getCurrentPerson());
+                        CheckList c1 = RecurringChecklistDAO.createNewRecurringChecklist(em,us, getCurrentPerson());
                         Query q = em.createQuery("SELECT c FROM Checklist25 c WHERE c.activity.id = :id");
                         q.setParameter("id",c1.getId());
                         Checklist25 c25 = (Checklist25) q.getSingleResult();
@@ -889,7 +887,7 @@ public class AmsDataLocal implements AutoCloseable {
         }
 
         public void initializeCurrentCheckList(EntityManager em, Long id){
-            setCheckList(dM.getCheckListById(em,id));
+            setCheckList(EntityLookup.getCheckListById(em,id));
             setToDoList(getToDosForCurrentActivity(em));
             setNotes(getNotesForActivity(em));
         }
@@ -1032,7 +1030,7 @@ public class AmsDataLocal implements AutoCloseable {
 
         public void intializeActivity(EntityManager em, Long activityId){
             System.out.println("** INITIALIZATION OF ACTIVITY **");
-            setActivity(dM.getActivityById(em,activityId));
+            setActivity(EntityLookup.getActivityById(em,activityId));
             if(getActivity().getClass().getSimpleName().equals("CheckList")){
                 CheckList c = (CheckList) getActivity();
                 setCheckList(c);
@@ -1190,7 +1188,7 @@ public class AmsDataLocal implements AutoCloseable {
                             if (r.getEmployer().getContactList().size() > 0) {
                                 System.out.println("------------ CHECKING EMPLOYER CONTACT LIST -----------------------");
                                 Employee ee = r.getEmployer().getContactList().get(0);
-                                Person p = dP.getPersonByEmployee(em, ee);
+                                Person p = PersonDAO.getPersonByEmployee(em, ee);
                                 if (p != null)
                                     setPrimaryContact(p);
                             }
@@ -1475,8 +1473,8 @@ public class AmsDataLocal implements AutoCloseable {
         private Email createEmail(EntityManager em){
             em.getTransaction().begin();
             Email email = createEmailNotPersisted();
-            email.setStatus(dM.getActivityStatusById(em,1));
-            email.setReasonCreated(dM.getReasonById(em,7));
+            email.setStatus(EntityLookup.getActivityStatusById(em,1));
+            email.setReasonCreated(EntityLookup.getReasonById(em,7));
             em.persist(email);
             em.getTransaction().commit();
             return email;
@@ -1498,7 +1496,7 @@ public class AmsDataLocal implements AutoCloseable {
         }
 
         private boolean isReadyToSend(){
-            if(getSender()==null || getSender().getEmail()==null || !V.isValidEmail(getSender().getEmail()))
+            if(getSender()==null || getSender().getEmail()==null || !Validator.isValidEmail(getSender().getEmail()))
                 return false;
             if(getSubject()==null || getSubject().equals("") || getBody()==null || getBody().equals(""))
                 return false;
@@ -1506,7 +1504,7 @@ public class AmsDataLocal implements AutoCloseable {
                 return false;
             boolean foundValidEmail = false;
             for(Person p: getRecipientList())
-                if(p.getEmail()!=null && V.isValidEmail(p.getEmail())){
+                if(p.getEmail()!=null && Validator.isValidEmail(p.getEmail())){
                     foundValidEmail = true;
                     break;
                 }
@@ -1564,7 +1562,7 @@ public class AmsDataLocal implements AutoCloseable {
             setRecipientList(recipients);
         }
         private boolean isValidPerson(Person person) {
-            return person != null && person.getEmail() != null && V.isValidEmail(person.getEmail());
+            return person != null && person.getEmail() != null && Validator.isValidEmail(person.getEmail());
         }
     }
 

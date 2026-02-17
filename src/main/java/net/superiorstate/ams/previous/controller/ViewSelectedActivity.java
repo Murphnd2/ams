@@ -7,14 +7,14 @@ import jakarta.persistence.Query;
 import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
-import net.superiorstate.ams.previous.data.Q;
-import net.superiorstate.ams.previous.data.activity.dActivity;
-import net.superiorstate.ams.previous.data.activity.vA;
-import net.superiorstate.ams.previous.data.misc.dbA;
-import net.superiorstate.ams.previous.data.misc.dbRenew;
-import net.superiorstate.ams.previous.data.misc.dbTicket;
-import net.superiorstate.ams.previous.data.model.creates.dC;
-import net.superiorstate.ams.previous.data.model.getByIds.dM;
+import net.superiorstate.ams.data.template.Q;
+import net.superiorstate.ams.data.dao.ActivityDAO;
+import net.superiorstate.ams.data.util.ActivityViewHelper;
+import net.superiorstate.ams.data.dao.AppConstantDAO;
+import net.superiorstate.ams.data.dao.RenewalQueryDAO;
+import net.superiorstate.ams.data.dao.TicketQueryDAO;
+import net.superiorstate.ams.data.resolver.EntityFactory;
+import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.previous.model.activity.Activity;
 import net.superiorstate.ams.previous.model.activity.checklist.CheckList;
 import net.superiorstate.ams.previous.model.activity.checklist.sequences.RequiredTaskList;
@@ -67,7 +67,7 @@ public class ViewSelectedActivity extends HttpServlet {
 
         request.getSession().setAttribute("lastTab",2);
         Long id = Long.parseLong(request.getParameter("btnViewActivity"));
-        Activity selectedActivity = dM.getActivityById(em,id);
+        Activity selectedActivity = EntityLookup.getActivityById(em,id);
         assert selectedActivity != null;
         setActivityView(request,em,selectedActivity);
 
@@ -76,11 +76,11 @@ public class ViewSelectedActivity extends HttpServlet {
     }
 
     private static void fillRenewalSpecificLists(HttpServletRequest request, EntityManager em, Renewal r){
-        List<Employee> contactList = dbRenew.getEmployeesAssignedToRenewal(em,r);
-        request.getSession().setAttribute("contactList", dbTicket.getTicketEmployeeList(em,contactList));
-        List<Employee> employeeList = dbRenew.getContactsNotAssigned(em,r);
-        request.getSession().setAttribute("remainingEmployees", dbTicket.getTicketEmployeeList(em,employeeList));
-        List<Benefit> benefitsNotInRenewal = dbRenew.getBenefitsNotInRenewal(em,r);
+        List<Employee> contactList = RenewalQueryDAO.getEmployeesAssignedToRenewal(em,r);
+        request.getSession().setAttribute("contactList", TicketQueryDAO.getTicketEmployeeList(em,contactList));
+        List<Employee> employeeList = RenewalQueryDAO.getContactsNotAssigned(em,r);
+        request.getSession().setAttribute("remainingEmployees", TicketQueryDAO.getTicketEmployeeList(em,employeeList));
+        List<Benefit> benefitsNotInRenewal = RenewalQueryDAO.getBenefitsNotInRenewal(em,r);
         request.getSession().setAttribute("benefitsNotInRenewal",benefitsNotInRenewal);
 
     }
@@ -184,40 +184,40 @@ public class ViewSelectedActivity extends HttpServlet {
 
     private static void setActivityViewOld(HttpServletRequest request, EntityManager em, Activity a){
         Long id = a.getId();
-        Activity selectedActivity = dM.getActivityById(em,id);
+        Activity selectedActivity = EntityLookup.getActivityById(em,id);
         assert selectedActivity != null;
-        Person primaryContact = dActivity.getPrimaryContact(em,selectedActivity);
+        Person primaryContact = ActivityDAO.getPrimaryContact(em,selectedActivity);
         request.getSession().setAttribute("currentPrimaryContact",primaryContact);
         request.getSession().setAttribute("otherContactList",selectedActivity.getAssigneeContactList());
         request.getSession().setAttribute("activityWebLinkList",selectedActivity.getWebLinkList());
         request.getSession().setAttribute("currentActivityId",id);
         request.getSession().setAttribute("currentActivity",selectedActivity);
         request.getSession().setAttribute("pastActivities",getPastActivities(request,em,selectedActivity));
-        request.getSession().setAttribute("rfCodes",vA.getAutomationInsertLinks(em));
+        request.getSession().setAttribute("rfCodes", ActivityViewHelper.getAutomationInsertLinks(em));
         CheckList c = getCheckListForActivity(em,selectedActivity);
         request.getSession().setAttribute("currentChecklist",c);
         String classType = selectedActivity.getClass().getSimpleName();
         switch (classType){
             case "Renewal":
                 request.getSession().setAttribute("adminView",2);
-                request.getSession().setAttribute("currentRenewal", dM.getRenewalById(em,id));
+                request.getSession().setAttribute("currentRenewal", EntityLookup.getRenewalById(em,id));
                 request.getSession().setAttribute("currentSetup", new Setup());
                 request.getSession().setAttribute("currentTicket", new Ticket());
-                request.getSession().setAttribute("currentActivityEmployees", dActivity.getEmployeeList(em,selectedActivity));
-                fillRenewalSpecificLists(request,em,dM.getRenewalById(em,id));
+                request.getSession().setAttribute("currentActivityEmployees", ActivityDAO.getEmployeeList(em,selectedActivity));
+                fillRenewalSpecificLists(request,em, EntityLookup.getRenewalById(em,id));
                 break;
             case "Setup":
                 request.getSession().setAttribute("adminView",1);
                 request.getSession().setAttribute("currentRenewal", new Renewal());
-                request.getSession().setAttribute("currentSetup", dM.getSetupById(em,id));
+                request.getSession().setAttribute("currentSetup", EntityLookup.getSetupById(em,id));
                 request.getSession().setAttribute("currentTicket", new Ticket());
-                fillSetupSpecificLists(request,em, Objects.requireNonNull(dM.getSetupById(em, id)));
+                fillSetupSpecificLists(request,em, Objects.requireNonNull(EntityLookup.getSetupById(em, id)));
                 break;
             case "Ticket":
                 request.getSession().setAttribute("adminView",3);
                 request.getSession().setAttribute("currentRenewal", new Renewal());
                 request.getSession().setAttribute("currentSetup", new Setup());
-                Ticket t = dM.getTicketById(em,id);
+                Ticket t = EntityLookup.getTicketById(em,id);
                 request.getSession().setAttribute("currentTicket", t);
                 Employee e = getTicketEmployee(em,t);
                 request.getSession().setAttribute("currentEeId","");
@@ -229,7 +229,7 @@ public class ViewSelectedActivity extends HttpServlet {
                 request.getSession().setAttribute("currentActivityEmployees",new ArrayList<>());
                 if(e!=null){
                     request.getSession().setAttribute("tIsEmployee",1);
-                    request.getSession().setAttribute("currentActivityEmployees",dActivity.getEmployeeList(em,e.getEmployer()));
+                    request.getSession().setAttribute("currentActivityEmployees", ActivityDAO.getEmployeeList(em,e.getEmployer()));
                     request.getSession().setAttribute("currentEeId",e.getId());
                     request.getSession().setAttribute("currentEeAltId",e.getMmKey());
                     request.getSession().setAttribute("currentErId",e.getEmployer().getId());
@@ -285,21 +285,21 @@ public class ViewSelectedActivity extends HttpServlet {
         switch (classType) {
             case "Renewal":
                 em.getTransaction().begin();
-                Renewal r = dM.getRenewalById(em, c.getAssignedTo().getId());
+                Renewal r = EntityLookup.getRenewalById(em, c.getAssignedTo().getId());
                 r.setCheckList(c);
                 em.persist(r);
                 em.getTransaction().commit();
                 break;
             case "Setup":
                 em.getTransaction().begin();
-                Setup s = (Setup) dM.getActivityById(em, c.getAssignedTo().getId());
+                Setup s = (Setup) EntityLookup.getActivityById(em, c.getAssignedTo().getId());
                 s.setCheckList(c);
                 em.persist(s);
                 em.getTransaction().commit();
                 break;
             case "Ticket":
                 em.getTransaction().begin();;
-                Ticket t = (Ticket) dM.getActivityById(em,c.getAssignedTo().getId());
+                Ticket t = (Ticket) EntityLookup.getActivityById(em,c.getAssignedTo().getId());
                 t.setCheckList(c);
                 em.persist(t);
                 em.getTransaction().commit();
@@ -328,9 +328,9 @@ public class ViewSelectedActivity extends HttpServlet {
 
     private static void fillRenewalItems(EntityManager em, Renewal r){
         for(ToDo t:r.getCheckList().getToDoList()){
-            if(t.isComplete() && t.getDateCompleted()==dbA.getFalseCloseDate(em)){
+            if(t.isComplete() && t.getDateCompleted()== AppConstantDAO.getFalseCloseDate(em)){
                 em.getTransaction().begin();
-                ToDo toDo = dM.getToDoById(em,t.getId());
+                ToDo toDo = EntityLookup.getToDoById(em,t.getId());
                 toDo.setComplete(false);
                 toDo.setDateCompleted(null);
                 em.persist(toDo);
@@ -349,7 +349,7 @@ public class ViewSelectedActivity extends HttpServlet {
             em.persist(t);
             em.getTransaction().commit();
             em.getTransaction().begin();
-            CheckList c = dM.getCheckListById(em,r.getCheckList().getId());
+            CheckList c = EntityLookup.getCheckListById(em,r.getCheckList().getId());
             c.getToDoList().add(t);
             em.persist(c);
             em.getTransaction().commit();
@@ -366,7 +366,7 @@ public class ViewSelectedActivity extends HttpServlet {
                 ToDo toDo = (ToDo) q.getSingleResult();
                 if(!toDo.isComplete()){
                     toDo.setComplete(true);
-                    toDo.setDateCompleted(dbA.getFalseCloseDate(em));
+                    toDo.setDateCompleted(AppConstantDAO.getFalseCloseDate(em));
                     em.persist(toDo);
                 }
                 em.getTransaction().commit();
@@ -470,7 +470,7 @@ public class ViewSelectedActivity extends HttpServlet {
         if(classType.equals("Ticket")){
             CreateTicket.createToDoList(em,(Ticket) a,c);
         } else {
-            Task t = dC.createTaskOneTime(em,"Default",((Person) a.getAssignedTo()).getPsp());
+            Task t = EntityFactory.createTaskOneTime(em,"Default",((Person) a.getAssignedTo()).getPsp());
             ToDo td = new ToDo();
             em.getTransaction().begin();
             td.setCheckList(c);

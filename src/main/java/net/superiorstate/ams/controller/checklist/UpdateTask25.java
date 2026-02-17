@@ -9,9 +9,9 @@ import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.AmsDataGlobal;
 import net.superiorstate.ams.data.AmsDataLocal;
 import net.superiorstate.ams.model.ToDoOut25;
-import net.superiorstate.ams.previous.data.SessionVar;
-import net.superiorstate.ams.previous.data.V;
-import net.superiorstate.ams.previous.data.model.getByIds.dM;
+import net.superiorstate.ams.data.util.SessionVar;
+import net.superiorstate.ams.data.util.Validator;
+import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.previous.model.activity.checklist.tasks.Task;
 import net.superiorstate.ams.previous.model.general.Automation;
 import net.superiorstate.ams.previous.model.general.LinkType;
@@ -118,7 +118,7 @@ public class UpdateTask25 extends HttpServlet {
         else if(t.isAutomated()){ //If Task is mistakenly flagged Automated but no object exists
 
             System.out.println("STEP: isAutomated BUT automation is null");
-            Task t1 = dM.getTaskById(em,t.getId());
+            Task t1 = EntityLookup.getTaskById(em,t.getId());
             em.getTransaction().begin();
             t1.setHasAutomation(false);
             t1.setAutomationText(null);
@@ -145,7 +145,7 @@ public class UpdateTask25 extends HttpServlet {
     private void removeAutomation(EntityManager em, Task t){
         //Clear Task
         Automation a = t.getAutomation();
-        Task task = dM.getTaskById(em,t.getId());
+        Task task = EntityLookup.getTaskById(em,t.getId());
         if(task==null)
             return;
         em.getTransaction().begin();
@@ -184,7 +184,7 @@ public class UpdateTask25 extends HttpServlet {
         Person owner=null;
         try{
             if(whoOwns>0)
-                owner = dM.getPersonById(em,Long.parseLong(request.getParameter("ownerId").toString()));
+                owner = EntityLookup.getPersonById(em,Long.parseLong(request.getParameter("ownerId").toString()));
         } catch (Exception ignored){       }
 
         int isSourced=0;
@@ -195,7 +195,7 @@ public class UpdateTask25 extends HttpServlet {
         Person bpo=null;
         try{
             if(isSourced>0)
-                bpo = dM.getPersonById(em,Long.parseLong(request.getParameter("sourceId").toString()));
+                bpo = EntityLookup.getPersonById(em,Long.parseLong(request.getParameter("sourceId").toString()));
         } catch (Exception ignored){}
 
         boolean hasOwner = owner != null && whoOwns != 0;
@@ -233,7 +233,7 @@ public class UpdateTask25 extends HttpServlet {
 
         SessionVar sVar = (SessionVar) request.getSession().getAttribute("sVar");
 
-        Task t = dM.getTaskById(em,local.getCurrentToDoOut().getTask().getId());
+        Task t = EntityLookup.getTaskById(em,local.getCurrentToDoOut().getTask().getId());
 
         if(t==null)
             return null;
@@ -275,7 +275,7 @@ public class UpdateTask25 extends HttpServlet {
         newHtml = newHtml.replace("&lt;","<");
         newHtml = newHtml.replace("&gt;",">");
         newHtml = newHtml.trim();
-        Automation a = dM.getAutomationById(em,a1.getId());
+        Automation a = EntityLookup.getAutomationById(em,a1.getId());
         em.getTransaction().begin();
         assert a != null;
         a.setContent(newHtml);
@@ -285,7 +285,7 @@ public class UpdateTask25 extends HttpServlet {
         return a;
     }
     private void addAutomationToTask(EntityManager em, Automation a, String newTitle, Task task){
-        Task t = dM.getTaskById(em,task.getId());
+        Task t = EntityLookup.getTaskById(em,task.getId());
         if(t==null)
             return;
         em.getTransaction().begin();
@@ -299,9 +299,9 @@ public class UpdateTask25 extends HttpServlet {
         em.getTransaction().commit();
     }
     private WebLink createWebLink(EntityManager em, String path){
-        if(!V.isValidURL(path))
+        if(!Validator.isValidURL(path))
             return null;
-        LinkType l = dM.getLinkTypeById(em, 2);
+        LinkType l = EntityLookup.getLinkTypeById(em, 2);
         if (l == null) {
             throw new IllegalStateException("LinkType ID 2 is missing from the database.");
         }

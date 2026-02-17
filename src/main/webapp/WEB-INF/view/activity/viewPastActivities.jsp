@@ -1,4 +1,4 @@
-<%@ page import="net.superiorstate.ams.previous.data.misc.dbA" %>
+<%@ page import="net.superiorstate.ams.data.dao.AppConstantDAO" %>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 <%@ taglib prefix="fmt" uri="http://java.sun.com/jsp/jstl/fmt" %>
 <div class="row mt-3 mb-2 overflow-auto" style="height: 400px">

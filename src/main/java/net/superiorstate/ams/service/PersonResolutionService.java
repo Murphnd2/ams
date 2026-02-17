@@ -3,8 +3,8 @@ package net.superiorstate.ams.service;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.NoResultException;
-import net.superiorstate.ams.previous.data.misc.dbEmail;
-import net.superiorstate.ams.previous.data.model.getByIds.dM;
+import net.superiorstate.ams.data.dao.EmailDAO;
+import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.previous.model.general.Address;
 import net.superiorstate.ams.previous.model.general.Person;
 import net.superiorstate.ams.previous.model.summit.archive.Employee;
@@ -34,7 +34,7 @@ public class PersonResolutionService {
         // 1. Employee ID in parentheses → e.g. "John Doe (12345)"
         Integer employeeId = parseEmployeeId(text);
         if (employeeId != null) {
-            Employee ee = dM.getEmployeeById(em, employeeId);
+            Employee ee = EntityLookup.getEmployeeById(em, employeeId);
             if (ee != null) {
                 return getOrCreatePersonForEmployee(em, ee);
             }
@@ -43,11 +43,11 @@ public class PersonResolutionService {
         // 2. Person ID in braces → e.g. "{987}"
         Long personId = parsePersonId(text);
         if (personId != null) {
-            return dM.getPersonById(em, personId);
+            return EntityLookup.getPersonById(em, personId);
         }
 
         // 3. Valid email → try as Employee first
-        if (dbEmail.isValidEmail(text)) {
+        if (EmailDAO.isValidEmail(text)) {
             Employee ee = getEmployeeByEmail(em, text);
             if (ee != null) {
                 return getOrCreatePersonForEmployee(em, ee);
@@ -55,7 +55,7 @@ public class PersonResolutionService {
         }
 
         // 4. Valid email → try existing non-employee Person
-        if (dbEmail.isValidEmail(text)) {
+        if (EmailDAO.isValidEmail(text)) {
             Person existing = getPersonByEmail(em, text);
             if (existing != null) {
                 return existing;
@@ -109,12 +109,12 @@ public class PersonResolutionService {
             Person p = new Person();
             p.setAddress(a);
             p.setEmployee(ee);
-            p.setPsp(dM.getPspById(em, 4L));
+            p.setPsp(EntityLookup.getPspById(em, 4L));
 
             // Prefer HR email, then regular email
-            if (ee.getHrEmail() != null && dbEmail.isValidEmail(ee.getHrEmail())) {
+            if (ee.getHrEmail() != null && EmailDAO.isValidEmail(ee.getHrEmail())) {
                 p.setEmail(ee.getHrEmail().trim().toLowerCase());
-            } else if (ee.getEmail() != null && dbEmail.isValidEmail(ee.getEmail())) {
+            } else if (ee.getEmail() != null && EmailDAO.isValidEmail(ee.getEmail())) {
                 p.setEmail(ee.getEmail().trim().toLowerCase());
             }
 
@@ -162,13 +162,13 @@ public class PersonResolutionService {
             if (!ids.isEmpty()) {
                 // Prefer the one that actually has an Employee record attached
                 for (Long id : ids) {
-                    Person p = dM.getPersonById(em, id);
+                    Person p = EntityLookup.getPersonById(em, id);
                     if (p != null && p.getEmployee() != null) {
                         return p;
                     }
                 }
                 // Otherwise return the most recent one
-                return dM.getPersonById(em, ids.get(0));
+                return EntityLookup.getPersonById(em, ids.get(0));
             }
         } catch (Exception e) {
             // swallow – we don’t want one bad row to break everything
@@ -221,7 +221,7 @@ public class PersonResolutionService {
                     .setParameter("l", name.last())
                     .setMaxResults(1)
                     .getSingleResult();
-            return dM.getPersonById(em, id);
+            return EntityLookup.getPersonById(em, id);
         } catch (NoResultException e) {
             return null;
         }
@@ -257,7 +257,7 @@ public class PersonResolutionService {
         }
 
         // Nothing found → create from email (only if it's actually a valid email)
-        if (dbEmail.isValidEmail(input)) {
+        if (EmailDAO.isValidEmail(input)) {
             return createPersonFromEmail(em, input);
         }
 
@@ -269,7 +269,7 @@ public class PersonResolutionService {
         em.getTransaction().begin();
         try {
             Person p = new Person();
-            p.setPsp(dM.getPspById(em, 4L));
+            p.setPsp(EntityLookup.getPspById(em, 4L));
             p.setEmail(email.trim().toLowerCase());
 
             // Try to guess name from email (e.g. john.doe@company.com → John Doe)

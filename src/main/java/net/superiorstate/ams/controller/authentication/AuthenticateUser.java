@@ -7,19 +7,10 @@ import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.AmsDataLocal;
-import net.superiorstate.ams.previous.data.checklist.dbCheck;
-import net.superiorstate.ams.previous.data.checklist.dbRec;
-import net.superiorstate.ams.previous.data.misc.*;
-import net.superiorstate.ams.previous.data.model.getByIds.dM;
-import net.superiorstate.ams.previous.model.activity.checklist.sequences.support.TaskFrequency;
-import net.superiorstate.ams.previous.model.activity.checklist.sequences.support.TemplateGroup;
-import net.superiorstate.ams.previous.model.activity.checklist.sequences.support.TemplatePurpose;
-import net.superiorstate.ams.previous.model.general.PSP;
+import net.superiorstate.ams.data.dao.AuthDAO;
 import net.superiorstate.ams.previous.model.general.Person;
 import net.superiorstate.ams.previous.model.general.User;
 import net.superiorstate.ams.previous.model.general.UserRole;
-import net.superiorstate.ams.previous.model.sales.agency.Rate;
-import net.superiorstate.ams.previous.model.sales.offering.LOS;
 
 import java.io.IOException;
 import java.security.NoSuchAlgorithmException;
@@ -68,9 +59,9 @@ public class AuthenticateUser extends HttpServlet {
         String userName = request.getParameter("userName");
         String password = request.getParameter("userPassword");
         // Validate Credentials
-        boolean validated = dbAuth.validateLogin(em,userName,password);
+        boolean validated = AuthDAO.validateLogin(em,userName,password);
         if(validated){
-            User currentUser = dbAuth.getUserByUserName(em,userName);
+            User currentUser = AuthDAO.getUserByUserName(em,userName);
             loadSessionData25(request,em,currentUser);
         }
         em.close();
@@ -78,12 +69,12 @@ public class AuthenticateUser extends HttpServlet {
     }
 
     private void loadSessionData25(HttpServletRequest request, EntityManager em, User u){
-        Person p = dbAuth.getPersonByUser(em,u);
+        Person p = AuthDAO.getPersonByUser(em,u);
         request.getSession().setAttribute("currentPerson",p);
         AmsDataLocal local = new AmsDataLocal();
         local.setAuthenticated(true);
         local.intializeLocalData(em,request);
-        dbAuth.assignUserRoles(request,u);
+        AuthDAO.assignUserRoles(request,u);
 
         request.getSession().setAttribute("local",local);
     }

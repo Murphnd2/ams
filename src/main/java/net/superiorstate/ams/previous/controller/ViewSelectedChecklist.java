@@ -7,7 +7,7 @@ import jakarta.persistence.Query;
 import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
-import net.superiorstate.ams.previous.data.model.getByIds.dM;
+import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.previous.model.activity.checklist.CheckList;
 import net.superiorstate.ams.previous.model.activity.checklist.tasks.ToDo;
 import net.superiorstate.ams.previous.model.activity.renewal.Renewal;
@@ -46,8 +46,8 @@ public class ViewSelectedChecklist extends HttpServlet {
             Long id = Long.parseLong(buttonValue.substring(2));
             Long personId = Long.parseLong(request.getParameter("userList"));
             em.getTransaction().begin();
-            CheckList c = dM.getCheckListById(em,id);
-            Person p = dM.getPersonById(em,personId);
+            CheckList c = EntityLookup.getCheckListById(em,id);
+            Person p = EntityLookup.getPersonById(em,personId);
             c.setAssignedTo(p);
             em.persist(c);
             em.getTransaction().commit();
@@ -57,13 +57,13 @@ public class ViewSelectedChecklist extends HttpServlet {
             request.getSession().setAttribute("currentActivity",c );
         }else{
             Long id = Long.parseLong(request.getParameter("btnCheckList"));
-            CheckList c = dM.getCheckListById(em,id);
-            request.getSession().setAttribute("currentPrimaryContact",dM.getPersonById(em,c.getAssignedTo().getId()));
+            CheckList c = EntityLookup.getCheckListById(em,id);
+            request.getSession().setAttribute("currentPrimaryContact", EntityLookup.getPersonById(em,c.getAssignedTo().getId()));
             System.out.println(c.getDateCreated());
-            request.getSession().setAttribute("currentChecklist", dM.getCheckListById(em,id));
+            request.getSession().setAttribute("currentChecklist", EntityLookup.getCheckListById(em,id));
             request.getSession().setAttribute("currentToDoList",getToDoListByChecklistId(em,id));
             request.getSession().setAttribute("adminView",4);
-            request.getSession().setAttribute("currentActivity", dM.getCheckListById(em,id) );
+            request.getSession().setAttribute("currentActivity", EntityLookup.getCheckListById(em,id) );
         }
         request.getSession().setAttribute("currentSetup", new Setup());
         request.getSession().setAttribute("currentTicket", new Ticket());

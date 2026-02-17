@@ -6,9 +6,9 @@ import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.AmsDataLocal;
-import net.superiorstate.ams.previous.data.XP;
-import net.superiorstate.ams.previous.data.misc.dbTicket;
-import net.superiorstate.ams.previous.data.model.getByIds.dM;
+import net.superiorstate.ams.data.dao.TicketQueryDAO;
+import net.superiorstate.ams.data.resolver.EntityLookup;
+import net.superiorstate.ams.data.resolver.PersonResolver;
 import net.superiorstate.ams.previous.model.activity.checklist.CheckList;
 import net.superiorstate.ams.previous.model.activity.checklist.tasks.SortedTask;
 import net.superiorstate.ams.previous.model.activity.checklist.tasks.ToDo;
@@ -75,7 +75,7 @@ public class CreateTicket25 extends HttpServlet {
                 return;
             };
 
-            setContact(XP.getBestPerson(em,getContactNameField()));
+            setContact(PersonResolver.getBestPersonFromString(em,getContactNameField()));
             processTicketType(em);
             Ticket t = createTicketObject(em);
             em.refresh(t);
@@ -104,7 +104,7 @@ public class CreateTicket25 extends HttpServlet {
             em.getTransaction().commit();
 
             CheckList c = createCheckListForTicket(em,t);
-            CheckList checkList = dM.getCheckListById(em,c.getId());
+            CheckList checkList = EntityLookup.getCheckListById(em,c.getId());
             em.getTransaction().begin();
             t.setCheckList(checkList);
             em.persist(t);
@@ -124,13 +124,13 @@ public class CreateTicket25 extends HttpServlet {
             em.persist(c);
             em.getTransaction().commit();
             createToDoList(em,c);
-            return dM.getCheckListById(em,c.getId());
+            return EntityLookup.getCheckListById(em,c.getId());
         }
 
         private void createToDoList(EntityManager em, CheckList c){
             List<SortedTask> sortedTaskList;
             try{
-                sortedTaskList = dbTicket.getTasksRequiredForTheTicket(em,(Ticket) c.getAssignedTo());
+                sortedTaskList = TicketQueryDAO.getTasksRequiredForTheTicket(em,(Ticket) c.getAssignedTo());
                 if(sortedTaskList==null)
                     sortedTaskList = new ArrayList<>();
             } catch (Exception ex){
@@ -138,7 +138,7 @@ public class CreateTicket25 extends HttpServlet {
             }
 
             if(sortedTaskList.size()==0)
-                sortedTaskList.add(new SortedTask(dM.getTaskById(em, 153L), 1000));
+                sortedTaskList.add(new SortedTask(EntityLookup.getTaskById(em, 153L), 1000));
 
             for(SortedTask st: sortedTaskList){
                 em.getTransaction().begin();
@@ -154,7 +154,7 @@ public class CreateTicket25 extends HttpServlet {
 
                 em.getTransaction().begin();
                 assert c != null;
-                CheckList checkList = dM.getCheckListById(em,c.getId());
+                CheckList checkList = EntityLookup.getCheckListById(em,c.getId());
                 assert checkList != null;
                 checkList.getToDoList().add(toDo);
                 em.persist(checkList);
@@ -173,7 +173,7 @@ public class CreateTicket25 extends HttpServlet {
                 catId = 12;
             else if (textToCheck.contains("quote") || textToCheck.contains("fsa") || textToCheck.contains("hra") || textToCheck.contains("pop") || textToCheck.contains("hsa") || textToCheck.contains("cobra") || textToCheck.contains("transit"))
                 catId = 17;
-            return dM.getTicketCategoryById(em,catId);
+            return EntityLookup.getTicketCategoryById(em,catId);
         }
 
         private void processTicketType(EntityManager em){
@@ -186,7 +186,7 @@ public class CreateTicket25 extends HttpServlet {
                     try{
                         int rId = Integer.parseInt(reason.substring(lp+2,sp));
                         setReasonId(rId);
-                        setCategory(dM.getSubCategoryById(em,getReasonId()));
+                        setCategory(EntityLookup.getSubCategoryById(em,getReasonId()));
                         createOne = false;
                     } catch (Exception e){
                         e.printStackTrace();
@@ -204,7 +204,7 @@ public class CreateTicket25 extends HttpServlet {
                     em.getTransaction().commit();
                     setCategory(tsc);
                 }
-            } else setCategory(dM.getSubCategoryById(em,getReasonId()));
+            } else setCategory(EntityLookup.getSubCategoryById(em,getReasonId()));
 
         }
 
@@ -222,7 +222,7 @@ public class CreateTicket25 extends HttpServlet {
             if(rid1i==0)
                 setReasonField(request.getParameter("reasonNameTicket"));
             else
-                setReasonField(dM.getSubCategoryById(em,rid1i).getDescription());
+                setReasonField(EntityLookup.getSubCategoryById(em,rid1i).getDescription());
             String text=null;
             try{
                 text = request.getParameter("ticketDescription");

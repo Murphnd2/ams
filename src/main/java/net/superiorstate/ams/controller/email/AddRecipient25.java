@@ -6,8 +6,8 @@ import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.AmsDataLocal;
-import net.superiorstate.ams.previous.data.V;
-import net.superiorstate.ams.previous.data.misc.dbEmail;
+import net.superiorstate.ams.data.util.Validator;
+import net.superiorstate.ams.data.dao.EmailDAO;
 import net.superiorstate.ams.previous.model.general.Person;
 
 import java.io.IOException;
@@ -30,7 +30,7 @@ public class AddRecipient25 extends HttpServlet {
         request.getSession().setAttribute("emailNotFound",false);
         request.getSession().setAttribute("personNotFound", false);
         AmsDataLocal local = (AmsDataLocal) request.getSession().getAttribute("local");
-        if(!V.isValidEmail(local.getCurrentEmail().getEmailToAdd())){
+        if(!Validator.isValidEmail(local.getCurrentEmail().getEmailToAdd())){
             request.getSession().setAttribute("emailNotFound",true);
             return;
         }
@@ -43,7 +43,7 @@ public class AddRecipient25 extends HttpServlet {
             return;
         }
 
-        Person p = dbEmail.getPersonByEmail(em, emailString,local.getCurrentPerson().getPsp());
+        Person p = EmailDAO.getPersonByEmail(em, emailString,local.getCurrentPerson().getPsp());
 
         if(p!=null && local.getCurrentEmail().getRecipientList().stream().noneMatch(obj->obj.getId().equals(p.getId())))
             local.getCurrentEmail().getRecipientList().add(p);
@@ -57,7 +57,7 @@ public class AddRecipient25 extends HttpServlet {
     }
     private boolean foundPerson(EntityManager em, AmsDataLocal local){
         String emailToAdd = local.getCurrentEmail().getEmailToAdd();
-        if(dbEmail.getPersonByEmail(em,emailToAdd,local.getCurrentPerson().getPsp())!=null)
+        if(EmailDAO.getPersonByEmail(em,emailToAdd,local.getCurrentPerson().getPsp())!=null)
             return true;
 
         String fName = local.getCurrentEmail().getFirstName();

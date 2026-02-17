@@ -3,9 +3,9 @@ package net.superiorstate.ams.data;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.NoResultException;
 import jakarta.persistence.Query;
-import net.superiorstate.ams.previous.data.V;
-import net.superiorstate.ams.previous.data.model.getByIds.dM;
-import net.superiorstate.ams.previous.data.summit.dH;
+import net.superiorstate.ams.data.util.Validator;
+import net.superiorstate.ams.data.resolver.EntityLookup;
+import net.superiorstate.ams.data.util.HsaBillingHelper;
 import net.superiorstate.ams.previous.model.general.PSP;
 import net.superiorstate.ams.previous.model.general.Person;
 import net.superiorstate.ams.previous.model.summit.archive.Benefit;
@@ -546,8 +546,8 @@ public abstract class Updater {
                 if (parts.length > 1) lastName = parts[1];
             }
 
-            String normFirst = V.normalizeName(firstName);
-            String normLast = V.normalizeName(lastName);
+            String normFirst = Validator.normalizeName(firstName);
+            String normLast = Validator.normalizeName(lastName);
 
             // Use mutable list or create new one if not present
             List<Employee> scopedEmployees = employeesByEmployer.computeIfAbsent(employerId, k -> new ArrayList<>());
@@ -555,8 +555,8 @@ public abstract class Updater {
             // Match check: email or normalized name
             boolean matchFound = scopedEmployees.stream().anyMatch(e ->
                     (e.getEmail() != null && e.getEmail().trim().equalsIgnoreCase(contactEmail)) ||
-                            (V.normalizeName(e.getFirstName()).equals(normFirst) &&
-                                    V.normalizeName(e.getLastName()).equals(normLast))
+                            (Validator.normalizeName(e.getFirstName()).equals(normFirst) &&
+                                    Validator.normalizeName(e.getLastName()).equals(normLast))
             );
 
             if (matchFound) {
@@ -627,8 +627,8 @@ public abstract class Updater {
         for (Employee neg : negatives) {
             Integer employerId = neg.getEmployer().getId();
             String normEmail = neg.getEmail() != null ? neg.getEmail().trim().toLowerCase() : null;
-            String normFirst = V.normalizeName(neg.getFirstName());
-            String normLast = V.normalizeName(neg.getLastName());
+            String normFirst = Validator.normalizeName(neg.getFirstName());
+            String normLast = Validator.normalizeName(neg.getLastName());
 
             List<Employee> candidates = positiveByEmployer.getOrDefault(employerId, List.of());
 
@@ -644,8 +644,8 @@ public abstract class Updater {
             if (match.isEmpty()) {
                 match = candidates.stream()
                         .filter(e ->
-                                V.normalizeName(e.getFirstName()).equals(normFirst) &&
-                                        V.normalizeName(e.getLastName()).equals(normLast))
+                                Validator.normalizeName(e.getFirstName()).equals(normFirst) &&
+                                        Validator.normalizeName(e.getLastName()).equals(normLast))
                         .findFirst();
             }
 
@@ -1040,7 +1040,7 @@ public abstract class Updater {
             String rawEmployer = account.getEmployer();
             if (rawEmployer == null || rawEmployer.isBlank()) continue;
 
-            String normalized = V.normalizeEmployerName(rawEmployer);
+            String normalized = Validator.normalizeEmployerName(rawEmployer);
             if (processedEmployers.contains(normalized)) continue;
 
             if (!existingErMap.containsKey(rawEmployer.trim().toLowerCase())) {
@@ -1092,7 +1092,7 @@ public abstract class Updater {
 
             // Always resolve current correct HsaEr
             HsaEr correctHsaEr = hsaErCache.computeIfAbsent(h.getEmployer(),
-                    name -> dH.getHsaErByAccount(em, h));
+                    name -> HsaBillingHelper.getHsaErByAccount(em, h));
 
             boolean isNew = (hsaEe == null);
             if (isNew) {
@@ -1146,11 +1146,11 @@ public abstract class Updater {
         return s == null ? "" : s.trim().toLowerCase();
     }
     private static Employer findOrCreateEmployer(EntityManager em, String rawName) {
-        String normalizedInput = V.normalizeEmployerName(rawName);
+        String normalizedInput = Validator.normalizeEmployerName(rawName);
 
         List<Employer> employers = em.createQuery("SELECT e FROM Employer e", Employer.class).getResultList();
         for (Employer e : employers) {
-            String normalizedExisting = V.normalizeEmployerName(e.getEmployerName());
+            String normalizedExisting = Validator.normalizeEmployerName(e.getEmployerName());
             if (normalizedInput.equals(normalizedExisting)) {
                 return e;
             }
@@ -1190,7 +1190,7 @@ public abstract class Updater {
             peopleByName.computeIfAbsent(nameKey, k -> new ArrayList<>()).add(p);
         }
 
-        PSP psp = dM.getPspById(em, 4L);
+        PSP psp = EntityLookup.getPspById(em, 4L);
 
         int count = 0;
         int batchSize = 200;
@@ -1198,7 +1198,7 @@ public abstract class Updater {
         em.getTransaction().begin();
 
         for (Employee emp : employees) {
-            String email = V.isValidEmail(emp.getEmail()) ? emp.getEmail().toLowerCase() : null;
+            String email = Validator.isValidEmail(emp.getEmail()) ? emp.getEmail().toLowerCase() : null;
             String first = emp.getFirstName();
             String last = emp.getLastName();
             if (first == null || last == null) continue;

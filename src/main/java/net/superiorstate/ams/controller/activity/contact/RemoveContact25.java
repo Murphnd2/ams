@@ -6,7 +6,7 @@ import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.AmsDataLocal;
-import net.superiorstate.ams.previous.data.model.getByIds.dM;
+import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.previous.model.activity.Activity;
 import net.superiorstate.ams.previous.model.general.Person;
 
@@ -42,8 +42,8 @@ public class RemoveContact25 extends HttpServlet {
         EntityManagerFactory emf = (EntityManagerFactory)getServletContext().getAttribute("emf");
         EntityManager em = emf.createEntityManager();
 
-        Person personToRemove = dM.getPersonById(em,personId);
-        Activity activity = dM.getActivityById(em,local.getCurrentActivity().getActivity().getId());
+        Person personToRemove = EntityLookup.getPersonById(em,personId);
+        Activity activity = EntityLookup.getActivityById(em,local.getCurrentActivity().getActivity().getId());
 
         if(activity!=null && personToRemove!=null) {
             em.getTransaction().begin();

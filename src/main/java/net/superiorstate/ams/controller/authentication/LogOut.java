@@ -4,7 +4,7 @@ import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.AmsDataLocal;
-import net.superiorstate.ams.previous.data.misc.dbAuth;
+import net.superiorstate.ams.data.dao.AuthDAO;
 import net.superiorstate.ams.previous.model.general.PSP;
 import net.superiorstate.ams.previous.model.general.Person;
 import net.superiorstate.ams.previous.model.general.User;
@@ -34,6 +34,6 @@ public class LogOut extends HttpServlet {
         request.getSession().setAttribute("currentUser",new User());
         request.getSession().setAttribute("currentPerson",new Person());
         request.getSession().setAttribute("psp",new PSP());
-        dbAuth.assignUserRoles(request,new User());
+        AuthDAO.assignUserRoles(request,new User());
     }
 }

@@ -6,7 +6,7 @@ import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.AmsDataLocal;
-import net.superiorstate.ams.previous.data.model.getByIds.dM;
+import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.previous.model.activity.Activity;
 
 import java.io.IOException;
@@ -45,7 +45,7 @@ public class ChangeDueDate25 extends HttpServlet {
 
             if (newDueDate.equals(currentActivity.getDueDate())) return;
 
-            Activity activity = dM.getActivityById(em, currentActivity.getId());
+            Activity activity = EntityLookup.getActivityById(em, currentActivity.getId());
             if (activity == null) return;
 
             em.getTransaction().begin();

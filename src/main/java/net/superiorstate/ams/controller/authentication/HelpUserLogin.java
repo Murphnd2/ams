@@ -6,8 +6,8 @@ import jakarta.persistence.Query;
 import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
-import net.superiorstate.ams.previous.data.misc.dbAuth;
-import net.superiorstate.ams.previous.data.misc.dbEmail;
+import net.superiorstate.ams.data.dao.AuthDAO;
+import net.superiorstate.ams.data.dao.EmailDAO;
 import net.superiorstate.ams.previous.model.general.User;
 
 import jakarta.mail.MessagingException;
@@ -64,7 +64,7 @@ public class HelpUserLogin extends HttpServlet {
             subject = "PASSWORD RESET REQUEST";
             message = resetPasswordMessageHTML(guid);
         }
-        dbEmail.sendEmail("noreply@superiorstate.net",user.getEmail(),subject,message,em);
+        EmailDAO.sendEmail("noreply@superiorstate.net",user.getEmail(),subject,message,em);
         em.close();
     }
 
@@ -97,7 +97,7 @@ public class HelpUserLogin extends HttpServlet {
         EntityManagerFactory emf = (EntityManagerFactory)getServletContext().getAttribute("emf");
         EntityManager em = emf.createEntityManager();
         String userNameOrEmail = request.getParameter("userName");
-        User user = dbAuth.getUserByUserName(em,userNameOrEmail);
+        User user = AuthDAO.getUserByUserName(em,userNameOrEmail);
         em.close();
         return user;
     }

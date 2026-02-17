@@ -5,9 +5,9 @@ import jakarta.persistence.EntityManagerFactory;
 import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
-import net.superiorstate.ams.previous.data.misc.dbAuth;
-import net.superiorstate.ams.previous.data.misc.dbTicket;
-import net.superiorstate.ams.previous.data.model.getByIds.dM;
+import net.superiorstate.ams.data.dao.AuthDAO;
+import net.superiorstate.ams.data.dao.TicketQueryDAO;
+import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.previous.model.activity.checklist.CheckList;
 import net.superiorstate.ams.previous.model.activity.checklist.tasks.SortedTask;
 import net.superiorstate.ams.previous.model.activity.checklist.tasks.ToDo;
@@ -153,11 +153,11 @@ public class CreateTicket extends HttpServlet {
         String fl = reasonString.substring(0,1);
         TicketCategory tc;
         switch (fl){
-            case "H":tc=dM.getTicketCategoryById(em,1L);break;
-            case "W":tc=dM.getTicketCategoryById(em,2L);break;
-            case "N":tc=dM.getTicketCategoryById(em,6L);break;
-            case "G":tc=dM.getTicketCategoryById(em,3L);break;
-            default:tc=dM.getTicketCategoryById(em,4L);break;
+            case "H":tc= EntityLookup.getTicketCategoryById(em,1L);break;
+            case "W":tc= EntityLookup.getTicketCategoryById(em,2L);break;
+            case "N":tc= EntityLookup.getTicketCategoryById(em,6L);break;
+            case "G":tc= EntityLookup.getTicketCategoryById(em,3L);break;
+            default:tc= EntityLookup.getTicketCategoryById(em,4L);break;
         }
         int fD = reasonString.indexOf("-");
         String desc;
@@ -186,10 +186,10 @@ public class CreateTicket extends HttpServlet {
         int employeeId = getEmployeeIdFromString(employeeString);
         Person p;
         if(employeeId!=-1){
-            Employee e = dM.getEmployeeById(em,employeeId);
-            p = dbTicket.getPersonByEmployee(em,e);
+            Employee e = EntityLookup.getEmployeeById(em,employeeId);
+            p = TicketQueryDAO.getPersonByEmployee(em,e);
             if(p==null){
-                p = dbAuth.createPersonFromEmployee(em,e,psp);
+                p = AuthDAO.createPersonFromEmployee(em,e,psp);
             }
         } else{
             p = createPerson(em,employeeString,psp,ticketText);
@@ -201,7 +201,7 @@ public class CreateTicket extends HttpServlet {
         if(subCatId==-1){
             ticketSubCategory = getNewTicketCategory(em,reasonString,psp);
         } else {
-            ticketSubCategory = dM.getSubCategoryById(em,subCatId);
+            ticketSubCategory = EntityLookup.getSubCategoryById(em,subCatId);
         }
         em.getTransaction().begin();
         Ticket t = new Ticket();
@@ -212,7 +212,7 @@ public class CreateTicket extends HttpServlet {
         t.setDueDate(Date.valueOf(LocalDate.now().plusDays(7)));
         t.setDescription(ticketText);
         t.setContact(p);
-        t.setContactMethod(dM.getMethodById(em,contactMethodId));
+        t.setContactMethod(EntityLookup.getMethodById(em,contactMethodId));
         t.setTicketSubCategory(ticketSubCategory);
         em.persist(t);
         em.getTransaction().commit();
@@ -222,9 +222,9 @@ public class CreateTicket extends HttpServlet {
     }
 
     public static void createToDoList(EntityManager em, Ticket t, CheckList c){
-        List<SortedTask> sortedTaskList = dbTicket.getTasksRequiredForTicket(em,t);
+        List<SortedTask> sortedTaskList = TicketQueryDAO.getTasksRequiredForTicket(em,t);
         if(sortedTaskList.size()==0)
-            sortedTaskList.add(new SortedTask(dM.getTaskById(em,129L),1000));
+            sortedTaskList.add(new SortedTask(EntityLookup.getTaskById(em,129L),1000));
         for(SortedTask st: sortedTaskList){
             em.getTransaction().begin();
             ToDo toDo = new ToDo();
@@ -239,7 +239,7 @@ public class CreateTicket extends HttpServlet {
 
             em.getTransaction().begin();
             assert c != null;
-            CheckList checkList = dM.getCheckListById(em,c.getId());
+            CheckList checkList = EntityLookup.getCheckListById(em,c.getId());
             assert checkList != null;
             checkList.getToDoList().add(toDo);
             em.persist(checkList);

@@ -8,11 +8,11 @@ import net.superiorstate.ams.model.Activity25p;
 import net.superiorstate.ams.model.Activity25u;
 import net.superiorstate.ams.model.Constant;
 import net.superiorstate.ams.controller.authentication.AuthenticateUser;
-import net.superiorstate.ams.previous.data.checklist.dbCheck;
-import net.superiorstate.ams.previous.data.checklist.dbRec;
-import net.superiorstate.ams.previous.data.misc.dbTicket;
-import net.superiorstate.ams.previous.data.misc.ddC;
-import net.superiorstate.ams.previous.data.model.getByIds.dM;
+import net.superiorstate.ams.data.dao.ChecklistDAO;
+import net.superiorstate.ams.data.dao.RecurringChecklistDAO;
+import net.superiorstate.ams.data.dao.TicketQueryDAO;
+import net.superiorstate.ams.data.dao.SequenceDAO;
+import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.previous.model.activity.checklist.sequences.support.TaskFrequency;
 import net.superiorstate.ams.previous.model.activity.checklist.sequences.support.TemplateGroup;
 import net.superiorstate.ams.previous.model.activity.checklist.sequences.support.TemplatePurpose;
@@ -70,18 +70,18 @@ public class AmsDataGlobal {
 
     public void initializeGlobalData(EntityManager em){
         System.out.println("[DEBUG] initializeGlobalData called");
-        setPsp(dM.getPspById(em,4L));
-        setUsers(dbRec.getPspUserList(em,getPsp()));
+        setPsp(EntityLookup.getPspById(em,4L));
+        setUsers(RecurringChecklistDAO.getPspUserList(em,getPsp()));
         setBpoUsers(AuthenticateUser.getUsersByRole(em,101));
-        setTemplateGroups(ddC.getTemplateGroups(em));
-        setTemplatePurposes(ddC.getTemplatePurposes(em));
-        setReasonsCreated(dbTicket.getReasons(em));
-        setContactMethods(dbTicket.getContactMethods(em));
-        setTicketCategories(dbTicket.getTicketCategories(em));
-        setTicketSubCategories(dbTicket.getTicketSubCategoryList(em));
-        setTaskFrequencies(dbCheck.getTaskFrequencies(em));
-        setActivityStatuses(dbTicket.getActivityStatuses(em));
-        setInsertLinks(dbTicket.getInsertLinkList(em));
+        setTemplateGroups(SequenceDAO.getTemplateGroups(em));
+        setTemplatePurposes(SequenceDAO.getTemplatePurposes(em));
+        setReasonsCreated(TicketQueryDAO.getReasons(em));
+        setContactMethods(TicketQueryDAO.getContactMethods(em));
+        setTicketCategories(TicketQueryDAO.getTicketCategories(em));
+        setTicketSubCategories(TicketQueryDAO.getTicketSubCategoryList(em));
+        setTaskFrequencies(ChecklistDAO.getTaskFrequencies(em));
+        setActivityStatuses(TicketQueryDAO.getActivityStatuses(em));
+        setInsertLinks(TicketQueryDAO.getInsertLinkList(em));
         setEmployers(generateEmployerList(em));
         setActivitiesAllOpen(retrieveActivitiesAllOpen(em));
         setActivitiesWithDelegation(retrieveActivitiesWithDependencies(em));
@@ -94,7 +94,7 @@ public class AmsDataGlobal {
 
     public void miniUpdate(EntityManager em){
 
-        setTemplatePurposes(ddC.getTemplatePurposes(em));
+        setTemplatePurposes(SequenceDAO.getTemplatePurposes(em));
 
         setEmployers(generateEmployerList(em));
 
@@ -106,7 +106,7 @@ public class AmsDataGlobal {
     }
 
     private void fillEmployeeList(EntityManager em){
-        List<tEmployee> te = dbTicket.getTicketEmployeeList(em);
+        List<tEmployee> te = TicketQueryDAO.getTicketEmployeeList(em);
         setEmployees(te);
     }
 

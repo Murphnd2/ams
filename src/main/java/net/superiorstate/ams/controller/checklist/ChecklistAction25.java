@@ -6,8 +6,8 @@ import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.AmsDataLocal;
-import net.superiorstate.ams.previous.data.checklist.dbRec;
-import net.superiorstate.ams.previous.data.model.getByIds.dM;
+import net.superiorstate.ams.data.dao.RecurringChecklistDAO;
+import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.previous.model.activity.checklist.CheckList;
 import net.superiorstate.ams.previous.model.general.Person;
 
@@ -63,7 +63,7 @@ public class ChecklistAction25 extends HttpServlet {
 
         try {
             em = emf.createEntityManager();
-            CheckList c = dM.getCheckListById(em, checklistId);
+            CheckList c = EntityLookup.getCheckListById(em, checklistId);
             if (c == null) return;
 
             AmsDataLocal local = (AmsDataLocal) request.getSession().getAttribute("local");
@@ -113,7 +113,7 @@ public class ChecklistAction25 extends HttpServlet {
 
         try {
             long userId = Long.parseLong(request.getParameter("userList"));
-            Person user = dM.getPersonById(em, userId);
+            Person user = EntityLookup.getPersonById(em, userId);
             if (user == null) return;
 
             em.getTransaction().begin();
@@ -159,7 +159,7 @@ public class ChecklistAction25 extends HttpServlet {
         em.getTransaction().commit();
         em.refresh(c);
 
-        dbRec.removeFutureRecurring(em, c);
+        RecurringChecklistDAO.removeFutureRecurring(em, c);
         local.respondToActivityUpdate(em, "CHECK_UNDO", c);
 
         request.getSession().setAttribute("local", local);

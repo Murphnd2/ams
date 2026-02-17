@@ -9,8 +9,8 @@ import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.AmsDataLocal;
 import net.superiorstate.ams.previous.controller.AddRecurringSequence;
-import net.superiorstate.ams.previous.data.checklist.dbRec;
-import net.superiorstate.ams.previous.data.model.getByIds.dM;
+import net.superiorstate.ams.data.dao.RecurringChecklistDAO;
+import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.previous.model.activity.checklist.CheckList;
 import net.superiorstate.ams.previous.model.activity.checklist.sequences.RecurringTaskList;
 import net.superiorstate.ams.previous.model.activity.checklist.sequences.support.DoW;
@@ -52,8 +52,8 @@ public class MakeRecurringFromChecklist25 extends HttpServlet {
         String sequenceName = request.getParameter("sequenceName");
         Date effectiveDate = Date.valueOf(request.getParameter("startDate"));
         int daysInAdvance = Integer.parseInt(request.getParameter("daysInAdvance"));
-        Person assignedTo = dM.getPersonById(em,Long.parseLong(request.getParameter("userList")));
-        TaskFrequency taskFrequency = dM.getTaskFrequencyById(em,Integer.parseInt(request.getParameter("frequencyList")));
+        Person assignedTo = EntityLookup.getPersonById(em,Long.parseLong(request.getParameter("userList")));
+        TaskFrequency taskFrequency = EntityLookup.getTaskFrequencyById(em,Integer.parseInt(request.getParameter("frequencyList")));
         List<DoW> dowList = AddRecurringSequence.getDaysChecked(request,em);
 
         em.getTransaction().begin();
@@ -70,7 +70,7 @@ public class MakeRecurringFromChecklist25 extends HttpServlet {
 
         for(DoW d: dowList){
             em.getTransaction().begin();
-            RecurringTaskList rt = dbRec.getRecurringListById(em,rtl.getId());
+            RecurringTaskList rt = RecurringChecklistDAO.getRecurringListById(em,rtl.getId());
             rt.addDayOfWeek(d);
             em.persist(rt);
             em.getTransaction().commit();
@@ -78,7 +78,7 @@ public class MakeRecurringFromChecklist25 extends HttpServlet {
 
         CheckList checkList = local.getCurrentChecklist().getCheckList();
         em.getTransaction().begin();
-        CheckList c = dM.getCheckListById(em, checkList.getId());
+        CheckList c = EntityLookup.getCheckListById(em, checkList.getId());
         assert c != null;
         c.setRecurringTaskList(rtl);
         em.persist(c);
@@ -99,7 +99,7 @@ public class MakeRecurringFromChecklist25 extends HttpServlet {
             em.getTransaction().commit();
 
             em.getTransaction().begin();
-            RecurringTaskList r = dbRec.getRecurringListById(em,rtl.getId());
+            RecurringTaskList r = RecurringChecklistDAO.getRecurringListById(em,rtl.getId());
             r.getTaskSequenceTableList().add(tst);
             em.persist(r);
             em.getTransaction().commit();

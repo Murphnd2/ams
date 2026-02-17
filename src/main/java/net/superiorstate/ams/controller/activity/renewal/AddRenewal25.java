@@ -10,8 +10,8 @@ import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.AmsDataGlobal;
 import net.superiorstate.ams.data.AmsDataLocal;
 import net.superiorstate.ams.model.Activity25u;
-import net.superiorstate.ams.previous.data.model.getByIds.dM;
-import net.superiorstate.ams.previous.data.renewal.dR;
+import net.superiorstate.ams.data.resolver.EntityLookup;
+import net.superiorstate.ams.data.service.RenewalService;
 import net.superiorstate.ams.previous.model.activity.renewal.Renewal;
 import net.superiorstate.ams.previous.model.general.Person;
 import net.superiorstate.ams.previous.model.general.PersonV;
@@ -52,8 +52,8 @@ public class AddRenewal25 extends HttpServlet {
             Employer currentEmployer = (Employer) request.getSession().getAttribute("currentEmployer");
             Person currentPerson = local.getCurrentPerson();
 
-            Renewal renewal = dR.createRenewal(em, currentEmployer, currentPerson);
-            dR.createCheckListForRenewal(em, renewal, currentPerson);
+            Renewal renewal = RenewalService.createRenewal(em, currentEmployer, currentPerson);
+            RenewalService.createCheckListForRenewal(em, renewal, currentPerson);
             createRenewalItems(request, em, renewal);
             assignPrimaryContact(em, renewal);
 
@@ -81,14 +81,14 @@ public class AddRenewal25 extends HttpServlet {
             for (Benefit b : benefitList) {
                 String buttonVal = request.getParameter("btnBen" + b.getId());
                 if (buttonVal != null && !buttonVal.isEmpty()) {
-                    dR.addBenefitToRenewal(request, em, b, renewal);
+                    RenewalService.addBenefitToRenewal(request, em, b, renewal);
                 }
             }
         }
     }
 
     public static void assignPrimaryContact(EntityManager em, Renewal r) {
-        Renewal current = dM.getRenewalById(em, r.getId());
+        Renewal current = EntityLookup.getRenewalById(em, r.getId());
         if (current == null) return;
 
         Renewal previousRenewal = getPreviousRenewal(em, current);
@@ -136,7 +136,7 @@ public class AddRenewal25 extends HttpServlet {
                 .getResultList();
 
         if (!matches.isEmpty()) {
-            Person p = dM.getPersonById(em, matches.get(0).getId());
+            Person p = EntityLookup.getPersonById(em, matches.get(0).getId());
             if (p == null) return;
 
             em.getTransaction().begin();

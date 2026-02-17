@@ -7,9 +7,9 @@ import jakarta.persistence.Query;
 import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
-import net.superiorstate.ams.previous.data.Starter;
-import net.superiorstate.ams.previous.data.misc.dbEmail;
-import net.superiorstate.ams.previous.data.model.getByIds.dM;
+import net.superiorstate.ams.data.service.DatabaseInitializer;
+import net.superiorstate.ams.data.dao.EmailDAO;
+import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.previous.model.general.PSP;
 import net.superiorstate.ams.previous.model.general.Person;
 import net.superiorstate.ams.previous.model.general.User;
@@ -53,15 +53,15 @@ public class CreatePspUser extends HttpServlet {
         String email = request.getParameter("userEmail");
         String password = request.getParameter("tempPassword");
         Person admin = (Person) request.getSession().getAttribute("currentPerson");
-        if(!dbEmail.isValidEmail(email) || dM.getUserById(em,email)!=null)
+        if(!EmailDAO.isValidEmail(email) || EntityLookup.getUserById(em,email)!=null)
             return null;
         //Get or Create Employee Record
         Employee ee = getOrCreateEmployeeForUser(em,email,lastName,firstName,admin);
         Person newPerson = getOrCreatePersonFromEmployee(em,ee,admin);
 
         //Create User
-        User u = Starter.createUser(em,newPerson,email,password);
-        UserRole ur = dM.getUserRoleById(em,1);
+        User u = DatabaseInitializer.createUser(em,newPerson,email,password);
+        UserRole ur = EntityLookup.getUserRoleById(em,1);
         em.getTransaction().begin();
         u.addUserToRole(ur);
         em.persist(u);
@@ -70,13 +70,13 @@ public class CreatePspUser extends HttpServlet {
         //Make Administrator?
         String makeAdmin = request.getParameter("makeAdmin");
         if(makeAdmin!=null && makeAdmin.equals("1")){
-            ur = dM.getUserRoleById(em,5);
+            ur = EntityLookup.getUserRoleById(em,5);
             em.getTransaction().begin();
             u.addUserToRole(ur);
             em.persist(u);
             em.getTransaction().commit();
         }
-        Starter.createTimeEntry(em,newPerson,null,null);
+        DatabaseInitializer.createTimeEntry(em,newPerson,null,null);
         em.close();
         return u;
     }
@@ -92,7 +92,7 @@ public class CreatePspUser extends HttpServlet {
         }
 
         if(personList==null || personList.size()==0){
-            PSP psp = dM.getPspById(em,4L);
+            PSP psp = EntityLookup.getPspById(em,4L);
             em.getTransaction().begin();
             p = new Person();
             p.setPsp(psp);
@@ -117,7 +117,7 @@ public class CreatePspUser extends HttpServlet {
     }
     private Employee getOrCreateEmployeeForUser(EntityManager em, String email, String lastName, String firstName, Person admin){
         //Does Employee Already Exist
-        Employee ee = dbEmail.getEmployeeByEmail(em,email,admin);
+        Employee ee = EmailDAO.getEmployeeByEmail(em,email,admin);
         if(ee!=null)
             return ee;
         Query q = em.createQuery("SELECT e FROM EmployeeV e WHERE e.lastName=:lName and e.firstName=:fName");

@@ -7,8 +7,8 @@ import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.AmsDataLocal;
 import net.superiorstate.ams.data.auto;
-import net.superiorstate.ams.previous.data.misc.dbEmail;
-import net.superiorstate.ams.previous.data.model.getByIds.dM;
+import net.superiorstate.ams.data.dao.EmailDAO;
+import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.previous.model.activity.Activity;
 import net.superiorstate.ams.previous.model.activity.note.Email;
 import net.superiorstate.ams.previous.model.general.Automation;
@@ -120,8 +120,8 @@ public class SendAutoFinal25 extends HttpServlet {
             email.setActivity(a);
             email.setSubject(local.getCurrentEmail().getSubject()+" ##ID:"+local.getCurrentActivity().getActivity().getId()+"##");
             email.setDateGenerated(Date.valueOf(LocalDate.now()));
-            email.setStatus(dM.getActivityStatusById(em, 1));
-            email.setReasonCreated(dM.getReasonById(em, 7));
+            email.setStatus(EntityLookup.getActivityStatusById(em, 1));
+            email.setReasonCreated(EntityLookup.getReasonById(em, 7));
             email.setCreatedBy(local.getCurrentPerson());
             email.setDetail(local.getCurrentEmail().getBody() + userSignature);
             email.setRecipientList(local.getCurrentEmail().getRecipientList());
@@ -134,7 +134,7 @@ public class SendAutoFinal25 extends HttpServlet {
         //Send Email Message
         boolean emailSent = true;
         try {
-            dbEmail.sendEmail(email, em);
+            EmailDAO.sendEmail(email, em);
             System.out.println("SENT");
             System.out.println(local.getCurrentEmail().getRecipientList().get(0).getEmail());
         } catch (Exception exception) {
@@ -147,7 +147,7 @@ public class SendAutoFinal25 extends HttpServlet {
         System.out.println("=========== EMAIL SENT =========================");
 
         // If Email is Sent, append email to activity
-        Activity a1 = dM.getActivityById(em, a.getId());
+        Activity a1 = EntityLookup.getActivityById(em, a.getId());
         if (a1 == null)
             return;
         if (a1.getNoteList() == null)

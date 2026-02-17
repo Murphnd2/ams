@@ -4,8 +4,8 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.NoResultException;
 import jakarta.persistence.Query;
 import jakarta.servlet.http.HttpServletRequest;
-import net.superiorstate.ams.previous.data.V;
-import net.superiorstate.ams.previous.data.misc.dbEmail;
+import net.superiorstate.ams.data.util.Validator;
+import net.superiorstate.ams.data.dao.EmailDAO;
 import net.superiorstate.ams.previous.model.activity.Activity;
 import net.superiorstate.ams.previous.model.activity.renewal.Renewal;
 import net.superiorstate.ams.previous.model.activity.ticket.Ticket;
@@ -23,19 +23,19 @@ public abstract class auto {
         List<Person> rList = new ArrayList<>();
         List<String> emailList = new ArrayList<>();
         Activity a = local.getCurrentActivity().getActivity();
-        if(local.getCurrentActivity().getPrimaryContact()!=null && local.getCurrentActivity().getPrimaryContact().getEmail()!=null && V.isValidEmail(local.getCurrentActivity().getPrimaryContact().getEmail())){
+        if(local.getCurrentActivity().getPrimaryContact()!=null && local.getCurrentActivity().getPrimaryContact().getEmail()!=null && Validator.isValidEmail(local.getCurrentActivity().getPrimaryContact().getEmail())){
             rList.add(local.getCurrentActivity().getPrimaryContact());
             emailList.add(local.getCurrentActivity().getPrimaryContact().getEmail());
         }
 
-        if(a.getPrimaryContact()!=null && a.getPrimaryContact().getEmail()!=null && V.isValidEmail(a.getPrimaryContact().getEmail())){
+        if(a.getPrimaryContact()!=null && a.getPrimaryContact().getEmail()!=null && Validator.isValidEmail(a.getPrimaryContact().getEmail())){
             rList.add(a.getPrimaryContact());
             emailList.add(a.getPrimaryContact().getEmail().trim().toLowerCase());
         }
 
         if(local.getCurrentActivity().getAdditionalContacts()!=null && local.getCurrentActivity().getAdditionalContacts().size()>0){
             for(Person p: local.getCurrentActivity().getAdditionalContacts()){
-                if(p.getEmail()!=null && V.isValidEmail(p.getEmail()) && !emailList.contains(p.getEmail().trim().toLowerCase())) {
+                if(p.getEmail()!=null && Validator.isValidEmail(p.getEmail()) && !emailList.contains(p.getEmail().trim().toLowerCase())) {
                     rList.add(p);
                     emailList.add(p.getEmail().trim().toLowerCase());
                 }
@@ -58,9 +58,9 @@ public abstract class auto {
     }
 
     private static void processLists(List<String> emailList, List<Person> rList, String emailFound, AmsDataLocal local, EntityManager em){
-        if(V.isValidEmail(emailFound)){
+        if(Validator.isValidEmail(emailFound)){
             if(!emailList.contains(emailFound.trim().toLowerCase())){
-                Person p2 = dbEmail.getPersonByEmail(em,emailFound,local.getCurrentPerson().getPsp());
+                Person p2 = EmailDAO.getPersonByEmail(em,emailFound,local.getCurrentPerson().getPsp());
                 if(p2==null){
                     em.getTransaction().begin();
                     p2 = new Person();

@@ -7,7 +7,7 @@ import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.AmsDataLocal;
 import net.superiorstate.ams.model.ToDoOut25;
-import net.superiorstate.ams.previous.data.model.getByIds.dM;
+import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.previous.model.activity.Activity;
 import net.superiorstate.ams.previous.model.activity.checklist.CheckList;
 import net.superiorstate.ams.previous.model.activity.checklist.tasks.Task;
@@ -105,7 +105,7 @@ public class AddToDo25 extends HttpServlet {
             sortValue = toDoList.stream().mapToInt(ToDoOut25::getSortOrder).max();
             return sortValue.orElse(0) + 1;
         } else if (positionId != 0) {
-            ToDo targetToDo = dM.getToDoById(em, positionId);
+            ToDo targetToDo = EntityLookup.getToDoById(em, positionId);
             return targetToDo != null ? targetToDo.getSortOrder() : 0;
         } else {
             sortValue = toDoList.stream().mapToInt(ToDoOut25::getSortOrder).min();

@@ -7,7 +7,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import net.superiorstate.ams.data.AmsDataLocal;
-import net.superiorstate.ams.previous.data.model.getByIds.dM;
+import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.previous.model.activity.checklist.tasks.ToDo;
 
 import java.io.IOException;
@@ -32,7 +32,7 @@ public class InitialHelper {
                 return;
             }
 
-            ToDo t = dM.getToDoById(em, todoId);
+            ToDo t = EntityLookup.getToDoById(em, todoId);
             em.getTransaction().begin();
             t.setComplete(true);
             t.setDateCompleted(Date.valueOf(LocalDate.now()));

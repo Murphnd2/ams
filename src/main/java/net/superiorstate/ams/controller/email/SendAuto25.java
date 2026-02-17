@@ -5,7 +5,7 @@ import jakarta.persistence.EntityManagerFactory;
 import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
-import net.superiorstate.ams.previous.data.model.getByIds.dM;
+import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.previous.model.general.Automation;
 
 import java.io.IOException;
@@ -38,7 +38,7 @@ public class SendAuto25 extends HttpServlet {
         Automation a = null;
         try {
             int autoId = Integer.parseInt(request.getParameter("aeId").toString().trim());
-            a = dM.getAutomationById(em, autoId);
+            a = EntityLookup.getAutomationById(em, autoId);
         } catch (Exception e2) {
             em.close();
             return;

@@ -7,7 +7,7 @@ import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.AmsDataLocal;
 import net.superiorstate.ams.model.ToDoOut25;
-import net.superiorstate.ams.previous.data.model.getByIds.dM;
+import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.previous.model.activity.checklist.CheckList;
 import net.superiorstate.ams.previous.model.activity.checklist.tasks.Task;
 import net.superiorstate.ams.previous.model.activity.checklist.tasks.ToDo;
@@ -41,7 +41,7 @@ public class BlowUpAuto extends HttpServlet {
         EntityManager em = emf.createEntityManager();
         try{
             taskId = Long.parseLong(taskIdString);
-           t = dM.getTaskById(em,taskId);
+           t = EntityLookup.getTaskById(em,taskId);
            System.out.println("Task Found: " + taskId);
         } catch (Exception e){
             return;
@@ -97,7 +97,7 @@ public class BlowUpAuto extends HttpServlet {
         local.respondToActivityUpdate(em,"CHECK_REMINDER",c);
         System.out.println("RESPONDED TO UPDATE");
 
-        Task t100 = dM.getTaskById(em,t.getId());
+        Task t100 = EntityLookup.getTaskById(em,t.getId());
         if(t100==null)
             return;
         em.getTransaction().begin();

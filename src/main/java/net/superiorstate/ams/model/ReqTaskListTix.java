@@ -3,7 +3,7 @@ package net.superiorstate.ams.model;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.NoResultException;
 import jakarta.persistence.Query;
-import net.superiorstate.ams.previous.data.model.getByIds.dM;
+import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.previous.model.activity.checklist.sequences.RequiredTaskList;
 import net.superiorstate.ams.previous.model.activity.checklist.sequences.support.TemplatePurpose;
 import net.superiorstate.ams.previous.model.activity.ticket.TicketSubCategory;
@@ -60,8 +60,8 @@ public class ReqTaskListTix {
     }
 
     public void fillRequiredTask(EntityManager em,long id){
-        setRequiredTaskList(dM.getReqListById(em,id));
-        setTemplatePurpose(dM.getTemplatePurposeById(em,getRequiredTaskList().getTemplatePurpose().getId()));
+        setRequiredTaskList(EntityLookup.getReqListById(em,id));
+        setTemplatePurpose(EntityLookup.getTemplatePurposeById(em,getRequiredTaskList().getTemplatePurpose().getId()));
         Query q = em.createQuery("SELECT tsc FROM TicketSubCategory tsc WHERE tsc.templatePurpose.id = :id");
         q.setParameter("id",getTemplatePurpose().getId());
         TicketSubCategory tsc;

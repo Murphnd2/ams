@@ -9,8 +9,8 @@ import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.AmsDataLocal;
 import net.superiorstate.ams.model.ToDoOut25;
-import net.superiorstate.ams.previous.data.activity.dActivity;
-import net.superiorstate.ams.previous.data.model.getByIds.dM;
+import net.superiorstate.ams.data.dao.ActivityDAO;
+import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.previous.model.activity.Activity;
 import net.superiorstate.ams.previous.model.activity.checklist.CheckList;
 import net.superiorstate.ams.previous.model.activity.checklist.sequences.RequiredTaskList;
@@ -72,12 +72,12 @@ public class AddSetupModule25 extends HttpServlet {
         EntityManager em = emf.createEntityManager();
 
         try {
-            TemplatePurpose tp = dM.getTemplatePurposeById(em, tpId);
-            dActivity.addModule(em, app, tp);
+            TemplatePurpose tp = EntityLookup.getTemplatePurposeById(em, tpId);
+            ActivityDAO.addModule(em, app, tp);
 
             // Load and update checklist
             CheckList originalChecklist = s.getCheckList();
-            CheckList dbChecklist = dM.getCheckListById(em, originalChecklist.getId());
+            CheckList dbChecklist = EntityLookup.getCheckListById(em, originalChecklist.getId());
             if (dbChecklist == null)
                 return;
 

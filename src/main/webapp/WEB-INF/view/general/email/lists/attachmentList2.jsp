@@ -1,7 +1,7 @@
-<%@ page import="net.superiorstate.ams.previous.data.misc.dbA" %>
+<%@ page import="net.superiorstate.ams.data.dao.AppConstantDAO" %>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 <%
-  String pathString = dbA.getWebPath() + "ShowFileUpload?doc=";
+  String pathString = AppConstantDAO.getWebPath() + "ShowFileUpload?doc=";
   request.getSession().setAttribute("webPath",pathString);
 %>
 <c:if test="${sessionScope.attachmentList.size()==0}">

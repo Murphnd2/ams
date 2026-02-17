@@ -5,10 +5,10 @@ import jakarta.persistence.EntityManagerFactory;
 import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
-import net.superiorstate.ams.previous.data.activity.dActivity;
-import net.superiorstate.ams.previous.data.misc.dG;
-import net.superiorstate.ams.previous.data.misc.dbS;
-import net.superiorstate.ams.previous.data.model.getByIds.dM;
+import net.superiorstate.ams.data.dao.ActivityDAO;
+import net.superiorstate.ams.data.dao.SalesDAO;
+import net.superiorstate.ams.data.dao.ApplicationTaskDAO;
+import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.previous.model.activity.checklist.CheckList;
 import net.superiorstate.ams.previous.model.activity.checklist.sequences.support.TemplatePurpose;
 import net.superiorstate.ams.previous.model.activity.checklist.tasks.SortedTask;
@@ -78,11 +78,11 @@ public class GenerateProp extends HttpServlet {
     private Agency getAgency(EntityManager em, String agency){
         Agency a;
         if(agency=="OneDigital"){
-            a = dG.getAgencyFull(em,1L);
+            a = SalesDAO.getAgencyFull(em,1L);
         } else if (agency=="Hummel"){
-            a = dG.getAgencyFull(em,2L);
+            a = SalesDAO.getAgencyFull(em,2L);
         } else {
-            a = dG.getAgencyFull(em,14L);
+            a = SalesDAO.getAgencyFull(em,14L);
         }
         System.out.println("Agency: " + a.getName());
         return a;
@@ -94,7 +94,7 @@ public class GenerateProp extends HttpServlet {
         p.setFirstName(contact.substring(0,contact.indexOf(' ')));
         p.setLastName(contact.substring(contact.indexOf(' ')+1));
         p.setEmail(email);
-        p.setPsp(dM.getPspById(em,4L));
+        p.setPsp(EntityLookup.getPspById(em,4L));
         p.setAddress(a.getAddress());
         em.persist(p);
         em.getTransaction().commit();
@@ -118,7 +118,7 @@ public class GenerateProp extends HttpServlet {
     private Person getAgent(EntityManager em, Agency agency){
         if(agency.getAgentList()!=null && agency.getAgentList().size()>0)
             return agency.getAgentList().get(0);
-        Person p = dM.getPersonById(em,104L);
+        Person p = EntityLookup.getPersonById(em,104L);
         em.getTransaction().begin();
         agency.addAgent(p);
         em.persist(agency);
@@ -127,7 +127,7 @@ public class GenerateProp extends HttpServlet {
     }
     private Proposal createProposal(HttpServletRequest request,EntityManager em,Prospect p){
         String propKey = request.getParameter("app_key");
-        Rate rate = dM.getRateById(em,52L);
+        Rate rate = EntityLookup.getRateById(em,52L);
         em.getTransaction().begin();
         Proposal proposal = new Proposal();
         proposal.setRate(rate);
@@ -160,8 +160,8 @@ public class GenerateProp extends HttpServlet {
     }
     private void addItem(EntityManager em, Proposal p, int losID){
         em.getTransaction().begin();
-        Proposal proposal = dM.getProposalById(em,p.getId());
-        LOS los = dG.getLosFull(em,losID);
+        Proposal proposal = EntityLookup.getProposalById(em,p.getId());
+        LOS los = SalesDAO.getLosFull(em,losID);
         proposal.getLosList().add(los);
         los.getListOfProposalsThatIncludeThisLOS().add(proposal);
         em.persist(proposal);
@@ -206,10 +206,10 @@ public class GenerateProp extends HttpServlet {
     }
 
     private void addModule(EntityManager em, Application a, int templatePurposeId){
-        TemplatePurpose tp = dM.getTemplatePurposeById(em,templatePurposeId);
+        TemplatePurpose tp = EntityLookup.getTemplatePurposeById(em,templatePurposeId);
 
 
-        dActivity.addModule(em,a,tp);
+        ActivityDAO.addModule(em,a,tp);
 
     }
     private CheckList createChecklist(HttpServletRequest request, EntityManager em, String erName){
@@ -223,7 +223,7 @@ public class GenerateProp extends HttpServlet {
         em.persist(c);
         em.getTransaction().commit();
 
-        Task t = dM.getTaskById(em,153L);
+        Task t = EntityLookup.getTaskById(em,153L);
         em.getTransaction().begin();
         ToDo toDo = new ToDo();
         toDo.setDateCompleted(Date.valueOf(LocalDate.now()));
@@ -255,7 +255,7 @@ public class GenerateProp extends HttpServlet {
         System.out.println("Setup Created for Proposal Guid:" + application.getProposal().getApplicationGUID());
 
         em.getTransaction().begin();
-        CheckList c = dM.getCheckListById(em,checkList.getId());
+        CheckList c = EntityLookup.getCheckListById(em,checkList.getId());
         assert c != null;
         c.setAssignedTo(setup);
         c.setSetup(setup);
@@ -268,9 +268,9 @@ public class GenerateProp extends HttpServlet {
     private void fillToDoList(EntityManager em, Setup setup){
         Application a = setup.getApplication();
         CheckList c = setup.getCheckList();
-        List<SortedTask> sortedTaskList = dbS.getTasksRequiredForApplication(em,a);
+        List<SortedTask> sortedTaskList = ApplicationTaskDAO.getTasksRequiredForApplication(em,a);
         if(sortedTaskList.size()==0) {
-            sortedTaskList.add(new SortedTask(dM.getTaskById(em, 153L), 1000));
+            sortedTaskList.add(new SortedTask(EntityLookup.getTaskById(em, 153L), 1000));
         } else {
             System.out.println("Sorted Task List Size = " + sortedTaskList.size());
         }
@@ -288,7 +288,7 @@ public class GenerateProp extends HttpServlet {
 
             em.getTransaction().begin();
             assert c != null;
-            CheckList checkList = dM.getCheckListById(em,c.getId());
+            CheckList checkList = EntityLookup.getCheckListById(em,c.getId());
             assert checkList != null;
             checkList.getToDoList().add(toDo);
             em.persist(checkList);

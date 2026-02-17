@@ -5,7 +5,7 @@ import jakarta.persistence.TypedQuery;
 import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
-import net.superiorstate.ams.previous.data.V;
+import net.superiorstate.ams.data.util.Validator;
 import net.superiorstate.ams.previous.model.summit.archive.Employee;
 
 import java.io.IOException;
@@ -50,6 +50,6 @@ public class CleanseEe extends HttpServlet {
 
 
     private boolean goodEmail(Employee ee){
-        return ((ee.getEmail()!=null && V.isValidEmail(ee.getEmail())) || (ee.getHrEmail()!=null && V.isValidEmail(ee.getHrEmail())));
+        return ((ee.getEmail()!=null && Validator.isValidEmail(ee.getEmail())) || (ee.getHrEmail()!=null && Validator.isValidEmail(ee.getHrEmail())));
     }
 }

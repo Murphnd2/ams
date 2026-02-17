@@ -9,7 +9,7 @@ import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.AmsDataGlobal;
 import net.superiorstate.ams.data.AmsDataLocal;
-import net.superiorstate.ams.previous.data.model.getByIds.dM;
+import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.previous.model.activity.checklist.sequences.GenSeq;
 import net.superiorstate.ams.previous.model.activity.checklist.sequences.RequiredTaskList;
 import net.superiorstate.ams.previous.model.activity.checklist.sequences.support.TaskSequenceTable;
@@ -133,15 +133,15 @@ public class TaskBuilder25 extends HttpServlet {
             request.getSession().setAttribute("lockTemplateSelector",1);
             String lText;
             if(selectedSequenceId==-1) {
-                TicketCategory tc = dM.getTicketCategoryById(em, categoryId);
+                TicketCategory tc = EntityLookup.getTicketCategoryById(em, categoryId);
                 assert tc != null;
                 lText = tc.getShortText()+": " + textTikNew;
             } else if(radioTikRenSet.equals("2") && radioSetExNew.equals("1"))
-                lText = "(Setup) " + dM.getTemplatePurposeById(em,selectedSequenceId.intValue()).getDescription();
+                lText = "(Setup) " + EntityLookup.getTemplatePurposeById(em,selectedSequenceId.intValue()).getDescription();
             else if(radioTikRenSet.equals("1") && radioRenExNew.equals("1"))
-                lText ="(Renewal) " + dM.getTemplatePurposeById(em,selectedSequenceId.intValue()).getDescription();
+                lText ="(Renewal) " + EntityLookup.getTemplatePurposeById(em,selectedSequenceId.intValue()).getDescription();
             else {
-                lText = dM.getReqListById(em,selectedSequenceId).getDescription();
+                lText = EntityLookup.getReqListById(em,selectedSequenceId).getDescription();
             }
 
             request.getSession().setAttribute("namePlate",lText);
@@ -163,7 +163,7 @@ public class TaskBuilder25 extends HttpServlet {
         AmsDataGlobal global = (AmsDataGlobal) request.getServletContext().getAttribute("global");
         boolean isNewList = false;
         RequiredTaskList rtl;
-        PSP psp = dM.getPspById(em,4L);
+        PSP psp = EntityLookup.getPspById(em,4L);
         if(radioTikRenSet.equals("0") && radioTikExNew.equals("1"))
             isNewList=true;
         else if(radioTikRenSet.equals("1") && radioRenExNew.equals("1"))
@@ -174,8 +174,8 @@ public class TaskBuilder25 extends HttpServlet {
         if(isNewList){
             if(radioTikRenSet.equals("0")){
                 TicketSubCategory tsc = new TicketSubCategory();
-                TicketCategory tc = dM.getTicketCategoryById(em,categoryId);
-                TemplateGroup tg = dM.getTemplateGroupById(em,3);
+                TicketCategory tc = EntityLookup.getTicketCategoryById(em,categoryId);
+                TemplateGroup tg = EntityLookup.getTemplateGroupById(em,3);
                 em.getTransaction().begin();
                 tsc.setActive(true);
                 tsc.setDescription(textTikNew);
@@ -204,7 +204,7 @@ public class TaskBuilder25 extends HttpServlet {
 
 
             } else {
-                tp = dM.getTemplatePurposeById(em,selectedSequenceId.intValue());
+                tp = EntityLookup.getTemplatePurposeById(em,selectedSequenceId.intValue());
             }
             em.getTransaction().begin();
             rtl = new RequiredTaskList();
@@ -219,7 +219,7 @@ public class TaskBuilder25 extends HttpServlet {
             em.persist(rtl);
             em.getTransaction().commit();
         } else {
-            rtl = dM.getReqListById(em,selectedSequenceId);
+            rtl = EntityLookup.getReqListById(em,selectedSequenceId);
         }
         em.getTransaction().begin();
         Query q = em.createQuery("DELETE FROM TaskSequenceTable t WHERE t.taskSequence.id = :id");
@@ -293,7 +293,7 @@ public class TaskBuilder25 extends HttpServlet {
         long listIdLong = Long.parseLong(listId);
         request.getSession().setAttribute("selectedSequenceId",listIdLong);
         request.getSession().setAttribute("showTaskBuilder","Y");
-        RequiredTaskList rtl = dM.getReqListById(em,listIdLong);
+        RequiredTaskList rtl = EntityLookup.getReqListById(em,listIdLong);
         Query q = em.createQuery("SELECT tst FROM TaskSequenceTable tst WHERE tst.taskSequence.id = :id order by tst.sortOrder");
         q.setParameter("id",rtl.getId());
         List<TaskSequenceTable> tstList;
@@ -355,13 +355,13 @@ public class TaskBuilder25 extends HttpServlet {
         if (isExistingTask) {
             String taskIdParam = request.getParameter("selTask" + index);
             if (taskIdParam != null) {
-                return dM.getTaskById(em, Long.parseLong(taskIdParam));
+                return EntityLookup.getTaskById(em, Long.parseLong(taskIdParam));
             }
             return null; // or handle gracefully if unexpected
         }
 
         // Create new Task
-        PSP psp = dM.getPspById(em, 4L);
+        PSP psp = EntityLookup.getPspById(em, 4L);
         Task task = new Task();
         task.setDescription(Objects.requireNonNull(request.getParameter("taskDesc" + index)));
         task.setReUsable(request.getParameter("saveTheTask" + index) != null);
@@ -496,7 +496,7 @@ public class TaskBuilder25 extends HttpServlet {
         } else {
             String taskId = request.getParameter("selTaskI");
             Long taskIdLong = Long.parseLong(taskId);
-            Task t = dM.getTaskById(em,taskIdLong);
+            Task t = EntityLookup.getTaskById(em,taskIdLong);
             gs.setDescription(t.getDescription());
             gs.setPublicTask(t.isReUsable());
             gs.setSequenceNumber(1);

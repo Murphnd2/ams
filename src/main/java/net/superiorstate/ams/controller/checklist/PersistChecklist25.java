@@ -4,7 +4,7 @@ import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.AmsDataLocal;
-import net.superiorstate.ams.previous.data.model.getByIds.dM;
+import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.previous.model.activity.checklist.tasks.ToDo;
 
 import jakarta.persistence.EntityManager;
@@ -27,7 +27,7 @@ public class PersistChecklist25 extends HttpServlet {
         try {
             em.getTransaction().begin();
             for (Long toDoId : local.getPendingCloseIds()) {
-                ToDo toDo = dM.getToDoById(em, toDoId);
+                ToDo toDo = EntityLookup.getToDoById(em, toDoId);
                 if (toDo != null && !toDo.isComplete()) {
                     toDo.setComplete(true);
                     toDo.setDateCompleted(Date.valueOf(LocalDate.now()));

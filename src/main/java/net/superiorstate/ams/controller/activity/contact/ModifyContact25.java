@@ -11,8 +11,8 @@ import net.superiorstate.ams.data.AmsDataLocal;
 import net.superiorstate.ams.data.tix;
 import net.superiorstate.ams.model.Activity25;
 import net.superiorstate.ams.model.Activity25u;
-import net.superiorstate.ams.previous.data.V;
-import net.superiorstate.ams.previous.data.model.getByIds.dM;
+import net.superiorstate.ams.data.util.Validator;
+import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.previous.model.activity.Activity;
 import net.superiorstate.ams.previous.model.general.Person;
 import net.superiorstate.ams.previous.model.summit.archive.Employee;
@@ -50,9 +50,9 @@ public class ModifyContact25 extends HttpServlet {
             currentEmail = local.getCurrentActivity().getPrimaryContact().getEmail().toLowerCase().trim();
         if(isEmployee){
             Employee ee = local.getCurrentActivity().getPrimaryContact().getEmployee();
-            if(ee.getHrEmail()!=null && !ee.getHrEmail().equals("") && V.isValidEmail(ee.getHrEmail()))
+            if(ee.getHrEmail()!=null && !ee.getHrEmail().equals("") && Validator.isValidEmail(ee.getHrEmail()))
                 currentEmail = ee.getHrEmail().toLowerCase().trim();
-            else if(ee.getEmail()!=null && !ee.getEmail().equals("") && V.isValidEmail(ee.getEmail()))
+            else if(ee.getEmail()!=null && !ee.getEmail().equals("") && Validator.isValidEmail(ee.getEmail()))
                 currentEmail = ee.getEmail().toLowerCase().trim();
         }
 
@@ -75,7 +75,7 @@ public class ModifyContact25 extends HttpServlet {
         //Name Modification Check
         boolean updateFirst = !newFirst.equals("") && !newFirst.equalsIgnoreCase(currentFirst);
         boolean updateLast = !newLast.equals("") && !newLast.equalsIgnoreCase(currentLast);
-        boolean updateEmail = V.isValidEmail(newEmail) && !newEmail.equalsIgnoreCase(currentEmail);
+        boolean updateEmail = Validator.isValidEmail(newEmail) && !newEmail.equalsIgnoreCase(currentEmail);
 
         //End Method if Nothing has Changed
         if(!updateFirst && !updateLast && !updateEmail)
@@ -84,7 +84,7 @@ public class ModifyContact25 extends HttpServlet {
         //Update Employee Info
         Employee ee = null;
         if(isEmployee){
-            ee = dM.getEmployeeById(em,local.getCurrentActivity().getPrimaryContact().getEmployee().getId());
+            ee = EntityLookup.getEmployeeById(em,local.getCurrentActivity().getPrimaryContact().getEmployee().getId());
             if(ee!=null){
                 em.getTransaction().begin();
                 ee.setFirstName(newFirst);
@@ -98,7 +98,7 @@ public class ModifyContact25 extends HttpServlet {
         }
 
         //Update Person Info
-        Person p = dM.getPersonById(em,local.getCurrentActivity().getPrimaryContact().getId());
+        Person p = EntityLookup.getPersonById(em,local.getCurrentActivity().getPrimaryContact().getId());
         if(p!=null){ em.getTransaction().begin();
             p.setFirstName(newFirst);
             p.setLastName(newLast);
@@ -113,7 +113,7 @@ public class ModifyContact25 extends HttpServlet {
 
         //Update Activity Info
         local.getCurrentActivity().setPrimaryContact(p);
-        Activity a = dM.getActivityById(em,local.getCurrentActivity().getActivity().getId());
+        Activity a = EntityLookup.getActivityById(em,local.getCurrentActivity().getActivity().getId());
         if(a!=null){
             em.getTransaction().begin();
             a.setPrimaryContact(p);

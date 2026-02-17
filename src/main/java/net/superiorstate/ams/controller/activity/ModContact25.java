@@ -6,8 +6,8 @@ import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.AmsDataLocal;
-import net.superiorstate.ams.previous.data.V;
-import net.superiorstate.ams.previous.data.model.getByIds.dM;
+import net.superiorstate.ams.data.util.Validator;
+import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.previous.model.activity.Activity;
 import net.superiorstate.ams.previous.model.general.Person;
 
@@ -143,13 +143,13 @@ public class ModContact25 extends HttpServlet {
             updateLastName = true;
 
         boolean updateEmail = false;
-        if(getNewEmail()!=null && V.isValidEmail(getNewEmail()) && (getCurrentEmail()==null || !getNewEmail().equalsIgnoreCase(getCurrentEmail())))
+        if(getNewEmail()!=null && Validator.isValidEmail(getNewEmail()) && (getCurrentEmail()==null || !getNewEmail().equalsIgnoreCase(getCurrentEmail())))
             updateEmail = true;
 
         if(!updateFirstName && !updateLastName && !updateEmail)
             return;
 
-        Person contact = dM.getPersonById(em, getPrimaryContact().getId());
+        Person contact = EntityLookup.getPersonById(em, getPrimaryContact().getId());
         em.getTransaction().begin();
         if(updateEmail)
             contact.setEmail(getNewEmail().toLowerCase().trim());
@@ -163,7 +163,7 @@ public class ModContact25 extends HttpServlet {
 
         local.getCurrentActivity().setPrimaryContact(contact);
 
-        Activity a = dM.getActivityById(em,local.getCurrentActivity().getActivity().getId());
+        Activity a = EntityLookup.getActivityById(em,local.getCurrentActivity().getActivity().getId());
         if(a!=null){
             em.getTransaction().begin();
             a.setPrimaryContact(contact);

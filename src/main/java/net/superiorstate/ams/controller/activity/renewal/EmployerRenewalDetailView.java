@@ -5,8 +5,8 @@ import jakarta.persistence.EntityManagerFactory;
 import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
-import net.superiorstate.ams.previous.data.model.getByIds.dM;
-import net.superiorstate.ams.previous.data.renewal.dR;
+import net.superiorstate.ams.data.resolver.EntityLookup;
+import net.superiorstate.ams.data.service.RenewalService;
 import net.superiorstate.ams.previous.model.activity.renewal.Renewal;
 import net.superiorstate.ams.previous.model.activity.ticket.setup.Setup;
 import net.superiorstate.ams.previous.model.activity.ticket.Ticket;
@@ -43,9 +43,9 @@ public class EmployerRenewalDetailView extends HttpServlet {
 
     private void populateTheToRenewDetailForSelection(HttpServletRequest request, EntityManager em){
         int employerId = Integer.parseInt(request.getParameter("employerRenewalSelectButton"));
-        Employer employer = dM.getEmployerById(em,employerId);
-        List<Benefit> benefitList = dR.getBenefitsByEmployerSortedForRenewal(em,employer);
-        List<Renewal> pastRenewalsList = dR.getPastRenewalsForEmployer(em,employer);
+        Employer employer = EntityLookup.getEmployerById(em,employerId);
+        List<Benefit> benefitList = RenewalService.getBenefitsByEmployerSortedForRenewal(em,employer);
+        List<Renewal> pastRenewalsList = RenewalService.getPastRenewalsForEmployer(em,employer);
         request.getSession().setAttribute("currentEmployer",employer);
         request.getSession().setAttribute("currentRenewal", new Renewal());
         request.getSession().setAttribute("currentSetup", new Setup());

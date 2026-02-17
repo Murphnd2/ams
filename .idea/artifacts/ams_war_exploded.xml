@@ -115,6 +115,7 @@
           <element id="library" level="project" name="Maven: org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.5.31" />
           <element id="library" level="project" name="Maven: org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.5.31" />
           <element id="library" level="project" name="Maven: org.jetbrains:annotations:24.1.0" />
+          <element id="library" level="project" name="Maven: org.jsoup:jsoup:1.17.2" />
           <element id="library" level="project" name="Maven: org.jetbrains.kotlin:kotlin-stdlib:1.6.20" />
           <element id="library" level="project" name="Maven: org.jetbrains.kotlin:kotlin-stdlib-common:1.6.20" />
           <element id="library" level="project" name="Maven: org.reactivestreams:reactive-streams:1.0.4" />

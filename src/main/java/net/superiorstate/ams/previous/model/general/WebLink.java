@@ -1,7 +1,7 @@
 package net.superiorstate.ams.previous.model.general;
 
 import jakarta.persistence.*;
-import net.superiorstate.ams.previous.data.misc.dbA;
+import net.superiorstate.ams.data.dao.AppConstantDAO;
 import net.superiorstate.ams.previous.model.activity.checklist.tasks.Task;
 import net.superiorstate.ams.previous.model.activity.note.Email;
 
@@ -93,7 +93,7 @@ public class WebLink {
     public String getExternalAnchorTag(EntityManager em){
         String anchorTag = "<a href = \"";
         if(getLinkType().getId()==1){
-            anchorTag += dbA.getWebPath(em) + "ShowFileUpload?doc=" + getLinkPath() +"\"";
+            anchorTag += AppConstantDAO.getWebPath(em) + "ShowFileUpload?doc=" + getLinkPath() +"\"";
         } else if (getLinkType().getId()==2) {
             anchorTag += getLinkPath() + "\"";
         }

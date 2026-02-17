@@ -7,9 +7,9 @@ import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.AmsDataLocal;
 import net.superiorstate.ams.previous.controller.AddFileToTask;
-import net.superiorstate.ams.previous.data.misc.dbA;
-import net.superiorstate.ams.previous.data.misc.ddC;
-import net.superiorstate.ams.previous.data.model.getByIds.dM;
+import net.superiorstate.ams.data.dao.AppConstantDAO;
+import net.superiorstate.ams.data.dao.SequenceDAO;
+import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.previous.model.activity.Activity;
 import net.superiorstate.ams.previous.model.general.WebLink;
 
@@ -66,12 +66,12 @@ public class AddDocumentToActivity extends HttpServlet {
         String storedFileName = UUID.randomUUID() + "." + extension;
 
         saveFile(filePart.getInputStream(), storedFileName, em);
-        Activity activity = dM.getActivityById(em,a.getId());
+        Activity activity = EntityLookup.getActivityById(em,a.getId());
         em.getTransaction().begin();
         WebLink link = new WebLink();
         link.setPlainText(sanitizedDescription);
         link.setLinkPath(storedFileName);
-        link.setLinkType(ddC.getLinkTypeById(em, 1));
+        link.setLinkType(SequenceDAO.getLinkTypeById(em, 1));
         em.persist(link);
         em.getTransaction().commit();
 
@@ -87,7 +87,7 @@ public class AddDocumentToActivity extends HttpServlet {
     }
 
     private void saveFile(InputStream inputStream, String fileName, EntityManager em) throws IOException {
-        String uploadPath = dbA.getSavePath(em);
+        String uploadPath = AppConstantDAO.getSavePath(em);
         File uploadDir = new File(uploadPath);
         if (!uploadDir.exists()) {
             uploadDir.mkdir();

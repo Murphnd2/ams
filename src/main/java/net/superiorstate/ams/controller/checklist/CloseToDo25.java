@@ -7,12 +7,10 @@ import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.AmsDataGlobal;
 import net.superiorstate.ams.data.AmsDataLocal;
-import net.superiorstate.ams.previous.data.model.getByIds.dM;
+import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.previous.model.activity.checklist.tasks.ToDo;
 
 import java.io.IOException;
-import java.sql.Date;
-import java.time.LocalDate;
 
 @WebServlet(name = "CloseToDo25", value = "/CloseToDo25")
 public class CloseToDo25 extends HttpServlet {
@@ -50,7 +48,7 @@ public class CloseToDo25 extends HttpServlet {
         EntityManager em = getOpenEntityManager(request);
 
         try {
-            ToDo toDo = dM.getToDoById(em, toDoId);
+            ToDo toDo = EntityLookup.getToDoById(em, toDoId);
             if (toDo == null) return;
 
             // === IN-MEMORY UPDATE ===

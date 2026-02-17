@@ -6,7 +6,7 @@ import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.AmsDataLocal;
-import net.superiorstate.ams.previous.data.model.getByIds.dM;
+import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.previous.model.general.Person;
 
 import java.io.IOException;
@@ -32,7 +32,7 @@ public class RemoveRecipient25 extends HttpServlet {
         System.out.println("pid: "+ personId);
         EntityManagerFactory emf = (EntityManagerFactory)getServletContext().getAttribute("emf");
         EntityManager em = emf.createEntityManager();
-        Person p = dM.getPersonById(em,personId);
+        Person p = EntityLookup.getPersonById(em,personId);
         AmsDataLocal local = (AmsDataLocal) request.getSession().getAttribute("local");
         System.out.println(local.getCurrentEmail().getRecipientList().size());
         List<Person> newList = local.getCurrentEmail().getRecipientList().stream().filter(obj-> !Objects.equals(obj.getId(), p.getId())).collect(Collectors.toList());

@@ -6,7 +6,7 @@ import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.AmsDataLocal;
-import net.superiorstate.ams.previous.data.model.creates.dC;
+import net.superiorstate.ams.data.resolver.EntityFactory;
 import net.superiorstate.ams.previous.model.activity.checklist.CheckList;
 
 import java.io.IOException;
@@ -41,7 +41,7 @@ public class CreateReminder25 extends HttpServlet {
         EntityManagerFactory emf = (EntityManagerFactory)getServletContext().getAttribute("emf");
         EntityManager em = emf.createEntityManager();
 
-        CheckList c = dC.createReminder(em,reminderNames,local.getCurrentUser(),dueDate);
+        CheckList c = EntityFactory.createReminder(em,reminderNames,local.getCurrentUser(),dueDate);
         em.refresh(c);
         local.respondToActivityUpdate(em,"CHECK_REMINDER",c);
 
