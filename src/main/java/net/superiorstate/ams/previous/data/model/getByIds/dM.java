@@ -675,10 +675,7 @@ public abstract class dM {
         }
         return u;
     }
-    public static UserRole getUserRoleById(int id){
-        QueryPair qp = new QueryPair("role_id",id);
-        return (UserRole) dGen.getObject("UserRoles.getById",qp);
-    }
+
 
     public static UserRole getUserRoleById(EntityManager em, int id){
         Query q = em.createQuery("SELECT u FROM UserRole u WHERE u.id = :id");

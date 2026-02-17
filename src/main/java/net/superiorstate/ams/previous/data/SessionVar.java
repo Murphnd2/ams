@@ -417,9 +417,7 @@ public class SessionVar {
     public void refreshEmployerRenewalLIst(EntityManager em){
         setEmployerRenewalList(dbRenew.getEmployerRenewals(em));
     }
-    public void refreshPspEmployerList(EntityManager em){
-        setPspEmployerList(dPSP.getPspEmployerList(em));
-    }
+
     public void refreshTicketReasonList(EntityManager em){
         setTicketReasonList(dbTicket.getTicketSubCats(em));
     }

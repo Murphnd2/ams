@@ -6,7 +6,7 @@
 
 ---
 
-## Grand Total: 226 Files Deleted
+## Grand Total: 232 Files Deleted
 
 ---
 
@@ -36,7 +36,7 @@
 | `general/admin/q/` package | 25 |
 | `previous/controller/activity/` partial | 8 |
 
-## Session 4: Controller Sweep Completion (86 files)
+## Session 4: Controller Sweep Completion + Data Layer Cleanup (92 files)
 
 | Category | Files Deleted |
 |----------|--------------|
@@ -48,9 +48,18 @@
 | `billing/` | 13 |
 | `checklist/` | 10 |
 | `summit/` | 2 |
-| Root-level (`CreateTpa`, `UploadFileServlet`, `ViewFileUpload`) | 3 |
-| `psp/admin/` + `agency/` + `agency/helper/` + `rates/` | 35 |
+| Root-level controllers | 3 |
+| `psp/admin/` + all subpackages | 35 |
 | `previous/filter/CsrfFilter.java` | 1 |
+| `previous/data/` dead files | 6 |
+
+### Data Layer Files Deleted (6)
+- `ReadInboundEmailService.java` — experimental IMAP reader, never wired up
+- `dbBilling.java` — orphaned with billing controller deletion
+- `dbEe.java` — zero usages
+- `dbNote.java` — zero usages
+- `dS1.java` — billing link queries, orphaned
+- `summit/bill.java` — zero usages
 
 ---
 
@@ -61,8 +70,8 @@
 | GoAdminHome ecosystem | 14 |
 | Email workflow cleanup | 19 |
 | Major sweep | 107 |
-| Controller sweep completion | 86 |
-| **Grand Total** | **226 files** |
+| Controller sweep + data cleanup | 92 |
+| **Grand Total** | **232 files** |
 
 ---
 
@@ -80,47 +89,33 @@
 | ShowFileUpload.java | URL-based file serving during billing/import; also referenced by WebLink model & attachmentList2.jsp |
 | StdAuto.java | Referenced by SendEmployerBillingDetail |
 | ViewEmail.java | Referenced by multiple JSPs (historyDetail25, emailList, etc.) |
-| ViewSelectedActivity.java | Static utility methods used by active callers (servlet doGet/doPost path is dead — forwards to deleted GoAdminHome) |
-| ViewSelectedChecklist.java | 27 usages — core utility class (`getToDoListByChecklistId`) |
+| ViewSelectedActivity.java | Static utility methods used by active callers (servlet doGet/doPost path is dead) |
+| ViewSelectedChecklist.java | 27 usages — core utility class |
 
-### Notes on Active Files
-- Most are kept for **static utility methods only**, not as servlets
-- `ViewSelectedActivity` is a candidate for future refactor: extract static methods into a utility class
-- `ShowFileUpload` may overlap with `ShowUploadPage` — revisit later
-- All subpackages under `previous/controller/` have been flattened — these 10 files now sit directly in `previous/controller/`
+### `previous/data/` (37 files remaining — all active, need refactoring)
+
+See `data_layer_inventory.md` for complete inventory with proposed renames.
 
 ---
 
 ## Packages Fully Eliminated
 
-- `previous/archive/` — entire package deleted
-- `previous/controller/xtra/` — entire package deleted
-- `previous/controller/general/admin/q/` — all but StdAuto.java deleted
-- `previous/controller/general/admin/` — all but ViewEmail, ViewSelectedActivity, ViewSelectedChecklist deleted
-- `previous/controller/activity/checklist/sequence/` — all but AddRecurringSequence deleted
-- `previous/controller/activity/checklist/task/` — all but AddFileToTask deleted
-- `previous/controller/activity/renewal/` — entire package deleted
-- `previous/controller/activity/setup/` — all but GenerateProp deleted
-- `previous/controller/activity/ticket/` — all but CreateTicket deleted
-- `previous/controller/billing/` — entire package deleted
-- `previous/controller/checklist/` — entire package deleted
-- `previous/controller/psp/admin/` — entire tree deleted (root + agency + agency/helper + rates)
-- `previous/controller/summit/` — entire package deleted
-- `previous/filter/` — CsrfFilter deleted (package now empty)
+- `previous/archive/` — entire package
+- `previous/controller/xtra/`
+- `previous/controller/general/admin/q/` — all but StdAuto
+- `previous/controller/general/admin/` — all but ViewEmail, ViewSelectedActivity, ViewSelectedChecklist
+- `previous/controller/activity/checklist/sequence/` — all but AddRecurringSequence
+- `previous/controller/activity/checklist/task/` — all but AddFileToTask
+- `previous/controller/activity/renewal/` — entire package
+- `previous/controller/activity/setup/` — all but GenerateProp
+- `previous/controller/activity/ticket/` — all but CreateTicket
+- `previous/controller/billing/` — entire package
+- `previous/controller/checklist/` — entire package
+- `previous/controller/psp/admin/` — entire tree
+- `previous/controller/summit/` — entire package
+- `previous/filter/` — CsrfFilter deleted
 
----
-
-## What Remains (Not Dead Code — Needs Refactoring)
-
-### `previous/data/` (~30 DAO files)
-- Heavily referenced by both modern and legacy code
-- Refactor candidate: consolidate, reorganize, reduce file count
-- Not a deletion target — these are active
-
-### `previous/model/` (~70 JPA entity files)
-- Active JPA entities used throughout the application
-- Refactor candidate: review for unused entities after controller cleanup
-- Not a deletion target — these are active
+**Note:** All remaining `previous/controller/` files have been flattened — no more subpackages.
 
 ---
 
@@ -128,19 +123,34 @@
 
 | Item | Status |
 |------|--------|
-| CsrfFilter not registered | DELETED — was never wired up, dead code |
+| CsrfFilter not registered | DELETED — was never wired up |
 | AuthenticateUser failure handling | Still needs `displayLoginFailure()` implementation |
 | InitializeDataBase accessibility | DELETED — servlet removed |
-| LoginFilter stale URL whitelist entries | `/EmployerBillingDetail` and `/InitializeDataBase` entries are now dead strings — harmless, clean up when convenient |
+| LoginFilter stale URL whitelist | `/EmployerBillingDetail` and `/InitializeDataBase` entries are dead strings — harmless |
 
 ---
 
-## Dead String References (Harmless, Clean Up When Convenient)
+## Dead String References (Harmless)
 
-These are `getServletContext().getNamedDispatcher()` or URL whitelist strings that reference deleted servlets. They cause no compile or runtime errors — the forward paths are simply never reached.
+These are `getServletContext().getNamedDispatcher()` or URL whitelist strings referencing deleted servlets. No compile or runtime errors.
 
-- `LoginFilter` line 21: references `/InitializeDataBase` and `/EmployerBillingDetail`
-- `AddRecurringSequence.goToPage()`: references `RecurringSequenceBuilder` (deleted)
-- `CreateTicket @WebServlet annotation`: string `CreateTicket2` (deleted)
-- `AddFileToTask.goToPage()`: references `TaskDetailView` (deleted)
-- `ViewSelectedActivity.goToPage()`: references `GoAdminHome` (deleted)
+- `LoginFilter` line 21: `/InitializeDataBase`, `/EmployerBillingDetail`
+- `AddRecurringSequence.goToPage()`: `RecurringSequenceBuilder`
+- `CreateTicket @WebServlet`: `CreateTicket2`
+- `AddFileToTask.goToPage()`: `TaskDetailView`
+- `ViewSelectedActivity.goToPage()`: `GoAdminHome`
+
+---
+
+## What Remains (Next Phase: Refactor)
+
+### `previous/data/` — 37 files, all active
+- Rename cryptic names to descriptive names
+- Reorganize package structure
+- Consolidate duplicates (eV + XP → PersonResolver)
+- Split Q.java into focused classes
+- See `data_layer_inventory.md` for full plan
+
+### `previous/model/` — ~70 JPA entity files
+- Review after data layer refactor
+- Likely mostly active
