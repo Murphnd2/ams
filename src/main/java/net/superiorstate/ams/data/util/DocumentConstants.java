@@ -21,29 +21,18 @@ public abstract class DocumentConstants {
     public static final String INFO_HRA_BASIC = "https://superiorstate-my.sharepoint.com/:b:/g/personal/kevin_superiorstate_net/ET-t8NDA3ilLrwWN_M4dRHABvOBEF0UenCj5m7FDum5S9A?e=jX4HAb";
     public static final String INFO_FSA_LPFSA = "";
     public static final String INFO_TRANSIT = "";
-
+    public static final String DOC_PATH = "https://superiorstate.net/tpo/docs/";
+    public static final String ONLINE_APPLICATION_DATA = "https://docs.google.com/spreadsheets/d/1NCyRHecjEvUu_ctBRVmegP5vp96ve2HQt4OeytFrYxo/edit#gid=1661726138&range=A6";
+    public static final String JOT = "https://form.jotform.com/";
     public static final String GUIDE_HSA_ENROLL = "https://superiorstate-my.sharepoint.com/:b:/g/personal/kevin_superiorstate_net/Ed9LaOXyBfZKhz-WaqYGgKYB2o4sQbOdXldBTH92LIafcQ?e=4rK7r1";
     public static final String GUIDE_SUMMIT_CDH_ER = "https://superiorstate-my.sharepoint.com/:b:/g/personal/kevin_superiorstate_net/EbCO6T1I7n5DmyHBQl1Ujc8BISXyn77XEOsl5n5fytF-JQ?e=CCd6wF";
     public static final String GUIDE_SUMMIT_PB_ER = "https://superiorstate-my.sharepoint.com/:b:/g/personal/kevin_superiorstate_net/EWtVE0s5bpBPiau_5WzcUooBPIoER06gwm4_rFhTsNzV4A?e=3r7vrU";
 
 
-    public static List<InsertLinkPair> getInsertableLinks(){
-        List<InsertLinkPair> linkList = new ArrayList<>();
-        linkList.add(createLink("HSA Enrollment Guide",GUIDE_HSA_ENROLL));
-        linkList.add(createLink("CDH Employer Guide",GUIDE_SUMMIT_CDH_ER));
-        linkList.add(createLink("COBRA Employer Guide", GUIDE_SUMMIT_PB_ER));
-        return linkList;
-
-    }
 
 
-    private static InsertLinkPair createLink(String linkName, String linkPath){
-        String link = "<a target=\"_blank\" href=\"" + linkPath + "\">" + linkName + "</a>";
-        InsertLinkPair ilp = new InsertLinkPair();
-        ilp.setName(linkName);
-        ilp.setLink(link);
-        return ilp;
-    }
+
+
 
     public static class InsertLinkPair{
         private String name;

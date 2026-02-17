@@ -6,7 +6,6 @@ import jakarta.persistence.Query;
 import jakarta.servlet.http.HttpServletRequest;
 import net.superiorstate.ams.previous.controller.ViewSelectedActivity;
 import net.superiorstate.ams.previous.controller.ViewSelectedChecklist;
-import net.superiorstate.ams.data.template.Q;
 import net.superiorstate.ams.data.dao.ActivityDAO;
 import net.superiorstate.ams.data.dao.RenewalQueryDAO;
 import net.superiorstate.ams.data.dao.TicketQueryDAO;
@@ -127,7 +126,7 @@ public abstract class ActivityViewHelper {
         request.getSession().setAttribute("moduleList",moduleList);
         request.getSession().setAttribute("setupAgent",agent);
         String propLink = request.getContextPath() + "/serviceProposal?guid=" + s.getApplication().getProposal().getApplicationGUID();
-        String appLink = Q.ONLINE_APPLICATION_DATA + "&entry=" + s.getApplication().getProposal().getApplicationGUID();
+        String appLink = DocumentConstants.ONLINE_APPLICATION_DATA + "&entry=" + s.getApplication().getProposal().getApplicationGUID();
         request.getSession().setAttribute("proposalLink",propLink);
         request.getSession().setAttribute("appLink",appLink);
         List<TemplatePurpose> remainingModules = ViewSelectedActivity.remainingModules(request,em,moduleList);
