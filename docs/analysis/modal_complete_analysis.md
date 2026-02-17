@@ -19,16 +19,15 @@
 | 6 | addChecklist25.jsp | CreateChecklist25 | controller | ✅ MODERN |
 | 7 | createTicket25.jsp | CreateTicket25 | controller | ✅ MODERN |
 | 8 | loginFormModal.jsp | AuthenticateUser | controller.authentication | ✅ MODERN (migrated) |
-| 9 | upcomingRenewalsModal25.jsp | EmployerRenewalDetailView | previous.controller.activity.renewal | ⚠️ LEGACY |
+| 9 | upcomingRenewalsModal25.jsp | EmployerRenewalDetailView | controller.activity.renewal | ✅ MODERN (migrated) |
 | 10 | adminMenuOC.jsp | (see admin menu breakdown below) | mixed | ⚠️ MIXED |
 
 **Dashboard Total:** 8 direct modal servlets
-- ✅ Modern: 7
-- ⚠️ Legacy: 1 (EmployerRenewalDetailView)
+- ✅ Modern: 8 — ALL MODERN
 
-> **CORRECTION from prior analysis:** `upcomingRenewalsModal25.jsp` was previously marked
-> "display only" — this was INCORRECT. It imports `renewalList25.jsp` which submits to
-> `EmployerRenewalDetailView` (legacy package).
+> **NOTE:** `upcomingRenewalsModal25.jsp` was previously marked "display only" — INCORRECT.
+> It imports `renewalList25.jsp` which submits to `EmployerRenewalDetailView`.
+> **Migrated** from `previous.controller.activity.renewal` → `controller.activity.renewal` ✅
 
 ---
 
@@ -46,8 +45,8 @@
 | 18 | addRenewalItemMod25.jsp | AssignBenefitToRenewal25 | controller.activity.renewal | ✅ MODERN |
 | 19 | makeRecurringModal25.jsp | MakeRecurringFromChecklist25 | controller.checklist | ✅ MODERN |
 | 20 | webLinkListModal25.jsp | (hub — launches #21 and #22 modals) | N/A | ✅ DISPLAY HUB |
-| 21 | addDocumentToActivityMod.jsp | AddDocumentToActivity | previous.controller.activity | ⚠️ LEGACY |
-| 22 | addUrlToActivityMod.jsp | AddUrlToActivity | previous.controller.activity | ⚠️ LEGACY |
+| 21 | addDocumentToActivityMod.jsp | AddDocumentToActivity | controller.activity | ✅ MODERN (was already migrated) |
+| 22 | addUrlToActivityMod.jsp | AddUrlToActivity | controller.activity | ✅ MODERN (was already migrated) |
 | 23 | otherContact25.jsp | RemoveContact25, AddActivityContact25 | controller.activity.contact | ✅ MODERN CONFIRMED |
 
 > **CONFIRMED from prior analysis:** `otherContact25.jsp` → `contactManager25.jsp` →
@@ -55,8 +54,7 @@
 > `addContactToActivity25.jsp` → `AddActivityContact25` ✅. Both fully modern.
 
 **Activity Detail Total:** 11 modal servlets
-- ✅ Modern: 9
-- ⚠️ Legacy: 2 (document/URL upload)
+- ✅ Modern: 11 — ALL MODERN
 
 ---
 
@@ -66,7 +64,7 @@
 |--------|-------------|---------|---------|--------|
 | Create A Setup | Modal → #createSetupForm | GenerateProp25 | controller.activity.setup | ✅ MODERN |
 | Create Empty Renewal | Modal → #createBlankRenewal | CreateBlankRenewal25 | controller.activity.renewal | ✅ MODERN |
-| Upcoming Renewals | Modal → #addRenewalModal | EmployerRenewalDetailView | previous.controller.activity.renewal | ⚠️ LEGACY |
+| Upcoming Renewals | Modal → #addRenewalModal | EmployerRenewalDetailView | controller.activity.renewal | ✅ MODERN (migrated) |
 | Manage Task Templates | Direct href | GoTicketTemplate25 | controller.activity.ticket | ✅ MODERN |
 | Create User | Modal → #createUserModal | CreatePspUser25 | controller.user | ✅ MODERN |
 | View Billing Page | Direct href | ResetBillingView | controller | ✅ MODERN |
@@ -113,9 +111,9 @@
 | AssignBenefitToRenewal25 | controller.activity.renewal | ✅ |
 | MakeRecurringFromChecklist25 | controller.checklist | ✅ |
 | RemoveContact25 | controller.activity.contact | ✅ |
-| EmployerRenewalDetailView | previous.controller.activity.renewal | ⚠️ |
-| AddDocumentToActivity | previous.controller.activity | ⚠️ |
-| AddUrlToActivity | previous.controller.activity | ⚠️ |
+| EmployerRenewalDetailView | controller.activity.renewal | ✅ (migrated) |
+| AddDocumentToActivity | controller.activity | ✅ (was already migrated) |
+| AddUrlToActivity | controller.activity | ✅ (was already migrated) |
 | RefreshToDoAutomation | previous.controller.general.admin.q | ⚠️ |
 | ClearImport | previous.controller.summit | ⚠️ stub |
 | ClearMonthlyBilling | previous.controller.summit.twtw | ⚠️ |
@@ -123,19 +121,17 @@
 | CreateMonthlyBilling | previous.controller.summit.twtw | ⚠️ |
 
 **Total unique modal servlets: 29**
-- ✅ Modern (controller): 21 (72%)
-- ⚠️ Legacy (previous.controller): 8 (28%)
+- ✅ Modern (controller): 24 (83%)
+- ⚠️ Legacy (previous.controller): 5 (17%)
 
 ---
 
 ## 🎯 LEGACY SERVLETS TO MIGRATE (by priority)
 
-### Priority 1 — User-Facing (daily use)
-1. **AddDocumentToActivity** — `previous.controller.activity` → `controller.activity`
-2. **AddUrlToActivity** — `previous.controller.activity` → `controller.activity`
-3. **EmployerRenewalDetailView** — `previous.controller.activity.renewal` → `controller.activity.renewal`
-   - Also note: uses path-based `getRequestDispatcher()` instead of `getNamedDispatcher()`
-   - Forwards to `upcomingRenewalGenerator.jsp` — that JSP also needs to be checked
+### ✅ Priority 1 — COMPLETE
+1. ~~**AddDocumentToActivity**~~ — already at `controller.activity` ✅
+2. ~~**AddUrlToActivity**~~ — already at `controller.activity` ✅
+3. ~~**EmployerRenewalDetailView**~~ — migrated to `controller.activity.renewal` ✅
 
 ### Priority 2 — Admin (infrequent, superUser only)
 4. **RefreshToDoAutomation** — `previous.controller.general.admin.q` → `controller.admin`
@@ -152,10 +148,10 @@
 
 | Area | Total Servlets | Modern | Legacy | % Modern |
 |------|---------------|--------|--------|----------|
-| Dashboard modals | 8 | 7 | 1 | 88% |
-| Activity detail modals | 11 | 9 | 2 | 82% |
-| Admin menu (direct) | 10 | 6 | 4 (+ 1 stub) | 60% |
-| **All modal servlets** | **29** | **21** | **8** | **72%** |
+| Dashboard modals | 8 | 8 | 0 | 100% ✅ |
+| Activity detail modals | 11 | 11 | 0 | 100% ✅ |
+| Admin menu (direct) | 10 | 7 | 3 | 70% |
+| **All modal servlets** | **29** | **24** | **5** | **83%** |
 
 ---
 
@@ -172,3 +168,5 @@
 ---
 
 **Analysis Status:** ✅ COMPLETE — All modals on pspHome25.jsp and activityDetail25.jsp fully mapped
+**Priority 1 Migration:** ✅ COMPLETE — EmployerRenewalDetailView migrated, AddDocumentToActivity + AddUrlToActivity confirmed already modern
+**Remaining legacy (admin-only):** 5 servlets in Priority 2 & 3

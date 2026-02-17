@@ -1,4 +1,4 @@
-package net.superiorstate.ams.previous.controller.activity.renewal;
+package net.superiorstate.ams.controller.activity.renewal;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;

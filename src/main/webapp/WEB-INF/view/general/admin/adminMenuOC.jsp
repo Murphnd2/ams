@@ -41,67 +41,7 @@
 
 
 
-    <c:if test="${superUser.equals(\"Y\")}">
-      <a class="btn btn-outline-secondary btn-sm w-100 mb-1"  href="ResetBillingView">
-        <div class="row m-0 p-0">
-          <div class="col-3 m-0 p-0"></div>
-          <div class="col-auto m-0 p-0 me-2">
-            <i class="bi bi-receipt"></i>
-          </div>
-          <div class="col-auto m-0 p-0">
-            View Billing Page
-          </div>
-          <div class="col m-0 p-0"></div>
-        </div>
-      </a>
-      <a class="btn btn-outline-secondary btn-sm w-100 mb-1"  href="RefreshToDoAutomation">
-        <div class="row m-0 p-0">
-          <div class="col-3 m-0 p-0"></div>
-          <div class="col-auto m-0 p-0 me-2">
-            <i class="bi bi-receipt"></i>
-          </div>
-          <div class="col-auto m-0 p-0">
-            Refresh ToDo Automation
-          </div>
-          <div class="col m-0 p-0"></div>
-        </div>
-      </a>
-      <div class="btn btn-primary w-100 mb-1 pe-none">Monthly Processes</div>
-      <a class="btn btn-outline-secondary btn-sm w-100 mb-1"  href="ClearImport">
-        <div class="row m-0 p-0">
-          <div class="col-3 m-0 p-0"></div>
-          <div class="col-auto m-0 p-0 me-2">
-            <i class="bi bi-1-square"></i>
-          </div>
-          <div class="col-auto m-0 p-0">
-            Clear Import Tables
-          </div>
-          <div class="col m-0 p-0"></div>
-        </div>
-      </a>
-      <a class="btn btn-outline-secondary btn-sm w-100 mb-1"  href="ClearMonthlyBilling">
-        <i class="bi bi-1-square"></i>
-        Clear Monthly Billing
-      </a>
-      <a class="btn btn-outline-secondary btn-sm w-100 mb-1"  href="UpdateTables">
-        <i class="bi bi-1-square"></i>
-        Update Tables
-      </a>
-      <a class="btn btn-outline-secondary btn-sm w-100 mb-1"  href="CreateMonthlyBilling">
-        <i class="bi bi-1-square"></i>
-        Create Monthly Billing
-      </a>
-      <a class="btn btn-outline-secondary btn-sm w-100 mb-1"  href="DataBaseUpdates">
-        <i class="bi bi-1-square"></i>
-      </a>
-      <a class="btn btn-outline-secondary btn-sm w-100 mb-1"  href="RefreshPersonFromEmployeeAll">
-        <i class="bi bi-3-square"></i>
-      </a>
-      <a class="btn btn-outline-secondary btn-sm w-100 mb-1"  href="RefreshTicketEmployees">
-        <i class="bi bi-recycle"></i>
-        Refresh Ticket Employee List
-      </a>
-    </c:if>
+
     <div class="btn btn-altSsa w-100  mt-2 pe-none text-uppercase fw-bold">
       <i class="bi bi-cash"></i>&nbsp;
       Sales Processes</div>
