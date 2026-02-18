@@ -8,12 +8,12 @@ import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.model.ReqTaskListTix;
-import net.superiorstate.ams.previous.model.activity.checklist.sequences.GenSeq;
-import net.superiorstate.ams.previous.model.activity.checklist.sequences.RequiredTaskList;
-import net.superiorstate.ams.previous.model.activity.checklist.sequences.support.TemplatePurpose;
-import net.superiorstate.ams.previous.model.activity.checklist.tasks.Task;
-import net.superiorstate.ams.previous.model.activity.ticket.TicketCategory;
-import net.superiorstate.ams.previous.model.activity.ticket.TicketSubCategory;
+import net.superiorstate.ams.model.activity.checklist.sequences.GenSeq;
+import net.superiorstate.ams.model.activity.checklist.sequences.RequiredTaskList;
+import net.superiorstate.ams.model.activity.checklist.sequences.support.TemplatePurpose;
+import net.superiorstate.ams.model.activity.checklist.tasks.Task;
+import net.superiorstate.ams.model.activity.ticket.TicketCategory;
+import net.superiorstate.ams.model.activity.ticket.TicketSubCategory;
 
 import java.io.IOException;
 import java.util.ArrayList;

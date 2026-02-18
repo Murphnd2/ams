@@ -4,7 +4,7 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.NoResultException;
 import jakarta.persistence.Query;
 import net.superiorstate.ams.data.util.BillingHelper;
-import net.superiorstate.ams.previous.model.billing.BillingMonth;
+import net.superiorstate.ams.model.billing.BillingMonth;
 
 import java.util.Date;
 

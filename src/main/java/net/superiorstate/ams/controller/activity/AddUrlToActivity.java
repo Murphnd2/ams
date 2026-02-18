@@ -8,9 +8,9 @@ import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.AmsDataLocal;
 import net.superiorstate.ams.data.dao.SequenceDAO;
 import net.superiorstate.ams.data.resolver.EntityLookup;
-import net.superiorstate.ams.previous.model.activity.Activity;
-import net.superiorstate.ams.previous.model.general.LinkType;
-import net.superiorstate.ams.previous.model.general.WebLink;
+import net.superiorstate.ams.model.activity.Activity;
+import net.superiorstate.ams.model.general.LinkType;
+import net.superiorstate.ams.model.general.WebLink;
 
 import java.io.IOException;
 

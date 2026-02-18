@@ -5,11 +5,11 @@ import jakarta.persistence.NoResultException;
 import jakarta.persistence.Query;
 import net.superiorstate.ams.data.util.BillingHelper;
 import net.superiorstate.ams.data.resolver.EntityLookup;
-import net.superiorstate.ams.previous.model.summit.archive.Benefit;
-import net.superiorstate.ams.previous.model.summit.archive.BenefitTier;
-import net.superiorstate.ams.previous.model.summit.archive.Employee;
-import net.superiorstate.ams.previous.model.summit.archive.Employer;
-import net.superiorstate.ams.previous.model.summit.imports.*;
+import net.superiorstate.ams.model.summit.archive.Benefit;
+import net.superiorstate.ams.model.summit.archive.BenefitTier;
+import net.superiorstate.ams.model.summit.archive.Employee;
+import net.superiorstate.ams.model.summit.archive.Employer;
+import net.superiorstate.ams.model.summit.imports.*;
 
 import java.sql.Date;
 import java.util.List;

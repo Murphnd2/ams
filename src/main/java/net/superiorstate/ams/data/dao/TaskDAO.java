@@ -4,12 +4,12 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.NoResultException;
 import jakarta.persistence.Query;
 import net.superiorstate.ams.data.resolver.EntityLookup;
-import net.superiorstate.ams.previous.model.activity.Activity;
-import net.superiorstate.ams.previous.model.activity.checklist.CheckList;
-import net.superiorstate.ams.previous.model.activity.checklist.tasks.Task;
-import net.superiorstate.ams.previous.model.activity.checklist.tasks.ToDo;
-import net.superiorstate.ams.previous.model.general.Assignee;
-import net.superiorstate.ams.previous.model.general.Person;
+import net.superiorstate.ams.model.activity.Activity;
+import net.superiorstate.ams.model.activity.checklist.CheckList;
+import net.superiorstate.ams.model.activity.checklist.tasks.Task;
+import net.superiorstate.ams.model.activity.checklist.tasks.ToDo;
+import net.superiorstate.ams.model.general.Assignee;
+import net.superiorstate.ams.model.general.Person;
 
 import java.util.ArrayList;
 import java.util.List;

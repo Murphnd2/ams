@@ -10,9 +10,9 @@ import net.superiorstate.ams.data.AmsDataLocal;
 import net.superiorstate.ams.model.Activity25u;
 import net.superiorstate.ams.model.Checklist25u;
 import net.superiorstate.ams.data.resolver.EntityLookup;
-import net.superiorstate.ams.previous.model.activity.Activity;
-import net.superiorstate.ams.previous.model.activity.checklist.CheckList;
-import net.superiorstate.ams.previous.model.general.Person;
+import net.superiorstate.ams.model.activity.Activity;
+import net.superiorstate.ams.model.activity.checklist.CheckList;
+import net.superiorstate.ams.model.general.Person;
 
 import java.io.IOException;
 import java.util.Optional;

@@ -9,10 +9,10 @@ import net.superiorstate.ams.data.AmsDataLocal;
 import net.superiorstate.ams.data.util.AutomationHelper;
 import net.superiorstate.ams.data.dao.EmailDAO;
 import net.superiorstate.ams.data.resolver.EntityLookup;
-import net.superiorstate.ams.previous.model.activity.Activity;
-import net.superiorstate.ams.previous.model.activity.note.Email;
-import net.superiorstate.ams.previous.model.general.Automation;
-import net.superiorstate.ams.previous.model.summit.archive.Employer;
+import net.superiorstate.ams.model.activity.Activity;
+import net.superiorstate.ams.model.activity.note.Email;
+import net.superiorstate.ams.model.general.Automation;
+import net.superiorstate.ams.model.summit.archive.Employer;
 import net.superiorstate.ams.data.util.AutoSafe;
 import jakarta.mail.MessagingException;
 

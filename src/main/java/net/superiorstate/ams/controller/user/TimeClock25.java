@@ -8,7 +8,7 @@ import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.AmsDataLocal;
 import net.superiorstate.ams.data.dao.TimeTrackingDAO;
-import net.superiorstate.ams.previous.model.general.TimeLog;
+import net.superiorstate.ams.model.general.TimeLog;
 
 import java.io.IOException;
 import java.sql.Date;

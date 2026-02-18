@@ -4,7 +4,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.*;
 import net.superiorstate.ams.data.resolver.EntityLookup;
-import net.superiorstate.ams.previous.model.general.Automation;
+import net.superiorstate.ams.model.general.Automation;
 import net.superiorstate.ams.data.util.AutoSafe;
 
 import jakarta.persistence.EntityManager;

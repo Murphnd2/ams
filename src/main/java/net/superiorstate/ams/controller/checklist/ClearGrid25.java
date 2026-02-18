@@ -3,7 +3,7 @@ package net.superiorstate.ams.controller.checklist;
 import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
-import net.superiorstate.ams.previous.model.activity.checklist.sequences.GenSeq;
+import net.superiorstate.ams.model.activity.checklist.sequences.GenSeq;
 
 import java.io.IOException;
 import java.util.ArrayList;

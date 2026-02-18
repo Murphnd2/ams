@@ -4,11 +4,11 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.NoResultException;
 import jakarta.persistence.Query;
 import net.superiorstate.ams.data.dao.EmailDAO;
-import net.superiorstate.ams.previous.model.general.Address;
-import net.superiorstate.ams.previous.model.general.Person;
-import net.superiorstate.ams.previous.model.general.PersonV;
-import net.superiorstate.ams.previous.model.summit.archive.Employee;
-import net.superiorstate.ams.previous.model.summit.archive.EmployeeV;
+import net.superiorstate.ams.model.general.Address;
+import net.superiorstate.ams.model.general.Person;
+import net.superiorstate.ams.model.general.PersonV;
+import net.superiorstate.ams.model.summit.archive.Employee;
+import net.superiorstate.ams.model.summit.archive.EmployeeV;
 
 import java.util.List;
 import java.util.Objects;

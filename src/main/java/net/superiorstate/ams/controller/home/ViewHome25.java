@@ -14,7 +14,7 @@ import net.superiorstate.ams.data.AmsDataLocal;
 import net.superiorstate.ams.model.ActivityLandingFilter;
 import net.superiorstate.ams.model.ActivityLandingRow;
 import net.superiorstate.ams.model.ToDoOut25;
-import net.superiorstate.ams.previous.model.activity.checklist.tasks.ToDo;
+import net.superiorstate.ams.model.activity.checklist.tasks.ToDo;
 
 import java.io.IOException;
 import java.util.ArrayList;

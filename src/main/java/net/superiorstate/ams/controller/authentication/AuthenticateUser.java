@@ -8,9 +8,9 @@ import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.AmsDataLocal;
 import net.superiorstate.ams.data.dao.AuthDAO;
-import net.superiorstate.ams.previous.model.general.Person;
-import net.superiorstate.ams.previous.model.general.User;
-import net.superiorstate.ams.previous.model.general.UserRole;
+import net.superiorstate.ams.model.general.Person;
+import net.superiorstate.ams.model.general.User;
+import net.superiorstate.ams.model.general.UserRole;
 
 import java.io.IOException;
 import java.security.NoSuchAlgorithmException;

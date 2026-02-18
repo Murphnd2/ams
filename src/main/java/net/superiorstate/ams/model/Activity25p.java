@@ -1,9 +1,9 @@
 package net.superiorstate.ams.model;
 
 import jakarta.persistence.*;
-import net.superiorstate.ams.previous.model.activity.Activity;
-import net.superiorstate.ams.previous.model.activity.checklist.tasks.ToDo;
-import net.superiorstate.ams.previous.model.general.Person;
+import net.superiorstate.ams.model.activity.Activity;
+import net.superiorstate.ams.model.activity.checklist.tasks.ToDo;
+import net.superiorstate.ams.model.general.Person;
 
 @Entity
 @Table(name="a25_activity_list_participating")

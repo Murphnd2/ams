@@ -9,8 +9,8 @@ import net.superiorstate.ams.data.AmsDataGlobal;
 import net.superiorstate.ams.data.AmsDataLocal;
 import net.superiorstate.ams.model.Activity25u;
 import net.superiorstate.ams.data.resolver.EntityLookup;
-import net.superiorstate.ams.previous.model.activity.Activity;
-import net.superiorstate.ams.previous.model.activity.note.Note;
+import net.superiorstate.ams.model.activity.Activity;
+import net.superiorstate.ams.model.activity.note.Note;
 
 import java.io.IOException;
 import java.sql.Date;

@@ -5,12 +5,12 @@ import jakarta.mail.internet.*;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.NoResultException;
 import jakarta.persistence.Query;
-import net.superiorstate.ams.previous.model.activity.note.Email;
-import net.superiorstate.ams.previous.model.activity.note.EmailComparator;
-import net.superiorstate.ams.previous.model.general.PSP;
-import net.superiorstate.ams.previous.model.general.Person;
-import net.superiorstate.ams.previous.model.general.WebLink;
-import net.superiorstate.ams.previous.model.summit.archive.Employee;
+import net.superiorstate.ams.model.activity.note.Email;
+import net.superiorstate.ams.model.activity.note.EmailComparator;
+import net.superiorstate.ams.model.general.PSP;
+import net.superiorstate.ams.model.general.Person;
+import net.superiorstate.ams.model.general.WebLink;
+import net.superiorstate.ams.model.summit.archive.Employee;
 
 import java.util.*;
 import java.util.regex.Pattern;

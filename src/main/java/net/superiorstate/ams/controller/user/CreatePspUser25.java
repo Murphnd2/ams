@@ -12,11 +12,11 @@ import net.superiorstate.ams.data.AmsDataLocal;
 import net.superiorstate.ams.data.service.DatabaseInitializer;
 import net.superiorstate.ams.data.dao.EmailDAO;
 import net.superiorstate.ams.data.resolver.EntityLookup;
-import net.superiorstate.ams.previous.model.general.PSP;
-import net.superiorstate.ams.previous.model.general.Person;
-import net.superiorstate.ams.previous.model.general.User;
-import net.superiorstate.ams.previous.model.general.UserRole;
-import net.superiorstate.ams.previous.model.summit.archive.Employee;
+import net.superiorstate.ams.model.general.PSP;
+import net.superiorstate.ams.model.general.Person;
+import net.superiorstate.ams.model.general.User;
+import net.superiorstate.ams.model.general.UserRole;
+import net.superiorstate.ams.model.summit.archive.Employee;
 
 import java.io.IOException;
 import java.security.NoSuchAlgorithmException;

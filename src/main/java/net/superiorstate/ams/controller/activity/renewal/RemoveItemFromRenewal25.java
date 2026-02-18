@@ -8,7 +8,7 @@ import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.AmsDataLocal;
 import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.data.service.RenewalService;
-import net.superiorstate.ams.previous.model.activity.renewal.RenewalItem;
+import net.superiorstate.ams.model.activity.renewal.RenewalItem;
 
 import java.io.IOException;
 

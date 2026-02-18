@@ -3,11 +3,11 @@ package net.superiorstate.ams.data.dao;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.NoResultException;
 import jakarta.persistence.Query;
-import net.superiorstate.ams.previous.model.activity.checklist.sequences.RequiredTaskList;
-import net.superiorstate.ams.previous.model.activity.checklist.sequences.TaskSequence;
-import net.superiorstate.ams.previous.model.activity.checklist.sequences.support.TaskSequenceTable;
-import net.superiorstate.ams.previous.model.activity.checklist.sequences.support.TemplatePurpose;
-import net.superiorstate.ams.previous.model.activity.checklist.tasks.Task;
+import net.superiorstate.ams.model.activity.checklist.sequences.RequiredTaskList;
+import net.superiorstate.ams.model.activity.checklist.sequences.TaskSequence;
+import net.superiorstate.ams.model.activity.checklist.sequences.support.TaskSequenceTable;
+import net.superiorstate.ams.model.activity.checklist.sequences.support.TemplatePurpose;
+import net.superiorstate.ams.model.activity.checklist.tasks.Task;
 
 import java.util.ArrayList;
 import java.util.List;

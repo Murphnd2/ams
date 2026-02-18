@@ -7,11 +7,11 @@ import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.data.service.RenewalService;
-import net.superiorstate.ams.previous.model.activity.renewal.Renewal;
-import net.superiorstate.ams.previous.model.activity.ticket.setup.Setup;
-import net.superiorstate.ams.previous.model.activity.ticket.Ticket;
-import net.superiorstate.ams.previous.model.summit.archive.Benefit;
-import net.superiorstate.ams.previous.model.summit.archive.Employer;
+import net.superiorstate.ams.model.activity.renewal.Renewal;
+import net.superiorstate.ams.model.activity.ticket.setup.Setup;
+import net.superiorstate.ams.model.activity.ticket.Ticket;
+import net.superiorstate.ams.model.summit.archive.Benefit;
+import net.superiorstate.ams.model.summit.archive.Employer;
 
 import java.io.IOException;
 import java.util.List;

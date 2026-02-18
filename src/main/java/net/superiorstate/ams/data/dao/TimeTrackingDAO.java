@@ -3,10 +3,10 @@ package net.superiorstate.ams.data.dao;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.NoResultException;
 import jakarta.persistence.Query;
-import net.superiorstate.ams.previous.model.general.Person;
-import net.superiorstate.ams.previous.model.general.TimeLog;
-import net.superiorstate.ams.previous.model.general.TimeStretch;
-import net.superiorstate.ams.previous.model.general.User;
+import net.superiorstate.ams.model.general.Person;
+import net.superiorstate.ams.model.general.TimeLog;
+import net.superiorstate.ams.model.general.TimeStretch;
+import net.superiorstate.ams.model.general.User;
 
 import java.sql.Date;
 import java.time.LocalDate;

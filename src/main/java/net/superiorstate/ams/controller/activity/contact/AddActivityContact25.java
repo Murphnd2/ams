@@ -8,9 +8,9 @@ import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.AmsDataLocal;
 import net.superiorstate.ams.data.util.Validator;
 import net.superiorstate.ams.data.resolver.EntityLookup;
-import net.superiorstate.ams.previous.model.activity.Activity;
-import net.superiorstate.ams.previous.model.general.Person;
-import net.superiorstate.ams.previous.model.summit.archive.Employee;
+import net.superiorstate.ams.model.activity.Activity;
+import net.superiorstate.ams.model.general.Person;
+import net.superiorstate.ams.model.summit.archive.Employee;
 import net.superiorstate.ams.data.resolver.PersonResolutionService;
 
 import java.io.IOException;

@@ -12,11 +12,11 @@ import net.superiorstate.ams.data.resolver.PersonResolver;
 import net.superiorstate.ams.data.dao.EmailDAO;
 import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.data.util.ActivityViewHelper;
-import net.superiorstate.ams.previous.model.activity.Activity;
-import net.superiorstate.ams.previous.model.activity.renewal.Renewal;
-import net.superiorstate.ams.previous.model.general.Person;
-import net.superiorstate.ams.previous.model.summit.archive.Employee;
-import net.superiorstate.ams.previous.model.summit.archive.Employer;
+import net.superiorstate.ams.model.activity.Activity;
+import net.superiorstate.ams.model.activity.renewal.Renewal;
+import net.superiorstate.ams.model.general.Person;
+import net.superiorstate.ams.model.summit.archive.Employee;
+import net.superiorstate.ams.model.summit.archive.Employer;
 
 import java.io.IOException;
 import java.util.List;

@@ -1,8 +1,8 @@
 package net.superiorstate.ams.model;
 
 import jakarta.persistence.*;
-import net.superiorstate.ams.previous.model.activity.Activity;
-import net.superiorstate.ams.previous.model.general.Person;
+import net.superiorstate.ams.model.activity.Activity;
+import net.superiorstate.ams.model.general.Person;
 
 import java.sql.Date;
 

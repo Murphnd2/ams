@@ -4,20 +4,12 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.NoResultException;
 import jakarta.persistence.Query;
 import net.superiorstate.ams.data.resolver.EntityLookup;
-import net.superiorstate.ams.previous.model.activity.checklist.CheckList;
-import net.superiorstate.ams.previous.model.activity.checklist.sequences.RequiredTaskList;
-import net.superiorstate.ams.previous.model.activity.checklist.sequences.TaskSequence;
-import net.superiorstate.ams.previous.model.activity.checklist.sequences.support.TaskFrequency;
-import net.superiorstate.ams.previous.model.activity.checklist.sequences.support.TaskSequenceTable;
-import net.superiorstate.ams.previous.model.activity.checklist.tasks.SortedTask;
-import net.superiorstate.ams.previous.model.activity.checklist.tasks.Task;
-import net.superiorstate.ams.previous.model.activity.checklist.tasks.ToDo;
-import net.superiorstate.ams.previous.model.activity.ticket.Ticket;
-import net.superiorstate.ams.previous.model.general.Person;
-import net.superiorstate.ams.previous.model.general.User;
+import net.superiorstate.ams.model.activity.checklist.CheckList;
+import net.superiorstate.ams.model.activity.checklist.sequences.support.TaskFrequency;
+import net.superiorstate.ams.model.activity.checklist.tasks.SortedTask;
+import net.superiorstate.ams.model.activity.checklist.tasks.ToDo;
+import net.superiorstate.ams.model.activity.ticket.Ticket;
 
-import java.sql.Date;
-import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 

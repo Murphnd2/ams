@@ -1,11 +1,11 @@
 package net.superiorstate.ams.model;
 
-import net.superiorstate.ams.previous.model.activity.checklist.CheckList;
-import net.superiorstate.ams.previous.model.activity.checklist.tasks.Task;
-import net.superiorstate.ams.previous.model.activity.checklist.tasks.ToDo;
-import net.superiorstate.ams.previous.model.general.Automation;
-import net.superiorstate.ams.previous.model.general.Person;
-import net.superiorstate.ams.previous.model.general.WebLink;
+import net.superiorstate.ams.model.activity.checklist.CheckList;
+import net.superiorstate.ams.model.activity.checklist.tasks.Task;
+import net.superiorstate.ams.model.activity.checklist.tasks.ToDo;
+import net.superiorstate.ams.model.general.Automation;
+import net.superiorstate.ams.model.general.Person;
+import net.superiorstate.ams.model.general.WebLink;
 
 public class ToDoOut25 {
     private int sequenceId;

@@ -8,9 +8,9 @@ import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.AmsDataLocal;
 import net.superiorstate.ams.model.ToDoOut25;
 import net.superiorstate.ams.data.resolver.EntityLookup;
-import net.superiorstate.ams.previous.model.activity.checklist.CheckList;
-import net.superiorstate.ams.previous.model.activity.checklist.tasks.Task;
-import net.superiorstate.ams.previous.model.activity.checklist.tasks.ToDo;
+import net.superiorstate.ams.model.activity.checklist.CheckList;
+import net.superiorstate.ams.model.activity.checklist.tasks.Task;
+import net.superiorstate.ams.model.activity.checklist.tasks.ToDo;
 
 import java.io.IOException;
 import java.sql.Date;

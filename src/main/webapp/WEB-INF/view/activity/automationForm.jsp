@@ -1,6 +1,6 @@
-<%@ page import="net.superiorstate.ams.previous.model.activity.checklist.tasks.Task" %>
+<%@ page import="net.superiorstate.ams.model.activity.checklist.tasks.Task" %>
 <%@ page import="java.util.List" %>
-<%@ page import="net.superiorstate.ams.previous.model.activity.checklist.tasks.ToDo" %>
+<%@ page import="net.superiorstate.ams.model.activity.checklist.tasks.ToDo" %>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 <%@ taglib prefix="fmt" uri="http://java.sun.com/jsp/jstl/fmt" %>
 <c:choose>

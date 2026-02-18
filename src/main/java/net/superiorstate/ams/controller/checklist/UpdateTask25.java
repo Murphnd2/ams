@@ -12,11 +12,11 @@ import net.superiorstate.ams.model.ToDoOut25;
 import net.superiorstate.ams.data.util.SessionVar;
 import net.superiorstate.ams.data.util.Validator;
 import net.superiorstate.ams.data.resolver.EntityLookup;
-import net.superiorstate.ams.previous.model.activity.checklist.tasks.Task;
-import net.superiorstate.ams.previous.model.general.Automation;
-import net.superiorstate.ams.previous.model.general.LinkType;
-import net.superiorstate.ams.previous.model.general.Person;
-import net.superiorstate.ams.previous.model.general.WebLink;
+import net.superiorstate.ams.model.activity.checklist.tasks.Task;
+import net.superiorstate.ams.model.general.Automation;
+import net.superiorstate.ams.model.general.LinkType;
+import net.superiorstate.ams.model.general.Person;
+import net.superiorstate.ams.model.general.WebLink;
 
 import java.io.IOException;
 import java.util.Objects;

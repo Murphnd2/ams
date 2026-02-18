@@ -6,7 +6,7 @@ import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.resolver.EntityLookup;
-import net.superiorstate.ams.previous.model.general.Automation;
+import net.superiorstate.ams.model.general.Automation;
 
 import java.io.IOException;
 import java.util.ArrayList;

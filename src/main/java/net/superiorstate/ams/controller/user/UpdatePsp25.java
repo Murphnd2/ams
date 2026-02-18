@@ -8,13 +8,13 @@ import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.dao.EmailDAO;
 import net.superiorstate.ams.data.resolver.EntityLookup;
-import net.superiorstate.ams.previous.model.general.Address;
-import net.superiorstate.ams.previous.model.general.PSP;
-import net.superiorstate.ams.previous.model.general.Person;
-import net.superiorstate.ams.previous.model.general.User;
-import net.superiorstate.ams.previous.model.sales.agency.Agency;
-import net.superiorstate.ams.previous.model.summit.archive.Employee;
-import net.superiorstate.ams.previous.model.summit.archive.Employer;
+import net.superiorstate.ams.model.general.Address;
+import net.superiorstate.ams.model.general.PSP;
+import net.superiorstate.ams.model.general.Person;
+import net.superiorstate.ams.model.general.User;
+import net.superiorstate.ams.model.sales.agency.Agency;
+import net.superiorstate.ams.model.summit.archive.Employee;
+import net.superiorstate.ams.model.summit.archive.Employer;
 
 import java.io.IOException;
 

@@ -4,9 +4,9 @@ package net.superiorstate.ams.data.resolver;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.NoResultException;
 import net.superiorstate.ams.data.dao.EmailDAO;
-import net.superiorstate.ams.previous.model.general.Address;
-import net.superiorstate.ams.previous.model.general.Person;
-import net.superiorstate.ams.previous.model.summit.archive.Employee;
+import net.superiorstate.ams.model.general.Address;
+import net.superiorstate.ams.model.general.Person;
+import net.superiorstate.ams.model.summit.archive.Employee;
 
 import java.util.List;
 import java.util.regex.Matcher;

@@ -3,12 +3,12 @@ package net.superiorstate.ams.data.util;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.NoResultException;
 import jakarta.persistence.Query;
-import net.superiorstate.ams.previous.model.billing.BillingGrid;
-import net.superiorstate.ams.previous.model.billing.BillingMonth;
-import net.superiorstate.ams.previous.model.summit.archive.Employee;
-import net.superiorstate.ams.previous.model.summit.imports.HsaAccount;
-import net.superiorstate.ams.previous.model.summit.imports.HsaEe;
-import net.superiorstate.ams.previous.model.summit.imports.HsaEr;
+import net.superiorstate.ams.model.billing.BillingGrid;
+import net.superiorstate.ams.model.billing.BillingMonth;
+import net.superiorstate.ams.model.summit.archive.Employee;
+import net.superiorstate.ams.model.summit.imports.HsaAccount;
+import net.superiorstate.ams.model.summit.imports.HsaEe;
+import net.superiorstate.ams.model.summit.imports.HsaEr;
 
 import java.util.List;
 

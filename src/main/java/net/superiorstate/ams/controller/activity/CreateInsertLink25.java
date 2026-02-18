@@ -8,8 +8,8 @@ import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.AmsDataGlobal;
-import net.superiorstate.ams.previous.model.general.LinkType;
-import net.superiorstate.ams.previous.model.general.WebLink;
+import net.superiorstate.ams.model.general.LinkType;
+import net.superiorstate.ams.model.general.WebLink;
 
 import java.io.IOException;
 import java.util.List;

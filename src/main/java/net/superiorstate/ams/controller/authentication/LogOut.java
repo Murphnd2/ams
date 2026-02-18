@@ -5,9 +5,9 @@ import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.AmsDataLocal;
 import net.superiorstate.ams.data.dao.AuthDAO;
-import net.superiorstate.ams.previous.model.general.PSP;
-import net.superiorstate.ams.previous.model.general.Person;
-import net.superiorstate.ams.previous.model.general.User;
+import net.superiorstate.ams.model.general.PSP;
+import net.superiorstate.ams.model.general.Person;
+import net.superiorstate.ams.model.general.User;
 
 import java.io.IOException;
 

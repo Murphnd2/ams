@@ -8,7 +8,7 @@ import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.AmsDataLocal;
 import net.superiorstate.ams.data.util.Validator;
 import net.superiorstate.ams.data.dao.EmailDAO;
-import net.superiorstate.ams.previous.model.general.Person;
+import net.superiorstate.ams.model.general.Person;
 
 import java.io.IOException;
 

@@ -10,9 +10,9 @@ import net.superiorstate.ams.data.AmsDataLocal;
 import net.superiorstate.ams.model.Activity25u;
 import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.data.service.RenewalService;
-import net.superiorstate.ams.previous.model.activity.renewal.Renewal;
-import net.superiorstate.ams.previous.model.general.Person;
-import net.superiorstate.ams.previous.model.summit.archive.Employer;
+import net.superiorstate.ams.model.activity.renewal.Renewal;
+import net.superiorstate.ams.model.general.Person;
+import net.superiorstate.ams.model.summit.archive.Employer;
 
 import java.io.IOException;
 import java.util.ArrayList;

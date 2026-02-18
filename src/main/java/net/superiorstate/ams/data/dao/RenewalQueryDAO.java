@@ -3,12 +3,12 @@ package net.superiorstate.ams.data.dao;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.NoResultException;
 import jakarta.persistence.Query;
-import net.superiorstate.ams.previous.model.activity.renewal.Renewal;
-import net.superiorstate.ams.previous.model.activity.renewal.RenewalEmployer;
-import net.superiorstate.ams.previous.model.activity.renewal.RenewalItem;
-import net.superiorstate.ams.previous.model.summit.archive.Benefit;
-import net.superiorstate.ams.previous.model.summit.archive.Employee;
-import net.superiorstate.ams.previous.model.summit.archive.Employer;
+import net.superiorstate.ams.model.activity.renewal.Renewal;
+import net.superiorstate.ams.model.activity.renewal.RenewalEmployer;
+import net.superiorstate.ams.model.activity.renewal.RenewalItem;
+import net.superiorstate.ams.model.summit.archive.Benefit;
+import net.superiorstate.ams.model.summit.archive.Employee;
+import net.superiorstate.ams.model.summit.archive.Employer;
 
 import java.sql.Date;
 import java.time.LocalDate;

@@ -10,8 +10,8 @@ import net.superiorstate.ams.data.util.Validator;
 import net.superiorstate.ams.data.dao.AppConstantDAO;
 import net.superiorstate.ams.data.dao.SequenceDAO;
 import net.superiorstate.ams.data.resolver.EntityLookup;
-import net.superiorstate.ams.previous.model.activity.Activity;
-import net.superiorstate.ams.previous.model.general.WebLink;
+import net.superiorstate.ams.model.activity.Activity;
+import net.superiorstate.ams.model.general.WebLink;
 
 import java.io.*;
 import java.nio.file.Paths;

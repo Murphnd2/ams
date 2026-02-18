@@ -10,7 +10,7 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
 import net.superiorstate.ams.data.AmsDataGlobal;
 import net.superiorstate.ams.data.resolver.EntityLookup;
-import net.superiorstate.ams.previous.model.activity.checklist.tasks.ToDo;
+import net.superiorstate.ams.model.activity.checklist.tasks.ToDo;
 
 import java.io.IOException;
 

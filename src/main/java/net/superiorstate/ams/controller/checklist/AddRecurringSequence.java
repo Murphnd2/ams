@@ -7,16 +7,15 @@ import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.dao.RecurringChecklistDAO;
 import net.superiorstate.ams.data.resolver.EntityLookup;
-import net.superiorstate.ams.previous.model.activity.checklist.sequences.RecurringTaskList;
-import net.superiorstate.ams.previous.model.activity.checklist.sequences.RequiredTaskList;
-import net.superiorstate.ams.previous.model.activity.checklist.sequences.support.DoW;
-import net.superiorstate.ams.previous.model.activity.checklist.sequences.support.TaskFrequency;
-import net.superiorstate.ams.previous.model.general.PSP;
-import net.superiorstate.ams.previous.model.general.Person;
+import net.superiorstate.ams.model.activity.checklist.sequences.RecurringTaskList;
+import net.superiorstate.ams.model.activity.checklist.sequences.RequiredTaskList;
+import net.superiorstate.ams.model.activity.checklist.sequences.support.DoW;
+import net.superiorstate.ams.model.activity.checklist.sequences.support.TaskFrequency;
+import net.superiorstate.ams.model.general.PSP;
+import net.superiorstate.ams.model.general.Person;
 
 import java.io.IOException;
 import java.sql.Date;
-import java.util.ArrayList;
 import java.util.List;
 
 @WebServlet(name = "AddRecurringSequence", value = "/AddRecurringSequence")

@@ -8,7 +8,7 @@ import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.AmsDataLocal;
 import net.superiorstate.ams.data.resolver.EntityLookup;
-import net.superiorstate.ams.previous.model.activity.checklist.tasks.ToDoOut;
+import net.superiorstate.ams.model.activity.checklist.tasks.ToDoOut;
 
 import java.io.IOException;
 

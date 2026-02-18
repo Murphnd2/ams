@@ -8,7 +8,7 @@ import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.dao.AuthDAO;
 import net.superiorstate.ams.data.dao.EmailDAO;
-import net.superiorstate.ams.previous.model.general.User;
+import net.superiorstate.ams.model.general.User;
 
 import jakarta.mail.MessagingException;
 import java.io.IOException;

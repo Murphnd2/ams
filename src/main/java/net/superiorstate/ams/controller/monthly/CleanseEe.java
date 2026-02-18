@@ -6,7 +6,7 @@ import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.util.Validator;
-import net.superiorstate.ams.previous.model.summit.archive.Employee;
+import net.superiorstate.ams.model.summit.archive.Employee;
 
 import java.io.IOException;
 import java.util.ArrayList;

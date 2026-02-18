@@ -1,4 +1,4 @@
-<%@ page import="net.superiorstate.ams.previous.model.sales.agency.RateTable" %>
+<%@ page import="net.superiorstate.ams.model.sales.agency.RateTable" %>
 <%@ page import="java.util.List" %>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 <%@ taglib prefix="fmt" uri="http://java.sun.com/jsp/jstl/fmt" %>

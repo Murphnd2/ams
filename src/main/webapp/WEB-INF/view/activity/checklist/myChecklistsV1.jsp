@@ -1,6 +1,6 @@
 <%@ page import="java.sql.Date" %>
 <%@ page import="java.time.LocalDate" %>
-<%@ page import="net.superiorstate.ams.previous.model.activity.checklist.CheckList" %>
+<%@ page import="net.superiorstate.ams.model.activity.checklist.CheckList" %>
 <%@ page import="java.util.List" %>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 <c:choose>

@@ -7,7 +7,7 @@ import jakarta.persistence.Query;
 import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
-import net.superiorstate.ams.previous.model.general.WebLink;
+import net.superiorstate.ams.model.general.WebLink;
 
 import java.io.IOException;
 

@@ -2,15 +2,15 @@ package net.superiorstate.ams.data.resolver;
 
 import jakarta.persistence.EntityManager;
 import net.superiorstate.ams.data.dao.RequiredTaskDAO;
-import net.superiorstate.ams.previous.model.activity.checklist.CheckList;
-import net.superiorstate.ams.previous.model.activity.checklist.sequences.RequiredTaskList;
-import net.superiorstate.ams.previous.model.activity.checklist.sequences.support.TemplatePurpose;
-import net.superiorstate.ams.previous.model.activity.checklist.tasks.Task;
-import net.superiorstate.ams.previous.model.activity.checklist.tasks.ToDo;
-import net.superiorstate.ams.previous.model.general.LinkType;
-import net.superiorstate.ams.previous.model.general.PSP;
-import net.superiorstate.ams.previous.model.general.User;
-import net.superiorstate.ams.previous.model.general.WebLink;
+import net.superiorstate.ams.model.activity.checklist.CheckList;
+import net.superiorstate.ams.model.activity.checklist.sequences.RequiredTaskList;
+import net.superiorstate.ams.model.activity.checklist.sequences.support.TemplatePurpose;
+import net.superiorstate.ams.model.activity.checklist.tasks.Task;
+import net.superiorstate.ams.model.activity.checklist.tasks.ToDo;
+import net.superiorstate.ams.model.general.LinkType;
+import net.superiorstate.ams.model.general.PSP;
+import net.superiorstate.ams.model.general.User;
+import net.superiorstate.ams.model.general.WebLink;
 
 import java.sql.Date;
 import java.util.ArrayList;

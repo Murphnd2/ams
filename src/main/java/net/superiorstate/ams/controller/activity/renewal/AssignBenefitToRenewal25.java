@@ -8,8 +8,8 @@ import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.AmsDataLocal;
 import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.data.service.RenewalService;
-import net.superiorstate.ams.previous.model.activity.renewal.Renewal;
-import net.superiorstate.ams.previous.model.summit.archive.Benefit;
+import net.superiorstate.ams.model.activity.renewal.Renewal;
+import net.superiorstate.ams.model.summit.archive.Benefit;
 
 import java.io.IOException;
 

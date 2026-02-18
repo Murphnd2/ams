@@ -9,12 +9,11 @@ import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.dao.SequenceDAO;
 import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.data.util.Validator;
-import net.superiorstate.ams.previous.model.general.LinkType;
-import net.superiorstate.ams.previous.model.general.WebLink;
-import net.superiorstate.ams.previous.model.activity.checklist.tasks.Task;
+import net.superiorstate.ams.model.general.LinkType;
+import net.superiorstate.ams.model.general.WebLink;
+import net.superiorstate.ams.model.activity.checklist.tasks.Task;
 
 import java.io.IOException;
-import java.util.Optional;
 import java.util.UUID;
 
 @WebServlet(name = "AddFileToTask", value = "/AddFileToTask")
