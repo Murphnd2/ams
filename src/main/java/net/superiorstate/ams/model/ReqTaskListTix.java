@@ -8,6 +8,8 @@ import net.superiorstate.ams.model.activity.checklist.sequences.RequiredTaskList
 import net.superiorstate.ams.model.activity.checklist.sequences.support.TemplatePurpose;
 import net.superiorstate.ams.model.activity.ticket.TicketSubCategory;
 
+import java.util.List;
+
 public class ReqTaskListTix {
     long id;
     String description;
@@ -65,11 +67,8 @@ public class ReqTaskListTix {
         Query q = em.createQuery("SELECT tsc FROM TicketSubCategory tsc WHERE tsc.templatePurpose.id = :id");
         q.setParameter("id",getTemplatePurpose().getId());
         TicketSubCategory tsc;
-        try{
-            tsc = (TicketSubCategory) q.getSingleResult();
-        } catch (NoResultException e){
-            tsc = null;
-        }
+        List<?> results = q.getResultList();
+        tsc = results.isEmpty() ? null : (TicketSubCategory) results.get(0);
         setTicketSubCategory(tsc);
         setId(getRequiredTaskList().getId());
         assert tsc != null;

@@ -1,0 +1,389 @@
+<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
+<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
+<!DOCTYPE html>
+<html>
+<head>
+    <c:import url="/WEB-INF/view/css-js.jsp"></c:import>
+    <title>Sequence Template Manager</title>
+    <style>
+        .seq-panel { background: #fff; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+        .seq-panel-header { background: #0d6681; color: #fff; padding: 12px 16px; border-radius: 8px 8px 0 0; font-weight: 600; font-size: 0.95rem; }
+        .seq-item { padding: 10px 14px; border-bottom: 1px solid #eee; cursor: pointer; transition: background 0.15s; display: flex; align-items: center; gap: 10px; text-decoration: none; color: inherit; }
+        .seq-item:hover { background: #f0f7fa; color: inherit; }
+        .seq-item.active { background: #e8f4f8; border-left: 3px solid #0d6681; }
+        .task-count-badge { font-size: 0.75rem; background: #e9ecef; border-radius: 10px; padding: 2px 8px; color: #555; white-space: nowrap; }
+        .seq-name { font-size: 0.9rem; font-weight: 500; }
+        .stat-chip { font-size: 0.7rem; padding: 2px 6px; border-radius: 3px; font-weight: 600; }
+        .stat-chip.ticket { background: #e0f2fe; color: #0369a1; }
+        .stat-chip.renewal { background: #ede9fe; color: #6d28d9; }
+        .stat-chip.setup { background: #f0fdf4; color: #15803d; }
+        .builder-area { background: #fff; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); min-height: 400px; }
+        .builder-header { padding: 16px 20px; border-bottom: 1px solid #eee; }
+        .task-row { display: flex; align-items: center; gap: 8px; padding: 8px 20px; border-bottom: 1px solid #f0f0f0; transition: background 0.1s; }
+        .task-row:hover { background: #fafbfc; }
+        .task-row.dragging { opacity: 0.4; background: #e8f4f8; }
+        .task-row.drag-over { border-top: 2px solid #0d6681; }
+        .step-badge { width: 30px; height: 30px; border-radius: 50%; background: #e8f4f8; color: #0d6681; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.8rem; flex-shrink: 0; }
+        .drag-handle { cursor: grab; color: #bbb; font-size: 1.1rem; flex-shrink: 0; }
+        .drag-handle:hover { color: #666; }
+        .task-flags .flag { width: 26px; height: 26px; border-radius: 4px; border: 1px solid #ddd; display: inline-flex; align-items: center; justify-content: center; font-size: 0.75rem; color: #aaa; cursor: pointer; transition: all 0.15s; }
+        .task-flags .flag.on { background: #e8f4f8; color: #0d6681; border-color: #0d6681; }
+        .task-flags .flag:hover { border-color: #0d6681; }
+        .add-task-bar { padding: 12px 20px; border-top: 2px dashed #ddd; background: #fafbfc; }
+        .save-bar { position: sticky; bottom: 0; background: #fff; border-top: 1px solid #eee; padding: 12px 20px; border-radius: 0 0 8px 8px; }
+        .empty-state { text-align: center; padding: 60px 20px; color: #999; }
+        .empty-state i { font-size: 3rem; margin-bottom: 16px; display: block; color: #ccc; }
+        .new-seq-form { padding: 12px; border-top: 1px solid #eee; background: #fafbfc; border-radius: 0 0 8px 8px; }
+        .seq-list-scroll { max-height: 55vh; overflow-y: auto; }
+        .filter-tabs .btn { font-size: 0.78rem; padding: 4px 8px; }
+        .filter-tabs .btn.active-filter { background: #0d6681; color: #fff; border-color: #0d6681; }
+    </style>
+</head>
+<body>
+<c:import url="/WEB-INF/view/a/general/navbar25.jsp"></c:import>
+<div class="container-fluid px-3 px-lg-4 mt-2">
+    <div class="row g-3">
+
+        <%-- ====================== LEFT PANEL ====================== --%>
+        <div class="col-lg-4 col-xl-3">
+            <div class="seq-panel">
+                <div class="seq-panel-header d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-collection"></i> Template Sequences</span>
+                    <span class="badge bg-light text-dark">${seqTotalCount}</span>
+                </div>
+
+                <%-- Filter Tabs --%>
+                <div class="px-2 pt-2 pb-2" style="background: #fafbfc; border-bottom: 1px solid #eee;">
+                    <div class="btn-group w-100 filter-tabs" role="group">
+                        <button type="button" class="btn btn-outline-secondary btn-sm active-filter" onclick="filterSeq('all',this)">
+                            All
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="filterSeq('ticket',this)">
+                            <i class="bi bi-ticket-detailed"></i> ${seqTicketCount}
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="filterSeq('renewal',this)">
+                            <i class="bi bi-repeat"></i> ${seqRenewalCount}
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="filterSeq('setup',this)">
+                            <i class="bi bi-buildings"></i> ${seqSetupCount}
+                        </button>
+                    </div>
+                </div>
+
+                <%-- Search --%>
+                <div class="p-2" style="border-bottom: 1px solid #eee;">
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+                        <input type="text" class="form-control border-start-0" placeholder="Filter sequences..." id="seqSearch" oninput="searchSeq()">
+                    </div>
+                </div>
+
+                <%-- Sequence List --%>
+                <div class="seq-list-scroll" id="seqListContainer">
+                    <c:forEach var="tix" items="${sessionScope.seqTicketDisplay}">
+                        <c:set var="isActive" value="" />
+                        <c:if test="${sessionScope.sbSelectedId == tix.getId()}"><c:set var="isActive" value="active" /></c:if>
+                        <a href="SequenceBuilder25?load=${tix.getId()}" class="seq-item ${isActive}" data-type="ticket" data-searchname="${tix.getDescription()}">
+                            <span class="stat-chip ticket">Ticket</span>
+                            <span class="seq-name flex-fill">${tix.getDescription()}</span>
+                            <span class="task-count-badge">${taskCountMap[tix.getId()]} tasks</span>
+                        </a>
+                    </c:forEach>
+                    <c:forEach var="ren" items="${sessionScope.seqRenewalList}">
+                        <c:set var="isActive" value="" />
+                        <c:if test="${sessionScope.sbSelectedId == ren.getId()}"><c:set var="isActive" value="active" /></c:if>
+                        <a href="SequenceBuilder25?load=${ren.getId()}" class="seq-item ${isActive}" data-type="renewal" data-searchname="${ren.getDescription()}">
+                            <span class="stat-chip renewal">Renewal</span>
+                            <span class="seq-name flex-fill">${ren.getDescription()}</span>
+                            <span class="task-count-badge">${taskCountMap[ren.getId()]} tasks</span>
+                        </a>
+                    </c:forEach>
+                    <c:forEach var="setup" items="${sessionScope.seqSetupList}">
+                        <c:set var="isActive" value="" />
+                        <c:if test="${sessionScope.sbSelectedId == setup.getId()}"><c:set var="isActive" value="active" /></c:if>
+                        <a href="SequenceBuilder25?load=${setup.getId()}" class="seq-item ${isActive}" data-type="setup" data-searchname="${setup.getDescription()}">
+                            <span class="stat-chip setup">Setup</span>
+                            <span class="seq-name flex-fill">${setup.getDescription()}</span>
+                            <span class="task-count-badge">${taskCountMap[setup.getId()]} tasks</span>
+                        </a>
+                    </c:forEach>
+                </div>
+
+                <%-- New Sequence --%>
+                <div class="new-seq-form">
+                    <button class="btn btn-sm w-100 fw-bold text-white" style="background:#0d6681;"
+                            data-bs-toggle="collapse" data-bs-target="#newSeqCollapse">
+                        <i class="bi bi-plus-circle"></i> New Sequence
+                    </button>
+                    <div class="collapse mt-2" id="newSeqCollapse">
+                        <form method="post" action="SequenceAction25" id="newSeqForm">
+                            <input type="hidden" name="action" value="CREATE">
+                            <div class="mb-2">
+                                <select class="form-select form-select-sm" name="newSeqType" id="newSeqType" onchange="toggleNewSeqFields()" required>
+                                    <option value="" selected disabled>Activity Type</option>
+                                    <option value="ticket">Ticket</option>
+                                    <option value="renewal">Renewal</option>
+                                    <option value="setup">Setup</option>
+                                </select>
+                            </div>
+                            <div class="mb-2 d-none" id="ticketCatRow">
+                                <select class="form-select form-select-sm" name="ticketCategoryId">
+                                    <option selected disabled>Ticket Category</option>
+                                    <c:forEach var="cat" items="${sessionScope.sbTicketCategories}">
+                                        <option value="${cat.getId()}">${cat.getDescription()}</option>
+                                    </c:forEach>
+                                </select>
+                            </div>
+                            <div class="mb-2 d-none" id="renewalPurposeRow">
+                                <select class="form-select form-select-sm" name="purposeId">
+                                    <option selected disabled>Select Benefit Type</option>
+                                    <c:forEach var="tp" items="${sessionScope.sbUnassignedRenewal}">
+                                        <option value="${tp.getId()}">${tp.getDescription()}</option>
+                                    </c:forEach>
+                                </select>
+                            </div>
+                            <div class="mb-2 d-none" id="setupPurposeRow">
+                                <select class="form-select form-select-sm" name="purposeId">
+                                    <option selected disabled>Select LOS/Module</option>
+                                    <c:forEach var="tp" items="${sessionScope.sbUnassignedSetup}">
+                                        <option value="${tp.getId()}">${tp.getDescription()}</option>
+                                    </c:forEach>
+                                </select>
+                            </div>
+                            <div class="mb-2">
+                                <input type="text" class="form-control form-control-sm" name="seqName" placeholder="Sequence name" required>
+                            </div>
+                            <button type="submit" class="btn btn-sm btn-success w-100"><i class="bi bi-check-lg"></i> Create</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <%-- ====================== RIGHT PANEL ====================== --%>
+        <div class="col-lg-8 col-xl-9">
+            <div class="builder-area">
+                <c:choose>
+                    <c:when test="${sessionScope.sbSelectedId > 0}">
+
+                        <%-- Header --%>
+                        <div class="builder-header">
+                            <h5 class="mb-1" style="color:#0d6681; font-weight:700;">
+                                <c:if test="${sessionScope.sbSelectedGroupId == 3}"><i class="bi bi-ticket-detailed text-info"></i></c:if>
+                                <c:if test="${sessionScope.sbSelectedGroupId == 1}"><i class="bi bi-repeat text-primary"></i></c:if>
+                                <c:if test="${sessionScope.sbSelectedGroupId == 2}"><i class="bi bi-buildings text-secondary"></i></c:if>
+                                    ${sessionScope.sbSelectedName}
+                            </h5>
+                            <small class="text-muted">
+                                Sequence #${sessionScope.sbSelectedId} &middot; ${sessionScope.sbListBuilder.size()} tasks
+                            </small>
+                        </div>
+
+                        <%-- Task Rows --%>
+                        <form method="post" action="SequenceAction25" id="builderForm">
+                            <input type="hidden" name="action" value="SAVE">
+                            <input type="hidden" name="sequenceId" value="${sessionScope.sbSelectedId}">
+                            <input type="hidden" name="taskOrder" id="taskOrderField" value="">
+
+                            <div id="taskList">
+                                <c:forEach var="gs" items="${sessionScope.sbListBuilder}" varStatus="idx">
+                                    <c:if test="${gs.getDescription() != null and gs.getDescription().length() > 0}">
+                                        <div class="task-row" draggable="true"
+                                             data-task-id="${gs.getTask() != null ? gs.getTask().getId() : -1}"
+                                             data-desc="${gs.getDescription()}"
+                                             data-reusable="${gs.isPublicTask()}">
+                                            <span class="drag-handle"><i class="bi bi-grip-vertical"></i></span>
+                                            <span class="step-badge">${idx.count}</span>
+                                            <div style="flex:1; font-size:0.9rem; padding:4px 8px;">${gs.getDescription()}</div>
+                                            <div class="task-flags">
+                                                <span class="flag <c:if test='${gs.isPublicTask()}'>on</c:if>" title="Reusable"><i class="bi bi-floppy"></i></span>
+                                                <span class="flag" title="Has owner"><i class="bi bi-person"></i></span>
+                                                <span class="flag" title="Has link"><i class="bi bi-link-45deg"></i></span>
+                                                <span class="flag" title="Outsourceable"><i class="bi bi-send"></i></span>
+                                            </div>
+                                            <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeTask(this)"><i class="bi bi-x-lg"></i></button>
+                                        </div>
+                                    </c:if>
+                                </c:forEach>
+                            </div>
+
+                                <%-- Add Task Bar --%>
+                            <div class="add-task-bar">
+                                <div class="row g-2 align-items-center">
+                                    <div class="col-auto">
+                                        <div class="btn-group btn-group-sm">
+                                            <input type="radio" class="btn-check" name="addMode" id="addNew" checked onchange="toggleAddMode()">
+                                            <label class="btn btn-outline-success" for="addNew"><i class="bi bi-pencil"></i> New</label>
+                                            <input type="radio" class="btn-check" name="addMode" id="addExisting" onchange="toggleAddMode()">
+                                            <label class="btn btn-outline-success" for="addExisting"><i class="bi bi-journal-text"></i> Existing</label>
+                                        </div>
+                                    </div>
+                                    <div class="col" id="newTaskInput">
+                                        <input type="text" class="form-control form-control-sm" placeholder="Type new task description..." id="newTaskDesc"
+                                               onkeydown="if(event.key==='Enter'){event.preventDefault();addTask();}">
+                                    </div>
+                                    <div class="col d-none" id="existingTaskInput">
+                                        <select class="form-select form-select-sm" id="existingTaskSelect">
+                                            <option value="-1" selected disabled>Select from reusable tasks...</option>
+                                            <c:forEach var="rt" items="${sessionScope.sbReusableTasks}">
+                                                <option value="${rt.getId()}" data-desc="${rt.getDescription()}">${rt.getDescription()}</option>
+                                            </c:forEach>
+                                        </select>
+                                    </div>
+                                    <div class="col-auto">
+                                        <div class="form-check form-check-inline mb-0">
+                                            <input class="form-check-input" type="checkbox" id="saveReusable">
+                                            <label class="form-check-label small" for="saveReusable"><i class="bi bi-floppy"></i> Reusable</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-auto">
+                                        <button type="button" class="btn btn-sm btn-primary" onclick="addTask()"><i class="bi bi-plus-lg"></i> Add</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                                <%-- Save Bar --%>
+                            <div class="save-bar d-flex justify-content-between">
+                                <a href="SequenceBuilder25" class="btn btn-sm btn-outline-secondary"><i class="bi bi-x-lg"></i> Cancel</a>
+                                <button type="submit" class="btn btn-sm btn-dark" onclick="prepareSubmit()"><i class="bi bi-check2-all"></i> Save Sequence</button>
+                            </div>
+                        </form>
+
+                    </c:when>
+                    <c:otherwise>
+                        <div class="empty-state">
+                            <i class="bi bi-collection"></i>
+                            <h5>Select a Sequence</h5>
+                            <p class="text-muted">Choose a sequence from the left panel to view and edit its tasks,<br>
+                                or create a new one with the button below the list.</p>
+                        </div>
+                    </c:otherwise>
+                </c:choose>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+    function filterSeq(type, btn) {
+        document.querySelectorAll('.filter-tabs .btn').forEach(function(b) { b.classList.remove('active-filter'); });
+        btn.classList.add('active-filter');
+        document.querySelectorAll('.seq-item').forEach(function(item) {
+            item.style.display = (type === 'all' || item.getAttribute('data-type') === type) ? 'flex' : 'none';
+        });
+    }
+
+    function searchSeq() {
+        var term = document.getElementById('seqSearch').value.toLowerCase();
+        document.querySelectorAll('.seq-item').forEach(function(item) {
+            var name = (item.getAttribute('data-searchname') || '').toLowerCase();
+            item.style.display = name.indexOf(term) >= 0 ? 'flex' : 'none';
+        });
+    }
+
+    function toggleAddMode() {
+        var isNew = document.getElementById('addNew').checked;
+        document.getElementById('newTaskInput').className = isNew ? 'col' : 'col d-none';
+        document.getElementById('existingTaskInput').className = isNew ? 'col d-none' : 'col';
+    }
+
+    function addTask() {
+        var isNew = document.getElementById('addNew').checked;
+        var desc, taskId, reusable;
+        if (isNew) {
+            desc = document.getElementById('newTaskDesc').value.trim();
+            if (!desc) return;
+            taskId = -1;
+            reusable = document.getElementById('saveReusable').checked;
+            document.getElementById('newTaskDesc').value = '';
+        } else {
+            var sel = document.getElementById('existingTaskSelect');
+            if (sel.value === '-1') return;
+            desc = sel.options[sel.selectedIndex].getAttribute('data-desc');
+            taskId = sel.value;
+            reusable = true;
+            sel.value = '-1';
+        }
+        var list = document.getElementById('taskList');
+        var count = list.children.length + 1;
+        var row = document.createElement('div');
+        row.className = 'task-row';
+        row.draggable = true;
+        row.setAttribute('data-task-id', taskId);
+        row.setAttribute('data-desc', desc);
+        row.setAttribute('data-reusable', reusable);
+        row.innerHTML =
+            '<span class="drag-handle"><i class="bi bi-grip-vertical"></i></span>' +
+            '<span class="step-badge">' + count + '</span>' +
+            '<div style="flex:1;font-size:0.9rem;padding:4px 8px;">' + escapeHtml(desc) + '</div>' +
+            '<div class="task-flags">' +
+            '<span class="flag ' + (reusable ? 'on' : '') + '" title="Reusable"><i class="bi bi-floppy"></i></span>' +
+            '<span class="flag" title="Has owner"><i class="bi bi-person"></i></span>' +
+            '<span class="flag" title="Has link"><i class="bi bi-link-45deg"></i></span>' +
+            '<span class="flag" title="Outsourceable"><i class="bi bi-send"></i></span>' +
+            '</div>' +
+            '<button type="button" class="btn btn-sm btn-outline-danger" onclick="removeTask(this)"><i class="bi bi-x-lg"></i></button>';
+        attachDragEvents(row);
+        list.appendChild(row);
+        renumber();
+    }
+
+    function removeTask(btn) { btn.closest('.task-row').remove(); renumber(); }
+
+    function renumber() {
+        document.querySelectorAll('#taskList .task-row').forEach(function(row, i) {
+            row.querySelector('.step-badge').textContent = i + 1;
+        });
+    }
+
+    var draggedRow = null;
+    function attachDragEvents(row) {
+        row.addEventListener('dragstart', function(e) { draggedRow = row; row.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; });
+        row.addEventListener('dragover', function(e) { e.preventDefault(); document.querySelectorAll('.drag-over').forEach(function(r){r.classList.remove('drag-over');}); row.classList.add('drag-over'); });
+        row.addEventListener('dragleave', function() { row.classList.remove('drag-over'); });
+        row.addEventListener('drop', function(e) {
+            e.preventDefault();
+            if (draggedRow && draggedRow !== row) {
+                var list = document.getElementById('taskList');
+                var rows = Array.from(list.children);
+                if (rows.indexOf(draggedRow) < rows.indexOf(row)) { row.after(draggedRow); } else { row.before(draggedRow); }
+                renumber();
+            }
+            document.querySelectorAll('.drag-over').forEach(function(r){r.classList.remove('drag-over');});
+        });
+        row.addEventListener('dragend', function() { if(draggedRow) draggedRow.classList.remove('dragging'); document.querySelectorAll('.drag-over').forEach(function(r){r.classList.remove('drag-over');}); draggedRow=null; });
+    }
+    document.querySelectorAll('#taskList .task-row').forEach(attachDragEvents);
+
+    document.addEventListener('click', function(e) { var flag = e.target.closest('.task-flags .flag'); if(flag) flag.classList.toggle('on'); });
+
+    function toggleNewSeqFields() {
+        var v = document.getElementById('newSeqType').value;
+        document.getElementById('ticketCatRow').className = v === 'ticket' ? 'mb-2' : 'mb-2 d-none';
+        document.getElementById('renewalPurposeRow').className = v === 'renewal' ? 'mb-2' : 'mb-2 d-none';
+        document.getElementById('setupPurposeRow').className = v === 'setup' ? 'mb-2' : 'mb-2 d-none';
+    }
+
+    function prepareSubmit() {
+        var rows = document.querySelectorAll('#taskList .task-row');
+        var tasks = [];
+        rows.forEach(function(row, i) {
+            var flags = row.querySelectorAll('.task-flags .flag');
+            tasks.push({
+                order: i,
+                taskId: row.getAttribute('data-task-id') || -1,
+                desc: row.getAttribute('data-desc') || '',
+                reusable: flags[0] && flags[0].classList.contains('on'),
+                hasOwner: flags[1] && flags[1].classList.contains('on'),
+                hasLink: flags[2] && flags[2].classList.contains('on'),
+                sourced: flags[3] && flags[3].classList.contains('on')
+            });
+        });
+        document.getElementById('taskOrderField').value = JSON.stringify(tasks);
+    }
+
+    function escapeHtml(text) { var d = document.createElement('div'); d.textContent = text; return d.innerHTML; }
+</script>
+</body>
+</html>
