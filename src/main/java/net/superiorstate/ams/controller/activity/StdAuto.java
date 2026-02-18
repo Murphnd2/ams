@@ -1,4 +1,4 @@
-package net.superiorstate.ams.previous.controller;
+package net.superiorstate.ams.controller.activity;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.NoResultException;
