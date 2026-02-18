@@ -70,8 +70,7 @@ public class AmsDataLocal implements AutoCloseable {
     private ToDoOut currentToDoOut;
     private ToDo currentToDo;
 
-    public AmsDataLocal(){
-        EntityManagerFactory emf = Persistence.createEntityManagerFactory("ssaPU");
+    public AmsDataLocal(EntityManagerFactory emf){
         this.em = emf.createEntityManager();
     };
 
@@ -1029,6 +1028,7 @@ public class AmsDataLocal implements AutoCloseable {
         }
 
         public void intializeActivity(EntityManager em, Long activityId){
+            long start = System.currentTimeMillis();
             System.out.println("** INITIALIZATION OF ACTIVITY **");
             setActivity(EntityLookup.getActivityById(em,activityId));
             if(getActivity().getClass().getSimpleName().equals("CheckList")){
@@ -1041,6 +1041,8 @@ public class AmsDataLocal implements AutoCloseable {
             }
             setNotes(getNotesForActivity(em,getActivity()));
             setToDoList(getToDosForCurrentActivity(em,getCheckList()));
+            System.out.println("🔑 isPspAdmin = " + isPspAdmin);
+            ToDoOut25.computeAllDisplayStates(getToDoList(), getCurrentPerson().getId(), isPspAdmin, getActivity().getAssignedTo().getId());
             if(getActivity().getClass().getSimpleName().equals("Renewal")){
                 fillEmployeeList(em);
                 setBenefitsNotInRenewal(getBenefitsNotInRenewal(em));
@@ -1054,6 +1056,7 @@ public class AmsDataLocal implements AutoCloseable {
                 setModsInSetup(getModsInSetup(s));
             }
             setPastActivities(fillPastActivities(em));
+            System.out.println("⏱️ intializeActivity took " + (System.currentTimeMillis() - start) + "ms");
         }
 
         private List<TemplatePurpose> getModsInSetup(Setup s) {
@@ -1305,6 +1308,7 @@ public class AmsDataLocal implements AutoCloseable {
                     .comparing(ToDoOut25::isComplete)           // false (open) first
                     .thenComparing(t -> t.getToDo().getSortOrder())
                     .thenComparing(t -> t.getToDo().getId()));
+            ToDoOut25.computeAllDisplayStates(getToDoList(), getCurrentPerson().getId(), isPspAdmin, getActivity().getAssignedTo().getId());
         }
         public void clearCurrentActivityContent(){
 

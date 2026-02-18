@@ -1,5 +1,6 @@
 package net.superiorstate.ams.controller.authentication;
 
+import jakarta.persistence.EntityManagerFactory;
 import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
@@ -29,7 +30,8 @@ public class LogOut extends HttpServlet {
     }
 
     private void logOutUser(HttpServletRequest request){
-        request.getSession().setAttribute("local", new AmsDataLocal());
+        EntityManagerFactory emf = (EntityManagerFactory) request.getServletContext().getAttribute("emf");
+        request.getSession().setAttribute("local", new AmsDataLocal(emf));;
         request.getSession().setAttribute("isAuthenticated",false);
         request.getSession().setAttribute("currentUser",new User());
         request.getSession().setAttribute("currentPerson",new Person());

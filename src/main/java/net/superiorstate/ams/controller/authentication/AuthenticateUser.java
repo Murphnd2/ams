@@ -71,12 +71,13 @@ public class AuthenticateUser extends HttpServlet {
     private void loadSessionData25(HttpServletRequest request, EntityManager em, User u){
         Person p = AuthDAO.getPersonByUser(em,u);
         request.getSession().setAttribute("currentPerson",p);
-        AmsDataLocal local = new AmsDataLocal();
+        EntityManagerFactory emf = (EntityManagerFactory) request.getServletContext().getAttribute("emf");
+        AmsDataLocal local = new AmsDataLocal(emf);
         local.setAuthenticated(true);
         local.intializeLocalData(em,request);
-        AuthDAO.assignUserRoles(request,u);
-
-        request.getSession().setAttribute("local",local);
+        AuthDAO.assignUserRoles(request, u);
+        local.setPspAdmin((boolean) request.getSession().getAttribute("isPspAdmin"));
+        request.getSession().setAttribute("local", local);
     }
 
     private static List<Person> getBpoUsers(EntityManager em){

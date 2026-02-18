@@ -7,6 +7,8 @@ import net.superiorstate.ams.model.general.Automation;
 import net.superiorstate.ams.model.general.Person;
 import net.superiorstate.ams.model.general.WebLink;
 
+import java.util.List;
+
 public class ToDoOut25 {
     private int sequenceId;
     private CheckList checkList;
@@ -33,7 +35,16 @@ public class ToDoOut25 {
     private boolean hasFutureBlock;
 
     private boolean wasComplete;
-
+    // === Pre-computed display state ===
+    private boolean isMyTask;
+    private boolean isDelegated;
+    private boolean isTimeBlocked;
+    private boolean isWhoBlocked;
+    private String formServlet;
+    private String btnIcon;
+    private String rowStyle;
+    private String rowCssClass;
+    private String pointerEvents;
     public ToDoOut25(){}
 
     public ToDoOut25(ToDo t){
@@ -62,7 +73,69 @@ public class ToDoOut25 {
         setHasFutureBlock(false);
         this.wasComplete = toDo.isComplete();
     }
+    public boolean isMyTask() { return isMyTask; }
+    public boolean isDelegated() { return isDelegated; }
+    public boolean isTimeBlocked() { return isTimeBlocked; }
+    public boolean isWhoBlocked() { return isWhoBlocked; }
+    public String getFormServlet() { return formServlet; }
+    public String getBtnIcon() { return btnIcon; }
+    public String getRowStyle() { return rowStyle; }
+    public String getRowCssClass() { return rowCssClass; }
+    public String getPointerEvents() { return pointerEvents; }
+    public void computeDisplayState(long myPersonId, boolean isAdmin, boolean blockFuture, int openIndex, boolean isMyActivity) {
+        this.isMyTask = (hasOwner && taskOwner != null && taskOwner.getId() == myPersonId)
+                || (isSourced && sourceOwner != null && sourceOwner.getId() == myPersonId);
+        this.isDelegated = (hasOwner && !this.isMyTask) || (isSourced && sourceOwner != null && sourceOwner.getId() != myPersonId);
 
+        this.isTimeBlocked = (openIndex > 0) && (!allowEarly || blockFuture);
+        this.isWhoBlocked = !this.isMyTask && !allowNonOwner && (hasOwner || isSourced);
+
+        boolean adminOverride = isAdmin;
+
+        this.formServlet = "CloseToDo25";
+        this.btnIcon = "square";
+        this.rowStyle = "";
+        this.rowCssClass = "";
+        this.pointerEvents = "";
+
+        if (isWhoBlocked && isComplete) {
+            btnIcon = "x-square-fill"; formServlet = "ReOpenToDo25";
+            rowStyle = "text-decoration:line-through;"; rowCssClass = "fst-italic fw-lighter";
+            pointerEvents = "pe-none";
+        } else if (isComplete) {
+            btnIcon = "x-square"; formServlet = "ReOpenToDo25";
+            rowStyle = "text-decoration:line-through;"; rowCssClass = "fst-italic fw-lighter";
+        } else if (isWhoBlocked) {
+            btnIcon = "person-square";
+            pointerEvents = "pe-none";
+        } else if (isTimeBlocked) {
+            btnIcon = "clock-fill";
+            pointerEvents = "pe-none";
+        } else if (isDelegated) {
+            btnIcon = "box-arrow-up-left";
+        } else if (!isMyActivity && !isMyTask) {
+            btnIcon = "circle";
+        }
+
+        if (adminOverride) {
+            pointerEvents = "";
+        }
+    }
+    public static void computeAllDisplayStates(List<ToDoOut25> list, long myPersonId, boolean isAdmin, long activityOwnerId) {
+        boolean blockFuture = false;
+        int openIndex = 0;
+        boolean isMyActivity = (myPersonId == activityOwnerId);
+        for (ToDoOut25 t : list) {
+            if (t.getTask().getId() == 153) continue;
+            t.computeDisplayState(myPersonId, isAdmin, blockFuture, openIndex, isMyActivity);
+            if (!t.isComplete()) {
+                if (!t.allowsFuture()) {
+                    blockFuture = true;
+                }
+                openIndex++;
+            }
+        }
+    }
     public int getSequenceId() {
         return sequenceId;
     }
