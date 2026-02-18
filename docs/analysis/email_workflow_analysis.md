@@ -1,20 +1,18 @@
 # Email Workflow Analysis
 
-**Date:** February 17, 2026
-**Branch:** refactor/modernize-architecture
+**Date:** February 18, 2026  
+**Last Updated:** February 18, 2026 — SMTP standardization, Wasabi storage, branded template  
+**Status:** Email system fully modernized
 
 ---
 
-## Email Paths Confirmed
+## Architecture Summary
 
-The app has **two ways to send email**, both confirmed by the user:
-
-1. **Navbar "Email" button** → `CreateEmail25` (modern)
-2. **Task automation in checklists** → `SendAuto25` → `SendAutoFinal25` (modern)
+Both email paths now use **SMTP via `EmailDAO`** as the universal sending method. Microsoft Graph API code has been removed from `SendEmail25`. Attachments are stored in **Wasabi S3-compatible cloud storage** (`ams-file-storage` bucket) and served via pre-signed URLs. All outbound emails are wrapped in a **branded HTML template** (`EmailTemplate`) with PSP-specific colors.
 
 ---
 
-## ACTIVE — Modern Email System (`controller.email` package)
+## Email Paths
 
 ### Path 1: Manual Email (Navbar)
 
@@ -22,142 +20,158 @@ The app has **two ways to send email**, both confirmed by the user:
 |---------|-----|---------|--------|
 | CreateEmail25 | `/CreateEmail25` | Opens email composer | ✅ ACTIVE |
 | SaveEmailState25 | `/SaveEmailState25` | Routes all email actions | ✅ ACTIVE |
-| SendEmail25 | `/SendEmail25` | Sends the email | ✅ ACTIVE |
+| SendEmail25 | `/SendEmail25` | Wraps body in template, persists, sends via SMTP | ✅ UPDATED |
 | AddRecipient25 | `/AddRecipient25` | Add recipient | ✅ ACTIVE |
 | RemoveRecipient25 | `/RemoveRecipient25` | Remove recipient | ✅ ACTIVE |
 | RemoveAttachment25 | `/RemoveAttachment25` | Remove attachment | ✅ ACTIVE |
+| AddAttachment25 | `/AddAttachment25` | Uploads file to Wasabi, creates WebLink | ✅ UPDATED |
 
 **JSPs:**
-- `emailMaster25.jsp` (`/WEB-INF/view/a/general/emailMaster25.jsp`) — main email page
+- `emailMaster25.jsp` (`/WEB-INF/view/a/general/emailMaster25.jsp`) — main email page with CKEditor
 - `addRecipientModal25.jsp` (`/WEB-INF/view/a/general/email/addRecipientModal25.jsp`)
 
-**Flow:** Navbar → `CreateEmail25` → `emailMaster25.jsp` → form submits to `SaveEmailState25` → routes to appropriate action servlet → returns to `CreateEmail25`
+**Flow:**
+```
+Navbar → CreateEmail25 → emailMaster25.jsp
+  ↓
+User composes message (CKEditor), adds recipients, attaches files
+  ↓
+Form submits to SaveEmailState25 → routes based on action:
+  ├─ action="SE" → SendEmail25 (wraps in EmailTemplate, sends via EmailDAO SMTP)
+  ├─ action="AR" → AddRecipient25 → CreateEmail25
+  ├─ action="DR" → RemoveRecipient25 → CreateEmail25
+  ├─ action="AA" → AddAttachment25 (uploads to Wasabi) → CreateEmail25
+  └─ action="DA" → RemoveAttachment25 → CreateEmail25
+```
 
 ### Path 2: Automation Email (Checklists)
 
 | Servlet | URL | Purpose | Status |
 |---------|-----|---------|--------|
 | SendAuto25 | `/SendAuto25` | Loads automation, shows input form | ✅ ACTIVE |
-| SendAutoFinal25 | `/SendAutoFinal25` | Processes inputs & sends email | ✅ ACTIVE |
+| SendAutoFinal25 | `/SendAutoFinal25` | Processes inputs & sends via SMTP | ✅ ACTIVE |
 | PreviewAutomation | `/PreviewAutomation` | Preview with dummy data | ✅ ACTIVE |
 
-**JSPs:**
-- `autoInputScreen25.jsp` (`/WEB-INF/view/a/taskManager/autoInputScreen25.jsp`)
-- `autoConfirmSend25.jsp` (`/WEB-INF/view/a/taskManager/autoConfirmSend25.jsp`)
+**Flow:**
+```
+Checklist todo button → SendAutoEmail (redirect) → SendAuto25
+  → autoInputScreen25.jsp → SendAutoFinal25 → EmailDAO.sendEmail() → ViewActivity25
+```
 
-**Flow:** Checklist todo button → `SendAutoEmail` (redirect) → `SendAuto25` → `autoInputScreen25.jsp` → form submits to `SendAutoFinal25` → sends email → forwards to `ViewActivity25`
-
-### Infrastructure (Shared)
-
-| Servlet/Class | Purpose | Status |
-|---------------|---------|--------|
-| ShowFileUpload | Serves file downloads for attachment links in sent emails | ✅ ACTIVE — DO NOT DELETE |
-| dbEmail.java | Email sending utility (SMTP) | ✅ ACTIVE |
-| WebLink.java | Builds attachment URLs using `ShowFileUpload` | ✅ ACTIVE |
+**Note:** Automation emails do NOT use the branded `EmailTemplate` wrapper — they use their own `Automation` entity templates. This is intentional; automation emails have their own formatting.
 
 ---
 
-## KEEP — Redirect Wrapper (Cannot Delete Yet)
+## Infrastructure
+
+### Email Sending
+
+| Class | Purpose | Status |
+|-------|---------|--------|
+| `EmailDAO` | SMTP email sending (multipart/alternative: HTML + plain text) | ✅ UPDATED |
+| `EmailTemplate` | Branded HTML email wrapper (header, attachments, body, signature, footer) | ✅ NEW |
+
+**`EmailDAO` changes (Feb 18, 2026):**
+- `sendEmail(Email, EntityManager)` — no longer appends attachment links (template handles them)
+- Low-level `sendEmail(...)` — now sends **multipart/alternative** (plain text + HTML) for spam reduction
+- Added `stripHtml()` helper for generating text alternative
+
+**`EmailTemplate` features:**
+- PSP-branded header bar (primary color) with accent divider
+- Attachment pills rendered at top with pre-signed Wasabi download URLs (7-day expiry)
+- Clean body area for user's CKEditor content
+- Signature block (sender name, email, PSP name)
+- Footer with PSP attribution
+- Colors from DB constants: `EMAIL_COLOR_PRIMARY`, `EMAIL_COLOR_ACCENT`
+
+### Attachment Storage
+
+| Class | Purpose | Status |
+|-------|---------|--------|
+| `StorageDAO` | Wasabi S3 upload, pre-signed URL generation, delete | ✅ NEW |
+| `AddAttachment25` | Uploads files to Wasabi with friendly download filename | ✅ UPDATED |
+| `ShowFileUpload` | Redirects to pre-signed Wasabi URL (no auth required) | ✅ UPDATED |
+| `WebLink` | Entity storing attachment metadata (linkPath = UUID.extension) | UNCHANGED |
+
+**Attachment flow:**
+```
+Upload: AddAttachment25 → StorageDAO.uploadFile() → Wasabi (ams-file-storage/{psp-slug}/UUID.ext)
+  - Content-Disposition set to friendly filename at upload time
+
+Email link: EmailTemplate renders pre-signed Wasabi URLs directly in email body
+  - 7-day expiry, no server routing needed
+
+Fallback download: ShowFileUpload?doc=UUID.ext → StorageDAO.getDownloadUrl() → 302 redirect to Wasabi
+  - Added to LoginFilter ALLOWED_ENDPOINTS (no auth required)
+  - 1-hour expiry
+```
+
+**Old flow (removed):**
+- ~~Local disk storage via `AmsDataGlobal.getSavePath()`~~
+- ~~`emailAttachments.jsp` with broken `getInternalAnchorTag()`~~
+- ~~Microsoft Graph API in `SendEmail25`~~
+
+### Redirect Wrapper (Still Needed)
 
 | Servlet | URL | Package | Why Keep |
 |---------|-----|---------|----------|
-| SendAutoEmail | `/SendAutoEmail` | previous.controller.general.admin.q | DB `task.servletName` records contain `"SendAutoEmail?aeId=123"`. Just forwards to `SendAuto25`. Safe but needed. |
+| SendAutoEmail | `/SendAutoEmail` | previous.controller | DB `task.servletName` records contain `"SendAutoEmail?aeId=123"`. Just forwards to `SendAuto25`. |
 
-**Note:** `UpdateTask25.java` also writes `"SendAutoEmail?aeId=..."` into new task records. A future cleanup could change this to `"SendAuto25?aeId=..."` and update existing DB records, then delete `SendAutoEmail`.
-
----
-
-## LEGACY — Deletion Candidates
-
-### Legacy Email Home Ecosystem
-
-None of these are reachable from the modern UI (navbar25, activityDetail25, pspHome25).
-
-| File | Type | Package/Path | Why Legacy |
-|------|------|-------------|------------|
-| GoEmailHome.java | Servlet | previous.controller.general.admin | Forwards to legacy `emailHome.jsp`. Not linked from modern UI. |
-| EmailActions.java | Servlet | previous.controller.general.admin | Action processor for legacy email page. Uses `sessionScope.adminView`. |
-| ResetEmailView.java | Servlet | previous.controller.general.admin | Just forwards to `GoEmailHome`. |
-| EscapeEmail.java | Servlet | previous.controller.general.admin | Cancel button on legacy email page. Forwards to `GoEmailHome`. |
-| AddEmail.java | Servlet | previous.controller.general.admin | Legacy inline email sender. Used by `addEmailForm.jsp` (old activity detail). |
-| emailActionsNew.java | Servlet | previous.archive | Archive version of `EmailActions`. Already confirmed dead. |
-| emailHome.jsp | JSP | /WEB-INF/view/general/email/ | Legacy email composer page. Uses old `navbar.jsp` and `sessionScope.currentEmailSubject`. |
-| addEmailForm.jsp | JSP | /WEB-INF/view/activity/note/ | Legacy inline email form. Uses `sessionScope.adminView`, submits to `AddEmail`. |
-| addEmailModal.jsp | JSP | /WEB-INF/view/activity/note/ | Modal wrapper for `addEmailForm.jsp`. Not imported by any modern (`/view/a/`) page. |
-| emailView.jsp | JSP | /WEB-INF/view/general/email/ | Legacy email viewer. Uses old `navbar.jsp`. |
-| addRecipientForm.jsp | JSP | /WEB-INF/view/general/email/forms/ | Legacy add-recipient form for `emailHome.jsp`. |
-| toWhoList.jsp | JSP | /WEB-INF/view/general/email/lists/ | Legacy recipient list for `emailHome.jsp`. |
-| attachmentList.jsp | JSP | /WEB-INF/view/general/email/lists/ | Legacy attachment list for `emailHome.jsp`. |
-| toWhoList2.jsp | JSP | /WEB-INF/view/general/email/lists/ | Used only by `emailView.jsp` (legacy). |
-| attachmentList2.jsp | JSP | /WEB-INF/view/general/email/lists/ | Used only by `emailView.jsp` (legacy). |
-
-### Legacy Automation Servlets
-
-| File | Type | Package | Why Legacy |
-|------|------|---------|------------|
-| SendAuto.java | Servlet | previous.controller.general.admin.q | Forwards to `GoAdminHome` (deleted). Dead. |
-| SendAutomationEmailFinal.java | Servlet | previous.controller.general.admin.q | Forwards to `GoAdminHome` (deleted). Dead. |
-| sendAutomationFinal.java | Servlet | previous.archive | Archive version. Already confirmed dead. |
-| UpdateAutomation.java | Servlet | previous.controller.activity.checklist.task | Forwards to `GoAdminHome` (deleted). Replaced by `UpdateTask25`. |
-| updateTaskInfo.java | Servlet | previous.archive | Archive version of `UpdateTask25`. Dead. |
-| CreateAutoEmail.java | Servlet | previous.controller.general.admin.q | Forwards to `GoAdminHome` (deleted). Dead. |
+**Future cleanup:** Change `UpdateTask25.addAutomationToTask()` to write `"SendAuto25?aeId=..."`, update existing DB records, then delete `SendAutoEmail`.
 
 ---
 
-## Deletion Checklist — COMPLETED ✅
+## DB Constants Used by Email System
 
-**Build verified:** Maven clean + package both exit code 0.
+| Constant | Purpose | Example Value |
+|----------|---------|---------------|
+| `SMTP_SERVER` | SMTP host | `mail.smtp2go.com` |
+| `SMTP_PORT` | SMTP port | `2525` |
+| `SMTP_USER` | SMTP username | (per PSP) |
+| `SMTP_PASSWORD` | SMTP password | (per PSP) |
+| `SMTP_FROM` | Verified sender address (optional) | (per PSP) |
+| `SMTP_DEBUG` | Enable SMTP debug logging (optional) | `TRUE` / `FALSE` |
+| `S3_ENDPOINT` | Wasabi endpoint | `https://s3.us-east-1.wasabisys.com` |
+| `S3_BUCKET` | Storage bucket name | `ams-file-storage` |
+| `S3_ACCESS_KEY` | Wasabi access key | (per PSP) |
+| `S3_SECRET_KEY` | Wasabi secret key | (per PSP) |
+| `EMAIL_COLOR_PRIMARY` | Email template header/accent color | `#2B5F8A` |
+| `EMAIL_COLOR_ACCENT` | Email template highlight color | `#7AB648` |
 
-**Legacy Email Home (6 Java + 10 JSP = 16 files deleted):**
-- [x] `GoEmailHome.java`
-- [x] `EmailActions.java`
-- [x] `ResetEmailView.java`
-- [x] `EscapeEmail.java`
-- [x] `AddEmail.java`
-- [x] `emailActionsNew.java` (archive)
-- [x] `emailHome.jsp`
-- [x] `addEmailForm.jsp`
-- [x] `addEmailModal.jsp`
-- [x] `addRecipientForm.jsp`
-- [x] `addRecipientModal.jsp` (found during cleanup)
-- [x] `addAttachmentModal.jsp` (found during cleanup)
-- [x] `emailMaster.jsp` (legacy version — found during cleanup)
-- [x] `toWhoList.jsp` (in `/general/email/lists/`)
-- [x] `attachmentList.jsp` (in `/general/email/lists/`)
-
-**Legacy Automation (3 Java files deleted, 3 already gone from GoAdminHome cleanup):**
-- [x] `sendAutomationFinal.java` (archive)
-- [x] `updateTaskInfo.java` (archive)
-- [x] `UpdateAutomation.java`
-- [x] `SendAuto.java` — already deleted in GoAdminHome cleanup
-- [x] `SendAutomationEmailFinal.java` — already deleted in GoAdminHome cleanup
-- [x] `CreateAutoEmail.java` — already deleted in GoAdminHome cleanup
-
-**Bonus files found during cleanup (not in original list):**
-- [x] `emailMaster.jsp` (legacy version of emailMaster25.jsp)
-- [x] `addRecipientModal.jsp` (wrapper for addRecipientForm.jsp)
-- [x] `addAttachmentModal.jsp` (imported by legacy emailMaster.jsp)
-
-### DO NOT Delete
-- `ShowFileUpload.java` — serves attachment downloads for all sent emails
-- `SendAutoEmail.java` — DB task records reference it as URL; just redirects to `SendAuto25`
-- `ViewEmail.java` — ✅ VERIFIED ACTIVE. Called from `historyDetail25.jsp` and `emailList.jsp` (opens in new tab). Forwards to legacy `emailView.jsp` (uses old `navbar.jsp`). Functional but visually inconsistent — future migration candidate for `ViewEmail25`.
-- `emailView.jsp` — used by `ViewEmail.java` (active)
-- `toWhoList2.jsp` — used by `emailView.jsp` (active)
-- `attachmentList2.jsp` — used by `emailView.jsp` (active)
-- `dbEmail.java` — core email sending utility used by modern servlets
-
-### Future Cleanup (Not Now)
-- Change `UpdateTask25.addAutomationToTask()` to write `"SendAuto25?aeId=..."` instead of `"SendAutoEmail?aeId=..."`
-- Update existing DB `task.servletName` records from `SendAutoEmail` to `SendAuto25`
-- Then delete `SendAutoEmail.java`
+**PSP deployment note:** `S3_ENDPOINT` and `S3_BUCKET` are shared across PSPs. `S3_ACCESS_KEY` and `S3_SECRET_KEY` should be blank in seed data — each PSP configures their own during `initialize.jsp` setup.
 
 ---
 
-## Summary
+## Spam Reduction Measures
 
-| Category | Count |
-|----------|-------|
-| Modern ACTIVE servlets | 9 (CreateEmail25, SaveEmailState25, SendEmail25, AddRecipient25, RemoveRecipient25, RemoveAttachment25, SendAuto25, SendAutoFinal25, PreviewAutomation) |
-| Infrastructure (keep) | 2 (ShowFileUpload, SendAutoEmail redirect) |
-| Legacy deletion candidates | 19 files deleted (16 email home + 3 automation, plus 3 already gone from prior cleanup) |
+1. **Multipart/alternative** — every email includes both HTML and plain text parts
+2. **Table-based HTML layout** — maximum email client compatibility, no div/CSS tricks
+3. **No JavaScript, forms, or hidden text** in email body
+4. **Clean text-to-HTML ratio** — plain text alternative ensures reasonable ratio
+5. **Proper charset declaration** and viewport meta tag
+6. **`role="presentation"`** on all layout tables
+7. **Pre-signed URLs** for attachments — no suspicious redirect chains
+
+---
+
+## Files Modified (Feb 18, 2026)
+
+| File | Change |
+|------|--------|
+| `controller/email/SendEmail25.java` | Removed Graph API, uses SMTP via EmailDAO, wraps body in EmailTemplate |
+| `controller/email/AddAttachment25.java` | Uploads to Wasabi via StorageDAO instead of local disk |
+| `controller/activity/ShowFileUpload.java` | Redirects to pre-signed Wasabi URL instead of broken JSP |
+| `data/dao/EmailDAO.java` | Multipart/alternative sending, removed duplicate attachment rendering |
+| `data/dao/StorageDAO.java` | NEW — Wasabi S3 upload, pre-signed URLs, delete |
+| `data/util/EmailTemplate.java` | NEW — Branded HTML email template with attachment rendering |
+| `LoginFilter.java` | Added `/ShowFileUpload` to ALLOWED_ENDPOINTS |
+
+---
+
+## Obsolete Files (Can Be Deleted)
+
+| File | Reason |
+|------|--------|
+| `emailAttachments.jsp` | Replaced by ShowFileUpload redirect to Wasabi |
+
+**Note:** `WebLink.getInternalAnchorTag()` is referenced only by `emailAttachments.jsp` and was never implemented. Both can be cleaned up together.

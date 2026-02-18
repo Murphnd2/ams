@@ -5,14 +5,15 @@ import jakarta.persistence.EntityManagerFactory;
 import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
-import net.superiorstate.ams.data.AmsDataGlobal;
 import net.superiorstate.ams.data.AmsDataLocal;
-import net.superiorstate.ams.data.util.Validator;
 import net.superiorstate.ams.data.dao.SequenceDAO;
+import net.superiorstate.ams.data.dao.StorageDAO;
+import net.superiorstate.ams.data.util.Validator;
 import net.superiorstate.ams.model.general.LinkType;
 import net.superiorstate.ams.model.general.WebLink;
 
-import java.io.*;
+import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Paths;
 import java.util.UUID;
 
@@ -26,69 +27,66 @@ public class AddAttachment25 extends HttpServlet {
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         addFile(request);
-        goToPage(request,response);
+        goToPage(request, response);
     }
 
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         addFile(request);
-        goToPage(request,response);
+        goToPage(request, response);
     }
 
     private void addFile(HttpServletRequest request) throws ServletException, IOException {
-        EntityManagerFactory emf = (EntityManagerFactory)getServletContext().getAttribute("emf");
+        EntityManagerFactory emf = (EntityManagerFactory) getServletContext().getAttribute("emf");
         EntityManager em = emf.createEntityManager();
-        AmsDataGlobal global = (AmsDataGlobal) request.getServletContext().getAttribute("global");
         AmsDataLocal local = (AmsDataLocal) request.getSession().getAttribute("local");
+
         Part filePart = request.getPart("fileUpload");
         String optionalFileName = request.getParameter("fileUploadText");
 
         String fileName = Paths.get(filePart.getSubmittedFileName()).getFileName().toString();
 
         String fileDescription;
-        if(optionalFileName!=null && !optionalFileName.equals(""))
+        if (optionalFileName != null && !optionalFileName.isEmpty())
             fileDescription = optionalFileName;
         else
             fileDescription = fileName;
-        String correctedDescription = fileDescription.replaceAll(" ","_");
-        String extension = Validator.getExtensionByStringHandling(fileName).orElse("fnf");
-        String newFileName = UUID.randomUUID() +"."+ extension;
+        String correctedDescription = fileDescription.replaceAll(" ", "_");
 
+        String extension = Validator.getExtensionByStringHandling(fileName).orElse("bin");
+        String newFileName = UUID.randomUUID() + "." + extension;
 
-        InputStream fileContent = filePart.getInputStream();
-        String uploadPath = global.getSavePath();
-        File uploadDir = new File(uploadPath);
-        if(!uploadDir.exists())
-            uploadDir.mkdir();
-        File file = new File(uploadPath + File.separator + newFileName);
+        // Upload to Wasabi via StorageDAO
+        String pspName = local.getCurrentPerson().getPsp().getFullName();
+        String contentType = filePart.getContentType();
+        long contentLength = filePart.getSize();
+        String displayName = correctedDescription.endsWith("." + extension)
+                ? correctedDescription
+                : correctedDescription + "." + extension;
 
-        OutputStream out = new FileOutputStream(file);
-        byte[] buffer = new byte[1024];
-        int length;
-        while ((length=fileContent.read(buffer))>0){
-            out.write(buffer,0,length);
+        try (InputStream fileContent = filePart.getInputStream()) {
+            StorageDAO.uploadFile(em, pspName, newFileName, displayName, fileContent, contentLength, contentType);
         }
-        out.close();
-        fileContent.close();
 
+        // Persist WebLink record
         em.getTransaction().begin();
         WebLink w = new WebLink();
         w.setPlainText(correctedDescription);
         w.setLinkPath(newFileName);
-        LinkType linkType = SequenceDAO.getLinkTypeById(em,1);
+        LinkType linkType = SequenceDAO.getLinkTypeById(em, 1);
         w.setLinkType(linkType);
+        w.setActive(true);
         em.persist(w);
         em.getTransaction().commit();
 
         local.getCurrentEmail().getAttachments().add(w);
-
-        request.getSession().setAttribute("local",local);
+        request.getSession().setAttribute("local", local);
 
         em.close();
     }
 
     private void goToPage(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         RequestDispatcher dispatcher = getServletContext().getNamedDispatcher("CreateEmail25");
-        dispatcher.forward(request,response);
+        dispatcher.forward(request, response);
     }
 }
