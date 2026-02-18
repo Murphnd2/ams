@@ -4,6 +4,7 @@ package net.superiorstate.ams.data.util;
 import java.sql.Date;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -36,14 +37,6 @@ public abstract class Validator {
         return matcher.matches();
     }
 
-    public static boolean isValidPhoneNumber(String phoneNumber) {
-        if (phoneNumber == null) {
-            return false;
-        }
-        Matcher matcher = PHONE_PATTERN.matcher(phoneNumber);
-        return matcher.matches();
-    }
-
     public static String normalizeEmployerName(String rawName) {
         if (rawName == null) return null;
 
@@ -72,15 +65,10 @@ public abstract class Validator {
                 .replaceAll("\\s+", " ")   // collapse spaces
                 .trim();
     }
-    public static Date parseDate(String input) {
-        if (input == null || input.trim().isEmpty()) return null;
-        try {
-            return (Date) new SimpleDateFormat("MM/dd/yyyy").parse(input.trim());
-        } catch (ParseException e) {
-            System.err.println("Failed to parse date: " + input);
-            return null;
-        }
+    public static Optional<String> getExtensionByStringHandling(String filename) {
+        return Optional.ofNullable(filename)
+                .filter(f -> f.contains("."))
+                .map(f -> f.substring(filename.lastIndexOf(".") + 1));
     }
-
 
 }

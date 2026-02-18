@@ -54,7 +54,7 @@ public class MakeRecurringFromChecklist25 extends HttpServlet {
         int daysInAdvance = Integer.parseInt(request.getParameter("daysInAdvance"));
         Person assignedTo = EntityLookup.getPersonById(em,Long.parseLong(request.getParameter("userList")));
         TaskFrequency taskFrequency = EntityLookup.getTaskFrequencyById(em,Integer.parseInt(request.getParameter("frequencyList")));
-        List<DoW> dowList = AddRecurringSequence.getDaysChecked(request,em);
+        List<DoW> dowList = RecurringChecklistDAO.getDaysChecked(request,em);
 
         em.getTransaction().begin();
         RecurringTaskList rtl = new RecurringTaskList();

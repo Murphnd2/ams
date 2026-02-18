@@ -3,6 +3,7 @@ package net.superiorstate.ams.data.dao;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.NoResultException;
 import jakarta.persistence.Query;
+import jakarta.servlet.http.HttpServletRequest;
 import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.previous.model.activity.checklist.CheckList;
 import net.superiorstate.ams.previous.model.activity.checklist.sequences.RecurringTaskList;
@@ -146,7 +147,33 @@ public abstract class RecurringChecklistDAO {
         return hasCheck;
     }
 
+    public static List<DoW> getDaysChecked(HttpServletRequest request, EntityManager em){
+        List<DoW> dowList = new ArrayList<>();
+        String sMonday = request.getParameter("cbMonday");
+        String sTuesday = request.getParameter("cbTuesday");
+        String sWednesday = request.getParameter("cbWednesday");
+        String sThursday = request.getParameter("cbThursday");
+        String sFriday = request.getParameter("cbFriday");
+        if(!(sMonday==null || sMonday==""))
+            dowList.add(getDoWByWeekdayInt(em,1));
 
+        if(!(sTuesday==null || sTuesday==""))
+            dowList.add(getDoWByWeekdayInt(em,2));
+
+        if(!(sWednesday==null || sWednesday==""))
+            dowList.add(getDoWByWeekdayInt(em,3));
+
+        if(!(sThursday==null || sThursday==""))
+            dowList.add(getDoWByWeekdayInt(em,4));
+
+        if(!(sFriday==null || sFriday==""))
+            dowList.add(getDoWByWeekdayInt(em,5));
+
+        if(dowList.size() == 0)
+            dowList.add(getDoWByWeekdayInt(em,1));
+
+        return dowList;
+    }
 
     private static Date getLastPerformed(EntityManager em, RecurringTaskList rtl){
         Date lastDone;

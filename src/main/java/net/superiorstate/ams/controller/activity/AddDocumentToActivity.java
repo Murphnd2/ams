@@ -6,6 +6,7 @@ import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.AmsDataLocal;
+import net.superiorstate.ams.data.util.Validator;
 import net.superiorstate.ams.previous.controller.AddFileToTask;
 import net.superiorstate.ams.data.dao.AppConstantDAO;
 import net.superiorstate.ams.data.dao.SequenceDAO;
@@ -62,7 +63,7 @@ public class AddDocumentToActivity extends HttpServlet {
         String fileDescription = (optionalFileName != null && !optionalFileName.isEmpty()) ? optionalFileName : originalFileName;
         String sanitizedDescription = fileDescription.replaceAll(" ", "_");
 
-        String extension = AddFileToTask.getExtensionByStringHandling(originalFileName).orElse("fnf");
+        String extension = Validator.getExtensionByStringHandling(originalFileName).orElse("fnf");
         String storedFileName = UUID.randomUUID() + "." + extension;
 
         saveFile(filePart.getInputStream(), storedFileName, em);

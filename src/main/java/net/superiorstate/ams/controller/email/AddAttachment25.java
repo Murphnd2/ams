@@ -7,6 +7,7 @@ import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.AmsDataGlobal;
 import net.superiorstate.ams.data.AmsDataLocal;
+import net.superiorstate.ams.data.util.Validator;
 import net.superiorstate.ams.previous.controller.AddFileToTask;
 import net.superiorstate.ams.data.dao.SequenceDAO;
 import net.superiorstate.ams.previous.model.general.LinkType;
@@ -51,7 +52,7 @@ public class AddAttachment25 extends HttpServlet {
         else
             fileDescription = fileName;
         String correctedDescription = fileDescription.replaceAll(" ","_");
-        String extension = AddFileToTask.getExtensionByStringHandling(fileName).orElse("fnf");
+        String extension = Validator.getExtensionByStringHandling(fileName).orElse("fnf");
         String newFileName = UUID.randomUUID() +"."+ extension;
 
 

@@ -8,6 +8,7 @@ import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.dao.SequenceDAO;
 import net.superiorstate.ams.data.resolver.EntityLookup;
+import net.superiorstate.ams.data.util.Validator;
 import net.superiorstate.ams.previous.model.general.LinkType;
 import net.superiorstate.ams.previous.model.general.WebLink;
 import net.superiorstate.ams.previous.model.activity.checklist.tasks.Task;
@@ -38,7 +39,7 @@ public class AddFileToTask extends HttpServlet {
         Task currentTask = (Task) request.getSession().getAttribute("currentTask");
         Part filePart = request.getPart("file");
         String fileName = filePart.getSubmittedFileName();
-        String extension = getExtensionByStringHandling(fileName).orElse("fnf");
+        String extension = Validator.getExtensionByStringHandling(fileName).orElse("fnf");
         String savePath = request.getSession().getAttribute("savePath").toString();
         String optionalText = request.getParameter("optionalText");
         String newFileName = UUID.randomUUID() +"."+ extension;
@@ -79,11 +80,6 @@ public class AddFileToTask extends HttpServlet {
             part.write(thePath);
         }
        System.out.println("The file uploaded successfully");
-    }
-    public static Optional<String> getExtensionByStringHandling(String filename) {
-        return Optional.ofNullable(filename)
-                .filter(f -> f.contains("."))
-                .map(f -> f.substring(filename.lastIndexOf(".") + 1));
     }
 
     private void goToPage(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {

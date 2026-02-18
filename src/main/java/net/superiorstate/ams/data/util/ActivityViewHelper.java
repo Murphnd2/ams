@@ -4,9 +4,8 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.NoResultException;
 import jakarta.persistence.Query;
 import jakarta.servlet.http.HttpServletRequest;
+import net.superiorstate.ams.data.dao.ChecklistDAO;
 import net.superiorstate.ams.data.resolver.EntityFactory;
-import net.superiorstate.ams.previous.controller.CreateTicket;
-import net.superiorstate.ams.previous.controller.ViewSelectedChecklist;
 import net.superiorstate.ams.data.dao.ActivityDAO;
 import net.superiorstate.ams.data.dao.RenewalQueryDAO;
 import net.superiorstate.ams.data.dao.TicketQueryDAO;
@@ -207,7 +206,7 @@ public abstract class ActivityViewHelper {
                 break;
         }
         try{
-            List<ToDo> toDoList = ViewSelectedChecklist.getToDoListByChecklistId(em,c.getId());
+            List<ToDo> toDoList = ChecklistDAO.getToDoListByChecklistId(em,c.getId());
             request.getSession().setAttribute("currentToDoList",toDoList);
         } catch (Exception e){
             e.printStackTrace();
@@ -306,7 +305,7 @@ public abstract class ActivityViewHelper {
         em.persist(c);
         em.getTransaction().commit();
         if(classType.equals("Ticket")){
-            CreateTicket.createToDoList(em,(Ticket) a,c);
+            ChecklistDAO.createToDoList(em,(Ticket) a,c);
         } else {
             Task t = EntityFactory.createTaskOneTime(em,"Default",((Person) a.getAssignedTo()).getPsp());
             ToDo td = new ToDo();
@@ -455,7 +454,7 @@ public abstract class ActivityViewHelper {
             CheckList c = getCheckListForActivity(em,getCurrentActivity());
             if(c!=null){
                 request.getSession().setAttribute("currentChecklist", getCheckListForActivity(em,getCurrentActivity()));
-                List<ToDo> toDoList = ViewSelectedChecklist.getToDoListByChecklistId(em,c.getId());
+                List<ToDo> toDoList = ChecklistDAO.getToDoListByChecklistId(em,c.getId());
                 if(toDoList!=null && toDoList.size()>0)
                     request.getSession().setAttribute("currentToDoList",toDoList);
                 else

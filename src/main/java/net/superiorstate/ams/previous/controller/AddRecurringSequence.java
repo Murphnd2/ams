@@ -46,7 +46,7 @@ public class AddRecurringSequence extends HttpServlet {
         int daysInAdvance = Integer.parseInt(request.getParameter("daysInAdvance"));
         Person assignedTo = EntityLookup.getPersonById(em,Long.parseLong(request.getParameter("userList")));
         TaskFrequency taskFrequency = EntityLookup.getTaskFrequencyById(em,Integer.parseInt(request.getParameter("frequencyList")));
-        List<DoW> dowList = getDaysChecked(request,em);
+        List<DoW> dowList = RecurringChecklistDAO.getDaysChecked(request,em);
         em.getTransaction().begin();
         RecurringTaskList rtl = new RecurringTaskList();
         rtl.setDescription(sequenceName);
@@ -74,31 +74,5 @@ public class AddRecurringSequence extends HttpServlet {
 
     }
 
-    public static List<DoW> getDaysChecked(HttpServletRequest request,EntityManager em){
-        List<DoW> dowList = new ArrayList<>();
-        String sMonday = request.getParameter("cbMonday");
-        String sTuesday = request.getParameter("cbTuesday");
-        String sWednesday = request.getParameter("cbWednesday");
-        String sThursday = request.getParameter("cbThursday");
-        String sFriday = request.getParameter("cbFriday");
-        if(!(sMonday==null || sMonday==""))
-            dowList.add(RecurringChecklistDAO.getDoWByWeekdayInt(em,1));
 
-        if(!(sTuesday==null || sTuesday==""))
-            dowList.add(RecurringChecklistDAO.getDoWByWeekdayInt(em,2));
-
-        if(!(sWednesday==null || sWednesday==""))
-            dowList.add(RecurringChecklistDAO.getDoWByWeekdayInt(em,3));
-
-        if(!(sThursday==null || sThursday==""))
-            dowList.add(RecurringChecklistDAO.getDoWByWeekdayInt(em,4));
-
-        if(!(sFriday==null || sFriday==""))
-            dowList.add(RecurringChecklistDAO.getDoWByWeekdayInt(em,5));
-
-        if(dowList.size() == 0)
-            dowList.add(RecurringChecklistDAO.getDoWByWeekdayInt(em,1));
-
-        return dowList;
-    }
 }
