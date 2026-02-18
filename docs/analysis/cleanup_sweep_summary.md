@@ -1,22 +1,20 @@
 # Cleanup Sweep Summary — All Sessions
 
 **Branch:** `refactor/modernize-architecture`  
-**Build Verified:** ✅ after every batch of deletions  
+**Build Verified:** ✅ after every change  
 **Last Updated:** February 17, 2026
 
 ---
 
-## Grand Total: 232 Files Deleted
+## Grand Total: 238 Files Deleted
 
 ---
 
 ## Session 1: GoAdminHome Ecosystem (14 files)
-
 - GoAdminHome.java + adminHome.jsp (core hub)
 - 12 supporting servlets that forwarded to GoAdminHome
 
 ## Session 2: Email Workflow Cleanup (19 files)
-
 - GoEmailHome, EmailActions, ResetEmailView, EscapeEmail, AddEmail, emailActionsNew
 - emailHome.jsp + 9 supporting JSPs
 - UpdateAutomation, sendAutomationFinal, updateTaskInfo
@@ -53,13 +51,129 @@
 | `previous/filter/CsrfFilter.java` | 1 |
 | `previous/data/` dead files | 6 |
 
-### Data Layer Files Deleted (6)
-- `ReadInboundEmailService.java` — experimental IMAP reader, never wired up
-- `dbBilling.java` — orphaned with billing controller deletion
-- `dbEe.java` — zero usages
-- `dbNote.java` — zero usages
-- `dS1.java` — billing link queries, orphaned
-- `summit/bill.java` — zero usages
+## Session 5: Data Layer Refactor + Package Reorganization (6 files)
+
+| Category | Files Deleted |
+|----------|--------------|
+| `dPSP.java` — zero usages | 1 |
+| `XP.java` — merged into PersonResolver | 1 |
+| `Q.java` — merged into DocumentConstants | 1 |
+| `ViewSelectedActivity.java` — methods moved to ActivityViewHelper | 1 |
+| `ViewSelectedChecklist.java` — method moved to ChecklistDAO | 1 |
+| `CreateTicket.java` — method moved to ChecklistDAO, servlet URL unused | 1 |
+
+### Data Layer Renames (32 files renamed)
+
+| Old Name | New Name | Package |
+|----------|----------|---------|
+| V.java | Validator.java | data/util |
+| dM.java | EntityLookup.java | data/resolver |
+| dC.java | EntityFactory.java | data/resolver |
+| dR.java | RenewalService.java | data/service |
+| dbA.java | AppConstantDAO.java | data/dao |
+| dG.java | SalesDAO.java | data/dao |
+| dP.java | PersonDAO.java | data/resolver |
+| dbTime.java | TimeTrackingDAO.java | data/dao |
+| dbRenew.java | RenewalQueryDAO.java | data/dao |
+| dbTicket.java | TicketQueryDAO.java | data/dao |
+| dbEmail.java | EmailDAO.java | data/dao |
+| dbCheck.java | ChecklistDAO.java | data/dao |
+| dbRec.java | RecurringChecklistDAO.java | data/dao |
+| dbReq.java | RequiredTaskDAO.java | data/dao |
+| dTask.java | TaskDAO.java | data/dao |
+| dbS.java | ApplicationTaskDAO.java | data/dao |
+| dbAuth.java | AuthDAO.java | data/dao |
+| ddC.java | SequenceDAO.java | data/dao |
+| dGen.java | LegacyQueryRunner.java | data/dao |
+| dActivity.java | ActivityDAO.java | data/dao |
+| aList.java | ActivityListDAO.java | data/dao |
+| vA.java | ActivityViewHelper.java | data/util |
+| eV.java | PersonResolver.java | data/resolver |
+| model/dH.java | HtmlHelper.java | data/util |
+| model/dL.java | DocumentConstants.java | data/util |
+| summit/dH.java | HsaBillingHelper.java | data/util |
+| Summit.java | SummitSync.java | data/service |
+| Starter.java | DatabaseInitializer.java | data/service |
+| StarterData.java | ReferenceDataSeeder.java | data/service |
+| tix.java | TicketHelper.java | data/util |
+| auto.java | AutomationHelper.java | data/util |
+| Helper.java | BillingHelper.java | data/util |
+
+### Static Method Extractions
+
+| Method | From (deleted/cleaned) | To |
+|--------|----------------------|-----|
+| `getExtensionByStringHandling` | AddFileToTask | Validator |
+| `getToDoListByChecklistId` | ViewSelectedChecklist | ChecklistDAO |
+| `createToDoList` | CreateTicket | ChecklistDAO |
+| `getDaysChecked` | AddRecurringSequence | RecurringChecklistDAO |
+
+### Consolidations
+
+| What | Result |
+|------|--------|
+| eV.java + XP.java | PersonResolver.java (XP deleted) |
+| Q.java constants | Merged into DocumentConstants.java (Q deleted) |
+| ViewSelectedActivity static methods | Moved to ActivityViewHelper (VSA deleted) |
+
+---
+
+## Packages Fully Eliminated
+
+- `previous/` — **ENTIRE PACKAGE TREE ELIMINATED**
+  - `previous/archive/`
+  - `previous/controller/` (all subpackages)
+  - `previous/data/` (all subpackages)
+  - `previous/filter/`
+  - `previous/model/` (moved to `model/`)
+- `ams/service/` (PersonResolutionService moved to data/resolver)
+- `ams/util/` (PathUtil, AutoSafe moved to data/util)
+
+---
+
+## Current Package Structure
+
+```
+src/main/java/net/superiorstate/ams/
+├── controller/
+│   ├── activity/           ← Activity CRUD, AddFileToTask, ShowFileUpload, StdAuto
+│   │   ├── contact/        ← AddContactToActivity, AddActivityContact25, ModifyContact25
+│   │   ├── renewal/        ← Renewal servlets
+│   │   ├── setup/          ← GenerateProp, GenerateProp25
+│   │   └── ticket/         ← CreateTicket25
+│   ├── authentication/     ← AuthenticateUser, login
+│   ├── checklist/          ← Checklist management, AddRecurringSequence
+│   ├── data/               ← Import/export servlets
+│   ├── email/              ← Email workflow, ViewEmail
+│   ├── monthly/            ← Billing servlets
+│   ├── sequence/           ← Sequence builders
+│   └── user/               ← User management
+├── data/
+│   ├── dao/                ← All database query classes
+│   ├── resolver/           ← Entity lookups, person resolution
+│   ├── service/            ← Business logic (billing, imports, sync)
+│   └── util/               ← Validators, helpers, constants
+│   ├── AmsDataGlobal.java  ← Application-scoped state
+│   ├── AmsDataLocal.java   ← Session-scoped state
+│   └── ActivityFilter.java ← Activity filtering
+├── filter/                 ← LoginFilter
+└── model/
+    ├── activity/           ← Activity, CheckList, Renewal, Ticket entities
+    │   ├── checklist/
+    │   ├── note/
+    │   ├── renewal/
+    │   └── ticket/
+    ├── billing/            ← Billing entities
+    ├── general/            ← Person, User, PSP, Address entities
+    ├── sales/              ← Agency, Proposal, Application entities
+    ├── summit/             ← Employee, Employer, Benefit entities
+    │   ├── archive/
+    │   ├── imports/
+    │   └── temp/
+    ├── Activity25.java     ← View-backed DTOs (root level)
+    ├── Constant.java
+    └── ... (other DTOs)
+```
 
 ---
 
@@ -71,86 +185,5 @@
 | Email workflow cleanup | 19 |
 | Major sweep | 107 |
 | Controller sweep + data cleanup | 92 |
-| **Grand Total** | **232 files** |
-
----
-
-## Files Confirmed ACTIVE (Do Not Delete)
-
-### `previous/controller/` (10 files remaining)
-
-| File | Why Active |
-|------|-----------|
-| AddContactToActivity.java | Static method used by billing servlets |
-| AddFileToTask.java | Static `getExtensionByStringHandling()` used by AddDocumentToActivity & AddAttachment25 |
-| AddRecurringSequence.java | Static `getDaysChecked()` used by MakeRecurringFromChecklist25 |
-| CreateTicket.java | Static `createToDoList()` used by ViewSelectedActivity |
-| GenerateProp.java | External URL call from old website transfer process |
-| ShowFileUpload.java | URL-based file serving during billing/import; also referenced by WebLink model & attachmentList2.jsp |
-| StdAuto.java | Referenced by SendEmployerBillingDetail |
-| ViewEmail.java | Referenced by multiple JSPs (historyDetail25, emailList, etc.) |
-| ViewSelectedActivity.java | Static utility methods used by active callers (servlet doGet/doPost path is dead) |
-| ViewSelectedChecklist.java | 27 usages — core utility class |
-
-### `previous/data/` (37 files remaining — all active, need refactoring)
-
-See `data_layer_inventory.md` for complete inventory with proposed renames.
-
----
-
-## Packages Fully Eliminated
-
-- `previous/archive/` — entire package
-- `previous/controller/xtra/`
-- `previous/controller/general/admin/q/` — all but StdAuto
-- `previous/controller/general/admin/` — all but ViewEmail, ViewSelectedActivity, ViewSelectedChecklist
-- `previous/controller/activity/checklist/sequence/` — all but AddRecurringSequence
-- `previous/controller/activity/checklist/task/` — all but AddFileToTask
-- `previous/controller/activity/renewal/` — entire package
-- `previous/controller/activity/setup/` — all but GenerateProp
-- `previous/controller/activity/ticket/` — all but CreateTicket
-- `previous/controller/billing/` — entire package
-- `previous/controller/checklist/` — entire package
-- `previous/controller/psp/admin/` — entire tree
-- `previous/controller/summit/` — entire package
-- `previous/filter/` — CsrfFilter deleted
-
-**Note:** All remaining `previous/controller/` files have been flattened — no more subpackages.
-
----
-
-## Security Items
-
-| Item | Status |
-|------|--------|
-| CsrfFilter not registered | DELETED — was never wired up |
-| AuthenticateUser failure handling | Still needs `displayLoginFailure()` implementation |
-| InitializeDataBase accessibility | DELETED — servlet removed |
-| LoginFilter stale URL whitelist | `/EmployerBillingDetail` and `/InitializeDataBase` entries are dead strings — harmless |
-
----
-
-## Dead String References (Harmless)
-
-These are `getServletContext().getNamedDispatcher()` or URL whitelist strings referencing deleted servlets. No compile or runtime errors.
-
-- `LoginFilter` line 21: `/InitializeDataBase`, `/EmployerBillingDetail`
-- `AddRecurringSequence.goToPage()`: `RecurringSequenceBuilder`
-- `CreateTicket @WebServlet`: `CreateTicket2`
-- `AddFileToTask.goToPage()`: `TaskDetailView`
-- `ViewSelectedActivity.goToPage()`: `GoAdminHome`
-
----
-
-## What Remains (Next Phase: Refactor)
-
-### `previous/data/` — 37 files, all active
-- Rename cryptic names to descriptive names
-- Reorganize package structure
-- Consolidate duplicates (eV + XP → PersonResolver)
-- Split Q.java into focused classes
-- See `data_layer_inventory.md` for full plan
-
-### `previous/model/` — ~70 JPA entity files
-- Review after data layer refactor
-- Likely mostly active
+| Data layer refactor + reorg | 6 |
+| **Grand Total** | **238** |
