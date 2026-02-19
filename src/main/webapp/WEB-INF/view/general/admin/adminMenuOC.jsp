@@ -25,7 +25,7 @@
     <button class="btn btn-outline-ssa btn-sm w-100 mt-1"  type="button" data-bs-toggle="modal" data-bs-target="#addRenewalModal">
       <i class="bi bi-repeat"></i>
       Upcoming Renewals</button>
-    <a class="btn btn-outline-ssa btn-sm w-100 mt-1"  href="GoTicketTemplate25">
+    <a class="btn btn-outline-ssa btn-sm w-100 mt-1"  href="SequenceBuilder25">
       <i class="bi bi-list-task"></i>
       Manage Task Templates
     </a>

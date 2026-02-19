@@ -197,9 +197,6 @@
                                             <div style="flex:1; font-size:0.9rem; padding:4px 8px;">${gs.getDescription()}</div>
                                             <div class="task-flags">
                                                 <span class="flag <c:if test='${gs.isPublicTask()}'>on</c:if>" title="Reusable"><i class="bi bi-floppy"></i></span>
-                                                <span class="flag" title="Has owner"><i class="bi bi-person"></i></span>
-                                                <span class="flag" title="Has link"><i class="bi bi-link-45deg"></i></span>
-                                                <span class="flag" title="Outsourceable"><i class="bi bi-send"></i></span>
                                             </div>
                                             <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeTask(this)"><i class="bi bi-x-lg"></i></button>
                                         </div>
@@ -319,9 +316,6 @@
             '<div style="flex:1;font-size:0.9rem;padding:4px 8px;">' + escapeHtml(desc) + '</div>' +
             '<div class="task-flags">' +
             '<span class="flag ' + (reusable ? 'on' : '') + '" title="Reusable"><i class="bi bi-floppy"></i></span>' +
-            '<span class="flag" title="Has owner"><i class="bi bi-person"></i></span>' +
-            '<span class="flag" title="Has link"><i class="bi bi-link-45deg"></i></span>' +
-            '<span class="flag" title="Outsourceable"><i class="bi bi-send"></i></span>' +
             '</div>' +
             '<button type="button" class="btn btn-sm btn-outline-danger" onclick="removeTask(this)"><i class="bi bi-x-lg"></i></button>';
         attachDragEvents(row);
@@ -369,15 +363,12 @@
         var rows = document.querySelectorAll('#taskList .task-row');
         var tasks = [];
         rows.forEach(function(row, i) {
-            var flags = row.querySelectorAll('.task-flags .flag');
+            var reusableFlag = row.querySelector('.task-flags .flag');
             tasks.push({
                 order: i,
                 taskId: row.getAttribute('data-task-id') || -1,
                 desc: row.getAttribute('data-desc') || '',
-                reusable: flags[0] && flags[0].classList.contains('on'),
-                hasOwner: flags[1] && flags[1].classList.contains('on'),
-                hasLink: flags[2] && flags[2].classList.contains('on'),
-                sourced: flags[3] && flags[3].classList.contains('on')
+                reusable: reusableFlag && reusableFlag.classList.contains('on')
             });
         });
         document.getElementById('taskOrderField').value = JSON.stringify(tasks);
