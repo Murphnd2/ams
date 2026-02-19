@@ -1,0 +1,245 @@
+<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
+<%@ taglib prefix="fmt" uri="http://java.sun.com/jsp/jstl/fmt" %>
+<%@ page contentType="text/html;charset=UTF-8" language="java" %>
+<html>
+<head>
+    <c:import url="/WEB-INF/view/css-js.jsp"></c:import>
+    <title>Proposal Builder</title>
+    <style>
+        .los-card { cursor: pointer; transition: all 0.2s ease; border: 2px solid #dee2e6; }
+        .los-card:hover { border-color: #0d6efd; box-shadow: 0 2px 8px rgba(13,110,253,0.15); }
+        .los-card.selected { border-color: #198754; background-color: #f0fdf4; }
+        .los-card.selected .los-check { color: #198754; }
+        .los-check { font-size: 1.25rem; color: #dee2e6; }
+        .step-badge { width: 32px; height: 32px; border-radius: 50%; display: inline-flex;
+            align-items: center; justify-content: center; font-weight: 600; font-size: 0.875rem; }
+        .step-active { background-color: #0d6efd; color: white; }
+        .step-complete { background-color: #198754; color: white; }
+        .step-pending { background-color: #e9ecef; color: #6c757d; }
+        .rate-option { cursor: pointer; transition: all 0.15s ease; }
+        .rate-option:hover { background-color: #f8f9fa; }
+        .rate-option.selected { background-color: #e7f1ff; border-color: #0d6efd !important; }
+    </style>
+</head>
+<body>
+<div class="container-fluid">
+    <c:import url="/WEB-INF/view/navbar.jsp"></c:import>
+
+    <%-- Page Header --%>
+    <div class="row mt-3 mb-4">
+        <div class="col">
+            <h4 class="fw-bold"><i class="bi bi-file-earmark-text me-2"></i>Proposal Builder</h4>
+            <p class="text-muted mb-0">Create a new service proposal for a prospect</p>
+        </div>
+        <div class="col-auto">
+            <a href="ViewHome25" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-arrow-left me-1"></i>Back to Dashboard
+            </a>
+        </div>
+    </div>
+
+    <form method="post" action="ProposalBuilder" id="proposalForm">
+        <input type="hidden" name="action" value="createProposal">
+
+        <%-- STEP 1: Select Prospect --%>
+        <div class="card mb-3">
+            <div class="card-header bg-white py-3">
+                <div class="d-flex align-items-center">
+                    <span class="step-badge step-active me-3" id="stepBadge1">1</span>
+                    <h5 class="mb-0 fw-semibold">Select Prospect</h5>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-6">
+                        <label for="prospectId" class="form-label">Existing Prospect</label>
+                        <select class="form-select" name="prospectId" id="prospectId" onchange="updateSteps()">
+                            <option value="" selected>-- Choose a prospect --</option>
+                            <c:forEach var="prospect" items="${prospectList}">
+                                <option value="${prospect.getId()}">${prospect.getName()}</option>
+                            </c:forEach>
+                        </select>
+                    </div>
+                    <div class="col-auto">
+                        <span class="text-muted">or</span>
+                    </div>
+                    <div class="col-auto">
+                        <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#newProspectModal">
+                            <i class="bi bi-plus-lg me-1"></i>New Prospect
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <%-- STEP 2: Select Rate Package --%>
+        <div class="card mb-3">
+            <div class="card-header bg-white py-3">
+                <div class="d-flex align-items-center">
+                    <span class="step-badge step-pending me-3" id="stepBadge2">2</span>
+                    <h5 class="mb-0 fw-semibold">Select Rate Package</h5>
+                </div>
+            </div>
+            <div class="card-body" id="rateSection">
+                <div class="row g-2">
+                    <c:forEach var="rate" items="${allRates}">
+                        <div class="col-md-4 col-sm-6">
+                            <div class="card rate-option p-3" onclick="selectRate(this, ${rate.getId()})">
+                                <div class="d-flex align-items-center">
+                                    <i class="bi bi-circle me-2 rate-icon" style="font-size: 1.1rem;"></i>
+                                    <span class="fw-medium">${rate.getDescription()}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </c:forEach>
+                </div>
+                <input type="hidden" name="rateId" id="rateId" value="">
+            </div>
+        </div>
+
+        <%-- STEP 3: Select Lines of Service --%>
+        <div class="card mb-3">
+            <div class="card-header bg-white py-3">
+                <div class="d-flex align-items-center">
+                    <span class="step-badge step-pending me-3" id="stepBadge3">3</span>
+                    <h5 class="mb-0 fw-semibold">Select Lines of Service</h5>
+                </div>
+            </div>
+            <div class="card-body" id="losSection">
+                <p class="text-muted small mb-3">Select the services to include in this proposal. All associated modules and enhancements will be included automatically.</p>
+                <div class="row g-2">
+                    <c:forEach var="los" items="${losList}">
+                        <div class="col-md-4 col-sm-6">
+                            <div class="card los-card p-3" onclick="toggleLos(this, ${los.getId()})">
+                                <div class="d-flex align-items-center">
+                                    <i class="bi bi-square los-check me-2"></i>
+                                    <div>
+                                        <div class="fw-medium">${los.getDescription()}</div>
+                                        <small class="text-muted">${los.getShortText()}</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </c:forEach>
+                </div>
+                <div id="losInputs"></div>
+            </div>
+        </div>
+
+        <%-- Submit --%>
+        <div class="row mb-5">
+            <div class="col">
+                <button type="submit" class="btn btn-primary btn-lg px-5" id="btnCreate" disabled>
+                    <i class="bi bi-file-earmark-plus me-2"></i>Create Proposal
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<%-- New Prospect Modal --%>
+<div class="modal fade" id="newProspectModal" tabindex="-1" aria-labelledby="newProspectLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="newProspectLabel">New Prospect</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" action="CreateProspect">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="prospectName" class="form-label">Company Name</label>
+                        <input type="text" class="form-control" name="prospectName" id="prospectName" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="contactFirst" class="form-label">Contact First Name</label>
+                        <input type="text" class="form-control" name="contactFirst" id="contactFirst" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="contactLast" class="form-label">Contact Last Name</label>
+                        <input type="text" class="form-control" name="contactLast" id="contactLast" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="contactEmail" class="form-label">Contact Email</label>
+                        <input type="email" class="form-control" name="contactEmail" id="contactEmail" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="contactPhone" class="form-label">Contact Phone</label>
+                        <input type="tel" class="form-control" name="contactPhone" id="contactPhone">
+                    </div>
+                    <div class="mb-3">
+                        <label for="agencyId" class="form-label">Agency</label>
+                        <select class="form-select" name="agencyId" id="agencyId">
+                            <c:forEach var="agency" items="${agencyList}">
+                                <option value="${agency.getId()}">${agency.getName()}</option>
+                            </c:forEach>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Create Prospect</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    let selectedRateId = null;
+    let selectedLosIds = new Set();
+
+    function selectRate(el, rateId) {
+        // Clear previous selection
+        document.querySelectorAll('.rate-option').forEach(card => {
+            card.classList.remove('selected');
+            card.querySelector('.rate-icon').className = 'bi bi-circle me-2 rate-icon';
+        });
+        // Select this one
+        el.classList.add('selected');
+        el.querySelector('.rate-icon').className = 'bi bi-check-circle-fill me-2 rate-icon text-primary';
+        selectedRateId = rateId;
+        document.getElementById('rateId').value = rateId;
+        updateSteps();
+    }
+
+    function toggleLos(el, losId) {
+        if (selectedLosIds.has(losId)) {
+            selectedLosIds.delete(losId);
+            el.classList.remove('selected');
+            el.querySelector('.los-check').className = 'bi bi-square los-check me-2';
+        } else {
+            selectedLosIds.add(losId);
+            el.classList.add('selected');
+            el.querySelector('.los-check').className = 'bi bi-check-square-fill los-check me-2';
+        }
+        // Rebuild hidden inputs
+        let container = document.getElementById('losInputs');
+        container.innerHTML = '';
+        selectedLosIds.forEach(id => {
+            let input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'losIds';
+            input.value = id;
+            container.appendChild(input);
+        });
+        updateSteps();
+    }
+
+    function updateSteps() {
+        let hasProspect = document.getElementById('prospectId').value !== '';
+        let hasRate = selectedRateId !== null;
+        let hasLos = selectedLosIds.size > 0;
+
+        // Update step badges
+        document.getElementById('stepBadge1').className = 'step-badge me-3 ' + (hasProspect ? 'step-complete' : 'step-active');
+        document.getElementById('stepBadge2').className = 'step-badge me-3 ' + (hasRate ? 'step-complete' : (hasProspect ? 'step-active' : 'step-pending'));
+        document.getElementById('stepBadge3').className = 'step-badge me-3 ' + (hasLos ? 'step-complete' : (hasRate ? 'step-active' : 'step-pending'));
+
+        // Enable/disable submit
+        document.getElementById('btnCreate').disabled = !(hasProspect && hasRate && hasLos);
+    }
+</script>
+</body>
+</html>
+
