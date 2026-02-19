@@ -1,6 +1,7 @@
 package net.superiorstate.ams.model.sales.agency;
 
 import jakarta.persistence.*;
+import net.superiorstate.ams.model.activity.Activity;
 import net.superiorstate.ams.model.general.Person;
 import net.superiorstate.ams.model.sales.application.Application;
 import net.superiorstate.ams.model.sales.offering.LOS;
@@ -56,6 +57,9 @@ public class Proposal {
     @OneToOne(mappedBy = "proposal")
     private Application application;
 
+    @ManyToOne
+    @JoinColumn(name="source_activity_id")
+    private Activity sourceActivity;
     public Proposal(){}
 
     public Long getId() {
@@ -77,7 +81,13 @@ public class Proposal {
     public Rate getRate() {
         return rate;
     }
+    public Activity getSourceActivity() {
+        return sourceActivity;
+    }
 
+    public void setSourceActivity(Activity sourceActivity) {
+        this.sourceActivity = sourceActivity;
+    }
     public void setRate(Rate rate) {
         this.rate = rate;
     }

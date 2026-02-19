@@ -209,8 +209,33 @@ public abstract class EmailTemplate {
     private static String safe(String value, String fallback) {
         return (value == null || value.isBlank()) ? fallback : value;
     }
-
     private static String nullSafe(String s) {
         return s == null ? "" : s;
+    }
+    public static String wrapBodyOnly(String body, String pspName, EntityManager em) {
+        String primary = safe(AppConstantDAO.getConstantValue(em, "EMAIL_COLOR_PRIMARY"), "#2B5F8A");
+        String accent  = safe(AppConstantDAO.getConstantValue(em, "EMAIL_COLOR_ACCENT"), "#7AB648");
+        if (pspName == null) pspName = "";
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("<!DOCTYPE html>");
+        sb.append("<html><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1.0\"></head>");
+        sb.append("<body style=\"margin:0;padding:0;background-color:#f4f4f4;font-family:Arial,Helvetica,sans-serif;\">");
+        sb.append("<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"background-color:#f4f4f4;\">");
+        sb.append("<tr><td align=\"center\" style=\"padding:20px 10px;\">");
+        sb.append("<table role=\"presentation\" width=\"600\" cellpadding=\"0\" cellspacing=\"0\" style=\"max-width:600px;width:100%;background-color:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);\">");
+        sb.append("<tr><td style=\"background-color:").append(primary).append(";padding:24px 32px;\">");
+        sb.append("<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\"><tr>");
+        sb.append("<td width=\"4\" style=\"background-color:").append(accent).append(";\">&nbsp;</td>");
+        sb.append("<td style=\"padding-left:16px;\"><span style=\"font-size:22px;font-weight:bold;color:#ffffff;letter-spacing:0.5px;\">").append(pspName).append("</span></td>");
+        sb.append("</tr></table></td></tr>");
+        sb.append("<tr><td style=\"padding:32px;color:#333333;font-size:15px;line-height:1.6;\">");
+        sb.append(nullSafe(body));
+        sb.append("</td></tr>");
+        sb.append("<tr><td style=\"background-color:#f9f9f9;padding:16px 32px;border-top:1px solid #e8e8e8;\">");
+        sb.append("<span style=\"font-size:11px;color:#999999;\">This message was sent on behalf of ").append(pspName).append(".</span>");
+        sb.append("</td></tr>");
+        sb.append("</table></td></tr></table></body></html>");
+        return sb.toString();
     }
 }

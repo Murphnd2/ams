@@ -14,6 +14,7 @@ Tracks which migration scripts have been applied to each environment.
 | Script | Description | Local | Production | Notes |
 |--------|-------------|-------|------------|-------|
 | `sales_pipeline_migration.sql` | Sales Pipeline — new tables, column adds, renames | ✅ 2026-02-19 | ❌ NOT RUN | Run BEFORE deploying sales pipeline code. Must run Steps 1-4 in order. Step 5 (drop old tables) is optional cleanup — hold until verified. |
+| `sales_pipeline_migration_2.sql` | Proposal — add source_activity_id column | ✅ 2026-02-19 | ❌ NOT RUN | Optional nullable FK. Run before deploying SendProposal feature. |
 
 ## How to Use
 

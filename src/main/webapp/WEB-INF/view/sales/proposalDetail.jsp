@@ -122,9 +122,9 @@
     <%-- Actions --%>
     <div class="card mb-5">
         <div class="card-body d-flex gap-2">
-            <button class="btn btn-primary" disabled>
-                <i class="bi bi-send me-1"></i>Send to Prospect
-            </button>
+            <a href="SendProposal?id=${proposal.getId()}" class="btn btn-primary">
+                <i class="bi bi-send me-1"></i>${proposal.getStatus() == 'SENT' ? 'Send Again' : 'Send Proposal'}
+            </a>
             <a href="ProposalBuilder" class="btn btn-outline-secondary">
                 <i class="bi bi-arrow-left me-1"></i>Back to Builder
             </a>

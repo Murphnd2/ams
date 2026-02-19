@@ -1,6 +1,6 @@
 ## Sales Pipeline Entity Updates — February 19, 2026
 
-This file documents the entity changes made during the Sales Pipeline Data Model implementation session.
+This file documents the entity changes made during the Sales Pipeline Data Model implementation sessions.
 Complements `entity_reference.md` and `sales_pipeline_data_model.md`.
 
 ---
@@ -16,6 +16,7 @@ Complements `entity_reference.md` and `sales_pipeline_data_model.md`.
 | dateSent | Timestamp | `date_sent` | Nullable — when emailed to prospect |
 | dateViewed | Timestamp | `date_viewed` | Nullable — first view of landing page |
 | dateApplied | Timestamp | `date_applied` | Nullable — when application submitted |
+| sourceActivity | M:1 Activity | `source_activity_id` | Nullable — optional link back to originating ticket (Session 2) |
 
 #### Application (model/sales/application)
 **Fields added:**
@@ -101,13 +102,14 @@ Complements `entity_reference.md` and `sales_pipeline_data_model.md`.
 
 ---
 
+## Session 1 — February 19, 2026
+
 ### New Servlets / JSPs Created
 
 #### ProposalBuilder (controller/activity/setup)
 - **URL:** `/ProposalBuilder`
 - **GET:** Loads agencies, rates, LOSs, prospects → forwards to `proposalBuilder.jsp`
 - **POST:** Creates proposal with GUID, status=CREATED, selected LOSs → redirects to `ProposalDetail`
-- ~~**Known issue:** Null-safe sort on prospect names needed (line 64)~~ **FIXED Session 2**
 
 #### proposalBuilder.jsp (WEB-INF/view/sales/)
 - 3-step card layout: Select Prospect → Select Rate → Select LOSs
@@ -116,8 +118,6 @@ Complements `entity_reference.md` and `sales_pipeline_data_model.md`.
 - Submit disabled until all 3 steps complete
 - Auto-selects prospect when redirected from CreateProspect
 - Triggers `updateSteps()` on page load when prospect is pre-selected
-
----
 
 ### Database Migration
 - Full migration script saved as `docs/sales_pipeline_migration.sql`
@@ -144,6 +144,12 @@ Complements `entity_reference.md` and `sales_pipeline_data_model.md`.
 - **URL:** `/ProposalDetail?id=`
 - **GET:** Loads proposal with LOSs (fetch join), pricing via `SalesDAO.getPricing()`, forwards to `proposalDetail.jsp`
 
+#### SendProposal (controller/activity/setup)
+- **URL:** `/SendProposal`
+- **GET:** Pre-populates send form with prospect contact, default email body with signature, proposal link
+- **POST:** Sends branded email via `EmailDAO` + `EmailTemplate.wrapBodyOnly()`, updates proposal status to SENT, sets dateSent, optionally logs email to source activity
+- Features: editable To/CC fields, "Copy me" checkbox, CKEditor body editor, signature visible and editable in body
+
 ### New JSPs Created
 
 #### proposalDetail.jsp (WEB-INF/view/sales/)
@@ -153,7 +159,14 @@ Complements `entity_reference.md` and `sales_pipeline_data_model.md`.
 - Copyable GUID link for prospect sharing
 - LOS badges
 - Pricing summary table grouped by ServiceModule
-- Action buttons: Send to Prospect (disabled — not yet wired), Back to Builder
+- Action buttons: Send Proposal (links to SendProposal), Back to Builder
+
+#### sendProposal.jsp (WEB-INF/view/sales/)
+- Proposal summary bar (LOSs, link)
+- Recipients card: To (pre-filled), CC (comma-separated), Copy me checkbox
+- Message card: Subject (pre-filled), Body with CKEditor (pre-filled with template + signature)
+- Send button with loading state
+- CKEditor 4.22.1 standard toolbar
 
 ### ProposalBuilder Enhancements
 - `doPost` now returns `Proposal` from `createProposal()` and redirects to `ProposalDetail?id=`
@@ -161,10 +174,22 @@ Complements `entity_reference.md` and `sales_pipeline_data_model.md`.
 - JSP auto-selects prospect and triggers `updateSteps()` on page load
 - Prospect dropdown uses new `SalesDAO.getProspectsByPsp()` — simpler, always current
 
+### EmailTemplate Enhancement
+- Added `wrapBodyOnly(String body, String pspName, EntityManager em)` — branded header + footer wrapper without signature block. Used by SendProposal so signature is part of editable body (no duplication).
+
 ### New DAO Methods
 - `SalesDAO.getProspectsByPsp(em, pspId)` — direct query for all prospects by PSP via agent relationship
 
+### Entity Changes
+- `Proposal.sourceActivity` (M:1 Activity, nullable) — optional link to originating ticket for PSP workflow
+
+### Database Changes (Session 2)
+- `ALTER TABLE proposal ADD COLUMN source_activity_id BIGINT NULL;`
+- Migration script: `docs/sales_pipeline_migration_2.sql`
+
 ### What's Next
-1. Wire up "Send to Prospect" — email with GUID link, update status to SENT, set dateSent
-2. Proposal landing page — public-facing, GUID-accessed, shows features + pricing
-3. CreateProspect enhancements — duplicate email check, fullName on Person
+1. Proposal landing page — public-facing, GUID-accessed, shows features + pricing (what the prospect sees)
+2. Application form — prospect fills out after viewing proposal
+3. Application review/approve UI — PSP reviews, approves/denies
+4. Automated Setup creation on approval
+5. Future enhancements: multi-view ProposalBuilder (admin vs agent vs PSP), duplicate email check on CreateProspect, fullName on Person
