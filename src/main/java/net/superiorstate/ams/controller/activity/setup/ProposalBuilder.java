@@ -22,7 +22,9 @@ public class ProposalBuilder extends HttpServlet {
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+
         EntityManager em = getEntityManager(request);
+        em.clear();
         AmsDataLocal local = (AmsDataLocal) request.getSession().getAttribute("local");
         int pspId = local.getCurrentPerson().getPsp().getId().intValue();
 
@@ -41,32 +43,10 @@ public class ProposalBuilder extends HttpServlet {
                     .getResultList();
             request.setAttribute("losList", losList);
 
-            // Load existing prospects for this PSP (through agents)
-            List<Prospect> prospectList = new ArrayList<>();
-            for (Agency agency : agencyList) {
-                try {
-                    List<Prospect> agencyProspects = SalesDAO.getAgencyProspects(em, agency);
-                    if (agencyProspects != null) {
-                        prospectList.addAll(agencyProspects);
-                    }
-                } catch (Exception ignored) {
-                    // Agency may not have prospects yet
-                }
-            }
-            // Remove duplicates and sort
-            Set<Long> seen = new HashSet<>();
-            List<Prospect> uniqueProspects = new ArrayList<>();
-            for (Prospect p : prospectList) {
-                if (seen.add(p.getId())) {
-                    uniqueProspects.add(p);
-                }
-            }
-            uniqueProspects.sort((a, b) -> {
-                String nameA = a.getName() != null ? a.getName() : "";
-                String nameB = b.getName() != null ? b.getName() : "";
-                return nameA.compareTo(nameB);
-            });
-            request.setAttribute("prospectList", uniqueProspects);
+            // Load existing prospects for this PSP
+            List<Prospect> prospectList = SalesDAO.getProspectsByPsp(em, pspId);
+            request.setAttribute("prospectList", prospectList);
+            request.setAttribute("selectedProspect", request.getParameter("selectedProspect"));
 
         } finally {
             em.close();
@@ -85,7 +65,9 @@ public class ProposalBuilder extends HttpServlet {
             String action = request.getParameter("action");
 
             if ("createProposal".equals(action)) {
-                createProposal(request, em, local);
+                Proposal proposal = createProposal(request, em, local);
+                response.sendRedirect("ProposalDetail?id=" + proposal.getId());
+                return;
             }
 
         } finally {
@@ -93,10 +75,10 @@ public class ProposalBuilder extends HttpServlet {
         }
 
         // Redirect back to builder to show updated state
-        response.sendRedirect("ProposalBuilder");
+
     }
 
-    private void createProposal(HttpServletRequest request, EntityManager em, AmsDataLocal local) {
+    private Proposal createProposal(HttpServletRequest request, EntityManager em, AmsDataLocal local) {
         // Get prospect
         long prospectId = Long.parseLong(request.getParameter("prospectId"));
         Prospect prospect = em.find(Prospect.class, prospectId);
@@ -140,6 +122,7 @@ public class ProposalBuilder extends HttpServlet {
         }
 
         System.out.println("Proposal created: #" + proposal.getId() + " GUID=" + guid);
+        return proposal;
     }
 
     private EntityManager getEntityManager(HttpServletRequest request) {

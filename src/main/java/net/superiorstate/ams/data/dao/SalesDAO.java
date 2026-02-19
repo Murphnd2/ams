@@ -141,7 +141,13 @@ public abstract class SalesDAO {
         }
         return prospectList;
     }
-
+    
+    public static List<Prospect> getProspectsByPsp(EntityManager em, int pspId) {
+        Query q = em.createQuery(
+                "SELECT p FROM Prospect p WHERE p.agent.psp.id = :psp_id ORDER BY p.name");
+        q.setParameter("psp_id", (long) pspId);
+        return (List<Prospect>) q.getResultList();
+    }
 
     public static Agency getAgencyFull(EntityManager em, long agencyId){
         Query q = em.createQuery("SELECT DISTINCT a FROM Agency a INNER JOIN FETCH a.agencyRateList r WHERE a.id = :agency_id");

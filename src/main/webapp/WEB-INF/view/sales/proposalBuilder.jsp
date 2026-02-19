@@ -56,7 +56,7 @@
                         <select class="form-select" name="prospectId" id="prospectId" onchange="updateSteps()">
                             <option value="" selected>-- Choose a prospect --</option>
                             <c:forEach var="prospect" items="${prospectList}">
-                                <option value="${prospect.getId()}">${prospect.getName()}</option>
+                                <option value="${prospect.getId()}" ${prospect.getId().toString().equals(selectedProspect) ? 'selected' : ''}>${prospect.getName()}</option>
                             </c:forEach>
                         </select>
                     </div>
@@ -238,6 +238,13 @@
 
         // Enable/disable submit
         document.getElementById('btnCreate').disabled = !(hasProspect && hasRate && hasLos);
+
+        // Auto-trigger step update if prospect is pre-selected
+        document.addEventListener('DOMContentLoaded', function() {
+            if (document.getElementById('prospectId').value) {
+                updateSteps();
+            }
+        });
     }
 </script>
 </body>

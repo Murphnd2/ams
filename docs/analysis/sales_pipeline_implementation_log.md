@@ -106,14 +106,16 @@ Complements `entity_reference.md` and `sales_pipeline_data_model.md`.
 #### ProposalBuilder (controller/activity/setup)
 - **URL:** `/ProposalBuilder`
 - **GET:** Loads agencies, rates, LOSs, prospects → forwards to `proposalBuilder.jsp`
-- **POST:** Creates proposal with GUID, status=CREATED, selected LOSs
-- **Known issue:** Null-safe sort on prospect names needed (line 64)
+- **POST:** Creates proposal with GUID, status=CREATED, selected LOSs → redirects to `ProposalDetail`
+- ~~**Known issue:** Null-safe sort on prospect names needed (line 64)~~ **FIXED Session 2**
 
 #### proposalBuilder.jsp (WEB-INF/view/sales/)
 - 3-step card layout: Select Prospect → Select Rate → Select LOSs
 - Step badges with visual state (pending/active/complete)
-- "New Prospect" modal (posts to CreateProspect — not yet built)
+- "New Prospect" modal (posts to CreateProspect)
 - Submit disabled until all 3 steps complete
+- Auto-selects prospect when redirected from CreateProspect
+- Triggers `updateSteps()` on page load when prospect is pre-selected
 
 ---
 
@@ -122,3 +124,47 @@ Complements `entity_reference.md` and `sales_pipeline_data_model.md`.
 - Local DB: fully migrated
 - Production DB: NOT YET MIGRATED — run migration script before deploying code changes
 - `persistence-local.xml`: requires `allowPublicKeyRetrieval=true` and `jdbc.user` property
+
+---
+
+## Session 2 — February 19, 2026
+
+### Bugs Fixed
+- **ProposalBuilder.java** — Null-safe sort had typo: `b.getName() != null ? a.getName()` → fixed to `b.getName()`
+- **Prospect loading** — Replaced complex nested fetch join loop (`getAgencyProspects` per agency) with new `SalesDAO.getProspectsByPsp()` method. Old approach failed to pick up newly created prospects due to EclipseLink join/cache behavior.
+
+### New Servlets Created
+
+#### CreateProspect (controller/activity/setup)
+- **URL:** `/CreateProspect`
+- **POST:** Creates Person (contact) + Prospect, links to agency's first agent, redirects to ProposalBuilder with `?selectedProspect=` param for auto-selection
+- Follows existing `GenerateProp` pattern for Person/Prospect creation
+
+#### ProposalDetail (controller/activity/setup)
+- **URL:** `/ProposalDetail?id=`
+- **GET:** Loads proposal with LOSs (fetch join), pricing via `SalesDAO.getPricing()`, forwards to `proposalDetail.jsp`
+
+### New JSPs Created
+
+#### proposalDetail.jsp (WEB-INF/view/sales/)
+- Proposal header with status badge
+- Prospect info with contact details
+- Rate package and creation date/creator
+- Copyable GUID link for prospect sharing
+- LOS badges
+- Pricing summary table grouped by ServiceModule
+- Action buttons: Send to Prospect (disabled — not yet wired), Back to Builder
+
+### ProposalBuilder Enhancements
+- `doPost` now returns `Proposal` from `createProposal()` and redirects to `ProposalDetail?id=`
+- `doGet` reads `selectedProspect` param and passes to JSP for auto-selection
+- JSP auto-selects prospect and triggers `updateSteps()` on page load
+- Prospect dropdown uses new `SalesDAO.getProspectsByPsp()` — simpler, always current
+
+### New DAO Methods
+- `SalesDAO.getProspectsByPsp(em, pspId)` — direct query for all prospects by PSP via agent relationship
+
+### What's Next
+1. Wire up "Send to Prospect" — email with GUID link, update status to SENT, set dateSent
+2. Proposal landing page — public-facing, GUID-accessed, shows features + pricing
+3. CreateProspect enhancements — duplicate email check, fullName on Person
