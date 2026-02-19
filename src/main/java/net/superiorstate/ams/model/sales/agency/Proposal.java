@@ -1,6 +1,7 @@
 package net.superiorstate.ams.model.sales.agency;
 
 import jakarta.persistence.*;
+import net.superiorstate.ams.model.general.Person;
 import net.superiorstate.ams.model.sales.application.Application;
 import net.superiorstate.ams.model.sales.offering.LOS;
 
@@ -30,6 +31,22 @@ public class Proposal {
 
     @Column(name="application_guid",columnDefinition = "varchar(36)",nullable = false)
     private String applicationGUID;
+
+    @Column(name="status",columnDefinition = "varchar(20) DEFAULT 'CREATED'")
+    private String status;
+
+    @ManyToOne
+    @JoinColumn(name="created_by")
+    private Person createdBy;
+
+    @Column(name="date_sent")
+    private Timestamp dateSent;
+
+    @Column(name="date_viewed")
+    private Timestamp dateViewed;
+
+    @Column(name="date_applied")
+    private Timestamp dateApplied;
 
     @ManyToMany
     @JoinTable(name="proposalitems",
@@ -87,6 +104,46 @@ public class Proposal {
 
     public void setApplicationGUID(String applicationGUID) {
         this.applicationGUID = applicationGUID;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
+
+    public Person getCreatedBy() {
+        return createdBy;
+    }
+
+    public void setCreatedBy(Person createdBy) {
+        this.createdBy = createdBy;
+    }
+
+    public Timestamp getDateSent() {
+        return dateSent;
+    }
+
+    public void setDateSent(Timestamp dateSent) {
+        this.dateSent = dateSent;
+    }
+
+    public Timestamp getDateViewed() {
+        return dateViewed;
+    }
+
+    public void setDateViewed(Timestamp dateViewed) {
+        this.dateViewed = dateViewed;
+    }
+
+    public Timestamp getDateApplied() {
+        return dateApplied;
+    }
+
+    public void setDateApplied(Timestamp dateApplied) {
+        this.dateApplied = dateApplied;
     }
 
     public List<LOS> getLosList() {
