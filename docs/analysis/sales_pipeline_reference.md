@@ -1,6 +1,6 @@
 # Sales Pipeline — Reference Document
 
-**Last Updated:** February 20, 2026 (Session 4)
+**Last Updated:** February 20, 2026 (Session 4 — complete)
 **Replaces:** `sales_pipeline_data_model.md`, `sales_pipeline_implementation_log.md`, `sales_pipeline_session3_log.md`
 
 ---
@@ -26,9 +26,14 @@ All sales entities live under `model/sales/` with sub-packages `agency/`, `appli
 | Rate Sheet Upload | ✅ Done | `UploadRateSheet` (AJAX → Wasabi) |
 | Submit Application | ✅ Done | `ApplyForProposal` POST → `applicationConfirmation.jsp` |
 | "Apply Now" button on proposal page | ✅ Done | Link in `viewProposal.jsp` |
-| Application Review/Approve UI | ❌ Not started | — |
-| Automated Setup creation on approval | ❌ Not started | `GenerateProp25` has template logic |
-| Full pipeline test | ❌ Not done | — |
+| Application Review List (internal) | ✅ Done | `ReviewApplications` → `reviewApplications.jsp` |
+| Application Review Detail (internal) | ✅ Done | `ReviewApplication` → `reviewApplication.jsp` |
+| Approve/Deny/More Info actions | ✅ Done | `ReviewApplication` POST |
+| Automated Setup creation on approval | ✅ Done | `ReviewApplication` POST (approve action) |
+| Manual Setup form | ✅ Done | `GenerateProp25` GET → `manualSetup.jsp` |
+| Proposal → Review link | ✅ Done | Action buttons in `proposalDetail.jsp` |
+| Full pipeline test | ✅ Done | Create → Send → View → Apply → Save → Submit → Review → Approve |
+| Production DB migration | ❌ Not done | 3 scripts pending |
 
 ---
 
@@ -42,8 +47,8 @@ All sales entities live under `model/sales/` with sub-packages `agency/`, `appli
 | SENT | Email sent to prospect | `SendProposal` |
 | VIEWED | Prospect opened the landing page | `ViewProposal` GET |
 | APPLIED | Prospect submitted application | `ApplyForProposal` POST |
-| APPROVED | PSP approved the application | (not yet built) |
-| DENIED | PSP denied the application | (not yet built) |
+| APPROVED | PSP approved the application | `ReviewApplication` POST |
+| DENIED | PSP denied the application | `ReviewApplication` POST |
 | EXPIRED | Aged out or manually closed | (not yet built) |
 
 ### Application Status
@@ -52,10 +57,45 @@ All sales entities live under `model/sales/` with sub-packages `agency/`, `appli
 |--------|---------|--------|
 | IN_PROGRESS | Prospect opened form, may have saved progress | `ApplyForProposal` GET / `SaveApplicationProgress` |
 | SUBMITTED | Prospect clicked Submit | `ApplyForProposal` POST |
-| UNDER_REVIEW | PSP is reviewing | (not yet built) |
-| APPROVED | PSP approved | (not yet built) |
-| DENIED | PSP denied | (not yet built) |
-| MORE_INFO | PSP requested additional info | (not yet built) |
+| UNDER_REVIEW | PSP is reviewing | `ReviewApplication` POST |
+| APPROVED | PSP approved | `ReviewApplication` POST |
+| DENIED | PSP denied | `ReviewApplication` POST |
+| MORE_INFO | PSP requested additional info | `ReviewApplication` POST |
+
+---
+
+## Servlets
+
+| Servlet | Package | URL | Auth | Purpose |
+|---------|---------|-----|------|---------|
+| ProposalBuilder | controller/activity/setup | `/ProposalBuilder` | Yes | Agent creates proposal (GET=form, POST=create) |
+| ProposalDetail | controller/activity/setup | `/ProposalDetail` | Yes | Internal proposal detail view |
+| CreateProspect | controller/activity/setup | `/CreateProspect` | Yes | Creates prospect from modal in ProposalBuilder |
+| SendProposal | controller/activity/setup | `/SendProposal` | Yes | Emails proposal link to prospect |
+| ViewProposal | controller/activity/setup | `/viewProposal/*` | **No** | Public proposal landing page (GUID) |
+| ApplyForProposal | controller/activity/setup | `/apply/*` | **No** | Public application form (GET) + submit (POST) |
+| SaveApplicationProgress | controller/activity/setup | `/saveApplication` | **No** | AJAX auto-save field values |
+| UploadRateSheet | controller/activity/setup | `/uploadRateSheet` | **No** | AJAX file upload to Wasabi |
+| ReviewApplications | controller/activity/setup | `/ReviewApplications` | Yes | Application review list with multi-status filtering |
+| ReviewApplication | controller/activity/setup | `/ReviewApplication` | Yes | Application review detail + approve/deny/more-info actions |
+| GenerateProp25 | controller/activity/setup | `/GenerateProp25` | Yes | Manual setup creation (GET=form if no params, POST=create) |
+
+Public endpoints (`/apply/*`, `/saveApplication`, `/uploadRateSheet`, `/viewProposal/*`) are whitelisted in `LoginFilter`.
+
+---
+
+## JSPs
+
+| JSP | Path | Access | Purpose |
+|-----|------|--------|---------|
+| proposalBuilder.jsp | `WEB-INF/view/sales/` | Internal | 3-step proposal creation form |
+| proposalDetail.jsp | `WEB-INF/view/sales/` | Internal | Proposal detail with status, pricing, GUID link, review link |
+| viewProposal.jsp | `WEB-INF/view/sales/` | Public | Prospect-facing proposal with features, pricing, "Apply Now" |
+| applyForProposal.jsp | `WEB-INF/view/sales/` | Public | Dynamic application form with conditional sections |
+| applicationConfirmation.jsp | `WEB-INF/view/sales/` | Public | Post-submit confirmation page |
+| reviewApplications.jsp | `WEB-INF/view/sales/` | Internal | Application review list with multi-select status filter |
+| reviewApplication.jsp | `WEB-INF/view/sales/` | Internal | Application review detail with field rendering and action panel |
+| manualSetup.jsp | `WEB-INF/view/sales/` | Internal | Manual setup creation form (no application required) |
 
 ---
 
@@ -236,40 +276,10 @@ LOS 7 (old HRA/MERP) was deleted and replaced by 11-15 in Session 3.
 
 ---
 
-## Servlets
-
-| Servlet | Package | URL | Auth | Purpose |
-|---------|---------|-----|------|---------|
-| ProposalBuilder | controller/activity/setup | `/ProposalBuilder` | Yes | Agent creates proposal (GET=form, POST=create) |
-| ProposalDetail | controller/activity/setup | `/ProposalDetail` | Yes | Internal proposal detail view |
-| CreateProspect | controller/activity/setup | `/CreateProspect` | Yes | Creates prospect from modal in ProposalBuilder |
-| SendProposal | controller/activity/setup | `/SendProposal` | Yes | Emails proposal link to prospect |
-| ViewProposal | controller/activity/setup | `/viewProposal/*` | **No** | Public proposal landing page (GUID) |
-| ApplyForProposal | controller/activity/setup | `/apply/*` | **No** | Public application form (GET) + submit (POST) |
-| SaveApplicationProgress | controller/activity/setup | `/saveApplication` | **No** | AJAX auto-save field values |
-| UploadRateSheet | controller/activity/setup | `/uploadRateSheet` | **No** | AJAX file upload to Wasabi |
-| GenerateProp25 | controller/activity/setup | `/GenerateProp25` | Yes | Legacy proposal+setup generator (has Setup creation logic) |
-
-Public endpoints (`/apply/*`, `/saveApplication`, `/uploadRateSheet`, `/viewProposal/*`) are whitelisted in `LoginFilter`.
-
----
-
-## JSPs
-
-| JSP | Path | Access | Purpose |
-|-----|------|--------|---------|
-| proposalBuilder.jsp | `WEB-INF/view/sales/` | Internal | 3-step proposal creation form |
-| proposalDetail.jsp | `WEB-INF/view/sales/` | Internal | Proposal detail with status, pricing, GUID link |
-| viewProposal.jsp | `WEB-INF/view/sales/` | Public | Prospect-facing proposal with features, pricing, "Apply Now" |
-| applyForProposal.jsp | `WEB-INF/view/sales/` | Public | Dynamic application form with conditional sections |
-| applicationConfirmation.jsp | `WEB-INF/view/sales/` | Public | Post-submit confirmation page |
-
----
-
 ## Application Form Details
 
 ### Dynamic Section Assembly
-Sections load based on proposal's LOS list. A JPQL query fetches sections where `scope='ALL'` or where `applicationsectionlos` overlaps with the proposal's LOSs.
+Sections load based on proposal's LOS list. A JPQL query fetches sections where `scope='ALL'` or where `applicationsectionlos` overlaps with the proposal's LOSs. Fields within sections are sorted in Java after the query to work around an EclipseLink DISTINCT + JOIN FETCH ordering issue (the `@OrderBy` annotation is unreliable in this scenario).
 
 ### Conditional Show/Hide
 19 JavaScript rules control field visibility based on other field values. When a trigger field's parent section is hidden (LOS not selected), dependent fields are also hidden. Hidden fields are cleared on hide.
@@ -281,10 +291,55 @@ The Billing section includes a JSON-based plan builder for defining benefit plan
 `UploadRateSheet` servlet accepts multipart file uploads, stores them in Wasabi under `applications/{proposalId}/{uuid}/{filename}` via `StorageDAO`, and returns a JSON response with the storage key.
 
 ### Save & Restore
-`SaveApplicationProgress` saves all field values via AJAX (manual button + auto-save every 60 seconds when dirty). On page reload, `ApplyForProposal` GET queries saved `ApplicationFieldValue` rows and merges them into the defaults map. JSON values use HTML entity escaping for safe attribute embedding.
+`SaveApplicationProgress` saves all field values via AJAX (manual button + auto-save every 60 seconds when dirty). On page reload, `ApplyForProposal` GET queries saved `ApplicationFieldValue` rows and merges them into the defaults map. JSON values use HTML entity escaping for safe attribute embedding. The proposal query must include `LEFT JOIN FETCH p.application` to avoid duplicate Application creation.
 
 ### IRS Limits
 `SalesDAO.getIrsLimits()` loads limits for the current plan year (falls back to most recent year). Limits display as read-only reference values in relevant sections (FSA, HSA, Transit, Adoption, QSEHRA).
+
+---
+
+## Application Review Details
+
+### Review List (`ReviewApplications`)
+- Defaults to showing only SUBMITTED applications
+- Multi-select status filter: click individual status buttons to toggle them on/off
+- Clicking ALL selects all statuses; clicking any individual status deselects ALL
+- If all 5 individual statuses are selected, treated as ALL
+- Deselecting last status falls back to SUBMITTED
+- Servlet accepts `?status=SUBMITTED,UNDER_REVIEW` (comma-separated) or `?status=ALL`
+- Flash messages via `msg` and `err` query params from redirect after actions
+
+### Review Detail (`ReviewApplication`)
+- GET loads application with all field values joined to ApplicationField and ApplicationSection
+- Builds `valueMap` (fieldKey → value) for JSP rendering
+- Loads sections scoped to proposal's LOS list (same query pattern as `ApplyForProposal`)
+- Extracts `storageKey` values from `bill_benefit_plans` JSON and generates pre-signed Wasabi download URLs (1-hour expiry) via `StorageDAO.getDownloadUrl()`
+- Two-column layout: application data left, sticky action panel right
+- Field rendering by type: BOOLEAN → Yes/No icons, CHECKBOX → pipe-split badges, TEXTAREA → pre-wrapped, JSON (benefit plans) → JavaScript-rendered cards with tier tables and download buttons
+
+### Review Actions (POST)
+| Action | Application Status | Proposal Status | Additional |
+|--------|-------------------|-----------------|------------|
+| `under_review` | UNDER_REVIEW | (unchanged) | Redirects back to detail |
+| `approve` | APPROVED | APPROVED | Creates Setup + CheckList + ToDos, updates activity cache |
+| `deny` | DENIED | DENIED | Sets reviewedBy, dateReviewed, reviewNotes |
+| `more_info` | MORE_INFO | (unchanged) | Sets reviewNotes |
+
+### Setup Creation on Approval
+Mirrors `GenerateProp25.createSetup()` / `createChecklist()` / `fillToDoList()`:
+
+1. Create CheckList with dummy task 153 (pre-completed, sortOrder 0)
+2. Create Setup linked to Application, Prospect contact, current user
+3. Link CheckList back to Setup
+4. Fill ToDo list from `ApplicationTaskDAO.getTasksRequiredForApplication()` (walks `ApplicationModule` → `TemplatePurpose` → `RequiredTaskList`)
+5. If no tasks found, inserts task 153 as fallback (see backlog item T8 for planned cleanup)
+6. Update `AmsDataGlobal` / `AmsDataLocal` activity caches for immediate display
+
+### Manual Setup
+- `GenerateProp25` GET with no params forwards to `manualSetup.jsp` form
+- Form collects company name, contact, email, and `q1`–`q8` module flags (legacy LOS mapping)
+- POST creates full Prospect → Proposal → Application → Setup chain
+- **Known limitation:** `q1`–`q8` only covers original 6 LOSs + 2 modules. Expanded LOSs (IDs 11–19) not yet supported. See backlog item T9.
 
 ---
 
@@ -294,7 +349,9 @@ The Billing section includes a JSON-based plan builder for defining benefit plan
 2. **Application data model** — Original `DataKey`/`DataPair`/`ApplicationData` entities were replaced with `ApplicationField`/`ApplicationFieldValue` (two tables instead of three).
 3. **Section scoping** — `ApplicationSection.scope` is either `ALL` (always shown) or `LOS` (shown only when a matching LOS is in the proposal, via `applicationsectionlos` join).
 4. **PSP on Prospect** — Currently inferred through agent's PSP. Direct `psp_id` on Prospect is a future consideration.
-5. **Setup creation** — `GenerateProp25` already contains the logic for creating Setup + CheckList + ToDo items from an Application. The review/approve UI will call similar logic.
+5. **Setup creation** — `ReviewApplication` creates Setup on approval using the same pattern as `GenerateProp25`. Manual setup (no application) is still supported via `GenerateProp25` directly.
+6. **Application PK** — `Application` uses `@Id @OneToOne Proposal` as its PK (not a generated Long). Queries that access `proposal.getApplication()` must use `LEFT JOIN FETCH p.application` to avoid lazy-load or duplicate-insert issues.
+7. **Field sort workaround** — EclipseLink's `DISTINCT` + `JOIN FETCH` scrambles `@OrderBy` annotations. Fields are re-sorted in Java after the query.
 
 ---
 
@@ -322,10 +379,9 @@ All scripts are in `docs/` at the repo root. Run in order.
 
 ## Remaining Work
 
-1. **Application review/approve UI** — Internal PSP view: list submitted applications, view field values grouped by section, deserialize JSON benefit plans with download links for uploaded rate sheets, approve/deny actions
-2. **Automated Setup creation on approval** — When approved: create Setup activity, build checklist from ApplicationModule templates, link back to Application
-3. **Full pipeline test** — Create → Send → View → Apply → Save → Submit → Review → Approve → Setup created
-4. **Production migration** — Run all 3 migration scripts, fill in S3 constants, deploy code
+1. **Refactor manual setup to dynamic LOS** — `GenerateProp25` uses hardcoded `q1`–`q8` flags mapped to old LOS IDs. Needs refactor to accept dynamic LOS list from DB. See backlog T9. (CONF priority)
+2. **Production migration** — Run all 3 migration scripts, fill in S3 constants, deploy code
+3. **Empty checklist handling** — Remove task-153 dummy workaround. See backlog T8. (LOW priority)
 
 ---
 
@@ -357,3 +413,17 @@ All scripts are in `docs/` at the repo root. Run in order.
 - Built applicationConfirmation.jsp
 - Completed ApplyForProposal POST handler (submit, set SUBMITTED/APPLIED statuses)
 - Created `sales_pipeline_migration_3.sql`
+
+### Session 4 (Feb 20, 2026)
+- Built ReviewApplications servlet + JSP (list view with multi-select status filtering, defaults to SUBMITTED)
+- Built ReviewApplication servlet + JSP (detail view with field rendering, JSON benefit plan display, Wasabi download links)
+- Implemented approve/deny/more-info/under-review actions with review notes
+- Automated Setup + CheckList + ToDo creation on approval (mirrors GenerateProp25 pattern)
+- Built manualSetup.jsp standalone form for GenerateProp25 (param guard on GET)
+- Added "Review Application" / "View Approved/Denied Application" buttons to proposalDetail.jsp
+- Added `LEFT JOIN FETCH p.application` to ProposalDetail and SaveApplicationProgress queries (fixed lazy-load and duplicate-insert bugs)
+- Fixed field sort order in ApplyForProposal (EclipseLink DISTINCT + JOIN FETCH workaround — explicit Java sort after query)
+- Added Home navigation to review list and detail pages
+- Updated adminMenuOC.jsp with "Create Proposal" and "Review Applications" links
+- Full end-to-end pipeline test passed: Create → Send → View → Apply → Save → Submit → Review → Approve → Setup created
+- Added backlog items: T8 (empty checklist handling), T9 (refactor manual setup to dynamic LOS)

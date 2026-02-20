@@ -40,7 +40,15 @@ import java.util.List;
 public class GenerateProp25 extends HttpServlet {
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-        doThis(request,response);
+        // If required params are missing, show the manual setup form
+        String contact = request.getParameter("contact");
+        String email = request.getParameter("email");
+        String cname = request.getParameter("cname");
+        if (contact == null || contact.isBlank() || email == null || email.isBlank() || cname == null || cname.isBlank()) {
+            request.getRequestDispatcher("/WEB-INF/view/sales/manualSetup.jsp").forward(request, response);
+            return;
+        }
+        doThis(request, response);
     }
 
     @Override

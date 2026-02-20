@@ -18,7 +18,7 @@
      border-radius:12px; overflow:hidden;
      box-shadow:0 8px 32px rgba(0,0,0,0.18);
      background:#fff; border:1px solid #dee2e6;
-     display:flex; flex-direction:column;">
+     flex-direction:column;">
 
             <%-- Header --%>
         <div style="background:linear-gradient(135deg,#2B5F8A,#3a7bc8); color:#fff;

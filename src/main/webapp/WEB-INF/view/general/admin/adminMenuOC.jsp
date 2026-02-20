@@ -53,6 +53,14 @@
       <i class="bi bi-people-fill"></i>
       Manage Agencies and Agents
     </a>
+    <a class="btn btn-outline-ssa btn-sm w-100 mt-1" href="ProposalBuilder">
+      <i class="bi bi-file-earmark-plus"></i>
+      Create Proposal
+    </a>
+    <a class="btn btn-outline-ssa btn-sm w-100 mt-1" href="ReviewApplications">
+      <i class="bi bi-clipboard-check"></i>
+      Review Applications
+    </a>
     <c:if test="${sessionScope.currentPerson.getId()==104}">
       <div class="btn btn-altSsa w-100 mt-2 pe-none text-uppercase fw-bold">
         <i class="bi bi-cash"></i>&nbsp;
@@ -64,8 +72,8 @@
     <div class="btn btn-ssa w-100 mt-1 mb-1 pe-none text-uppercase fw-bold">
       <i class="bi bi-calendar"></i> Monthly Processes</div>
     <a class="btn btn-outline-ssa btn-sm w-100 mb-1"  href="CreateBillingChecklist">
-          <i class="bi bi-1-square"></i>
-          Generate Monthly Checklist
+      <i class="bi bi-1-square"></i>
+      Generate Monthly Checklist
     </a>
     <button type="button" class="btn btn-danger w-100 mt-2" data-bs-toggle="modal" data-bs-target="#updatePspMod" >
       <i class="bi bi-exclamation"></i> Update PSP Detail
@@ -75,4 +83,3 @@
     </a>
   </div>
 </div>
-

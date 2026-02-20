@@ -47,12 +47,19 @@ public class ApplyForProposal extends HttpServlet {
             // Load matching sections: scope=ALL, or scope=LOS with overlapping LOSs
             Query sq = em.createQuery(
                     "SELECT DISTINCT s FROM ApplicationSection s " +
-                            "LEFT JOIN FETCH s.fieldList f " +
+                            "LEFT JOIN FETCH s.fieldList " +
                             "LEFT JOIN s.losList los " +
                             "WHERE s.scope = 'ALL' OR los.id IN :losIds " +
-                            "ORDER BY s.sortOrder, f.sortOrder");
+                            "ORDER BY s.sortOrder");
             sq.setParameter("losIds", losIds);
             List<ApplicationSection> sections = sq.getResultList();
+
+            // EclipseLink DISTINCT + JOIN FETCH can scramble @OrderBy — re-sort fields
+            for (ApplicationSection sec : sections) {
+                if (sec.getFieldList() != null) {
+                    sec.getFieldList().sort(java.util.Comparator.comparingInt(ApplicationField::getSortOrder));
+                }
+            }
 
             // PSP branding
             String primaryColor = AppConstantDAO.getConstantValue(em, "EMAIL_COLOR_PRIMARY");

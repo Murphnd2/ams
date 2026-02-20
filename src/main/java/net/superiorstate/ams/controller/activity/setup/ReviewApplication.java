@@ -1,0 +1,406 @@
+package net.superiorstate.ams.controller.activity.setup;
+
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.EntityManagerFactory;
+import jakarta.persistence.Query;
+import jakarta.servlet.*;
+import jakarta.servlet.http.*;
+import jakarta.servlet.annotation.*;
+import net.superiorstate.ams.data.AmsDataGlobal;
+import net.superiorstate.ams.data.AmsDataLocal;
+import net.superiorstate.ams.data.dao.ActivityDAO;
+import net.superiorstate.ams.data.dao.AppConstantDAO;
+import net.superiorstate.ams.data.dao.ApplicationTaskDAO;
+import net.superiorstate.ams.data.dao.StorageDAO;
+import net.superiorstate.ams.data.resolver.EntityLookup;
+import net.superiorstate.ams.model.Activity25;
+import net.superiorstate.ams.model.Activity25u;
+import net.superiorstate.ams.model.activity.checklist.CheckList;
+import net.superiorstate.ams.model.activity.checklist.tasks.SortedTask;
+import net.superiorstate.ams.model.activity.checklist.tasks.Task;
+import net.superiorstate.ams.model.activity.checklist.tasks.ToDo;
+import net.superiorstate.ams.model.activity.ticket.setup.Setup;
+import net.superiorstate.ams.model.general.Person;
+import net.superiorstate.ams.model.sales.agency.Proposal;
+import net.superiorstate.ams.model.sales.agency.Prospect;
+import net.superiorstate.ams.model.sales.application.*;
+import net.superiorstate.ams.model.sales.offering.LOS;
+
+import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.sql.Date;
+import java.sql.Timestamp;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.util.*;
+import java.util.stream.Collectors;
+
+@WebServlet(name = "ReviewApplication", value = "/ReviewApplication")
+public class ReviewApplication extends HttpServlet {
+
+    // ======================== GET — Load application detail ========================
+
+    @Override
+    protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        Person currentPerson = (Person) request.getSession().getAttribute("currentPerson");
+        if (currentPerson == null) {
+            response.sendRedirect("Login");
+            return;
+        }
+
+        String idParam = request.getParameter("id");
+        if (idParam == null || idParam.isBlank()) {
+            response.sendRedirect("ReviewApplications?err=" + encode("Missing application ID"));
+            return;
+        }
+
+        EntityManagerFactory emf = (EntityManagerFactory) getServletContext().getAttribute("emf");
+        EntityManager em = emf.createEntityManager();
+
+        try {
+            long proposalId = Long.parseLong(idParam);
+
+            // Load application with proposal, prospect, contact, LOS list
+            Query aq = em.createQuery(
+                    "SELECT a FROM Application a " +
+                            "JOIN FETCH a.proposal p " +
+                            "JOIN FETCH p.prospect pr " +
+                            "JOIN FETCH pr.contact " +
+                            "LEFT JOIN FETCH p.losList " +
+                            "LEFT JOIN FETCH a.setup " +
+                            "WHERE a.proposal.id = :pid");
+            aq.setParameter("pid", proposalId);
+            Application application;
+            try {
+                application = (Application) aq.getSingleResult();
+            } catch (Exception e) {
+                response.sendRedirect("ReviewApplications?err=" + encode("Application not found"));
+                return;
+            }
+
+            // Load field values for this application
+            Query fvq = em.createQuery(
+                    "SELECT fv FROM ApplicationFieldValue fv " +
+                            "JOIN FETCH fv.applicationField af " +
+                            "JOIN FETCH af.applicationSection " +
+                            "WHERE fv.application.proposal.id = :pid");
+            fvq.setParameter("pid", proposalId);
+            List<ApplicationFieldValue> fieldValues = fvq.getResultList();
+
+            // Build a map: fieldKey -> fieldValue
+            Map<String, String> valueMap = new LinkedHashMap<>();
+            for (ApplicationFieldValue fv : fieldValues) {
+                valueMap.put(fv.getApplicationField().getFieldKey(), fv.getFieldValue());
+            }
+
+            // Load sections relevant to this proposal's LOS list (same logic as ApplyForProposal)
+            List<Long> losIds = application.getProposal().getLosList().stream()
+                    .map(LOS::getId).collect(Collectors.toList());
+
+            Query sq = em.createQuery(
+                    "SELECT DISTINCT s FROM ApplicationSection s " +
+                            "LEFT JOIN FETCH s.fieldList f " +
+                            "LEFT JOIN s.losList los " +
+                            "WHERE s.scope = 'ALL' OR los.id IN :losIds " +
+                            "ORDER BY s.sortOrder");
+            sq.setParameter("losIds", losIds);
+            List<ApplicationSection> sections = sq.getResultList();
+
+            // Generate pre-signed download URLs for any rate sheet storage keys in JSON plans
+            String pspName = getPspName(em);
+            Map<String, String> downloadUrls = new HashMap<>();
+            String plansJson = valueMap.get("bill_benefit_plans");
+            if (plansJson != null && plansJson.contains("storageKey")) {
+                // Extract storageKey values from JSON — simple approach without a JSON library
+                // Each storageKey looks like: "storageKey":"applications/123/uuid/filename.pdf"
+                int idx = 0;
+                while ((idx = plansJson.indexOf("\"storageKey\"", idx)) >= 0) {
+                    int colonIdx = plansJson.indexOf(":", idx);
+                    int startQuote = plansJson.indexOf("\"", colonIdx + 1);
+                    int endQuote = plansJson.indexOf("\"", startQuote + 1);
+                    if (startQuote >= 0 && endQuote > startQuote) {
+                        String key = plansJson.substring(startQuote + 1, endQuote);
+                        if (!key.isEmpty()) {
+                            try {
+                                String url = StorageDAO.getDownloadUrl(em, pspName, key);
+                                downloadUrls.put(key, url);
+                            } catch (Exception e) {
+                                System.out.println("[ReviewApplication] Could not generate URL for: " + key);
+                            }
+                        }
+                    }
+                    idx = endQuote + 1;
+                }
+            }
+
+            request.setAttribute("application", application);
+            request.setAttribute("sections", sections);
+            request.setAttribute("valueMap", valueMap);
+            request.setAttribute("downloadUrls", downloadUrls);
+            request.setAttribute("plansJson", plansJson != null ? plansJson : "[]");
+
+            request.getRequestDispatcher("/WEB-INF/view/sales/reviewApplication.jsp").forward(request, response);
+
+        } catch (NumberFormatException e) {
+            response.sendRedirect("ReviewApplications?err=" + encode("Invalid application ID"));
+        } catch (Exception e) {
+            e.printStackTrace();
+            response.sendError(500, "Error loading application");
+        } finally {
+            em.close();
+        }
+    }
+
+    // ======================== POST — Approve / Deny / More Info ========================
+
+    @Override
+    protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        Person currentPerson = (Person) request.getSession().getAttribute("currentPerson");
+        if (currentPerson == null) {
+            response.sendRedirect("Login");
+            return;
+        }
+
+        String idParam = request.getParameter("id");
+        String action = request.getParameter("action");
+        String reviewNotes = request.getParameter("reviewNotes");
+
+        if (idParam == null || action == null) {
+            response.sendRedirect("ReviewApplications?err=" + encode("Missing parameters"));
+            return;
+        }
+
+        EntityManagerFactory emf = (EntityManagerFactory) getServletContext().getAttribute("emf");
+        EntityManager em = emf.createEntityManager();
+
+        try {
+            long proposalId = Long.parseLong(idParam);
+            Application application = EntityLookup.getApplicationById(em, proposalId);
+            if (application == null) {
+                response.sendRedirect("ReviewApplications?err=" + encode("Application not found"));
+                return;
+            }
+
+            Proposal proposal = application.getProposal();
+
+            switch (action) {
+                case "approve":
+                    // Update Application status
+                    em.getTransaction().begin();
+                    application.setStatus("APPROVED");
+                    application.setDateReviewed(Timestamp.from(Instant.now()));
+                    application.setReviewedBy(currentPerson);
+                    if (reviewNotes != null && !reviewNotes.isBlank())
+                        application.setReviewNotes(reviewNotes.trim());
+                    em.merge(application);
+                    em.getTransaction().commit();
+
+                    // Update Proposal status
+                    em.getTransaction().begin();
+                    proposal.setStatus("APPROVED");
+                    em.merge(proposal);
+                    em.getTransaction().commit();
+
+                    // Create Setup activity
+                    Prospect prospect = proposal.getProspect();
+                    CheckList checkList = createChecklist(em, prospect.getName(), currentPerson);
+                    Setup setup = createSetup(em, prospect, application, checkList, currentPerson);
+                    fillToDoList(em, setup, currentPerson);
+                    updateActivityCache(request, em, setup);
+
+                    response.sendRedirect("ReviewApplications?msg=" +
+                            encode("Application approved. Setup #" + setup.getId() + " created for " + prospect.getName()));
+                    break;
+
+                case "deny":
+                    em.getTransaction().begin();
+                    application.setStatus("DENIED");
+                    application.setDateReviewed(Timestamp.from(Instant.now()));
+                    application.setReviewedBy(currentPerson);
+                    if (reviewNotes != null && !reviewNotes.isBlank())
+                        application.setReviewNotes(reviewNotes.trim());
+                    em.merge(application);
+                    em.getTransaction().commit();
+
+                    em.getTransaction().begin();
+                    proposal.setStatus("DENIED");
+                    em.merge(proposal);
+                    em.getTransaction().commit();
+
+                    response.sendRedirect("ReviewApplications?msg=" +
+                            encode("Application denied for " + proposal.getProspect().getName()));
+                    break;
+
+                case "more_info":
+                    em.getTransaction().begin();
+                    application.setStatus("MORE_INFO");
+                    if (reviewNotes != null && !reviewNotes.isBlank())
+                        application.setReviewNotes(reviewNotes.trim());
+                    em.merge(application);
+                    em.getTransaction().commit();
+
+                    response.sendRedirect("ReviewApplications?msg=" +
+                            encode("Requested additional information for " + proposal.getProspect().getName()));
+                    break;
+
+                case "under_review":
+                    em.getTransaction().begin();
+                    application.setStatus("UNDER_REVIEW");
+                    em.merge(application);
+                    em.getTransaction().commit();
+
+                    response.sendRedirect("ReviewApplication?id=" + proposalId);
+                    break;
+
+                default:
+                    response.sendRedirect("ReviewApplication?id=" + proposalId);
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            response.sendRedirect("ReviewApplications?err=" + encode("Error processing action: " + e.getMessage()));
+        } finally {
+            em.close();
+        }
+    }
+
+    // ======================== Setup Creation (mirrors GenerateProp25) ========================
+
+    private CheckList createChecklist(EntityManager em, String erName, Person currentPerson) {
+        em.getTransaction().begin();
+        CheckList c = new CheckList();
+        c.setFullName(erName + " Checklist");
+        c.setDueDate(Date.valueOf(LocalDate.now().plusWeeks(2L)));
+        c.setComplete(false);
+        c.setLoggedBy(currentPerson);
+        em.persist(c);
+        em.getTransaction().commit();
+
+        // Add task 153 as the first (completed) todo — same as GenerateProp25
+        Task t = EntityLookup.getTaskById(em, 153L);
+        em.getTransaction().begin();
+        ToDo toDo = new ToDo();
+        toDo.setDateCompleted(Date.valueOf(LocalDate.now()));
+        toDo.setCompletedBy(currentPerson);
+        toDo.setComplete(true);
+        toDo.setTask(t);
+        toDo.setCheckList(c);
+        toDo.setSortOrder(0);
+        em.persist(toDo);
+        em.getTransaction().commit();
+
+        System.out.println("[ReviewApplication] Checklist Created: " + c.getFullName() + " ID: " + c.getId());
+        return c;
+    }
+
+    private Setup createSetup(EntityManager em, Prospect prospect, Application application,
+                              CheckList checkList, Person currentPerson) {
+        em.getTransaction().begin();
+        Setup setup = new Setup();
+        setup.setApplication(application);
+        setup.setPrimaryContactSetup(prospect.getContact());
+        setup.setComplete(false);
+        setup.setFullName(prospect.getName());
+        setup.setLoggedBy(currentPerson);
+        setup.setAssignedTo(currentPerson);
+        setup.setDueDate(Date.valueOf(LocalDate.now().plusWeeks(2)));
+        setup.setCheckList(checkList);
+        em.persist(setup);
+        em.getTransaction().commit();
+        System.out.println("[ReviewApplication] Setup Created for Proposal ID: " + application.getProposal().getId());
+
+        // Link checklist back to setup
+        em.getTransaction().begin();
+        CheckList c = EntityLookup.getCheckListById(em, checkList.getId());
+        assert c != null;
+        c.setAssignedTo(setup);
+        c.setSetup(setup);
+        em.persist(c);
+        em.getTransaction().commit();
+        System.out.println("[ReviewApplication] Checklist assigned to Setup");
+
+        return setup;
+    }
+
+    private void fillToDoList(EntityManager em, Setup setup, Person currentPerson) {
+        Application a = setup.getApplication();
+        CheckList c = setup.getCheckList();
+        List<SortedTask> sortedTaskList = ApplicationTaskDAO.getTasksRequiredForApplication(em, a);
+
+        if (sortedTaskList.isEmpty()) {
+            sortedTaskList.add(new SortedTask(EntityLookup.getTaskById(em, 153L), 1000));
+        } else {
+            System.out.println("[ReviewApplication] Sorted Task List Size = " + sortedTaskList.size());
+        }
+
+        for (SortedTask st : sortedTaskList) {
+            em.getTransaction().begin();
+            ToDo toDo = new ToDo();
+            toDo.setTask(st.getTask());
+            toDo.setSortOrder(st.getSortOrder());
+            toDo.setCheckList(c);
+            toDo.setComplete(false);
+            if (st.getTask().getId() == 153L)
+                toDo.setComplete(true);
+            em.persist(toDo);
+            em.getTransaction().commit();
+
+            em.getTransaction().begin();
+            CheckList checkList = EntityLookup.getCheckListById(em, c.getId());
+            assert checkList != null;
+            checkList.getToDoList().add(toDo);
+            em.persist(checkList);
+            em.getTransaction().commit();
+            System.out.println("[ReviewApplication] Todo created for Task: " + st.getTask().getDescription());
+        }
+    }
+
+    // ======================== Activity Cache Update (mirrors GenerateProp25) ========================
+
+    private void updateActivityCache(HttpServletRequest request, EntityManager em, Setup setup) {
+        try {
+            AmsDataGlobal global = (AmsDataGlobal) request.getServletContext().getAttribute("global");
+            AmsDataLocal local = (AmsDataLocal) request.getSession().getAttribute("local");
+
+            List<Activity25u> listToModify = new ArrayList<>(global.getActivitiesAllOpen());
+            Query q = em.createQuery("SELECT a FROM Activity25 a WHERE a.activity.id = :id");
+            q.setParameter("id", setup.getId());
+            Activity25 a25 = (Activity25) q.getSingleResult();
+            Activity25u au = new Activity25u(a25);
+            listToModify.add(au);
+            global.setActivitiesAllOpen(listToModify);
+
+            if (local != null) {
+                local.setActivitiesAllOpen(global.getActivitiesAllOpen());
+                local.getCurrentActivity().setReFilterOnExit(true);
+                request.getSession().setAttribute("local", local);
+            }
+            request.getServletContext().setAttribute("global", global);
+        } catch (Exception e) {
+            // Non-fatal — activity list will refresh on next page load
+            System.out.println("[ReviewApplication] Cache update skipped: " + e.getMessage());
+        }
+    }
+
+    // ======================== Helpers ========================
+
+    private String getPspName(EntityManager em) {
+        try {
+            return AppConstantDAO.getConstantValue(em, "PSP_NAME");
+        } catch (Exception e) {
+            try {
+                Query q = em.createQuery("SELECT p FROM PSP p WHERE p.id = 4");
+                net.superiorstate.ams.model.general.PSP psp =
+                        (net.superiorstate.ams.model.general.PSP) q.getSingleResult();
+                return psp.getFullName();
+            } catch (Exception ex) {
+                return "default";
+            }
+        }
+    }
+
+    private String encode(String value) {
+        return URLEncoder.encode(value, StandardCharsets.UTF_8);
+    }
+}

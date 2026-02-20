@@ -30,7 +30,7 @@ public class ProposalDetail extends HttpServlet {
         try {
             long proposalId = Long.parseLong(request.getParameter("id"));
 
-            Query q = em.createQuery("SELECT p FROM Proposal p LEFT JOIN FETCH p.losList WHERE p.id = :id");
+            Query q = em.createQuery("SELECT p FROM Proposal p LEFT JOIN FETCH p.losList LEFT JOIN FETCH p.application WHERE p.id = :id");
             q.setParameter("id", proposalId);
             Proposal proposal = (Proposal) q.getSingleResult();
 
@@ -58,7 +58,7 @@ public class ProposalDetail extends HttpServlet {
 
         try {
             if ("sendToProspect".equals(action)) {
-                Query q = em.createQuery("SELECT p FROM Proposal p LEFT JOIN FETCH p.losList WHERE p.id = :id");
+                Query q = em.createQuery("SELECT p FROM Proposal p LEFT JOIN FETCH p.losList LEFT JOIN FETCH p.application WHERE p.id = :id");
                 q.setParameter("id", proposalId);
                 Proposal proposal = (Proposal) q.getSingleResult();
 

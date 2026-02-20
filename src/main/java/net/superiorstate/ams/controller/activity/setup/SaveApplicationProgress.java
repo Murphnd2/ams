@@ -39,7 +39,7 @@ public class SaveApplicationProgress extends HttpServlet {
         EntityManager em = emf.createEntityManager();
 
         try {
-            Query q = em.createQuery("SELECT p FROM Proposal p LEFT JOIN FETCH p.losList WHERE p.applicationGUID = :guid");
+            Query q = em.createQuery("SELECT p FROM Proposal p LEFT JOIN FETCH p.losList LEFT JOIN FETCH p.application WHERE p.applicationGUID = :guid");
             q.setParameter("guid", guid);
             List<Proposal> results = q.getResultList();
             if (results.isEmpty()) {

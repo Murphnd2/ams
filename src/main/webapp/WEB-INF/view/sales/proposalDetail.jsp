@@ -119,17 +119,35 @@
         </div>
     </div>
 
-    <%-- Actions --%>
-    <div class="card mb-5">
-        <div class="card-body d-flex gap-2">
-            <a href="SendProposal?id=${proposal.getId()}" class="btn btn-primary">
-                <i class="bi bi-send me-1"></i>${proposal.getStatus() == 'SENT' ? 'Send Again' : 'Send Proposal'}
-            </a>
-            <a href="ProposalBuilder" class="btn btn-outline-secondary">
-                <i class="bi bi-arrow-left me-1"></i>Back to Builder
-            </a>
+        <%-- Actions --%>
+        <div class="card mb-5">
+            <div class="card-body d-flex flex-wrap gap-2">
+                <a href="SendProposal?id=${proposal.getId()}" class="btn btn-primary">
+                    <i class="bi bi-send me-1"></i>${proposal.getStatus() == 'SENT' ? 'Send Again' : 'Send Proposal'}
+                </a>
+                <c:if test="${proposal.getApplication() != null && (proposal.getApplication().getStatus() == 'SUBMITTED' || proposal.getApplication().getStatus() == 'UNDER_REVIEW' || proposal.getApplication().getStatus() == 'MORE_INFO')}">
+                    <a href="ReviewApplication?id=${proposal.getId()}" class="btn btn-warning">
+                        <i class="bi bi-clipboard-check me-1"></i>Review Application
+                    </a>
+                </c:if>
+                <c:if test="${proposal.getApplication() != null && proposal.getApplication().getStatus() == 'APPROVED'}">
+                    <a href="ReviewApplication?id=${proposal.getId()}" class="btn btn-success">
+                        <i class="bi bi-check-circle me-1"></i>View Approved Application
+                    </a>
+                </c:if>
+                <c:if test="${proposal.getApplication() != null && proposal.getApplication().getStatus() == 'DENIED'}">
+                    <a href="ReviewApplication?id=${proposal.getId()}" class="btn btn-outline-danger">
+                        <i class="bi bi-x-circle me-1"></i>View Denied Application
+                    </a>
+                </c:if>
+                <a href="ProposalBuilder" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left me-1"></i>Back to Builder
+                </a>
+                <a href="ReviewApplications" class="btn btn-outline-dark">
+                    <i class="bi bi-list-check me-1"></i>All Applications
+                </a>
+            </div>
         </div>
-    </div>
 
 </div>
 

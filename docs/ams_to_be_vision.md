@@ -391,6 +391,57 @@ These projects are valuable to Superior State specifically but are not prioritie
 
 ---
 
+## Technical Debt
+
+### 17. Empty Checklist / ToDo List Handling
+
+**Priority:** Low
+**Status:** Backlog
+
+**Overview:** Currently, every Setup, Renewal, and Ticket activity requires at least one ToDo item in its associated CheckList. When no sequence template exists for an activity's modules, a dummy task (ID 153) is inserted in a pre-completed state so the activity display layer doesn't break. This workaround should be replaced with proper null/empty handling throughout the display chain.
+
+**Current workaround:**
+
+- `GenerateProp25.createChecklist()` inserts task 153 as completed (sortOrder 0) on every new checklist.
+- `GenerateProp25.fillToDoList()` and `ReviewApplication.fillToDoList()` fall back to task 153 if `ApplicationTaskDAO.getTasksRequiredForApplication()` returns empty.
+- The display layer (`ViewActivity25` → `SessionVar` → `ActivityViewHelper` → `viewActivity.jsp`) renders the todo list and may assume at least one item exists.
+- `AddToDo25.getCheckList()` already handles empty lists gracefully by falling back to `local.getCurrentChecklist().getCheckList()`.
+
+**Investigation needed:**
+
+- `SessionVar.getCheckListToDos()` — returns `new ArrayList<>()` if empty. Safe.
+- `ActivityViewHelper.updateSessionAttributes()` — sets `currentToDoList` to `new ArrayList<>()` if null/empty. Safe.
+- `viewActivity.jsp` (and any sub-includes like checklist display partials) — need to verify that JSTL `<c:forEach>` over an empty list doesn't produce broken markup or missing UI sections. May need an explicit empty-state message.
+- `ToDoOut25` list construction in `SessionVar` / `AmsDataLocal` — verify no `.get(0)` or `.size()` assumptions without null checks.
+- `AddSetupModule25.addMissingTasksFromTemplatePurpose()` — accesses `checkList.getToDoList()` stream; verify safe on empty.
+- Progress/completion percentage calculations — may divide by todo count.
+
+**To-be goals:**
+
+- Remove the task 153 dummy insertion from `createChecklist()` in all setup creation paths.
+- Ensure `fillToDoList()` does nothing (or logs a note) when no tasks are required, rather than inserting a dummy.
+- Add an empty-state display in the checklist UI: "No tasks assigned — add tasks manually or assign a sequence template."
+- Audit all `.get(0)`, `.size()`, and stream operations on todo lists for null safety.
+- Verify that closing/completing an activity with zero todos works correctly.
+
+**Affected code:**
+
+| File | Concern |
+|------|---------|
+| `GenerateProp25.java` | `createChecklist()`, `fillToDoList()` — dummy task insertion |
+| `ReviewApplication.java` | `createChecklist()`, `fillToDoList()` — same pattern |
+| `SessionVar.java` | `getCheckListToDos()`, `refreshToDoOutList()` — empty list handling |
+| `ActivityViewHelper.java` | `updateSessionAttributes()` — already handles empty |
+| `AmsDataLocal.java` | `CurrentChecklist` inner class, `respondToActivityUpdate()` |
+| `AddToDo25.java` | `getCheckList()` — already handles empty |
+| `AddSetupModule25.java` | `addMissingTasksFromTemplatePurpose()` — stream on todoList |
+| `viewActivity.jsp` | Checklist display rendering — needs empty-state audit |
+| `ToDoOut25.java` | DTO — no issue itself, but callers may assume non-empty lists |
+
+**Ties to:** Sequence Template Overhaul (§4), Sales Portal setup creation (§2).
+
+---
+
 ## Standing Architectural Principles
 
 These apply across all projects and should be considered in every development decision:

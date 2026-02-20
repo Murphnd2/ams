@@ -29,7 +29,7 @@
 | # | Feature | Priority | Status | Spec Doc | Notes |
 |---|---------|----------|--------|----------|-------|
 | 1 | Users and Roles Enhancement | CONF | 🔨 Active | `ams_to_be_vision.md` §1 | User/Admin/Accountant roles. SSO future. Basic auth working. |
-| 2 | **Sales Portal** | **CONF** | **🔨 Active** | **`sales_pipeline_reference.md`** | **Proposal flow complete through submit. Review/approve UI next. See reference doc for full status.** |
+| 2 | **Sales Portal** | **CONF** | **🔨 Active** | **`sales_pipeline_reference.md`** | **Review/approve UI built. Automated setup creation on approval built. Full pipeline test next.** |
 | 3 | Sales / Marketing Library | CONF | 💡 Backlog | `ams_to_be_vision.md` §3 | MarketingMaterial entity created. UI and Wasabi storage TBD. |
 | 4 | Sequence Template Overhaul | CONF | ✅ Done | `sequence_overhaul_summary.md` | New drag-and-drop builder complete. Old pages preserved for cleanup. |
 | 5 | Third-Party Vendor Task Outsourcing | CONF | 💡 Backlog | `ams_to_be_vision.md` §5 | Federated model. Task entity has sourcing flags. API sync layer TBD. |
@@ -64,6 +64,8 @@
 | T5 | Sequence builder old page cleanup | LOW | 📋 Planned | `sequence_overhaul_summary.md` | Delete old builder JSPs/servlets after new builder proven. |
 | T6 | Database migration tracking | HIGH | 🔨 Active | `migration_tracker.md` | 3 sales pipeline scripts + chatbot script pending production. |
 | T7 | Docs cleanup | MED | 🔨 Active | — | Consolidating stale analysis docs. In progress this session. |
+| T8 | Empty checklist / todo list handling | LOW | 💡 Backlog | `ams_to_be_vision.md` §17 | Remove task-153 dummy workaround. Audit display chain for empty todo list safety. See §17 for full file list. |
+| T9 | Refactor manual setup to dynamic LOS | CONF | 📋 Planned | — | `GenerateProp25` uses hardcoded `q1`–`q8` flags mapped to old LOS IDs (5–10) and hardcoded TP IDs (11–19). Needs refactor: form loads LOS from DB, servlet accepts LOS ID list, `fillProposal`/`fillApplication` derive modules via `losmodules` → `ServiceModule` → `TemplatePurpose` chain. Covers all 15 LOSs (IDs 5–19). Stopgap form (`manualSetup.jsp`) works for original 8 modules. |
 
 ---
 
@@ -89,8 +91,9 @@
 | Save/Restore Progress | ✅ |
 | Rate Sheet Upload (Wasabi) | ✅ |
 | Submit Application | ✅ |
-| Application Review/Approve UI | ❌ Next |
-| Automated Setup Creation | ❌ |
+| Application Review/Approve UI | ✅ |
+| Automated Setup Creation | ✅ |
+| Full Pipeline Test | ❌ Next |
 | Production DB Migration | ❌ 3 scripts pending |
 
 ---
