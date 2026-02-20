@@ -1,20 +1,22 @@
 # AI Employee Knowledge Assistant — Feature Specification
 
-**Created:** February 19, 2026  
-**Status:** Planning  
-**Priority:** Medium  
-**Branch:** `feature/ai-chatbot` (when ready)  
-**Dependencies:** Anthropic API key, all JSON knowledge base files finalized
+**Created:** February 19, 2026
+**Updated:** February 19, 2026
+**Status:** Phase 1 & 2 Complete — Ready for Testing
+**Priority:** Medium
+**Dependencies:** Anthropic API key (✅ configured), all JSON knowledge base files (✅ complete)
 
 ---
 
 ## Overview
 
-An AI-powered chatbox embedded in the AMS website that allows authenticated users to ask questions and receive answers sourced from indexed company knowledge bases. The system uses Claude's API with retrieval-augmented generation (RAG) — relevant chunks from pre-indexed JSON files are sent as context with each question.
+An AI-powered chatbox embedded in the AMS website that allows authenticated users to ask questions and receive answers sourced from indexed company knowledge bases and resolved ticket history. The system uses Claude's API with retrieval-augmented generation (RAG) — relevant chunks from pre-indexed JSON files plus live database queries are sent as context with each question.
 
 ---
 
 ## Knowledge Bases
+
+### Static Knowledge Bases (JSON)
 
 All knowledge bases share a common JSON structure and are stored in `src/main/resources/knowledge/`.
 
@@ -26,7 +28,17 @@ All knowledge bases share a common JSON structure and are stored in `src/main/re
 | `business_continuity` | `business_continuity_indexed.json` | Business Continuity | TBD | TBD | Admin only |
 | `backup_recovery` | `backup_recovery_indexed.json` | Backup & Recovery Procedures | TBD | TBD | Admin only |
 
-### Chunk Structure
+### Live Knowledge Base (Database)
+
+**Resolved Tickets** — Completed tickets with resolution-flagged notes are queried live from the database. This provides institutional knowledge of how past issues were resolved.
+
+- **Source:** `Ticket` + `Note` tables (where `isComplete=true` AND `note.isResolution=true`)
+- **Legacy cutoff:** Only tickets created on or after 2026-02-19 are included
+- **Search:** LIKE matching against ticket description, subcategory, category, and resolution note text
+- **Access:** All authenticated users
+- **Format:** Results formatted inline with the same context pattern as JSON KB chunks
+
+### Chunk Structure (JSON KBs)
 ```json
 {
   "source": "Name of knowledge base",
@@ -47,7 +59,7 @@ All knowledge bases share a common JSON structure and are stored in `src/main/re
 
 ### Configuration Registry
 
-`knowledge-config.json` registers all knowledge bases with metadata used by the search service for routing and access control.
+`knowledge-config.json` registers all static knowledge bases with metadata used by the search service for routing and access control.
 
 ```json
 {
@@ -57,7 +69,6 @@ All knowledge bases share a common JSON structure and are stored in `src/main/re
       "file": "summit_guide_indexed.json",
       "label": "DataPath Summit Guide",
       "keywords": ["summit", "hsa", "fsa", "hra", "cobra", "billing", "benefits", "enrollment", "debit card", "claims"],
-      "accessRole": "user",
       "enabled": true
     },
     {
@@ -65,7 +76,6 @@ All knowledge bases share a common JSON structure and are stored in `src/main/re
       "file": "summit_videos.json",
       "label": "Summit Training Videos",
       "keywords": ["video", "training", "how to", "watch", "tutorial"],
-      "accessRole": "user",
       "enabled": true
     },
     {
@@ -73,7 +83,6 @@ All knowledge bases share a common JSON structure and are stored in `src/main/re
       "file": "wave_help_indexed.json",
       "label": "Wave Accounting Help",
       "keywords": ["wave", "invoice", "accounting", "payment", "receipt", "bank", "reports"],
-      "accessRole": "admin",
       "enabled": true
     },
     {
@@ -81,7 +90,6 @@ All knowledge bases share a common JSON structure and are stored in `src/main/re
       "file": "business_continuity_indexed.json",
       "label": "Business Continuity",
       "keywords": ["continuity", "disaster", "recovery", "systems", "network", "infrastructure", "vendor", "access"],
-      "accessRole": "admin",
       "enabled": true
     },
     {
@@ -89,7 +97,6 @@ All knowledge bases share a common JSON structure and are stored in `src/main/re
       "file": "backup_recovery_indexed.json",
       "label": "Backup & Recovery Procedures",
       "keywords": ["backup", "restore", "recovery", "rclone", "wasabi", "s3", "mysql", "dump", "windows server backup"],
-      "accessRole": "admin",
       "enabled": true
     }
   ]
@@ -104,10 +111,10 @@ Access is role-based, using the existing `User` / `UserRole` system:
 
 | Role | Knowledge Bases Available | Notes |
 |------|--------------------------|-------|
-| **User** (UserRole id=1) | Summit Guide, Summit Videos | Standard PSP employees — benefits admin questions only |
-| **Admin** (UserRole id=2) | All five knowledge bases | Internal admins — full access including Wave, BC, and Backup/Recovery |
+| **PSP User** (UserRole id=1) | Summit Guide, Summit Videos, Resolved Tickets | Standard employees — benefits admin questions only |
+| **PSP Admin** (UserRole id=5) | All five JSON KBs + Resolved Tickets | Full access including Wave, BC, and Backup/Recovery |
 
-The chatbot servlet checks the authenticated user's roles from `AmsDataLocal` (session) and filters which knowledge bases are searchable based on the `accessRole` field in `knowledge-config.json`.
+The chatbot servlet checks `AmsDataLocal.isPspAdmin()` from the session and filters which knowledge bases are searchable.
 
 ---
 
@@ -120,30 +127,44 @@ User types question in chatbox UI
         ↓
 AJAX POST → /ChatAssistant (servlet)
         ↓
-Servlet checks authentication (LoginFilter already covers this)
+Servlet checks authentication (AmsDataLocal from session)
         ↓
 Servlet determines user role → filters eligible knowledge bases
         ↓
 KnowledgeSearchService.search(question, eligibleKBs)
-  - Route to relevant KBs based on keyword matching against question
+  - Route to relevant KBs based on keyword matching
   - Search chunk keywords + content for relevance
-  - Return top N matching chunks (e.g., top 5-8)
+  - Return top 8 matching chunks
+        ↓
+TicketKnowledgeDAO.searchResolvedTickets(em, searchTerms, 5)
+  - Query completed tickets with resolution notes
+  - Filter by legacy cutoff date (2026-02-19)
+  - Return top 5 formatted ticket results
+        ↓
+Combine KB context + ticket context
         ↓
 Build Claude API request:
-  - System prompt with instructions + source citation rules
-  - Context: matched chunks with source labels
+  - System prompt with instructions + citation rules
+  - Context: matched chunks + resolved tickets
   - User message: the question
         ↓
-POST to Anthropic Messages API (claude-haiku-4-5 or claude-sonnet-4-5)
+POST to Anthropic Messages API (claude-haiku-4-5)
         ↓
-Parse response, include video links if relevant
-        ↓
-JSON response → chatbox UI renders answer with citations
+JSON response → chatbox UI renders answer
 ```
 
-### File Storage
+### File Layout
 
 ```
+src/main/java/net/superiorstate/ams/
+├── controller/assistant/
+│   └── ChatAssistant.java              ← @WebServlet("/ChatAssistant"), AJAX endpoint
+├── data/service/
+│   ├── ClaudeApiService.java           ← Anthropic API HTTP calls
+│   └── KnowledgeSearchService.java     ← JSON KB loading, chunk search, ranking
+├── data/dao/
+│   └── TicketKnowledgeDAO.java         ← Live query for resolved tickets
+
 src/main/resources/knowledge/
 ├── knowledge-config.json
 ├── summit_guide_indexed.json
@@ -151,24 +172,21 @@ src/main/resources/knowledge/
 ├── wave_help_indexed.json
 ├── business_continuity_indexed.json
 └── backup_recovery_indexed.json
-```
 
-### Proposed Java Components
-
-```
-controller/
-└── assistant/
-    └── ChatAssistant.java          ← @WebServlet, handles AJAX POST
-
-data/
-└── service/
-    ├── KnowledgeSearchService.java ← Loads KBs, searches chunks, ranks results
-    └── ClaudeApiService.java       ← Builds and sends requests to Anthropic API
+src/main/webapp/WEB-INF/view/a/general/
+└── chatAssistant25.jsp                 ← Slide-out chatbox UI component
 ```
 
 ### UI Component
 
-A chatbox panel embedded in the main AMS layout (likely in `navbar25.jsp` or a shared include). Opens as a slide-out or modal. Available on all authenticated pages.
+A floating button (bottom-right corner) that opens a slide-out chat panel. Included via `<c:import>` in `navbar25.jsp` and available on all authenticated pages. Only renders when `sessionScope.local.isAuthenticated() == true`.
+
+Features:
+- Chat bubble UI with user/assistant message styling
+- Loading indicator ("Thinking...") during API call
+- Markdown-style response formatting (links, bold, line breaks)
+- Input disabled while waiting for response
+- Color scheme matches AMS brand (`#2B5F8A` primary)
 
 ---
 
@@ -176,107 +194,180 @@ A chatbox panel embedded in the main AMS layout (likely in `navbar25.jsp` or a s
 
 ### KB Routing
 
-When a question comes in, the system determines which knowledge base(s) to search:
-
-1. Tokenize the question into lowercase words
+1. Tokenize the question into lowercase words (stop words removed)
 2. Score each eligible KB by counting keyword matches from `knowledge-config.json`
-3. Search all KBs that score above a threshold (or default to all eligible if no strong match)
+3. Search all KBs that score above threshold (or default to all eligible if no strong match)
 
-### Chunk Ranking
+### Chunk Ranking (Weighted Scoring)
 
-Within selected KBs, rank chunks by relevance:
+| Source | Weight |
+|--------|--------|
+| Chunk `keywords` array match | 5x |
+| Chunk `title` match | 3x |
+| Chunk `section` match | 2x |
+| Chunk `content` match | 1x |
 
-1. Exact keyword matches in `keywords` array (highest weight)
-2. Keyword matches in `title` and `section` fields
-3. Keyword matches in `content` (lowest weight)
-4. Return top 5-8 chunks sorted by score
+Returns top 8 chunks sorted by score.
+
+### Resolved Ticket Search
+
+Separate from chunk ranking — queries the database directly:
+- Tokenizes question, keeps words > 2 chars
+- LIKE matches against: subcategory description, category description, ticket description, resolution note detail
+- Returns top 5 most recently resolved matches
+- Strips CKEditor HTML from note text
+- Only includes tickets created after 2026-02-19 (legacy cutoff)
 
 ### Video Enrichment
 
-After selecting context chunks, also check `summit_videos.json` for title matches against the question. If a training video is relevant, append its Wistia embed URL to the response context so Claude can include it in the answer.
+`summit_videos.json` chunks include Wistia embed URLs in the `url` field. When a video chunk matches, its URL is included in the context so Claude can reference it in the answer.
 
 ---
 
 ## Claude API Integration
 
-### Model Selection
+### Model
 
-Use `claude-haiku-4-5` for cost efficiency. Fall back to `claude-sonnet-4-5` if response quality needs improvement for certain KB types.
+`claude-haiku-4-5-20251001` — cost-efficient for internal use.
 
 ### API Key Storage
 
-Store the Anthropic API key as a database constant in the existing `AppConstant` table (same pattern as SMTP credentials). Retrieve via `AppConstantDAO.getConstantValue(em, "ANTHROPIC_API_KEY")`.
+Stored in the `constant` table: `ANTHROPIC_API_KEY`. Retrieved via `AppConstantDAO.getConstantValue(em, "ANTHROPIC_API_KEY")`.
 
-### System Prompt (Draft)
+### System Prompt
 
 ```
-You are an AI assistant for employees of a benefits administration company. 
-Answer questions using ONLY the provided context from our knowledge bases. 
+You are an AI assistant for employees of a benefits administration company.
+Answer questions using ONLY the provided context from our knowledge bases.
 If the context doesn't contain enough information to answer, say so clearly.
-
 When citing information, mention the source document name.
-If a training video is relevant, include the video link in your response.
+If a training video link is included in the context, include it in your response.
 Keep answers concise and practical.
 Do not make up information that isn't in the provided context.
 ```
 
-### Request Format
+### Technical Details
 
-Standard Anthropic Messages API POST to `https://api.anthropic.com/v1/messages` with:
-- `model`: `claude-haiku-4-5-20251001` (or configured model string)
-- `max_tokens`: 1024
-- `system`: System prompt above
-- `messages`: Single user message containing the question + context chunks
-
-### Cost Considerations
-
-Haiku pricing is significantly lower than Sonnet. With ~2000 chars per chunk and 5-8 chunks per request, each query sends roughly 10-16K characters of context (~3-5K tokens input). At Haiku rates this should be very economical for internal employee use.
+- HTTP client: `java.net.http.HttpClient` (built-in Java 17)
+- JSON library: Gson 2.11.0 (added to pom.xml)
+- API version header: `2023-06-01`
+- Max tokens: 1024
+- Timeout: 30 seconds
+- Error handling: User-friendly messages, full errors logged via Log4j2
 
 ---
 
-## Implementation Phases
+## Database Changes
 
-### Phase 1: Foundation
-- Create `src/main/resources/knowledge/` directory
-- Add all JSON KB files and `knowledge-config.json`
-- Build `KnowledgeSearchService` — load KBs at startup, implement search
-- Build `ClaudeApiService` — API key retrieval, request/response handling
-- Build `ChatAssistant` servlet — role check, search, API call, response
+### New Column: `note.is_resolution`
 
-### Phase 2: UI
-- Build chatbox component (slide-out panel or modal)
-- Embed in shared layout (all authenticated pages)
-- AJAX integration with ChatAssistant servlet
-- Render responses with source citations and video links
+```sql
+ALTER TABLE note ADD COLUMN is_resolution TINYINT(1) NOT NULL DEFAULT 0;
+```
 
-### Phase 3: Polish
-- Tune search relevance (keyword weighting, chunk count)
-- Tune system prompt for answer quality
-- Add conversation history (multi-turn within session)
-- Add "was this helpful?" feedback mechanism
-- Loading indicator, error handling, rate limiting
+Boolean flag on the `Note` entity. When set to `true`, marks this note as the resolution note for its parent ticket. Used by `TicketKnowledgeDAO` to find resolved ticket knowledge.
+
+### New Constant: `ANTHROPIC_API_KEY`
+
+```sql
+INSERT INTO constant (name, value, note) VALUES ('ANTHROPIC_API_KEY', '<key>', 'Claude API key for chatbot assistant');
+```
+
+### Ticket Category Overhaul
+
+Expired 9 old intent-based categories (active=0), updated 9 kept categories with better descriptions, added 7 new service-oriented categories. See `chatbot_session_summary.md` for full SQL.
+
+---
+
+## Maven Dependency Added
+
+```xml
+<dependency>
+    <groupId>com.google.code.gson</groupId>
+    <artifactId>gson</artifactId>
+    <version>2.11.0</version>
+</dependency>
+```
+
+---
+
+## Implementation Status
+
+### Phase 1: Foundation ✅ Complete
+- [x] JSON KB files in `src/main/resources/knowledge/`
+- [x] `knowledge-config.json` registry
+- [x] `KnowledgeSearchService.java` — loads KBs at startup, keyword search, weighted ranking
+- [x] `ClaudeApiService.java` — Anthropic API calls via java.net.http
+- [x] `ChatAssistant.java` — servlet with auth check, role filtering, search + API orchestration
+- [x] `TicketKnowledgeDAO.java` — live resolved ticket queries
+- [x] `note.is_resolution` column added
+- [x] Anthropic API key stored in `constant` table
+- [x] Gson dependency added to pom.xml
+
+### Phase 2: UI ✅ Complete
+- [x] `chatAssistant25.jsp` — slide-out panel with AJAX integration
+- [x] Included in `navbar25.jsp` (available on all authenticated pages)
+- [x] Response rendering with markdown formatting
+- [x] Loading indicator and error handling
+
+### Phase 3: Polish — Not Started
+- [ ] End-to-end testing (build, deploy, test with real questions)
+- [ ] Tune search relevance (keyword weighting, chunk count)
+- [ ] Tune system prompt for answer quality
+- [ ] Add conversation history (multi-turn within session)
+- [ ] Add "was this helpful?" feedback mechanism
+- [ ] UI for flagging a note as resolution when closing a ticket
+- [ ] Rate limiting consideration
+
+---
+
+## Ticket Category Reference (Current)
+
+### Active Categories (16)
+
+| ID | Short | Description |
+|----|-------|-------------|
+| 11 | Claims | Claims Processing & Reimbursement |
+| 12 | Access | Online Access & Portal Support |
+| 13 | Forms | Forms & Documentation |
+| 14 | Plans | Plan Design & Configuration |
+| 15 | Learn | Training & Education |
+| 16 | Enroll | Enrollment & Eligibility Changes |
+| 17 | Sales | Sales Inquiries & Quotes |
+| 21 | General | Uncategorized / General |
+| 22 | Process | Internal Process & Workflow |
+| 23 | Debit Card | Debit Card Issues & Activation |
+| 24 | COBRA | COBRA Administration & Qualifying Events |
+| 25 | Billing | Billing, Invoicing & Payments |
+| 26 | Rules | Plan Rules, Compliance & Contribution Limits |
+| 27 | Updates | Account Updates & Information Changes |
+| 28 | HSA | HSA Contributions, Distributions & Investments |
+| 29 | Employer | Employer Administration & File Feeds |
+
+### Expired Categories (9)
+
+| ID | Short | Description | Reason |
+|----|-------|-------------|--------|
+| 1 | HOW | How Do I Do Something? | Vague intent — replaced by specific categories |
+| 2 | WHY | Why Did This Happen? | Same |
+| 3 | GET | Did SSA Receive Something? | Same |
+| 4 | LAW | What Does The Law Allow For? | Replaced by Rules (26) |
+| 5 | OTHER | What Else Can SSA Do For Us? | Replaced by General (21) |
+| 6 | NEED | I Need Something! | Vague intent |
+| 18 | HELP | Help Me Do Something | Overlaps HOW |
+| 19 | QUEST | I Have a Question | Too vague |
+| 20 | SALES | I'm Interested in Something | Overlaps Sales (17) |
+
+Historical tickets linked to expired categories are preserved. Expired categories do not appear in ticket creation or sequence management dropdowns (filtered by `active=true` in existing queries).
 
 ---
 
 ## Future Considerations
 
-- **Knowledge base updates:** Re-crawl sources and regenerate JSON files as documentation changes. No code changes needed — just replace the JSON files and restart.
+- **Resolution note UI:** Add a checkbox or button in the ticket close flow to flag the resolution note. Currently `is_resolution` must be set manually.
+- **Knowledge base updates:** Re-crawl sources and regenerate JSON files. No code changes needed — replace files and restart.
 - **Additional KBs:** Add new JSON files and register in `knowledge-config.json`. No code changes needed.
-- **Client-facing version:** Eventually, a simplified version could be exposed to client contacts (the future "Client Contact" role) with access limited to Summit-related KBs only.
-- **Ticket integration:** If the chatbot can't answer a question, offer to create a support ticket from the conversation. Ties into the existing Ticket activity type.
-- **Embeddings upgrade:** If keyword search proves insufficient, upgrade to vector embeddings for semantic search. Would require an embedding model and a vector similarity library.
-
----
-
-## Dependencies
-
-| Dependency | Status | Notes |
-|------------|--------|-------|
-| Anthropic API key | In progress | Being set up |
-| `summit_guide_indexed.json` | Complete | 502 chunks |
-| `summit_videos.json` | Complete | 30 video mappings |
-| `wave_help_indexed.json` | Complete | 449 chunks |
-| `business_continuity_indexed.json` | Complete | Finalized |
-| `backup_recovery_indexed.json` | Complete | Finalized |
-| HTTP client library | Evaluate | `java.net.http.HttpClient` (built-in Java 11+) or add dependency |
-| JSON parsing | Evaluate | Jakarta JSON-P, Gson, or Jackson (check what's already in pom.xml) |
+- **Client-facing version:** Simplified version for future Client Contact role, limited to Summit KBs.
+- **Ticket escalation:** If chatbot can't answer, offer to create a support ticket.
+- **Embeddings upgrade:** If keyword search proves insufficient, upgrade to vector embeddings for semantic search.
+- **CreateTicket25 auto-categorization:** The keyword-based auto-categorizer in `CreateTicket25` references old category IDs (11, 12, 16, 17, 21). Should be reviewed to ensure it maps to valid active categories.

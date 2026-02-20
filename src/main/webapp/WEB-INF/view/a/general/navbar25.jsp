@@ -81,3 +81,4 @@
 <c:import url="/WEB-INF/view/a/renew/upcomingRenewalsModal25.jsp"></c:import>
 <c:import url="/WEB-INF/view/a/navbar/createTicket25.jsp"></c:import>
 <c:import url="/WEB-INF/view/a/checklistDetail/makeRecurringModal25.jsp"></c:import><%----%>
+<c:import url="/WEB-INF/view/a/general/chatAssistant25.jsp"></c:import>

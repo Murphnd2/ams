@@ -39,6 +39,8 @@ public class Note {
     @JoinColumn(name="status_id")
     private ActivityStatus status;
 
+    @Column(name="is_resolution")
+    private boolean isResolution;
     public Note(){}
 
     public Long getId() {
@@ -103,5 +105,12 @@ public class Note {
 
     public void setDateGenerated(Date dateGenerated) {
         this.dateGenerated = dateGenerated;
+    }
+    public boolean isResolution() {
+        return isResolution;
+    }
+
+    public void setResolution(boolean resolution) {
+        isResolution = resolution;
     }
 }
