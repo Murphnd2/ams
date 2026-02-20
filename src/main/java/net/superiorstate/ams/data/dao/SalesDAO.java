@@ -308,4 +308,10 @@ public abstract class SalesDAO {
         request.getSession().setAttribute("pFourB",pFourB);
 
     }
+
+    public static long getProposalCountByRate(EntityManager em, long rateId){
+        Query q = em.createQuery("SELECT COUNT(p) FROM Proposal p WHERE p.rate.id = :rate_id");
+        q.setParameter("rate_id", rateId);
+        return (long) q.getSingleResult();
+    }
 }
