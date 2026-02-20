@@ -44,6 +44,7 @@
         .preview-link:hover { opacity: 1; }
         .preview-popover { max-width: 380px; }
         .preview-popover .popover-body { max-height: 300px; overflow-y: auto; font-size: 0.82rem; padding: 0.5rem 0.75rem; }
+        .sortable-ghost { opacity: 0.3; background: #e8eef4; }
     </style>
 </head>
 <body>
@@ -107,8 +108,8 @@
                                 <c:when test="${not empty losList}">
                                     <c:forEach var="los" items="${losList}">
                                         <a href="ServiceManagerHome?losId=${los.getId()}"
-                                           class="d-block text-decoration-none text-dark ${los.isSuppressed() ? 'suppressed-item' : ''}"
-                                           data-suppressed="${los.isSuppressed()}">
+                                           class="d-block text-decoration-none text-dark los-item ${los.isSuppressed() ? 'suppressed-item' : ''}"
+                                           data-suppressed="${los.isSuppressed()}" data-id="${los.getId()}">
                                             <div class="item-card p-2 ps-3 ${selectedLos != null && selectedLos.getId() == los.getId() ? 'active' : ''}">
                                                 <span class="fw-semibold">${los.getShortText()}</span>
                                                 <small class="text-muted ms-2">${los.getDescription()}</small>
@@ -128,8 +129,8 @@
                                 <c:when test="${not empty enhancementList}">
                                     <c:forEach var="enh" items="${enhancementList}">
                                         <a href="ServiceManagerHome?enhId=${enh.getId()}&tab=enhancement"
-                                           class="d-block text-decoration-none text-dark ${enh.isSuppressed() ? 'suppressed-item' : ''}"
-                                           data-suppressed="${enh.isSuppressed()}">
+                                           class="d-block text-decoration-none text-dark enh-item ${enh.isSuppressed() ? 'suppressed-item' : ''}"
+                                           data-suppressed="${enh.isSuppressed()}" data-id="${enh.getId()}">
                                             <div class="item-card p-2 ps-3 ${selectedEnhancement != null && selectedEnhancement.getId() == enh.getId() ? 'active' : ''}">
                                                 <span class="fw-semibold">${enh.getShortText()}</span>
                                                 <small class="text-muted ms-2">${enh.getDescription()}</small>
@@ -187,11 +188,11 @@
                             <span><i class="bi bi-file-earmark-text me-1"></i>Application Sections</span>
                             <button class="btn btn-sm btn-outline-light" data-bs-toggle="modal" data-bs-target="#assignSectionToLosModal" title="Assign section"><i class="bi bi-plus-lg"></i></button>
                         </div>
-                        <div class="card-body py-2 px-3">
+                        <div class="card-body py-2 px-3" id="losSectionList">
                             <c:choose>
                                 <c:when test="${not empty losAppSections}">
                                     <c:forEach var="section" items="${losAppSections}">
-                                        <div class="assoc-row d-flex justify-content-between align-items-center">
+                                        <div class="assoc-row d-flex justify-content-between align-items-center los-section-item" data-id="${section.getId()}">
                                             <div class="d-flex align-items-center">
                                                 <span class="fw-semibold">${section.getName()}</span>
                                                 <%-- Preview icon — field data embedded in hidden div, read by JS --%>
@@ -265,11 +266,11 @@
                             <span><i class="bi bi-file-earmark-text me-1"></i>Application Sections</span>
                             <button class="btn btn-sm btn-outline-light" data-bs-toggle="modal" data-bs-target="#assignSectionToEnhModal" title="Assign section"><i class="bi bi-plus-lg"></i></button>
                         </div>
-                        <div class="card-body py-2 px-3">
+                        <div class="card-body py-2 px-3" id="enhSectionList">
                             <c:choose>
                                 <c:when test="${not empty enhAppSections}">
                                     <c:forEach var="section" items="${enhAppSections}">
-                                        <div class="assoc-row d-flex justify-content-between align-items-center">
+                                        <div class="assoc-row d-flex justify-content-between align-items-center enh-section-item" data-id="${section.getId()}">
                                             <div class="d-flex align-items-center">
                                                 <span class="fw-semibold">${section.getName()}</span>
                                                 <c:if test="${not empty section.getFieldList()}">
@@ -487,6 +488,7 @@
 </c:if>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
 <script>
     // ── Tab-aware add button ──────────────────────────────────────────
     const addBtn = document.getElementById('addBtn');
@@ -536,12 +538,35 @@
                 trigger: 'focus',
                 placement: 'left',
                 html: true,
+                sanitize: false,
                 customClass: 'preview-popover',
                 title: link.closest('.assoc-row').querySelector('.fw-semibold').textContent,
                 content: fieldsDiv.innerHTML
             });
         }
     });
+
+    // ── Drag-and-drop sorting (SortableJS) ────────────────────────────
+    function initSortable(containerId, itemClass, type) {
+        const el = document.getElementById(containerId);
+        if (!el) return;
+        new Sortable(el, {
+            animation: 150,
+            draggable: '.' + itemClass,
+            ghostClass: 'sortable-ghost',
+            onEnd: function() {
+                const ids = Array.from(el.querySelectorAll('.' + itemClass)).map(item => item.dataset.id);
+                const params = new URLSearchParams();
+                params.append('type', type);
+                ids.forEach(id => params.append('ids[]', id));
+                fetch('ServiceManagerSort', { method: 'POST', headers: {'Content-Type': 'application/x-www-form-urlencoded'}, body: params.toString() });
+            }
+        });
+    }
+    initSortable('losScroll', 'los-item', 'los');
+    initSortable('enhScroll', 'enh-item', 'enhancement');
+    initSortable('losSectionList', 'los-section-item', 'appSection');
+    initSortable('enhSectionList', 'enh-section-item', 'appSection');
 </script>
 </body>
 </html>
