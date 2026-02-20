@@ -1,7 +1,8 @@
 package net.superiorstate.ams.model.sales.application;
 
 import jakarta.persistence.*;
-import net.superiorstate.ams.model.activity.checklist.sequences.support.TemplatePurpose;
+
+import java.util.List;
 
 @Entity
 @Table(name="applicationfield")
@@ -14,8 +15,11 @@ public class ApplicationField {
     private String label;
 
     @ManyToOne
-    @JoinColumn(name="template_purpose_id")
-    private TemplatePurpose templatePurpose;
+    @JoinColumn(name="section_id")
+    private ApplicationSection applicationSection;
+
+    @Column(name="help_text",columnDefinition = "varchar(500)")
+    private String helpText;
 
     @Column(name="field_type",columnDefinition = "varchar(20) DEFAULT 'TEXT'")
     private String fieldType;
@@ -49,12 +53,20 @@ public class ApplicationField {
         this.label = label;
     }
 
-    public TemplatePurpose getTemplatePurpose() {
-        return templatePurpose;
+    public ApplicationSection getApplicationSection() {
+        return applicationSection;
     }
 
-    public void setTemplatePurpose(TemplatePurpose templatePurpose) {
-        this.templatePurpose = templatePurpose;
+    public void setApplicationSection(ApplicationSection applicationSection) {
+        this.applicationSection = applicationSection;
+    }
+
+    public String getHelpText() {
+        return helpText;
+    }
+
+    public void setHelpText(String helpText) {
+        this.helpText = helpText;
     }
 
     public String getFieldType() {
@@ -87,5 +99,10 @@ public class ApplicationField {
 
     public void setSelectOptions(String selectOptions) {
         this.selectOptions = selectOptions;
+    }
+
+    public List<String> getSelectOptionsList() {
+        if (selectOptions == null || selectOptions.isEmpty()) return new java.util.ArrayList<>();
+        return java.util.Arrays.asList(selectOptions.split("\\|"));
     }
 }

@@ -63,7 +63,7 @@ public class LoginFilter implements Filter {
     }
 
     private boolean isAllowedPath(String path) {
-        return ALLOWED_ENDPOINTS.contains(path) || isStaticResource(path) || path.startsWith("/proposal/");
+        return ALLOWED_ENDPOINTS.contains(path) || isStaticResource(path) || path.startsWith("/proposal/") || path.startsWith("/apply/") || path.equals("/uploadRateSheet") || path.equals("/saveApplication");
     }
 
     private boolean isStaticResource(String path) {

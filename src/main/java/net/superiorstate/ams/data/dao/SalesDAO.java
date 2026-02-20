@@ -2,6 +2,7 @@ package net.superiorstate.ams.data.dao;
 
 import jakarta.persistence.*;
 import jakarta.servlet.http.HttpServletRequest;
+import net.superiorstate.ams.model.general.IrsLimit;
 import net.superiorstate.ams.model.general.PSP;
 import net.superiorstate.ams.model.general.Person;
 import net.superiorstate.ams.model.general.UserRole;
@@ -14,6 +15,7 @@ import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 public abstract class SalesDAO {
@@ -38,7 +40,31 @@ public abstract class SalesDAO {
         Collections.sort(potentialAgentList);
         return potentialAgentList;
     }
+    public static Map<String, IrsLimit> getIrsLimits(EntityManager em) {
+        int currentYear = java.time.LocalDate.now().getYear();
 
+        // Try current year first
+        Query q = em.createQuery("SELECT i FROM IrsLimit i WHERE i.planYear = :year");
+        q.setParameter("year", currentYear);
+        List<IrsLimit> limits = q.getResultList();
+
+        // If no current year, get most recent
+        if (limits.isEmpty()) {
+            Query maxQ = em.createQuery("SELECT MAX(i.planYear) FROM IrsLimit i");
+            Integer maxYear = (Integer) maxQ.getSingleResult();
+            if (maxYear != null) {
+                q.setParameter("year", maxYear);
+                limits = q.getResultList();
+            }
+        }
+
+        // Return as map keyed by limit_key
+        Map<String, IrsLimit> map = new java.util.HashMap<>();
+        for (IrsLimit l : limits) {
+            map.put(l.getLimitKey(), l);
+        }
+        return map;
+    }
     public static String getJotFormParameterString(EntityManager em, Proposal proposal){
         Query q = em.createQuery("SELECT p FROM Proposal p INNER JOIN FETCH p.losList ll WHERE p.id = :proposal_id");
         q.setParameter("proposal_id",proposal.getId());

@@ -1,7 +1,6 @@
 package net.superiorstate.ams.model.activity.checklist.sequences.support;
 
 import jakarta.persistence.*;
-import net.superiorstate.ams.model.sales.application.ApplicationField;
 import net.superiorstate.ams.model.sales.application.ApplicationModule;
 
 import java.util.List;
@@ -27,8 +26,6 @@ public class TemplatePurpose {
     @Column(name="sort_order")
     private int sortOrder;
 
-    @OneToMany(mappedBy = "templatePurpose")
-    List<ApplicationField> applicationFieldList;
 
     public TemplatePurpose(){}
 
@@ -72,11 +69,5 @@ public class TemplatePurpose {
         this.applicationModuleList = applicationModuleList;
     }
 
-    public List<ApplicationField> getApplicationFieldList() {
-        return applicationFieldList;
-    }
 
-    public void setApplicationFieldList(List<ApplicationField> applicationFieldList) {
-        this.applicationFieldList = applicationFieldList;
-    }
 }

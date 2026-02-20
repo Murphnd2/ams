@@ -6,20 +6,22 @@ Tracks which migration scripts have been applied to each environment.
 
 | Environment | Host | Schema | Notes |
 |-------------|------|--------|-------|
-| Local | 127.0.0.1:3306 | beta_ssa | Dev workstation |
+| Local (Work) | 127.0.0.1:3306 | beta_ssa | Dev workstation |
+| Local (Home) | 127.0.0.1:3306 | beta_ssa | Home workstation |
 | Production | superiorstate.biz | beta_ssa | Live server |
 
 ## Migration Log
 
 | Script | Description | Local | Production | Notes |
 |--------|-------------|-------|------------|-------|
-| `sales_pipeline_migration.sql` | Sales Pipeline — new tables, column adds, renames | ✅ 2026-02-19 | ❌ NOT RUN | Run BEFORE deploying sales pipeline code. Must run Steps 1-4 in order. Step 5 (drop old tables) is optional cleanup — hold until verified. |
-| `sales_pipeline_migration_2.sql` | Proposal — add source_activity_id column | ✅ 2026-02-19 | ❌ NOT RUN | Optional nullable FK. Run before deploying SendProposal feature. |
+| `sales_pipeline_migration.sql` | Session 1 — new tables, column adds, renames | ✅ 2026-02-19 | ❌ NOT RUN | Run BEFORE deploying sales pipeline code. |
+| `sales_pipeline_migration_2.sql` | Session 2 — Proposal source_activity_id column | ✅ 2026-02-19 | ❌ NOT RUN | Optional nullable FK. Run before deploying SendProposal. |
+| `sales_pipeline_migration_3.sql` | Session 3 — Application form, IRS limits, benefit/billing types | ✅ 2026-02-20 | ❌ NOT RUN | Largest migration. Includes LOS expansion, 20 sections, ~95 fields, IRS limits, benefit/billing type tables. **Must fill in S3 constants on production.** |
 
 ## How to Use
 
 1. Before deploying code changes to production, check this file for any pending migrations
-2. Run scripts in the order listed
+2. Run scripts in the order listed (1 → 2 → 3)
 3. Update the Production column with date after running
 4. Commit this file back to GitHub
 
