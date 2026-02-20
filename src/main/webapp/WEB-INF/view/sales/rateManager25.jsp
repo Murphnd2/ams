@@ -482,12 +482,16 @@
             const item = e.target.closest('.fee-type-item');
             if (!item) return;
             dragItem = item;
+            dragItem.classList.add('dragging');
             dragItem.style.opacity = '0.4';
             e.dataTransfer.effectAllowed = 'move';
         });
 
         list.addEventListener('dragend', function(e) {
-            if (dragItem) dragItem.style.opacity = dragItem.dataset.suppressed === 'true' ? '0.5' : '1';
+            if (dragItem) {
+                dragItem.classList.remove('dragging');
+                dragItem.style.opacity = '';
+            }
             if (dragPlaceholder && dragPlaceholder.parentNode) dragPlaceholder.parentNode.removeChild(dragPlaceholder);
             dragItem = null;
             dragPlaceholder = null;
