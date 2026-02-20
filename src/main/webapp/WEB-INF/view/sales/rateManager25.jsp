@@ -29,6 +29,8 @@
         .empty-state i { font-size: 2.5rem; margin-bottom: 0.5rem; display: block; }
         .lock-icon { color: #dc3545; font-size: 0.8rem; }
         .locked-banner { background-color: #fff3cd; border: 1px solid #ffc107; border-radius: 6px; padding: 0.5rem 0.75rem; font-size: 0.85rem; }
+        .locked-banner a.clone-link { color: #0d5681; font-weight: 600; text-decoration: underline; cursor: pointer; }
+        .locked-banner a.clone-link:hover { color: #06357a; }
         .fee-type-item.suppressed-hidden, .mod-item.suppressed-hidden { display: none !important; }
         .fee-type-item.suppressed-visible, .mod-item.suppressed-visible { opacity: 0.5; }
         .hdr-bar { background-color: var(--ssa); color: white; padding: 0.5rem 0.75rem; font-weight: 600; font-size: 1rem; border-radius: 6px 6px 0 0; }
@@ -70,15 +72,7 @@
         </div>
         <div class="col-lg-3 text-end">
             <div class="d-flex gap-2 justify-content-end align-items-center">
-                <c:if test="${not empty selectedRate && isLocked}">
-                    <form method="post" action="RateTableAction" class="d-inline"
-                          onsubmit="return confirm('Create an editable copy with the same pricing and agency assignments? The current rate will be archived.');">
-                        <input type="hidden" name="action" value="cloneRate"/>
-                        <input type="hidden" name="rateId" value="${selectedRate.getId()}"/>
-                        <button type="submit" class="btn btn-warning"><i class="bi bi-copy me-1"></i>Create Editable Copy</button>
-                    </form>
-                    <div class="vr mx-1"></div>
-                </c:if>
+                <%-- CLEANUP #2: Clone button removed from navbar — moved to locked banner --%>
                 <a href="PspAgencyHome" class="btn btn-outline-ssa"><i class="bi bi-people-fill me-1"></i>Agencies</a>
                 <a href="ViewHome25" class="btn btn-ssa"><i class="bi bi-house me-1"></i>Home</a>
             </div>
@@ -116,14 +110,13 @@
             </div>
 
             <%-- Agencies (always visible when rate selected, otherwise placeholder) --%>
+            <%-- CLEANUP #1: Agency controls always editable regardless of lock state --%>
             <c:choose>
                 <c:when test="${not empty selectedRate}">
                     <div class="card mb-3">
                         <div class="hdr-bar d-flex justify-content-between align-items-center">
                             <span><i class="bi bi-people me-1"></i>Agencies</span>
-                            <c:if test="${!isLocked}">
-                                <button type="button" class="btn btn-sm btn-outline-light" data-bs-toggle="modal" data-bs-target="#assignAgencyModal"><i class="bi bi-plus-lg"></i></button>
-                            </c:if>
+                            <button type="button" class="btn btn-sm btn-outline-light" data-bs-toggle="modal" data-bs-target="#assignAgencyModal"><i class="bi bi-plus-lg"></i></button>
                         </div>
                         <div class="card-body py-2 px-3">
                             <div class="d-flex align-items-center flex-wrap gap-1">
@@ -132,14 +125,12 @@
                                         <c:forEach var="agency" items="${assignedAgencies}">
                                             <span class="agency-chip">
                                                 ${agency.getName()}
-                                                <c:if test="${!isLocked}">
-                                                    <form method="post" action="RateTableAction" class="d-inline" style="margin:0;">
-                                                        <input type="hidden" name="action" value="removeAgencyFromRate"/>
-                                                        <input type="hidden" name="rateId" value="${selectedRate.getId()}"/>
-                                                        <input type="hidden" name="agencyId" value="${agency.getId()}"/>
-                                                        <button type="submit" class="btn-remove" onclick="return confirm('Remove ${agency.getName()}?');"><i class="bi bi-x-lg"></i></button>
-                                                    </form>
-                                                </c:if>
+                                                <form method="post" action="RateTableAction" class="d-inline" style="margin:0;">
+                                                    <input type="hidden" name="action" value="removeAgencyFromRate"/>
+                                                    <input type="hidden" name="rateId" value="${selectedRate.getId()}"/>
+                                                    <input type="hidden" name="agencyId" value="${agency.getId()}"/>
+                                                    <button type="submit" class="btn-remove" onclick="return confirm('Remove ${agency.getName()}?');"><i class="bi bi-x-lg"></i></button>
+                                                </form>
                                             </span>
                                         </c:forEach>
                                     </c:when>
@@ -230,8 +221,15 @@
         <div class="col-lg-8">
             <c:choose>
                 <c:when test="${not empty selectedRate}">
+                    <%-- CLEANUP #2: Locked banner now contains inline clone link instead of navbar button --%>
                     <c:if test="${isLocked}">
-                        <div class="locked-banner mb-2"><i class="bi bi-info-circle me-1"></i><strong>Locked</strong> — in use by proposals. Click <strong>Create Editable Copy</strong> to make an editable version.</div>
+                        <div class="locked-banner mb-2"><i class="bi bi-lock-fill me-1"></i><strong>Locked</strong> — pricing cannot be changed.
+                            <a href="#" class="clone-link" onclick="if(confirm('Create an editable copy with the same pricing and agency assignments? The current rate will be archived.')){document.getElementById('cloneForm').submit();}return false;">Create an editable copy</a> to make a new version with the same pricing and agency assignments.
+                            <form id="cloneForm" method="post" action="RateTableAction" style="display:none;">
+                                <input type="hidden" name="action" value="cloneRate"/>
+                                <input type="hidden" name="rateId" value="${selectedRate.getId()}"/>
+                            </form>
+                        </div>
                     </c:if>
                     <div class="card">
                         <div class="hdr-bar d-flex justify-content-between align-items-center">
@@ -316,7 +314,10 @@
         <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button><button type="submit" class="btn btn-primary">Add Row</button></div>
     </form>
 </div></div></div>
+</c:if>
 
+<%-- CLEANUP #1: Assign Agency modal now renders for ALL selected rates (locked or not) --%>
+<c:if test="${not empty selectedRate}">
 <div class="modal fade" id="assignAgencyModal" tabindex="-1"><div class="modal-dialog modal-sm"><div class="modal-content">
     <form method="post" action="RateTableAction"><input type="hidden" name="action" value="assignAgencyToRate"/><input type="hidden" name="rateId" value="${selectedRate.getId()}"/>
         <div class="modal-header py-2"><h6 class="modal-title"><i class="bi bi-briefcase me-1"></i>Assign Agency</h6><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>

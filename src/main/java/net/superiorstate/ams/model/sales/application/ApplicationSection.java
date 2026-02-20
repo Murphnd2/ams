@@ -2,6 +2,7 @@ package net.superiorstate.ams.model.sales.application;
 
 import jakarta.persistence.*;
 import net.superiorstate.ams.model.general.PSP;
+import net.superiorstate.ams.model.sales.offering.Enhancement;
 import net.superiorstate.ams.model.sales.offering.LOS;
 
 import java.util.List;
@@ -36,6 +37,12 @@ public class ApplicationSection implements Comparable<ApplicationSection> {
             inverseJoinColumns = @JoinColumn(name="los_id"))
     private List<LOS> losList;
 
+    @ManyToMany
+    @JoinTable(name="applicationsectionenhancement",
+            joinColumns = @JoinColumn(name="section_id"),
+            inverseJoinColumns = @JoinColumn(name="enhancement_id"))
+    private List<Enhancement> enhancementList;
+
     @OneToMany(mappedBy = "applicationSection")
     @OrderBy("sortOrder")
     private List<ApplicationField> fieldList;
@@ -62,6 +69,9 @@ public class ApplicationSection implements Comparable<ApplicationSection> {
 
     public List<LOS> getLosList() { return losList; }
     public void setLosList(List<LOS> losList) { this.losList = losList; }
+
+    public List<Enhancement> getEnhancementList() { return enhancementList; }
+    public void setEnhancementList(List<Enhancement> enhancementList) { this.enhancementList = enhancementList; }
 
     public List<ApplicationField> getFieldList() { return fieldList; }
     public void setFieldList(List<ApplicationField> fieldList) { this.fieldList = fieldList; }

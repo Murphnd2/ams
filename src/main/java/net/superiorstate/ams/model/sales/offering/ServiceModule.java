@@ -30,6 +30,14 @@ public class ServiceModule implements Comparable<ServiceModule> {
     @JoinColumn(name = "psp_id")
     private PSP psp;
 
+    @ManyToOne
+    @JoinColumn(name = "los_id")
+    private LOS los;
+
+    @ManyToOne
+    @JoinColumn(name = "enhancement_id")
+    private Enhancement enhancement;
+
     @ManyToMany
     @JoinTable(name="moduleitems",
             joinColumns = @JoinColumn(name="module_id"),inverseJoinColumns = @JoinColumn(name="item_id"))
@@ -96,6 +104,22 @@ public class ServiceModule implements Comparable<ServiceModule> {
         this.psp = psp;
     }
 
+    public LOS getLos() {
+        return los;
+    }
+
+    public void setLos(LOS los) {
+        this.los = los;
+    }
+
+    public Enhancement getEnhancement() {
+        return enhancement;
+    }
+
+    public void setEnhancement(Enhancement enhancement) {
+        this.enhancement = enhancement;
+    }
+
     public List<ServiceItem> getServiceItemList() {
         return serviceItemList;
     }
@@ -111,6 +135,7 @@ public class ServiceModule implements Comparable<ServiceModule> {
     public void setListOfLosWithThisModule(List<LOS> listOfLosWithThisModule) {
         this.listOfLosWithThisModule = listOfLosWithThisModule;
     }
+
     public void addServiceItem(ServiceItem serviceItem){
         this.serviceItemList.add(serviceItem);
         serviceItem.getListOfModulesWithThisServiceItem().add(this);
@@ -120,6 +145,7 @@ public class ServiceModule implements Comparable<ServiceModule> {
         this.serviceItemList.remove(serviceItem);
         serviceItem.getListOfModulesWithThisServiceItem().remove(this);
     }
+
     @Override
     public int compareTo(ServiceModule o) {
         if(this.getSortOrder() < o.getSortOrder()) {

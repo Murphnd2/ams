@@ -10,14 +10,14 @@ import java.util.List;
 @NamedQueries({
         @NamedQuery(
                 name = "LOS.getByPsp",
-                query = "SELECT los FROM LOS los WHERE los.psp.id = :psp_id"
+                query = "SELECT los FROM LOS los WHERE los.psp.id = :psp_id ORDER BY los.sortOrder"
         ),
         @NamedQuery(
                 name = "LOS.getById",
                 query = "SELECT l FROM LOS l WHERE l.id = :los_id"
         )
 })
-public class LOS {
+public class LOS implements Comparable<LOS> {
     @Id
     @GeneratedValue
     @Column(name="los_id")
@@ -28,6 +28,12 @@ public class LOS {
 
     @Column(name="short_text", columnDefinition = "varchar(10)")
     private String shortText;
+
+    @Column(name="sort_order")
+    private int sortOrder;
+
+    @Column
+    private boolean suppressed;
 
     @ManyToOne
     @JoinColumn(name="psp_id")
@@ -41,62 +47,48 @@ public class LOS {
     @ManyToMany(mappedBy = "losList")
     List<Proposal> listOfProposalsThatIncludeThisLOS;
 
+    @ManyToMany(mappedBy = "losList")
+    List<Enhancement> enhancementList;
+
     public LOS(){}
 
-    public Long getId() {
-        return id;
-    }
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
+    public String getDescription() { return description; }
+    public void setDescription(String description) { this.description = description; }
+    public String getShortText() { return shortText; }
+    public void setShortText(String shortText) { this.shortText = shortText; }
+    public int getSortOrder() { return sortOrder; }
+    public void setSortOrder(int sortOrder) { this.sortOrder = sortOrder; }
+    public boolean isSuppressed() { return suppressed; }
+    public void setSuppressed(boolean suppressed) { this.suppressed = suppressed; }
+    public PSP getPsp() { return psp; }
+    public void setPsp(PSP psp) { this.psp = psp; }
 
-    public void setId(Long id) {
-        this.id = id;
-    }
+    public List<ServiceModule> getServiceModuleList() { return serviceModuleList; }
+    public void setServiceModuleList(List<ServiceModule> serviceModuleList) { this.serviceModuleList = serviceModuleList; }
+    public List<Proposal> getListOfProposalsThatIncludeThisLOS() { return listOfProposalsThatIncludeThisLOS; }
+    public void setListOfProposalsThatIncludeThisLOS(List<Proposal> listOfProposalsThatIncludeThisLOS) { this.listOfProposalsThatIncludeThisLOS = listOfProposalsThatIncludeThisLOS; }
+    public List<Enhancement> getEnhancementList() { return enhancementList; }
+    public void setEnhancementList(List<Enhancement> enhancementList) { this.enhancementList = enhancementList; }
 
-    public String getDescription() {
-        return description;
-    }
-
-    public void setDescription(String description) {
-        this.description = description;
-    }
-
-    public String getShortText() {
-        return shortText;
-    }
-
-    public void setShortText(String shortText) {
-        this.shortText = shortText;
-    }
-
-    public PSP getPsp() {
-        return psp;
-    }
-
-    public void setPsp(PSP psp) {
-        this.psp = psp;
-    }
-
-    public List<ServiceModule> getServiceModuleList() {
-        return serviceModuleList;
-    }
-
-    public void setServiceModuleList(List<ServiceModule> serviceModuleList) {
-        this.serviceModuleList = serviceModuleList;
-    }
-
-    public List<Proposal> getListOfProposalsThatIncludeThisLOS() {
-        return listOfProposalsThatIncludeThisLOS;
-    }
-
-    public void setListOfProposalsThatIncludeThisLOS(List<Proposal> listOfProposalsThatIncludeThisLOS) {
-        this.listOfProposalsThatIncludeThisLOS = listOfProposalsThatIncludeThisLOS;
-    }
     public void addServiceModule(ServiceModule serviceModule){
         this.serviceModuleList.add(serviceModule);
         serviceModule.getListOfLosWithThisModule().remove(this);
     }
-
     public void removeServiceModule(ServiceModule serviceModule){
         this.serviceModuleList.remove(serviceModule);
         serviceModule.getListOfLosWithThisModule().remove(this);
+    }
+
+    @Override
+    public int compareTo(LOS o) {
+        if (this.sortOrder != o.sortOrder) {
+            return Integer.compare(this.sortOrder, o.sortOrder);
+        } else if (!this.description.equals(o.description)) {
+            return this.description.compareTo(o.description);
+        } else {
+            return this.id.compareTo(o.id);
+        }
     }
 }
