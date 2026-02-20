@@ -1,0 +1,503 @@
+{
+  "source": "Business Continuity Knowledge Base - Superior State",
+  "total_pages": 6,
+  "total_chunks": 62,
+  "chunks": [
+    {
+      "title": "Company Locations and Network Ranges",
+      "url": "",
+      "content": "Superior State operates from three location types. Office: 1101 11th Ave, Suite B2, Menominee, MI 49858. Home: two PCs connected via WireGuard site-to-site VPN. Cloud (IONOS): multiple VPS servers. Network ranges (Active): Office LAN is 10.0.0.0/24 with router at 10.0.0.1. WireGuard VPN network is 10.9.0.0/24. The office public static IP is 162.191.66.93.",
+      "section": "Locations & Network Ranges",
+      "category": "Networks",
+      "keywords": ["office", "location", "address", "Menominee", "network", "IP range", "LAN", "VPN", "10.0.0.0", "10.9.0.0", "WireGuard"]
+    },
+    {
+      "title": "Office Internet Edge - ISP, Modem, and Router",
+      "url": "",
+      "content": "ISP: T-Mobile (office) (Active). Modem/Gateway: Inseego FX3100, management IP 192.168.1.1, reachable from office LAN 10.0.0.x, password-only authentication (no username). Router: Netgear R7000P (confirmed by dmesg), firmware DD-WRT v3.0-r62104 (os_version=62104). Router LAN IP: 10.0.0.1. Office public static IP: 162.191.66.93. Admin access: Web UI uses non-root username (reported: kevinmurphy), SSH uses root@10.0.0.1.",
+      "section": "Internet Edge",
+      "category": "Infrastructure",
+      "keywords": ["ISP", "T-Mobile", "modem", "Inseego", "FX3100", "router", "Netgear", "R7000P", "DD-WRT", "internet", "edge", "192.168.1.1", "10.0.0.1"]
+    },
+    {
+      "title": "DD-WRT DNS and VoIP Observations",
+      "url": "",
+      "content": "DNS forwarder: DD-WRT dnsmasq on 10.0.0.1. Upstream resolvers observed: 10.9.0.10 (WIN-DC01), 10.0.0.211 (DpathServer), 192.168.1.1 (Inseego FX3100). Phone.com lookups observed: sip.phone.com resolves to 72.1.46.10, polycom.prov.phone.com resolves to 72.1.46.93, _ntp._udp.clock.phone.com (SRV) returns NXDOMAIN and phone falls back to A record clock.phone.com. SIP ALG risk: nf_conntrack_helper observed set to 1 on DD-WRT router. Auto conntrack helpers / SIP ALG can cause SIP/RTP issues (failed registration, one-way audio). DD-WRT build had no tcpdump; visibility via /proc/net/nf_conntrack.",
+      "section": "DNS and VoIP",
+      "category": "Networks",
+      "keywords": ["DNS", "dnsmasq", "VoIP", "SIP", "ALG", "conntrack", "Phone.com", "resolver", "DD-WRT", "nf_conntrack"]
+    },
+    {
+      "title": "WireGuard VPN Architecture",
+      "url": "",
+      "content": "Central VPN server: vpn-cube (IONOS), endpoint 216.225.207.204:51820, VPN subnet 10.9.0.0/24. DD-WRT tunnel peer (office site-to-site): Peer name 'VPN-CUBE', Allowed IPs via tunnel: 10.9.0.0/24 and 10.0.0.0/24, Persistent keepalive: 25 seconds, DD-WRT tunnel IP: 10.9.0.2/24. Design note: Office LAN devices do NOT run WireGuard clients individually. The DD-WRT router provides tunnel connectivity for the entire office LAN. Critical dependency: \\\\files resolves to 10.9.0.10 (WIN-DC01) and is VPN-dependent. If VPN is down, file shares are unreachable.",
+      "section": "VPN Architecture",
+      "category": "Networks",
+      "keywords": ["WireGuard", "VPN", "vpn-cube", "tunnel", "site-to-site", "DD-WRT", "10.9.0.0", "51820", "peer"]
+    },
+    {
+      "title": "vpn-cube Server Details (IONOS Cloud)",
+      "url": "",
+      "content": "vpn-cube (Active): OS Debian 12 (bookworm). VPN IP: 10.9.0.1. Public IP: 216.225.207.204/32 (ens7). Role: central WireGuard endpoint for office + home + VPS. NAT: masquerade out ens7 (supports VPN egress). Host firewall: UFW inactive; nftables INPUT policy accept with only explicit allow for UDP 51820. Inbound SSH exposure is Active unless restricted upstream by IONOS firewall (Unknown). DD-WRT router connects to this endpoint; office PCs do not run WireGuard locally.",
+      "section": "Cloud Servers",
+      "category": "Systems",
+      "keywords": ["vpn-cube", "Debian", "IONOS", "VPN", "WireGuard", "216.225.207.204", "10.9.0.1", "firewall", "nftables"]
+    },
+    {
+      "title": "Ubuntu Web Server (IONOS Cloud)",
+      "url": "",
+      "content": "ubuntu (Active): OS Ubuntu 24.04.3 LTS. VPN IP: 10.9.0.12. Public IP: 74.208.246.116. Role: public web server (nginx + tomcat10) + MySQL. Public apps hosted: superiorstate.biz (primary business web app), superiorstate.biz/nacha-combine, superiorstate.biz/commissions. App build/deploy: WAR file, dev via IntelliJ, source backed up to GitHub (https://github.com/Murphnd2/ams, currently public). Databases observed: beta_ssa (Active), wave_commissions (Active), beta_ssa_wasabi_verify (Legacy/test unless proven otherwise).",
+      "section": "Cloud Servers",
+      "category": "Systems",
+      "keywords": ["ubuntu", "web server", "nginx", "tomcat", "MySQL", "superiorstate.biz", "IONOS", "74.208.246.116", "10.9.0.12"]
+    },
+    {
+      "title": "Ubuntu Web Apps and Tomcat Configuration",
+      "url": "",
+      "content": "Tomcat webapps under /var/lib/tomcat10/webapps: ROOT, beta, charlie, tst, old, commissions, nacha-combine (plus .war for each). Beta variants (beta, charlie, tst, old) are all test/enhancement variants of ROOT. Public URL reachability (all Active): superiorstate.biz/ (200), superiorstate.biz/beta/ (200), superiorstate.biz/charlie/ (200), superiorstate.biz/tst/ (200), superiorstate.biz/old/ (200), superiorstate.biz/commissions/ (302 redirect), superiorstate.biz/nacha-combine/ (302 redirect). Nginx routing: /etc/nginx/sites-enabled contains only superiorstate.conf. Port 80 redirects to HTTPS, port 443 terminates TLS and proxies to Tomcat at 127.0.0.1:8080.",
+      "section": "Web Applications",
+      "category": "Systems",
+      "keywords": ["Tomcat", "webapp", "nginx", "beta", "commissions", "nacha-combine", "superiorstate.biz", "WAR", "deploy"]
+    },
+    {
+      "title": "Ubuntu Tomcat Service and Azure Integration",
+      "url": "",
+      "content": "Tomcat runs as systemd tomcat10.service with JVM sizing -Xms512m -Xmx1024m. systemd drop-in points to EnvironmentFile: /etc/tomcat10/graph.env containing AZURE_TENANT_ID, AZURE_CLIENT_ID, and AZURE_CLIENT_SECRET (secret - do not store values). Azure/Graph usage: ROOT production is Not Used (Legacy), ROOT variants (beta/charlie/tst/old) are Active under test, commissions and nacha-combine do Not Use Azure. Redirect extra hop: /commissions and /nacha-combine redirect to http then nginx redirects back to HTTPS. HTTPS is enforced but with an extra hop.",
+      "section": "Web Applications",
+      "category": "Systems",
+      "keywords": ["Tomcat", "systemd", "Azure", "Graph", "JVM", "environment", "service", "TLS", "redirect"]
+    },
+    {
+      "title": "Ubuntu Firewall (UFW) Rules",
+      "url": "",
+      "content": "Firewall (UFW) on ubuntu (Active): Default deny inbound. Allow inbound from anywhere: 22/tcp (SSH), 80/tcp (HTTP), 443/tcp (HTTPS), 51820/udp (WireGuard). Allow inbound only from 10.9.0.0/24 (VPN): 3306/tcp (MySQL), 445/tcp and 139/tcp (SMB). Allow outbound: 25/465/587/2525 (mail-related). Which app/service uses outbound SMTP is Unknown. MySQL listens on 0.0.0.0:3306 but UFW restricts inbound 3306/tcp to VPN-only.",
+      "section": "Firewall",
+      "category": "Networks",
+      "keywords": ["UFW", "firewall", "ubuntu", "ports", "MySQL", "SMB", "SSH", "HTTP", "HTTPS", "WireGuard", "inbound", "outbound"]
+    },
+    {
+      "title": "WIN-DC01 Primary Domain Controller and File Server",
+      "url": "",
+      "content": "WIN-BAFAS9DBTQ8 (aka WIN-DC01) (Active): OS Windows Server 2019 Datacenter. VPN IP: 10.9.0.10. Public IP: 217.160.151.36 (observed Active; prior docs listed 217.160.151.3 which is Legacy/typo). Roles: Primary Active Directory + primary DNS + Group Policy, File server for office shares (\\\\files), hosts legacy eDrawer storage and related utilities, hosts legacy websites via IIS (ASP.NET/VB) with SQL Server Express DBs including superiorstate.net (sales quoting) and kb.superiorstate.net (old knowledgebase). DNS name: files.superiorstate.local resolves to 10.9.0.10.",
+      "section": "Domain Controller",
+      "category": "Systems",
+      "keywords": ["WIN-DC01", "domain controller", "Active Directory", "DNS", "Group Policy", "file server", "IIS", "10.9.0.10", "Windows Server 2019"]
+    },
+    {
+      "title": "WIN-DC01 File Shares (SMB)",
+      "url": "",
+      "content": "WIN-DC01 file shares (SMB) (Active). Share root: C:\\Shares on WIN-DC01. Shares: \\\\files\\Company maps to C:\\Shares\\Company (approx 52.37 GB), \\\\files\\Users maps to C:\\Shares\\Users (approx 1.65 GB), \\\\files\\Finance maps to C:\\Shares\\Finance (approx 0.39 GB), \\\\files\\Temp maps to C:\\Shares\\Temp (approx 0.01 GB). Key subpaths: eDrawer storage at C:\\Shares\\Company\\eDrawer\\..., Scan import staging at C:\\Shares\\Temp\\Edrawer_Import\\.... Drive mappings: S: drive is 'Save to eDrawer' share (domain-level targeting) mapping to \\\\files\\Temp\\Edrawer_Import. X: drive is per-user scan folder mapping (user-targeted GPO) to \\\\files\\Users\\....",
+      "section": "File Shares",
+      "category": "Infrastructure",
+      "keywords": ["file share", "SMB", "shares", "Company", "Users", "Finance", "S drive", "X drive", "eDrawer", "\\\\files"]
+    },
+    {
+      "title": "REPLICA Hyper-V Host (Office)",
+      "url": "",
+      "content": "REPLICA (Active): Type/OS Hyper-V Server 2012. IP: 10.0.0.7 (office). Role: hosts local domain VM(s). Source VM: 2018_AppServer (alias/role: DpathServer, secondary DC) - State: Off (Active safety control to prevent duplicate DC identity). Replica remnants existed under F:\\repo2025\\Hyper-V Replica\\... and were merged into base disks. Critical safety note: REPLICA\\2018_AppServer must remain Off while SERVER_22\\DpathServer is Running to prevent duplicate DC identity.",
+      "section": "On-Prem Servers",
+      "category": "Infrastructure",
+      "keywords": ["REPLICA", "Hyper-V", "10.0.0.7", "2018_AppServer", "DpathServer", "secondary DC", "domain controller"]
+    },
+    {
+      "title": "SERVER_22 Hyper-V Host (Office)",
+      "url": "",
+      "content": "SERVER_22 (Active): Type/OS Hyper-V Server 2012. IP: 10.0.0.8 (office). Role: hosts production VMs. Production VM: DpathServer - State: Running (Active). Resources: 20 vCPU, 20480MB startup RAM, Dynamic Memory disabled (changes require VM Off). vSwitch: VS_2. Disks: IDE 0:0 at J:\\ActiveVMs\\2018_AppServer_Migration\\VHDs\\2018_appserver.vhd, SCSI 0:0 at 2018_appcore.vhdx, SCSI 0:1 at pg_app.vhd. Other VMs: Windows8 (Running, temporary management VM, domain trust broken), Win2025-ChatGPT (Off, Legacy/test).",
+      "section": "On-Prem Servers",
+      "category": "Infrastructure",
+      "keywords": ["SERVER_22", "Hyper-V", "10.0.0.8", "DpathServer", "VM", "virtual machine", "vCPU", "VHD"]
+    },
+    {
+      "title": "SERVER_22 Storage and Capacity",
+      "url": "",
+      "content": "SERVER_22 logical disks (DriveType=3): C: OS - 464.9GB (Free ~448.7GB), E: ArchiveMirror - 929.9GB (Free ~430GB), J: ActiveVMs - 454.1GB (Free ~285GB after migration copies), M: BackupStage - 465.8GB (Free ~465.6GB), F: WSB_BACKUP - used for Windows Server Backup target. Drive labels/capacity may need reconfirmation after cleanup. Windows Server Backup configured to target F:, runs daily at 20:00, includes allCritical (bare metal recovery) and systemState.",
+      "section": "Storage",
+      "category": "Infrastructure",
+      "keywords": ["SERVER_22", "storage", "disk", "capacity", "ActiveVMs", "ArchiveMirror", "BackupStage", "WSB_BACKUP", "F drive"]
+    },
+    {
+      "title": "DpathServer Secondary Domain Controller",
+      "url": "",
+      "content": "DpathServer / DPATHSERVER (Active): OS Windows Server 2012 R2. IP: 10.0.0.211 (static, restored after DHCP temporarily assigned 10.0.0.131 during migration). Role: Secondary domain controller (confirmed). Migrated from REPLICA (10.0.0.7) to SERVER_22 (10.0.0.8) on 2025-12-16. Numerous roles/features installed (AD DS, DNS, RDS roles, IIS, etc.) but only DC/DNS role is confirmed Active in-use. Rclone services/tasks observed but believed unused - marked as Legacy pending removal. Guest DNS corrected to AD DNS (10.9.0.10) after migration.",
+      "section": "Domain Infrastructure",
+      "category": "Systems",
+      "keywords": ["DpathServer", "secondary DC", "domain controller", "10.0.0.211", "Active Directory", "DNS", "migration", "2018_AppServer"]
+    },
+    {
+      "title": "Office Workstations - Kevin, Deb, Delight",
+      "url": "",
+      "content": "MURPHY2022 (Active): OS Windows 10 Pro (domain-joined). IP: 10.0.0.11 (office, Kevin workstation). MINI05 - Deb's office PC (Active): OS Windows 11 Pro (10.0.22631). LAN IP: 10.0.0.132 (GW 10.0.0.1). DNS: 10.0.0.211 (DpathServer), 10.9.0.10 (WIN-DC01). NIC: Realtek PCIe GbE. Uptime captured: 112d. MINIPC01 - Delight's office PC (Active): OS Windows 10 Pro (10.0.19041). LAN IP: 10.0.0.22 (GW 10.0.0.1). DNS: 10.9.0.10 (WIN-DC01), 10.0.0.211 (DpathServer). NIC: Realtek PCIe GbE. Hardware model/serial for MINI05 and MINIPC01 show 'Default string' - treat as Unknown.",
+      "section": "Workstations",
+      "category": "Systems",
+      "keywords": ["MURPHY2022", "MINI05", "MINIPC01", "workstation", "Deb", "Delight", "Kevin", "Windows 10", "Windows 11", "office PC"]
+    },
+    {
+      "title": "Home PC and Unknown Work Laptop",
+      "url": "",
+      "content": "MURPHY_MINI_01 (Active): OS Windows 11 Pro. VPN IP: 10.9.0.100 (home). Work laptop (home) (Unknown/TODO): Windows 10/11, domain-joined via WireGuard. Hostname, OS version, VPN IP (10.9.0.x), purpose, and user are all unknown and need to be captured.",
+      "section": "Home Systems",
+      "category": "Systems",
+      "keywords": ["MURPHY_MINI_01", "home PC", "laptop", "WireGuard", "10.9.0.100", "remote work"]
+    },
+    {
+      "title": "Office Peripherals - Kyocera Scanner and Printer",
+      "url": "",
+      "content": "Kyocera Mita KM-2530 PSC Scanner NIC (Active): Scanner web UI/config at 10.0.0.55. Scanner software: KM-2530 Network Scanner version 2.60.9. Destinations list supports entries 001-100. Each destination has display name, destination IP (commonly 10.9.0.10), and Save Number (e.g. 006) which selects a folder mapping in the File Utility. Kyocera printer NIC IB-21E (Active): IP 10.0.0.66, hostname KYD0CC24, network firmware IB-21E 1.1.0.",
+      "section": "Office Peripherals",
+      "category": "Infrastructure",
+      "keywords": ["Kyocera", "scanner", "printer", "KM-2530", "10.0.0.55", "10.0.0.66", "IB-21E", "scanning"]
+    },
+    {
+      "title": "VoIP Phone System - Phone.com and Polycom Phones",
+      "url": "",
+      "content": "Provider: Phone.com (provider-hosted provisioning + SIP/signaling). Portal: https://control.phone.com. Main numbers: 906-863-4488 (main local, auto-attendant), 800-879-7752 (main toll free, auto-attendant), 906-863-4499 (Kevin direct), 906-863-4480 (Deb direct), 906-863-1105 (forwards to DataPath fax workflow). Fax forwarding target: DataPath 501-553-9095. On-site endpoints: 2 Polycom SoundPoint IP 335 phones (Kevin + Deb). Phones use Phone.com-hosted provisioning (polycom.prov.phone.com, TCP 443) and SIP signaling to sip.phone.com (UDP 6060).",
+      "section": "VoIP",
+      "category": "Systems",
+      "keywords": ["Phone.com", "Polycom", "VoIP", "SIP", "phone", "906-863-4488", "800-879-7752", "SoundPoint", "IP 335"]
+    },
+    {
+      "title": "VoIP Phone-01 (Kevin) - Working Baseline",
+      "url": "",
+      "content": "phone-01 (Active) - Kevin desk phone (baseline working): Make Polycom, Model SoundPoint IP 335. MAC: 00:04:f2:2a:db:38. IP (office LAN): 10.0.0.60. Subnet/GW/DNS: 10.0.0.0/24, GW 10.0.0.1, DNS 10.0.0.1 (DD-WRT dnsmasq). NTP: clock.phone.com. Provisioning: polycom.prov.phone.com (72.1.46.93, TCP 443). SIP/signaling: sip.phone.com (72.1.46.10, UDP 6060, src port 5071). UI indicator: no emergency triangle. Dependencies: DHCP from DD-WRT, DNS via DD-WRT forwarding, outbound internet to Phone.com, correct NTP time sync.",
+      "section": "VoIP Phones",
+      "category": "Systems",
+      "keywords": ["phone-01", "Kevin", "Polycom", "10.0.0.60", "MAC", "SIP", "baseline", "working"]
+    },
+    {
+      "title": "VoIP Phone-02 (Deb) - Failing / Troubleshooting",
+      "url": "",
+      "content": "phone-02 (Unknown) - currently failing: Make Polycom, Model SoundPoint IP 335. IP (suspected): 10.0.0.200. SIP/signaling: sip.phone.com (72.1.46.10, UDP 6060, src port 5070). Provisioning: polycom.prov.phone.com (72.1.46.93, TCP 443). UI indicator: emergency triangle icon shown. Status: failing registration (reported Dec 15 2025; was fixed over weekend then failed again). Suspected causes to rule out: provisioning not applied/wrong config, time/NTP issues, network/VLAN mismatch vs baseline phone, provider registration issue, router SIP ALG/conntrack helper interference.",
+      "section": "VoIP Phones",
+      "category": "Systems",
+      "keywords": ["phone-02", "Deb", "Polycom", "failing", "emergency triangle", "troubleshooting", "SIP", "registration", "10.0.0.200"]
+    },
+    {
+      "title": "Scanning Workflow Overview - Scanner to eDrawer",
+      "url": "",
+      "content": "The office scanning workflow moves scanned documents from the Kyocera scanner into eDrawer storage. Components: 1) Scanner device (Kyocera KM-2530 at 10.0.0.55) sends jobs to destinations. 2) Scanner File Utility on WIN-DC01 receives jobs and maps Save Numbers to folders. 3) Staging folders under \\\\files\\Temp\\Edrawer_Import receive scanned files. 4) EAR import app sweeps staging folders into eDrawer storage. 5) eDrawer storage is at C:\\Shares\\Company\\eDrawer. Users access eDrawer via workstation installs + network share, no need to log into WIN-DC01.",
+      "section": "Scanning Workflow",
+      "category": "Processes",
+      "keywords": ["scanning", "eDrawer", "Kyocera", "workflow", "import", "EAR", "staging", "document management"]
+    },
+    {
+      "title": "Scanner File Utility on WIN-DC01",
+      "url": "",
+      "content": "Scanner File Utility (Active): Runs on WIN-DC01 (10.9.0.10). Executable: C:\\Program Files (x86)\\Kyocera Mita\\FileUtility\\NsCatCom.exe. Behavior: waits for inbound scanner jobs, uses Save Number to folder path mapping to decide where scanned files are written. Observed ports (listening): TCP 37100/37101, UDP 37010. Startup behavior: intended to start and show in system tray for SUPERIORSTATE\\kevinmurphy session. Previously had duplicate auto-start entries causing 'already running' prompts. Unknown: Where exactly Kyocera File Utility stores its Save Number mapping (file/registry/database).",
+      "section": "Scanning Components",
+      "category": "Processes",
+      "keywords": ["File Utility", "NsCatCom", "Kyocera", "Save Number", "scanner", "WIN-DC01", "37100", "37101"]
+    },
+    {
+      "title": "eDrawer Import Staging Folders",
+      "url": "",
+      "content": "Staging root share: \\\\files\\Temp\\Edrawer_Import. Local path on WIN-DC01: C:\\Shares\\Temp\\Edrawer_Import. Subfolders: 110 Kevin Review, 111 Debbi Review, 112 Delight Review, 201 Kevin Work, 202 Debbi Work, 205 Carolina Financial, 210 Status Changes - One Off, 310 Claims to File, 320 Enrollments to File, 330 Other to File, Scanner Folders. Additional folders for IT discovery outputs: 999 Other Files\\PC_Inventory and 999 Other Files\\Server_Inventory (Active/Unknown whether EAR sweep will ingest these). S: drive maps to \\\\files\\Temp\\Edrawer_Import (domain-level GPO).",
+      "section": "Scanning Components",
+      "category": "Processes",
+      "keywords": ["staging", "Edrawer_Import", "folders", "Kevin Review", "Debbi Review", "Delight Review", "S drive", "import"]
+    },
+    {
+      "title": "EAR Import App and eDrawer Storage",
+      "url": "",
+      "content": "EAR import/sweep app (Active, manual): Started manually, not a Windows service. Executable via shortcut: C:\\Program Files (x86)\\LSSP Corporation\\aDrawerKevin - Copy\\ear4.exe. Role: monitors C:\\Shares\\Temp\\Edrawer_Import and subfolders, sweeps/imports files into the correct location inside eDrawer storage. eDrawer storage: stored under C:\\Shares\\Company\\eDrawer. Users access eDrawer data via workstation installs + network share data (no need to log into WIN-DC01). 'Scan to desktop' workflow: some scanner destinations map to user folders under C:\\Shares\\Users\\KM Scans, DL Scans, DM Scans. These are mapped as X: drives (user-targeted GPO).",
+      "section": "Document Management",
+      "category": "Processes",
+      "keywords": ["EAR", "ear4.exe", "eDrawer", "import", "sweep", "LSSP", "document management", "X drive", "scan to desktop"]
+    },
+    {
+      "title": "Drive Mappings - S, X, and P Drives",
+      "url": "",
+      "content": "S: drive - 'Save to eDrawer' share drive (domain-level targeting) maps to \\\\files\\Temp\\Edrawer_Import. Used for placing documents into eDrawer import staging. X: drive - per-user scan folder mapping (user-targeted GPO) maps to \\\\files\\Users\\... (e.g. KM Scans, DL Scans, DM Scans). Used for scan-to-desktop workflow. P: drive - Paycom handoff share maps to /opt/phrd/handoff on ubuntu via Samba share [handoff]. Read-only, force user svc-sftp-decrypt, access restricted to Domain Admins and SUPERIORSTATE\\kevinmurphy. GPO exact names/locations for S: and X: still need to be captured (High priority TODO).",
+      "section": "Drive Mappings",
+      "category": "Infrastructure",
+      "keywords": ["S drive", "X drive", "P drive", "GPO", "Group Policy", "drive mapping", "eDrawer", "scan", "Paycom", "handoff"]
+    },
+    {
+      "title": "Data Locations - Core Storage on WIN-DC01",
+      "url": "",
+      "content": "\\\\files (WIN-DC01 / 10.9.0.10) (Active): DNS files.superiorstate.local resolves to 10.9.0.10. Share root: C:\\Shares on WIN-DC01. Shares: \\\\files\\Company (C:\\Shares\\Company, approx 52 GB), \\\\files\\Users (C:\\Shares\\Users, approx 1.65 GB), \\\\files\\Finance (C:\\Shares\\Finance, approx 0.39 GB), \\\\files\\Temp (C:\\Shares\\Temp, small). eDrawer data storage: C:\\Shares\\Company\\eDrawer. Import staging: C:\\Shares\\Temp\\Edrawer_Import. Critical: these shares are VPN-dependent since \\\\files resolves to 10.9.0.10 on the WireGuard VPN.",
+      "section": "Data Locations",
+      "category": "Infrastructure",
+      "keywords": ["file shares", "WIN-DC01", "C:\\Shares", "Company", "Users", "Finance", "eDrawer", "data", "storage"]
+    },
+    {
+      "title": "Data Locations - Ubuntu Web and MySQL",
+      "url": "",
+      "content": "ubuntu web app + MySQL (LIN-WEB02 / 10.9.0.12) (Active): Web apps (WAR deployments) at superiorstate.biz plus utilities. MySQL databases observed: beta_ssa (Active), wave_commissions (Active). Test/unknown database: beta_ssa_wasabi_verify (treat as Legacy unless proven). MySQL access controls: listens on 0.0.0.0:3306 but UFW restricts inbound 3306/tcp to 10.9.0.0/24 (VPN-only). SMB (139/445) is also VPN-only.",
+      "section": "Data Locations",
+      "category": "Infrastructure",
+      "keywords": ["MySQL", "database", "beta_ssa", "wave_commissions", "ubuntu", "web app", "data", "10.9.0.12"]
+    },
+    {
+      "title": "Backup Coverage - Wasabi File Backups (Versioned)",
+      "url": "",
+      "content": "Wasabi file backups (Active): Bucket ssa-backup-prod. Remote concept: wasabi-lock:. Coverage: Windows file shares on WIN-DC01 (C:\\Shares\\...) are backed up with versioning. Wasabi tiered DB/config/webapp backups: Bucket wasabi-backup-ssa. Windows (win-cube) tiered SQL: windows/win-cube/databases/{daily|weekly|monthly}/.... Windows IIS sites: windows/win-cube/websites/{weekly|monthly}/.... Ubuntu tiered backups under linux/... path.",
+      "section": "Backup Coverage",
+      "category": "Disaster Recovery",
+      "keywords": ["Wasabi", "backup", "ssa-backup-prod", "wasabi-backup-ssa", "versioned", "file backup", "tiered"]
+    },
+    {
+      "title": "Ubuntu Backup Schedule and Retention",
+      "url": "",
+      "content": "Ubuntu backups (Active): Scheduler: root cron '15 2 * * * /opt/backup/server_backup.sh' (runs daily at 2:15 AM). Remote: wasabi-linux: (rclone s3 remote). Paths: DB dumps at wasabi-backup-ssa/linux/databases/{daily|weekly|monthly}/<DBNAME>/, webapps tar at .../linux/webapps/{daily|weekly|monthly}/, server configs tar at .../linux/server-config/{daily|weekly|monthly}/. Retention: DB keeps newest N per tier (daily=3, weekly=2, monthly=3), webapps/configs keep newest 1 per tier. Legacy: older flat DB objects directly under .../linux/databases/{tier}/ (no per-db folder, reported deleted). Legacy script /usr/local/sbin/backup_beta_ssa.sh exists but not scheduled.",
+      "section": "Backup Schedules",
+      "category": "Disaster Recovery",
+      "keywords": ["ubuntu", "backup", "cron", "retention", "rclone", "wasabi-linux", "database", "webapps", "server config", "daily", "weekly", "monthly"]
+    },
+    {
+      "title": "SERVER_22 Windows Server Backup",
+      "url": "",
+      "content": "SERVER_22 Windows Server Backup (Active): Configured via wbadmin enable backup to target F: drive, runs daily at 20:00. Includes -allCritical (bare metal recovery volumes) and -systemState (system state). VSS option: COPY. wbadmin delete catalog was executed after schedule creation - this deletes local backup catalog metadata, NOT the backup data on disk. To rebuild catalog: wbadmin get versions -backupTarget:F: and wbadmin restore catalog -backupTarget:F:. 'wbadmin get status' returning 'No backup or recovery operation is currently running' is normal when nothing is active.",
+      "section": "Backup Schedules",
+      "category": "Disaster Recovery",
+      "keywords": ["SERVER_22", "Windows Server Backup", "wbadmin", "bare metal", "system state", "F drive", "catalog", "20:00"]
+    },
+    {
+      "title": "IONOS Backup Unit Manager (Acronis-based)",
+      "url": "",
+      "content": "IONOS Backup Unit Manager (Acronis-based) (Active): Devices verified 'Protected' in console review. Details tracked in BackupOps GPT. This covers IONOS VPS servers. Wasabi console: https://console.wasabisys.com/login. Login: kevin@superiorstate.net + 2FA via Google Authenticator. Buckets: ionos-dc-backup (IONOS Backup Unit Manager output, versioning ON), ssa-backup-prod (versioned live files, versioning ON), wasabi-backup-ssa (general backups, versioning OFF), installs-archive (install files, versioning ON).",
+      "section": "Backup Systems",
+      "category": "Disaster Recovery",
+      "keywords": ["IONOS", "Acronis", "backup", "Wasabi", "buckets", "versioning", "Protected"]
+    },
+    {
+      "title": "Backup Validation TODOs",
+      "url": "",
+      "content": "Backup validation tasks (Active TODOs): 1) Confirm F: is dedicated and has sufficient free space; document retention/rotation behavior for Windows Server Backup. 2) Verify backups are being created: wbadmin get versions -backupTarget:F:. 3) Perform a test restore workflow (at minimum: catalog restore + file-level test; ideally: system state/bare metal in lab). 4) Decide on offsite copy strategy for F: backup set (copy to NAS/cloud/rotated disk) and document. Also: document break-glass/admin recovery process for M365 + GoDaddy + Wasabi (no secrets; only process).",
+      "section": "Backup Validation",
+      "category": "Disaster Recovery",
+      "keywords": ["backup", "validation", "test restore", "offsite", "break glass", "recovery", "TODO"]
+    },
+    {
+      "title": "GoDaddy - Domain Registration and DNS",
+      "url": "",
+      "content": "Domains & DNS (Active): Registrar + DNS provider is GoDaddy. Login uses personal Gmail authentication (ekevinmurphy@gmail.com). GoDaddy manages DNS for Superior State domains. Break-glass/admin recovery process for GoDaddy needs to be documented (Medium priority TODO).",
+      "section": "DNS Management",
+      "category": "Vendor Access",
+      "keywords": ["GoDaddy", "DNS", "domain", "registrar", "Gmail"]
+    },
+    {
+      "title": "Microsoft 365 - Email and Admin",
+      "url": "",
+      "content": "Microsoft 365 / Email (Active): Email domain superiorstate.net. Admin email: kevin@superiorstate.net (MFA enabled). Mailboxes: kevin@superiorstate.net (admin), help@superiorstate.net (group/shared), dlarson@superiorstate.net, bruce@superiorstate.net, delight@superiorstate.net. Admin portals: Outlook at https://outlook.cloud.microsoft/mail/, Admin center at https://admin.microsoft.com/Adminportal/Home. Delight's admin roles: Exchange admin, Global admin, Global reader, Helpdesk admin, Service support admin, SharePoint admin, Teams admin, User admin.",
+      "section": "Email",
+      "category": "Vendor Access",
+      "keywords": ["Microsoft 365", "M365", "email", "Outlook", "superiorstate.net", "admin", "mailbox", "Exchange", "MFA"]
+    },
+    {
+      "title": "Phone.com - Phone System Portal and Numbers",
+      "url": "",
+      "content": "Phone system - Phone.com (Active): Portal https://control.phone.com. Main numbers: 906-863-4488 (main local auto-attendant), 800-879-7752 (main toll free auto-attendant), 906-863-4499 (Kevin direct extension), 906-863-4480 (Deb direct extension), 906-863-1105 (forwards to DataPath fax workflow). Fax forwarding target (as stated): DataPath 501-553-9095. On-site endpoints: 2 Polycom SoundPoint IP 335 phones (Kevin + Deb). Kevin phone MAC: 00:04:f2:2a:db:38.",
+      "section": "Phone System",
+      "category": "Vendor Access",
+      "keywords": ["Phone.com", "phone system", "906-863-4488", "800-879-7752", "auto-attendant", "Polycom", "fax", "DataPath"]
+    },
+    {
+      "title": "Adobe Acrobat and Adobe Sign",
+      "url": "",
+      "content": "Adobe Acrobat / Adobe Sign (Active): Portal https://acrobat.adobe.com/link/home/. Templates at https://acrobat.adobe.com/link/documents/agreements/#agreement_type=template. Completed agreements at https://acrobat.adobe.com/link/documents/agreements/#agreement_type=agreement&agreement_state=completed. Stored files at https://acrobat.adobe.com/link/documents/files/. Primary notification email: kevin@superiorstate.net.",
+      "section": "Document Signing",
+      "category": "Vendor Access",
+      "keywords": ["Adobe", "Acrobat", "Adobe Sign", "agreements", "templates", "signing", "PDF"]
+    },
+    {
+      "title": "Jotform - Online Forms",
+      "url": "",
+      "content": "Jotform (Active): Portal https://www.jotform.com/. Login: kevin@superiorstate.net. Forms: 1) 'Superior State Service(s) Application' - stored in Jotform. 2) '125 Eligibility Test' - pushed to a Google Sheet (Google account: ekevinmurphy@gmail.com). 3) '105 Participation Test' - emailed to kevin@superiorstate.net.",
+      "section": "Online Forms",
+      "category": "Vendor Access",
+      "keywords": ["Jotform", "forms", "application", "eligibility", "participation", "Google Sheet"]
+    },
+    {
+      "title": "DataPath - Core Operations Portal",
+      "url": "",
+      "content": "DataPath (core operations) (Active): Admin + client HR site: https://superiorstate.summitwith.us/Login.aspx. Client user site: https://superiorstate.summitfor.me/. No 2FA noted. Vendor-managed logins (not email-based) for Kevin, Delight, dlarson. DataPath is used for core business operations including benefits administration.",
+      "section": "Core Operations",
+      "category": "Vendor Access",
+      "keywords": ["DataPath", "Summit", "HR", "operations", "benefits", "administration", "portal"]
+    },
+    {
+      "title": "Wasabi Cloud Storage Console",
+      "url": "",
+      "content": "Wasabi (Active): Console https://console.wasabisys.com/login. Login: kevin@superiorstate.net + 2FA via Google Authenticator (do not store codes). Buckets: ionos-dc-backup (IONOS Backup Unit Manager output, versioning ON), ssa-backup-prod (versioned live files backups, versioning ON), wasabi-backup-ssa (general backups including Windows + Ubuntu tiered backups/configs/webapps, versioning OFF), installs-archive (install files archive, versioning ON). Break-glass admin recovery process needs documentation (Medium priority TODO).",
+      "section": "Cloud Storage",
+      "category": "Vendor Access",
+      "keywords": ["Wasabi", "cloud storage", "buckets", "backup", "versioning", "2FA", "Google Authenticator"]
+    },
+    {
+      "title": "Webroot / OpenText Security",
+      "url": "",
+      "content": "Webroot / OpenText (Active): Portal https://my.webrootanywhere.com. Login: kevin@superiorstate.net + 2FA via Google Authenticator. Webroot provides endpoint security/antivirus protection for Superior State systems.",
+      "section": "Security",
+      "category": "Vendor Access",
+      "keywords": ["Webroot", "OpenText", "security", "antivirus", "endpoint protection", "2FA"]
+    },
+    {
+      "title": "IONOS Cloud Hosting Portal",
+      "url": "",
+      "content": "IONOS (Active): Portal https://dcd.ionos.com. Login: kevin@superiorstate.net. VPS names: vpn-cube, WIN-DC01, LIN-WEB02. IONOS Backup Unit Manager (Acronis-based): devices showed 'Protected' during review. IONOS hosts the cloud infrastructure for Superior State's VPS servers. Unknown: whether IONOS/provider firewall restricts inbound ports on vpn-cube (recommended to verify in IONOS portal).",
+      "section": "Cloud Hosting",
+      "category": "Vendor Access",
+      "keywords": ["IONOS", "cloud", "VPS", "hosting", "portal", "Acronis", "vpn-cube", "WIN-DC01", "LIN-WEB02"]
+    },
+    {
+      "title": "GitHub Source Code Repository",
+      "url": "",
+      "content": "GitHub (Active): Repository https://github.com/Murphnd2/ams (currently public; user wants private). Purpose: source backup for the superiorstate.biz app (WAR build). The web application is developed in IntelliJ and deployed as a WAR file to Tomcat on the ubuntu server.",
+      "section": "Source Code",
+      "category": "Vendor Access",
+      "keywords": ["GitHub", "source code", "repository", "WAR", "IntelliJ", "deploy", "ams"]
+    },
+    {
+      "title": "Wave Accounting",
+      "url": "",
+      "content": "Wave Accounting (waveapps.com) (Active): Portal https://waveapps.com/. Used for accounting exports used by the commissions utility on superiorstate.biz. Admin identity / who else can access: Unknown (need to capture which email owns/admins it; no passwords). Admins known: Kevin and Delight.",
+      "section": "Accounting",
+      "category": "Vendor Access",
+      "keywords": ["Wave", "accounting", "waveapps", "commissions", "exports"]
+    },
+    {
+      "title": "Wells Fargo Commercial Banking - SAFE Transmission",
+      "url": "",
+      "content": "Wells Fargo Commercial Banking portal (Active): Base portal URL https://wellsoffice.ceo.wellsfargo.com/portal/. Used for 'Safe Transmission' upload of NACHA files produced by nacha-combine utility. Operators: Kevin only (single-operator risk). Admin identity / secondary access: Unknown (need to capture break-glass/backup operator; no passwords). SAFE Transmission for Delight is pending setup. The nacha-combine utility on superiorstate.biz combines/formats NACHA files from DataPath SaaS for upload to initiate ACH debits/credits.",
+      "section": "Banking",
+      "category": "Vendor Access",
+      "keywords": ["Wells Fargo", "banking", "NACHA", "ACH", "Safe Transmission", "nacha-combine"]
+    },
+    {
+      "title": "Paycom SFTP + PGP Secure Intake Pipeline - Overview",
+      "url": "",
+      "content": "Paycom (Vendor) Enrollment export delivery (Active): Purpose is secure enrollment/export file delivery to SSA without email attachments. Delivery method: SFTP + PGP encryption. SFTP endpoint: superiorstate.biz:22. Vendor user: paycom. Vendor folder: /upload (server-side /sftp/paycom/upload). Encryption: vendor encrypts with SSA public key ssa_enrollment_pubkey.asc (uploads *.pgp / *.gpg). Decryption and handoff: automated on ubuntu every 15 minutes; decrypted outputs land in Windows-mapped P: handoff share (Samba [handoff] to /opt/phrd/handoff). Do not store private keys, passphrases, or SMTP credentials.",
+      "section": "Vendor Intake",
+      "category": "Processes",
+      "keywords": ["Paycom", "SFTP", "PGP", "encryption", "enrollment", "intake", "secure file transfer", "vendor"]
+    },
+    {
+      "title": "Paycom SFTP Server Configuration",
+      "url": "",
+      "content": "SFTP host/domain: superiorstate.biz. Port: 22/tcp (reachable externally, vendor-tested). Host VM: ubuntu (IONOS), 10.9.0.12 (VPN), public 74.208.246.116. Vendor user: paycom (local Linux user). Group: sftp-only (enforces SFTP-only + chroot). OpenSSH sshd restrictions for group sftp-only: ChrootDirectory /sftp/%u, ForceCommand internal-sftp, X11Forwarding no, AllowTcpForwarding no. Chroot root: /sftp/paycom. Vendor drop folder: /sftp/paycom/upload (writable by vendor). Folder permissions: /sftp and /sftp/paycom are root:root (chroot-safe), /sftp/paycom/upload is writable by vendor with ACL granting svc-sftp-decrypt full access.",
+      "section": "Vendor Intake",
+      "category": "Infrastructure",
+      "keywords": ["SFTP", "chroot", "OpenSSH", "sshd", "paycom", "sftp-only", "permissions", "ACL"]
+    },
+    {
+      "title": "Paycom Decrypt Automation - systemd Timer and Script",
+      "url": "",
+      "content": "Automated decrypt + notifications (Active): systemd service phrd-decrypt.service (Type=oneshot), runs as svc-sftp-decrypt, GNUPGHOME=/opt/phrd/.gnupg, executes /opt/phrd/phrd_decrypt.sh. systemd timer phrd-decrypt.timer runs every 15 minutes (OnCalendar=*:0/15), Persistent=true (catches up after downtime). Decrypt script behavior: selects newest unprocessed *.pgp/*.gpg in /sftp/paycom/upload, decrypts to /opt/phrd/handoff/<basename>.csv (unless basename ends with .csv or .xml), computes SHA256 for encrypted + output, logs rows/size, appends to /opt/phrd/state/processed.txt, moves encrypted original to /opt/phrd/archive/YYYYMMDD/, sends OK/ERROR email via /opt/phrd/send_mail.py.",
+      "section": "Automation",
+      "category": "Processes",
+      "keywords": ["decrypt", "systemd", "timer", "phrd-decrypt", "automation", "PGP", "Paycom", "svc-sftp-decrypt", "15 minutes"]
+    },
+    {
+      "title": "Paycom Data Locations and File Extension Handling",
+      "url": "",
+      "content": "Encrypted intake (Active): SFTP drop at /sftp/paycom/upload (vendor uploads *.pgp/*.gpg). Decrypt + processing artifacts under /opt/phrd: decrypted outputs (handoff) at /opt/phrd/handoff/PHRD_YYYYMMDD.csv (or .xml), encrypted archive at /opt/phrd/archive/YYYYMMDD/, work staging at /opt/phrd/work, state/dedupe ledger at /opt/phrd/state/processed.txt, logs at /opt/phrd/logs/decrypt_YYYYMMDD.log. Filename/extension nuance: script preserves .xml if encrypted filename is like something.xml.pgp (output becomes something.xml). If encrypted filename does NOT include .xml or .csv before final .pgp/.gpg, script defaults output to .csv even if content is XML. TODO: ensure Paycom includes real data extension before .pgp/.gpg.",
+      "section": "Vendor Intake",
+      "category": "Processes",
+      "keywords": ["Paycom", "data location", "handoff", "archive", "decrypt", "file extension", "csv", "xml", "pgp"]
+    },
+    {
+      "title": "Paycom Day-to-Day Workflow",
+      "url": "",
+      "content": "Day-to-day Paycom workflow (Active): 1) Paycom exports enrollment data (LDExBEM 1.3 XML Structured) and PGP-encrypts using SSA public key. 2) Paycom uploads encrypted file to SFTP /upload. 3) Ubuntu automation decrypts and places output in the P: handoff location. 4) SSA confirms receipt + successful decrypt back to Paycom. Windows access: /opt/phrd/handoff is shared via Samba as [handoff] and mapped as P: on Windows. Samba share is read-only, uses force user = svc-sftp-decrypt, access restricted to Domain Admins and SUPERIORSTATE\\kevinmurphy. Continuity note: SSA must retain matching PGP private key; if lost, historical encrypted files cannot be decrypted.",
+      "section": "Vendor Intake",
+      "category": "Processes",
+      "keywords": ["Paycom", "workflow", "enrollment", "LDExBEM", "P drive", "Samba", "handoff", "receipt confirmation"]
+    },
+    {
+      "title": "Business Utilities - Commissions and NACHA Combine",
+      "url": "",
+      "content": "Business utilities on superiorstate.biz (Active): commissions utility creates commission reports using a Wave Accounting export; developed in IntelliJ; source backed up to GitHub. nacha-combine utility combines/formats NACHA files from DataPath SaaS for upload to Wells Fargo Safe Transmission to initiate ACH debits/credits. Operator note: both utilities are used only by Kevin (single-operator risk). Wells Fargo SAFE Transmission access pending for Delight to reduce single-operator risk.",
+      "section": "Business Applications",
+      "category": "Processes",
+      "keywords": ["commissions", "NACHA", "nacha-combine", "Wave", "Wells Fargo", "ACH", "Kevin", "single-operator"]
+    },
+    {
+      "title": "Active Directory and DNS Architecture",
+      "url": "",
+      "content": "Primary Domain Controller: WIN-DC01 (10.9.0.10) - Windows Server 2019 Datacenter, runs AD DS + primary DNS + Group Policy. Secondary Domain Controller: DpathServer (10.0.0.211) - Windows Server 2012 R2, confirmed secondary DC on SERVER_22. Critical safety: only one instance of DpathServer DC identity should be online; REPLICA\\2018_AppServer must remain Off while SERVER_22\\DpathServer is Running. DNS best practice: domain controllers should prefer AD DNS directly (10.9.0.10 and 10.0.0.211) to reduce dependency on router/DNS forwarder.",
+      "section": "Active Directory",
+      "category": "Architecture",
+      "keywords": ["Active Directory", "AD", "DNS", "domain controller", "WIN-DC01", "DpathServer", "Group Policy", "GPO"]
+    },
+    {
+      "title": "DNS Forwarding and Resolution Chain",
+      "url": "",
+      "content": "DD-WRT/dnsmasq on 10.0.0.1 forwards DNS to 10.9.0.10 (WIN-DC01) (Active, operator-reported). Upstream resolvers from DD-WRT: 10.9.0.10 (WIN-DC01), 10.0.0.211 (DpathServer), 192.168.1.1 (Inseego FX3100). Name resolution: files.superiorstate.local resolves to 10.9.0.10 (WIN-DC01). Office workstation DNS configs: MINI05 uses 10.0.0.211 then 10.9.0.10, MINIPC01 uses 10.9.0.10 then 10.0.0.211. Important: domain controllers should prefer AD DNS directly rather than going through the router/DNS forwarder to reduce single points of failure.",
+      "section": "DNS",
+      "category": "Networks",
+      "keywords": ["DNS", "forwarding", "dnsmasq", "resolution", "name resolution", "files.superiorstate.local", "AD DNS"]
+    },
+    {
+      "title": "Hyper-V Migration History - DpathServer from REPLICA to SERVER_22",
+      "url": "",
+      "content": "DpathServer VM (Hyper-V name 2018_AppServer) migrated from REPLICA (10.0.0.7) to SERVER_22 (10.0.0.8) on 2025-12-16. Migration method: base disks copied to SERVER_22 and new VM built (not replication). DNS issue blocked Hyper-V Manager from Windows8 until DNS changed from 10.0.0.1 to 10.9.0.10 (AD DNS). Replication attempt was started, stalled, removed (Legacy event), leaving .avhd/.avhdx differencing chain that was merged into base disks. Replica remnant cleanup: leftover 2018_AppServer VM definition on SERVER_22 was removed. DpathServer came up via DHCP at 10.0.0.131, restored to static 10.0.0.211.",
+      "section": "Migration History",
+      "category": "Infrastructure",
+      "keywords": ["migration", "Hyper-V", "DpathServer", "2018_AppServer", "REPLICA", "SERVER_22", "VHD", "replication"]
+    },
+    {
+      "title": "Windows8 VM - Temporary Management Tool",
+      "url": "",
+      "content": "Windows8 VM on SERVER_22 (Active, temporary): Running as temporary management VM for Hyper-V Manager. Domain trust later broke (machine account/trust relationship error). Decisions needed: keep as non-domain temporary tool VM, or rejoin to domain/repair trust, or shut down and delete once no longer needed. Hyper-V Manager connectivity was initially broken due to DNS pointing to 10.0.0.1; fixed by setting DNS to 10.9.0.10 (AD DNS). After fix, nslookup REPLICA returned 10.0.0.7 and nslookup SERVER_22 returned 10.0.0.8.",
+      "section": "Virtual Machines",
+      "category": "Systems",
+      "keywords": ["Windows8", "VM", "Hyper-V Manager", "domain trust", "management", "temporary"]
+    },
+    {
+      "title": "High Priority TODOs - PCs and Infrastructure",
+      "url": "",
+      "content": "High priority TODOs: 1) Home work laptop: still Unknown - capture hostname, OS, VPN IP (10.9.0.x), purpose, apps. 2) Capture exact GPO names/locations for S: (Save to eDrawer) and X: (scan drives) mappings. 3) VoIP phones: capture serial and power method (PoE vs adapter) for both Polycom handsets, capture MAC + expected IP for phone-02, record extension/DID mapping per handset in Phone.com, record switch/port/VLAN for each phone, if failures recur snapshot /proc/net/nf_conntrack entries. 4) vpn-cube: host firewall INPUT policy is accept; verify IONOS firewall restrictions and consider restricting inbound SSH.",
+      "section": "Action Items",
+      "category": "Architecture",
+      "keywords": ["TODO", "high priority", "laptop", "GPO", "VoIP", "phone", "vpn-cube", "firewall"]
+    },
+    {
+      "title": "High Priority TODOs - Paycom Pipeline",
+      "url": "",
+      "content": "High priority Paycom pipeline TODOs: 1) Paycom intake continuity: identify who/what consumes files from P: (/opt/phrd/handoff) and define retention/cleanup policy (handoff currently accumulates files). 2) Confirm operational receipt confirmation step (who confirms back to Paycom and how). 3) Key custody: document where PGP private key is secured and who is authorized to manage it (no secrets). 4) PHRD pipeline health: decide how to monitor failures and where alerts go. 5) Paycom intake hygiene: ensure Paycom includes real data extension before .pgp/.gpg so decrypted outputs keep correct extension.",
+      "section": "Action Items",
+      "category": "Processes",
+      "keywords": ["TODO", "Paycom", "pipeline", "PGP", "key custody", "retention", "handoff", "monitoring"]
+    },
+    {
+      "title": "Medium and Low Priority TODOs",
+      "url": "",
+      "content": "Medium priority TODOs: 1) Identify where Kyocera File Utility stores Save Number to folder mapping - export from NsCatConf.exe/UI or find config storage location and add to backup scope. 2) Document break-glass/admin recovery process for M365 + GoDaddy + Wasabi (no secrets, only process). 3) Wells Fargo Safe Transmission: establish backup operator/break-glass access. 4) Wave Accounting: record admin identity and secondary access. Low priority TODOs: 1) Capture hardware label details (serials, model variants) for Inseego FX3100, Netgear R7000P, Kyocera devices. 2) Confirm if additional SaaS platforms exist not yet captured.",
+      "section": "Action Items",
+      "category": "Architecture",
+      "keywords": ["TODO", "medium priority", "low priority", "Kyocera", "break glass", "recovery", "Wave", "Wells Fargo"]
+    },
+    {
+      "title": "DpathServer Resource Right-Sizing and Maintenance",
+      "url": "",
+      "content": "DpathServer right-sizing TODO (Active): Currently configured with 20 vCPU and 20GB RAM with Dynamic Memory disabled. Changes require VM Off. Plan a short maintenance window if needed to right-size resources. File placement tidy-up: VHDs currently attached from J:\\ActiveVMs\\2018_AppServer_Migration\\VHDs. Optionally move/copy into J:\\ActiveVMs\\DpathServer\\VHDs during maintenance window (VM must be Off). DNS best practice: consider DNS order on DpathServer to include itself (10.0.0.211) and peer (10.9.0.10) as appropriate for SSA's dependency model.",
+      "section": "Maintenance",
+      "category": "Infrastructure",
+      "keywords": ["DpathServer", "right-sizing", "vCPU", "RAM", "maintenance", "VHD", "DNS"]
+    },
+    {
+      "title": "Operational Guardrails and Safety Rules",
+      "url": "",
+      "content": "WinRM/double-hop rule: copies between two remote UNC paths (\\\\A to \\\\B) often fail with Access Denied. Prefer staged copies or interactive copy from one machine; document CredSSP explicitly if used. Long-running file copies: default to /NP and /LOG:, monitor via file size growth, Get-SmbOpenFile, or log tailing. Don't rely on scrolling console output. Hyper-V resource changes: CPU/RAM changes generally require VM Off unless hot-add is confirmed. Warn before attempting. Critical DC safety: ensure only one instance of DpathServer DC identity is online at a time.",
+      "section": "Operational Rules",
+      "category": "Architecture",
+      "keywords": ["guardrails", "safety", "WinRM", "double-hop", "file copy", "Hyper-V", "resource changes", "DC identity"]
+    },
+    {
+      "title": "SFTP + PGP Security Model and Key Management",
+      "url": "",
+      "content": "PGP public key distributed to vendor: ssa_enrollment_pubkey.asc (ASCII armored). Vendor uploads should be PGP-encrypted (*.pgp/*.gpg). Continuity critical: SSA must retain matching private key; if lost, historical encrypted files cannot be decrypted. Private key location: /opt/phrd/.gnupg/ on ubuntu (do not export). GPG passphrase file: /opt/phrd/pgp.pass (treat as secret). SMTP notification env: /opt/phrd/keys/smtp.env (treat as secret). Key custody documentation is a High priority TODO. Decrypt automation runs as service account svc-sftp-decrypt with GNUPGHOME=/opt/phrd/.gnupg.",
+      "section": "Security",
+      "category": "Disaster Recovery",
+      "keywords": ["PGP", "encryption", "private key", "public key", "key management", "security", "GNUPG", "custody"]
+    },
+    {
+      "title": "Known IP Address Quick Reference",
+      "url": "",
+      "content": "Quick IP reference: Modem 192.168.1.1, Router 10.0.0.1, Office LAN 10.0.0.0/24, VPN 10.9.0.0/24. vpn-cube public 216.225.207.204, VPN 10.9.0.1. WIN-DC01 public 217.160.151.36, VPN 10.9.0.10. ubuntu public 74.208.246.116, VPN 10.9.0.12. REPLICA 10.0.0.7. SERVER_22 10.0.0.8. MURPHY2022 10.0.0.11. MINIPC01 10.0.0.22. Scanner 10.0.0.55. phone-01 10.0.0.60. Printer 10.0.0.66. MINI05 10.0.0.132. phone-02 10.0.0.200 (suspected). DpathServer 10.0.0.211. MURPHY_MINI_01 10.9.0.100. DD-WRT tunnel 10.9.0.2.",
+      "section": "Quick Reference",
+      "category": "Networks",
+      "keywords": ["IP address", "quick reference", "lookup", "network", "all IPs", "address list"]
+    }
+  ]
+}

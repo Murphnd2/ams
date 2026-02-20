@@ -346,19 +346,34 @@ These projects are valuable to Superior State specifically but are not prioritie
 
 ---
 
-### 15. AI Chatbot
+### 15. AI Employee Knowledge Assistant
 
-**Overview:** Build a chatbot to handle common client inquiries.
+**Overview:** An AI-powered chatbox embedded in AMS that answers employee questions using indexed knowledge bases and Claude's API. Uses retrieval-augmented generation (RAG) — the system finds relevant chunks from pre-indexed JSON files and sends them as context with each question to the Anthropic Messages API.
 
-**Potential use cases:** Login help, plan questions, basic service information, document requests.
+**Full specification:** `docs/analysis/ai_chatbot_feature_spec.md`
 
-**Knowledge sources:** Email history, help site content, internal documentation, marketing library content.
+**Knowledge bases (stored in `src/main/resources/knowledge/`):**
 
-**Approach:** Two-phase — build the chatbot infrastructure first, then populate with content over time. Similar philosophy to the marketing library.
+- **DataPath Summit Guide** — 502 searchable chunks covering HSA, FSA, HRA, COBRA, premium billing, enrollment, debit cards, claims. Sourced from Summit user guides, release notes, and training documentation.
+- **Summit Training Videos** — 30 training video titles mapped to Wistia embed URLs. Included in responses when a relevant video exists.
+- **Wave Accounting Help** — 449 chunks covering accounting, invoicing, payments, receipts, bank connections, and reports.
+- **Business Continuity** — Systems, networks, infrastructure, vendor access, and disaster recovery documentation.
+- **Backup & Recovery Procedures** — Windows Server Backup, rclone/Wasabi S3, MySQL dumps, and restore runbooks.
 
-**Ties to:** Ticket templates (chatbot handles simple scenarios, escalates to human workflow for complex ones).
+**Access control:** Role-based, using the existing UserRole system. Standard PSP users see only Summit-related knowledge bases. Admins see all five knowledge bases including Wave, Business Continuity, and Backup/Recovery. The `knowledge-config.json` registry maps each KB to a required access role.
+
+**Architecture:** Chatbox UI sends AJAX requests to a `ChatAssistant` servlet. The servlet checks the user's role, searches eligible knowledge bases for relevant chunks, builds a context-augmented prompt, calls the Anthropic API, and returns the response with source citations and video links.
+
+**Model:** Claude Haiku 4.5 for cost efficiency. Configurable to Sonnet if higher quality is needed.
+
+**Knowledge base updates:** Re-crawl sources and regenerate JSON files. No code changes required — replace files and restart. New KBs can be added by dropping a JSON file and registering it in `knowledge-config.json`.
+
+**Future tie-ins:** Ticket escalation (create a support ticket from a chatbot conversation that can't be resolved). Client-facing version (limited KB access for the future Client Contact role). Embeddings upgrade if keyword search proves insufficient.
+
+**Ties to:** Ticket templates (chatbot handles simple scenarios, escalates to human workflow for complex ones). Marketing library (potential future KB source).
 
 ---
+
 
 ## Post-Conference Tier
 

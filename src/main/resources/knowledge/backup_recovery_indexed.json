@@ -1,0 +1,519 @@
+{
+  "source": "Backup and Recovery Procedures - SSA Infrastructure",
+  "total_pages": 9,
+  "total_chunks": 64,
+  "chunks": [
+    {
+      "title": "SSA Backup Environment — Servers in Scope",
+      "url": "",
+      "content": "The SSA backup environment covers four servers:\n\nA) Windows Server 2019 — \"win-cube\": Hosts SQL Server Express instance (localhost\\SQLEXPRESS), IIS websites content (C:\\Websites), and file shares source (C:\\Shares with subfolders: Company, Finance, Temp, Users). Automation via Scheduled Tasks executing PowerShell scripts for SQL + IIS + file syncs.\n\nB) Windows Server 2012 R2 — \"DpathServer\": Protected via IONOS Backup Unit Manager plan \"Daily DC Protection (30 Days)\". Separate from win-cube scripted Wasabi copies.\n\nC) Ubuntu — \"ubuntu\": Protected via IONOS Backup Unit Manager plan \"Daily DC Protection (30 Days)\". Additional scripted backups write to Wasabi under wasabi-backup-ssa/linux/...\n\nD) Windows Server 2022 — \"SERVER_22\": Uses Windows Server Backup (WSB) for nightly local backups to dedicated target volume F: (label WSB_BACKUP). Schedule: 20:00 daily. Scope: allCritical + systemState.",
+      "section": "Environment Overview",
+      "category": "Backup Schedules",
+      "keywords": ["servers", "win-cube", "DpathServer", "ubuntu", "SERVER_22", "environment", "inventory", "infrastructure", "Windows Server 2019", "Windows Server 2012", "Windows Server 2022"]
+    },
+    {
+      "title": "Wasabi S3 Buckets and rclone Remotes — Overview",
+      "url": "",
+      "content": "Two Wasabi S3 buckets are in use:\n\n1) wasabi-backup-ssa — General backup bucket (non-versioned). Used for SQL backups (tiered), IIS website ZIP backups, and Linux tar/sql.gz style backups under linux/.\n\n2) ssa-backup-prod — Versioning bucket used for \"live files\" backups. Wasabi bucket versioning provides historical recovery instead of script-managed versions.\n\nKnown rclone remotes (configured in C:\\ProgramData\\rclone\\rclone.conf on Windows):\n\n- wasabi-u: — General S3 remote for non-versioned bucket access. Endpoint: s3.wasabisys.com. Used for SQL, websites, and linux artifacts.\n- wasabi-lock: — Versioned bucket remote. Endpoint: s3.us-central-1.wasabisys.com. Used for live file backups with Wasabi versioning.\n- wasabi-linux: — Ubuntu S3 remote (endpoint s3.wasabisys.com) used by /opt/backup/server_backup.sh.\n\nSecurity: Never store access keys, secret keys, passwords, or MFA codes in knowledge files. Store secrets only in protected locations and reference file paths only.",
+      "section": "Wasabi and rclone Configuration",
+      "category": "Rclone Wasabi S3",
+      "keywords": ["wasabi", "rclone", "S3", "bucket", "wasabi-backup-ssa", "ssa-backup-prod", "wasabi-u", "wasabi-lock", "wasabi-linux", "remote", "versioning", "rclone.conf"]
+    },
+    {
+      "title": "Win-Cube SQL Server Backups — Active Job Details",
+      "url": "",
+      "content": "Task name: SQLServer → Wasabi Backups (Tiered)\nRuns as: SYSTEM (ServiceAccount), RunLevel Highest\nAction: powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"C:\\Backups\\Backup-SqlServer-To-Wasabi.ps1\"\nSchedule: daily at ~6:00 PM\n\nActive remote root: wasabi-u:wasabi-backup-ssa/windows/win-cube/databases\n\nActive layout: wasabi-backup-ssa/windows/win-cube/databases/{daily|weekly|monthly}/{DatabaseName}/{DatabaseName}_Backup_yyyyMMdd_HHmm.bak\n\nExample: wasabi-u:wasabi-backup-ssa/windows/win-cube/databases/weekly/SuperiorState/SuperiorState_Backup_20251214_1101.bak\n\nLocal staging: C:\\Backups\\Databases\\{Database}_Backup_yyyyMMdd_HHmm.bak\nLog folder: C:\\Backups\\Logs\\Wasabi-SQL-Backup_*.log\nRolling log: C:\\Backups\\Logs\\Wasabi-SQL-Backup.log\n\nBehavior: Script tries WITH COMPRESSION first. SQL Express does not support backup compression — it fails and the script retries WITHOUT compression. This is expected.",
+      "section": "SQL Server Backup Job",
+      "category": "Windows Server Backup",
+      "keywords": ["SQL", "backup", "tiered", "daily", "weekly", "monthly", "SQLEXPRESS", "win-cube", "scheduled task", "SYSTEM", "compression", ".bak", "database"]
+    },
+    {
+      "title": "Win-Cube IIS Websites Backup — Active Job Details",
+      "url": "",
+      "content": "Task name: Weekly IIS Site Backup\nRuns as: SYSTEM (ServiceAccount)\nAction: powershell.exe ... -File \"C:\\Backups\\Backup-Websites-To-Wasabi.ps1\"\nSchedule: weekly at ~6:00 AM\nPurpose: zip C:\\Websites and upload weekly + monthly.\n\nActive remote root: wasabi-u:wasabi-backup-ssa/windows/win-cube/websites\n\nLayout:\n- Weekly: .../weekly/Websites_yyyyMMdd_HHmm.zip (keep last 3)\n- Monthly: .../monthly/Websites_Monthly_yyyyMMdd_HHmm.zip (keep 1 per month for last ~4 months + current)\n\nLocal staging: C:\\Backups\\Website\\Websites_yyyyMMdd_HHmm.zip\nLogs: C:\\Backups\\Logs\\Website-Backup_*.log\nRolling log: C:\\Backups\\Logs\\Website-Backup.log",
+      "section": "Websites Backup Job",
+      "category": "Windows Server Backup",
+      "keywords": ["IIS", "websites", "backup", "weekly", "monthly", "zip", "win-cube", "retention", "Wasabi"]
+    },
+    {
+      "title": "Win-Cube Files Backup (Wasabi Versioning) — Active Job Details",
+      "url": "",
+      "content": "Task name: WinCube-Files-Backup (Wasabi Versioning)\nRuns as: SYSTEM (ServiceAccount)\nAction: powershell.exe ... -File \"C:\\Scripts\\backup-files-to-wasabi_simple.ps1\"\nSchedule: daily at ~9:00 PM\nSource: C:\\Shares\n\nActive destination: wasabi-lock:ssa-backup-prod/windows/win-cube/files/live\n\nExpected layout under live/:\n- .../live/Company/...\n- .../live/Users/...\n- .../live/Finance/...\n- .../live/Temp/...\n\nLogging:\n- Bootstrap log: C:\\Logs\\files-backup_simple_BOOT_yyyy-MM-dd_HHmm.log\n- JSON log: C:\\Logs\\files-backup_simple_yyyy-MM-dd_HHmm.jsonlog\n\nThis job relies on Wasabi bucket versioning (in ssa-backup-prod) rather than maintaining a custom \"versions/\" tree. The older script C:\\Scripts\\backup-files-to-wasabi.ps1 exists but is DISABLED (renamed to .DISABLED) and should not be referenced as the current mechanism.",
+      "section": "Files Backup Job",
+      "category": "Windows Server Backup",
+      "keywords": ["files", "backup", "versioning", "live mirror", "shares", "Company", "Finance", "Users", "Temp", "win-cube", "wasabi-lock", "ssa-backup-prod"]
+    },
+    {
+      "title": "Win-Cube Scheduled Tasks — Complete List and Verification",
+      "url": "",
+      "content": "Three active scheduled tasks on win-cube:\n\n1) SQLServer → Wasabi Backups (Tiered) — runs as SYSTEM, daily ~6:00 PM\n2) Weekly IIS Site Backup — runs as SYSTEM, weekly ~6:00 AM\n3) WinCube-Files-Backup (Wasabi Versioning) — runs as SYSTEM, daily ~9:00 PM\n\nVerification commands (PowerShell preferred because SCHTASKS can break on special characters like arrows):\n\nGet-ScheduledTask | Where-Object { $_.TaskName -match 'Wasabi|Backup' } | Format-Table TaskName,TaskPath\nGet-ScheduledTaskInfo -TaskName \"SQLServer → Wasabi Backups (Tiered)\" | Format-List *\n(Get-ScheduledTask -TaskName \"SQLServer → Wasabi Backups (Tiered)\").Principal | Format-List *\n\nConfirm script targets:\nGet-ScheduledTask -TaskName \"SQLServer → Wasabi Backups (Tiered)\" | Select-Object -Expand Actions\nGet-ScheduledTask -TaskName \"Weekly IIS Site Backup\" | Select-Object -Expand Actions\nGet-ScheduledTask -TaskName \"WinCube-Files-Backup (Wasabi Versioning)\" | Select-Object -Expand Actions\n\nConfirm remotes referenced in scripts:\nSelect-String -Path \"C:\\Backups\\*.ps1\",\"C:\\Scripts\\*.ps1\" -Pattern \"wasabi-\" -SimpleMatch",
+      "section": "Scheduled Tasks",
+      "category": "Backup Schedules",
+      "keywords": ["scheduled task", "task scheduler", "SYSTEM", "PowerShell", "Get-ScheduledTask", "verification", "win-cube"]
+    },
+    {
+      "title": "Win-Cube Scripts Inventory",
+      "url": "",
+      "content": "Active scripts on win-cube:\n\n1) C:\\Backups\\Backup-SqlServer-To-Wasabi.ps1 — SQL Server backup to Wasabi (tiered daily/weekly/monthly)\n2) C:\\Backups\\Backup-Websites-To-Wasabi.ps1 — IIS websites backup to Wasabi\n3) C:\\Scripts\\backup-files-to-wasabi_simple.ps1 — File shares live mirror to Wasabi versioned bucket\n\nDisabled/legacy scripts:\n- C:\\Scripts\\backup-files-to-wasabi.ps1.DISABLED — older file backup script that referenced wasabi-u:wasabi-backup-ssa/windows/win-cube/files/{live,versions}. Not used by current automation.\n\nrclone configuration file: C:\\ProgramData\\rclone\\rclone.conf\nrclone binary path: C:\\rclone\\rclone.exe",
+      "section": "Scripts",
+      "category": "Windows Server Backup",
+      "keywords": ["scripts", "PowerShell", "backup", "win-cube", "rclone", "disabled", "legacy"]
+    },
+    {
+      "title": "Win-Cube Log File Locations",
+      "url": "",
+      "content": "SQL backup run logs:\n- C:\\Backups\\Logs\\Wasabi-SQL-Backup_*.log (per-run logs)\n- C:\\Backups\\Logs\\Wasabi-SQL-Backup.log (rolling log)\n\nWebsites backup logs:\n- C:\\Backups\\Logs\\Website-Backup_*.log (per-run logs)\n- C:\\Backups\\Logs\\Website-Backup.log (rolling log)\n\nFiles backup logs:\n- C:\\Logs\\files-backup_simple_BOOT_*.log (bootstrap log)\n- C:\\Logs\\files-backup_simple_*.jsonlog (JSON structured log)\n\nTo pull the newest SQL run log:\nGet-ChildItem C:\\Backups\\Logs -Filter \"Wasabi-SQL-Backup_*.log\" | Sort-Object LastWriteTime -Descending | Select-Object -First 1 | ForEach-Object { Get-Content $_.FullName -Tail 120 }\n\nTo pull the newest websites run log:\nGet-ChildItem C:\\Backups\\Logs -Filter \"Website-Backup_*.log\" | Sort-Object LastWriteTime -Descending | Select-Object -First 1 | ForEach-Object { Get-Content $_.FullName -Tail 120 }\n\nTo pull the newest files backup bootstrap log:\nGet-ChildItem C:\\Logs -Filter \"files-backup_simple_BOOT_*.log\" | Sort-Object LastWriteTime -Descending | Select-Object -First 1 | ForEach-Object { Get-Content $_.FullName -Tail 120 }",
+      "section": "Log Locations",
+      "category": "Monitoring",
+      "keywords": ["logs", "log files", "SQL backup log", "website backup log", "files backup log", "monitoring", "win-cube"]
+    },
+    {
+      "title": "SQL Backup Fails Under SYSTEM — Root Cause and Fix",
+      "url": "",
+      "content": "Symptom: When the SQL backup scheduled task runs as SYSTEM, the run log shows errors like:\n- Msg 916 ... NT AUTHORITY\\SYSTEM is not able to access the database ... under the current security context.\n- Msg 262 ... BACKUP DATABASE permission denied in database ...\n- Backup file not found after BACKUP (because BACKUP failed)\n\nRoot cause: The task runs as SYSTEM, but SQL Server doesn't treat NT AUTHORITY\\SYSTEM as sysadmin by default.\n\nFix (proven — run once as a sysadmin with -E):\n\nIF IS_SRVROLEMEMBER('sysadmin', 'NT AUTHORITY\\SYSTEM') = 0\nBEGIN\n  ALTER SERVER ROLE [sysadmin] ADD MEMBER [NT AUTHORITY\\SYSTEM];\nEND;\n\nOptional: ensure the computer account exists as a login:\nIF SUSER_ID('SUPERIORSTATE\\WIN-BAFAS9DBTQ8$') IS NULL\nBEGIN\n  CREATE LOGIN [SUPERIORSTATE\\WIN-BAFAS9DBTQ8$] FROM WINDOWS;\nEND;\nIF IS_SRVROLEMEMBER('sysadmin', 'SUPERIORSTATE\\WIN-BAFAS9DBTQ8$') = 0\nBEGIN\n  ALTER SERVER ROLE [sysadmin] ADD MEMBER [SUPERIORSTATE\\WIN-BAFAS9DBTQ8$];\nEND;\n\nValidation: Run the task manually and check LastTaskResult is 0:\nStart-ScheduledTask -TaskName \"SQLServer → Wasabi Backups (Tiered)\"\nStart-Sleep 60\nGet-ScheduledTaskInfo -TaskName \"SQLServer → Wasabi Backups (Tiered)\" | Format-List LastRunTime,LastTaskResult",
+      "section": "SQL SYSTEM Permission Fix",
+      "category": "Troubleshooting",
+      "keywords": ["SQL", "SYSTEM", "sysadmin", "permission denied", "Msg 916", "Msg 262", "NT AUTHORITY", "backup fails", "fix"]
+    },
+    {
+      "title": "SQL Express WITH COMPRESSION Fallback Behavior",
+      "url": "",
+      "content": "Symptom: SQL backup log shows: Msg 1844 ... BACKUP DATABASE WITH COMPRESSION is not supported on Express Edition\n\nThis is expected behavior. SQL Express does not support backup compression.\n\nThe backup script is designed to:\n1) Try WITH COMPRESSION first\n2) If the .bak file is not produced, retry WITHOUT COMPRESSION\n\nValidation: In the run log, look for:\n- \"Primary backup didn't produce a file; retrying WITHOUT COMPRESSION (likely Express edition).\"\n- followed by \"BACKUP DATABASE successfully processed ...\"\n\nAs long as the retry succeeds and produces a .bak file, the Msg 1844 error is benign and can be ignored.",
+      "section": "SQL Express Compression",
+      "category": "Troubleshooting",
+      "keywords": ["SQL Express", "compression", "Msg 1844", "WITH COMPRESSION", "fallback", "expected behavior", "backup"]
+    },
+    {
+      "title": "Testing SYSTEM Account Access — Method and Patterns",
+      "url": "",
+      "content": "When changing tasks to run as SYSTEM, you must confirm SYSTEM can:\n- Decrypt SMTP secret (AES-keyed SecureString)\n- Query SQL via integrated auth (sqlcmd -E)\n- Write to C:\\Backups\\Databases\n- Access rclone config + Wasabi remote\n\nMethod (proven, no PsExec needed):\n1) Write a small test script to C:\\Temp\\*.ps1\n2) Create a one-time scheduled task running as SYSTEM\n3) Redirect output to C:\\Temp\\*.txt\n4) Schedule 1 minute ahead to avoid \"earlier than current time\" warning\n\nExample pattern:\n$st = (Get-Date).AddMinutes(1).ToString('HH:mm')\nschtasks /create /f /tn \"\\Temp\\TEST\" /sc once /st $st /ru \"SYSTEM\" /tr \"cmd.exe /c powershell.exe -NoProfile -ExecutionPolicy Bypass -File C:\\Temp\\test.ps1 > C:\\Temp\\test.txt 2>&1\"\nschtasks /run /tn \"\\Temp\\TEST\"\nStart-Sleep 5\nGet-Content C:\\Temp\\test.txt\n\nCleanup after tests:\nschtasks /delete /f /tn \"\\Temp\\SYSTEM_SQL_TEST\"\nRemove-Item -Force C:\\Temp\\system_*_test.ps1,C:\\Temp\\system_*_test.txt -ErrorAction SilentlyContinue\n\nAll four checks (SMTP, SQL, disk write, rclone) were validated successfully using this pattern on win-cube.",
+      "section": "SYSTEM Account Testing",
+      "category": "Troubleshooting",
+      "keywords": ["SYSTEM", "testing", "scheduled task", "one-shot", "SMTP", "SQL", "rclone", "validate", "permissions"]
+    },
+    {
+      "title": "Scheduled Task Invocation and Quoting Issues",
+      "url": "",
+      "content": "Symptom: schtasks /create ... /tr \"...\" fails with ERROR: Invalid argument/option when task names contain special characters (like arrow glyphs →).\n\nFix pattern (reliable):\n1) Put the logic in a .ps1 file\n2) Use cmd.exe /c powershell.exe -File <script> > <output> 2>&1\n\nFor querying tasks with special characters in names, always prefer PowerShell cmdlets:\n- Get-ScheduledTask (instead of schtasks /query)\n- Get-ScheduledTaskInfo (for last run info)\n- Start-ScheduledTask (to trigger manually)\n\nThese PowerShell cmdlets handle Unicode/special characters correctly where schtasks.exe may fail.",
+      "section": "Task Scheduler Quoting",
+      "category": "Troubleshooting",
+      "keywords": ["schtasks", "quoting", "special characters", "arrow", "glyph", "PowerShell", "Get-ScheduledTask", "error"]
+    },
+    {
+      "title": "rclone Hangs on Large Directory Listings",
+      "url": "",
+      "content": "Symptom: Commands like lsl --recursive or deep lsjson --recursive over a very large prefix (tens of thousands of objects) can appear stuck or take a very long time.\n\nSafer approaches:\n\n1) Validate a single known object:\nrclone lsl \"wasabi-lock:ssa-backup-prod/windows/win-cube/files/live/Company/er sigs/1stpiedmont.PNG\" --config C:\\ProgramData\\rclone\\rclone.conf\n\n2) Measure subtree size (fast sanity check):\nrclone size \"wasabi-lock:ssa-backup-prod/windows/win-cube/files/live/Company/er sigs\" --config C:\\ProgramData\\rclone\\rclone.conf --fast-list\n\n3) Limit depth:\nrclone lsl \"wasabi-u:wasabi-backup-ssa/windows/win-cube/files/live\" --max-depth 2 --config ...\n\n4) Compare file lists between prefixes (only when subtree is reasonable):\n$old = rclone lsf \"wasabi-u:...\" --files-only --recursive --config $cfg\n$new = rclone lsf \"wasabi-lock:...\" --files-only --recursive --config $cfg\nCompare-Object ($old|sort) ($new|sort)\n\nKey flags: --fast-list for S3 listings, --max-depth N when sampling, avoid unbounded recursive listings on 50k+ object trees.",
+      "section": "rclone Large Listing Tips",
+      "category": "Rclone Wasabi S3",
+      "keywords": ["rclone", "hang", "slow", "listing", "recursive", "fast-list", "max-depth", "performance", "large tree"]
+    },
+    {
+      "title": "S3 Case Sensitivity and Path Hygiene",
+      "url": "",
+      "content": "S3 object keys are case-sensitive. Windows paths are case-insensitive.\n\nIn this environment, both of these exist and represent SEPARATE keys:\n- .../company/er sigs/... (legacy, lowercase)\n- .../Company/er sigs/... (active, title case)\n\nObservations:\n- Legacy wasabi-backup-ssa used lowercase: company/...\n- Active ssa-backup-prod uses title case: Company/...\n\nBest practice:\n- Treat the destination casing as canonical\n- Do not \"rename by case\" unless intentionally migrating\n- When comparing legacy vs active, always compare exact casing\n- Standardize on a single canonical casing convention for live trees (current active uses Title Case in ssa-backup-prod)",
+      "section": "Path Case Sensitivity",
+      "category": "Rclone Wasabi S3",
+      "keywords": ["case sensitive", "S3", "path", "lowercase", "title case", "Company", "company", "keys", "migration"]
+    },
+    {
+      "title": "Active Wasabi Paths — Windows win-cube (Complete Map)",
+      "url": "",
+      "content": "Active paths (keep / rely on):\n\n1) SQL backups:\n   Bucket: wasabi-backup-ssa\n   Path: wasabi-u:wasabi-backup-ssa/windows/win-cube/databases/{daily|weekly|monthly}/{DBNAME}/{DBNAME}_Backup_yyyyMMdd_HHmm.bak\n   Each tier folder contains one subfolder per database.\n\n2) Websites:\n   Bucket: wasabi-backup-ssa\n   Path: wasabi-u:wasabi-backup-ssa/windows/win-cube/websites/{weekly|monthly}/\n   Weekly: Websites_yyyyMMdd_HHmm.zip (keep last 3)\n   Monthly: Websites_Monthly_yyyyMMdd_HHmm.zip (keep 1/month for last 4 months + current)\n\n3) File-share live mirror (versioned bucket):\n   Bucket: ssa-backup-prod\n   Path: wasabi-lock:ssa-backup-prod/windows/win-cube/files/live/{Company|Finance|Temp|Users}/...\n   Uses Wasabi bucket versioning for historical recovery.",
+      "section": "Active Paths — Windows",
+      "category": "Rclone Wasabi S3",
+      "keywords": ["active paths", "wasabi", "SQL", "websites", "files", "live mirror", "win-cube", "bucket", "destination"]
+    },
+    {
+      "title": "Legacy/Dead Wasabi Paths — Windows (Do Not Use)",
+      "url": "",
+      "content": "These paths exist in Wasabi but are NOT referenced by current scheduled tasks or scripts:\n\n1) Legacy SQL destination:\n   Path: wasabi-u:wasabi-backup-ssa/windows/databases/daily/...\n   Evidence: Contains small set of .bak files with timestamps around 2025-09-17. Only daily/ was present.\n   Current script points at windows/win-cube/databases, not windows/databases.\n\n2) Legacy live-file mirror in non-versioned bucket:\n   Path: wasabi-u:wasabi-backup-ssa/windows/win-cube/files/live/... (lowercase folders)\n   Evidence: Large object count (tens of thousands). Appears to contain historical mirror.\n   Current scheduled task writes to ssa-backup-prod via wasabi-lock:, not this location.\n\n3) Old script that referenced legacy file tree:\n   Found as: C:\\Scripts\\backup-files-to-wasabi.ps1.DISABLED\n   Referenced: wasabi-u:wasabi-backup-ssa/windows/win-cube/files/{live,versions}\n   Active job uses: C:\\Scripts\\backup-files-to-wasabi_simple.ps1 → wasabi-lock:ssa-backup-prod/.../files/live\n\nDo NOT delete legacy paths until confirming: (1) no tasks reference them, (2) new tree contains all required history, (3) retention/immutability requirements are satisfied.",
+      "section": "Legacy Paths — Windows",
+      "category": "Rclone Wasabi S3",
+      "keywords": ["legacy", "dead", "old", "duplicate", "cleanup", "migration", "windows/databases", "non-versioned"]
+    },
+    {
+      "title": "Active Wasabi Paths — Ubuntu Linux",
+      "url": "",
+      "content": "Prefix: wasabi-linux:wasabi-backup-ssa/linux/...\n\nActive destinations:\n\n1) MySQL dumps (tiered, per-DB folders):\n   Path: .../linux/databases/{daily|weekly|monthly}/<DB>/...\n   Example: linux/databases/daily/beta_ssa/*.sql.gz\n   Active DB list: beta_ssa, wave_commissions\n   Known test DB (not backed up): beta_ssa_wasabi_verify\n\n2) Webapps tarballs:\n   Path: .../linux/webapps/{daily|weekly|monthly}/...\n   Example: daily/webapps_YYYY-MM-DD_HHMM.tar.gz\n   Keeps latest per tier.\n\n3) Server config tarballs:\n   Path: .../linux/server-config/{daily|weekly|monthly}/...\n   Example: daily/configs_YYYY-MM-DD_HHMM.tar.gz\n   Keeps latest per tier.\n\nLegacy (confirmed dead): wasabi-backup-ssa/linux/databases/{daily|weekly|monthly}/ flat objects at tier root (no per-DB folder). Produced by legacy script /usr/local/sbin/backup_beta_ssa.sh. Legacy flat objects deleted; tier roots should be empty.",
+      "section": "Active Paths — Linux",
+      "category": "MySQL Backup",
+      "keywords": ["linux", "ubuntu", "mysql", "database dump", "webapps", "server-config", "tarball", "wasabi", "beta_ssa", "wave_commissions"]
+    },
+    {
+      "title": "Ubuntu Backup Automation — Cron and Scripts",
+      "url": "",
+      "content": "Active backup scheduler:\n- cron (root): 15 2 * * * /opt/backup/server_backup.sh (server timezone: Etc/UTC)\n\nActive scripts:\n- /opt/backup/server_backup.sh — main backup script, uses wasabi-linux: remote\n- /usr/local/sbin/mysqldump-clean — helper script that avoids Acronis agent/GLIBCXX conflicts with mysql client\n\nLegacy script (not scheduled):\n- /usr/local/sbin/backup_beta_ssa.sh — produced flat objects without per-DB folders; no longer in cron\n\nLogs:\n- /var/log/server_backup.log with logrotate (/etc/logrotate.d/server_backup)\n\nrclone remote for Ubuntu: wasabi-linux: (S3 remote, endpoint s3.wasabisys.com)",
+      "section": "Ubuntu Automation",
+      "category": "Backup Schedules",
+      "keywords": ["ubuntu", "cron", "server_backup.sh", "mysqldump", "mysqldump-clean", "schedule", "2:15 AM", "UTC", "logrotate"]
+    },
+    {
+      "title": "Ubuntu Backup Discovery — Baseline and Identity",
+      "url": "",
+      "content": "When discovering Ubuntu backup configuration, start with baseline commands:\n\nhostname -f\nuname -a\nlsb_release -a 2>/dev/null || cat /etc/os-release\ndate\nwhoami\nid\n\nRecord: Hostname/FQDN, Distro + version, Timezone / clock sanity.\n\nThis establishes the identity of the server before diving into backup-specific discovery steps.",
+      "section": "Ubuntu Discovery Baseline",
+      "category": "Monitoring",
+      "keywords": ["ubuntu", "discovery", "baseline", "hostname", "identity", "OS", "timezone"]
+    },
+    {
+      "title": "Ubuntu — IONOS Acronis Agent Discovery",
+      "url": "",
+      "content": "To check if the IONOS Backup Unit (Acronis) agent is installed and running on Ubuntu:\n\nService status:\nsystemctl status acronis* 2>/dev/null || true\nsystemctl status mms 2>/dev/null || true\nsystemctl status | grep -i acronis || true\nps aux | grep -iE 'acronis|mms' | grep -v grep || true\n\nInstalled packages:\ndpkg -l | grep -i acronis || true\nrpm -qa | grep -i acronis || true\n\nAgent logs:\nsudo find /var/log -maxdepth 3 -type f \\( -iname '*acronis*' -o -iname '*mms*' \\) 2>/dev/null\nsudo journalctl -u mms --no-pager -n 200 2>/dev/null || true\n\nGoal: Confirm the agent is installed, identify service name(s), and identify log location(s).",
+      "section": "Ubuntu Acronis Agent",
+      "category": "Monitoring",
+      "keywords": ["ubuntu", "acronis", "IONOS", "agent", "mms", "service", "backup unit", "discovery"]
+    },
+    {
+      "title": "Ubuntu — Cron and systemd Timer Discovery Commands",
+      "url": "",
+      "content": "Discovery commands for finding backup automation on Ubuntu:\n\nCron:\nsudo crontab -l\ncrontab -l\nsudo ls -la /etc/cron.*\nsudo cat /etc/crontab\n\nsystemd timers:\nsystemctl list-timers --all\nsystemctl list-units --type=service | grep -i backup || true\n\nScript locations:\nsudo ls -la /usr/local/sbin /usr/local/bin 2>/dev/null\nsudo find /opt -maxdepth 3 -type f -iname '*backup*' 2>/dev/null\nsudo find /root -maxdepth 3 -type f -iname '*backup*' 2>/dev/null\nsudo find /home -maxdepth 4 -type f -iname '*backup*' 2>/dev/null\n\nrclone config locations:\nsudo find /etc -maxdepth 3 -type f \\( -iname '*rclone*' -o -iname '*wasabi*' -o -iname '*s3*' \\) 2>/dev/null\nsudo find /root -maxdepth 3 -type f -iname 'rclone.conf' 2>/dev/null\nrclone config file 2>/dev/null || true",
+      "section": "Ubuntu Scheduler Discovery",
+      "category": "Backup Schedules",
+      "keywords": ["cron", "systemd", "timer", "discovery", "scripts", "ubuntu", "rclone config", "automation"]
+    },
+    {
+      "title": "Ubuntu rclone Discovery and Remote Validation",
+      "url": "",
+      "content": "Locate rclone binary:\nwhich rclone || true\nrclone version 2>/dev/null || true\n\nLocate config (common paths):\n- ~/.config/rclone/rclone.conf\n- /root/.config/rclone/rclone.conf\n- /etc/rclone/rclone.conf\n\nrclone config file 2>/dev/null || true\nsudo rclone config file 2>/dev/null || true\n\nList remotes (no secrets output):\nrclone listremotes\n\nVerify remote connectivity (read-only):\nrclone lsd wasabi-u: --fast-list\nrclone lsd wasabi-u:wasabi-backup-ssa/linux --fast-list\n\nValidate most recent objects:\n\nbeta_ssa daily dumps:\nrclone lsl wasabi-u:wasabi-backup-ssa/linux/databases/daily/beta_ssa --max-depth 1 | tail -n 20\n\nwebapps daily tar:\nrclone lsl wasabi-u:wasabi-backup-ssa/linux/webapps/daily --max-depth 1 | tail -n 20\n\nserver-config daily tar:\nrclone lsl wasabi-u:wasabi-backup-ssa/linux/server-config/daily --max-depth 1 | tail -n 20\n\nRecord: Last modified time, size trend (stable vs unexpectedly tiny).",
+      "section": "Ubuntu rclone Validation",
+      "category": "Rclone Wasabi S3",
+      "keywords": ["ubuntu", "rclone", "remote", "validation", "connectivity", "databases", "webapps", "server-config", "freshness"]
+    },
+    {
+      "title": "Ubuntu — Recommended Naming and Retention Targets",
+      "url": "",
+      "content": "Recommended naming patterns (align with what already exists):\n- DB dump: beta_ssa_YYYY-MM-DD_HHMM.sql.gz\n- Webapps tar: webapps_YYYY-MM-DD_HHMM.tar.gz\n- Configs tar: configs_YYYY-MM-DD_HHMM.tar.gz\n\nTarget retention scheme (example):\n- Daily: keep 14–30\n- Weekly: keep 8–12\n- Monthly: keep 6–12\n\nImplement after discovery confirms how jobs run today.",
+      "section": "Ubuntu Retention Policy",
+      "category": "Backup Schedules",
+      "keywords": ["retention", "naming", "daily", "weekly", "monthly", "ubuntu", "policy", "cleanup"]
+    },
+    {
+      "title": "Ubuntu Troubleshooting — Common Symptoms and Causes",
+      "url": "",
+      "content": "Symptom → Likely cause:\n\n- Remote objects stop updating: cron/timer not firing, credentials expired/endpoint changed, network/DNS outage, disk full (staging)\n- Artifacts too small: empty dump (mysqldump failed but wrote header), tar excluded paths / permission issues\n- Job hangs: massive file tree enumeration, slow disk / IO bottleneck, rclone --fast-list missing for deep trees\n\nMinimal safe diagnostics:\nsudo df -h\nsudo free -h\nsudo dmesg | tail -n 50\nsudo journalctl -xe --no-pager | tail -n 80\n\nKnown Ubuntu-specific issues:\n- Acronis/agent libs can break mysql client with GLIBCXX errors; use clean env or mysqldump-clean helper\n- mysqldump may fail with ERROR 1356 (broken views); fix by dropping/correcting views using admin creds\n- \"Paste freezes\" can be XON/XOFF; stty -ixon prevents this",
+      "section": "Ubuntu Troubleshooting",
+      "category": "Troubleshooting",
+      "keywords": ["ubuntu", "troubleshooting", "cron", "mysqldump", "GLIBCXX", "ERROR 1356", "hang", "disk full", "stty"]
+    },
+    {
+      "title": "SERVER_22 — Windows Server Backup (WSB) Configuration",
+      "url": "",
+      "content": "SERVER_22 uses Windows Server Backup (WSB) for local disk backups.\n\nSchedule: daily at 20:00\nBackup scope: All critical volumes (bare metal recovery / BMR) + System state\nTarget drive: F: (volume label: WSB_BACKUP, approx 460 GB)\nVSS option: COPY\n\nConfigured with:\nwbadmin enable backup -addtarget:F: -allCritical -systemState -schedule:20:00 -quiet\n\nThis is separate from the Wasabi/rclone backup workflows. It provides local disk-based recovery for SERVER_22.",
+      "section": "SERVER_22 WSB Configuration",
+      "category": "Windows Server Backup",
+      "keywords": ["SERVER_22", "WSB", "Windows Server Backup", "F:", "WSB_BACKUP", "daily", "20:00", "BMR", "system state", "local backup"]
+    },
+    {
+      "title": "SERVER_22 — WSB Verification Commands",
+      "url": "",
+      "content": "Read-only verification commands for SERVER_22 WSB:\n\nConfirm nothing is currently running:\nwbadmin get status\nExpected when idle: \"No backup or recovery operation is currently running.\"\n\nEnumerate backups on target (if local catalog is present):\nwbadmin get versions\n\nEnumerate backups (explicit target, always works after catalog reset):\nwbadmin get versions -backuptarget:F:\nExpected: One or more \"Version identifier\" entries.\n\nIMPORTANT: A catalog reset (wbadmin delete catalog -quiet) was performed. This deletes the local WSB catalog/index but does NOT delete backup data on F:. After a catalog reset, always use:\nwbadmin get versions -backuptarget:F:\n...to re-discover what exists on the target.",
+      "section": "SERVER_22 WSB Verification",
+      "category": "Windows Server Backup",
+      "keywords": ["SERVER_22", "WSB", "wbadmin", "get versions", "get status", "verification", "catalog reset", "F:"]
+    },
+    {
+      "title": "SERVER_22 — WSB Common Failure Modes",
+      "url": "",
+      "content": "A) WSB fails because the target is not available:\nSymptoms: Errors indicating the backup target could not be found.\nChecks:\n- Confirm F: is mounted and labeled WSB_BACKUP (Disk/Volume management)\n- Confirm sufficient free space on F:\n\nB) \"No backups found\" after catalog reset:\nChecks:\n- Use wbadmin get versions -backuptarget:F: (explicit target, required after catalog reset)\n- Confirm the WSB backup folder exists on F: (WSB typically writes under \\WindowsImageBackup\\...)\n\nNo legacy WSB targets have been identified yet for SERVER_22. If another backup disk/path exists historically, treat it as Unknown until verified with wbadmin get versions -backuptarget:<drive>.",
+      "section": "SERVER_22 WSB Failures",
+      "category": "Troubleshooting",
+      "keywords": ["SERVER_22", "WSB", "failure", "target not available", "no backups found", "catalog reset", "F:", "disk"]
+    },
+    {
+      "title": "IONOS Backup Unit Manager (Acronis) — Console Navigation",
+      "url": "",
+      "content": "Operator navigation path:\n1) Open https://dcd.ionos.com\n2) Storage & Backup → Backup Unit Manager\n3) Select BackupMaster → Open Console\n4) Console opens at https://backup.profitbricks.com\n5) Left nav: Monitoring → Overview\n   - Widgets: Protection Status, Active Alerts Summary, Activities\n\nDevices visible in console:\n- DpathServer.superiorstate.local (Windows 2012 R2)\n- ubuntu\n- WIN-BAFAS9DBTQ8.superiorstate.local (Windows Server 2019 / win-cube)\n\nBackup plan: Daily DC Protection (30 Days)\n\nDo not store credentials or MFA seeds in documentation.",
+      "section": "IONOS Acronis Console",
+      "category": "Monitoring",
+      "keywords": ["IONOS", "Acronis", "backup unit manager", "console", "DpathServer", "ubuntu", "WIN-BAFAS9DBTQ8", "monitoring", "protection status"]
+    },
+    {
+      "title": "IONOS Acronis — Windows Agent Service Check",
+      "url": "",
+      "content": "Confirm Acronis agent service on Windows:\n\nsc.exe qc MMS\n\nExpected output:\n- DISPLAY_NAME: Acronis Managed Machine Service\n- SERVICE_START_NAME: LocalSystem\n\nThe Acronis Managed Machine Service (MMS) should be running as LocalSystem for proper backup agent operation.",
+      "section": "Acronis Agent Check",
+      "category": "Monitoring",
+      "keywords": ["Acronis", "MMS", "agent", "service", "Windows", "LocalSystem", "sc.exe"]
+    },
+    {
+      "title": "IONOS Acronis — Vulnerability Assessment Failure 0x80240438",
+      "url": "",
+      "content": "Symptom: Acronis/IONOS console shows:\n- \"Scanning Windows for vulnerabilities\" → failed\n- Error: Windows Update Agent returned an error 0x80240438\n\nObserved on: WIN-BAFAS9DBTQ8.superiorstate.local (win-cube)\n\nWhat was confirmed:\n- WSUS policy values were not set (WUServer blank, WUStatusServer blank, UseWUServer blank)\n- Windows Update COM search returned within 120s and showed pending updates\n- Registry: HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate has no WUServer, WUStatusServer, UseWUServer\n\nInterpretation: Windows Update works but the vulnerability scan feature may be sensitive to Windows Update configuration, servicing stack state, proxy, or enterprise policy. Treat as non-blocking — backups can still succeed.\n\nUseful verification:\nreg query \"HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate\" /s\n\nUpdate Agent responsiveness quick check (PowerShell):\n$s = New-Object -ComObject Microsoft.Update.Session\n$u = $s.CreateUpdateSearcher()\n$r = $u.Search(\"IsInstalled=0 and Type='Software'\")\n$r.Updates.Count",
+      "section": "Vulnerability Scan Fix",
+      "category": "Troubleshooting",
+      "keywords": ["vulnerability", "0x80240438", "Windows Update", "WSUS", "Acronis", "IONOS", "scan failed", "non-blocking"]
+    },
+    {
+      "title": "Daily Confidence Checks — Win-Cube Operator Checklist",
+      "url": "",
+      "content": "Daily checks to confirm backup health on win-cube:\n\n1) Confirm tasks succeeded:\nGet-ScheduledTaskInfo -TaskName \"SQLServer → Wasabi Backups (Tiered)\" | Format-List LastRunTime,LastTaskResult,NextRunTime,NumberOfMissedRuns\nGet-ScheduledTaskInfo -TaskName \"WinCube-Files-Backup (Wasabi Versioning)\" | Format-List LastRunTime,LastTaskResult,NextRunTime,NumberOfMissedRuns\nGet-ScheduledTaskInfo -TaskName \"Weekly IIS Site Backup\" | Format-List LastRunTime,LastTaskResult,NextRunTime,NumberOfMissedRuns\n\n2) Spot-check newest objects in Wasabi:\n- SQL: rclone lsl wasabi-u:wasabi-backup-ssa/windows/win-cube/databases/daily/<DB> --max-depth 1\n- Websites: rclone lsl wasabi-u:wasabi-backup-ssa/windows/win-cube/websites/weekly --max-depth 1\n- Files: rclone lsl wasabi-lock:ssa-backup-prod/windows/win-cube/files/live/<Folder> --max-depth 2\n\n3) If SQL backups fail again under SYSTEM:\nSELECT IS_SRVROLEMEMBER('sysadmin','NT AUTHORITY\\SYSTEM');",
+      "section": "Daily Operator Checklist",
+      "category": "Monitoring",
+      "keywords": ["daily check", "operator", "checklist", "monitoring", "win-cube", "health", "spot check", "LastTaskResult"]
+    },
+    {
+      "title": "Quick Triage — Pull Latest Run Logs",
+      "url": "",
+      "content": "Pull the newest run log for each backup job:\n\nSQL run log:\nGet-ChildItem C:\\Backups\\Logs -Filter \"Wasabi-SQL-Backup_*.log\" | Sort-Object LastWriteTime -Descending | Select-Object -First 1 | ForEach-Object { \"RUNLOG: $($_.FullName)\"; Get-Content $_.FullName -Tail 120 }\n\nWebsites run log:\nGet-ChildItem C:\\Backups\\Logs -Filter \"Website-Backup_*.log\" | Sort-Object LastWriteTime -Descending | Select-Object -First 1 | ForEach-Object { \"RUNLOG: $($_.FullName)\"; Get-Content $_.FullName -Tail 120 }\n\nFiles backup bootstrap log:\nGet-ChildItem C:\\Logs -Filter \"files-backup_simple_BOOT_*.log\" | Sort-Object LastWriteTime -Descending | Select-Object -First 1 | ForEach-Object { \"BOOTLOG: $($_.FullName)\"; Get-Content $_.FullName -Tail 120 }",
+      "section": "Triage — Run Logs",
+      "category": "Troubleshooting",
+      "keywords": ["triage", "run log", "latest log", "SQL", "websites", "files", "bootstrap", "troubleshooting"]
+    },
+    {
+      "title": "Quick Triage — Confirm rclone Remote Reachability",
+      "url": "",
+      "content": "Confirm rclone can connect to Wasabi remotes:\n\n$cfg = \"C:\\ProgramData\\rclone\\rclone.conf\"\nC:\\rclone\\rclone.exe lsd wasabi-u: --config $cfg\nC:\\rclone\\rclone.exe lsd wasabi-lock: --config $cfg\n\nExpected: Lists of top-level buckets/directories for each remote. If these fail, check network connectivity, DNS resolution, and that the rclone config file exists and has valid (non-expired) credentials.\n\nFor Ubuntu:\nrclone lsd wasabi-linux: --fast-list",
+      "section": "Triage — rclone Connectivity",
+      "category": "Rclone Wasabi S3",
+      "keywords": ["rclone", "connectivity", "reachability", "wasabi", "lsd", "triage", "network"]
+    },
+    {
+      "title": "rclone Verification — Confirm Active SQL Backup Tree",
+      "url": "",
+      "content": "Show active SQL root listing:\nrclone lsd wasabi-u:wasabi-backup-ssa/windows/win-cube/databases --config C:\\ProgramData\\rclone\\rclone.conf\n\nExpected: Directories named daily, weekly, monthly.\n\nShow active websites weekly listing:\nrclone lsl wasabi-u:wasabi-backup-ssa/windows/win-cube/websites/weekly --max-depth 1 --config C:\\ProgramData\\rclone\\rclone.conf\n\nConfirm active versioned live mirror exists:\nrclone lsd wasabi-lock:ssa-backup-prod/windows/win-cube/files/live --config C:\\ProgramData\\rclone\\rclone.conf\n\nExpected: Directories named Company, Finance, Temp, Users.",
+      "section": "rclone Path Verification",
+      "category": "Rclone Wasabi S3",
+      "keywords": ["verification", "SQL", "databases", "websites", "files", "live", "rclone", "lsd", "lsl"]
+    },
+    {
+      "title": "rclone Verification — Compare Legacy vs Active Paths",
+      "url": "",
+      "content": "To confirm a specific file exists in both legacy and active (for spot-checking only):\n\n$cfg = \"C:\\ProgramData\\rclone\\rclone.conf\"\n\n# OLD legacy\nC:\\rclone\\rclone.exe lsl \"wasabi-u:wasabi-backup-ssa/windows/win-cube/files/live/company/er sigs/1stpiedmont.PNG\" --config $cfg\n\n# NEW active\nC:\\rclone\\rclone.exe lsl \"wasabi-lock:ssa-backup-prod/windows/win-cube/files/live/Company/er sigs/1stpiedmont.PNG\" --config $cfg\n\nInterpreting results:\n- If timestamps/sizes match, it's likely a duplicated historical copy\n- If new bucket has more files (e.g., closeit.PNG exists only in new), it suggests new path is the real \"living\" one\n\nNote the case difference: legacy uses lowercase (company/), active uses title case (Company/).",
+      "section": "Legacy vs Active Comparison",
+      "category": "Rclone Wasabi S3",
+      "keywords": ["compare", "legacy", "active", "spot check", "duplicate", "migration", "case"]
+    },
+    {
+      "title": "Known Healthy Backup Outcomes — What Success Looks Like",
+      "url": "",
+      "content": "SQL job log shows for each DB:\n- Backup completes\n- Upload completes\n- Retention completes\n- Email subject indicates OK\n\nWebsites backup shows:\n- weekly has last 3 zips\n- monthly has one per month (last ~4 + current)\n\nFiles backup (versioned bucket) shows:\n- daily sync completes with exit code 0/1 acceptable per script logic\n- JSON log has expected \"Copied (new)\" or \"Copied (replaced existing)\" lines\n\nSERVER_22 WSB:\n- wbadmin get status shows idle\n- wbadmin get versions -backuptarget:F: shows recent version identifiers\n\nIONOS Backup Unit Manager:\n- Protection Status widget shows all devices protected\n- No critical Active Alerts",
+      "section": "Healthy Backup Indicators",
+      "category": "Monitoring",
+      "keywords": ["healthy", "success", "expected", "outcome", "monitoring", "SQL", "websites", "files", "WSB", "IONOS"]
+    },
+    {
+      "title": "Script Hardening Best Practices",
+      "url": "",
+      "content": "Best practices for backup script reliability:\n\n- Prefer running scheduled tasks as SYSTEM for unattended reliability\n- For SQL job under SYSTEM: ensure SQL permissions for NT AUTHORITY\\SYSTEM (sysadmin); keep compression-first + fallback for Express\n- For rclone jobs: include log file paths in email; avoid deep listings unless scoped (use targeted object checks, size --fast-list, and bounded --max-depth)\n- Avoid complicated inline quoting in schtasks; put logic in .ps1 files instead\n- Use PowerShell cmdlets (Get-ScheduledTask) instead of schtasks.exe for task names with special characters\n- For Ubuntu: use mysqldump-clean wrapper to avoid GLIBCXX conflicts from Acronis agent libraries",
+      "section": "Script Best Practices",
+      "category": "Windows Server Backup",
+      "keywords": ["hardening", "best practices", "SYSTEM", "rclone", "logging", "reliability", "schtasks", "PowerShell"]
+    },
+    {
+      "title": "Wasabi Legacy Cleanup — Migration Guidance",
+      "url": "",
+      "content": "If you decide to reclaim space from legacy Wasabi paths:\n\nDo NOT delete legacy paths until you confirm:\n1) No scheduled tasks reference them\n2) New bucket/tree contains all required history\n3) Retention/immutability requirements are satisfied\n\nRecommended approach:\n- Start with inventory + compare for a bounded subtree (like Company/er sigs)\n- Only then decide delete/move\n\nVerification before cleanup:\n- Check all scheduled tasks: Get-ScheduledTask | Select-Object -Expand Actions\n- Check all scripts for remote references: Select-String -Path \"C:\\Backups\\*.ps1\",\"C:\\Scripts\\*.ps1\" -Pattern \"wasabi-\" -SimpleMatch\n- For Ubuntu: grep -r \"wasabi\" /opt/backup/ /usr/local/sbin/\n\nMeasure legacy subtree size:\nrclone size \"wasabi-u:wasabi-backup-ssa/windows/win-cube/files/live/company\" --fast-list --config C:\\ProgramData\\rclone\\rclone.conf",
+      "section": "Cleanup and Migration",
+      "category": "Rclone Wasabi S3",
+      "keywords": ["cleanup", "migration", "delete", "legacy", "retention", "reclaim", "compare", "inventory"]
+    },
+    {
+      "title": "Status Vocabulary — Active vs Legacy vs Unknown",
+      "url": "",
+      "content": "Standard status labels used across all backup documentation:\n\n- Active: Confirmed by current scripts, tasks, and schedules. These paths are being written to by running automation.\n- Legacy: Exists historically in Wasabi but not referenced by current automation. Data may overlap with active paths. Do not delete without full verification.\n- Unknown: Needs verification. Could be active or legacy — check scheduled tasks, scripts, and recent object timestamps to determine.\n\nTo verify a path's status:\n1) Check if any scheduled task or cron job references it\n2) Check if any active script writes to it\n3) Check last-modified timestamps of objects in the path\n4) If recent timestamps exist but no automation found, investigate further before labeling",
+      "section": "Status Definitions",
+      "category": "Monitoring",
+      "keywords": ["active", "legacy", "unknown", "status", "vocabulary", "classification", "verification"]
+    },
+    {
+      "title": "Security Rules — Secrets Management",
+      "url": "",
+      "content": "Critical security rules for backup operations:\n\n- Never store or paste real access keys, secret keys, passwords, or MFA codes in knowledge files, documentation, or chat\n- Store secrets only in protected locations: C:\\ProgramData\\secrets\\... (Windows) or equivalent secure paths\n- Reference secret file paths only, never the secret values\n- Use redaction patterns in examples: AKIA..., ****\n- If credentials appear accidentally, treat as compromised and advise rotation without reprinting the values\n\nSMTP secret handling on win-cube:\n- SMTP password stored as AES-keyed SecureString\n- Both the AES key file and encrypted blob are readable by SYSTEM\n- Confirmed that SYSTEM can decrypt the SMTP secret for sending backup notification emails\n\nrclone config: C:\\ProgramData\\rclone\\rclone.conf contains Wasabi credentials — protect this file appropriately.",
+      "section": "Security and Secrets",
+      "category": "Monitoring",
+      "keywords": ["security", "secrets", "credentials", "access keys", "passwords", "MFA", "SMTP", "SecureString", "AES", "rclone.conf"]
+    },
+    {
+      "title": "Win-Cube SQL Backup — Tiered Retention Layout",
+      "url": "",
+      "content": "SQL backups on win-cube use a tiered retention layout:\n\nPath structure: wasabi-u:wasabi-backup-ssa/windows/win-cube/databases/{tier}/{DatabaseName}/{DatabaseName}_Backup_yyyyMMdd_HHmm.bak\n\nTiers:\n- daily/ — daily full backups per database\n- weekly/ — weekly full backups per database\n- monthly/ — monthly full backups per database\n\nEach tier folder contains one subfolder per database. Known databases include: SuperiorState, UserManager, InstantKB2014, and others.\n\nLocal staging directory: C:\\Backups\\Databases\\\nFiles are staged locally as {Database}_Backup_yyyyMMdd_HHmm.bak before upload via rclone.\n\nRetention is managed by the backup script (cleanup of old backups per tier).",
+      "section": "SQL Tiered Retention",
+      "category": "Windows Server Backup",
+      "keywords": ["SQL", "tiered", "retention", "daily", "weekly", "monthly", "layout", "database", "SuperiorState", "staging"]
+    },
+    {
+      "title": "Win-Cube Websites Backup — Retention Details",
+      "url": "",
+      "content": "Website backups use two retention tiers:\n\nWeekly: wasabi-u:wasabi-backup-ssa/windows/win-cube/websites/weekly/\n- Naming: Websites_yyyyMMdd_HHmm.zip\n- Retention: keep last 3 weekly backups\n\nMonthly: wasabi-u:wasabi-backup-ssa/windows/win-cube/websites/monthly/\n- Naming: Websites_Monthly_yyyyMMdd_HHmm.zip\n- Retention: keep 1 per month for last ~4 months + current month\n\nSource: C:\\Websites (IIS website content)\nLocal staging: C:\\Backups\\Website\\Websites_yyyyMMdd_HHmm.zip\n\nThe backup script zips the entire C:\\Websites directory and uploads to the appropriate tier folder in Wasabi.",
+      "section": "Websites Retention Details",
+      "category": "Windows Server Backup",
+      "keywords": ["websites", "IIS", "retention", "weekly", "monthly", "zip", "Wasabi"]
+    },
+    {
+      "title": "IONOS Backup Plan — Daily DC Protection (30 Days)",
+      "url": "",
+      "content": "The IONOS Backup Unit Manager (Acronis-based) uses a plan called \"Daily DC Protection (30 Days)\".\n\nDevices covered:\n- DpathServer.superiorstate.local (Windows Server 2012 R2)\n- ubuntu\n- WIN-BAFAS9DBTQ8.superiorstate.local (Windows Server 2019 / win-cube)\n\nThis provides cloud-based image-level backup via the Acronis agent, separate from the scripted Wasabi/rclone backups.\n\nConsole path: dcd.ionos.com → Storage & Backup → Backup Unit Manager → BackupMaster → Open Console → https://backup.profitbricks.com\n\nMonitoring widgets: Protection Status, Active Alerts Summary, Activities",
+      "section": "IONOS Backup Plan",
+      "category": "Backup Schedules",
+      "keywords": ["IONOS", "Acronis", "Daily DC Protection", "30 days", "plan", "DpathServer", "ubuntu", "win-cube", "image backup"]
+    },
+    {
+      "title": "Ubuntu Local Backup Artifact Discovery",
+      "url": "",
+      "content": "Search for local staging folders on Ubuntu (read-only discovery):\n\nsudo find / -maxdepth 4 -type d \\( -iname '*backup*' -o -iname '*backups*' -o -iname '*staging*' \\) 2>/dev/null | head\nsudo find / -maxdepth 5 -type f \\( -iname '*.sql.gz' -o -iname '*.tar.gz' \\) 2>/dev/null | head\n\nThese commands identify where backup artifacts are created locally before being uploaded to Wasabi. Check disk space to ensure staging area has sufficient room:\nsudo df -h",
+      "section": "Ubuntu Local Artifacts",
+      "category": "MySQL Backup",
+      "keywords": ["ubuntu", "local", "staging", "artifacts", "sql.gz", "tar.gz", "disk space", "discovery"]
+    },
+    {
+      "title": "Ubuntu mysqldump-clean Helper Script",
+      "url": "",
+      "content": "On the Ubuntu server, a helper script exists at /usr/local/sbin/mysqldump-clean.\n\nPurpose: Avoids conflicts between Acronis agent libraries and the mysql client. The Acronis agent can set LD_LIBRARY_PATH or similar environment variables that inject incompatible GLIBCXX versions, causing mysqldump to fail.\n\nThe mysqldump-clean script provides a clean environment for running mysqldump without these library conflicts.\n\nKnown issue: If mysqldump is run directly in a shell where Acronis agent environment is active, it may fail with GLIBCXX version errors. Always use the mysqldump-clean wrapper or ensure a clean environment.\n\nAdditional known issue: mysqldump may fail with ERROR 1356 (broken views). Fix by dropping or correcting the problematic views using admin credentials.",
+      "section": "Ubuntu mysqldump Helper",
+      "category": "MySQL Backup",
+      "keywords": ["mysqldump", "mysqldump-clean", "GLIBCXX", "Acronis", "library conflict", "ERROR 1356", "views", "ubuntu"]
+    },
+    {
+      "title": "Ubuntu Paste Freeze Workaround (XON/XOFF)",
+      "url": "",
+      "content": "Known issue: When pasting large command outputs or text in an Ubuntu terminal session, the terminal may appear to freeze.\n\nCause: XON/XOFF flow control. Certain character sequences in pasted text (like Ctrl+S) can trigger flow control stop.\n\nFix: Run this command before pasting:\nstty -ixon\n\nThis disables XON/XOFF flow control and prevents paste freezes.",
+      "section": "Ubuntu Terminal Fix",
+      "category": "Troubleshooting",
+      "keywords": ["paste", "freeze", "XON", "XOFF", "stty", "terminal", "ubuntu", "flow control"]
+    },
+    {
+      "title": "Wasabi Bucket Versioning Strategy Explained",
+      "url": "",
+      "content": "The SSA backup strategy uses two approaches for historical data recovery:\n\n1) Script-managed tiered retention (SQL backups, websites):\n   - The backup script manages daily/weekly/monthly folders\n   - Old backups are cleaned up by the script based on retention rules\n   - Uses non-versioned bucket: wasabi-backup-ssa\n\n2) Wasabi bucket versioning (file share live mirror):\n   - Files are synced as a \"live mirror\" to wasabi-lock:ssa-backup-prod/.../files/live/\n   - No script-managed versions/ folder\n   - Wasabi's built-in bucket versioning tracks all object changes\n   - Historical recovery is done through Wasabi's version management, not through the backup script\n   - This was an explicit design decision to simplify the PowerShell scripts\n\nThe naming convention wasabi-lock: suggests \"object lock\" but the primary intent is versioning/immutable-ish workflow. Confirm actual bucket settings (versioning + any retention/lock rules) inside Wasabi console when convenient.",
+      "section": "Versioning Strategy",
+      "category": "Rclone Wasabi S3",
+      "keywords": ["versioning", "bucket versioning", "tiered", "retention", "live mirror", "strategy", "ssa-backup-prod", "wasabi-backup-ssa", "object lock"]
+    },
+    {
+      "title": "Ubuntu Legacy Backup Script and Paths",
+      "url": "",
+      "content": "Legacy Ubuntu backup components (confirmed not active):\n\nLegacy script: /usr/local/sbin/backup_beta_ssa.sh\n- This script produced flat objects at the tier root WITHOUT per-DB subfolders\n- Legacy path pattern: wasabi-backup-ssa/linux/databases/{daily|weekly|monthly}/<flat files>\n- NOT currently in cron schedule\n- Legacy flat objects have been deleted; tier roots should be empty\n\nActive replacement: /opt/backup/server_backup.sh\n- Uses per-DB subfolder layout: .../linux/databases/{daily|weekly|monthly}/<DB>/...\n- Scheduled via cron: 15 2 * * * /opt/backup/server_backup.sh\n- Uses wasabi-linux: remote",
+      "section": "Ubuntu Legacy Scripts",
+      "category": "MySQL Backup",
+      "keywords": ["legacy", "backup_beta_ssa.sh", "server_backup.sh", "flat", "per-DB", "ubuntu", "migration"]
+    },
+    {
+      "title": "Full Backup Inventory Summary — All Servers",
+      "url": "",
+      "content": "Complete backup inventory across all servers:\n\nwin-cube (Windows Server 2019):\n- SQL → Wasabi tiered (daily ~6PM): wasabi-u:wasabi-backup-ssa/windows/win-cube/databases/\n- Websites → Wasabi (weekly ~6AM): wasabi-u:wasabi-backup-ssa/windows/win-cube/websites/\n- Files → Wasabi versioned (daily ~9PM): wasabi-lock:ssa-backup-prod/windows/win-cube/files/live/\n- IONOS Acronis: Daily DC Protection (30 Days)\n\nDpathServer (Windows Server 2012 R2):\n- IONOS Acronis: Daily DC Protection (30 Days)\n\nSERVER_22 (Windows Server 2022):\n- WSB local backup to F: (daily 20:00): allCritical + systemState\n\nubuntu:\n- Scripted → Wasabi (daily 2:15AM UTC): databases, webapps, server-config\n- IONOS Acronis: Daily DC Protection (30 Days)",
+      "section": "Complete Inventory",
+      "category": "Backup Schedules",
+      "keywords": ["inventory", "summary", "all servers", "win-cube", "DpathServer", "SERVER_22", "ubuntu", "schedule", "complete"]
+    },
+    {
+      "title": "Quick Triage Checklist — Step-by-Step Order",
+      "url": "",
+      "content": "When investigating backup issues, follow this order:\n\nA. Confirm Task Scheduler success/failure (Win-Cube):\nGet-ScheduledTaskInfo for each of the three tasks. Check LastTaskResult (0 = success).\n\nB. Pull the newest run log for the failing job.\n\nC. Confirm rclone remote reachability:\nrclone lsd wasabi-u: and rclone lsd wasabi-lock:\n\nD. For SERVER_22 WSB:\nwbadmin get status\nwbadmin get versions -backuptarget:F:\n\nE. For Ubuntu:\nCheck /var/log/server_backup.log\nVerify cron is active: sudo crontab -l\nTest rclone connectivity: rclone lsd wasabi-linux:\n\nF. Check IONOS Backup Unit Manager console for alerts.\n\nKey principle: Always check the simplest things first (task status, log content) before diving into infrastructure (network, permissions, disk space).",
+      "section": "Triage Order",
+      "category": "Troubleshooting",
+      "keywords": ["triage", "checklist", "order", "steps", "troubleshooting", "quick", "first response"]
+    },
+    {
+      "title": "Win-Cube File Shares — Source Directories",
+      "url": "",
+      "content": "The file shares backup on win-cube mirrors from C:\\Shares to Wasabi.\n\nSource subfolders:\n- C:\\Shares\\Company\\ → .../files/live/Company/\n- C:\\Shares\\Finance\\ → .../files/live/Finance/\n- C:\\Shares\\Temp\\ → .../files/live/Temp/\n- C:\\Shares\\Users\\ → .../files/live/Users/\n\nDestination: wasabi-lock:ssa-backup-prod/windows/win-cube/files/live/\n\nThe sync uses rclone and relies on Wasabi bucket versioning for historical file recovery. Deleted or modified files on the source will be reflected in the destination, but previous versions are retained by Wasabi's versioning feature.",
+      "section": "File Shares Source",
+      "category": "Windows Server Backup",
+      "keywords": ["shares", "Company", "Finance", "Temp", "Users", "source", "C:\\Shares", "file backup", "sync"]
+    },
+    {
+      "title": "rclone Configuration File Locations",
+      "url": "",
+      "content": "rclone configuration file locations:\n\nWindows (win-cube):\n- Config: C:\\ProgramData\\rclone\\rclone.conf\n- Binary: C:\\rclone\\rclone.exe\n- Contains remotes: wasabi-u, wasabi-lock\n\nUbuntu:\n- Config: Found via 'rclone config file' or 'sudo rclone config file'\n- Common locations: ~/.config/rclone/rclone.conf, /root/.config/rclone/rclone.conf\n- Contains remote: wasabi-linux\n\nSecurity: These config files contain Wasabi credentials. Protect with appropriate file permissions. Never paste config contents into documentation or chat.",
+      "section": "rclone Config Paths",
+      "category": "Rclone Wasabi S3",
+      "keywords": ["rclone", "config", "rclone.conf", "location", "path", "Windows", "Ubuntu", "credentials"]
+    },
+    {
+      "title": "Win-Cube SQL Backup — Database List",
+      "url": "",
+      "content": "Known SQL Server databases on win-cube (localhost\\SQLEXPRESS) that are backed up:\n\n- SuperiorState\n- UserManager\n- InstantKB2014\n- (Additional databases may exist — check the backup logs or run: sqlcmd -E -S localhost\\SQLEXPRESS -Q \"SELECT name FROM sys.databases WHERE database_id > 4\")\n\nEach database gets its own subfolder in the tiered backup structure:\nwasabi-u:wasabi-backup-ssa/windows/win-cube/databases/{daily|weekly|monthly}/{DBNAME}/\n\nBackup files are named: {DBNAME}_Backup_yyyyMMdd_HHmm.bak",
+      "section": "SQL Database List",
+      "category": "Windows Server Backup",
+      "keywords": ["SQL", "database", "SuperiorState", "UserManager", "InstantKB2014", "SQLEXPRESS", "list"]
+    },
+    {
+      "title": "Ubuntu Active Database List for Backup",
+      "url": "",
+      "content": "Active MySQL databases backed up by /opt/backup/server_backup.sh:\n\n- beta_ssa\n- wave_commissions\n\nThese databases are dumped using the mysqldump-clean helper and uploaded to:\nwasabi-linux:wasabi-backup-ssa/linux/databases/{daily|weekly|monthly}/<DB>/\n\nKnown test database (NOT backed up):\n- beta_ssa_wasabi_verify\n\nBackup file naming: <DB>_YYYY-MM-DD_HHMM.sql.gz",
+      "section": "Ubuntu Database List",
+      "category": "MySQL Backup",
+      "keywords": ["mysql", "database", "beta_ssa", "wave_commissions", "ubuntu", "mysqldump", "active", "list"]
+    },
+    {
+      "title": "SMTP Email Notifications — Backup Reports",
+      "url": "",
+      "content": "The win-cube backup scripts send email notifications after each run using SMTP2GO.\n\nKey details:\n- SMTP service: SMTP2GO\n- SMTP password is stored as an AES-keyed SecureString\n- Both the AES key file and encrypted blob are located in paths readable by SYSTEM\n- Confirmed: SYSTEM account can decrypt the SMTP secret and send emails\n\nEmail reports indicate backup success or failure. Check the email subject line for status indicators.\n\nIf SMTP emails stop arriving:\n- Verify SYSTEM can still decrypt the secret (test via one-shot scheduled task)\n- Check SMTP2GO service status\n- Review backup log for SMTP-related errors\n- Verify network connectivity to SMTP2GO endpoints",
+      "section": "SMTP Notifications",
+      "category": "Monitoring",
+      "keywords": ["SMTP", "SMTP2GO", "email", "notification", "report", "SecureString", "AES", "alerts"]
+    },
+    {
+      "title": "Restoring from Wasabi SQL Backups",
+      "url": "",
+      "content": "To restore a SQL Server database from Wasabi backup:\n\n1) Identify the correct .bak file:\nrclone lsl wasabi-u:wasabi-backup-ssa/windows/win-cube/databases/{tier}/{DBNAME}/ --max-depth 1 --config C:\\ProgramData\\rclone\\rclone.conf\n\n2) Download the .bak file to local staging:\nrclone copy wasabi-u:wasabi-backup-ssa/windows/win-cube/databases/{tier}/{DBNAME}/{filename}.bak C:\\Backups\\Restore\\ --config C:\\ProgramData\\rclone\\rclone.conf\n\n3) Restore using SSMS or sqlcmd:\nRESTORE DATABASE [{DBNAME}] FROM DISK = N'C:\\Backups\\Restore\\{filename}.bak' WITH REPLACE;\n\nNote: For SQL Express, backups are uncompressed. Ensure sufficient disk space for both the .bak download and the restored database.",
+      "section": "SQL Restore Procedure",
+      "category": "Restore Runbooks",
+      "keywords": ["restore", "SQL", "database", ".bak", "download", "RESTORE DATABASE", "recovery", "Wasabi"]
+    },
+    {
+      "title": "Restoring from Wasabi Website Backups",
+      "url": "",
+      "content": "To restore IIS website content from Wasabi backup:\n\n1) List available backups:\nrclone lsl wasabi-u:wasabi-backup-ssa/windows/win-cube/websites/{weekly|monthly}/ --max-depth 1 --config C:\\ProgramData\\rclone\\rclone.conf\n\n2) Download the desired zip file:\nrclone copy wasabi-u:wasabi-backup-ssa/windows/win-cube/websites/{tier}/{filename}.zip C:\\Backups\\Restore\\ --config C:\\ProgramData\\rclone\\rclone.conf\n\n3) Extract to restore location:\nExpand-Archive -Path C:\\Backups\\Restore\\{filename}.zip -DestinationPath C:\\Websites_Restore\\\n\n4) Review extracted content before replacing production files.\n\nWeekly backups: last 3 available.\nMonthly backups: 1 per month for last ~4 months + current.",
+      "section": "Website Restore Procedure",
+      "category": "Restore Runbooks",
+      "keywords": ["restore", "websites", "IIS", "zip", "download", "extract", "recovery", "Wasabi"]
+    },
+    {
+      "title": "Restoring Files from Wasabi Versioned Bucket",
+      "url": "",
+      "content": "File share backups use Wasabi bucket versioning for historical recovery.\n\nTo restore a specific file:\n1) Check current version exists:\nrclone lsl \"wasabi-lock:ssa-backup-prod/windows/win-cube/files/live/Company/path/to/file\" --config C:\\ProgramData\\rclone\\rclone.conf\n\n2) Download current version:\nrclone copy \"wasabi-lock:ssa-backup-prod/windows/win-cube/files/live/Company/path/to/file\" C:\\Restore\\ --config C:\\ProgramData\\rclone\\rclone.conf\n\nTo restore a previous version:\n- Use the Wasabi console or S3 API to list object versions\n- Wasabi bucket versioning retains previous versions of overwritten/deleted objects\n- Refer to Wasabi documentation for version-specific restore operations\n\nNote: rclone's standard commands work with the current version. For historical versions, you'll typically need the Wasabi web console or an S3-compatible tool that supports versioned object retrieval.",
+      "section": "File Versioned Restore",
+      "category": "Restore Runbooks",
+      "keywords": ["restore", "files", "versioning", "Wasabi", "bucket versioning", "historical", "previous version", "recovery"]
+    },
+    {
+      "title": "Restoring from Ubuntu MySQL Backups",
+      "url": "",
+      "content": "To restore a MySQL database from Wasabi backup:\n\n1) List available dumps:\nrclone lsl wasabi-linux:wasabi-backup-ssa/linux/databases/{tier}/{DB}/ --max-depth 1\n\n2) Download the desired dump:\nrclone copy wasabi-linux:wasabi-backup-ssa/linux/databases/{tier}/{DB}/{filename}.sql.gz /tmp/restore/\n\n3) Decompress and restore:\ngunzip /tmp/restore/{filename}.sql.gz\nmysql -u root -p {DB} < /tmp/restore/{filename}.sql\n\nAvailable tiers: daily, weekly, monthly\nActive databases: beta_ssa, wave_commissions\n\nNote: Use the mysqldump-clean wrapper environment if restoring on the same server where Acronis agent is active, to avoid GLIBCXX library conflicts.",
+      "section": "MySQL Restore Procedure",
+      "category": "MySQL Restore",
+      "keywords": ["restore", "mysql", "database", "sql.gz", "gunzip", "recovery", "ubuntu", "beta_ssa", "wave_commissions"]
+    },
+    {
+      "title": "Restoring Ubuntu Webapps and Server Config",
+      "url": "",
+      "content": "To restore Ubuntu webapps from Wasabi:\n\n1) List available tarballs:\nrclone lsl wasabi-linux:wasabi-backup-ssa/linux/webapps/{tier}/ --max-depth 1\n\n2) Download:\nrclone copy wasabi-linux:wasabi-backup-ssa/linux/webapps/{tier}/{filename}.tar.gz /tmp/restore/\n\n3) Extract:\ntar xzf /tmp/restore/{filename}.tar.gz -C /tmp/restore/\n\n4) Review extracted content before replacing production files.\n\nTo restore server config:\n1) rclone lsl wasabi-linux:wasabi-backup-ssa/linux/server-config/{tier}/ --max-depth 1\n2) rclone copy wasabi-linux:wasabi-backup-ssa/linux/server-config/{tier}/{filename}.tar.gz /tmp/restore/\n3) tar xzf /tmp/restore/{filename}.tar.gz -C /tmp/restore/\n4) Carefully review and selectively apply config files — do NOT blindly overwrite system configs.\n\nNaming: webapps_YYYY-MM-DD_HHMM.tar.gz, configs_YYYY-MM-DD_HHMM.tar.gz",
+      "section": "Ubuntu Webapp/Config Restore",
+      "category": "Restore Runbooks",
+      "keywords": ["restore", "webapps", "server-config", "tarball", "tar.gz", "ubuntu", "recovery"]
+    },
+    {
+      "title": "SERVER_22 WSB Restore — Overview",
+      "url": "",
+      "content": "SERVER_22 uses Windows Server Backup (WSB) to local disk F: for bare metal recovery.\n\nTo list available recovery points:\nwbadmin get versions -backuptarget:F:\n\nTo start a recovery (example — system state):\nwbadmin start systemstaterecovery -version:{VersionIdentifier} -backuptarget:F:\n\nTo start a full server recovery:\n- Boot from Windows Server installation media\n- Choose \"Repair your computer\" → \"System Image Recovery\"\n- Select the backup from F:\n\nBackup data location on F:: \\WindowsImageBackup\\...\n\nIMPORTANT: After a catalog reset (wbadmin delete catalog), always specify -backuptarget:F: explicitly. The catalog reset does NOT delete backup data.",
+      "section": "SERVER_22 WSB Restore",
+      "category": "Restore Runbooks",
+      "keywords": ["SERVER_22", "WSB", "restore", "recovery", "bare metal", "system state", "wbadmin", "F:"]
+    },
+    {
+      "title": "Open Items and Future Work",
+      "url": "",
+      "content": "Known open items for the SSA backup environment:\n\n1) Confirm bucket settings on ssa-backup-prod: Verify versioning is enabled and whether object-lock/retention is configured in Wasabi console.\n\n2) Determine whether any Ubuntu workflows write to wasabi-backup-ssa/linux/... with legacy duplicates similar to Windows.\n\n3) Consolidate a single \"source of truth\" map across: IONOS Backup Unit Manager, rclone-based backups, Wasabi buckets + versioning policy.\n\n4) Create restore test procedures and schedule periodic restore verification.\n\n5) Decide whether to delete legacy Wasabi objects (after retention policy & restore testing).\n\n6) Standardize Ubuntu naming and retention if not already aligned with recommended patterns.\n\n7) Add email alerting for Ubuntu backup failures if not already configured.",
+      "section": "Future Work",
+      "category": "Monitoring",
+      "keywords": ["open items", "TODO", "future", "versioning", "consolidate", "restore test", "cleanup", "alerting"]
+    },
+    {
+      "title": "Ubuntu Backup Log Location and Rotation",
+      "url": "",
+      "content": "Ubuntu backup log details:\n\nLog file: /var/log/server_backup.log\nLogrotate config: /etc/logrotate.d/server_backup\n\nThis log captures output from the /opt/backup/server_backup.sh cron job. Check this log to verify backup completion, identify errors, and review timestamps.\n\nTo view the latest log entries:\ntail -100 /var/log/server_backup.log\n\nTo search for errors:\ngrep -i error /var/log/server_backup.log | tail -20\n\nTo check when the last backup ran:\nls -la /var/log/server_backup.log",
+      "section": "Ubuntu Log Location",
+      "category": "Monitoring",
+      "keywords": ["ubuntu", "log", "server_backup.log", "logrotate", "monitoring", "errors"]
+    },
+    {
+      "title": "Wasabi Bucket Names and Their Purposes",
+      "url": "",
+      "content": "Two Wasabi buckets are in use:\n\nwasabi-backup-ssa:\n- Type: Non-versioned (standard)\n- Contains: SQL backups (win-cube), website backups (win-cube), Linux database dumps, Linux webapps tarballs, Linux server-config tarballs\n- Also contains legacy/dead trees from earlier configurations\n- Accessed via: wasabi-u: (Windows), wasabi-linux: (Ubuntu)\n\nssa-backup-prod:\n- Type: Versioned (Wasabi bucket versioning enabled)\n- Contains: Live file share mirror from win-cube\n- Purpose: Historical file recovery via versioning instead of script-managed version folders\n- Accessed via: wasabi-lock: (Windows)\n\nThe bucket naming wasabi-lock: for the versioned remote is a convention suggesting immutability/object-lock workflow.",
+      "section": "Bucket Purposes",
+      "category": "Rclone Wasabi S3",
+      "keywords": ["bucket", "wasabi-backup-ssa", "ssa-backup-prod", "versioned", "non-versioned", "purpose", "contents"]
+    }
+  ]
+}
