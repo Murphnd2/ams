@@ -125,7 +125,7 @@ public abstract class SalesDAO {
     }
 
     public static List<RateTable> getRateTableList(EntityManager em, long rateId){
-        Query q = em.createQuery("SELECT rt FROM RateTable rt WHERE rt.rate.id = :rate_id ORDER BY rt.module.sortOrder,rt.priceItem.sortOrder");
+        Query q = em.createQuery("SELECT rt FROM RateTable rt WHERE rt.rate.id = :rate_id ORDER BY rt.sortOrder,rt.priceItem.sortOrder");
         q.setParameter("rate_id",rateId);
         return (List<RateTable>) q.getResultList();
     }
@@ -247,18 +247,37 @@ public abstract class SalesDAO {
 
 
     public static List<RateTable> getPricing(EntityManager em, Proposal p){
-        List<ServiceModule> serviceModuleList = getDistinctListOfServiceModulesForThisProposal(p);
+        List<LOS> losList = p.getLosList();
+        if (losList == null || losList.isEmpty()) return new ArrayList<>();
+
         Rate rate = p.getRate();
-        List<RateTable> rateTableList = new ArrayList<>();
-        for(ServiceModule sm: serviceModuleList){
-            Query q = em.createQuery("SELECT rt FROM RateTable rt WHERE rt.rate.id = :rate_id AND rt.module.id = :module_id");
-            q.setParameter("rate_id",rate.getId());
-            q.setParameter("module_id",sm.getId());
-            List<RateTable> tempList = (List<RateTable>) q.getResultList();
-            for(RateTable rt: tempList)
-                rateTableList.add(rt);
+        List<Long> losIds = losList.stream().map(LOS::getId).collect(Collectors.toList());
+
+        // 1) Rate table rows for modules directly linked to a proposal LOS
+        Query q1 = em.createQuery(
+                "SELECT rt FROM RateTable rt WHERE rt.rate.id = :rateId AND rt.module.los.id IN :losIds ORDER BY rt.sortOrder, rt.priceItem.sortOrder");
+        q1.setParameter("rateId", rate.getId());
+        q1.setParameter("losIds", losIds);
+        List<RateTable> result = new ArrayList<>((List<RateTable>) q1.getResultList());
+
+        // 2) Rate table rows for modules linked to enhancements associated with proposal LOSs
+        Query q2 = em.createQuery(
+                "SELECT rt FROM RateTable rt WHERE rt.rate.id = :rateId AND rt.module.enhancement.id IN " +
+                        "(SELECT e.id FROM Enhancement e JOIN e.losList el WHERE el.id IN :losIds) ORDER BY rt.sortOrder, rt.priceItem.sortOrder");
+        q2.setParameter("rateId", rate.getId());
+        q2.setParameter("losIds", losIds);
+        List<RateTable> enhRows = (List<RateTable>) q2.getResultList();
+
+        // Merge, deduplicate, sort by sortOrder
+        for (RateTable rt : enhRows) {
+            if (!result.contains(rt)) result.add(rt);
         }
-        return rateTableList;
+        result.sort((a, b) -> {
+            int c = Integer.compare(a.getSortOrder(), b.getSortOrder());
+            return c != 0 ? c : Integer.compare(a.getPriceItem().getSortOrder(), b.getPriceItem().getSortOrder());
+        });
+
+        return result;
     }
 
     public static List<ServiceModule> getDistinctListOfServiceModulesForThisProposal(Proposal proposal){

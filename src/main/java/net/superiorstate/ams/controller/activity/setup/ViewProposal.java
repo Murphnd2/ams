@@ -64,8 +64,11 @@ public class ViewProposal extends HttpServlet {
             List<RateTable> pricing = SalesDAO.getPricing(em, proposal);
 
             // Load features for all modules in this proposal
-            List<Long> moduleIds = SalesDAO.getDistinctListOfServiceModulesForThisProposal(proposal)
-                    .stream().map(m -> m.getId()).toList();
+            // Extract distinct module IDs from pricing (includes both LOS and enhancement modules)
+            List<Long> moduleIds = pricing.stream()
+                    .map(rt -> rt.getModule().getId())
+                    .distinct()
+                    .toList();
 
             List<Feature> features = List.of();
             if (!moduleIds.isEmpty()) {

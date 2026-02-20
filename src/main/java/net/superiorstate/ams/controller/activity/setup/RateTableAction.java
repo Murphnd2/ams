@@ -2,6 +2,7 @@ package net.superiorstate.ams.controller.activity.setup;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
+import jakarta.persistence.NoResultException;
 import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
@@ -10,10 +11,11 @@ import net.superiorstate.ams.data.dao.SalesDAO;
 import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.model.general.PSP;
 import net.superiorstate.ams.model.sales.agency.*;
+import net.superiorstate.ams.model.sales.offering.Enhancement;
+import net.superiorstate.ams.model.sales.offering.LOS;
 import net.superiorstate.ams.model.sales.offering.ServiceModule;
 
 import java.io.IOException;
-import java.util.List;
 import java.util.List;
 
 @WebServlet(name = "RateTableAction", value = "/RateTableAction")
@@ -56,23 +58,84 @@ public class RateTableAction extends HttpServlet {
 
                 case "addRateTableRow" -> {
                     long rateId = Long.parseLong(rateIdParam);
-                    long moduleId = Long.parseLong(request.getParameter("moduleId"));
                     long priceItemId = Long.parseLong(request.getParameter("priceItemId"));
                     double price = Double.parseDouble(request.getParameter("price"));
 
                     Rate rate = EntityLookup.getRateById(em, rateId);
-                    ServiceModule module = EntityLookup.getServiceModuleById(em, (int) moduleId);
                     PriceItem priceItem = EntityLookup.getPriceItemById(em, priceItemId);
 
-                    RateTable rt = new RateTable();
-                    rt.setRate(rate);
-                    rt.setModule(module);
-                    rt.setPriceItem(priceItem);
-                    rt.setPrice(price);
+                    // Determine the ServiceModule — find existing or create new
+                    ServiceModule module = null;
+                    String losIdParam = request.getParameter("losId");
+                    String enhIdParam = request.getParameter("enhId");
 
-                    em.getTransaction().begin();
-                    em.persist(rt);
-                    em.getTransaction().commit();
+                    if (losIdParam != null && !losIdParam.isEmpty()) {
+                        long losId = Long.parseLong(losIdParam);
+                        LOS los = EntityLookup.getLosById(em, losId);
+                        module = findModuleByLos(em, losId);
+                        if (module == null) {
+                            // Create a new ServiceModule for this LOS
+                            module = new ServiceModule();
+                            module.setDescription(los.getDescription());
+                            module.setShortText(los.getShortText());
+                            module.setSortOrder(los.getSortOrder());
+                            module.setPsp(psp);
+                            module.setLos(los);
+                            module.setSuppressed(false);
+                            em.getTransaction().begin();
+                            em.persist(module);
+                            em.getTransaction().commit();
+                        }
+                    } else if (enhIdParam != null && !enhIdParam.isEmpty()) {
+                        long enhId = Long.parseLong(enhIdParam);
+                        Enhancement enh = em.find(Enhancement.class, enhId);
+                        module = findModuleByEnhancement(em, enhId);
+                        if (module == null) {
+                            // Create a new ServiceModule for this Enhancement
+                            module = new ServiceModule();
+                            module.setDescription(enh.getDescription());
+                            module.setShortText(enh.getShortText());
+                            module.setSortOrder(enh.getSortOrder());
+                            module.setPsp(psp);
+                            module.setEnhancement(enh);
+                            module.setSuppressed(false);
+                            em.getTransaction().begin();
+                            em.persist(module);
+                            em.getTransaction().commit();
+                        }
+                    } else {
+                        // Fallback: direct moduleId (legacy support)
+                        String moduleIdParam = request.getParameter("moduleId");
+                        if (moduleIdParam != null && !moduleIdParam.isEmpty()) {
+                            module = EntityLookup.getServiceModuleById(em, Integer.parseInt(moduleIdParam));
+                        }
+                    }
+
+                    if (module != null) {
+                        // Determine sort_order for this row:
+                        // If this module already has rows in this rate, match their sortOrder.
+                        // Otherwise, assign max existing sortOrder + 100.
+                        List<RateTable> existingRows = SalesDAO.getRateTableList(em, rateId);
+                        int sortOrder = -1;
+                        int maxSort = 0;
+                        for (RateTable existing : existingRows) {
+                            if (existing.getSortOrder() > maxSort) maxSort = existing.getSortOrder();
+                            if (existing.getModule().getId().equals(module.getId())) {
+                                sortOrder = existing.getSortOrder();
+                            }
+                        }
+                        if (sortOrder < 0) sortOrder = maxSort + 100;
+
+                        RateTable rt = new RateTable();
+                        rt.setRate(rate);
+                        rt.setModule(module);
+                        rt.setPriceItem(priceItem);
+                        rt.setPrice(price);
+                        rt.setSortOrder(sortOrder);
+                        em.getTransaction().begin();
+                        em.persist(rt);
+                        em.getTransaction().commit();
+                    }
                 }
 
                 case "deleteRow" -> {
@@ -151,6 +214,79 @@ public class RateTableAction extends HttpServlet {
                     em.getTransaction().commit();
                 }
 
+                case "copyRate" -> {
+                    long sourceRateId = Long.parseLong(rateIdParam);
+                    String newName = request.getParameter("description").trim();
+
+                    // Create new rate
+                    Rate newRate = new Rate();
+                    newRate.setDescription(newName);
+                    newRate.setPsp(psp);
+                    newRate.setSuppressed(false);
+                    em.getTransaction().begin();
+                    em.persist(newRate);
+                    em.getTransaction().commit();
+
+                    // Copy all rate table rows
+                    List<RateTable> sourceRows = SalesDAO.getRateTableList(em, sourceRateId);
+                    for (RateTable oldRow : sourceRows) {
+                        RateTable newRow = new RateTable();
+                        newRow.setRate(newRate);
+                        newRow.setModule(oldRow.getModule());
+                        newRow.setPriceItem(oldRow.getPriceItem());
+                        newRow.setPrice(oldRow.getPrice());
+                        newRow.setSortOrder(oldRow.getSortOrder());
+                        em.getTransaction().begin();
+                        em.persist(newRow);
+                        em.getTransaction().commit();
+                    }
+
+                    // Redirect to the new rate
+                    rateIdParam = newRate.getId().toString();
+                }
+
+                case "updatePrice" -> {
+                    long rateId = Long.parseLong(rateIdParam);
+                    long priceItemId = Long.parseLong(request.getParameter("priceItemId"));
+                    long moduleId = Long.parseLong(request.getParameter("moduleId"));
+                    double newPrice = Double.parseDouble(request.getParameter("price"));
+
+                    RateTableID rtId = new RateTableID();
+                    rtId.setRateId(rateId);
+                    rtId.setPriceItemId(priceItemId);
+                    rtId.setModuleId(moduleId);
+
+                    RateTable rt = em.find(RateTable.class, rtId);
+                    if (rt != null) {
+                        rt.setPrice(newPrice);
+                        em.getTransaction().begin();
+                        em.merge(rt);
+                        em.getTransaction().commit();
+                    }
+                }
+
+                case "reorderModules" -> {
+                    long rateId = Long.parseLong(rateIdParam);
+                    String order = request.getParameter("order");
+                    if (order != null && !order.isEmpty()) {
+                        String[] moduleIds = order.split(",");
+                        List<RateTable> allRows = SalesDAO.getRateTableList(em, rateId);
+                        int sortVal = 100;
+                        for (String modIdStr : moduleIds) {
+                            long modId = Long.parseLong(modIdStr.trim());
+                            for (RateTable rt : allRows) {
+                                if (rt.getModule().getId() == modId) {
+                                    rt.setSortOrder(sortVal);
+                                    em.getTransaction().begin();
+                                    em.merge(rt);
+                                    em.getTransaction().commit();
+                                }
+                            }
+                            sortVal += 100;
+                        }
+                    }
+                }
+
                 case "cloneRate" -> {
                     long oldRateId = Long.parseLong(rateIdParam);
                     Rate oldRate = EntityLookup.getRateById(em, oldRateId);
@@ -172,6 +308,7 @@ public class RateTableAction extends HttpServlet {
                         newRow.setModule(oldRow.getModule());
                         newRow.setPriceItem(oldRow.getPriceItem());
                         newRow.setPrice(oldRow.getPrice());
+                        newRow.setSortOrder(oldRow.getSortOrder());
                         em.getTransaction().begin();
                         em.persist(newRow);
                         em.getTransaction().commit();
@@ -218,5 +355,35 @@ public class RateTableAction extends HttpServlet {
             redirectUrl += "?rateId=" + rateIdParam;
         }
         response.sendRedirect(redirectUrl);
+    }
+
+    /**
+     * Find the ServiceModule linked to a given LOS (by los_id FK).
+     * Returns null if none exists yet.
+     */
+    private ServiceModule findModuleByLos(EntityManager em, long losId) {
+        try {
+            return em.createQuery(
+                    "SELECT sm FROM ServiceModule sm WHERE sm.los.id = :losId", ServiceModule.class)
+                    .setParameter("losId", losId)
+                    .getSingleResult();
+        } catch (NoResultException e) {
+            return null;
+        }
+    }
+
+    /**
+     * Find the ServiceModule linked to a given Enhancement (by enhancement_id FK).
+     * Returns null if none exists yet.
+     */
+    private ServiceModule findModuleByEnhancement(EntityManager em, long enhId) {
+        try {
+            return em.createQuery(
+                    "SELECT sm FROM ServiceModule sm WHERE sm.enhancement.id = :enhId", ServiceModule.class)
+                    .setParameter("enhId", enhId)
+                    .getSingleResult();
+        } catch (NoResultException e) {
+            return null;
+        }
     }
 }

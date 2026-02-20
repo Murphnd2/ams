@@ -11,11 +11,13 @@ import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.model.general.Person;
 import net.superiorstate.ams.model.sales.agency.*;
 import net.superiorstate.ams.model.sales.offering.LOS;
+import net.superiorstate.ams.model.sales.offering.ServiceModule;
 
 import java.io.IOException;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @WebServlet(name = "ProposalBuilder", value = "/ProposalBuilder")
 public class ProposalBuilder extends HttpServlet {
@@ -33,15 +35,52 @@ public class ProposalBuilder extends HttpServlet {
             List<Agency> agencyList = SalesDAO.getAgencyList(em, pspId);
             request.setAttribute("agencyList", agencyList);
 
-            // Load all rates for this PSP (for PSP inside-sales users)
+            // Load all non-suppressed rates for this PSP
             List<Rate> allRates = SalesDAO.getRateList(em, pspId);
+            allRates.removeIf(Rate::isSuppressed);
             request.setAttribute("allRates", allRates);
 
-            // Load all LOS for this PSP
+            // Load all LOS for this PSP — filter out suppressed
             List<LOS> losList = em.createNamedQuery("LOS.getByPsp", LOS.class)
                     .setParameter("psp_id", (long) pspId)
                     .getResultList();
+            losList.removeIf(LOS::isSuppressed);
             request.setAttribute("losList", losList);
+
+            // Build rate → LOS availability map
+            // A LOS is "available" for a rate if any of its ServiceModules appear in that rate's RateTable
+            Map<Long, Set<Long>> rateLosMap = new HashMap<>();
+            for (Rate rate : allRates) {
+                List<RateTable> rtRows = SalesDAO.getRateTableList(em, rate.getId());
+                Set<Long> availableLosIds = new HashSet<>();
+                for (RateTable rt : rtRows) {
+                    ServiceModule mod = rt.getModule();
+                    // Check direct LOS FK on module
+                    if (mod.getLos() != null) {
+                        availableLosIds.add(mod.getLos().getId());
+                    }
+                    // Also check M:N relationship (losmodules table)
+                    if (mod.getListOfLosWithThisModule() != null) {
+                        for (LOS los : mod.getListOfLosWithThisModule()) {
+                            availableLosIds.add(los.getId());
+                        }
+                    }
+                }
+                rateLosMap.put(rate.getId(), availableLosIds);
+            }
+
+            // Serialize to JSON string for the JSP
+            StringBuilder json = new StringBuilder("{");
+            boolean first = true;
+            for (Map.Entry<Long, Set<Long>> entry : rateLosMap.entrySet()) {
+                if (!first) json.append(",");
+                json.append("\"").append(entry.getKey()).append("\":[");
+                json.append(entry.getValue().stream().map(String::valueOf).collect(Collectors.joining(",")));
+                json.append("]");
+                first = false;
+            }
+            json.append("}");
+            request.setAttribute("rateLosMapJson", json.toString());
 
             // Load existing prospects for this PSP
             List<Prospect> prospectList = SalesDAO.getProspectsByPsp(em, pspId);

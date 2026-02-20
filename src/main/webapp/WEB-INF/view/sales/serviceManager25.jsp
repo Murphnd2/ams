@@ -26,31 +26,31 @@
         .assoc-row:last-child { border-bottom: none; }
         .assoc-row .btn-remove { border: none; background: none; color: #dc3545; font-size: 0.8rem; cursor: pointer; padding: 0.1rem 0.35rem; }
         .assoc-row .btn-remove:hover { color: #a71d2a; }
-        .empty-state { text-align: center; color: #6c757d; padding: 2rem 1rem; }
-        .empty-state i { font-size: 2rem; margin-bottom: 0.5rem; display: block; }
-        .nav-tabs.list-tabs { background-color: var(--ssa); border-bottom: none; border-radius: 6px 6px 0 0; }
-        .nav-tabs.list-tabs .nav-link { color: rgba(255,255,255,0.7); font-weight: 600; font-size: 0.95rem; border: none; padding: 0.5rem 0.75rem; border-radius: 0; }
-        .nav-tabs.list-tabs .nav-link:first-child { border-radius: 6px 0 0 0; }
-        .nav-tabs.list-tabs .nav-link:hover { color: white; }
-        .nav-tabs.list-tabs .nav-link.active { color: var(--ssa); background: white; }
-        .nav-tabs.list-tabs .tab-tools { display: flex; align-items: center; gap: 4px; margin-left: auto; padding-right: 0.75rem; }
-        .nav-tabs.list-tabs .tab-tools .btn { color: rgba(255,255,255,0.8); border-color: rgba(255,255,255,0.5); padding: 0.15rem 0.5rem; font-size: 1rem; }
-        .nav-tabs.list-tabs .tab-tools .btn:hover { color: white; border-color: white; }
-        .edit-link { color: inherit; font-size: 0.75rem; opacity: 0.5; margin-left: 0.3rem; }
-        .edit-link:hover { opacity: 1; }
-        .suppressed-item { display: none; }
-        .show-suppressed { display: block !important; opacity: 0.45; }
-        .preview-link { color: var(--ssa); font-size: 0.75rem; cursor: pointer; margin-left: 0.4rem; opacity: 0.6; }
-        .preview-link:hover { opacity: 1; }
-        .preview-popover { max-width: 380px; }
-        .preview-popover .popover-body { max-height: 300px; overflow-y: auto; font-size: 0.82rem; padding: 0.5rem 0.75rem; }
-        .sortable-ghost { opacity: 0.3; background: #e8eef4; }
+        .suppressed-item { display: none !important; }
+        .show-suppressed { display: block !important; opacity: 0.45; font-style: italic; }
+        .edit-link { color: var(--ssa); text-decoration: none; font-size: 0.85rem; margin-left: 0.5rem; }
+        .edit-link:hover { color: #06357a; }
+        .preview-link { color: #6c757d; font-size: 0.75rem; margin-left: 0.5rem; text-decoration: none; }
+        .preview-link:hover { color: var(--ssa); }
+        .preview-popover { max-width: 350px; }
+        .preview-popover .popover-body table td { padding: 0.15rem 0.4rem; font-size: 0.8rem; }
+        .empty-state { text-align: center; color: #adb5bd; padding: 2rem; }
+        .empty-state i { font-size: 2rem; }
+        .list-tabs { border-bottom: 2px solid var(--ssa); }
+        .list-tabs .nav-link { color: var(--ssa); font-weight: 600; border: none; }
+        .list-tabs .nav-link.active { background: var(--ssa); color: white; border-radius: 6px 6px 0 0; }
+        .tab-tools { margin-left: auto; display: flex; align-items: center; gap: 0.25rem; padding-right: 0.5rem; }
+        .tab-tools .btn { color: var(--ssa); padding: 0.1rem 0.4rem; }
+        .sortable-ghost { opacity: 0.4; background: #e8eef4; }
+        /* Drag handles */
+        .drag-handle { color: #adb5bd; cursor: grab; margin-right: 0.4rem; font-size: 0.85rem; }
+        .drag-handle:active { cursor: grabbing; }
     </style>
 </head>
 <body>
-<div class="container-fluid py-3" style="max-width: 1400px;">
+<div class="container-fluid py-3 px-4">
 
-    <%-- ======================== TOP HEADER BAR ======================== --%>
+    <%-- ======================== HEADER ======================== --%>
     <div class="row align-items-center mb-3">
         <div class="col-lg-4">
             <h4 class="mb-0" style="font-size: 1.5rem; font-weight: 500;">
@@ -72,10 +72,8 @@
             </c:if>
         </div>
         <div class="col-lg-3 text-end">
-            <div class="d-flex gap-2 justify-content-end align-items-center">
-                <a href="PspAdminHome" class="btn btn-outline-ssa"><i class="bi bi-cash-coin me-1"></i>Rates</a>
-                <a href="ViewHome25" class="btn btn-ssa"><i class="bi bi-house me-1"></i>Home</a>
-            </div>
+            <c:set var="adminCurrentPage" value="serviceManager" scope="request"/>
+            <c:import url="/WEB-INF/view/sales/adminNav.jsp"/>
         </div>
     </div>
 
@@ -110,7 +108,8 @@
                                         <a href="ServiceManagerHome?losId=${los.getId()}"
                                            class="d-block text-decoration-none text-dark los-item ${los.isSuppressed() ? 'suppressed-item' : ''}"
                                            data-suppressed="${los.isSuppressed()}" data-id="${los.getId()}">
-                                            <div class="item-card p-2 ps-3 ${selectedLos != null && selectedLos.getId() == los.getId() ? 'active' : ''}">
+                                            <div class="item-card p-2 ps-3 d-flex align-items-center ${selectedLos != null && selectedLos.getId() == los.getId() ? 'active' : ''}">
+                                                <i class="bi bi-grip-vertical drag-handle"></i>
                                                 <span class="fw-semibold">${los.getShortText()}</span>
                                                 <small class="text-muted ms-2">${los.getDescription()}</small>
                                                 <c:if test="${los.isSuppressed()}"><i class="bi bi-eye-slash-fill text-muted ms-1" style="font-size:0.7rem;"></i></c:if>
@@ -131,7 +130,8 @@
                                         <a href="ServiceManagerHome?enhId=${enh.getId()}&tab=enhancement"
                                            class="d-block text-decoration-none text-dark enh-item ${enh.isSuppressed() ? 'suppressed-item' : ''}"
                                            data-suppressed="${enh.isSuppressed()}" data-id="${enh.getId()}">
-                                            <div class="item-card p-2 ps-3 ${selectedEnhancement != null && selectedEnhancement.getId() == enh.getId() ? 'active' : ''}">
+                                            <div class="item-card p-2 ps-3 d-flex align-items-center ${selectedEnhancement != null && selectedEnhancement.getId() == enh.getId() ? 'active' : ''}">
+                                                <i class="bi bi-grip-vertical drag-handle"></i>
                                                 <span class="fw-semibold">${enh.getShortText()}</span>
                                                 <small class="text-muted ms-2">${enh.getDescription()}</small>
                                                 <c:if test="${enh.isSuppressed()}"><i class="bi bi-eye-slash-fill text-muted ms-1" style="font-size:0.7rem;"></i></c:if>
@@ -194,6 +194,7 @@
                                     <c:forEach var="section" items="${losAppSections}">
                                         <div class="assoc-row d-flex justify-content-between align-items-center los-section-item" data-id="${section.getId()}">
                                             <div class="d-flex align-items-center">
+                                                <i class="bi bi-grip-vertical drag-handle"></i>
                                                 <span class="fw-semibold">${section.getName()}</span>
                                                 <%-- Preview icon — field data embedded in hidden div, read by JS --%>
                                                 <c:if test="${not empty section.getFieldList()}">
@@ -272,6 +273,7 @@
                                     <c:forEach var="section" items="${enhAppSections}">
                                         <div class="assoc-row d-flex justify-content-between align-items-center enh-section-item" data-id="${section.getId()}">
                                             <div class="d-flex align-items-center">
+                                                <i class="bi bi-grip-vertical drag-handle"></i>
                                                 <span class="fw-semibold">${section.getName()}</span>
                                                 <c:if test="${not empty section.getFieldList()}">
                                                     <a href="#" class="preview-link section-preview" tabindex="0"
@@ -336,7 +338,7 @@
     <form method="post" action="ServiceManagerAction"><input type="hidden" name="action" value="createEnhancement"/>
         <div class="modal-header"><h5 class="modal-title"><i class="bi bi-plus-circle me-2"></i>New Enhancement</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
         <div class="modal-body">
-            <div class="mb-3"><label class="form-label fw-semibold">Description</label><input type="text" name="description" class="form-control" required placeholder="e.g. Debit Card Services"></div>
+            <div class="mb-3"><label class="form-label fw-semibold">Description</label><input type="text" name="description" class="form-control" required placeholder="e.g. Debit Cards"></div>
             <div class="mb-3"><label class="form-label fw-semibold">Short Text</label><input type="text" name="shortText" class="form-control" required maxlength="20" placeholder="e.g. Cards"></div>
         </div>
         <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button><button type="submit" class="btn btn-primary">Create</button></div>
@@ -345,6 +347,10 @@
 
 <%-- Edit LOS --%>
 <c:if test="${not empty selectedLos}">
+<form id="suppressLosForm" method="post" action="ServiceManagerAction" class="d-none">
+    <input type="hidden" name="action" value="suppressLos"/>
+    <input type="hidden" name="losId" value="${selectedLos.getId()}"/>
+</form>
 <div class="modal fade" id="editLosModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
     <div class="modal-header"><h5 class="modal-title"><i class="bi bi-pencil me-2"></i>Edit Line of Service</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
     <form method="post" action="ServiceManagerAction">
@@ -368,6 +374,10 @@
 
 <%-- Edit Enhancement --%>
 <c:if test="${not empty selectedEnhancement}">
+<form id="suppressEnhForm" method="post" action="ServiceManagerAction" class="d-none">
+    <input type="hidden" name="action" value="suppressEnhancement"/>
+    <input type="hidden" name="enhId" value="${selectedEnhancement.getId()}"/>
+</form>
 <div class="modal fade" id="editEnhModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
     <div class="modal-header"><h5 class="modal-title"><i class="bi bi-pencil me-2"></i>Edit Enhancement</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
     <form method="post" action="ServiceManagerAction">
@@ -387,20 +397,6 @@
         </div>
     </form>
 </div></div></div>
-</c:if>
-
-<%-- Hidden suppress forms (OUTSIDE modals to avoid nested form issues) --%>
-<c:if test="${not empty selectedLos}">
-    <form id="suppressLosForm" method="post" action="ServiceManagerAction" class="d-none">
-        <input type="hidden" name="action" value="suppressLos"/>
-        <input type="hidden" name="losId" value="${selectedLos.getId()}"/>
-    </form>
-</c:if>
-<c:if test="${not empty selectedEnhancement}">
-    <form id="suppressEnhForm" method="post" action="ServiceManagerAction" class="d-none">
-        <input type="hidden" name="action" value="suppressEnhancement"/>
-        <input type="hidden" name="enhId" value="${selectedEnhancement.getId()}"/>
-    </form>
 </c:if>
 
 <%-- Assign Enhancement to LOS --%>
@@ -424,27 +420,6 @@
 </div></div></div>
 </c:if>
 
-<%-- Assign App Section to LOS --%>
-<c:if test="${not empty selectedLos}">
-<div class="modal fade" id="assignSectionToLosModal" tabindex="-1"><div class="modal-dialog modal-sm"><div class="modal-content">
-    <form method="post" action="ServiceManagerAction"><input type="hidden" name="action" value="assignAppSectionToLos"/><input type="hidden" name="losId" value="${selectedLos.getId()}"/>
-        <div class="modal-header py-2"><h6 class="modal-title"><i class="bi bi-file-earmark-text me-1"></i>Assign Section</h6><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
-        <div class="modal-body py-2"><select name="sectionId" class="form-select form-select-sm" required><option value="">-- Select --</option>
-            <c:forEach var="section" items="${appSectionList}">
-                <c:set var="alreadyAssigned" value="false"/>
-                <c:forEach var="assigned" items="${losAppSections}">
-                    <c:if test="${assigned.getId() == section.getId()}"><c:set var="alreadyAssigned" value="true"/></c:if>
-                </c:forEach>
-                <c:if test="${alreadyAssigned == 'false'}">
-                    <option value="${section.getId()}">${section.getName()}</option>
-                </c:if>
-            </c:forEach>
-        </select></div>
-        <div class="modal-footer py-1"><button type="submit" class="btn btn-primary btn-sm">Assign</button></div>
-    </form>
-</div></div></div>
-</c:if>
-
 <%-- Assign LOS to Enhancement --%>
 <c:if test="${not empty selectedEnhancement}">
 <div class="modal fade" id="assignLosToEnhModal" tabindex="-1"><div class="modal-dialog modal-sm"><div class="modal-content">
@@ -458,6 +433,27 @@
                 </c:forEach>
                 <c:if test="${alreadyAssigned == 'false' && !los.isSuppressed()}">
                     <option value="${los.getId()}">${los.getDescription()} (${los.getShortText()})</option>
+                </c:if>
+            </c:forEach>
+        </select></div>
+        <div class="modal-footer py-1"><button type="submit" class="btn btn-primary btn-sm">Assign</button></div>
+    </form>
+</div></div></div>
+</c:if>
+
+<%-- Assign App Section to LOS --%>
+<c:if test="${not empty selectedLos}">
+<div class="modal fade" id="assignSectionToLosModal" tabindex="-1"><div class="modal-dialog modal-sm"><div class="modal-content">
+    <form method="post" action="ServiceManagerAction"><input type="hidden" name="action" value="assignAppSectionToLos"/><input type="hidden" name="losId" value="${selectedLos.getId()}"/>
+        <div class="modal-header py-2"><h6 class="modal-title"><i class="bi bi-file-earmark-text me-1"></i>Assign Section</h6><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+        <div class="modal-body py-2"><select name="sectionId" class="form-select form-select-sm" required><option value="">-- Select --</option>
+            <c:forEach var="section" items="${appSectionList}">
+                <c:set var="alreadyAssigned" value="false"/>
+                <c:forEach var="assigned" items="${losAppSections}">
+                    <c:if test="${assigned.getId() == section.getId()}"><c:set var="alreadyAssigned" value="true"/></c:if>
+                </c:forEach>
+                <c:if test="${alreadyAssigned == 'false'}">
+                    <option value="${section.getId()}">${section.getName()}</option>
                 </c:if>
             </c:forEach>
         </select></div>
@@ -500,9 +496,9 @@
     });
 
     // ── Suppress toggle ──────────────────────────────────────────────
-    let showSuppressed = false;
-    function toggleSuppressed() {
-        showSuppressed = !showSuppressed;
+    let showSuppressed = sessionStorage.getItem('smShowSuppressed') === 'true';
+
+    function applySuppressedState() {
         document.getElementById('toggleSuppressedIcon').className = showSuppressed ? 'bi bi-eye' : 'bi bi-eye-slash';
         document.querySelectorAll('[data-suppressed="true"]').forEach(item => {
             if (showSuppressed) {
@@ -514,6 +510,15 @@
             }
         });
     }
+
+    function toggleSuppressed() {
+        showSuppressed = !showSuppressed;
+        sessionStorage.setItem('smShowSuppressed', showSuppressed);
+        applySuppressedState();
+    }
+
+    // Apply on page load
+    applySuppressedState();
 
     // ── Scroll state preservation ─────────────────────────────────────
     const losScroll = document.getElementById('losScroll');
@@ -549,11 +554,14 @@
     // ── Drag-and-drop sorting (SortableJS) ────────────────────────────
     function initSortable(containerId, itemClass, type) {
         const el = document.getElementById(containerId);
-        if (!el) return;
+        if (!el || el.querySelectorAll('.' + itemClass).length === 0) return;
         new Sortable(el, {
+            handle: '.drag-handle',
             animation: 150,
             draggable: '.' + itemClass,
             ghostClass: 'sortable-ghost',
+            filter: 'form, button, a.preview-link',
+            preventOnFilter: false,
             onEnd: function() {
                 const ids = Array.from(el.querySelectorAll('.' + itemClass)).map(item => item.dataset.id);
                 const params = new URLSearchParams();

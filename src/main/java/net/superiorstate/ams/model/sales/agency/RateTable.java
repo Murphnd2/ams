@@ -29,6 +29,9 @@ public class RateTable {
     @Column(name="price")
     private double price;
 
+    @Column(name="sort_order")
+    private int sortOrder;
+
     public RateTable(){}
 
     public RateTableID getRateTableID() {
@@ -69,5 +72,13 @@ public class RateTable {
 
     public void setPrice(double price) {
         this.price = price;
+    }
+
+    public int getSortOrder() {
+        return sortOrder;
+    }
+
+    public void setSortOrder(int sortOrder) {
+        this.sortOrder = sortOrder;
     }
 }

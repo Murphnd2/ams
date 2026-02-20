@@ -9,6 +9,11 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
   <style>
+    :root { --ssa: #0d5681; --ssa-alt: #87a948; }
+    .btn-ssa { background: var(--ssa); border-color: var(--ssa); color: white; }
+    .btn-ssa:hover { background: #06357a; color: white; }
+    .btn-outline-ssa { background: white; border-color: var(--ssa); color: var(--ssa); }
+    .btn-outline-ssa:hover { background: var(--ssa); color: white; }
     .agency-card { cursor: pointer; transition: all 0.15s; }
     .agency-card:hover { background-color: #f0f4f8; }
     .agency-card.active { border-left: 4px solid #2B5F8A; background-color: #e8eef4; }
@@ -30,13 +35,9 @@
       <h4 class="mb-0"><i class="bi bi-people-fill me-2"></i>Agency Manager</h4>
       <small class="text-muted">Manage agencies, rate assignments, and agents</small>
     </div>
-    <div class="d-flex gap-2">
-      <a href="PspAdminHome" class="btn btn-outline-primary btn-sm">
-        <i class="bi bi-cash-coin me-1"></i>Rate Manager
-      </a>
-      <a href="ViewHome25" class="btn btn-outline-dark btn-sm">
-        <i class="bi bi-house me-1"></i>Home
-      </a>
+    <div>
+      <c:set var="adminCurrentPage" value="agencyManager" scope="request"/>
+      <c:import url="/WEB-INF/view/sales/adminNav.jsp"/>
     </div>
   </div>
 

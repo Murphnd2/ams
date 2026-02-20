@@ -8,10 +8,13 @@ import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.AmsDataLocal;
 import net.superiorstate.ams.data.dao.SalesDAO;
 import net.superiorstate.ams.model.sales.agency.*;
+import net.superiorstate.ams.model.sales.offering.Enhancement;
+import net.superiorstate.ams.model.sales.offering.LOS;
 import net.superiorstate.ams.model.sales.offering.ServiceModule;
 
 import java.io.IOException;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @WebServlet(name = "PspAdminHome", value = "/PspAdminHome")
 public class PspAdminHome extends HttpServlet {
@@ -39,19 +42,35 @@ public class PspAdminHome extends HttpServlet {
             }
             request.setAttribute("lockedRateIds", lockedRateIds);
 
-            // Always load price items and service modules (needed for add-rate-table-row modal)
+            // Load price items (fee types) — needed for add-row modal and fee types tab
             List<PriceItem> priceItemList = SalesDAO.getPriceItemList(em, pspId);
             Collections.sort(priceItemList);
             request.setAttribute("priceItemList", priceItemList);
 
+            // Load service modules (still needed for modules/sort tab)
             List<ServiceModule> serviceModuleList = SalesDAO.getServiceModuleList(em, pspId);
             Collections.sort(serviceModuleList);
             request.setAttribute("serviceModuleList", serviceModuleList);
 
-            // Always load agency list (for assignment)
+            // Load agency list (for assignment)
             List<Agency> agencyList = SalesDAO.getAgencyList(em, pspId);
             Collections.sort(agencyList);
             request.setAttribute("agencyList", agencyList);
+
+            // Load LOS and Enhancement lists (non-suppressed, sorted) for add-row modal
+            List<LOS> losList = em.createNamedQuery("LOS.getByPsp", LOS.class)
+                    .setParameter("psp_id", (long) pspId)
+                    .getResultList();
+            losList.removeIf(LOS::isSuppressed);
+            request.setAttribute("losList", losList);
+
+            List<Enhancement> enhancementList = em.createQuery(
+                    "SELECT e FROM Enhancement e WHERE e.psp.id = :pspId ORDER BY e.sortOrder", Enhancement.class)
+                    .setParameter("pspId", (long) pspId)
+                    .getResultList();
+            enhancementList.removeIf(Enhancement::isSuppressed);
+            Collections.sort(enhancementList);
+            request.setAttribute("enhancementList", enhancementList);
 
             // If a rate is selected, load its details
             String rateIdParam = request.getParameter("rateId");
@@ -75,14 +94,67 @@ public class PspAdminHome extends HttpServlet {
                     List<RateTable> rateTableList = SalesDAO.getRateTableList(em, rateId);
                     request.setAttribute("rateTableList", rateTableList);
 
+                    // Extract distinct modules in this rate's grid (for Grid Sort tab)
+                    List<ServiceModule> rateModuleList = new ArrayList<>();
+                    Set<Long> seenModuleIds = new HashSet<>();
+                    for (RateTable rt : rateTableList) {
+                        if (seenModuleIds.add(rt.getModule().getId())) {
+                            rateModuleList.add(rt.getModule());
+                        }
+                    }
+                    request.setAttribute("rateModuleList", rateModuleList);
+
                     // Load agencies assigned to this rate
                     try {
                         List<Agency> assignedAgencies = SalesDAO.getAgenciesAssignedToRate(em, rateId);
                         request.setAttribute("assignedAgencies", assignedAgencies);
                     } catch (Exception e) {
-                        // No agencies assigned yet — that's fine
                         request.setAttribute("assignedAgencies", List.of());
                     }
+
+                    // Build JSON map of used fee types per module for smart filtering
+                    // Format: { "moduleId": [priceItemId1, priceItemId2, ...], ... }
+                    Map<Long, Set<Long>> usedFees = new HashMap<>();
+                    for (RateTable rt : rateTableList) {
+                        long modId = rt.getModule().getId();
+                        usedFees.computeIfAbsent(modId, k -> new HashSet<>()).add(rt.getPriceItem().getId());
+                    }
+
+                    // Also build a map of LOS/Enhancement → moduleId for the modal JS
+                    // Format: { "los_5": moduleId, "enh_1": moduleId, ... }
+                    Map<String, Long> entityModuleMap = new HashMap<>();
+                    for (ServiceModule sm : serviceModuleList) {
+                        if (sm.getLos() != null) {
+                            entityModuleMap.put("los_" + sm.getLos().getId(), sm.getId());
+                        }
+                        if (sm.getEnhancement() != null) {
+                            entityModuleMap.put("enh_" + sm.getEnhancement().getId(), sm.getId());
+                        }
+                    }
+
+                    // Serialize usedFees to JSON
+                    StringBuilder ufJson = new StringBuilder("{");
+                    boolean first = true;
+                    for (Map.Entry<Long, Set<Long>> entry : usedFees.entrySet()) {
+                        if (!first) ufJson.append(",");
+                        ufJson.append("\"").append(entry.getKey()).append("\":[");
+                        ufJson.append(entry.getValue().stream().map(String::valueOf).collect(Collectors.joining(",")));
+                        ufJson.append("]");
+                        first = false;
+                    }
+                    ufJson.append("}");
+                    request.setAttribute("usedFeesJson", ufJson.toString());
+
+                    // Serialize entityModuleMap to JSON
+                    StringBuilder emJson = new StringBuilder("{");
+                    first = true;
+                    for (Map.Entry<String, Long> entry : entityModuleMap.entrySet()) {
+                        if (!first) emJson.append(",");
+                        emJson.append("\"").append(entry.getKey()).append("\":").append(entry.getValue());
+                        first = false;
+                    }
+                    emJson.append("}");
+                    request.setAttribute("entityModuleMapJson", emJson.toString());
                 }
             }
 

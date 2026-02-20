@@ -10,6 +10,7 @@
         .los-card:hover { border-color: #0d6efd; box-shadow: 0 2px 8px rgba(13,110,253,0.15); }
         .los-card.selected { border-color: #198754; background-color: #f0fdf4; }
         .los-card.selected .los-check { color: #198754; }
+        .los-card.unavailable { display: none !important; }
         .los-check { font-size: 1.25rem; color: #dee2e6; }
         .step-badge { width: 32px; height: 32px; border-radius: 50%; display: inline-flex;
             align-items: center; justify-content: center; font-weight: 600; font-size: 0.875rem; }
@@ -19,6 +20,7 @@
         .rate-option { cursor: pointer; transition: all 0.15s ease; }
         .rate-option:hover { background-color: #f8f9fa; }
         .rate-option.selected { background-color: #e7f1ff; border-color: #0d6efd !important; }
+        .los-none-msg { display: none; color: #6c757d; font-style: italic; }
     </style>
 </head>
 <body>
@@ -106,10 +108,11 @@
                 </div>
             </div>
             <div class="card-body" id="losSection">
-                <p class="text-muted small mb-3">Select the services to include in this proposal. All associated modules and enhancements will be included automatically.</p>
-                <div class="row g-2">
+                <p class="text-muted small mb-3">Select the services to include in this proposal.
+                    All associated modules and enhancements will be included automatically.</p>
+                <div class="row g-2" id="losCardGrid" style="display: none;">
                     <c:forEach var="los" items="${losList}">
-                        <div class="col-md-4 col-sm-6">
+                        <div class="col-md-4 col-sm-6 los-card-wrapper" data-los-id="${los.getId()}">
                             <div class="card los-card p-3" onclick="toggleLos(this, ${los.getId()})">
                                 <div class="d-flex align-items-center">
                                     <i class="bi bi-square los-check me-2"></i>
@@ -122,6 +125,10 @@
                         </div>
                     </c:forEach>
                 </div>
+                <p class="text-muted" id="losSelectRateMsg"><i class="bi bi-arrow-up-circle me-1"></i>Select a rate package above to see available lines of service.</p>
+                <p class="los-none-msg mt-3" id="losNoneMsg">
+                    <i class="bi bi-info-circle me-1"></i>No lines of service have pricing configured for the selected rate.
+                </p>
                 <div id="losInputs"></div>
             </div>
         </div>
@@ -148,32 +155,20 @@
             <form method="post" action="CreateProspect">
                 <div class="modal-body">
                     <div class="mb-3">
-                        <label for="prospectName" class="form-label">Company Name</label>
-                        <input type="text" class="form-control" name="prospectName" id="prospectName" required>
+                        <label class="form-label fw-semibold">Company Name</label>
+                        <input type="text" name="name" class="form-control" required>
                     </div>
                     <div class="mb-3">
-                        <label for="contactFirst" class="form-label">Contact First Name</label>
-                        <input type="text" class="form-control" name="contactFirst" id="contactFirst" required>
+                        <label class="form-label fw-semibold">Contact First Name</label>
+                        <input type="text" name="firstName" class="form-control" required>
                     </div>
                     <div class="mb-3">
-                        <label for="contactLast" class="form-label">Contact Last Name</label>
-                        <input type="text" class="form-control" name="contactLast" id="contactLast" required>
+                        <label class="form-label fw-semibold">Contact Last Name</label>
+                        <input type="text" name="lastName" class="form-control" required>
                     </div>
                     <div class="mb-3">
-                        <label for="contactEmail" class="form-label">Contact Email</label>
-                        <input type="email" class="form-control" name="contactEmail" id="contactEmail" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="contactPhone" class="form-label">Contact Phone</label>
-                        <input type="tel" class="form-control" name="contactPhone" id="contactPhone">
-                    </div>
-                    <div class="mb-3">
-                        <label for="agencyId" class="form-label">Agency</label>
-                        <select class="form-select" name="agencyId" id="agencyId">
-                            <c:forEach var="agency" items="${agencyList}">
-                                <option value="${agency.getId()}">${agency.getName()}</option>
-                            </c:forEach>
-                        </select>
+                        <label class="form-label fw-semibold">Email</label>
+                        <input type="email" name="email" class="form-control" required>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -186,6 +181,9 @@
 </div>
 
 <script>
+    // Rate → available LOS IDs map (built server-side)
+    const rateLosMap = ${rateLosMapJson};
+
     let selectedRateId = null;
     let selectedLosIds = new Set();
 
@@ -200,7 +198,45 @@
         el.querySelector('.rate-icon').className = 'bi bi-check-circle-fill me-2 rate-icon text-primary';
         selectedRateId = rateId;
         document.getElementById('rateId').value = rateId;
+
+        // Filter LOS cards based on rate availability
+        filterLosCards(rateId);
+
         updateSteps();
+    }
+
+    function filterLosCards(rateId) {
+        const availableIds = rateLosMap[rateId] || [];
+        let visibleCount = 0;
+
+        // Hide the "select a rate" prompt, show the grid
+        document.getElementById('losSelectRateMsg').style.display = 'none';
+        document.getElementById('losCardGrid').style.display = '';
+
+        document.querySelectorAll('.los-card-wrapper').forEach(wrapper => {
+            const losId = parseInt(wrapper.dataset.losId);
+            const card = wrapper.querySelector('.los-card');
+            if (availableIds.includes(losId)) {
+                wrapper.style.display = '';
+                card.classList.remove('unavailable');
+                visibleCount++;
+            } else {
+                wrapper.style.display = 'none';
+                card.classList.add('unavailable');
+                // Deselect if it was selected
+                if (selectedLosIds.has(losId)) {
+                    selectedLosIds.delete(losId);
+                    card.classList.remove('selected');
+                    card.querySelector('.los-check').className = 'bi bi-square los-check me-2';
+                }
+            }
+        });
+
+        // Show "no LOS" message if none available
+        document.getElementById('losNoneMsg').style.display = visibleCount === 0 ? 'block' : 'none';
+
+        // Rebuild hidden inputs after filtering
+        rebuildLosInputs();
     }
 
     function toggleLos(el, losId) {
@@ -213,7 +249,11 @@
             el.classList.add('selected');
             el.querySelector('.los-check').className = 'bi bi-check-square-fill los-check me-2';
         }
-        // Rebuild hidden inputs
+        rebuildLosInputs();
+        updateSteps();
+    }
+
+    function rebuildLosInputs() {
         let container = document.getElementById('losInputs');
         container.innerHTML = '';
         selectedLosIds.forEach(id => {
@@ -223,7 +263,6 @@
             input.value = id;
             container.appendChild(input);
         });
-        updateSteps();
     }
 
     function updateSteps() {
@@ -238,15 +277,14 @@
 
         // Enable/disable submit
         document.getElementById('btnCreate').disabled = !(hasProspect && hasRate && hasLos);
-
-        // Auto-trigger step update if prospect is pre-selected
-        document.addEventListener('DOMContentLoaded', function() {
-            if (document.getElementById('prospectId').value) {
-                updateSteps();
-            }
-        });
     }
+
+    // Auto-trigger step update if prospect is pre-selected
+    document.addEventListener('DOMContentLoaded', function() {
+        if (document.getElementById('prospectId').value) {
+            updateSteps();
+        }
+    });
 </script>
 </body>
 </html>
-

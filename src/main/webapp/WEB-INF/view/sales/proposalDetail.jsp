@@ -99,10 +99,16 @@
             <c:set var="currentModule" value=""/>
             <table class="table table-sm mb-0">
                 <c:forEach var="rt" items="${pricing}">
-                    <c:if test="${rt.getModule().getDescription() != currentModule}">
-                        <c:set var="currentModule" value="${rt.getModule().getDescription()}"/>
+                    <c:if test="${rt.getModule().getId() != currentModule}">
+                        <c:set var="currentModule" value="${rt.getModule().getId()}"/>
                         <tr class="pricing-header">
-                            <td colspan="2" class="fw-semibold py-2 px-3">${currentModule}</td>
+                            <td colspan="2" class="fw-semibold py-2 px-3">
+                                <c:choose>
+                                    <c:when test="${not empty rt.getModule().getLos()}">${rt.getModule().getLos().getDescription()}</c:when>
+                                    <c:when test="${not empty rt.getModule().getEnhancement()}">${rt.getModule().getEnhancement().getDescription()}</c:when>
+                                    <c:otherwise>${rt.getModule().getDescription()}</c:otherwise>
+                                </c:choose>
+                            </td>
                         </tr>
                     </c:if>
                     <tr>

@@ -179,6 +179,41 @@
     </div>
   </c:forEach>
 
+  <%-- Enhancement Feature Cards --%>
+  <c:set var="shownEnhIds" value=","/>
+  <c:forEach var="rt" items="${pricing}">
+    <c:if test="${not empty rt.getModule().getEnhancement()}">
+      <c:set var="enhId" value="${rt.getModule().getEnhancement().getId()}"/>
+      <c:if test="${!shownEnhIds.contains(','.concat(String.valueOf(enhId)).concat(','))}">
+        <c:set var="shownEnhIds" value="${shownEnhIds}${enhId},"/>
+        <c:set var="enhModuleId" value="${rt.getModule().getId()}"/>
+        <c:set var="hasEnhFeatures" value="false"/>
+        <c:forEach var="feature" items="${features}">
+          <c:if test="${feature.getServiceModule().getId() == enhModuleId}">
+            <c:set var="hasEnhFeatures" value="true"/>
+          </c:if>
+        </c:forEach>
+        <c:if test="${hasEnhFeatures == 'true'}">
+          <div class="los-card">
+            <div class="los-card-header" style="background: var(--psp-accent);">
+              <i class="bi bi-puzzle me-2"></i>${rt.getModule().getEnhancement().getDescription()}
+            </div>
+            <div class="los-card-body">
+              <c:forEach var="feature" items="${features}">
+                <c:if test="${feature.getServiceModule().getId() == enhModuleId}">
+                  <div class="feature-item">
+                    <i class="bi bi-check2"></i>
+                    <span>${feature.getDescription()}</span>
+                  </div>
+                </c:if>
+              </c:forEach>
+            </div>
+          </div>
+        </c:if>
+      </c:if>
+    </c:if>
+  </c:forEach>
+
   <%-- Pricing Table --%>
   <div class="pricing-card">
     <div class="card-header">
@@ -190,10 +225,16 @@
       <c:set var="currentModule" value=""/>
       <table class="table table-sm mb-0">
         <c:forEach var="rt" items="${pricing}">
-          <c:if test="${rt.getModule().getDescription() != currentModule}">
-            <c:set var="currentModule" value="${rt.getModule().getDescription()}"/>
+          <c:if test="${rt.getModule().getId() != currentModule}">
+            <c:set var="currentModule" value="${rt.getModule().getId()}"/>
             <tr class="pricing-module-header">
-              <td colspan="2">${currentModule}</td>
+              <td colspan="2">
+                <c:choose>
+                  <c:when test="${not empty rt.getModule().getLos()}">${rt.getModule().getLos().getDescription()}</c:when>
+                  <c:when test="${not empty rt.getModule().getEnhancement()}">${rt.getModule().getEnhancement().getDescription()}</c:when>
+                  <c:otherwise>${rt.getModule().getDescription()}</c:otherwise>
+                </c:choose>
+              </td>
             </tr>
           </c:if>
           <tr class="pricing-row">
