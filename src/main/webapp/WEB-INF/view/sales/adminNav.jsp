@@ -11,6 +11,7 @@
             <li><a class="dropdown-item ${adminCurrentPage == 'serviceManager' ? 'active' : ''}" href="ServiceManagerHome"><i class="bi bi-diagram-3 me-2"></i>Service Manager</a></li>
             <li><a class="dropdown-item ${adminCurrentPage == 'rateManager' ? 'active' : ''}" href="PspAdminHome"><i class="bi bi-cash-coin me-2"></i>Rate Manager</a></li>
             <li><a class="dropdown-item ${adminCurrentPage == 'agencyManager' ? 'active' : ''}" href="PspAgencyHome"><i class="bi bi-people-fill me-2"></i>Agency Manager</a></li>
+            <li><a class="dropdown-item ${adminCurrentPage == 'library' ? 'active' : ''}" href="LibraryHome"><i class="bi bi-collection me-2"></i>Resource Library</a></li>
             <li><hr class="dropdown-divider"></li>
             <li><a class="dropdown-item ${adminCurrentPage == 'proposalBuilder' ? 'active' : ''}" href="ProposalBuilder"><i class="bi bi-file-earmark-plus me-2"></i>Proposal Builder</a></li>
             <li><a class="dropdown-item ${adminCurrentPage == 'applicationReview' ? 'active' : ''}" href="ReviewApplications"><i class="bi bi-clipboard-check me-2"></i>Application Review</a></li>

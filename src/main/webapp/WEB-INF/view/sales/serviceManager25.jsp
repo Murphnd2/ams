@@ -42,9 +42,11 @@
         .tab-tools { margin-left: auto; display: flex; align-items: center; gap: 0.25rem; padding-right: 0.5rem; }
         .tab-tools .btn { color: var(--ssa); padding: 0.1rem 0.4rem; }
         .sortable-ghost { opacity: 0.4; background: #e8eef4; }
-        /* Drag handles */
         .drag-handle { color: #adb5bd; cursor: grab; margin-right: 0.4rem; font-size: 0.85rem; }
         .drag-handle:active { cursor: grabbing; }
+        .link-toolbar { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.35rem; }
+        .link-toolbar .btn { padding: 0.15rem 0.5rem; font-size: 0.8rem; }
+        .link-marker { background: #e8f4fd; border-radius: 3px; padding: 0 2px; }
     </style>
 </head>
 <body>
@@ -183,7 +185,7 @@
                     </div>
 
                     <%-- Application Sections for this LOS --%>
-                    <div class="card">
+                    <div class="card mb-3">
                         <div class="hdr-bar d-flex justify-content-between align-items-center">
                             <span><i class="bi bi-file-earmark-text me-1"></i>Application Sections</span>
                             <button class="btn btn-sm btn-outline-light" data-bs-toggle="modal" data-bs-target="#assignSectionToLosModal" title="Assign section"><i class="bi bi-plus-lg"></i></button>
@@ -196,7 +198,6 @@
                                             <div class="d-flex align-items-center">
                                                 <i class="bi bi-grip-vertical drag-handle"></i>
                                                 <span class="fw-semibold">${section.getName()}</span>
-                                                <%-- Preview icon — field data embedded in hidden div, read by JS --%>
                                                 <c:if test="${not empty section.getFieldList()}">
                                                     <a href="#" class="preview-link section-preview" tabindex="0"
                                                        data-section-id="los-${section.getId()}"><i class="bi bi-eye"></i></a>
@@ -225,6 +226,51 @@
                                     </c:forEach>
                                 </c:when>
                                 <c:otherwise><span class="text-muted" style="font-size:0.85rem;">None assigned</span></c:otherwise>
+                            </c:choose>
+                        </div>
+                    </div>
+
+                    <%-- Features for this LOS --%>
+                    <div class="card mb-3">
+                        <div class="hdr-bar d-flex justify-content-between align-items-center">
+                            <span><i class="bi bi-check2-square me-1"></i>Features</span>
+                            <c:if test="${not empty selectedModule}">
+                                <button class="btn btn-sm btn-outline-light" data-bs-toggle="modal" data-bs-target="#addFeatureModal" title="Add feature"><i class="bi bi-plus-lg"></i></button>
+                            </c:if>
+                        </div>
+                        <div class="card-body py-2 px-3" id="losFeatureList">
+                            <c:choose>
+                                <c:when test="${empty selectedModule}">
+                                    <span class="text-muted" style="font-size:0.85rem;">No pricing module exists yet. Add pricing in Rate Manager first.</span>
+                                </c:when>
+                                <c:when test="${not empty featureList}">
+                                    <c:forEach var="feature" items="${featureList}">
+                                        <div class="assoc-row d-flex justify-content-between align-items-center feature-item" data-id="${feature.getId()}">
+                                            <div class="d-flex align-items-center flex-grow-1">
+                                                <i class="bi bi-grip-vertical drag-handle"></i>
+                                                <i class="bi bi-check2 me-1" style="color: var(--ssa-alt);"></i>
+                                                <span class="feature-text">${feature.getDescription()}</span>
+                                                <c:if test="${not empty feature.getLibraryResource()}">
+                                                    <span class="badge bg-light text-dark ms-1" style="font-size:0.7rem;">
+                                                        <i class="bi bi-link-45deg"></i> ${feature.getLibraryResource().getTitle()}
+                                                    </span>
+                                                </c:if>
+                                            </div>
+                                            <div class="d-flex align-items-center gap-1">
+                                                <button type="button" class="btn-remove" style="color: var(--ssa);"
+                                                        onclick="openEditFeature(${feature.getId()}, this.closest('.feature-item').querySelector('.feature-text').textContent, '${not empty feature.getLibraryResource() ? feature.getLibraryResource().getId() : ''}')"
+                                                        title="Edit"><i class="bi bi-pencil"></i></button>
+                                                <form method="post" action="ServiceManagerAction" class="d-inline" onsubmit="return confirm('Delete this feature?');">
+                                                    <input type="hidden" name="action" value="deleteFeature"/>
+                                                    <input type="hidden" name="featureId" value="${feature.getId()}"/>
+                                                    <input type="hidden" name="losId" value="${selectedLos.getId()}"/>
+                                                    <button type="submit" class="btn-remove"><i class="bi bi-x-lg"></i></button>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </c:forEach>
+                                </c:when>
+                                <c:otherwise><span class="text-muted" style="font-size:0.85rem;">No features yet — click + to add</span></c:otherwise>
                             </c:choose>
                         </div>
                     </div>
@@ -262,7 +308,7 @@
                     </div>
 
                     <%-- Application Sections for this Enhancement --%>
-                    <div class="card">
+                    <div class="card mb-3">
                         <div class="hdr-bar d-flex justify-content-between align-items-center">
                             <span><i class="bi bi-file-earmark-text me-1"></i>Application Sections</span>
                             <button class="btn btn-sm btn-outline-light" data-bs-toggle="modal" data-bs-target="#assignSectionToEnhModal" title="Assign section"><i class="bi bi-plus-lg"></i></button>
@@ -303,6 +349,51 @@
                                     </c:forEach>
                                 </c:when>
                                 <c:otherwise><span class="text-muted" style="font-size:0.85rem;">None assigned</span></c:otherwise>
+                            </c:choose>
+                        </div>
+                    </div>
+
+                    <%-- Features for this Enhancement --%>
+                    <div class="card mb-3">
+                        <div class="hdr-bar d-flex justify-content-between align-items-center">
+                            <span><i class="bi bi-check2-square me-1"></i>Features</span>
+                            <c:if test="${not empty selectedModule}">
+                                <button class="btn btn-sm btn-outline-light" data-bs-toggle="modal" data-bs-target="#addFeatureModal" title="Add feature"><i class="bi bi-plus-lg"></i></button>
+                            </c:if>
+                        </div>
+                        <div class="card-body py-2 px-3" id="enhFeatureList">
+                            <c:choose>
+                                <c:when test="${empty selectedModule}">
+                                    <span class="text-muted" style="font-size:0.85rem;">No pricing module exists yet. Add pricing in Rate Manager first.</span>
+                                </c:when>
+                                <c:when test="${not empty featureList}">
+                                    <c:forEach var="feature" items="${featureList}">
+                                        <div class="assoc-row d-flex justify-content-between align-items-center feature-item" data-id="${feature.getId()}">
+                                            <div class="d-flex align-items-center flex-grow-1">
+                                                <i class="bi bi-grip-vertical drag-handle"></i>
+                                                <i class="bi bi-check2 me-1" style="color: var(--ssa-alt);"></i>
+                                                <span class="feature-text">${feature.getDescription()}</span>
+                                                <c:if test="${not empty feature.getLibraryResource()}">
+                                                    <span class="badge bg-light text-dark ms-1" style="font-size:0.7rem;">
+                                                        <i class="bi bi-link-45deg"></i> ${feature.getLibraryResource().getTitle()}
+                                                    </span>
+                                                </c:if>
+                                            </div>
+                                            <div class="d-flex align-items-center gap-1">
+                                                <button type="button" class="btn-remove" style="color: var(--ssa);"
+                                                        onclick="openEditFeature(${feature.getId()}, this.closest('.feature-item').querySelector('.feature-text').textContent, '${not empty feature.getLibraryResource() ? feature.getLibraryResource().getId() : ''}')"
+                                                        title="Edit"><i class="bi bi-pencil"></i></button>
+                                                <form method="post" action="ServiceManagerAction" class="d-inline" onsubmit="return confirm('Delete this feature?');">
+                                                    <input type="hidden" name="action" value="deleteFeature"/>
+                                                    <input type="hidden" name="featureId" value="${feature.getId()}"/>
+                                                    <input type="hidden" name="enhId" value="${selectedEnhancement.getId()}"/>
+                                                    <button type="submit" class="btn-remove"><i class="bi bi-x-lg"></i></button>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </c:forEach>
+                                </c:when>
+                                <c:otherwise><span class="text-muted" style="font-size:0.85rem;">No features yet — click + to add</span></c:otherwise>
                             </c:choose>
                         </div>
                     </div>
@@ -411,7 +502,7 @@
                     <c:if test="${assigned.getId() == enh.getId()}"><c:set var="alreadyAssigned" value="true"/></c:if>
                 </c:forEach>
                 <c:if test="${alreadyAssigned == 'false' && !enh.isSuppressed()}">
-                    <option value="${enh.getId()}">${enh.getDescription()}</option>
+                    <option value="${enh.getId()}">${enh.getDescription()} (${enh.getShortText()})</option>
                 </c:if>
             </c:forEach>
         </select></div>
@@ -483,6 +574,82 @@
 </div></div></div>
 </c:if>
 
+<%-- Add Feature --%>
+<c:if test="${not empty selectedModule}">
+<div class="modal fade" id="addFeatureModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
+    <form method="post" action="ServiceManagerAction">
+        <input type="hidden" name="action" value="createFeature"/>
+        <input type="hidden" name="moduleId" value="${selectedModule.getId()}"/>
+        <c:if test="${not empty selectedLos}"><input type="hidden" name="losId" value="${selectedLos.getId()}"/></c:if>
+        <c:if test="${not empty selectedEnhancement}"><input type="hidden" name="enhId" value="${selectedEnhancement.getId()}"/></c:if>
+        <div class="modal-header"><h5 class="modal-title"><i class="bi bi-plus-circle me-2"></i>Add Feature</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+        <div class="modal-body">
+            <div class="mb-3">
+                <label class="form-label fw-semibold">Feature Text <span class="text-danger">*</span></label>
+                <textarea name="description" id="addFeatureDesc" class="form-control" rows="2" required maxlength="500" placeholder="e.g. Online Web Access and Claim Filing"></textarea>
+                <div class="link-toolbar">
+                    <button type="button" class="btn btn-outline-secondary" onclick="insertLink('addFeatureDesc','addFeatureLinkRes')" title="Wrap selected text as a resource link"><i class="bi bi-link-45deg me-1"></i>Link Selection</button>
+                    <select id="addFeatureLinkRes" class="form-select form-select-sm" style="max-width:250px;">
+                        <option value="">-- Pick resource --</option>
+                        <c:forEach var="res" items="${libraryResources}">
+                            <option value="${res.getId()}">${res.getTitle()}</option>
+                        </c:forEach>
+                    </select>
+                </div>
+            </div>
+            <div class="mb-3">
+                <label class="form-label fw-semibold">Linked Resource <small class="text-muted fw-normal">(icon at end)</small></label>
+                <select name="libraryResourceId" class="form-select">
+                    <option value="">-- None --</option>
+                    <c:forEach var="res" items="${libraryResources}">
+                        <option value="${res.getId()}">${res.getTitle()}<c:if test="${not empty res.getCategory()}"> (${res.getCategory().getName()})</c:if></option>
+                    </c:forEach>
+                </select>
+            </div>
+        </div>
+        <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button><button type="submit" class="btn btn-primary">Add Feature</button></div>
+    </form>
+</div></div></div>
+</c:if>
+
+<%-- Edit Feature --%>
+<c:if test="${not empty selectedModule}">
+<div class="modal fade" id="editFeatureModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
+    <form method="post" action="ServiceManagerAction">
+        <input type="hidden" name="action" value="editFeature"/>
+        <input type="hidden" name="featureId" id="editFeatureId"/>
+        <c:if test="${not empty selectedLos}"><input type="hidden" name="losId" value="${selectedLos.getId()}"/></c:if>
+        <c:if test="${not empty selectedEnhancement}"><input type="hidden" name="enhId" value="${selectedEnhancement.getId()}"/></c:if>
+        <div class="modal-header"><h5 class="modal-title"><i class="bi bi-pencil me-2"></i>Edit Feature</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+        <div class="modal-body">
+            <div class="mb-3">
+                <label class="form-label fw-semibold">Feature Text <span class="text-danger">*</span></label>
+                <textarea name="description" id="editFeatureDesc" class="form-control" rows="2" required maxlength="500"></textarea>
+                <div class="link-toolbar">
+                    <button type="button" class="btn btn-outline-secondary" onclick="insertLink('editFeatureDesc','editFeatureLinkRes')" title="Wrap selected text as a resource link"><i class="bi bi-link-45deg me-1"></i>Link Selection</button>
+                    <select id="editFeatureLinkRes" class="form-select form-select-sm" style="max-width:250px;">
+                        <option value="">-- Pick resource --</option>
+                        <c:forEach var="res" items="${libraryResources}">
+                            <option value="${res.getId()}">${res.getTitle()}</option>
+                        </c:forEach>
+                    </select>
+                </div>
+            </div>
+            <div class="mb-3">
+                <label class="form-label fw-semibold">Linked Resource <small class="text-muted fw-normal">(icon at end)</small></label>
+                <select name="libraryResourceId" id="editFeatureResId" class="form-select">
+                    <option value="">-- None --</option>
+                    <c:forEach var="res" items="${libraryResources}">
+                        <option value="${res.getId()}">${res.getTitle()}<c:if test="${not empty res.getCategory()}"> (${res.getCategory().getName()})</c:if></option>
+                    </c:forEach>
+                </select>
+            </div>
+        </div>
+        <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button><button type="submit" class="btn btn-primary">Save</button></div>
+    </form>
+</div></div></div>
+</c:if>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
 <script>
@@ -517,7 +684,6 @@
         applySuppressedState();
     }
 
-    // Apply on page load
     applySuppressedState();
 
     // ── Scroll state preservation ─────────────────────────────────────
@@ -534,7 +700,7 @@
         enhScroll.addEventListener('scroll', () => sessionStorage.setItem('smEnhScroll', enhScroll.scrollTop));
     }
 
-    // ── Application Section preview popovers (built from hidden divs) ──
+    // ── Application Section preview popovers ──────────────────────────
     document.querySelectorAll('.section-preview').forEach(link => {
         const sectionId = link.dataset.sectionId;
         const fieldsDiv = document.getElementById('fields-' + sectionId);
@@ -550,6 +716,37 @@
             });
         }
     });
+
+    // ── Edit Feature modal population ─────────────────────────────────
+    function openEditFeature(id, desc, resId) {
+        document.getElementById('editFeatureId').value = id;
+        document.getElementById('editFeatureDesc').value = desc;
+        document.getElementById('editFeatureResId').value = resId || '';
+        new bootstrap.Modal(document.getElementById('editFeatureModal')).show();
+    }
+
+    // ── Inline link insertion ─────────────────────────────────────────
+    // Select text in textarea → pick resource → click "Link Selection"
+    // Wraps selection as [selected text](resourceId)
+    function insertLink(textareaId, selectId) {
+        const ta = document.getElementById(textareaId);
+        const sel = document.getElementById(selectId);
+        const resId = sel.value;
+        if (!resId) { alert('Pick a resource first.'); return; }
+
+        const start = ta.selectionStart;
+        const end = ta.selectionEnd;
+        if (start === end) { alert('Select some text in the feature field first.'); return; }
+
+        const text = ta.value;
+        const selected = text.substring(start, end);
+        const linked = '[' + selected + '](' + resId + ')';
+        ta.value = text.substring(0, start) + linked + text.substring(end);
+        ta.focus();
+        ta.selectionStart = start;
+        ta.selectionEnd = start + linked.length;
+        sel.value = '';
+    }
 
     // ── Drag-and-drop sorting (SortableJS) ────────────────────────────
     function initSortable(containerId, itemClass, type) {
@@ -575,6 +772,8 @@
     initSortable('enhScroll', 'enh-item', 'enhancement');
     initSortable('losSectionList', 'los-section-item', 'appSection');
     initSortable('enhSectionList', 'enh-section-item', 'appSection');
+    initSortable('losFeatureList', 'feature-item', 'feature');
+    initSortable('enhFeatureList', 'feature-item', 'feature');
 </script>
 </body>
 </html>

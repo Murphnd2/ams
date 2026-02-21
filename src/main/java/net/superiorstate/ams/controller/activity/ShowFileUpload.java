@@ -7,7 +7,6 @@ import jakarta.persistence.Query;
 import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
-import net.superiorstate.ams.data.dao.AppConstantDAO;
 import net.superiorstate.ams.data.dao.StorageDAO;
 import net.superiorstate.ams.model.general.PSP;
 import net.superiorstate.ams.model.general.WebLink;
@@ -28,8 +27,19 @@ public class ShowFileUpload extends HttpServlet {
                 return;
             }
 
+            // Try WebLink first (email attachments, task files)
+            String objectKey = null;
             WebLink w = getWebLinkByGuid(em, docGuid);
-            if (w == null) {
+            if (w != null) {
+                objectKey = w.getLinkPath();
+            }
+
+            // Fall back to MarketingMaterial (library resources)
+            if (objectKey == null) {
+                objectKey = getLibraryResourceGuid(em, docGuid);
+            }
+
+            if (objectKey == null) {
                 response.sendError(404, "File not found");
                 return;
             }
@@ -38,7 +48,7 @@ public class ShowFileUpload extends HttpServlet {
             String pspName = getPspName(em);
 
             // Generate pre-signed download URL (1 hour)
-            String downloadUrl = StorageDAO.getDownloadUrl(em, pspName, w.getLinkPath());
+            String downloadUrl = StorageDAO.getDownloadUrl(em, pspName, objectKey);
 
             // Redirect the user's browser directly to Wasabi
             response.sendRedirect(downloadUrl);
@@ -61,6 +71,20 @@ public class ShowFileUpload extends HttpServlet {
         q.setParameter("id", guid);
         try {
             return (WebLink) q.getSingleResult();
+        } catch (NoResultException e) {
+            return null;
+        }
+    }
+
+    /**
+     * Checks if the GUID matches a MarketingMaterial storageGuid.
+     * Returns the storageGuid (which is also the object key) if found.
+     */
+    private String getLibraryResourceGuid(EntityManager em, String guid) {
+        Query q = em.createQuery("SELECT m.storageGuid FROM MarketingMaterial m WHERE m.storageGuid = :guid");
+        q.setParameter("guid", guid);
+        try {
+            return (String) q.getSingleResult();
         } catch (NoResultException e) {
             return null;
         }

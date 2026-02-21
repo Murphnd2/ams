@@ -167,7 +167,7 @@
               <c:set var="hasFeatures" value="true"/>
               <div class="feature-item">
                 <i class="bi bi-check2"></i>
-                <span>${feature.getDescription()}</span>
+                <span>${renderedFeatures[feature.getId()]}</span>
               </div>
             </c:if>
           </c:forEach>
@@ -203,7 +203,7 @@
                 <c:if test="${feature.getServiceModule().getId() == enhModuleId}">
                   <div class="feature-item">
                     <i class="bi bi-check2"></i>
-                    <span>${feature.getDescription()}</span>
+                    <span>${renderedFeatures[feature.getId()]}</span>
                   </div>
                 </c:if>
               </c:forEach>

@@ -9,8 +9,7 @@ import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.AmsDataLocal;
 import net.superiorstate.ams.model.sales.application.ApplicationSection;
-import net.superiorstate.ams.model.sales.offering.Enhancement;
-import net.superiorstate.ams.model.sales.offering.LOS;
+import net.superiorstate.ams.model.sales.offering.*;
 
 import java.io.IOException;
 import java.util.*;
@@ -41,6 +40,13 @@ public class ServiceManagerHome extends HttpServlet {
             List<ApplicationSection> appSectionList = getAppSectionListWithFields(em, pspId);
             request.setAttribute("appSectionList", appSectionList);
 
+            // Load library resources for feature→resource dropdown
+            List<MarketingMaterial> libraryResources = em.createQuery(
+                    "SELECT m FROM MarketingMaterial m WHERE m.psp.id = :pspId ORDER BY m.title", MarketingMaterial.class)
+                    .setParameter("pspId", (long) pspId)
+                    .getResultList();
+            request.setAttribute("libraryResources", libraryResources);
+
             // Determine which tab is active: "los" (default) or "enhancement"
             String tab = request.getParameter("tab");
             if (tab == null) tab = "los";
@@ -60,6 +66,14 @@ public class ServiceManagerHome extends HttpServlet {
 
                     List<ApplicationSection> losAppSections = getAppSectionsForLos(em, losId);
                     request.setAttribute("losAppSections", losAppSections);
+
+                    // Load features via ServiceModule linked to this LOS
+                    ServiceModule losModule = findModuleByLos(em, losId);
+                    if (losModule != null) {
+                        request.setAttribute("selectedModule", losModule);
+                        List<Feature> features = getFeaturesForModule(em, losModule.getId());
+                        request.setAttribute("featureList", features);
+                    }
                 }
             }
 
@@ -77,6 +91,14 @@ public class ServiceManagerHome extends HttpServlet {
 
                     List<ApplicationSection> enhAppSections = getAppSectionsForEnhancement(em, enhId);
                     request.setAttribute("enhAppSections", enhAppSections);
+
+                    // Load features via ServiceModule linked to this Enhancement
+                    ServiceModule enhModule = findModuleByEnhancement(em, enhId);
+                    if (enhModule != null) {
+                        request.setAttribute("selectedModule", enhModule);
+                        List<Feature> features = getFeaturesForModule(em, enhModule.getId());
+                        request.setAttribute("featureList", features);
+                    }
                 }
             }
 
@@ -84,6 +106,7 @@ public class ServiceManagerHome extends HttpServlet {
             em.close();
         }
 
+        request.setAttribute("adminCurrentPage", "serviceManager");
         RequestDispatcher dispatcher = request.getRequestDispatcher("/WEB-INF/view/sales/serviceManager25.jsp");
         dispatcher.forward(request, response);
     }
@@ -106,7 +129,6 @@ public class ServiceManagerHome extends HttpServlet {
         q.setParameter("pspId", pspId);
         try {
             List<ApplicationSection> sections = (List<ApplicationSection>) q.getResultList();
-            // Re-sort fields in Java (EclipseLink DISTINCT + JOIN FETCH ordering workaround)
             for (ApplicationSection s : sections) {
                 if (s.getFieldList() != null) {
                     s.getFieldList().sort(java.util.Comparator.comparingInt(f -> f.getSortOrder()));
@@ -170,6 +192,36 @@ public class ServiceManagerHome extends HttpServlet {
         } catch (NoResultException e) {
             return new ArrayList<>();
         }
+    }
+
+    private ServiceModule findModuleByLos(EntityManager em, long losId) {
+        try {
+            return em.createQuery(
+                    "SELECT sm FROM ServiceModule sm WHERE sm.los.id = :losId", ServiceModule.class)
+                    .setParameter("losId", losId)
+                    .getSingleResult();
+        } catch (NoResultException e) {
+            return null;
+        }
+    }
+
+    private ServiceModule findModuleByEnhancement(EntityManager em, long enhId) {
+        try {
+            return em.createQuery(
+                    "SELECT sm FROM ServiceModule sm WHERE sm.enhancement.id = :enhId", ServiceModule.class)
+                    .setParameter("enhId", enhId)
+                    .getSingleResult();
+        } catch (NoResultException e) {
+            return null;
+        }
+    }
+
+    private List<Feature> getFeaturesForModule(EntityManager em, long moduleId) {
+        return em.createQuery(
+                "SELECT f FROM Feature f LEFT JOIN FETCH f.libraryResource WHERE f.serviceModule.id = :moduleId ORDER BY f.sortOrder",
+                Feature.class)
+                .setParameter("moduleId", moduleId)
+                .getResultList();
     }
 
     // ── List search helpers ────────────────────────────────────────────────────

@@ -8,6 +8,7 @@ import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.model.sales.application.ApplicationSection;
 import net.superiorstate.ams.model.sales.offering.Enhancement;
+import net.superiorstate.ams.model.sales.offering.Feature;
 import net.superiorstate.ams.model.sales.offering.LOS;
 
 import java.io.IOException;
@@ -57,6 +58,13 @@ public class ServiceManagerSort extends HttpServlet {
                         if (section != null) {
                             section.setSortOrder(sortOrder);
                             em.merge(section);
+                        }
+                    }
+                    case "feature" -> {
+                        Feature feature = em.find(Feature.class, id);
+                        if (feature != null) {
+                            feature.setSortOrder(sortOrder);
+                            em.merge(feature);
                         }
                     }
                 }

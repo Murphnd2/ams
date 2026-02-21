@@ -9,8 +9,7 @@ import net.superiorstate.ams.data.AmsDataLocal;
 import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.model.general.PSP;
 import net.superiorstate.ams.model.sales.application.ApplicationSection;
-import net.superiorstate.ams.model.sales.offering.Enhancement;
-import net.superiorstate.ams.model.sales.offering.LOS;
+import net.superiorstate.ams.model.sales.offering.*;
 
 import java.io.IOException;
 
@@ -203,6 +202,58 @@ public class ServiceManagerAction extends HttpServlet {
                     section.getEnhancementList().remove(enh);
                     em.merge(section);
                     em.getTransaction().commit();
+                }
+
+                // ── Feature CRUD ────────────────────────────────────────
+
+                case "createFeature" -> {
+                    long moduleId = Long.parseLong(request.getParameter("moduleId"));
+                    ServiceModule module = em.find(ServiceModule.class, moduleId);
+                    Feature feature = new Feature();
+                    feature.setDescription(request.getParameter("description").trim());
+                    feature.setServiceModule(module);
+                    feature.setSortOrder(9999);
+                    feature.setPsp(psp);
+
+                    // Optional library resource link
+                    String resIdParam = request.getParameter("libraryResourceId");
+                    if (resIdParam != null && !resIdParam.isEmpty()) {
+                        MarketingMaterial resource = em.find(MarketingMaterial.class, Long.parseLong(resIdParam));
+                        feature.setLibraryResource(resource);
+                    }
+
+                    em.getTransaction().begin();
+                    em.persist(feature);
+                    em.getTransaction().commit();
+                }
+
+                case "editFeature" -> {
+                    long featureId = Long.parseLong(request.getParameter("featureId"));
+                    Feature feature = em.find(Feature.class, featureId);
+                    em.getTransaction().begin();
+                    feature.setDescription(request.getParameter("description").trim());
+
+                    // Update library resource link
+                    String resIdParam = request.getParameter("libraryResourceId");
+                    if (resIdParam != null && !resIdParam.isEmpty()) {
+                        MarketingMaterial resource = em.find(MarketingMaterial.class, Long.parseLong(resIdParam));
+                        feature.setLibraryResource(resource);
+                    } else {
+                        feature.setLibraryResource(null);
+                    }
+
+                    em.merge(feature);
+                    em.getTransaction().commit();
+                }
+
+                case "deleteFeature" -> {
+                    long featureId = Long.parseLong(request.getParameter("featureId"));
+                    Feature feature = em.find(Feature.class, featureId);
+                    if (feature != null) {
+                        em.getTransaction().begin();
+                        em.remove(feature);
+                        em.getTransaction().commit();
+                    }
                 }
             }
 

@@ -38,6 +38,10 @@ public class MarketingMaterial {
     @JoinColumn(name="psp_id",nullable = false)
     private PSP psp;
 
+    @ManyToOne
+    @JoinColumn(name="category_id")
+    private ResourceCategory category;
+
     @ManyToMany
     @JoinTable(name="materialmodule",
             joinColumns = @JoinColumn(name="material_id"),
@@ -116,6 +120,14 @@ public class MarketingMaterial {
 
     public void setPsp(PSP psp) {
         this.psp = psp;
+    }
+
+    public ResourceCategory getCategory() {
+        return category;
+    }
+
+    public void setCategory(ResourceCategory category) {
+        this.category = category;
     }
 
     public List<ServiceModule> getServiceModuleList() {

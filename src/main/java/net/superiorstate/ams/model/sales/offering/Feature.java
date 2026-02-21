@@ -24,6 +24,10 @@ public class Feature {
     @JoinColumn(name="psp_id",nullable = false)
     private PSP psp;
 
+    @ManyToOne
+    @JoinColumn(name="library_resource_id")
+    private MarketingMaterial libraryResource;
+
     public Feature(){}
 
     public Long getId() {
@@ -64,5 +68,13 @@ public class Feature {
 
     public void setPsp(PSP psp) {
         this.psp = psp;
+    }
+
+    public MarketingMaterial getLibraryResource() {
+        return libraryResource;
+    }
+
+    public void setLibraryResource(MarketingMaterial libraryResource) {
+        this.libraryResource = libraryResource;
     }
 }

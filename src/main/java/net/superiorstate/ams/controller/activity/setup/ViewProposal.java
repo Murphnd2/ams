@@ -9,27 +9,33 @@ import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.dao.AppConstantDAO;
 import net.superiorstate.ams.data.dao.SalesDAO;
+import net.superiorstate.ams.data.dao.StorageDAO;
 import net.superiorstate.ams.model.sales.agency.Proposal;
 import net.superiorstate.ams.model.sales.agency.RateTable;
 import net.superiorstate.ams.model.sales.offering.Feature;
+import net.superiorstate.ams.model.sales.offering.MarketingMaterial;
 
 import java.io.IOException;
 import java.sql.Timestamp;
 import java.time.Instant;
-import java.util.List;
+import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @WebServlet(name = "ViewProposal", value = "/proposal/*")
 public class ViewProposal extends HttpServlet {
 
+    /** Matches [link text](resourceId) markers in feature descriptions */
+    private static final Pattern LINK_PATTERN = Pattern.compile("\\[([^\\]]+)]\\((\\d+)\\)");
+
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-        // Extract GUID from path: /proposal/{guid}
         String pathInfo = request.getPathInfo();
         if (pathInfo == null || pathInfo.length() < 2) {
             response.sendError(HttpServletResponse.SC_NOT_FOUND);
             return;
         }
-        String guid = pathInfo.substring(1); // strip leading "/"
+        String guid = pathInfo.substring(1);
 
         EntityManagerFactory emf = (EntityManagerFactory) request.getServletContext().getAttribute("emf");
         EntityManager em = emf.createEntityManager();
@@ -45,13 +51,12 @@ public class ViewProposal extends HttpServlet {
             }
             Proposal proposal = results.get(0);
 
-            // Check if inactive
             if (proposal.isInactive()) {
                 response.sendError(HttpServletResponse.SC_NOT_FOUND);
                 return;
             }
 
-            // Update status to VIEWED on first access (only if currently SENT)
+            // Update status to VIEWED on first access
             if ("SENT".equals(proposal.getStatus()) && proposal.getDateViewed() == null) {
                 em.getTransaction().begin();
                 proposal.setStatus("VIEWED");
@@ -63,8 +68,7 @@ public class ViewProposal extends HttpServlet {
             // Load pricing
             List<RateTable> pricing = SalesDAO.getPricing(em, proposal);
 
-            // Load features for all modules in this proposal
-            // Extract distinct module IDs from pricing (includes both LOS and enhancement modules)
+            // Load features with library resources eagerly fetched
             List<Long> moduleIds = pricing.stream()
                     .map(rt -> rt.getModule().getId())
                     .distinct()
@@ -72,9 +76,50 @@ public class ViewProposal extends HttpServlet {
 
             List<Feature> features = List.of();
             if (!moduleIds.isEmpty()) {
-                Query fq = em.createQuery("SELECT f FROM Feature f WHERE f.serviceModule.id IN :moduleIds ORDER BY f.serviceModule.sortOrder, f.sortOrder");
+                Query fq = em.createQuery(
+                        "SELECT f FROM Feature f LEFT JOIN FETCH f.libraryResource WHERE f.serviceModule.id IN :moduleIds ORDER BY f.serviceModule.sortOrder, f.sortOrder");
                 fq.setParameter("moduleIds", moduleIds);
                 features = fq.getResultList();
+            }
+
+            // Get PSP name for storage URLs
+            String pspName = proposal.getProspect().getContact().getPsp() != null
+                    ? proposal.getProspect().getContact().getPsp().getFullName() : "default";
+
+            // Build a map of resourceId → download URL for all referenced resources
+            // Collect all resource IDs from inline links and libraryResource FKs
+            Set<Long> resourceIds = new HashSet<>();
+            for (Feature f : features) {
+                // From inline link markers
+                Matcher m = LINK_PATTERN.matcher(f.getDescription());
+                while (m.find()) {
+                    try { resourceIds.add(Long.parseLong(m.group(2))); } catch (NumberFormatException ignored) {}
+                }
+                // From end-icon libraryResource
+                if (f.getLibraryResource() != null) {
+                    resourceIds.add(f.getLibraryResource().getId());
+                }
+            }
+
+            // Load referenced resources and build URL map
+            Map<Long, String> resourceUrlMap = new HashMap<>();
+            Map<Long, String> resourceTypeMap = new HashMap<>();
+            for (Long resId : resourceIds) {
+                MarketingMaterial mat = em.find(MarketingMaterial.class, resId);
+                if (mat != null) {
+                    String url = getResourceUrl(mat, pspName, em);
+                    if (url != null) {
+                        resourceUrlMap.put(resId, url);
+                    }
+                    resourceTypeMap.put(resId, mat.getMaterialType());
+                }
+            }
+
+            // Build rendered feature HTML map: featureId → rendered HTML string
+            Map<Long, String> renderedFeatures = new LinkedHashMap<>();
+            for (Feature f : features) {
+                String html = renderFeatureHtml(f, resourceUrlMap, resourceTypeMap);
+                renderedFeatures.put(f.getId(), html);
             }
 
             // Get PSP branding colors
@@ -83,14 +128,13 @@ public class ViewProposal extends HttpServlet {
             if (primaryColor == null || primaryColor.isEmpty()) primaryColor = "#2B5F8A";
             if (accentColor == null || accentColor.isEmpty()) accentColor = "#7AB648";
 
-            // Set attributes for JSP
             request.setAttribute("proposal", proposal);
             request.setAttribute("pricing", pricing);
             request.setAttribute("features", features);
+            request.setAttribute("renderedFeatures", renderedFeatures);
             request.setAttribute("primaryColor", primaryColor);
             request.setAttribute("accentColor", accentColor);
-            request.setAttribute("pspName", proposal.getProspect().getContact().getPsp() != null
-                    ? proposal.getProspect().getContact().getPsp().getFullName() : "");
+            request.setAttribute("pspName", pspName);
 
         } finally {
             em.close();
@@ -98,5 +142,83 @@ public class ViewProposal extends HttpServlet {
 
         RequestDispatcher dispatcher = request.getRequestDispatcher("/WEB-INF/view/sales/viewProposal.jsp");
         dispatcher.forward(request, response);
+    }
+
+    /**
+     * Renders a feature description to HTML:
+     * - Converts [text](resourceId) markers to <a> tags
+     * - Appends an end-icon link if libraryResource is set
+     */
+    private String renderFeatureHtml(Feature feature, Map<Long, String> urlMap, Map<Long, String> typeMap) {
+        String desc = escapeHtml(feature.getDescription());
+
+        // Replace inline link markers: [text](id) → <a href="url" target="_blank">text</a>
+        Matcher m = LINK_PATTERN.matcher(feature.getDescription());
+        StringBuffer sb = new StringBuffer();
+        while (m.find()) {
+            String linkText = escapeHtml(m.group(1));
+            long resId = Long.parseLong(m.group(2));
+            String url = urlMap.get(resId);
+            if (url != null) {
+                m.appendReplacement(sb, "<a href=\"" + escapeHtml(url) + "\" target=\"_blank\" style=\"color: inherit; text-decoration: underline;\">" + linkText + "</a>");
+            } else {
+                m.appendReplacement(sb, linkText);
+            }
+        }
+        m.appendTail(sb);
+        desc = sb.toString();
+
+        // Append end-icon if libraryResource is set
+        if (feature.getLibraryResource() != null) {
+            Long resId = feature.getLibraryResource().getId();
+            String url = urlMap.get(resId);
+            String type = typeMap.getOrDefault(resId, "DOCUMENT");
+            if (url != null) {
+                String icon = getIconForType(type, feature.getLibraryResource().getStorageGuid());
+                desc += " <a href=\"" + escapeHtml(url) + "\" target=\"_blank\" title=\"" +
+                        escapeHtml(feature.getLibraryResource().getTitle()) +
+                        "\" style=\"color: inherit; font-size: 0.9em;\">" + icon + "</a>";
+            }
+        }
+
+        return desc;
+    }
+
+    /**
+     * Returns the appropriate URL for a MarketingMaterial:
+     * - DOCUMENT: ShowFileUpload?doc=storageGuid
+     * - VIDEO/LINK: the url field directly
+     */
+    private String getResourceUrl(MarketingMaterial mat, String pspName, EntityManager em) {
+        if ("DOCUMENT".equals(mat.getMaterialType()) && mat.getStorageGuid() != null) {
+            return "ShowFileUpload?doc=" + mat.getStorageGuid();
+        } else if (mat.getUrl() != null && !mat.getUrl().isBlank()) {
+            return mat.getUrl();
+        }
+        return null;
+    }
+
+    /** Returns a Bootstrap icon HTML snippet based on material type / file extension */
+    private String getIconForType(String materialType, String storageGuid) {
+        if ("VIDEO".equals(materialType)) {
+            return "<i class=\"bi bi-camera-video-fill\"></i>";
+        } else if ("LINK".equals(materialType)) {
+            return "<i class=\"bi bi-box-arrow-up-right\"></i>";
+        } else if (storageGuid != null) {
+            String ext = storageGuid.contains(".") ? storageGuid.substring(storageGuid.lastIndexOf('.') + 1).toLowerCase() : "";
+            return switch (ext) {
+                case "pdf" -> "<i class=\"bi bi-file-earmark-pdf-fill\"></i>";
+                case "xlsx" -> "<i class=\"bi bi-file-earmark-spreadsheet-fill\"></i>";
+                case "docx" -> "<i class=\"bi bi-file-earmark-word-fill\"></i>";
+                case "csv" -> "<i class=\"bi bi-file-earmark-spreadsheet\"></i>";
+                default -> "<i class=\"bi bi-file-earmark-fill\"></i>";
+            };
+        }
+        return "<i class=\"bi bi-file-earmark-fill\"></i>";
+    }
+
+    private String escapeHtml(String s) {
+        if (s == null) return "";
+        return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;");
     }
 }
