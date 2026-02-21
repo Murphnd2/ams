@@ -16,6 +16,7 @@ import net.superiorstate.ams.model.activity.checklist.sequences.support.TaskSequ
 import net.superiorstate.ams.model.activity.checklist.sequences.support.TemplatePurpose;
 import net.superiorstate.ams.model.activity.checklist.tasks.Task;
 import net.superiorstate.ams.model.activity.ticket.TicketCategory;
+import net.superiorstate.ams.model.activity.ticket.TicketSubCategory;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -119,6 +120,7 @@ public class SequenceBuilder25 extends HttpServlet {
             request.getSession().setAttribute("sbSelectedId", -1L);
             request.getSession().setAttribute("sbSelectedName", "");
             request.getSession().setAttribute("sbSelectedGroupId", -1);
+            request.getSession().setAttribute("sbIsSuppressed", false);
             return;
         }
 
@@ -164,6 +166,20 @@ public class SequenceBuilder25 extends HttpServlet {
             request.getSession().setAttribute("sbSelectedId", rtl.getId());
             request.getSession().setAttribute("sbSelectedName", rtl.getDescription());
             request.getSession().setAttribute("sbSelectedGroupId", rtl.getTemplatePurpose().getTemplateGroup().getId());
+
+            // Check if this is a ticket sequence and whether it's suppressed
+            boolean isSuppressed = false;
+            if (rtl.getTemplatePurpose().getTemplateGroup().getId() == 3) {
+                // It's a ticket sequence — check the linked TicketSubCategory
+                try {
+                    TicketSubCategory tsc = (TicketSubCategory) em.createQuery(
+                                    "SELECT tsc FROM TicketSubCategory tsc WHERE tsc.templatePurpose.id = :pid")
+                            .setParameter("pid", rtl.getTemplatePurpose().getId())
+                            .getSingleResult();
+                    isSuppressed = !tsc.isActive();
+                } catch (Exception ignored) {}
+            }
+            request.getSession().setAttribute("sbIsSuppressed", isSuppressed);
         } catch (NumberFormatException ignored) {
         }
     }

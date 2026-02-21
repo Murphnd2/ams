@@ -83,12 +83,19 @@
                     <c:forEach var="tix" items="${sessionScope.seqTicketDisplay}">
                         <c:set var="isActive" value="" />
                         <c:if test="${sessionScope.sbSelectedId == tix.getId()}"><c:set var="isActive" value="active" /></c:if>
-                        <a href="SequenceBuilder25?load=${tix.getId()}" class="seq-item ${isActive}" data-type="ticket" data-searchname="${tix.getDescription()}">
+                        <c:set var="suppressedClass" value="" />
+                        <c:set var="suppressedBadge" value="" />
+                        <c:if test="${tix.getTicketSubCategory() != null && !tix.getTicketSubCategory().isActive()}">
+                            <c:set var="suppressedClass" value="opacity-50" />
+                            <c:set var="suppressedBadge"><span class="badge bg-warning text-dark ms-1" style="font-size:0.65rem;">hidden</span></c:set>
+                        </c:if>
+                        <a href="SequenceBuilder25?load=${tix.getId()}" class="seq-item ${isActive} ${suppressedClass}" data-type="ticket" data-searchname="${tix.getDescription()}">
                             <span class="stat-chip ticket">Ticket</span>
-                            <span class="seq-name flex-fill">${tix.getDescription()}</span>
+                            <span class="seq-name flex-fill">${tix.getDescription()}${suppressedBadge}</span>
                             <span class="task-count-badge">${taskCountMap[tix.getId()]} tasks</span>
                         </a>
                     </c:forEach>
+
                     <c:forEach var="ren" items="${sessionScope.seqRenewalList}">
                         <c:set var="isActive" value="" />
                         <c:if test="${sessionScope.sbSelectedId == ren.getId()}"><c:set var="isActive" value="active" /></c:if>
@@ -177,6 +184,27 @@
                             <small class="text-muted">
                                 Sequence #${sessionScope.sbSelectedId} &middot; ${sessionScope.sbListBuilder.size()} tasks
                             </small>
+                                <%-- Suppress toggle — ticket sequences only --%>
+                            <c:if test="${sessionScope.sbSelectedGroupId == 3}">
+                                <form method="post" action="SequenceAction25" class="d-inline ms-2">
+                                    <input type="hidden" name="action" value="SUPPRESS">
+                                    <input type="hidden" name="sequenceId" value="${sessionScope.sbSelectedId}">
+                                    <c:choose>
+                                        <c:when test="${sessionScope.sbIsSuppressed}">
+                                            <button type="submit" class="btn btn-sm btn-outline-success"
+                                                    title="This sequence is hidden from the Create Ticket dropdown. Click to restore.">
+                                                <i class="bi bi-eye"></i> Restore to Dropdown
+                                            </button>
+                                        </c:when>
+                                        <c:otherwise>
+                                            <button type="submit" class="btn btn-sm btn-outline-warning"
+                                                    title="Hide this reason from the Create Ticket dropdown. The sequence will still be available here.">
+                                                <i class="bi bi-eye-slash"></i> Hide from Dropdown
+                                            </button>
+                                        </c:otherwise>
+                                    </c:choose>
+                                </form>
+                            </c:if>
                         </div>
 
                         <%-- Task Rows --%>

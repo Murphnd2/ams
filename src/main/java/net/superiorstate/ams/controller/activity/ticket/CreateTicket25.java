@@ -6,6 +6,7 @@ import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.AmsDataLocal;
+import net.superiorstate.ams.data.dao.EmailDAO;
 import net.superiorstate.ams.data.dao.TicketQueryDAO;
 import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.data.resolver.PersonResolver;
@@ -66,25 +67,103 @@ public class CreateTicket25 extends HttpServlet {
             dispatcher.forward(request,response);
         }
 
-        private void createTicketAlt(HttpServletRequest request) {
-            EntityManagerFactory emf = (EntityManagerFactory) getServletContext().getAttribute("emf");
-            EntityManager em = emf.createEntityManager();
+    private void createTicketAlt(HttpServletRequest request) {
+        EntityManagerFactory emf = (EntityManagerFactory) getServletContext().getAttribute("emf");
+        EntityManager em = emf.createEntityManager();
 
-            if(!getFormDataAndAssignToLocalVariables(request, em)){
-                em.close();
-                return;
-            };
-
-            setContact(PersonResolver.getBestPersonFromString(em,getContactNameField()));
-            processTicketType(em);
-            Ticket t = createTicketObject(em);
-            em.refresh(t);
-            AmsDataLocal local = (AmsDataLocal) request.getSession().getAttribute("local");
-            local.respondToActivityUpdate(em,"ADD_TICKET",t);
-            request.getSession().setAttribute("local",local);
+        if(!getFormDataAndAssignToLocalVariables(request, em)){
             em.close();
+            return;
         }
 
+        // ── PATH 1: Employee picked from typeahead (hidden field has ID) ──
+        String eeIdParam = request.getParameter("employeeId");
+        if(eeIdParam != null && !eeIdParam.trim().isEmpty()){
+            try {
+                int eeId = Integer.parseInt(eeIdParam.trim());
+                Employee ee = EntityLookup.getEmployeeById(em, eeId, true);
+                if(ee != null){
+                    setContact(PersonResolver.getPersonFromEmployee(em, ee));
+                }
+            } catch (NumberFormatException ignored) {}
+        }
+
+        // ── PATH 2: Freeform text — resolve with priority chain ──
+        if(getContact() == null && getContactNameField() != null && !getContactNameField().isEmpty()){
+            setContact(resolveContactFromFreeform(em, getContactNameField()));
+        }
+
+        if(getContact() == null){
+            em.close();
+            return;
+        }
+
+        processTicketType(em);
+        Ticket t = createTicketObject(em);
+        em.refresh(t);
+        AmsDataLocal local = (AmsDataLocal) request.getSession().getAttribute("local");
+        local.respondToActivityUpdate(em,"ADD_TICKET",t);
+        request.getSession().setAttribute("local",local);
+        em.close();
+    }
+
+    /**
+     * Resolves a freeform text entry to a Person.
+     * Priority chain:
+     *   1. Valid email → Employee by email → Person from that Employee
+     *   2. Valid email → Person by email
+     *   3. Valid email → no match → create Person, parse name from email
+     *   4. Not email → treat as name → Employee by name → Person from that Employee
+     *   5. Not email → treat as name → Person by name
+     *   6. Not email → treat as name → no match → create new Person from name
+     */
+    private Person resolveContactFromFreeform(EntityManager em, String input){
+        String text = input.trim();
+
+        // ── EMAIL PATH ──
+        if(EmailDAO.isValidEmail(text)){
+            // 1. Email → try Employee table first
+            Employee ee = PersonResolver.getEmployee(em, text);
+            if(ee != null){
+                return PersonResolver.getPersonFromEmployee(em, ee);
+            }
+            // 2. Email → try Person table
+            Person p = PersonResolver.getBestPersonFromString(em, text);
+            if(p != null){
+                return p;
+            }
+            // 3. Email → no match anywhere → create Person, parse name from email
+            return PersonResolver.createPersonFromEmail(em, text);
+        }
+
+        // ── NAME PATH ──
+        // 4. Name → try Employee table (handles "last, first" and "first last")
+        Employee ee = PersonResolver.getEmployee(em, text);
+        if(ee != null){
+            return PersonResolver.getPersonFromEmployee(em, ee);
+        }
+        // 5. Name → try Person table
+        Person p = PersonResolver.getBestPersonFromString(em, text);
+        if(p != null){
+            return p;
+        }
+        // 6. Name → no match → create new Person from the name
+        //    PersonResolver.createPersonFromAll crashes on single-word names (no space or comma),
+        //    so handle that case here before calling it.
+        if(!text.contains(" ") && !text.contains(",")){
+            // Single word — treat as last name, first name unknown
+            em.getTransaction().begin();
+            Person newP = new Person();
+            newP.setPsp(EntityLookup.getPspById(em, 4L));
+            newP.setLastName(text.toUpperCase());
+            newP.setFirstName("UNKNOWN");
+            newP.setFullName("UNKNOWN " + text.toUpperCase());
+            em.persist(newP);
+            em.getTransaction().commit();
+            return newP;
+        }
+        return PersonResolver.createPersonFromAll(em, text, null, null);
+    }
 
 
         private Ticket createTicketObject(EntityManager em){
@@ -213,29 +292,55 @@ public class CreateTicket25 extends HttpServlet {
 
 
 
-        private boolean getFormDataAndAssignToLocalVariables(HttpServletRequest request, EntityManager em){
-            setContactMethodId(2);
-            setContactNameField(request.getParameter("employeeList"));
-            String rid1 = request.getParameter("ticketSubCategoryList");
-            int rid1i = Integer.parseInt(rid1);
-            setReasonId(rid1i);
-            if(rid1i==0)
-                setReasonField(request.getParameter("reasonNameTicket"));
-            else
-                setReasonField(EntityLookup.getSubCategoryById(em,rid1i).getDescription());
-            String text=null;
-            try{
-                text = request.getParameter("ticketDescription");
-                setIssue(text);
-            } catch (Exception e){
-                return false;
-            }
-            if(text==null || text.trim().equals(""))
-                return false;
-            AmsDataLocal local = (AmsDataLocal) request.getSession().getAttribute("local");
-            setCurrentUser(local.getCurrentPerson());
-            return true;
+    private boolean getFormDataAndAssignToLocalVariables(HttpServletRequest request, EntityManager em){
+        // ── Reset all instance vars to prevent stale data from prior requests ──
+        setContact(null);
+        setEmployee(null);
+        setEmployeeId(0);
+        setContactMethod(null);
+        setContactNameField(null);
+        setReasonField(null);
+        setReasonId(0);
+        setCategory(null);
+        setIssue(null);
+        setFirstName(null);
+        setLastName(null);
+        setFullName(null);
+        setPhone(null);
+        setEmail(null);
+        setCurrentUser(null);
+        setPsp(null);
+
+        setContactMethodId(2);
+
+        // Read contactName (the visible text field)
+        String contactName = request.getParameter("contactName");
+        if(contactName == null || contactName.trim().isEmpty()){
+            // Backward compat: old form used "employeeList"
+            contactName = request.getParameter("employeeList");
         }
+        setContactNameField(contactName != null ? contactName.trim() : "");
+
+        String rid1 = request.getParameter("ticketSubCategoryList");
+        int rid1i = Integer.parseInt(rid1);
+        setReasonId(rid1i);
+        if(rid1i==0)
+            setReasonField(request.getParameter("reasonNameTicket"));
+        else
+            setReasonField(EntityLookup.getSubCategoryById(em,rid1i).getDescription());
+        String text=null;
+        try{
+            text = request.getParameter("ticketDescription");
+            setIssue(text);
+        } catch (Exception e){
+            return false;
+        }
+        if(text==null || text.trim().equals(""))
+            return false;
+        AmsDataLocal local = (AmsDataLocal) request.getSession().getAttribute("local");
+        setCurrentUser(local.getCurrentPerson());
+        return true;
+    }
 
         public int getContactMethodId() {
             return contactMethodId;

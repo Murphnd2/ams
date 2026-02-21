@@ -740,7 +740,9 @@ public class AmsDataLocal implements AutoCloseable {
                 q.setParameter("id",tk.getId());
                 Activity25 ap = (Activity25) q.getSingleResult();
                 au = new Activity25u(ap);
-                getActivitiesAllOpen().add(au);
+                List<Activity25u> listToModify = new ArrayList<>(getActivitiesAllOpen());
+                listToModify.add(au);
+                setActivitiesAllOpen(listToModify);
                 getCurrentActivity().setReFilterOnExit(true);
             }
             case "ADD_RENEWAL" -> {

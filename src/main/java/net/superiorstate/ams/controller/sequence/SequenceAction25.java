@@ -58,6 +58,7 @@ public class SequenceAction25 extends HttpServlet {
                 case "SAVE" -> redirectId = handleSave(request, em);
                 case "CREATE" -> redirectId = handleCreate(request, em);
                 case "DELETE" -> handleDelete(request, em);
+                case "SUPPRESS" -> redirectId = handleSuppress(request,em);
             }
         } catch (Exception e) {
             System.out.println("❌ SequenceAction25 error (" + action + "): " + e.getMessage());
@@ -228,6 +229,61 @@ public class SequenceAction25 extends HttpServlet {
         em.getTransaction().commit();
 
         System.out.println("✅ SequenceAction25 DELETE: sequence " + seqId + " deactivated");
+    }
+
+    /**
+     * Toggles the isActive flag on the TicketSubCategory linked to a ticket sequence.
+     * When suppressed (isActive=false), the reason won't appear in the Create Ticket dropdown.
+     * The sequence itself remains intact and editable.
+     */
+    private long handleSuppress(HttpServletRequest request, EntityManager em) {
+        String seqIdParam = request.getParameter("sequenceId");
+        if (seqIdParam == null || seqIdParam.isEmpty()) return -1;
+
+        long seqId = Long.parseLong(seqIdParam);
+        RequiredTaskList rtl = EntityLookup.getReqListById(em, seqId);
+        if (rtl == null || rtl.getTemplatePurpose() == null) return -1;
+
+        // Find the TicketSubCategory linked to this sequence's TemplatePurpose
+        TicketSubCategory tsc = findSubCategoryByPurpose(em, rtl.getTemplatePurpose().getId());
+        if (tsc == null) return seqId;
+
+        // Toggle isActive
+        em.getTransaction().begin();
+        tsc.setActive(!tsc.isActive());
+        em.persist(tsc);
+        em.getTransaction().commit();
+
+        // Refresh the global ticket subcategory cache
+        AmsDataGlobal global = (AmsDataGlobal) getServletContext().getAttribute("global");
+        if (global != null) {
+            List<TicketSubCategory> refreshed = getActiveTicketSubCategories(em);
+            global.setTicketSubCategories(refreshed);
+            getServletContext().setAttribute("global", global);
+        }
+
+        System.out.println("✅ SequenceAction25 SUPPRESS: subcategory " + tsc.getId()
+                + " (" + tsc.getDescription() + ") → isActive=" + tsc.isActive());
+
+        return seqId;
+    }
+
+    private TicketSubCategory findSubCategoryByPurpose(EntityManager em, int purposeId) {
+        try {
+            return (TicketSubCategory) em.createQuery(
+                            "SELECT tsc FROM TicketSubCategory tsc WHERE tsc.templatePurpose.id = :pid")
+                    .setParameter("pid", purposeId)
+                    .getSingleResult();
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private List<TicketSubCategory> getActiveTicketSubCategories(EntityManager em) {
+        return em.createQuery(
+                        "SELECT t FROM TicketSubCategory t WHERE t.isActive = true ORDER BY t.ticketCategory.shortText, t.description",
+                        TicketSubCategory.class)
+                .getResultList();
     }
 
     // ── JSON parsing helper (no external library) ────────────────────────────────
