@@ -20,9 +20,10 @@ Run scripts in the order listed. Some depend on prior ones.
 | 2 | `sales_pipeline_migration_2.sql` | Proposal `source_activity_id` nullable FK | ✅ 2026-02-19 | ❌ NOT RUN | Run before deploying SendProposal. |
 | 3 | `sales_pipeline_migration_3.sql` | LOS expansion (IDs 11–19), applicationsection + applicationsectionlos, ~95 applicationfield seeds, irslimit, billingtype, benefittype, constant inserts for S3 | ✅ 2026-02-20 | ❌ NOT RUN | Largest migration. **Must fill in S3 constants on production.** |
 | 4 | `service_manager_production_migration.sql` | Enhancement table, join tables, servicemodule FKs, LOS columns (sort_order, suppressed), seed data | ✅ 2026-02-20 | ❌ NOT RUN | Includes enhancement seed data and LOS sort_order backfill. |
-| 5 | `invitation_system_migration.sql` | Invitation table, agency.manager_id FK, UserRole seed (INSERT IGNORE) | ✅ 2026-02-21 | ❌ NOT RUN | Run BEFORE deploying invitation code. |
-| 6 | `resource_library_production_migration.sql` | ResourceCategory table, marketingmaterial.category_id FK, widen storage_guid to VARCHAR(50), feature.material_id FK | ✅ 2026-02-21 | ❌ NOT RUN | Prereq: script 1 (creates feature and marketingmaterial tables). |
-| 7 | `opportunity_migration_production.sql` | Assignee columns for Opportunity (prospect_id, agency_id_opp, opportunity_stage, etc.), sales TemplateGroup/TemplatePurpose/Task seed data | ✅ 2026-02-21 | ❌ NOT RUN | Do NOT add DEFAULT to opportunity_stage. Prereq: scripts 1–3. |
+| 5 | `rate_manager_session2_production_migration.sql` | Per-rate `sort_order` column on ratetable, backfill from servicemodule | ✅ 2026-02-20 | ❌ NOT RUN | Prereq: script 4 (LOS sort_order must exist for backfill). |
+| 6 | `invitation_system_migration.sql` | Invitation table, agency.manager_id FK, UserRole seed (INSERT IGNORE) | ✅ 2026-02-21 | ❌ NOT RUN | Run BEFORE deploying invitation code. |
+| 7 | `resource_library_production_migration.sql` | ResourceCategory table, marketingmaterial.category_id FK, widen storage_guid to VARCHAR(50), feature.material_id FK | ✅ 2026-02-21 | ❌ NOT RUN | Prereq: script 1 (creates feature and marketingmaterial tables). |
+| 8 | `opportunity_migration_production.sql` | Assignee columns for Opportunity (prospect_id, agency_id_opp, opportunity_stage, etc.), sales TemplateGroup/TemplatePurpose/Task seed data | ✅ 2026-02-21 | ❌ NOT RUN | Do NOT add DEFAULT to opportunity_stage. Prereq: scripts 1–3. |
 
 ## Chatbot Migration (Standalone)
 
@@ -37,7 +38,7 @@ INSERT INTO constant (name, value, note) VALUES ('ANTHROPIC_API_KEY', '<key>', '
 ## How to Use
 
 1. Before deploying code changes to production, check this file for any pending migrations
-2. Run scripts in the order listed (1 → 2 → 3 → 4 → 5 → 6 → 7)
+2. Run scripts in the order listed (1 → 2 → 3 → 4 → 5 → 6 → 7 → 8)
 3. Update the Production column with date after running
 4. Commit this file back to GitHub
 

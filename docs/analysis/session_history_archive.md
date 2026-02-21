@@ -8,7 +8,7 @@
 
 ## February 15–17, 2026 — Code Cleanup (5 sessions)
 
-**Source:** `cleanup_sweep_summary.md`
+**Replaces:** `cleanup_sweep_summary.md` (deleted in earlier cleanup)
 
 Eliminated the entire `previous/` package tree and cleaned up the codebase:
 
@@ -16,13 +16,24 @@ Eliminated the entire `previous/` package tree and cleaned up the codebase:
 - **32 cryptic data classes renamed** (e.g., `dM.java` → `EntityLookup.java`, `V.java` → `Validator.java`)
 - Packages eliminated: `previous/` (all subpackages), `ams/service/`, `ams/util/`
 - Static methods extracted and consolidated (e.g., into `PersonResolver`, `ChecklistDAO`, `ActivityViewHelper`)
-- Full rename mapping and deletion log preserved in `cleanup_sweep_summary.md`
+
+---
+
+## February 17, 2026 — Performance Session
+
+**Replaces:** `perf_session_summary.md`
+
+Optimized login speed and checklist rendering:
+
+- **EMF Reuse:** `AmsDataLocal` constructor now accepts shared `EntityManagerFactory` from servlet context instead of creating one per session. Applied to `AuthenticateUser` and `LogOut`.
+- **Dead code removed:** `LegacyQueryRunner.java` and `QueryPair.java` deleted (zero usages, each created/destroyed an EMF per query).
+- **Pre-computed Todo Display State:** Added 9 pre-computed display fields to `ToDoOut25` with `computeDisplayState()` and `computeAllDisplayStates()` methods. Checklist JSP simplified from ~100 lines of JSTL per row to simple property reads. `blockFuture` cascades sequentially top-to-bottom. Admin override clears pointer events only (icons still show blocked state).
 
 ---
 
 ## February 18, 2026 — Email System Standardization
 
-**Source:** `email_workflow_analysis.md`
+**Living reference:** `email_workflow_analysis.md` (kept separately)
 
 Modernized the email system:
 
@@ -37,7 +48,7 @@ Modernized the email system:
 
 ## February 19, 2026 — Sequence Builder Overhaul
 
-**Source:** `sequence_overhaul_summary.md`
+**Replaces:** `sequence_overhaul_summary.md` (deleted in earlier cleanup)
 
 Replaced the old sequence builder with a modern UI:
 
@@ -45,33 +56,32 @@ Replaced the old sequence builder with a modern UI:
 - Created `SequenceAction25` servlet (SAVE/CREATE/DELETE with JSON task payload)
 - Created `sequenceManager25.jsp` (two-panel: filterable sequence list + drag-and-drop task builder)
 - Session attributes prefixed with `sb` to avoid collision with old pages
-- Task counts loaded via COUNT queries to avoid lazy-load issues
 - Old pages preserved for cleanup (backlog T5): `GoTicketTemplate25`, `TaskBuilder25`, `sequenceBuilderForm.jsp`, `checklistBuilder.jsp`
 
 ---
 
 ## February 19, 2026 — AI Chatbot (Phase 1 & 2)
 
-**Source:** `chatbot_session_summary.md`, `ai_chatbot_feature_spec.md`
+**Replaces:** `chatbot_session_summary.md` (deleted in earlier cleanup)
 
 Built the AI Knowledge Assistant chatbot:
 
 - `ChatAssistant` servlet — AJAX endpoint orchestrating search + Claude API call
-- `KnowledgeSearchService` — loads JSON knowledge bases at startup, keyword routing, weighted chunk ranking
+- `KnowledgeSearchService` — loads JSON KBs at startup, keyword routing, weighted chunk ranking
 - `ClaudeApiService` — calls Anthropic Messages API (Haiku 4.5)
 - `TicketKnowledgeDAO` — live query for completed tickets with resolution notes
 - 5 JSON knowledge bases: Summit Guide (502 chunks), Summit Videos (30), Wave Help (449), Business Continuity, Backup/Recovery
 - Role-based access: standard users see Summit KBs only, admins see all 5
-- Added `isResolution` boolean to Note entity for resolution flagging
+- Added `isResolution` boolean to Note entity
 - **Pending production deploy** — see chatbot deployment checklist in `project_backlog.md`
 
-Key decisions: live ticket KB over static export, legacy cutoff date (2026-02-19), resolution flag on Note, Gson for JSON parsing, KnowledgeSearchService in application scope.
+Key decisions: live ticket KB over static export, legacy cutoff date (2026-02-19), resolution flag on Note, Gson for JSON, KnowledgeSearchService in application scope.
 
 ---
 
 ## February 19–20, 2026 — Sales Pipeline (Sessions 1–4)
 
-**Source:** `sales_pipeline_reference.md`
+**Detailed reference:** `sales_pipeline_reference.md` (kept separately)
 
 Built the complete sales pipeline over 4 sessions:
 
@@ -87,9 +97,9 @@ Key decisions: Application uses Proposal as PK (not generated Long), `LEFT JOIN 
 
 ---
 
-## February 20, 2026 — Service Manager
+## February 20, 2026 — Service Manager (Session 1)
 
-**Source:** `service_manager_session_summary.md`
+**Replaces:** `service_manager_session_summary.md` (deleted in earlier cleanup)
 
 Built the Service Manager for configuring Lines of Service, Enhancements, and Application Sections:
 
@@ -97,37 +107,62 @@ Built the Service Manager for configuring Lines of Service, Enhancements, and Ap
 - Added `sortOrder` and `suppressed` columns to LOS
 - Added nullable `los` and `enhancement` direct FKs to ServiceModule
 - Created `ServiceManagerHome` (GET) + `ServiceManagerAction` (POST, 14 actions) + `ServiceManagerSort` (AJAX reorder)
-- Created `serviceManager25.jsp` — tabbed Services/Enhancements with detail panel showing associations + application sections
+- Created `serviceManager25.jsp` — tabbed Services/Enhancements with detail panel
 - `service_manager_production_migration.sql` created
-
-Known issue at end of session: Suppress buttons not rendering in edit modals (possibly cached JSP).
 
 ---
 
-## February 20, 2026 — Rate Manager + Agency Manager
+## February 20, 2026 — Rate Manager (Session 1)
 
-**Source:** `servlet_inventory_update.md`
+**Replaces:** `rate_manager_build_log.md`
 
-Built admin UIs for rate and agency management:
+Built the Rate Manager UI for rate configuration:
 
-- `PspAdminHome` — Rate Manager home (rates, fee types, modules, agencies, locked rate detection)
-- `RateTableAction` — Rate CRUD (createRate, editRate, addRateTableRow, deleteRow, assignAgency, removeAgency, createPriceItem, cloneRate)
-- `PspAgencyHome` — Agency Manager home (agencies, agents, rates for selected agency)
-- `AgencyAction` — Agency CRUD (createAgency, editAgency, addAgent, removeAgent, removeRate)
-- `PriceItemAction` / `ServiceModuleAction` — AJAX reorder and suppress toggle
-- JSPs: `rateManager25.jsp`, `agencyManager25.jsp`
+- Created `PspAdminHome` servlet — Rate Manager home (rates, fee types, modules, agencies, locked rate detection)
+- Created `RateTableAction` servlet — Rate CRUD (createRate, editRate, addRateTableRow, deleteRow, assignAgency, removeAgency, createPriceItem, cloneRate)
+- Created `PriceItemAction` / `ServiceModuleAction` — AJAX reorder and suppress toggle
+- Created `rateManager25.jsp` — 4-tab left panel (Rates, Fee Types, Modules, Agencies), right panel pricing grid
+- Rate locking: rates with active proposals cannot have pricing modified (only cloned)
+
+---
+
+## February 20, 2026 — Agency Manager + Rate Manager Session 2
+
+**Replaces:** `rate_manager_session2_log.md`
+
+Built Agency Manager and enhanced Rate Manager:
+
+- Created `PspAgencyHome` servlet + `agencyManager25.jsp` — Agency list, agent management, rate assignment
+- Created `AgencyAction` servlet — Agency CRUD (createAgency, editAgency, addAgent, removeAgent, removeRate)
+- **Rate Manager enhancements:** Add-pricing-row reworked to use LOS/Enhancement selection (hides ServiceModule abstraction), per-rate sort ordering (`ratetable.sort_order`), inline AJAX price editing, rate copying ("Make New From"), Grid Sort tab for per-rate drag reorder
+- **Proposal rendering updates:** `SalesDAO.getPricing()` rewritten as two-query approach (LOS-linked + Enhancement-linked, merged), ViewProposal renders Enhancement feature cards, pricing headers show LOS/Enhancement names
+- `rate_manager_session2_production_migration.sql` created
+
+Key decisions: LOS/Enhancement selection in add-row modal hides ServiceModule abstraction from user. Per-rate sort order column on `ratetable` (not just ServiceModule sort). Two-query approach for getPricing() because single JPQL with OR/subquery failed in EclipseLink. `cloneRate` vs `copyRate`: clone moves agencies + suppresses original (for locked rates), copy just duplicates pricing (for convenience).
+
+---
+
+## February 20, 2026 — Service Manager Session 2
+
+**Replaces:** `service_manager_session2_summary.md`
+
+Enhanced Service Manager with suppress fix and SortableJS improvements:
+
+- Fixed suppress buttons not rendering (cached JSP issue resolved)
+- Added SortableJS drag-and-drop reordering for LOS list, Enhancement list, and Application Sections
+- `ServiceManagerSort` servlet handles all three sort types via AJAX
 
 ---
 
 ## February 21, 2026 — Resource Library + Feature Rendering
 
-**Source:** `session_summary_feb21.md`
+**Replaces:** `session_summary_feb21.md` (deleted in earlier cleanup), `serviceManager25_feature_additions.md`
 
 Built the Resource Library and connected features to proposals:
 
 - Created `ResourceCategory` entity for organizing library resources
 - Added `category` FK to `MarketingMaterial`, widened `storageGuid` to VARCHAR(50)
-- Created `LibraryHome` (GET) + `LibraryAction` (POST, multipart-enabled CRUD with Wasabi upload)
+- Created `LibraryHome` (GET) + `LibraryAction` (POST, multipart CRUD with Wasabi upload)
 - Created `library25.jsp` — category filter pills, scrollable resource list, detail panel
 - Added `libraryResource` FK to Feature entity
 - Feature CRUD in ServiceManagerAction (createFeature, editFeature, deleteFeature) + drag-sort
@@ -140,14 +175,14 @@ Built the Resource Library and connected features to proposals:
 
 ## February 21, 2026 — Invitation System
 
-**Source:** `invitation_system_summary.md`
+**Replaces:** `invitation_system_summary.md` (deleted in earlier cleanup)
 
 Built the complete invitation workflow from PSP to agent registration:
 
 - Agency Manager enhancements: rate pricing popover, rate assignment state tracking, expanded edit modal
 - Created `Invitation` entity (guid, email, role, 30-day expiry)
 - Created `SendInvitation` servlet — creates Agency (if new) + Person + Invitation, sends email, pre-assigns rates
-- Created `AcceptInvite` servlet + `acceptInvite.jsp` — validates GUID, registration form (Agency Manager: name/taxId/address/password, Agent: name/password)
+- Created `AcceptInvite` servlet + `acceptInvite.jsp` — validates GUID, registration form
 - Existing user handling: auto-grant role if no conflicts, block if agent in different agency
 - Added `manager_id` FK to Agency
 - `invitation_system_migration.sql` created
@@ -156,16 +191,16 @@ Built the complete invitation workflow from PSP to agent registration:
 
 ## February 21, 2026 — Opportunity System + Agent Landing Page
 
-**Source:** `opportunity_build_log.md`, `opportunity_spec_update.md`
+**Replaces:** `opportunity_agent_landing_spec.md` (deleted in earlier cleanup), `opportunity_build_log.md` (deleted), `opportunity_spec_update.md` (deleted)
 
 Built the Opportunity system and Agent Landing Page:
 
 - Created `Opportunity` entity extending Activity (DTYPE='Opportunity', tied to Prospect + Agency)
 - Created `CreateOpportunity` servlet — creates Opportunity + CheckList + optional new Prospect
-- Created `AgentHome` servlet + `agentHome25.jsp` — pipeline view with stage grouping, detail panel, new opp modal, quick stats
+- Created `AgentHome` servlet + `agentHome25.jsp` — pipeline view with stage grouping, detail panel, new opp modal
 - Created `UpdateOpportunityStage` — AJAX stage dropdown
 - Created `detailOpportunity25.jsp` — Opportunity detail in ViewActivity25
-- Added role-based login routing: agents → AgentHome, PSP → ViewHome25
+- Role-based login routing: agents → AgentHome, PSP → ViewHome25
 - ProposalBuilder scoped for agents (own prospects, agency rates, auto-select single rate)
 - Navigation made role-aware (back buttons, navbar links)
 - Stages: NEW → CONTACTED → QUALIFIED → PROPOSAL_SENT → NEGOTIATION → WON/LOST/ON_HOLD
