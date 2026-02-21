@@ -5,16 +5,9 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <c:import url="/WEB-INF/view/css-js.jsp"/>
     <title>Rate Manager</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
     <style>
-        :root { --ssa: #0d5681; --ssa-alt: #87a948; --ssa-gray: #5a6268; }
-        body { background: #f8f9fa; }
-        .btn-ssa { background: var(--ssa); border-color: var(--ssa); color: white; }
-        .btn-ssa:hover { background: #06357a; border-color: #06357a; color: white; }
-        .btn-outline-ssa { background: white; border-color: var(--ssa); color: var(--ssa); }
-        .btn-outline-ssa:hover { background: var(--ssa); color: white; }
         .rate-card { cursor: pointer; transition: all 0.15s; }
         .rate-card:hover { background-color: #f0f4f8; }
         .rate-card.active { border-left: 4px solid var(--ssa); background-color: #e8eef4; }
@@ -29,16 +22,12 @@
         .agency-chip { display: inline-flex; align-items: center; background: #e9ecef; border-radius: 20px; padding: 0.2rem 0.6rem; margin: 0.15rem; font-size: 0.82rem; gap: 0.35rem; }
         .agency-chip .btn-remove { border: none; background: none; color: #dc3545; padding: 0; font-size: 0.7rem; cursor: pointer; line-height: 1; }
         .agency-chip .btn-remove:hover { color: #a71d2a; }
-        .empty-state { text-align: center; color: #6c757d; padding: 3rem 1rem; }
-        .empty-state i { font-size: 2.5rem; margin-bottom: 0.5rem; display: block; }
         .lock-icon { color: #dc3545; font-size: 0.8rem; }
         .locked-banner { background-color: #fff3cd; border: 1px solid #ffc107; border-radius: 6px; padding: 0.5rem 0.75rem; font-size: 0.85rem; }
         .locked-banner a.clone-link { color: #0d5681; font-weight: 600; text-decoration: underline; cursor: pointer; }
         .locked-banner a.clone-link:hover { color: #06357a; }
         .fee-type-item.suppressed-hidden { display: none !important; }
         .fee-type-item.suppressed-visible { opacity: 0.5; }
-        .hdr-bar { background-color: var(--ssa); color: white; padding: 0.5rem 0.75rem; font-weight: 600; font-size: 1rem; border-radius: 6px 6px 0 0; }
-        .hdr-bar .btn-outline-light { padding: 0.15rem 0.5rem; }
         .nav-tabs.ref-tabs { background-color: var(--ssa); border-bottom: none; padding: 0; border-radius: 6px 6px 0 0; }
         .nav-tabs.ref-tabs .nav-link { color: rgba(255,255,255,0.7); font-weight: 600; font-size: 1rem; border: none; padding: 0.5rem 0.75rem; border-radius: 0; }
         .nav-tabs.ref-tabs .nav-link:first-child { border-radius: 6px 0 0 0; }
@@ -51,7 +40,28 @@
     </style>
 </head>
 <body>
-<div class="container-fluid py-3 px-4">
+<div class="container-fluid">
+    <c:set var="pageTitle" value="Rate Manager" scope="request"/>
+    <c:set var="pageIcon" value="bi-cash-coin" scope="request"/>
+    <c:import url="/WEB-INF/view/a/general/navbar25.jsp"/>
+    <div class="row align-items-center py-2">
+        <div class="col">
+            <c:if test="${not empty selectedRate}">
+                <h5 class="mb-0">
+                    <c:if test="${isLocked}"><i class="bi bi-lock-fill me-1" style="font-size: 0.9rem; opacity: 0.6;"></i></c:if>
+                        ${selectedRate.getDescription()}
+                    <c:if test="${!isLocked}">
+                        <a href="#" class="edit-link" data-bs-toggle="modal" data-bs-target="#editRateModal" title="Edit rate name"><i class="bi bi-pencil"></i></a>
+                    </c:if>
+                    <form method="post" action="RateTableAction" class="d-inline ms-2" onsubmit="return confirm('Suppress this rate? It will be hidden from lists but won\'t affect existing proposals.');">
+                        <input type="hidden" name="action" value="suppressRate"/>
+                        <input type="hidden" name="rateId" value="${selectedRate.getId()}"/>
+                        <button type="submit" style="background:none;border:none;color:var(--ssa);font-size:0.9rem;opacity:0.6;cursor:pointer;" title="Suppress rate"><i class="bi bi-eye-slash"></i></button>
+                    </form>
+                </h5>
+            </c:if>
+        </div>
+    </div>
 
     <%-- ======================== HEADER ======================== --%>
     <div class="row align-items-center mb-3">
@@ -437,7 +447,6 @@
 </div></div></div>
 </c:if>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
     // ── Tab-aware controls ────────────────────────────────────────────
     const addRefBtn = document.getElementById('addRefBtn');

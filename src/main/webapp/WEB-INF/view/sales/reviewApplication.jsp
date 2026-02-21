@@ -5,9 +5,8 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <c:import url="/WEB-INF/view/css-js.jsp"/>
     <title>Review Application — ${application.getProposal().getProspect().getName()}</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
     <style>
         .status-badge { font-size: 0.85rem; }
         .section-card { border-left: 3px solid #2B5F8A; }
@@ -20,8 +19,44 @@
         .action-card { position: sticky; top: 1rem; }
     </style>
 </head>
-<body class="bg-light">
-<div class="container py-4" style="max-width: 1000px;">
+<body>
+<div class="container-fluid">
+    <c:set var="pageTitle" value="Review Application" scope="request"/>
+    <c:set var="pageIcon" value="bi-clipboard-check" scope="request"/>
+    <c:import url="/WEB-INF/view/a/general/navbar25.jsp"/>
+    <div class="row align-items-center py-2">
+        <div class="col">
+            <h5 class="mb-0 d-inline">${application.getProposal().getProspect().getName()}</h5>
+            <span class="text-muted ms-2">Proposal #${application.getProposal().getId()}</span>
+            <span class="ms-2">
+                <c:choose>
+                    <c:when test="${application.getStatus() == 'SUBMITTED'}">
+                        <span class="badge bg-warning text-dark status-badge">Submitted</span>
+                    </c:when>
+                    <c:when test="${application.getStatus() == 'UNDER_REVIEW'}">
+                        <span class="badge bg-info status-badge">Under Review</span>
+                    </c:when>
+                    <c:when test="${application.getStatus() == 'MORE_INFO'}">
+                        <span class="badge bg-secondary status-badge">More Info Needed</span>
+                    </c:when>
+                    <c:when test="${application.getStatus() == 'APPROVED'}">
+                        <span class="badge bg-success status-badge">Approved</span>
+                    </c:when>
+                    <c:when test="${application.getStatus() == 'DENIED'}">
+                        <span class="badge bg-danger status-badge">Denied</span>
+                    </c:when>
+                    <c:otherwise>
+                        <span class="badge bg-light text-dark status-badge">${application.getStatus()}</span>
+                    </c:otherwise>
+                </c:choose>
+            </span>
+        </div>
+        <div class="col-auto">
+            <a href="ReviewApplications" class="btn btn-sm btn-outline-secondary">
+                <i class="bi bi-arrow-left me-1"></i>Back to List
+            </a>
+        </div>
+    </div>
 
     <%-- Header --%>
     <div class="d-flex justify-content-between align-items-center mb-4">
@@ -55,9 +90,18 @@
             <a href="ReviewApplications" class="btn btn-outline-secondary btn-sm">
                 <i class="bi bi-arrow-left me-1"></i>Back to List
             </a>
-            <a href="ViewHome25" class="btn btn-outline-dark btn-sm">
-                <i class="bi bi-house me-1"></i>Home
-            </a>
+            <c:choose>
+                <c:when test="${sessionScope.isAgent || sessionScope.isAgencyAdmin}">
+                    <a href="AgentHome" class="btn btn-outline-primary btn-sm">
+                        <i class="bi bi-kanban me-1"></i>Pipeline
+                    </a>
+                </c:when>
+                <c:otherwise>
+                    <a href="ViewHome25" class="btn btn-outline-dark btn-sm">
+                        <i class="bi bi-house me-1"></i>Home
+                    </a>
+                </c:otherwise>
+            </c:choose>
         </div>
     </div>
 
@@ -297,7 +341,6 @@
 
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         // Copy review notes into whichever form is submitted
         function confirmAction(actionDescription) {

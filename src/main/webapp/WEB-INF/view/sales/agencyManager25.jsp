@@ -5,15 +5,9 @@
 <!DOCTYPE html>
 <html>
 <head>
+  <c:import url="/WEB-INF/view/css-js.jsp"/>
   <title>Agency Manager</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
   <style>
-    :root { --ssa: #0d5681; --ssa-alt: #87a948; }
-    .btn-ssa { background: var(--ssa); border-color: var(--ssa); color: white; }
-    .btn-ssa:hover { background: #06357a; color: white; }
-    .btn-outline-ssa { background: white; border-color: var(--ssa); color: var(--ssa); }
-    .btn-outline-ssa:hover { background: var(--ssa); color: white; }
     .agency-card { cursor: pointer; transition: all 0.15s; }
     .agency-card:hover { background-color: #f0f4f8; }
     .agency-card.active { border-left: 4px solid #2B5F8A; background-color: #e8eef4; }
@@ -22,8 +16,6 @@
     .rate-check { padding: 0.4rem 0.75rem; border-bottom: 1px solid #eee; transition: opacity 0.15s; }
     .rate-check:last-child { border-bottom: none; }
     .detail-label { color: #6c757d; font-size: 0.85rem; margin-bottom: 2px; }
-    .empty-state { text-align: center; color: #6c757d; padding: 3rem 1rem; }
-    .empty-state i { font-size: 2.5rem; margin-bottom: 0.5rem; display: block; }
     .prospect-row { cursor: pointer; transition: all 0.15s; padding: 0.4rem 0.75rem; border-bottom: 1px solid #eee; }
     .prospect-row:last-child { border-bottom: none; }
     .prospect-row:hover { background-color: #f0f4f8; }
@@ -35,8 +27,20 @@
     .rate-popover .popover-body table td, .rate-popover .popover-body table th { padding: 0.15rem 0.4rem; }
   </style>
 </head>
-<body class="bg-light">
-<div class="container-fluid py-3" style="max-width: 1400px;">
+<body>
+<div class="container-fluid">
+  <c:set var="pageTitle" value="Agency Manager" scope="request"/>
+  <c:set var="pageIcon" value="bi-people-fill" scope="request"/>
+  <c:import url="/WEB-INF/view/a/general/navbar25.jsp"/>
+  <div class="row align-items-center py-2">
+    <div class="col">
+      <c:if test="${not empty selectedAgency}">
+        <h5 class="mb-0">
+          <i class="bi bi-building me-1"></i>${selectedAgency.getName()}
+        </h5>
+      </c:if>
+    </div>
+  </div>
 
   <%-- Header --%>
   <div class="d-flex justify-content-between align-items-center mb-3">
@@ -674,7 +678,6 @@
 
 </c:if>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
   // ── Rate Assignment State Tracking ──────────────────────────
 

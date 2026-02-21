@@ -4,42 +4,29 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <c:import url="/WEB-INF/view/css-js.jsp"/>
     <title>Resource Library</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
     <style>
-        :root { --ssa: #0d5681; --ssa-alt: #87a948; }
-        body { background: #f8f9fa; }
-        .btn-ssa { background: var(--ssa); border-color: var(--ssa); color: white; }
-        .btn-ssa:hover { background: #06357a; color: white; }
-        .btn-outline-ssa { background: white; border-color: var(--ssa); color: var(--ssa); }
-        .btn-outline-ssa:hover { background: var(--ssa); color: white; }
-        .hdr-bar { background-color: var(--ssa); color: white; padding: 0.5rem 0.75rem; font-weight: 600; font-size: 1rem; border-radius: 6px 6px 0 0; }
-        .hdr-bar .btn-outline-light { padding: 0.15rem 0.5rem; }
-        .item-card { cursor: pointer; transition: all 0.15s; border-bottom: 1px solid #eee; }
-        .item-card:hover { background-color: #f0f4f8; }
-        .item-card.active { border-left: 4px solid var(--ssa); background-color: #e8eef4; }
         .item-scroll { max-height: 500px; overflow-y: auto; }
         .detail-scroll { overflow-y: auto; }
         @media (min-width: 992px) { .detail-scroll { max-height: calc(100vh - 200px); } }
         .cat-pill { display: inline-block; padding: 0.25rem 0.65rem; border-radius: 20px; font-size: 0.8rem; cursor: pointer; text-decoration: none; border: 1px solid #dee2e6; color: #495057; margin: 0.15rem; transition: all 0.15s; }
-        .cat-pill:hover { border-color: var(--ssa); color: var(--ssa); }
-        .cat-pill.active { background: var(--ssa); color: white; border-color: var(--ssa); }
+        .cat-pill:hover { border-color: #0d5681; color: #0d5681; }
+        .cat-pill.active { background: #0d5681; color: white; border-color: #0d5681; }
         .type-badge { font-size: 0.7rem; padding: 0.15rem 0.4rem; border-radius: 3px; font-weight: 600; text-transform: uppercase; }
         .type-badge.document { background: #fde8e8; color: #c0392b; }
         .type-badge.video { background: #e8f4fd; color: #2980b9; }
         .type-badge.link { background: #e8fde8; color: #27ae60; }
         .ext-badge { font-size: 0.65rem; padding: 0.1rem 0.3rem; border-radius: 3px; font-weight: 700; text-transform: uppercase; background: #f0f0f0; color: #555; margin-left: 0.25rem; }
-        .empty-state { text-align: center; color: #adb5bd; padding: 2rem; }
-        .empty-state i { font-size: 2rem; }
-        .edit-link { color: var(--ssa); text-decoration: none; font-size: 0.85rem; margin-left: 0.5rem; }
-        .edit-link:hover { color: #06357a; }
         .field-label { font-weight: 600; font-size: 0.85rem; color: #495057; }
         .resource-meta { font-size: 0.8rem; color: #6c757d; }
     </style>
 </head>
 <body>
-<div class="container-fluid py-3 px-4">
+<div class="container-fluid">
+    <c:set var="pageTitle" value="Resource Library" scope="request"/>
+    <c:set var="pageIcon" value="bi-collection" scope="request"/>
+    <c:import url="/WEB-INF/view/a/general/navbar25.jsp"/>
 
     <%-- ======================== ERROR ALERT ======================== --%>
     <c:if test="${not empty param.error}">
@@ -488,7 +475,6 @@
     </form>
 </div></div></div>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
     function toggleAddFields() {
         const type = document.getElementById('addResType').value;

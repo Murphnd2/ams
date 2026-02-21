@@ -25,7 +25,9 @@
 </head>
 <body>
 <div class="container-fluid">
-    <c:import url="/WEB-INF/view/navbar.jsp"></c:import>
+    <c:set var="pageTitle" value="Proposal Builder" scope="request"/>
+    <c:set var="pageIcon" value="bi-file-earmark-plus" scope="request"/>
+    <c:import url="/WEB-INF/view/a/general/navbar25.jsp"></c:import>
 
     <%-- Page Header --%>
     <div class="row mt-3 mb-4">

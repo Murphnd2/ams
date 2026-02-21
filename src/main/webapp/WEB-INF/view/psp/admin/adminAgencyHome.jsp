@@ -8,7 +8,7 @@
 <body>
 <div class="container-fluid">
   <%-- ****** N A V I G A T I O N   B A R ******************************** --%>
-  <c:import url="/WEB-INF/view/navbar.jsp"></c:import>
+    <c:import url="/WEB-INF/view/a/general/navbar25.jsp"></c:import>ar.jsp"></c:import>
   <div class="row">
     <%-- ****  L E F T   C O L U M N ****** --%>
     <div class="col-lg-3">

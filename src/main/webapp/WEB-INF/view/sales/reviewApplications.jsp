@@ -5,9 +5,8 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <c:import url="/WEB-INF/view/css-js.jsp"/>
     <title>Application Review</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
     <style>
         .status-badge { font-size: 0.8rem; }
         .los-badge { font-size: 0.75rem; }
@@ -16,8 +15,22 @@
         .filter-btn.active { font-weight: 600; }
     </style>
 </head>
-<body class="bg-light">
-<div class="container py-4" style="max-width: 1100px;">
+<body>
+<div class="container-fluid">
+    <c:set var="pageTitle" value="Application Review" scope="request"/>
+    <c:set var="pageIcon" value="bi-clipboard-check" scope="request"/>
+    <c:import url="/WEB-INF/view/a/general/navbar25.jsp"/>
+    <div class="row align-items-center py-2">
+        <div class="col">
+            <span class="text-muted">Review submitted applications and manage new client setups</span>
+        </div>
+        <div class="col-auto d-flex gap-2">
+            <a href="GenerateProp25" class="btn btn-sm btn-outline-primary">
+                <i class="bi bi-building-add me-1"></i>Manual Setup
+            </a>
+        </div>
+    </div>
+
 
     <%-- Header --%>
     <div class="d-flex justify-content-between align-items-center mb-4">
@@ -32,9 +45,18 @@
             <a href="ProposalBuilder" class="btn btn-outline-secondary btn-sm">
                 <i class="bi bi-plus-lg me-1"></i>New Proposal
             </a>
-            <a href="ViewHome25" class="btn btn-outline-dark btn-sm">
-                <i class="bi bi-house me-1"></i>Home
-            </a>
+            <c:choose>
+                <c:when test="${sessionScope.isAgent || sessionScope.isAgencyAdmin}">
+                    <a href="AgentHome" class="btn btn-outline-primary btn-sm">
+                        <i class="bi bi-kanban me-1"></i>Pipeline
+                    </a>
+                </c:when>
+                <c:otherwise>
+                    <a href="ViewHome25" class="btn btn-outline-dark btn-sm">
+                        <i class="bi bi-house me-1"></i>Home
+                    </a>
+                </c:otherwise>
+            </c:choose>
         </div>
     </div>
 
@@ -178,7 +200,6 @@
 
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
     // Track active statuses from server
     var activeStatuses = new Set();

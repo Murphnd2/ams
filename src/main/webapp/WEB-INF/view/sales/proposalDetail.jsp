@@ -4,17 +4,25 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <c:import url="/WEB-INF/view/css-js.jsp"/>
     <title>Proposal Detail</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
     <style>
         .status-badge { font-size: 0.85rem; }
         .guid-link { font-family: monospace; font-size: 0.9rem; }
         .pricing-header { background-color: #f8f9fa; }
     </style>
 </head>
-<body class="bg-light">
-<div class="container py-4" style="max-width: 900px;">
+<body>
+<div class="container-fluid">
+    <c:set var="pageTitle" value="Proposal Detail" scope="request"/>
+    <c:set var="pageIcon" value="bi-file-earmark-text" scope="request"/>
+    <c:import url="/WEB-INF/view/a/general/navbar25.jsp"/>
+    <div class="row align-items-center py-2">
+        <div class="col">
+            <h5 class="mb-0 d-inline">Proposal #${proposal.getId()}</h5>
+            <span class="badge bg-secondary status-badge ms-2">${proposal.getStatus()}</span>
+        </div>
+    </div>
 
     <%-- Header --%>
     <div class="d-flex justify-content-between align-items-center mb-4">
@@ -26,6 +34,18 @@
             <a href="ProposalBuilder" class="btn btn-outline-secondary btn-sm me-2">
                 <i class="bi bi-plus-lg me-1"></i>New Proposal
             </a>
+            <c:choose>
+                <c:when test="${sessionScope.isAgent || sessionScope.isAgencyAdmin}">
+                    <a href="AgentHome" class="btn btn-outline-primary btn-sm">
+                        <i class="bi bi-kanban me-1"></i>Pipeline
+                    </a>
+                </c:when>
+                <c:otherwise>
+                    <a href="ViewHome25" class="btn btn-outline-primary btn-sm">
+                        <i class="bi bi-house me-1"></i>Home
+                    </a>
+                </c:otherwise>
+            </c:choose>
         </div>
     </div>
 
@@ -149,9 +169,23 @@
                 <a href="ProposalBuilder" class="btn btn-outline-secondary">
                     <i class="bi bi-arrow-left me-1"></i>Back to Builder
                 </a>
-                <a href="ReviewApplications" class="btn btn-outline-dark">
-                    <i class="bi bi-list-check me-1"></i>All Applications
-                </a>
+                <c:if test="${sessionScope.isPspUser || sessionScope.isPspAdmin}">
+                    <a href="ReviewApplications" class="btn btn-outline-dark">
+                        <i class="bi bi-list-check me-1"></i>All Applications
+                    </a>
+                </c:if>
+                <c:choose>
+                    <c:when test="${sessionScope.isAgent || sessionScope.isAgencyAdmin}">
+                        <a href="AgentHome" class="btn btn-outline-primary">
+                            <i class="bi bi-kanban me-1"></i>Pipeline
+                        </a>
+                    </c:when>
+                    <c:otherwise>
+                        <a href="ViewHome25" class="btn btn-outline-primary">
+                            <i class="bi bi-house me-1"></i>Home
+                        </a>
+                    </c:otherwise>
+                </c:choose>
             </div>
         </div>
 

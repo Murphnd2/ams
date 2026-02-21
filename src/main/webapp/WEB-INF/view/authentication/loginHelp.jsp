@@ -9,7 +9,7 @@
   <body>
     <div class="container-fluid">
       <%--****************** NAVIGATION BAR ***************************** --%>
-      <c:import url="/WEB-INF/view/navbar.jsp"></c:import>
+        <c:import url="/WEB-INF/view/a/general/navbar25.jsp"></c:import>
         <div class="row">
           <div class="col offset-lg-4">
             <%--****************** LOGIN HELP HERE ******************************* --%>

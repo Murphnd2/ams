@@ -1,14 +1,4 @@
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
-<%--
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
-
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.min.js" integrity="sha384-0pUGZvbkm6XF6gxjEnlmuGrJXVbNuzT9qBBavbLwCsOGabYfZo0T0to5eqruptLy" crossorigin="anonymous"></script>
---%>
-<%--
-<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.11.0/umd/popper.min.js" integrity="sha384-b/U6ypiBEHpOf/4+1nzFpr53nxSS+GLCkfwBdFNTxtclqqenISfwAzpKaMNFNmj4" crossorigin="anonymous"></script>
-<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js" integrity="sha384-I7E8VVD/ismYTF4hNIPjVp/Zjvgyol6VFvRkX/vR+Vc4jQkC+hVqc2pM8ODewa9r" crossorigin="anonymous"></script>
---%>
 
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
@@ -16,6 +6,7 @@
 <link rel="icon" href="${pageContext.request.contextPath}/favicon.ico" type="image/x-icon">
 
 <style>
+    :root { --ssa: #0d5681; --ssa-alt: #87a948; --ssa-gray: #5a6268; }
     .cke_contents {
         min-height: 300px;  /* Set a reasonable minimum height */
         height: auto !important;  /* Allow it to grow as needed */
@@ -56,7 +47,15 @@
     .border-altSsa {border-color: #87a948}
     .btn-outline-altSsa{background: white;border-color: #87a948;color:#87a948}
     .btn-outline-altSsa:hover{background: #87a948;color:white}
-
+    .hdr-bar { background-color: #0d5681; color: white; padding: 0.5rem 0.75rem; font-weight: 600; font-size: 1rem; border-radius: 6px 6px 0 0; }
+    .hdr-bar .btn-outline-light { padding: 0.15rem 0.5rem; }
+    .item-card { cursor: pointer; transition: all 0.15s; }
+    .item-card:hover { background-color: #f0f4f8; }
+    .item-card.active { border-left: 4px solid #0d5681; background-color: #e8eef4; }
+    .empty-state { text-align: center; color: #adb5bd; padding: 2rem; }
+    .empty-state i { font-size: 2rem; }
+    .edit-link { color: #0d5681; text-decoration: none; font-size: 0.85rem; margin-left: 0.5rem; }
+    .edit-link:hover { color: #06357a; }
     .page-break-after {page-break-after: always}
     .hr-text {border: 0;line-height: 1em;position: relative;text-align: center;height: 1.5em;font-size: 14px;margin: 30px 15px;}
     .hr-text::before {content: "";background: linear-gradient(to right, transparent, white, transparent);position: absolute;left: 0;top: 50%;width: 100%;height: 1px;}

@@ -4,38 +4,15 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <c:import url="/WEB-INF/view/css-js.jsp"/>
     <title>Service Manager</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
     <style>
-        :root { --ssa: #0d5681; --ssa-alt: #87a948; }
-        body { background: #f8f9fa; }
-        .btn-ssa { background: var(--ssa); border-color: var(--ssa); color: white; }
-        .btn-ssa:hover { background: #06357a; color: white; }
-        .btn-outline-ssa { background: white; border-color: var(--ssa); color: var(--ssa); }
-        .btn-outline-ssa:hover { background: var(--ssa); color: white; }
-        .hdr-bar { background-color: var(--ssa); color: white; padding: 0.5rem 0.75rem; font-weight: 600; font-size: 1rem; border-radius: 6px 6px 0 0; }
-        .hdr-bar .btn-outline-light { padding: 0.15rem 0.5rem; }
-        .item-card { cursor: pointer; transition: all 0.15s; }
-        .item-card:hover { background-color: #f0f4f8; }
-        .item-card.active { border-left: 4px solid var(--ssa); background-color: #e8eef4; }
-        .item-scroll { max-height: 280px; overflow-y: auto; }
-        .detail-scroll { overflow-y: auto; }
-        @media (min-width: 992px) { .detail-scroll { max-height: calc(100vh - 200px); } }
-        .assoc-row { border-bottom: 1px solid #eee; padding: 0.4rem 0; }
-        .assoc-row:last-child { border-bottom: none; }
-        .assoc-row .btn-remove { border: none; background: none; color: #dc3545; font-size: 0.8rem; cursor: pointer; padding: 0.1rem 0.35rem; }
-        .assoc-row .btn-remove:hover { color: #a71d2a; }
-        .suppressed-item { display: none !important; }
-        .show-suppressed { display: block !important; opacity: 0.45; font-style: italic; }
-        .edit-link { color: var(--ssa); text-decoration: none; font-size: 0.85rem; margin-left: 0.5rem; }
-        .edit-link:hover { color: #06357a; }
         .preview-link { color: #6c757d; font-size: 0.75rem; margin-left: 0.5rem; text-decoration: none; }
         .preview-link:hover { color: var(--ssa); }
         .preview-popover { max-width: 350px; }
         .preview-popover .popover-body table td { padding: 0.15rem 0.4rem; font-size: 0.8rem; }
-        .empty-state { text-align: center; color: #adb5bd; padding: 2rem; }
-        .empty-state i { font-size: 2rem; }
+        .suppressed-item { display: none !important; }
+        .show-suppressed { display: block !important; opacity: 0.45; font-style: italic; }
         .list-tabs { border-bottom: 2px solid var(--ssa); }
         .list-tabs .nav-link { color: var(--ssa); font-weight: 600; border: none; }
         .list-tabs .nav-link.active { background: var(--ssa); color: white; border-radius: 6px 6px 0 0; }
@@ -44,13 +21,39 @@
         .sortable-ghost { opacity: 0.4; background: #e8eef4; }
         .drag-handle { color: #adb5bd; cursor: grab; margin-right: 0.4rem; font-size: 0.85rem; }
         .drag-handle:active { cursor: grabbing; }
+        .item-scroll { max-height: 280px; overflow-y: auto; }
+        .detail-scroll { overflow-y: auto; }
+        @media (min-width: 992px) { .detail-scroll { max-height: calc(100vh - 200px); } }
+        .assoc-row { border-bottom: 1px solid #eee; padding: 0.4rem 0; }
+        .assoc-row:last-child { border-bottom: none; }
+        .assoc-row .btn-remove { border: none; background: none; color: #dc3545; font-size: 0.8rem; cursor: pointer; padding: 0.1rem 0.35rem; }
+        .assoc-row .btn-remove:hover { color: #a71d2a; }
         .link-toolbar { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.35rem; }
         .link-toolbar .btn { padding: 0.15rem 0.5rem; font-size: 0.8rem; }
         .link-marker { background: #e8f4fd; border-radius: 3px; padding: 0 2px; }
     </style>
 </head>
 <body>
-<div class="container-fluid py-3 px-4">
+<div class="container-fluid">
+    <c:set var="pageTitle" value="Service Manager" scope="request"/>
+    <c:set var="pageIcon" value="bi-diagram-3" scope="request"/>
+    <c:import url="/WEB-INF/view/a/general/navbar25.jsp"/>
+    <div class="row align-items-center py-2">
+        <div class="col">
+            <c:if test="${not empty selectedLos}">
+                <h5 class="mb-0">
+                    <i class="bi bi-briefcase me-1"></i>${selectedLos.getDescription()}
+                    <a href="#" class="edit-link" data-bs-toggle="modal" data-bs-target="#editLosModal" title="Edit"><i class="bi bi-pencil"></i></a>
+                </h5>
+            </c:if>
+            <c:if test="${not empty selectedEnhancement}">
+                <h5 class="mb-0">
+                    <i class="bi bi-puzzle me-1"></i>${selectedEnhancement.getDescription()}
+                    <a href="#" class="edit-link" data-bs-toggle="modal" data-bs-target="#editEnhModal" title="Edit"><i class="bi bi-pencil"></i></a>
+                </h5>
+            </c:if>
+        </div>
+    </div>
 
     <%-- ======================== HEADER ======================== --%>
     <div class="row align-items-center mb-3">
@@ -650,7 +653,6 @@
 </div></div></div>
 </c:if>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
 <script>
     // ── Tab-aware add button ──────────────────────────────────────────

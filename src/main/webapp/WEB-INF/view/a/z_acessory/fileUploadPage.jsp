@@ -16,7 +16,7 @@
 </head>
 <body>
 <div class="container-fluid">
-    <c:import url="/WEB-INF/view/navbar.jsp"/>
+    <c:import url="/WEB-INF/view/a/general/navbar25.jsp"></c:import>
 
     <div class="mt-4">
         <h2>📄 Upload Files for Import</h2>

@@ -8,7 +8,7 @@
 </head>
 <body>
 <div class="container-fluid">
-    <c:import url="/WEB-INF/view/navbar.jsp"></c:import>
+    <c:import url="/WEB-INF/view/a/general/navbar25.jsp"></c:import>
     <c:choose>
         <c:when test="${sessionScope.isAuthenticated==true}">
             Index Page When Authenticated

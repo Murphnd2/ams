@@ -28,7 +28,7 @@
 <div class="container-fluid">
   <c:import url="/WEB-INF/view/a/general/navbar25.jsp"></c:import>
   <c:choose>
-    <c:when test="${sessionScope.isPspUser || sessionScope.isPspAdmin}">
+    <c:when test="${sessionScope.isPspUser || sessionScope.isPspAdmin || sessionScope.isAgent || sessionScope.isAgencyAdmin}">
       <div class="row">
         <div class="col-12 col-md-5 col-lg-5 col-xl-3 order-2 order-xl-first">
           <c:import url="/WEB-INF/view/a/activityDetail/columns/checklist/checklistHeader.jsp"></c:import>

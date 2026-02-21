@@ -8,7 +8,7 @@
 </head>
 <body>
 <div class="container-fluid">
-  <c:import url="/WEB-INF/view/navbar.jsp"></c:import>
+  <c:import url="/WEB-INF/view/a/general/navbar25.jsp"></c:import>
   <div class="row m-3">
     <div class="col">
       <c:import url="loginForm.jsp"></c:import>
