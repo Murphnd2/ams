@@ -67,6 +67,51 @@ public class AgencyAction extends HttpServlet {
                     String taxId = request.getParameter("taxId");
                     agency.setTaxId(taxId != null ? taxId.trim() : null);
 
+                    // Update address
+                    Address address = agency.getAddress();
+                    if (address == null) {
+                        address = new Address();
+                        em.getTransaction().begin();
+                        em.persist(address);
+                        em.getTransaction().commit();
+                        agency.setAddress(address);
+                    }
+                    em.getTransaction().begin();
+                    address.setAddress1(request.getParameter("address1"));
+                    address.setAddress2(request.getParameter("address2"));
+                    address.setCity(request.getParameter("city"));
+                    address.setState(request.getParameter("state"));
+                    address.setZipCode(request.getParameter("zipCode"));
+                    em.merge(address);
+                    em.getTransaction().commit();
+
+                    // Update or create primary contact
+                    String contactFirst = request.getParameter("contactFirst");
+                    String contactLast = request.getParameter("contactLast");
+                    String contactEmail = request.getParameter("contactEmail");
+                    String contactPhone = request.getParameter("contactPhone");
+
+                    Person contact = agency.getPrimaryContact();
+                    if (contact == null && contactFirst != null && !contactFirst.trim().isEmpty()) {
+                        contact = new Person();
+                        contact.setPsp(psp);
+                        contact.setAddress(agency.getAddress());
+                        em.getTransaction().begin();
+                        em.persist(contact);
+                        em.getTransaction().commit();
+                        agency.setPrimaryContact(contact);
+                    }
+                    if (contact != null) {
+                        em.getTransaction().begin();
+                        contact.setFirstName(contactFirst != null ? contactFirst.trim() : null);
+                        contact.setLastName(contactLast != null ? contactLast.trim() : null);
+                        contact.setEmail(contactEmail != null ? contactEmail.trim() : null);
+                        contact.setPhone(contactPhone != null ? contactPhone.trim() : null);
+                        contact.setFullName((contact.getFirstName() != null ? contact.getFirstName() : "") + " " + (contact.getLastName() != null ? contact.getLastName() : ""));
+                        em.merge(contact);
+                        em.getTransaction().commit();
+                    }
+
                     em.getTransaction().begin();
                     em.merge(agency);
                     em.getTransaction().commit();

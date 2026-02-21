@@ -176,9 +176,13 @@ public abstract class SalesDAO {
     }
 
     public static Agency getAgencyFull(EntityManager em, long agencyId){
-        Query q = em.createQuery("SELECT DISTINCT a FROM Agency a INNER JOIN FETCH a.agencyRateList r WHERE a.id = :agency_id");
+        Query q = em.createQuery("SELECT DISTINCT a FROM Agency a LEFT JOIN FETCH a.agencyRateList r WHERE a.id = :agency_id");
         q.setParameter("agency_id",agencyId);
-        return (Agency) q.getSingleResult();
+        Agency agency = (Agency) q.getSingleResult();
+        // Eagerly touch address and contact to avoid lazy-load issues in JSP
+        if (agency.getAddress() != null) agency.getAddress().getId();
+        if (agency.getPrimaryContact() != null) agency.getPrimaryContact().getId();
+        return agency;
     }
 
     public static List<Person> getAgencyAgents(EntityManager em, long agencyId){
@@ -244,7 +248,16 @@ public abstract class SalesDAO {
         q.setParameter("guid_id",guid);
         return (Proposal) q.getSingleResult();
     }
-
+    public static List<Proposal> getProposalsByAgency(EntityManager em, long agencyId) {
+        Query q = em.createQuery(
+                "SELECT DISTINCT p FROM Proposal p LEFT JOIN FETCH p.losList " +
+                        "WHERE p.prospect.agent.id IN " +
+                        "(SELECT ag.id FROM Agency a JOIN a.agentList ag WHERE a.id = :agencyId) " +
+                        "AND p.isInactive = false " +
+                        "ORDER BY p.prospect.name");
+        q.setParameter("agencyId", agencyId);
+        return (List<Proposal>) q.getResultList();
+    }
 
     public static List<RateTable> getPricing(EntityManager em, Proposal p){
         List<LOS> losList = p.getLosList();

@@ -24,6 +24,13 @@
     .detail-label { color: #6c757d; font-size: 0.85rem; margin-bottom: 2px; }
     .empty-state { text-align: center; color: #6c757d; padding: 3rem 1rem; }
     .empty-state i { font-size: 2.5rem; margin-bottom: 0.5rem; display: block; }
+    .prospect-row { cursor: pointer; transition: all 0.15s; padding: 0.4rem 0.75rem; border-bottom: 1px solid #eee; }
+    .prospect-row:last-child { border-bottom: none; }
+    .prospect-row:hover { background-color: #f0f4f8; }
+    .prospect-row.active { border-left: 3px solid var(--ssa); background-color: #e8eef4; }
+    .accordion-panel { max-height: 300px; overflow-y: auto; }
+    .accordion-panel.expanded { max-height: 400px; }
+    .los-tag { display: inline-block; background: #e9ecef; color: #495057; font-size: 0.7rem; padding: 1px 5px; border-radius: 3px; margin-right: 2px; }
   </style>
 </head>
 <body class="bg-light">
@@ -190,10 +197,12 @@
       </c:choose>
     </div>
 
-    <%-- ======================== RIGHT COLUMN: Rate Assignments ======================== --%>
+    <%-- ======================== RIGHT COLUMN: Rate Assignments + Prospects/Proposals ======================== --%>
     <div class="col-lg-4">
       <c:if test="${not empty selectedAgency}">
-        <div class="card">
+
+        <%-- Rate Assignments Card --%>
+        <div class="card mb-3">
           <div class="card-header fw-bold" style="background-color: #5a8a6a; color: white;">
             <i class="bi bi-tags me-1"></i>Rate Assignments
           </div>
@@ -206,7 +215,6 @@
                   <c:forEach var="rate" items="${allRates}">
                     <div class="rate-check">
                       <div class="form-check">
-                          <%-- Check if this rate is in the agency's rate list --%>
                         <c:set var="isAssigned" value="false"/>
                         <c:forEach var="agencyRate" items="${selectedAgency.getAgencyRateList()}">
                           <c:if test="${agencyRate.getId() == rate.getId()}">
@@ -237,6 +245,131 @@
             </c:choose>
           </div>
         </div>
+
+        <%-- ======================== Prospects Accordion ======================== --%>
+        <div class="card mb-3">
+          <div class="card-header fw-bold d-flex justify-content-between align-items-center" style="background-color: var(--ssa); color: white; cursor: pointer;" onclick="toggleProspectPanel()">
+            <span><i class="bi bi-briefcase me-1"></i>Prospects <span id="prospectCount" class="badge bg-light text-dark ms-1" style="font-size: 0.7rem;">${fn:length(prospectSummaryList)}</span></span>
+            <div class="d-flex align-items-center gap-2" onclick="event.stopPropagation();">
+              <select id="agentFilter" class="form-select form-select-sm" style="width: auto; font-size: 0.7rem; padding: 0.1rem 1.4rem 0.1rem 0.3rem;" onchange="filterProspects()">
+                <option value="ALL">All Agents</option>
+                <c:forEach var="agent" items="${agentList}">
+                  <option value="${agent.getId()}">${agent.getFirstName()} ${agent.getLastName()}</option>
+                </c:forEach>
+              </select>
+              <a href="#" class="text-white text-decoration-none" onclick="toggleProspectSort(); return false;" style="font-size: 0.7rem;">
+                <i class="bi bi-arrow-down-up me-1"></i><span id="prospectSortLabel">A-Z</span>
+              </a>
+              <i class="bi bi-chevron-up text-white" id="prospectChevron" style="transition: transform 0.2s;"></i>
+            </div>
+          </div>
+          <div id="prospectPanel" class="accordion-panel">
+            <c:choose>
+              <c:when test="${not empty prospectSummaryList}">
+                <c:forEach var="ps" items="${prospectSummaryList}">
+                  <div class="prospect-row" data-prospect-id="${ps.prospectId}" data-prospect-name="${fn:escapeXml(ps.prospectName)}"
+                       data-agent-name="${fn:escapeXml(ps.agentName)}" data-agent-id="${ps.agentId}"
+                       onclick="selectProspect(this)">
+                    <div class="d-flex justify-content-between align-items-center" style="font-size: 0.8rem;">
+                      <div style="min-width: 0; flex: 1;">
+                        <div class="fw-semibold text-truncate" title="${fn:escapeXml(ps.prospectName)}">${fn:escapeXml(ps.prospectName)}</div>
+                        <small class="text-muted text-truncate d-block" title="${fn:escapeXml(ps.agentName)}">${fn:escapeXml(ps.agentName)}</small>
+                      </div>
+                      <div class="ms-2 text-nowrap">
+                        <c:choose>
+                          <c:when test="${ps.furthestStatus == 'CREATED'}"><span class="badge bg-secondary" style="font-size: 0.65rem;">Created</span></c:when>
+                          <c:when test="${ps.furthestStatus == 'SENT'}"><span class="badge bg-info" style="font-size: 0.65rem;">Sent</span></c:when>
+                          <c:when test="${ps.furthestStatus == 'VIEWED'}"><span class="badge bg-warning text-dark" style="font-size: 0.65rem;">Viewed</span></c:when>
+                          <c:when test="${ps.furthestStatus == 'APPLIED'}"><span class="badge bg-primary" style="font-size: 0.65rem;">Applied</span></c:when>
+                          <c:when test="${ps.furthestStatus == 'APPROVED'}"><span class="badge bg-success" style="font-size: 0.65rem;">Approved</span></c:when>
+                          <c:when test="${ps.furthestStatus == 'DENIED'}"><span class="badge bg-danger" style="font-size: 0.65rem;">Denied</span></c:when>
+                          <c:otherwise><span class="badge bg-secondary" style="font-size: 0.65rem;">${ps.furthestStatus}</span></c:otherwise>
+                        </c:choose>
+                      </div>
+                    </div>
+                  </div>
+                </c:forEach>
+              </c:when>
+              <c:otherwise>
+                <div class="text-center text-muted py-3" style="font-size: 0.85rem;">
+                  <i class="bi bi-briefcase" style="font-size: 1.5rem; display: block; margin-bottom: 0.3rem;"></i>
+                  No prospects for this agency
+                </div>
+              </c:otherwise>
+            </c:choose>
+          </div>
+        </div>
+
+        <%-- ======================== Proposals Accordion ======================== --%>
+        <div class="card" id="proposalCard" style="display: none;">
+          <div class="card-header fw-bold d-flex justify-content-between align-items-center" style="background-color: #5a4a8a; color: white; cursor: pointer;" onclick="toggleProposalPanel()">
+            <span><i class="bi bi-file-earmark-text me-1"></i>Proposals for <span id="selectedProspectName">—</span></span>
+            <div class="d-flex align-items-center gap-2" onclick="event.stopPropagation();">
+              <select id="propStatusFilter" class="form-select form-select-sm" style="width: auto; font-size: 0.7rem; padding: 0.1rem 1.4rem 0.1rem 0.3rem;" onchange="filterProposals()">
+                <option value="ALL">All</option>
+                <option value="CREATED">Created</option>
+                <option value="SENT">Sent</option>
+                <option value="VIEWED">Viewed</option>
+                <option value="APPLIED">Applied</option>
+                <option value="APPROVED">Approved</option>
+                <option value="DENIED">Denied</option>
+              </select>
+              <a href="#" class="text-white text-decoration-none" onclick="toggleProposalSort(); return false;" style="font-size: 0.7rem;">
+                <i class="bi bi-arrow-down-up me-1"></i><span id="propSortLabel">A-Z</span>
+              </a>
+              <i class="bi bi-chevron-up text-white" id="proposalChevron" style="transition: transform 0.2s;"></i>
+            </div>
+          </div>
+          <div id="proposalPanel" class="accordion-panel expanded">
+            <table class="table table-sm table-hover mb-0" id="proposalTable" style="font-size: 0.78rem;">
+              <thead class="table-light">
+                <tr>
+                  <th class="ps-3">#</th>
+                  <th>Status</th>
+                  <th>Services</th>
+                  <th>Created</th>
+                </tr>
+              </thead>
+              <tbody>
+                <c:forEach var="prop" items="${proposalList}">
+                  <tr class="proposal-row" data-prospect-id="${prop.getProspect().getId()}"
+                      data-status="${prop.getStatus()}"
+                      data-created="${prop.getDateCreated() != null ? prop.getDateCreated().getTime() : '0'}"
+                      style="display: none;">
+                    <td class="ps-3">
+                      <a href="ProposalDetail?id=${prop.getId()}" target="_blank" class="text-decoration-none">${prop.getId()}</a>
+                    </td>
+                    <td>
+                      <c:choose>
+                        <c:when test="${prop.getStatus() == 'CREATED'}"><span class="badge bg-secondary">Created</span></c:when>
+                        <c:when test="${prop.getStatus() == 'SENT'}"><span class="badge bg-info">Sent</span></c:when>
+                        <c:when test="${prop.getStatus() == 'VIEWED'}"><span class="badge bg-warning text-dark">Viewed</span></c:when>
+                        <c:when test="${prop.getStatus() == 'APPLIED'}"><span class="badge bg-primary">Applied</span></c:when>
+                        <c:when test="${prop.getStatus() == 'APPROVED'}"><span class="badge bg-success">Approved</span></c:when>
+                        <c:when test="${prop.getStatus() == 'DENIED'}"><span class="badge bg-danger">Denied</span></c:when>
+                        <c:otherwise><span class="badge bg-secondary">${prop.getStatus()}</span></c:otherwise>
+                      </c:choose>
+                    </td>
+                    <td>
+                      <c:forEach var="los" items="${prop.getLosList()}">
+                        <span class="los-tag">${los.getShortText()}</span>
+                      </c:forEach>
+                    </td>
+                    <td class="text-nowrap">
+                      <c:if test="${prop.getDateCreated() != null}">
+                        <fmt:formatDate value="${prop.getDateCreated()}" pattern="M/yy"/>
+                      </c:if>
+                    </td>
+                  </tr>
+                </c:forEach>
+              </tbody>
+            </table>
+            <div id="noProposalsMsg" class="text-center text-muted py-3" style="font-size: 0.85rem; display: none;">
+              No proposals match the current filter
+            </div>
+          </div>
+        </div>
+
       </c:if>
     </div>
 
@@ -278,10 +411,12 @@
   </div>
 </div>
 
-<%-- Edit Agency Modal --%>
+<%-- Edit Agency Modal + Assign Agent Modal (both require selectedAgency) --%>
 <c:if test="${not empty selectedAgency}">
+
+  <%-- Edit Agency Modal --%>
   <div class="modal fade" id="editAgencyModal" tabindex="-1">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-lg">
       <div class="modal-content">
         <form method="post" action="AgencyAction">
           <input type="hidden" name="action" value="editAgency"/>
@@ -291,17 +426,78 @@
             <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
           </div>
           <div class="modal-body">
-            <div class="mb-3">
-              <label class="form-label fw-semibold">Agency Name</label>
-              <input type="text" name="agencyName" class="form-control" required value="${selectedAgency.getName()}">
-            </div>
-            <div class="mb-3">
-              <label class="form-label fw-semibold">Phone</label>
-              <input type="text" name="phone" class="form-control" value="${selectedAgency.getPhone()}">
-            </div>
-            <div class="mb-3">
-              <label class="form-label fw-semibold">Tax ID</label>
-              <input type="text" name="taxId" class="form-control" value="${selectedAgency.getTaxId()}">
+            <div class="row">
+              <%-- Left column: Agency info + Primary Contact --%>
+              <div class="col-md-6">
+                <h6 class="text-muted mb-2"><i class="bi bi-building me-1"></i>Agency Info</h6>
+                <div class="mb-2">
+                  <label class="form-label fw-semibold mb-0" style="font-size: 0.85rem;">Agency Name</label>
+                  <input type="text" name="agencyName" class="form-control form-control-sm" required value="${selectedAgency.getName()}">
+                </div>
+                <div class="mb-2">
+                  <label class="form-label fw-semibold mb-0" style="font-size: 0.85rem;">Phone</label>
+                  <input type="text" name="phone" class="form-control form-control-sm" value="${selectedAgency.getPhone()}">
+                </div>
+                <div class="mb-2">
+                  <label class="form-label fw-semibold mb-0" style="font-size: 0.85rem;">Tax ID</label>
+                  <input type="text" name="taxId" class="form-control form-control-sm" value="${selectedAgency.getTaxId()}">
+                </div>
+                <hr class="my-2">
+                <h6 class="text-muted mb-2"><i class="bi bi-person me-1"></i>Primary Contact</h6>
+                <div class="row mb-2">
+                  <div class="col-6">
+                    <label class="form-label fw-semibold mb-0" style="font-size: 0.85rem;">First Name</label>
+                    <input type="text" name="contactFirst" class="form-control form-control-sm"
+                           value="${selectedAgency.getPrimaryContact() != null ? selectedAgency.getPrimaryContact().getFirstName() : ''}">
+                  </div>
+                  <div class="col-6">
+                    <label class="form-label fw-semibold mb-0" style="font-size: 0.85rem;">Last Name</label>
+                    <input type="text" name="contactLast" class="form-control form-control-sm"
+                           value="${selectedAgency.getPrimaryContact() != null ? selectedAgency.getPrimaryContact().getLastName() : ''}">
+                  </div>
+                </div>
+                <div class="mb-2">
+                  <label class="form-label fw-semibold mb-0" style="font-size: 0.85rem;">Email</label>
+                  <input type="email" name="contactEmail" class="form-control form-control-sm"
+                         value="${selectedAgency.getPrimaryContact() != null ? selectedAgency.getPrimaryContact().getEmail() : ''}">
+                </div>
+                <div class="mb-2">
+                  <label class="form-label fw-semibold mb-0" style="font-size: 0.85rem;">Contact Phone</label>
+                  <input type="text" name="contactPhone" class="form-control form-control-sm"
+                         value="${selectedAgency.getPrimaryContact() != null ? selectedAgency.getPrimaryContact().getPhone() : ''}">
+                </div>
+              </div>
+              <%-- Right column: Address --%>
+              <div class="col-md-6">
+                <h6 class="text-muted mb-2"><i class="bi bi-geo-alt me-1"></i>Address</h6>
+                <div class="mb-2">
+                  <label class="form-label fw-semibold mb-0" style="font-size: 0.85rem;">Address 1</label>
+                  <input type="text" name="address1" class="form-control form-control-sm"
+                         value="${selectedAgency.getAddress() != null ? selectedAgency.getAddress().getAddress1() : ''}">
+                </div>
+                <div class="mb-2">
+                  <label class="form-label fw-semibold mb-0" style="font-size: 0.85rem;">Address 2</label>
+                  <input type="text" name="address2" class="form-control form-control-sm"
+                         value="${selectedAgency.getAddress() != null ? selectedAgency.getAddress().getAddress2() : ''}">
+                </div>
+                <div class="mb-2">
+                  <label class="form-label fw-semibold mb-0" style="font-size: 0.85rem;">City</label>
+                  <input type="text" name="city" class="form-control form-control-sm"
+                         value="${selectedAgency.getAddress() != null ? selectedAgency.getAddress().getCity() : ''}">
+                </div>
+                <div class="row mb-2">
+                  <div class="col-6">
+                    <label class="form-label fw-semibold mb-0" style="font-size: 0.85rem;">State</label>
+                    <input type="text" name="state" class="form-control form-control-sm" maxlength="2"
+                           value="${selectedAgency.getAddress() != null ? selectedAgency.getAddress().getState() : ''}">
+                  </div>
+                  <div class="col-6">
+                    <label class="form-label fw-semibold mb-0" style="font-size: 0.85rem;">Zip Code</label>
+                    <input type="text" name="zipCode" class="form-control form-control-sm"
+                           value="${selectedAgency.getAddress() != null ? selectedAgency.getAddress().getZipCode() : ''}">
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
           <div class="modal-footer">
@@ -357,8 +553,151 @@
       </div>
     </div>
   </div>
+
 </c:if>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+  let selectedProspectId = null;
+  let prospectPanelOpen = true;
+  let proposalPanelOpen = true;
+
+  // ── Prospect Panel ──────────────────────────────────────────
+
+  function selectProspect(el) {
+    const prospectId = el.dataset.prospectId;
+    const prospectName = el.dataset.prospectName;
+
+    // Toggle off if clicking same prospect
+    if (selectedProspectId === prospectId) {
+      selectedProspectId = null;
+      document.querySelectorAll('.prospect-row').forEach(r => r.classList.remove('active'));
+      document.getElementById('proposalCard').style.display = 'none';
+      const pp = document.getElementById('prospectPanel');
+      pp.style.display = '';
+      document.getElementById('prospectChevron').style.transform = '';
+      prospectPanelOpen = true;
+      return;
+    }
+
+    selectedProspectId = prospectId;
+
+    // Highlight selected row
+    document.querySelectorAll('.prospect-row').forEach(r => r.classList.remove('active'));
+    el.classList.add('active');
+
+    // Collapse prospect panel
+    const pp = document.getElementById('prospectPanel');
+    pp.style.display = 'none';
+    document.getElementById('prospectChevron').style.transform = 'rotate(180deg)';
+    prospectPanelOpen = false;
+
+    // Show proposal card and set header
+    document.getElementById('proposalCard').style.display = '';
+    document.getElementById('selectedProspectName').textContent = prospectName;
+    document.getElementById('proposalPanel').style.display = '';
+    document.getElementById('proposalChevron').style.transform = '';
+    proposalPanelOpen = true;
+
+    // Reset filters
+    document.getElementById('propStatusFilter').value = 'ALL';
+    document.getElementById('propSortLabel').textContent = 'A-Z';
+
+    // Show matching proposal rows
+    filterProposals();
+  }
+
+  function toggleProspectPanel() {
+    const panel = document.getElementById('prospectPanel');
+    const chevron = document.getElementById('prospectChevron');
+    if (prospectPanelOpen) {
+      panel.style.display = 'none';
+      chevron.style.transform = 'rotate(180deg)';
+    } else {
+      panel.style.display = '';
+      chevron.style.transform = '';
+    }
+    prospectPanelOpen = !prospectPanelOpen;
+  }
+
+  function toggleProposalPanel() {
+    const panel = document.getElementById('proposalPanel');
+    const chevron = document.getElementById('proposalChevron');
+    if (proposalPanelOpen) {
+      panel.style.display = 'none';
+      chevron.style.transform = 'rotate(180deg)';
+    } else {
+      panel.style.display = '';
+      chevron.style.transform = '';
+    }
+    proposalPanelOpen = !proposalPanelOpen;
+  }
+
+  function filterProspects() {
+    const agentId = document.getElementById('agentFilter').value;
+    const rows = document.querySelectorAll('.prospect-row');
+    let visibleCount = 0;
+    rows.forEach(r => {
+      const show = (agentId === 'ALL' || r.dataset.agentId === agentId);
+      r.style.display = show ? '' : 'none';
+      if (show) visibleCount++;
+    });
+    document.getElementById('prospectCount').textContent = visibleCount;
+  }
+
+  function toggleProspectSort() {
+    const panel = document.getElementById('prospectPanel');
+    const rows = Array.from(panel.querySelectorAll('.prospect-row'));
+    const label = document.getElementById('prospectSortLabel');
+    const isAZ = label.textContent === 'A-Z';
+
+    rows.sort((a, b) => {
+      if (isAZ) {
+        return a.dataset.agentName.localeCompare(b.dataset.agentName);
+      } else {
+        return a.dataset.prospectName.localeCompare(b.dataset.prospectName);
+      }
+    });
+
+    rows.forEach(r => panel.appendChild(r));
+    label.textContent = isAZ ? 'Agent' : 'A-Z';
+  }
+
+  // ── Proposal Panel ──────────────────────────────────────────
+
+  function filterProposals() {
+    if (!selectedProspectId) return;
+    const status = document.getElementById('propStatusFilter').value;
+    const rows = document.querySelectorAll('.proposal-row');
+    let visibleCount = 0;
+    rows.forEach(r => {
+      const matchProspect = r.dataset.prospectId === selectedProspectId;
+      const matchStatus = (status === 'ALL' || r.dataset.status === status);
+      const show = matchProspect && matchStatus;
+      r.style.display = show ? '' : 'none';
+      if (show) visibleCount++;
+    });
+    document.getElementById('noProposalsMsg').style.display = visibleCount === 0 ? '' : 'none';
+  }
+
+  function toggleProposalSort() {
+    const tbody = document.querySelector('#proposalTable tbody');
+    if (!tbody) return;
+    const rows = Array.from(tbody.querySelectorAll('.proposal-row'));
+    const label = document.getElementById('propSortLabel');
+    const isAZ = label.textContent === 'A-Z';
+
+    rows.sort((a, b) => {
+      if (isAZ) {
+        return parseInt(b.dataset.created) - parseInt(a.dataset.created);
+      } else {
+        return parseInt(a.dataset.created) - parseInt(b.dataset.created);
+      }
+    });
+
+    rows.forEach(r => tbody.appendChild(r));
+    label.textContent = isAZ ? 'Newest' : 'A-Z';
+  }
+</script>
 </body>
 </html>

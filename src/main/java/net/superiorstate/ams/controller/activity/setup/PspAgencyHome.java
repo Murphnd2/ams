@@ -11,11 +11,21 @@ import net.superiorstate.ams.model.general.Person;
 import net.superiorstate.ams.model.sales.agency.*;
 
 import java.io.IOException;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @WebServlet(name = "PspAgencyHome", value = "/PspAgencyHome")
 public class PspAgencyHome extends HttpServlet {
+
+    // Status hierarchy: higher number = further along in pipeline
+    private static final Map<String, Integer> STATUS_RANK = Map.of(
+            "CREATED", 1,
+            "SENT", 2,
+            "VIEWED", 3,
+            "APPLIED", 4,
+            "DENIED", 5,
+            "APPROVED", 6
+    );
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
@@ -49,12 +59,61 @@ public class PspAgencyHome extends HttpServlet {
                 request.setAttribute("selectedAgency", selectedAgency);
 
                 // Load agents for this agency
+                List<Person> agents;
                 try {
-                    List<Person> agents = SalesDAO.getAgencyAgents(em, agencyId);
-                    request.setAttribute("agentList", agents);
+                    agents = SalesDAO.getAgencyAgents(em, agencyId);
                 } catch (Exception e) {
-                    request.setAttribute("agentList", List.of());
+                    agents = List.of();
                 }
+                request.setAttribute("agentList", agents);
+
+                // Load proposals for this agency (with losList fetch-joined)
+                List<Proposal> proposalList = SalesDAO.getProposalsByAgency(em, agencyId);
+                request.setAttribute("proposalList", proposalList);
+
+                // Build prospect summary list with furthest status
+                // Group proposals by prospect ID
+                Map<Long, List<Proposal>> proposalsByProspect = proposalList.stream()
+                        .collect(Collectors.groupingBy(p -> p.getProspect().getId()));
+
+                // Build prospect summary: each entry = [prospectId, prospectName, agentName, agentId, furthestStatus]
+                List<Map<String, String>> prospectSummaryList = new ArrayList<>();
+                for (Map.Entry<Long, List<Proposal>> entry : proposalsByProspect.entrySet()) {
+                    List<Proposal> prospects = entry.getValue();
+                    Proposal first = prospects.get(0);
+
+                    // Compute furthest status across all proposals for this prospect
+                    String furthestStatus = "CREATED";
+                    int highestRank = 0;
+                    for (Proposal p : prospects) {
+                        int rank = p.getStatus() != null ? STATUS_RANK.getOrDefault(p.getStatus(), 0) : 0;
+                        if (rank > highestRank) {
+                            highestRank = rank;
+                            furthestStatus = p.getStatus();
+                        }
+                    }
+
+                    String agentName = "";
+                    String agentId = "";
+                    if (first.getProspect().getAgent() != null) {
+                        Person agent = first.getProspect().getAgent();
+                        agentName = agent.getFirstName() + " " + agent.getLastName();
+                        agentId = agent.getId().toString();
+                    }
+
+                    Map<String, String> summary = new LinkedHashMap<>();
+                    summary.put("prospectId", entry.getKey().toString());
+                    summary.put("prospectName", first.getProspect().getName() != null ? first.getProspect().getName() : "(unnamed)");
+                    summary.put("agentName", agentName);
+                    summary.put("agentId", agentId);
+                    summary.put("furthestStatus", furthestStatus);
+                    summary.put("proposalCount", String.valueOf(prospects.size()));
+                    prospectSummaryList.add(summary);
+                }
+
+                // Sort by prospect name (default)
+                prospectSummaryList.sort(Comparator.comparing(m -> m.getOrDefault("prospectName", "").toLowerCase()));
+                request.setAttribute("prospectSummaryList", prospectSummaryList);
             }
 
         } finally {

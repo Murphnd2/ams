@@ -1,6 +1,7 @@
 package net.superiorstate.ams.data;
 
 import jakarta.persistence.EntityManager;
+import jakarta.persistence.EntityManagerFactory;
 import jakarta.persistence.NoResultException;
 import jakarta.persistence.Query;
 import net.superiorstate.ams.model.Activity25;
@@ -50,6 +51,8 @@ public class AmsDataGlobal {
     private List<Employer> employers;
 
     private List<tEmployee> employees;
+
+    private EntityManagerFactory emf;
     private PSP psp;
     private String webPath;
     private String summitPath;
@@ -70,6 +73,7 @@ public class AmsDataGlobal {
 
     public void initializeGlobalData(EntityManager em){
         System.out.println("[DEBUG] initializeGlobalData called");
+        this.emf = em.getEntityManagerFactory();
         setPsp(EntityLookup.getPspById(em,4L));
         setUsers(RecurringChecklistDAO.getPspUserList(em,getPsp()));
         setBpoUsers(AuthenticateUser.getUsersByRole(em,101));
@@ -86,7 +90,7 @@ public class AmsDataGlobal {
         setActivitiesAllOpen(retrieveActivitiesAllOpen(em));
         setActivitiesWithDelegation(retrieveActivitiesWithDependencies(em));
         setConstants(em);
-        fillEmployeeList(em);
+
 
         //setEmployees(dbTicket.getTicketEmployeeList(em));
          /**/
@@ -98,16 +102,18 @@ public class AmsDataGlobal {
 
         setEmployers(generateEmployerList(em));
 
-        fillEmployeeList(em);
     }
 
     public List<TicketCategory> getTicketCategories() {
         return ticketCategories;
     }
 
+    private volatile boolean employeesLoaded = false;
+
     private void fillEmployeeList(EntityManager em){
-        List<tEmployee> te = TicketQueryDAO.getTicketEmployeeList(em);
+        List<tEmployee> te = TicketQueryDAO.getTicketEmployeeListBulk(em);
         setEmployees(te);
+        employeesLoaded = true;
     }
 
     public List<Activity25p> retrieveActivitiesWithDependencies(EntityManager em){
@@ -390,7 +396,20 @@ public class AmsDataGlobal {
     }
 
     public List<tEmployee> getEmployees() {
+        if (!employeesLoaded && emf != null) {
+            EntityManager em = emf.createEntityManager();
+            try {
+                fillEmployeeList(em);
+                System.out.println("✅ Employee list lazy-loaded (" + employees.size() + " records)");
+            } finally {
+                em.close();
+            }
+        }
         return employees;
+    }
+
+    public boolean isEmployeesLoaded() {
+        return employeesLoaded;
     }
 
     public String getWebPath() {

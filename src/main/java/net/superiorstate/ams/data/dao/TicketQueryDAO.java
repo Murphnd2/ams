@@ -31,7 +31,60 @@ public abstract class TicketQueryDAO {
         }
         return employees;
     }
+    public static List<tEmployee> getTicketEmployeeListBulk(EntityManager em) {
+        String sql = "SELECT e.employee_id, e.first_name, e.last_name, er.employer_name, er.organization_id, " +
+                "e.email, e.hr_email, p.id, p.email AS p_email, p.phone " +
+                "FROM employee e " +
+                "JOIN employer er ON er.organization_id = e.employer_id " +
+                "LEFT JOIN assignee p ON p.employee_id = e.employee_id AND p.DTYPE = 'Person' " +
+                "WHERE e.last_name IS NOT NULL AND e.last_name <> '' " +
+                "ORDER BY e.last_name, e.first_name, er.employer_name";
+        Query q = em.createNativeQuery(sql);
+        List<Object[]> rows = q.getResultList();
+        List<tEmployee> list = new ArrayList<>();
+        for (Object[] row : rows) {
+            tEmployee t = new tEmployee();
+            t.setId(((Number) row[0]).intValue());
+            t.setFirstName((String) row[1]);
+            t.setLastName((String) row[2]);
+            t.setEmployer((String) row[3]);
+            t.setEmployerId(((Number) row[4]).intValue());
 
+            String eeEmail = (String) row[5];
+            String hrEmail = (String) row[6];
+            Number personIdNum = (Number) row[7];
+            String personEmail = (String) row[8];
+            String personPhone = (String) row[9];
+
+            if (personEmail != null && !personEmail.isEmpty()) {
+                t.setEmail(personEmail);
+                t.setHasEmail(true);
+            } else if (hrEmail != null && !hrEmail.isEmpty()) {
+                t.setEmail(hrEmail);
+                t.setHasEmail(true);
+            } else if (eeEmail != null && !eeEmail.isEmpty()) {
+                t.setEmail(eeEmail);
+                t.setHasEmail(true);
+            } else {
+                t.setHasEmail(false);
+            }
+
+            if (personPhone != null && !personPhone.isEmpty()) {
+                t.setPhone(personPhone);
+                t.setHasPhone(true);
+            } else {
+                t.setHasPhone(false);
+            }
+
+            if (personIdNum != null) {
+                t.setIsPerson(true);
+                t.setPersonId(personIdNum.longValue());
+            }
+
+            list.add(t);
+        }
+        return list;
+    }
     public static List<TicketSubCategory> getTicketSubCats(EntityManager em){
         Query q = em.createQuery("SELECT t FROM TicketSubCategory t WHERE t.isActive=true order by t.ticketCategory.shortText , t.description");
         return (List<TicketSubCategory>) q.getResultList();
