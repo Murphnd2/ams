@@ -56,6 +56,17 @@ public class RateTableAction extends HttpServlet {
                     em.getTransaction().commit();
                 }
 
+                case "suppressRate" -> {
+                    long rateId = Long.parseLong(rateIdParam);
+                    Rate rate = EntityLookup.getRateById(em, rateId);
+                    em.getTransaction().begin();
+                    rate.setSuppressed(!rate.isSuppressed());
+                    em.merge(rate);
+                    em.getTransaction().commit();
+                    // Clear selection after suppress so we don't try to show a hidden rate
+                    if (rate.isSuppressed()) rateIdParam = null;
+                }
+
                 case "addRateTableRow" -> {
                     long rateId = Long.parseLong(rateIdParam);
                     long priceItemId = Long.parseLong(request.getParameter("priceItemId"));

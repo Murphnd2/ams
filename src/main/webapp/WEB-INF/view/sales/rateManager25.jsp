@@ -63,11 +63,16 @@
         <div class="col-lg-5">
             <c:if test="${not empty selectedRate}">
                 <h4 class="mb-0" style="font-size: 1.5rem; font-weight: 500;">
-                    <c:if test="${lockedRateIds.contains(selectedRate.getId())}"><i class="bi bi-lock-fill lock-icon me-1"></i></c:if>
-                    ${selectedRate.getDescription()}
+                    <c:if test="${isLocked}"><i class="bi bi-lock-fill me-1" style="font-size: 1rem; opacity: 0.6;"></i></c:if>
+                        ${selectedRate.getDescription()}
                     <c:if test="${!isLocked}">
                         <a href="#" data-bs-toggle="modal" data-bs-target="#editRateModal" style="color: inherit; font-size: 1rem; opacity: 0.6;" title="Edit rate name"><i class="bi bi-pencil"></i></a>
                     </c:if>
+                    <form method="post" action="RateTableAction" class="d-inline ms-2" onsubmit="return confirm('Suppress this rate? It will be hidden from lists but won\'t affect existing proposals.');">
+                        <input type="hidden" name="action" value="suppressRate"/>
+                        <input type="hidden" name="rateId" value="${selectedRate.getId()}"/>
+                        <button type="submit" style="background:none;border:none;color:inherit;font-size:1rem;opacity:0.6;cursor:pointer;" title="Suppress rate"><i class="bi bi-eye-slash"></i></button>
+                    </form>
                 </h4>
             </c:if>
         </div>
