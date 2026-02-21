@@ -33,6 +33,9 @@ public class Agency implements Comparable<Agency> {
     @JoinColumn(name="contact_id")
     private Person primaryContact;
 
+    @OneToOne
+    @JoinColumn(name="manager_id")
+    private Person manager;
     @ManyToMany
     @JoinTable(name="agencyrates",
             joinColumns = @JoinColumn(name="agency_id"),inverseJoinColumns = @JoinColumn(name="rate_id"))
@@ -100,6 +103,14 @@ public class Agency implements Comparable<Agency> {
 
     public void setPrimaryContact(Person primaryContact) {
         this.primaryContact = primaryContact;
+    }
+
+    public Person getManager() {
+        return manager;
+    }
+
+    public void setManager(Person manager) {
+        this.manager = manager;
     }
 
     public List<Rate> getAgencyRateList() {

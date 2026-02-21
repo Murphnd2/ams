@@ -71,6 +71,16 @@ public class PspAgencyHome extends HttpServlet {
                 List<Proposal> proposalList = SalesDAO.getProposalsByAgency(em, agencyId);
                 request.setAttribute("proposalList", proposalList);
 
+                // Load rate table data for all assigned rates (for popover)
+                Map<Long, List<RateTable>> rateTableMap = new LinkedHashMap<>();
+                if (selectedAgency.getAgencyRateList() != null) {
+                    for (Rate rate : selectedAgency.getAgencyRateList()) {
+                        List<RateTable> rtList = SalesDAO.getRateTableList(em, rate.getId());
+                        rateTableMap.put(rate.getId(), rtList);
+                    }
+                }
+                request.setAttribute("rateTableMap", rateTableMap);
+
                 // Build prospect summary list with furthest status
                 // Group proposals by prospect ID
                 Map<Long, List<Proposal>> proposalsByProspect = proposalList.stream()

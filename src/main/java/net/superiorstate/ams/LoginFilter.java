@@ -19,7 +19,7 @@ public class LoginFilter implements Filter {
     private static final Set<String> ALLOWED_ENDPOINTS = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(
             "", "/login", "/LogOut", "/ResetLogin", "/AuthenticateUser", "/OneTimeUserLogin",
             "/NeedsHelp", "/HelpUserLogin", "/InitializeDataBase", "/index.jsp", "/EmployerBillingDetail", "/initialize.jsp", "/GoInitialize25",
-            "/landing-page.jsp", "/ShowFileUpload"
+            "/landing-page.jsp", "/ShowFileUpload", "/AcceptInvite"
     )));
 
     @Override

@@ -19,7 +19,7 @@
     .agency-card.active { border-left: 4px solid #2B5F8A; background-color: #e8eef4; }
     .agent-row { border-bottom: 1px solid #eee; padding: 0.5rem 0; }
     .agent-row:last-child { border-bottom: none; }
-    .rate-check { padding: 0.4rem 0.75rem; border-bottom: 1px solid #eee; }
+    .rate-check { padding: 0.4rem 0.75rem; border-bottom: 1px solid #eee; transition: opacity 0.15s; }
     .rate-check:last-child { border-bottom: none; }
     .detail-label { color: #6c757d; font-size: 0.85rem; margin-bottom: 2px; }
     .empty-state { text-align: center; color: #6c757d; padding: 3rem 1rem; }
@@ -31,6 +31,8 @@
     .accordion-panel { max-height: 300px; overflow-y: auto; }
     .accordion-panel.expanded { max-height: 400px; }
     .los-tag { display: inline-block; background: #e9ecef; color: #495057; font-size: 0.7rem; padding: 1px 5px; border-radius: 3px; margin-right: 2px; }
+    .rate-popover { max-width: 500px; }
+    .rate-popover .popover-body table td, .rate-popover .popover-body table th { padding: 0.15rem 0.4rem; }
   </style>
 </head>
 <body class="bg-light">
@@ -54,10 +56,15 @@
     <div class="col-lg-3">
       <div class="card">
         <div class="card-header d-flex justify-content-between align-items-center" style="background-color: #2B5F8A; color: white;">
-          <span class="fw-bold"><i class="bi bi-building me-1"></i>Agencies</span>
-          <button type="button" class="btn btn-sm btn-outline-light" data-bs-toggle="modal" data-bs-target="#addAgencyModal">
-            <i class="bi bi-plus-lg"></i>
-          </button>
+          <span class="fw-bold"><i class="bi bi-briefcase me-1"></i>Agencies</span>
+          <div>
+            <button type="button" class="btn btn-sm btn-outline-light me-1" data-bs-toggle="modal" data-bs-target="#inviteModal" title="Send Invitation">
+              <i class="bi bi-envelope-plus"></i>
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-light" data-bs-toggle="modal" data-bs-target="#addAgencyModal" title="Create Agency">
+              <i class="bi bi-plus-lg"></i>
+            </button>
+          </div>
         </div>
         <div class="card-body p-0">
           <c:choose>
@@ -77,7 +84,7 @@
             </c:when>
             <c:otherwise>
               <div class="empty-state py-4">
-                <i class="bi bi-building"></i>
+                <i class="bi bi-briefcase"></i>
                 <p class="mb-0">No agencies created yet</p>
               </div>
             </c:otherwise>
@@ -159,6 +166,9 @@
                     <div class="agent-row d-flex justify-content-between align-items-center px-3">
                       <div>
                         <span class="fw-semibold">${agent.getFirstName()} ${agent.getLastName()}</span>
+                        <c:if test="${selectedAgency.getManager() != null && selectedAgency.getManager().getId() == agent.getId()}">
+                          <span class="badge bg-primary ms-1" style="font-size: 0.65rem;">Manager</span>
+                        </c:if>
                         <c:if test="${agent.getEmail() != null}">
                           <br><small class="text-muted">${agent.getEmail()}</small>
                         </c:if>
@@ -209,11 +219,11 @@
           <div class="card-body p-0">
             <c:choose>
               <c:when test="${not empty allRates}">
-                <form method="post" action="AgencyAction">
+                <form method="post" action="AgencyAction" id="rateForm">
                   <input type="hidden" name="action" value="updateRates"/>
                   <input type="hidden" name="agencyId" value="${selectedAgency.getId()}"/>
                   <c:forEach var="rate" items="${allRates}">
-                    <div class="rate-check">
+                    <div class="rate-check" id="rateRow_${rate.getId()}">
                       <div class="form-check">
                         <c:set var="isAssigned" value="false"/>
                         <c:forEach var="agencyRate" items="${selectedAgency.getAgencyRateList()}">
@@ -221,17 +231,19 @@
                             <c:set var="isAssigned" value="true"/>
                           </c:if>
                         </c:forEach>
-                        <input class="form-check-input" type="checkbox" name="rateIds" value="${rate.getId()}"
-                               id="rate_${rate.getId()}" <c:if test="${isAssigned == 'true'}">checked</c:if>>
+                        <input class="form-check-input rate-cb" type="checkbox" name="rateIds" value="${rate.getId()}"
+                               id="rate_${rate.getId()}" data-original="${isAssigned}" onchange="updateRateState()"
+                               <c:if test="${isAssigned == 'true'}">checked</c:if>>
                         <label class="form-check-label" for="rate_${rate.getId()}">
-                          <span class="fw-semibold">${rate.getDescription()}</span>
+                          <span class="fw-semibold rate-hover" data-rate-id="${rate.getId()}" style="cursor: help; border-bottom: 1px dotted #999;">${rate.getDescription()}</span>
                           <br><small class="text-muted">ID: ${rate.getId()}</small>
                         </label>
                       </div>
                     </div>
                   </c:forEach>
                   <div class="p-2">
-                    <button type="submit" class="btn btn-primary btn-sm w-100">
+                    <button type="submit" class="btn btn-sm w-100" id="saveRatesBtn" disabled
+                            style="background: #ccc; color: #666; border: none; transition: all 0.2s;">
                       <i class="bi bi-check-lg me-1"></i>Save Rate Assignments
                     </button>
                   </div>
@@ -303,7 +315,7 @@
         <%-- ======================== Proposals Accordion ======================== --%>
         <div class="card" id="proposalCard" style="display: none;">
           <div class="card-header fw-bold d-flex justify-content-between align-items-center" style="background-color: #5a4a8a; color: white; cursor: pointer;" onclick="toggleProposalPanel()">
-            <span><i class="bi bi-file-earmark-text me-1"></i>Proposals for <span id="selectedProspectName">—</span></span>
+            <span><i class="bi bi-file-earmark-text me-1"></i>Proposals for <span id="selectedProspectName">&#8212;</span></span>
             <div class="d-flex align-items-center gap-2" onclick="event.stopPropagation();">
               <select id="propStatusFilter" class="form-select form-select-sm" style="width: auto; font-size: 0.7rem; padding: 0.1rem 1.4rem 0.1rem 0.3rem;" onchange="filterProposals()">
                 <option value="ALL">All</option>
@@ -376,7 +388,7 @@
   </div><%-- end row --%>
 </div>
 
-<%-- ======================== MODALS ======================== --%>
+<%-- ======================== MODALS (always rendered) ======================== --%>
 
 <%-- Add New Agency Modal --%>
 <div class="modal fade" id="addAgencyModal" tabindex="-1">
@@ -385,7 +397,7 @@
       <form method="post" action="AgencyAction">
         <input type="hidden" name="action" value="createAgency"/>
         <div class="modal-header">
-          <h5 class="modal-title"><i class="bi bi-building me-2"></i>New Agency</h5>
+          <h5 class="modal-title"><i class="bi bi-plus-circle me-2"></i>New Agency</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body">
@@ -411,7 +423,113 @@
   </div>
 </div>
 
-<%-- Edit Agency Modal + Assign Agent Modal (both require selectedAgency) --%>
+<%-- Invite Agency/Agent Modal --%>
+<div class="modal fade" id="inviteModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <form method="post" action="SendInvitation">
+        <div class="modal-header" style="background: var(--ssa); color: white;">
+          <h5 class="modal-title"><i class="bi bi-envelope-plus me-2"></i>Send Invitation</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="row">
+            <%-- Left column: Agency + Role --%>
+            <div class="col-md-6">
+              <h6 class="text-muted mb-2"><i class="bi bi-briefcase me-1"></i>Agency</h6>
+              <div class="mb-2">
+                <div class="form-check form-check-inline">
+                  <input class="form-check-input" type="radio" name="inviteMode" id="modeNew" value="new" checked onchange="toggleInviteMode()">
+                  <label class="form-check-label" for="modeNew">New Agency</label>
+                </div>
+                <div class="form-check form-check-inline">
+                  <input class="form-check-input" type="radio" name="inviteMode" id="modeExisting" value="existing" onchange="toggleInviteMode()">
+                  <label class="form-check-label" for="modeExisting">Existing Agency</label>
+                </div>
+              </div>
+              <div id="newAgencyFields">
+                <div class="mb-2">
+                  <label class="form-label fw-semibold mb-0" style="font-size: 0.85rem;">Agency Name</label>
+                  <input type="text" name="agencyName" id="invAgencyName" class="form-control form-control-sm" required>
+                </div>
+              </div>
+              <div id="existingAgencyFields" style="display: none;">
+                <div class="mb-2">
+                  <label class="form-label fw-semibold mb-0" style="font-size: 0.85rem;">Select Agency</label>
+                  <select name="existingAgencyId" id="invExistingAgency" class="form-select form-select-sm">
+                    <option value="">-- Select --</option>
+                    <c:forEach var="ag" items="${agencyList}">
+                      <option value="${ag.getId()}">${ag.getName()}</option>
+                    </c:forEach>
+                  </select>
+                </div>
+              </div>
+              <hr class="my-2">
+              <h6 class="text-muted mb-2"><i class="bi bi-person-check me-1"></i>Role</h6>
+              <div class="mb-2">
+                <div class="form-check">
+                  <input class="form-check-input" type="radio" name="role" id="roleManager" value="AGENCY_MANAGER" checked>
+                  <label class="form-check-label" for="roleManager">
+                    <strong>Agency Manager</strong>
+                    <br><small class="text-muted">Can create proposals, invite agents, manage agency</small>
+                  </label>
+                </div>
+                <div class="form-check mt-2">
+                  <input class="form-check-input" type="radio" name="role" id="roleAgent" value="AGENT">
+                  <label class="form-check-label" for="roleAgent">
+                    <strong>Agent</strong>
+                    <br><small class="text-muted">Can create proposals for assigned prospects</small>
+                  </label>
+                </div>
+              </div>
+            </div>
+            <%-- Right column: Contact + Rates --%>
+            <div class="col-md-6">
+              <h6 class="text-muted mb-2"><i class="bi bi-person me-1"></i>Contact Info</h6>
+              <div class="row mb-2">
+                <div class="col-6">
+                  <label class="form-label fw-semibold mb-0" style="font-size: 0.85rem;">First Name</label>
+                  <input type="text" name="firstName" class="form-control form-control-sm" required>
+                </div>
+                <div class="col-6">
+                  <label class="form-label fw-semibold mb-0" style="font-size: 0.85rem;">Last Name</label>
+                  <input type="text" name="lastName" class="form-control form-control-sm" required>
+                </div>
+              </div>
+              <div class="mb-2">
+                <label class="form-label fw-semibold mb-0" style="font-size: 0.85rem;">Email</label>
+                <input type="email" name="email" class="form-control form-control-sm" required>
+              </div>
+              <hr class="my-2">
+              <h6 class="text-muted mb-2"><i class="bi bi-tags me-1"></i>Pre-assign Rates</h6>
+              <div style="max-height: 150px; overflow-y: auto;">
+                <c:choose>
+                  <c:when test="${not empty allRates}">
+                    <c:forEach var="rate" items="${allRates}">
+                      <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="rateIds" value="${rate.getId()}" id="invRate_${rate.getId()}">
+                        <label class="form-check-label" for="invRate_${rate.getId()}" style="font-size: 0.85rem;">${rate.getDescription()}</label>
+                      </div>
+                    </c:forEach>
+                  </c:when>
+                  <c:otherwise>
+                    <small class="text-muted">No rates available. <a href="PspAdminHome">Create one first.</a></small>
+                  </c:otherwise>
+                </c:choose>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-ssa"><i class="bi bi-send me-1"></i>Send Invitation</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<%-- Edit Agency Modal + Assign Agent Modal (require selectedAgency) --%>
 <c:if test="${not empty selectedAgency}">
 
   <%-- Edit Agency Modal --%>
@@ -429,7 +547,7 @@
             <div class="row">
               <%-- Left column: Agency info + Primary Contact --%>
               <div class="col-md-6">
-                <h6 class="text-muted mb-2"><i class="bi bi-building me-1"></i>Agency Info</h6>
+                <h6 class="text-muted mb-2"><i class="bi bi-briefcase me-1"></i>Agency Info</h6>
                 <div class="mb-2">
                   <label class="form-label fw-semibold mb-0" style="font-size: 0.85rem;">Agency Name</label>
                   <input type="text" name="agencyName" class="form-control form-control-sm" required value="${selectedAgency.getName()}">
@@ -558,22 +676,128 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-  let selectedProspectId = null;
-  let prospectPanelOpen = true;
-  let proposalPanelOpen = true;
+  // ── Rate Assignment State Tracking ──────────────────────────
 
-  // ── Prospect Panel ──────────────────────────────────────────
+  function updateRateState() {
+    var checkboxes = document.querySelectorAll('.rate-cb');
+    var isDirty = false;
+    checkboxes.forEach(function(cb) {
+      var original = cb.dataset.original === 'true';
+      var row = document.getElementById('rateRow_' + cb.value);
+      if (row) {
+        row.style.opacity = cb.checked ? '1' : '0.4';
+      }
+      if (cb.checked !== original) {
+        isDirty = true;
+      }
+    });
+    var btn = document.getElementById('saveRatesBtn');
+    if (btn) {
+      if (isDirty) {
+        btn.disabled = false;
+        btn.style.background = '#0d6efd';
+        btn.style.color = 'white';
+      } else {
+        btn.disabled = true;
+        btn.style.background = '#ccc';
+        btn.style.color = '#666';
+      }
+    }
+  }
+
+  updateRateState();
+
+  // ── Invite Modal Toggle ──────────────────────────────────
+
+  function toggleInviteMode() {
+    var isNew = document.getElementById('modeNew').checked;
+    document.getElementById('newAgencyFields').style.display = isNew ? '' : 'none';
+    document.getElementById('existingAgencyFields').style.display = isNew ? 'none' : '';
+    var nameInput = document.getElementById('invAgencyName');
+    var selectInput = document.getElementById('invExistingAgency');
+    if (isNew) {
+      nameInput.required = true;
+      selectInput.required = false;
+    } else {
+      nameInput.required = false;
+      selectInput.required = true;
+    }
+  }
+
+  // ── Rate Pricing Popover ──────────────────────────────────
+
+  var rateData = {};
+  <c:if test="${not empty rateTableMap}">
+    <c:forEach var="entry" items="${rateTableMap}">
+      rateData[${entry.key}] = [
+        <c:forEach var="rt" items="${entry.value}" varStatus="s">
+          {mod:"${fn:escapeXml(rt.getModule().getShortText())}", fee:"${fn:escapeXml(rt.getPriceItem().getDescription())}", price:${rt.getPrice()}}<c:if test="${!s.last}">,</c:if>
+        </c:forEach>
+      ];
+    </c:forEach>
+  </c:if>
+
+  function buildRateGrid(rateId) {
+    var rows = rateData[rateId];
+    if (!rows || rows.length === 0) return '<em class="text-muted">No pricing set</em>';
+
+    var modules = [];
+    var moduleSet = {};
+    var feeSet = {};
+    var fees = [];
+    var priceMap = {};
+
+    rows.forEach(function(r) {
+      if (!moduleSet[r.mod]) { moduleSet[r.mod] = true; modules.push(r.mod); }
+      if (!feeSet[r.fee]) { feeSet[r.fee] = true; fees.push(r.fee); }
+      priceMap[r.fee + '|' + r.mod] = r.price;
+    });
+
+    var html = '<table class="table table-sm table-bordered mb-0" style="font-size:0.7rem;min-width:200px;">';
+    html += '<thead><tr><th></th>';
+    modules.forEach(function(m) { html += '<th class="text-center text-nowrap">' + m + '</th>'; });
+    html += '</tr></thead><tbody>';
+    fees.forEach(function(f) {
+      html += '<tr><td class="text-nowrap fw-semibold">' + f + '</td>';
+      modules.forEach(function(m) {
+        var p = priceMap[f + '|' + m];
+        html += '<td class="text-center">' + (p !== undefined ? '$' + p.toFixed(2) : '') + '</td>';
+      });
+      html += '</tr>';
+    });
+    html += '</tbody></table>';
+    return html;
+  }
+
+  document.querySelectorAll('.rate-hover').forEach(function(el) {
+    var rateId = el.dataset.rateId;
+    new bootstrap.Popover(el, {
+      trigger: 'hover',
+      placement: 'left',
+      html: true,
+      sanitize: false,
+      title: 'Pricing',
+      content: function() { return buildRateGrid(rateId); },
+      container: 'body',
+      customClass: 'rate-popover'
+    });
+  });
+
+  // ── Prospect/Proposal Accordion ──────────────────────────
+
+  var selectedProspectId = null;
+  var prospectPanelOpen = true;
+  var proposalPanelOpen = true;
 
   function selectProspect(el) {
-    const prospectId = el.dataset.prospectId;
-    const prospectName = el.dataset.prospectName;
+    var prospectId = el.dataset.prospectId;
+    var prospectName = el.dataset.prospectName;
 
-    // Toggle off if clicking same prospect
     if (selectedProspectId === prospectId) {
       selectedProspectId = null;
-      document.querySelectorAll('.prospect-row').forEach(r => r.classList.remove('active'));
+      document.querySelectorAll('.prospect-row').forEach(function(r) { r.classList.remove('active'); });
       document.getElementById('proposalCard').style.display = 'none';
-      const pp = document.getElementById('prospectPanel');
+      var pp = document.getElementById('prospectPanel');
       pp.style.display = '';
       document.getElementById('prospectChevron').style.transform = '';
       prospectPanelOpen = true;
@@ -582,34 +806,29 @@
 
     selectedProspectId = prospectId;
 
-    // Highlight selected row
-    document.querySelectorAll('.prospect-row').forEach(r => r.classList.remove('active'));
+    document.querySelectorAll('.prospect-row').forEach(function(r) { r.classList.remove('active'); });
     el.classList.add('active');
 
-    // Collapse prospect panel
-    const pp = document.getElementById('prospectPanel');
+    var pp = document.getElementById('prospectPanel');
     pp.style.display = 'none';
     document.getElementById('prospectChevron').style.transform = 'rotate(180deg)';
     prospectPanelOpen = false;
 
-    // Show proposal card and set header
     document.getElementById('proposalCard').style.display = '';
     document.getElementById('selectedProspectName').textContent = prospectName;
     document.getElementById('proposalPanel').style.display = '';
     document.getElementById('proposalChevron').style.transform = '';
     proposalPanelOpen = true;
 
-    // Reset filters
     document.getElementById('propStatusFilter').value = 'ALL';
     document.getElementById('propSortLabel').textContent = 'A-Z';
 
-    // Show matching proposal rows
     filterProposals();
   }
 
   function toggleProspectPanel() {
-    const panel = document.getElementById('prospectPanel');
-    const chevron = document.getElementById('prospectChevron');
+    var panel = document.getElementById('prospectPanel');
+    var chevron = document.getElementById('prospectChevron');
     if (prospectPanelOpen) {
       panel.style.display = 'none';
       chevron.style.transform = 'rotate(180deg)';
@@ -621,8 +840,8 @@
   }
 
   function toggleProposalPanel() {
-    const panel = document.getElementById('proposalPanel');
-    const chevron = document.getElementById('proposalChevron');
+    var panel = document.getElementById('proposalPanel');
+    var chevron = document.getElementById('proposalChevron');
     if (proposalPanelOpen) {
       panel.style.display = 'none';
       chevron.style.transform = 'rotate(180deg)';
@@ -634,11 +853,11 @@
   }
 
   function filterProspects() {
-    const agentId = document.getElementById('agentFilter').value;
-    const rows = document.querySelectorAll('.prospect-row');
-    let visibleCount = 0;
-    rows.forEach(r => {
-      const show = (agentId === 'ALL' || r.dataset.agentId === agentId);
+    var agentId = document.getElementById('agentFilter').value;
+    var rows = document.querySelectorAll('.prospect-row');
+    var visibleCount = 0;
+    rows.forEach(function(r) {
+      var show = (agentId === 'ALL' || r.dataset.agentId === agentId);
       r.style.display = show ? '' : 'none';
       if (show) visibleCount++;
     });
@@ -646,12 +865,12 @@
   }
 
   function toggleProspectSort() {
-    const panel = document.getElementById('prospectPanel');
-    const rows = Array.from(panel.querySelectorAll('.prospect-row'));
-    const label = document.getElementById('prospectSortLabel');
-    const isAZ = label.textContent === 'A-Z';
+    var panel = document.getElementById('prospectPanel');
+    var rows = Array.from(panel.querySelectorAll('.prospect-row'));
+    var label = document.getElementById('prospectSortLabel');
+    var isAZ = label.textContent === 'A-Z';
 
-    rows.sort((a, b) => {
+    rows.sort(function(a, b) {
       if (isAZ) {
         return a.dataset.agentName.localeCompare(b.dataset.agentName);
       } else {
@@ -659,21 +878,19 @@
       }
     });
 
-    rows.forEach(r => panel.appendChild(r));
+    rows.forEach(function(r) { panel.appendChild(r); });
     label.textContent = isAZ ? 'Agent' : 'A-Z';
   }
 
-  // ── Proposal Panel ──────────────────────────────────────────
-
   function filterProposals() {
     if (!selectedProspectId) return;
-    const status = document.getElementById('propStatusFilter').value;
-    const rows = document.querySelectorAll('.proposal-row');
-    let visibleCount = 0;
-    rows.forEach(r => {
-      const matchProspect = r.dataset.prospectId === selectedProspectId;
-      const matchStatus = (status === 'ALL' || r.dataset.status === status);
-      const show = matchProspect && matchStatus;
+    var status = document.getElementById('propStatusFilter').value;
+    var rows = document.querySelectorAll('.proposal-row');
+    var visibleCount = 0;
+    rows.forEach(function(r) {
+      var matchProspect = r.dataset.prospectId === selectedProspectId;
+      var matchStatus = (status === 'ALL' || r.dataset.status === status);
+      var show = matchProspect && matchStatus;
       r.style.display = show ? '' : 'none';
       if (show) visibleCount++;
     });
@@ -681,13 +898,13 @@
   }
 
   function toggleProposalSort() {
-    const tbody = document.querySelector('#proposalTable tbody');
+    var tbody = document.querySelector('#proposalTable tbody');
     if (!tbody) return;
-    const rows = Array.from(tbody.querySelectorAll('.proposal-row'));
-    const label = document.getElementById('propSortLabel');
-    const isAZ = label.textContent === 'A-Z';
+    var rows = Array.from(tbody.querySelectorAll('.proposal-row'));
+    var label = document.getElementById('propSortLabel');
+    var isAZ = label.textContent === 'A-Z';
 
-    rows.sort((a, b) => {
+    rows.sort(function(a, b) {
       if (isAZ) {
         return parseInt(b.dataset.created) - parseInt(a.dataset.created);
       } else {
@@ -695,7 +912,7 @@
       }
     });
 
-    rows.forEach(r => tbody.appendChild(r));
+    rows.forEach(function(r) { tbody.appendChild(r); });
     label.textContent = isAZ ? 'Newest' : 'A-Z';
   }
 </script>
