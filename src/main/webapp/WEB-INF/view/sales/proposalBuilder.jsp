@@ -34,9 +34,18 @@
             <p class="text-muted mb-0">Create a new service proposal for a prospect</p>
         </div>
         <div class="col-auto">
-            <a href="ViewHome25" class="btn btn-outline-secondary btn-sm">
-                <i class="bi bi-arrow-left me-1"></i>Back to Dashboard
-            </a>
+            <c:choose>
+                <c:when test="${sessionScope.isAgent || sessionScope.isAgencyAdmin}">
+                    <a href="AgentHome" class="btn btn-outline-secondary btn-sm">
+                        <i class="bi bi-arrow-left me-1"></i>Back to Pipeline
+                    </a>
+                </c:when>
+                <c:otherwise>
+                    <a href="ViewHome25" class="btn btn-outline-secondary btn-sm">
+                        <i class="bi bi-arrow-left me-1"></i>Back to Dashboard
+                    </a>
+                </c:otherwise>
+            </c:choose>
         </div>
     </div>
 
@@ -95,7 +104,7 @@
                         </div>
                     </c:forEach>
                 </div>
-                <input type="hidden" name="rateId" id="rateId" value="">
+                <input type="hidden" name="rateId" id="rateId" value="${autoSelectedRateId != null ? autoSelectedRateId : ''}">
             </div>
         </div>
 
@@ -283,6 +292,19 @@
     document.addEventListener('DOMContentLoaded', function() {
         if (document.getElementById('prospectId').value) {
             updateSteps();
+        }
+    });
+
+    // Auto-select rate if only one available
+    document.addEventListener('DOMContentLoaded', function() {
+        var autoRateId = '${autoSelectedRateId != null ? autoSelectedRateId : ""}';
+        if (autoRateId) {
+            var rateCards = document.querySelectorAll('.rate-option');
+            rateCards.forEach(function(card) {
+                if (card.getAttribute('onclick').includes(autoRateId)) {
+                    selectRate(card, parseInt(autoRateId));
+                }
+            });
         }
     });
 </script>

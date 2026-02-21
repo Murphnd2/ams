@@ -4,6 +4,7 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.NoResultException;
 import jakarta.persistence.Query;
 import net.superiorstate.ams.model.activity.Activity;
+import net.superiorstate.ams.model.activity.Opportunity;
 import net.superiorstate.ams.model.activity.checklist.CheckList;
 import net.superiorstate.ams.model.activity.checklist.sequences.RequiredTaskList;
 import net.superiorstate.ams.model.activity.checklist.sequences.support.TaskFrequency;
@@ -50,7 +51,7 @@ public abstract class EntityLookup {
 
         Query q = em.createQuery(jpql, Activity.class);
         q.setParameter("id", id);
-
+        System.out.println("*** getActivityById looking for id: " + id);
         try {
             Activity activity = (Activity) q.getSingleResult();
 
@@ -82,6 +83,11 @@ public abstract class EntityLookup {
 
             return activity;
         } catch (NoResultException e) {
+            System.out.println("*** getActivityById NO RESULT for id: " + id);
+            return null;
+        } catch (Exception e) {
+            System.out.println("*** getActivityById EXCEPTION for id: " + id);
+            e.printStackTrace();
             return null;
         }
     }
@@ -321,8 +327,17 @@ public abstract class EntityLookup {
         }
         return l;
     }
-
-
+    public static Opportunity getOpportunityById(EntityManager em, Long id){
+        Query q = em.createQuery("SELECT o FROM Opportunity o WHERE o.id = :id");
+        q.setParameter("id",id);
+        Opportunity o;
+        try{
+            o = (Opportunity) q.getSingleResult();
+        } catch (NoResultException e){
+            return null;
+        }
+        return o;
+    }
 
     public static Person getPersonById(EntityManager em, int id){
         Long lId = intToLong(id);

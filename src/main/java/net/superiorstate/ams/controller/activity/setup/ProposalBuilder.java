@@ -29,16 +29,36 @@ public class ProposalBuilder extends HttpServlet {
         em.clear();
         AmsDataLocal local = (AmsDataLocal) request.getSession().getAttribute("local");
         int pspId = local.getCurrentPerson().getPsp().getId().intValue();
-
+        boolean isAgent = Boolean.TRUE.equals(request.getSession().getAttribute("isAgent"));
+        boolean isAgencyAdmin = Boolean.TRUE.equals(request.getSession().getAttribute("isAgencyAdmin"));
         try {
             // Load agencies for this PSP
             List<Agency> agencyList = SalesDAO.getAgencyList(em, pspId);
             request.setAttribute("agencyList", agencyList);
 
-            // Load all non-suppressed rates for this PSP
-            List<Rate> allRates = SalesDAO.getRateList(em, pspId);
-            allRates.removeIf(Rate::isSuppressed);
+            // Load rates - filter by agency for agent users
+            List<Rate> allRates;
+            if (isAgent || isAgencyAdmin) {
+                Agency agency = findAgencyForUser(em, local.getCurrentPerson());
+                if (agency != null) {
+                    Agency fullAgency = SalesDAO.getAgencyFull(em, agency.getId());
+                    allRates = fullAgency.getAgencyRateList() != null
+                            ? new ArrayList<>(fullAgency.getAgencyRateList())
+                            : new ArrayList<>();
+                    allRates.removeIf(Rate::isSuppressed);
+                } else {
+                    allRates = new ArrayList<>();
+                }
+            } else {
+                allRates = SalesDAO.getRateList(em, pspId);
+                allRates.removeIf(Rate::isSuppressed);
+            }
             request.setAttribute("allRates", allRates);
+
+            // If only one rate, auto-select it
+            if (allRates.size() == 1) {
+                request.setAttribute("autoSelectedRateId", allRates.get(0).getId());
+            }
 
             // Load all LOS for this PSP — filter out suppressed
             List<LOS> losList = em.createNamedQuery("LOS.getByPsp", LOS.class)
@@ -82,10 +102,43 @@ public class ProposalBuilder extends HttpServlet {
             json.append("}");
             request.setAttribute("rateLosMapJson", json.toString());
 
-            // Load existing prospects for this PSP
-            List<Prospect> prospectList = SalesDAO.getProspectsByPsp(em, pspId);
+            // Load prospects - filter by agent/agency for non-PSP users
+            List<Prospect> prospectList;
+
+
+            if (isAgent && !isAgencyAdmin) {
+                // Agent sees only their own prospects
+                prospectList = em.createQuery(
+                                "SELECT p FROM Prospect p WHERE p.contact.psp.id = :pspId AND p.agent.id = :agentId ORDER BY p.name",
+                                Prospect.class)
+                        .setParameter("pspId", (long) pspId)
+                        .setParameter("agentId", local.getCurrentPerson().getId())
+                        .getResultList();
+            } else if (isAgencyAdmin) {
+                // Agency Manager sees all agency prospects
+                Agency agency = findAgencyForUser(em, local.getCurrentPerson());
+                if (agency != null && agency.getAgentList() != null) {
+                    List<Long> agentIds = agency.getAgentList().stream()
+                            .map(Person::getId).collect(java.util.stream.Collectors.toList());
+                    prospectList = em.createQuery(
+                                    "SELECT p FROM Prospect p WHERE p.contact.psp.id = :pspId AND p.agent.id IN :agentIds ORDER BY p.name",
+                                    Prospect.class)
+                            .setParameter("pspId", (long) pspId)
+                            .setParameter("agentIds", agentIds)
+                            .getResultList();
+                } else {
+                    prospectList = new ArrayList<>();
+                }
+            } else {
+                // PSP admin sees all
+                prospectList = SalesDAO.getProspectsByPsp(em, pspId);
+            }
             request.setAttribute("prospectList", prospectList);
-            request.setAttribute("selectedProspect", request.getParameter("selectedProspect"));
+
+// Support both parameter names for pre-selection
+            String selectedProspect = request.getParameter("prospectId");
+            if (selectedProspect == null) selectedProspect = request.getParameter("selectedProspect");
+            request.setAttribute("selectedProspect", selectedProspect);
 
         } finally {
             em.close();
@@ -167,5 +220,20 @@ public class ProposalBuilder extends HttpServlet {
     private EntityManager getEntityManager(HttpServletRequest request) {
         EntityManagerFactory emf = (EntityManagerFactory) request.getServletContext().getAttribute("emf");
         return emf.createEntityManager();
+    }
+    private Agency findAgencyForUser(EntityManager em, Person person) {
+        try {
+            return em.createQuery("SELECT a FROM Agency a WHERE a.manager.id = :pid", Agency.class)
+                    .setParameter("pid", person.getId())
+                    .getSingleResult();
+        } catch (Exception e) {
+            try {
+                return em.createQuery("SELECT a FROM Agency a JOIN a.agentList al WHERE al.id = :pid", Agency.class)
+                        .setParameter("pid", person.getId())
+                        .getSingleResult();
+            } catch (Exception e2) {
+                return null;
+            }
+        }
     }
 }

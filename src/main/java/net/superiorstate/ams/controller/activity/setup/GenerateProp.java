@@ -65,7 +65,7 @@ public class GenerateProp extends HttpServlet {
         Setup setup = createSetup(request,em,prospect,application,checkList);
         fillToDoList(em,setup);
 
-        ActivityViewHelper.setActivityView(request,em,setup);
+        ActivityViewHelper.setActivityView(request,em,setup.getId());
 
         em.close();
 

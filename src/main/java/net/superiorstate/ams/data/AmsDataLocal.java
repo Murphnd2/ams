@@ -38,7 +38,7 @@ import java.util.*;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-
+import net.superiorstate.ams.model.activity.Opportunity;
 public class AmsDataLocal implements AutoCloseable {
     private final EntityManager em;
     private boolean userIsIn;
@@ -1255,6 +1255,13 @@ public class AmsDataLocal implements AutoCloseable {
                         q = em.createQuery("SELECT t FROM Ticket t WHERE t.primaryContact.email = :email or t.contact.email = :email1 order by t.id desc");
                         q.setParameter("email", t.getPrimaryContact().getEmail());
                         q.setParameter("email1",t.getContact().getEmail());
+                        break;
+                    case "Opportunity":
+                        Opportunity opp = (Opportunity) a;
+                        if(opp.getProspect() == null) return pastActivities;
+                        q = em.createQuery("SELECT o FROM Opportunity o WHERE o.prospect.id = :pId AND o.id <> :oId ORDER BY o.id DESC");
+                        q.setParameter("pId", opp.getProspect().getId());
+                        q.setParameter("oId", opp.getId());
                         break;
                     default:
                         return pastActivities;

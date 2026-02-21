@@ -5,12 +5,14 @@ import jakarta.persistence.NoResultException;
 import jakarta.persistence.Query;
 import jakarta.servlet.http.HttpServletRequest;
 import net.superiorstate.ams.data.dao.ChecklistDAO;
+import net.superiorstate.ams.data.dao.SalesDAO;
 import net.superiorstate.ams.data.resolver.EntityFactory;
 import net.superiorstate.ams.data.dao.ActivityDAO;
 import net.superiorstate.ams.data.dao.RenewalQueryDAO;
 import net.superiorstate.ams.data.dao.TicketQueryDAO;
 import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.model.activity.Activity;
+import net.superiorstate.ams.model.activity.Opportunity;
 import net.superiorstate.ams.model.activity.checklist.CheckList;
 import net.superiorstate.ams.model.activity.checklist.sequences.support.TemplatePurpose;
 import net.superiorstate.ams.model.activity.checklist.tasks.Task;
@@ -22,6 +24,7 @@ import net.superiorstate.ams.model.general.Person;
 import net.superiorstate.ams.model.general.User;
 import net.superiorstate.ams.model.general.UserRole;
 import net.superiorstate.ams.model.general.WebLink;
+import net.superiorstate.ams.model.sales.agency.Proposal;
 import net.superiorstate.ams.model.sales.application.ApplicationModule;
 import net.superiorstate.ams.model.summit.archive.Benefit;
 import net.superiorstate.ams.model.summit.archive.Employee;
@@ -84,7 +87,7 @@ public abstract class ActivityViewHelper {
     }
 
     public static List<Activity> getPastActivities(HttpServletRequest request, EntityManager em, Activity a){
-        if(!a.getClass().getSimpleName().equals("Renewal") && !a.getClass().getSimpleName().equals("Ticket"))
+        if(!a.getClass().getSimpleName().equals("Renewal") && !a.getClass().getSimpleName().equals("Ticket") && !a.getClass().getSimpleName().equals("Opportunity"))
             return new ArrayList<>();
         List<Activity> pastActivities;
         if(a.getClass().getSimpleName().equals("Renewal")){
@@ -94,63 +97,47 @@ public abstract class ActivityViewHelper {
             try{
                 pastActivities = (List<Activity>) q.getResultList();
             } catch (NoResultException e){
-                pastActivities = new ArrayList<>();
+                return new ArrayList<>();
             }
-        } else {
-            Ticket t = (Ticket) a;
-            long cId;
-            if(t.getPrimaryContact()==null)
-                cId = t.getContact().getId();
-            else
-                cId = t.getPrimaryContact().getId();
-            Query q = em.createQuery("SELECT t FROM Ticket t WHERE t.primaryContact.id = :id OR t.contact.id = :id order by t.id desc ");
-            q.setParameter("id",cId);
+            return pastActivities;
+        } else if(a.getClass().getSimpleName().equals("Opportunity")){
+            Opportunity opp = (Opportunity) a;
+            if(opp.getProspect() == null) return new ArrayList<>();
+            Query q = em.createQuery("SELECT o FROM Opportunity o WHERE o.prospect.id = :pId AND o.id <> :oId ORDER BY o.id DESC");
+            q.setParameter("pId", opp.getProspect().getId());
+            q.setParameter("oId", opp.getId());
             try{
                 pastActivities = (List<Activity>) q.getResultList();
             } catch (NoResultException e){
-                pastActivities = new ArrayList<>();
+                return new ArrayList<>();
+            }
+            return pastActivities;
+        } else {
+            Ticket t = (Ticket) a;
+            Long cId;
+            if (t.getPrimaryContact() == null && t.getContact() == null)
+                cId = null;
+            else if (t.getPrimaryContact() != null)
+                cId = t.getPrimaryContact().getId();
+            else
+                cId = t.getContact().getId();
+            if (cId != null) {
+                Query q = em.createQuery("SELECT t FROM Ticket t WHERE (t.primaryContact is not null AND t.primaryContact.id = :id) OR (t.contact.id is not null AND t.contact.id = :id) order by t.id desc");
+                q.setParameter("id", cId);
+                try {
+                    pastActivities = (List<Activity>) q.getResultList();
+                } catch (NoResultException e) {
+                    return new ArrayList<>();
+                }
+                return pastActivities;
+            } else {
+                return new ArrayList<>();
             }
         }
-        return pastActivities;
-
-    }
-    public static void setActivityView(HttpServletRequest request, EntityManager em, Activity a){
-        //vA.changeActivityView(request,em);
-        setActivityViewOld(request,em,a);
-        request.getSession().setAttribute("pspUserList",getPspUsers(em));
-        request.getSession().setAttribute("bpoUserList",getBpoUsers(em));
     }
 
-    private static List<Person> getBpoUsers(EntityManager em){
-        return getUsersByRole(em,101);
-    }
-
-    private static List<Person> getUsersByRole(EntityManager em, int roleId){
-        Query q = em.createQuery("SELECT ur FROM UserRole ur WHERE ur.id = :id");
-        q.setParameter("id",roleId);
-        UserRole ur = (UserRole) q.getSingleResult();
-        List<User> users = ur.getUserList();
-        List<Person> personList = new ArrayList<>();
-        if(users==null || users.size()==0)
-            return personList;
-        for(User u:users){
-            if(!personList.contains(u.getPerson()))
-                personList.add(u.getPerson());
-        }
-        Collections.sort(personList);
-        return personList;    }
-    private static List<Person> getPspUsers(EntityManager em){
-        return getUsersByRole(em,1);
-    }
-
-    private static void setActivityViewOld(HttpServletRequest request, EntityManager em, Activity a){
-        Long id = a.getId();
+    public static void setActivityView(HttpServletRequest request, EntityManager em, Long id){
         Activity selectedActivity = EntityLookup.getActivityById(em,id);
-        assert selectedActivity != null;
-        Person primaryContact = ActivityDAO.getPrimaryContact(em,selectedActivity);
-        request.getSession().setAttribute("currentPrimaryContact",primaryContact);
-        request.getSession().setAttribute("otherContactList",selectedActivity.getAssigneeContactList());
-        request.getSession().setAttribute("activityWebLinkList",selectedActivity.getWebLinkList());
         request.getSession().setAttribute("currentActivityId",id);
         request.getSession().setAttribute("currentActivity",selectedActivity);
         request.getSession().setAttribute("pastActivities",getPastActivities(request,em,selectedActivity));
@@ -196,6 +183,18 @@ public abstract class ActivityViewHelper {
                     request.getSession().setAttribute("currentErId",e.getEmployer().getId());
                     request.getSession().setAttribute("currentErAltId",e.getEmployer().getErKey());
                     request.getSession().setAttribute("currentEmployer3",e.getEmployer().getEmployerName());
+                }
+                break;
+            case "Opportunity":
+                request.getSession().setAttribute("adminView", 4);
+                Opportunity opp = EntityLookup.getOpportunityById(em, id);
+                request.getSession().setAttribute("currentOpportunity", opp);
+                request.getSession().setAttribute("currentRenewal", new Renewal());
+                request.getSession().setAttribute("currentSetup", new Setup());
+                request.getSession().setAttribute("currentTicket", new Ticket());
+                if (opp != null && opp.getProspect() != null) {
+                    List<Proposal> proposals = SalesDAO.getProposalListFull(em, opp.getProspect());
+                    request.setAttribute("opportunityProposals", proposals);
                 }
                 break;
             default:
@@ -264,6 +263,14 @@ public abstract class ActivityViewHelper {
                 t.setCheckList(c);
                 em.persist(t);
                 em.getTransaction().commit();
+                break;
+            case "Opportunity":
+                em.getTransaction().begin();
+                Opportunity o = (Opportunity) EntityLookup.getActivityById(em, c.getAssignedTo().getId());
+                o.setCheckList(c);
+                em.persist(o);
+                em.getTransaction().commit();
+                break;
             default:
                 break;
         }
@@ -341,6 +348,9 @@ public abstract class ActivityViewHelper {
                 break;
             case "Ticket":
                 setTicketData(request,em);
+                break;
+            case "Opportunity":
+                setOpportunityData(request,em);
                 break;
         }
     }
@@ -434,6 +444,16 @@ public abstract class ActivityViewHelper {
         request.getSession().setAttribute("benefitsNotInRenewal",benefitsNotInRenewal);
     }
 
+    private static void setOpportunityData(HttpServletRequest request, EntityManager em){
+        Opportunity opp = (Opportunity) getCurrentActivity();
+        request.getSession().setAttribute("adminView", 4);
+        request.getSession().setAttribute("currentOpportunity", opp);
+        if (opp != null && opp.getProspect() != null) {
+            List<Proposal> proposals = SalesDAO.getProposalListFull(em, opp.getProspect());
+            request.setAttribute("opportunityProposals", proposals);
+        }
+    }
+
     private static void updateSessionAttributes(HttpServletRequest request,EntityManager em){
         if(getPrimaryContact()!=null)
             request.getSession().setAttribute("currentPrimaryContact",primaryContact);
@@ -499,6 +519,17 @@ public abstract class ActivityViewHelper {
                     pastActivities = null;
                 }
             } else {
+                pastActivities = null;
+            }
+        } else if(getClassType().equals("Opportunity")) {
+            Opportunity opp = (Opportunity) getCurrentActivity();
+            if(opp.getProspect() == null) return null;
+            q = em.createQuery("SELECT o FROM Opportunity o WHERE o.prospect.id = :pId AND o.id <> :oId ORDER BY o.id DESC");
+            q.setParameter("pId", opp.getProspect().getId());
+            q.setParameter("oId", opp.getId());
+            try {
+                pastActivities = (List<Activity>) q.getResultList();
+            } catch (NoResultException e) {
                 pastActivities = null;
             }
         } else

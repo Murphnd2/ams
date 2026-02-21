@@ -37,6 +37,14 @@
             <i class="bi bi-send-fill"></i> Email
           </a>
         </c:if>
+        <c:if test="${sessionScope.isAgent || sessionScope.isAgencyAdmin}">
+          <a class="btn btn-outline-primary" href="AgentHome">
+            <i class="bi bi-kanban"></i> Pipeline
+          </a>
+          <a class="btn btn-outline-secondary" href="ProposalBuilder">
+            <i class="bi bi-file-earmark-plus"></i> New Proposal
+          </a>
+        </c:if>
         <c:choose>
           <c:when test="${sessionScope.uninitialized!=1}">
             <a href="GoInitialize25" class="btn btn-outline-secondary">

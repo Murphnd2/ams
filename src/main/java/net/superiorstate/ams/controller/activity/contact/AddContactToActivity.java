@@ -79,7 +79,7 @@ public class AddContactToActivity extends HttpServlet {
         }
         if(p!=null && p.getEmail()!=null && EmailDAO.isValidEmail(p.getEmail()) && makePrimary)
             makeContactPrimary(em,p,a);
-        ActivityViewHelper.setActivityView(request,em,a);
+        ActivityViewHelper.setActivityView(request,em,a.getId());
         em.close();
     }
 

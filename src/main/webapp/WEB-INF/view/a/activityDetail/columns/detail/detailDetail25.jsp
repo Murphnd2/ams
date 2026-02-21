@@ -12,6 +12,9 @@
       <c:when test="${sessionScope.local.getCurrentActivity().getActivity().getClass().getSimpleName().equals(\"CheckList\")}">
 
       </c:when>
+      <c:when test="${sessionScope.local.getCurrentActivity().getActivity().getClass().getSimpleName().equals(\"Opportunity\")}">
+        <c:import url="/WEB-INF/view/a/activityDetail/columns/detail/detailOpportunity25.jsp"></c:import>
+      </c:when>
       <c:otherwise>
         <c:import url="/WEB-INF/view/a/activityDetail/columns/detail/detailTicket25.jsp"></c:import>
       </c:otherwise>

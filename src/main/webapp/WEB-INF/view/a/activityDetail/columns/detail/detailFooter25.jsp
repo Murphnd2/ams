@@ -21,11 +21,13 @@
         </div>
       </c:if>
 
-      <div class="col m-0 ms-1 p-0">
-        <button type="button" class="btn btn-sm btn-outline-primary w-100" data-bs-toggle="modal" data-bs-target="#ownershipModal">
-          <i class="bi bi-key"></i> Owner
-        </button>
-      </div>
+      <c:if test="${sessionScope.isPspUser || sessionScope.isPspAdmin}">
+        <div class="col m-0 ms-1 p-0">
+          <button type="button" class="btn btn-sm btn-outline-primary w-100" data-bs-toggle="modal" data-bs-target="#ownershipModal">
+            <i class="bi bi-key"></i> Owner
+          </button>
+        </div>
+      </c:if>
     </c:when>
 
     <c:otherwise>
@@ -47,11 +49,13 @@
         </button>
       </div>
 
-      <div class="col-auto m-0 ms-1 p-0">
-        <button type="button" class="btn btn-sm btn-outline-primary w-100" data-bs-toggle="modal" data-bs-target="#ownershipModal">
-          <i class="bi bi-key"></i> Owner
-        </button>
-      </div>
+      <c:if test="${sessionScope.isPspUser || sessionScope.isPspAdmin}">
+        <div class="col m-0 ms-1 p-0">
+          <button type="button" class="btn btn-sm btn-outline-primary w-100" data-bs-toggle="modal" data-bs-target="#ownershipModal">
+            <i class="bi bi-key"></i> Owner
+          </button>
+        </div>
+      </c:if>
     </c:otherwise>
   </c:choose>
 </div>

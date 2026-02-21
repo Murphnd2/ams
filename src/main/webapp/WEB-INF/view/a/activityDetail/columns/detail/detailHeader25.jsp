@@ -17,10 +17,14 @@
   <c:set var="aIcon" value="check"></c:set>
   <c:set var="bColor" value="bg-dark"></c:set>
 </c:if><%----%>
+<c:if test="${cName.equals(\"Opportunity\")}">
+  <c:set var="aColor" value="primary"></c:set>
+  <c:set var="aIcon" value="bullseye"></c:set>
+</c:if>
 <div class="p-2 pt-0 border border-${aColor} ${bColor} rounded w-100 mt-2 mb-2 fw-bold fs-3 align-items-center text-center position-relative">
   <div class="row m-0 p-0 align-items-center align-middle ">
     <div class="col-auto m-0 p-0">
-      <a class="btn btn-${aColor} btn-sm btn-sm pe-auto position-absolute start-0 top-50 translate-middle" href="ViewHome25">
+      <a class="btn btn-${aColor} btn-sm btn-sm pe-auto position-absolute start-0 top-50 translate-middle" href="${sessionScope.isAgent || sessionScope.isAgencyAdmin ? 'AgentHome' : 'ViewHome25'}">
         <i class="bi bi-arrow-return-left"></i>
       </a>
     </div>

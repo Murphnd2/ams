@@ -48,8 +48,14 @@ public class AuthenticateUser extends HttpServlet {
     }
 
     private void goToPage(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-        RequestDispatcher dispatcher = getServletContext().getNamedDispatcher("ViewHome25");
-        dispatcher.forward(request,response);
+        boolean isAgent = (boolean) request.getSession().getAttribute("isAgent");
+        boolean isAgencyAdmin = (boolean) request.getSession().getAttribute("isAgencyAdmin");
+        if (isAgent || isAgencyAdmin) {
+            response.sendRedirect("AgentHome");
+        } else {
+            RequestDispatcher dispatcher = getServletContext().getNamedDispatcher("ViewHome25");
+            dispatcher.forward(request, response);
+        }
     }
 
     private boolean validatedLogin(HttpServletRequest request) throws NoSuchAlgorithmException {
