@@ -12,18 +12,32 @@ Tracks which migration scripts have been applied to each environment.
 
 ## Migration Log
 
-| Script | Description | Local | Production | Notes |
-|--------|-------------|-------|------------|-------|
-| `sales_pipeline_migration.sql` | Session 1 — new tables, column adds, renames | ✅ 2026-02-19 | ❌ NOT RUN | Run BEFORE deploying sales pipeline code. |
-| `sales_pipeline_migration_2.sql` | Session 2 — Proposal source_activity_id column | ✅ 2026-02-19 | ❌ NOT RUN | Optional nullable FK. Run before deploying SendProposal. |
-| `sales_pipeline_migration_3.sql` | Session 3 — Application form, IRS limits, benefit/billing types | ✅ 2026-02-20 | ❌ NOT RUN | Largest migration. Includes LOS expansion, 20 sections, ~95 fields, IRS limits, benefit/billing type tables. **Must fill in S3 constants on production.** |
-| `service_manager_production_migration.sql` | Service Manager — Enhancement table, join tables, SM FKs, LOS columns, seed data | ✅ 2026-02-20 | ❌ NOT RUN | Combined script. Includes enhancement seed data and LOS sort_order backfill. |
-| `invitation_system_migration.sql` | Invitation system — invitation table, agency.manager_id, UserRole seed | ✅ 2026-02-21 | ❌ NOT RUN | Run BEFORE deploying invitation code. Includes standard UserRole seed (INSERT IGNORE). |
+Run scripts in the order listed. Some depend on prior ones.
+
+| # | Script | Description | Local | Production | Notes |
+|---|--------|-------------|-------|------------|-------|
+| 1 | `sales_pipeline_migration.sql` | New tables (feature, ratediscount, marketingmaterial, applicationfield/value), column adds to proposal + application, entity renames | ✅ 2026-02-19 | ❌ NOT RUN | Run BEFORE deploying sales pipeline code. |
+| 2 | `sales_pipeline_migration_2.sql` | Proposal `source_activity_id` nullable FK | ✅ 2026-02-19 | ❌ NOT RUN | Run before deploying SendProposal. |
+| 3 | `sales_pipeline_migration_3.sql` | LOS expansion (IDs 11–19), applicationsection + applicationsectionlos, ~95 applicationfield seeds, irslimit, billingtype, benefittype, constant inserts for S3 | ✅ 2026-02-20 | ❌ NOT RUN | Largest migration. **Must fill in S3 constants on production.** |
+| 4 | `service_manager_production_migration.sql` | Enhancement table, join tables, servicemodule FKs, LOS columns (sort_order, suppressed), seed data | ✅ 2026-02-20 | ❌ NOT RUN | Includes enhancement seed data and LOS sort_order backfill. |
+| 5 | `invitation_system_migration.sql` | Invitation table, agency.manager_id FK, UserRole seed (INSERT IGNORE) | ✅ 2026-02-21 | ❌ NOT RUN | Run BEFORE deploying invitation code. |
+| 6 | `resource_library_production_migration.sql` | ResourceCategory table, marketingmaterial.category_id FK, widen storage_guid to VARCHAR(50), feature.material_id FK | ✅ 2026-02-21 | ❌ NOT RUN | Prereq: script 1 (creates feature and marketingmaterial tables). |
+| 7 | `opportunity_migration_production.sql` | Assignee columns for Opportunity (prospect_id, agency_id_opp, opportunity_stage, etc.), sales TemplateGroup/TemplatePurpose/Task seed data | ✅ 2026-02-21 | ❌ NOT RUN | Do NOT add DEFAULT to opportunity_stage. Prereq: scripts 1–3. |
+
+## Chatbot Migration (Standalone)
+
+Not a numbered script file — these are individual SQL statements. Run on production before deploying chatbot code.
+
+```sql
+ALTER TABLE note ADD COLUMN is_resolution TINYINT(1) NOT NULL DEFAULT 0;
+INSERT INTO constant (name, value, note) VALUES ('ANTHROPIC_API_KEY', '<key>', 'Claude API key for chatbot');
+-- Ticket category updates: see chatbot_session_summary.md for full SQL
+```
 
 ## How to Use
 
 1. Before deploying code changes to production, check this file for any pending migrations
-2. Run scripts in the order listed (1 → 2 → 3 → service_manager → invitation_system)
+2. Run scripts in the order listed (1 → 2 → 3 → 4 → 5 → 6 → 7)
 3. Update the Production column with date after running
 4. Commit this file back to GitHub
 

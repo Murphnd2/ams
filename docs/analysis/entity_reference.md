@@ -1,13 +1,13 @@
 # Entity Reference — SSA Web Application
 
-> **Generated:** February 2026
+> **Last Updated:** February 21, 2026
 > **Package root:** `net.superiorstate.ams.model`
 > **Persistence:** EclipseLink JPA, `ssaPU`, MySQL `beta_ssa`
 > **Inheritance strategy:** `SINGLE_TABLE` (rooted at `Assignee`)
 
 ## Business Context
 
-Superior State Administers (SSA) is a benefits administration company that uses **DataPath Inc.'s Summit** as its primary cloud-based administration system. Summit is the day-to-day platform for administering FSA, HRA, ICHRA, Transit, and COBRA services for SSA's clients.
+Superior State Administrators (SSA) is a benefits administration company that uses **DataPath Inc.'s Summit** as its primary cloud-based administration system. Summit is the day-to-day platform for administering FSA, HRA, ICHRA, Transit, and COBRA services for SSA's clients.
 
 **This web application (beta_ssa) bridges** the data SSA encounters across its operations with the source-of-truth data held in Summit for active clients. Key data flows:
 
@@ -23,7 +23,7 @@ Superior State Administers (SSA) is a benefits administration company that uses 
 
 3. **Legacy Summit entities (`s`-prefix):** The entities in `model/summit/imports/` with `s` prefixes (`sEmployer`, `sEmployee`, `sBenefit`, `sBenefitYear`, `sEnrollment`) are **legacy and largely replaced** by the `Import*` entities in `model/summit/imports/order/`. However, some billing entities (`BillingLink`, `Enrollment`) still hold FK references to the `s`-prefix entities, so they can't be deleted without a migration.
 
-4. **Sales entities are underdeveloped:** Entities in `model/sales/` (Agency, Prospect, Proposal, Rate, Application, etc.) were created for the sales side of the business but have seen little active development and are seldom referenced in servlets or DAOs.
+4. **Sales entities are fully built out:** The `model/sales/` package contains entities for Agency, Prospect, Proposal, Application, Rate, LOS, ServiceModule, Enhancement, Feature, MarketingMaterial, ResourceCategory, and Invitation — supporting the complete sales pipeline from proposal creation through application approval and setup creation.
 
 ---
 
@@ -35,21 +35,22 @@ Superior State Administers (SSA) is a benefits administration company that uses 
 4. [model/activity/note — Notes & Email](#modelactivitynote--notes--email)
 5. [model/activity/renewal — Renewals](#modelactivityrenewal--renewals)
 6. [model/activity/ticket — Tickets & Setup](#modelactivityticket--tickets--setup)
-7. [model/activity/checklist — Checklists & Tasks](#modelactivitychecklist--checklists--tasks)
-8. [model/activity/checklist/sequences — Task Sequences](#modelactivitychecklistsequences--task-sequences)
-9. [model/activity/checklist/sequences/support — Sequence Support](#modelactivitychecklistsequencessupport--sequence-support)
-10. [model/billing — Monthly Billing](#modelbilling--monthly-billing)
-11. [model/sales/agency — Agencies & Proposals](#modelsalesagency--agencies--proposals)
-12. [model/sales/offering — Service Catalog](#modelsalesoffering--service-catalog)
-13. [model/sales/application — Applications](#modelsalesapplication--applications)
-14. [model/summit/archive — Employer/Employee Archive](#modelsummitarchive--employeremployee-archive)
-15. [model/summit/imports — Summit Import (Live)](#modelsummitimports--summit-import-live)
-16. [model/summit/imports/order — Import Staging Tables](#modelsummitimportsorder--import-staging-tables)
-17. [model/summit/temp — Temp/Transactional](#modelsummittemp--temptransactional)
-18. [model (root) — View-Backed DTOs & Constants](#model-root--view-backed-dtos--constants)
-19. [Non-Entity Support Classes](#non-entity-support-classes)
-20. [Join Tables (No Entity Class)](#join-tables-no-entity-class)
-21. [Entity Relationship Diagram](#entity-relationship-diagram)
+7. [model/activity — Opportunity](#modelactivity--opportunity)
+8. [model/activity/checklist — Checklists & Tasks](#modelactivitychecklist--checklists--tasks)
+9. [model/activity/checklist/sequences — Task Sequences](#modelactivitychecklistsequences--task-sequences)
+10. [model/activity/checklist/sequences/support — Sequence Support](#modelactivitychecklistsequencessupport--sequence-support)
+11. [model/billing — Monthly Billing](#modelbilling--monthly-billing)
+12. [model/sales/agency — Agencies, Prospects & Invitations](#modelsalesagency--agencies-prospects--invitations)
+13. [model/sales/offering — Service Catalog](#modelsalesoffering--service-catalog)
+14. [model/sales/application — Applications](#modelsalesapplication--applications)
+15. [model/summit/archive — Employer/Employee Archive](#modelsummitarchive--employeremployee-archive)
+16. [model/summit/imports — Summit Import (Live)](#modelsummitimports--summit-import-live)
+17. [model/summit/imports/order — Import Staging Tables](#modelsummitimportsorder--import-staging-tables)
+18. [model/summit/temp — Temp/Transactional](#modelsummittemp--temptransactional)
+19. [model (root) — View-Backed DTOs & Constants](#model-root--view-backed-dtos--constants)
+20. [Non-Entity Support Classes](#non-entity-support-classes)
+21. [Join Tables (No Entity Class)](#join-tables-no-entity-class)
+22. [Entity Relationship Diagram](#entity-relationship-diagram)
 
 ---
 
@@ -66,7 +67,8 @@ Assignee (abstract, @Entity, SINGLE_TABLE)
     ├── CheckList
     ├── Renewal
     ├── Ticket
-    └── Setup
+    ├── Setup
+    └── Opportunity
 
 TaskSequence (abstract, @Entity, SINGLE_TABLE)
 ├── RequiredTaskList
@@ -127,7 +129,7 @@ All `Assignee` subtypes share the same database table with a discriminator colum
 |---|---|
 | **Class** | `UserRole` |
 | **Key Fields** | `id`, `description` |
-| **Notes** | Lookup table for role assignments (PSP Admin, Agent, etc.) |
+| **Values** | 1=PSP User, 2=Agent, 3=Client, 4=Applicant, 5=PSP Admin, 6=Pending Agent, 7=Anonymous, 8=Agency Admin, 9=PSP Super User |
 
 ### Address
 | | |
@@ -190,8 +192,9 @@ All `Assignee` subtypes share the same database table with a discriminator colum
 |---|---|
 | **Class** | `Note` |
 | **ID** | `id` (Long) |
-| **Key Fields** | `detail` (text), `dateGenerated` |
+| **Key Fields** | `detail` (text), `dateGenerated`, `isResolution` (boolean, default false) |
 | **Relationships** | `activity` → M:1 Activity, `createdBy` → M:1 Person, `reasonCreated` → M:1 ReasonCreated, `status` → M:1 ActivityStatus |
+| **Notes** | `isResolution` flag used by AI chatbot to identify resolution notes for ticket knowledge base. |
 
 ### Email
 | | |
@@ -253,14 +256,14 @@ All `Assignee` subtypes share the same database table with a discriminator colum
 |---|---|
 | **Class** | `Setup extends Activity` |
 | **Relationships** | `application` → 1:1 Application, `checkList` → 1:1 CheckList, `contactList` → M:N Person, `primaryContactSetup` → M:1 Person |
-| **Notes** | Represents new client setup activities. |
+| **Notes** | Represents new client setup activities. Created on application approval or manually via GenerateProp25. |
 
 ### TicketCategory
 | | |
 |---|---|
 | **Class** | `TicketCategory` |
 | **Key Fields** | `id` (Long), `description`, `shortCode` |
-| **Notes** | Top-level categories: HOW, WHY, GET, LAW, etc. |
+| **Notes** | Service-oriented categories: Claims, Debit Card, COBRA, HSA, etc. (Updated Feb 2026 from intent-based HOW/WHY/NEED categories.) |
 
 ### TicketSubCategory
 | | |
@@ -284,6 +287,20 @@ All `Assignee` subtypes share the same database table with a discriminator colum
 
 ---
 
+## model/activity — Opportunity
+
+### Opportunity
+| | |
+|---|---|
+| **Class** | `Opportunity extends Activity` |
+| **DTYPE** | `Opportunity` |
+| **Key Fields** | `stage` (varchar 30, column `opportunity_stage`), `estimatedEmployees` (int), `estimatedValue` (double), `expectedCloseDate` (Date) |
+| **Relationships** | `prospect` → M:1 Prospect (`prospect_id`), `agency` → M:1 Agency (`agency_id_opp`), `checkList` → 1:1 CheckList (`checklist_id`) |
+| **Stages** | NEW, CONTACTED, QUALIFIED, PROPOSAL_SENT, NEGOTIATION, ON_HOLD, WON, LOST |
+| **Notes** | Sales pipeline tracking for agents. WON/LOST auto-set `isComplete=true`. Uses same `assignee` table columns via SINGLE_TABLE inheritance. Column `agency_id_opp` avoids conflict with any existing `agency_id` usage. No DEFAULT on `opportunity_stage` column — default set in Java only. |
+
+---
+
 ## model/activity/checklist — Checklists & Tasks
 
 ### CheckList
@@ -291,7 +308,7 @@ All `Assignee` subtypes share the same database table with a discriminator colum
 |---|---|
 | **Class** | `CheckList extends Activity` |
 | **Relationships** | `toDoList` → 1:M ToDo, `recurringTaskList` → M:1 RecurringTaskList (`recurring_list_id`), `setup` → 1:1 Setup (mapped by `checkList`), `renewal` → 1:1 Renewal (mapped by `checkList`), `ticket` → 1:1 Ticket (mapped by `checkList`) |
-| **Notes** | Every Activity type (Ticket, Renewal, Setup) gets an associated CheckList. |
+| **Notes** | Every Activity type (Ticket, Renewal, Setup, Opportunity) gets an associated CheckList. |
 
 ### CheckListOut
 | | |
@@ -319,9 +336,9 @@ All `Assignee` subtypes share the same database table with a discriminator colum
 | | |
 |---|---|
 | **Class** | `Task` |
-| **Key Fields** | `id` (Long), `description` |
-| **Relationships** | `webLinkList` → M:N WebLink |
-| **Notes** | Reusable task definitions. Task 153 = default auto-complete task. |
+| **Key Fields** | `id` (Long), `description`, `isReUsable`, `isSourced`, `allowNonOwner` |
+| **Relationships** | `webLinkList` → M:N WebLink, `sourceOwner` → M:1 Person |
+| **Notes** | Reusable task definitions. Task 153 = default auto-complete task (dummy workaround — see backlog T8). Sourcing flags (`isSourced`, `sourceOwner`, `allowNonOwner`) support third-party vendor outsourcing. |
 
 #### ToDo
 | | |
@@ -330,7 +347,7 @@ All `Assignee` subtypes share the same database table with a discriminator colum
 | **Key Fields** | `id`, `sortOrder`, `isComplete` |
 | **Relationships** | `checkList` → M:1 CheckList, `task` → M:1 Task |
 
-#### ToDoOut
+#### ToDoOut / ToDoOut25
 | | |
 |---|---|
 | **Class** | `ToDoOut` / `ToDoOut25` |
@@ -361,7 +378,7 @@ All `Assignee` subtypes share the same database table with a discriminator colum
 |---|---|
 | **Class** | `RequiredTaskList extends TaskSequence` |
 | **Relationships** | `templatePurpose` → 1:1 TemplatePurpose (`purpose_id`) |
-| **Notes** | Links a TemplatePurpose to a set of required tasks. Used for Setup and Ticket checklists. |
+| **Notes** | Links a TemplatePurpose to a set of required tasks. Used for Setup, Ticket, and Opportunity checklists. |
 
 ### RecurringTaskList
 | | |
@@ -394,14 +411,14 @@ All `Assignee` subtypes share the same database table with a discriminator colum
 | **Class** | `TemplatePurpose` |
 | **Key Fields** | `id` (int), `description`, `sortOrder` |
 | **Relationships** | `templateGroup` → M:1 TemplateGroup |
-| **Notes** | Defines specific service purposes (Health FSA, HRA, COBRA, HSA, Transit, POP, etc.) tied to both billing groups and task templates. |
+| **Notes** | Defines specific service purposes (Health FSA, HRA, COBRA, HSA, Transit, POP, New Opportunity, etc.) tied to both billing groups and task templates. |
 
 ### TemplateGroup
 | | |
 |---|---|
 | **Class** | `TemplateGroup` |
 | **Key Fields** | `id` (int), `description` |
-| **Notes** | Groups: 1=Renewal, 2=Setup, 3=Ticket |
+| **Notes** | Groups: 1=Renewal, 2=Setup, 3=Ticket, 5=Sales |
 
 ### TaskFrequency
 | | |
@@ -479,124 +496,217 @@ All `Assignee` subtypes share the same database table with a discriminator colum
 
 ---
 
-## model/sales/agency — Agencies & Proposals ⚠️ UNDERDEVELOPED
-
-These entities were created for the sales workflow but have seen **little active development**. They are seldom referenced in servlets or DAOs. Included here for completeness.
+## model/sales/agency — Agencies, Prospects & Invitations
 
 ### Agency
 | | |
 |---|---|
 | **Class** | `Agency` |
 | **ID** | `id` (Long, column `agency_id`) |
-| **Key Fields** | `name` (varchar 200), `taxId`, `phone` |
-| **Relationships** | `psp` → M:1 PSP, `address` → 1:1 Address, `primaryContact` → 1:1 Person (`contact_id`), `agencyRateList` → M:N Rate (join: `agencyrates`), `agentList` → M:N Person (join: `agents`) |
+| **Key Fields** | `name`, `taxId`, `phone`, `email` |
+| **Relationships** | `psp` → M:1 PSP, `agentList` → M:N Person (join: `agents`), `rateList` → M:N Rate (join: `agencyrates`), `address` → 1:1 Address, `manager` → M:1 Person (`manager_id`) |
+| **Notes** | `manager` FK added for invitation system — identifies the Agency Manager. |
 
 ### Prospect
 | | |
 |---|---|
 | **Class** | `Prospect` |
 | **ID** | `id` (Long, column `prospect_id`) |
-| **Key Fields** | `name` (varchar 200) |
-| **Relationships** | `contact` → 1:1 Person, `address` → 1:1 Address, `agent` → M:1 Person (`agent_id`), `proposalList` → 1:M Proposal |
+| **Key Fields** | `name` |
+| **Relationships** | `agent` → M:1 Person, `proposalList` → 1:M Proposal, `contact` → 1:1 Person (the primary contact for this prospect) |
 
 ### Proposal
 | | |
 |---|---|
 | **Class** | `Proposal` |
 | **ID** | `id` (Long, column `proposal_id`) |
-| **Key Fields** | `dateCreated` (Timestamp, auto), `isInactive`, `applicationGUID` (varchar 36) |
-| **Relationships** | `prospect` → M:1 Prospect, `rate` → M:1 Rate, `losList` → M:N LOS (join: `proposalitems`), `application` → 1:1 Application (mapped by `proposal`) |
+| **Key Fields** | `applicationGUID` (varchar 36, unique), `status` (CREATED/SENT/VIEWED/APPLIED/APPROVED/DENIED/EXPIRED), `dateSent`, `dateViewed`, `dateApplied` |
+| **Relationships** | `prospect` → M:1 Prospect, `rate` → M:1 Rate, `losList` → M:N LOS (join: `proposalitems`), `application` → 1:1 Application (mapped by `proposal`), `createdBy` → M:1 Person, `sourceActivity` → M:1 Activity (`source_activity_id`) |
 
-### Rate
+### Invitation
 | | |
 |---|---|
-| **Class** | `Rate` |
-| **Key Fields** | `id`, `description`, `isSuppressed` |
-| **Relationships** | `psp` → M:1 PSP |
-
-### RateTable
-| | |
-|---|---|
-| **Class** | `RateTable` |
-| **ID** | `@EmbeddedId` RateTableID (composite: rate_id, price_item_id, module_id) |
-| **Key Fields** | `price` (double) |
-| **Relationships** | `rate` → M:1 Rate, `priceItem` → M:1 PriceItem, `module` → M:1 ServiceModule |
-
-### RateTableID
-| | |
-|---|---|
-| **Class** | `RateTableID` (`@Embeddable`) |
-| **Key Fields** | `rateId`, `priceItemId`, `moduleId` |
-
-### PriceItem
-| | |
-|---|---|
-| **Class** | `PriceItem` |
-| **Key Fields** | `id`, `description` |
-| **Relationships** | `psp` → M:1 PSP |
-
-### ServiceItem
-| | |
-|---|---|
-| **Class** | `ServiceItem` |
-| **Key Fields** | `id`, `description` |
-| **Relationships** | `psp` → M:1 PSP |
+| **Class** | `Invitation` |
+| **Table** | `invitation` |
+| **ID** | `id` (Long, column `invitation_id`) |
+| **Key Fields** | `guid` (varchar 36, unique), `email`, `firstName`, `lastName`, `role` (AGENCY_MANAGER or AGENT), `dateCreated`, `dateExpires`, `dateAccepted`, `isUsed` |
+| **Relationships** | `agency` → M:1 Agency, `invitedBy` → M:1 Person (PSP user who sent), `person` → M:1 Person (Person record created for invitee) |
+| **Notes** | 30-day expiration. GUID used in registration URL (`/AcceptInvite?guid=xxx`). |
 
 ---
 
-## model/sales/offering — Service Catalog ⚠️ UNDERDEVELOPED
-
-Part of the sales workflow. Defines the services SSA offers and how they're grouped into Lines of Service. Seldom referenced in active code.
+## model/sales/offering — Service Catalog
 
 ### LOS (Line of Service)
 | | |
 |---|---|
 | **Class** | `LOS` |
 | **ID** | `id` (Long, column `los_id`) |
-| **Key Fields** | `description` (varchar 100), `shortText` (varchar 10) |
-| **Relationships** | `psp` → M:1 PSP, `serviceModuleList` → M:N ServiceModule (join: `losmodules`), `listOfProposalsThatIncludeThisLOS` → M:N Proposal (mapped by `losList`) |
-| **Named Queries** | `LOS.getByPsp`, `LOS.getById` |
-| **Notes** | Lines: POP, FSA, HRA/MERP, HSA, COBRA, TRANSIT |
+| **Key Fields** | `shortText`, `longText`, `sortOrder`, `suppressed` (boolean) |
+| **Relationships** | `psp` → M:1 PSP, `moduleList` → M:N ServiceModule (join: `losmodules`), `enhancementList` → M:N Enhancement (inverse, mapped by `losList`) |
+| **Values** | IDs 5–19: FSA, HRA, Transit, HSA, COBRA, POP, HRA(MERP), ICHRA, EBHRA, QSEHRA, Retiree, Direct Bill, LSA, Adoption Assistance |
+| **Notes** | Implements `Comparable` by sortOrder. `suppressed` hides from UI without deleting. |
+
+### Enhancement
+| | |
+|---|---|
+| **Class** | `Enhancement` |
+| **Table** | `enhancement` |
+| **ID** | `id` (Long, column `enhancement_id`) |
+| **Key Fields** | `name`, `description`, `sortOrder`, `suppressed` (boolean) |
+| **Relationships** | `psp` → M:1 PSP, `losList` → M:N LOS (join: `enhancement_los`, owning side) |
+| **Values** | Cards (Debit Cards), Payment (Payment Services), Docs (Document Services), Discounts (Volume Discounts) |
+| **Notes** | Add-on services linked to eligible LOSs. Implements `Comparable` by sortOrder. |
 
 ### ServiceModule
 | | |
 |---|---|
 | **Class** | `ServiceModule` |
-| **Key Fields** | `id`, `description`, `shortText`, `sortOrder` |
-| **Relationships** | `psp` → M:1 PSP, `listOfLosWithThisModule` → M:N LOS (mapped by `serviceModuleList`) |
-| **Notes** | Modules: POP, FSA, Other, HRA, HSA, Payment, Cards, Doc's, COBRA, Discounts, Transit, Notes |
+| **ID** | `id` (Long, column `module_id`) |
+| **Key Fields** | `shortText`, `longText`, `sortOrder`, `suppressed` |
+| **Relationships** | `psp` → M:1 PSP, `losList` → M:N LOS (mapped by `moduleList`), `los` → M:1 LOS (nullable, direct FK `los_id`), `enhancement` → M:1 Enhancement (nullable, direct FK `enhancement_id`) |
+| **Notes** | `los` and `enhancement` nullable FKs added for Service Manager — allows direct lookup of the module for a specific LOS or Enhancement without traversing the M:N join table. |
+
+### Rate
+| | |
+|---|---|
+| **Class** | `Rate` |
+| **ID** | `id` (Long, column `rate_id`) |
+| **Key Fields** | `description` |
+| **Relationships** | `psp` → M:1 PSP, `rateTableList` → 1:M RateTable, `agencyList` → M:N Agency (mapped by `rateList`) |
+
+### RateTable
+| | |
+|---|---|
+| **Class** | `RateTable` |
+| **ID** | `RateTableID` (Embeddable composite: `rate_id` + `los_id`) |
+| **Relationships** | `rate` → M:1 Rate, `los` → M:1 LOS, `feeTypeList` → 1:M FeeType |
+
+### FeeType
+| | |
+|---|---|
+| **Class** | `FeeType` |
+| **ID** | `id` (Long, column `fee_type_id`) |
+| **Key Fields** | `description`, `sortOrder`, `suppressed` |
+| **Relationships** | `psp` → M:1 PSP |
+
+### PriceItem
+| | |
+|---|---|
+| **Class** | `PriceItem` |
+| **Relationships** | `rateTable` → M:1 RateTable, `feeType` → M:1 FeeType |
+| **Key Fields** | `price` (double) |
+
+### RateDiscount
+| | |
+|---|---|
+| **Class** | `RateDiscount` |
+| **Key Fields** | `description`, `discountAmount` |
+| **Relationships** | `rate` → M:1 Rate, `priceItem` → M:1 PriceItem, `losList` → M:N LOS (join: `ratediscountlos`) |
+
+### Feature
+| | |
+|---|---|
+| **Class** | `Feature` |
+| **ID** | `id` (Long, column `feature_id`) |
+| **Key Fields** | `description` (varchar 500), `sortOrder` |
+| **Relationships** | `module` → M:1 ServiceModule, `psp` → M:1 PSP, `libraryResource` → M:1 MarketingMaterial (`material_id`, nullable) |
+| **Notes** | Description text supports inline markdown-style links `[text](resourceId)` which are rendered as HTML links in proposals. `libraryResource` is an optional icon link displayed at end of text. |
+
+### MarketingMaterial
+| | |
+|---|---|
+| **Class** | `MarketingMaterial` |
+| **Table** | `marketingmaterial` |
+| **ID** | `id` (Long, column `material_id`) |
+| **Key Fields** | `title`, `description`, `materialType` (DOCUMENT/VIDEO/LINK), `url`, `storageGuid` (varchar 50, UUID.extension), `audience`, `sortOrder` |
+| **Relationships** | `psp` → M:1 PSP, `category` → M:1 ResourceCategory (`category_id`, nullable) |
+| **Notes** | Files stored in Wasabi S3 (`ams-file-storage/{psp-slug}/UUID.ext`). storageGuid widened from VARCHAR(36) to VARCHAR(50) to accommodate extension. |
+
+### ResourceCategory
+| | |
+|---|---|
+| **Class** | `ResourceCategory` |
+| **Table** | `resourcecategory` |
+| **ID** | `id` (Long, column `category_id`) |
+| **Key Fields** | `name`, `sortOrder` |
+| **Relationships** | `psp` → M:1 PSP |
+| **Notes** | Organizes MarketingMaterial entries in the Resource Library UI. |
+
+### IrsLimit
+| | |
+|---|---|
+| **Class** | `IrsLimit` |
+| **Table** | `irslimit` |
+| **Key Fields** | `year`, `limitType`, `amount` |
+| **Notes** | IRS contribution limits by year (FSA, DCAP, HSA, Transit, etc.). Used in application form for dynamic limit display. |
+
+### BenefitType
+| | |
+|---|---|
+| **Class** | `BenefitType` |
+| **Table** | `benefittype` |
+| **Key Fields** | `id`, `name`, `description` |
+| **Notes** | 11 benefit categories used in application plan design section. |
+
+### BillingType
+| | |
+|---|---|
+| **Class** | `BillingType` |
+| **Table** | `billingtype` |
+| **Key Fields** | `id`, `name`, `description` |
+| **Notes** | 5 rate structures (PEPM, Flat, Tiered, Per Claim, Percentage). |
 
 ---
 
-## model/sales/application — Applications ⚠️ UNDERDEVELOPED
-
-Part of the sales workflow. Links Proposals to Application forms and their selected service modules. Setup activities reference Applications but the sales pipeline itself is seldom used.
+## model/sales/application — Applications
 
 ### Application
 | | |
 |---|---|
 | **Class** | `Application` |
-| **Key Fields** | `id` |
-| **Relationships** | `proposal` → 1:1 Proposal, `applicationModuleList` → 1:M ApplicationModule |
+| **ID** | `proposal` (Proposal, `@OneToOne @Id`, column `proposal_id`) — uses Proposal as PK |
+| **Key Fields** | `status` (IN_PROGRESS/SUBMITTED/UNDER_REVIEW/APPROVED/DENIED/MORE_INFO), `dateStarted`, `dateSubmitted`, `dateReviewed`, `reviewNotes` |
+| **Relationships** | `proposal` → 1:1 Proposal (PK), `reviewedBy` → M:1 Person, `fieldValues` → 1:M ApplicationFieldValue, `applicationModuleList` → 1:M ApplicationModule, `setup` → 1:1 Setup (mapped by `application`) |
+
+### ApplicationSection
+| | |
+|---|---|
+| **Class** | `ApplicationSection` |
+| **ID** | `id` (Long, column `section_id`) |
+| **Key Fields** | `name`, `description`, `scope` (ALL or LOS), `sortOrder` |
+| **Relationships** | `psp` → M:1 PSP, `losList` → M:N LOS (join: `applicationsectionlos`), `fieldList` → 1:M ApplicationField (ordered by sortOrder), `enhancementList` → M:N Enhancement (join: `applicationsectionenhancement`) |
+| **Notes** | 20 seeded sections: Company Info, Contact, Address, Plan Year, Pay Cycle, Signing Officer, Bank, Pre-Tax, 125 Features, FSA, HRA Design, HRA Carryover, HSA Funding, Transit, Billing, Payment, Debit Cards, LSA, Adoption, COBRA-Specific. |
+
+### ApplicationField
+| | |
+|---|---|
+| **Class** | `ApplicationField` |
+| **ID** | `fieldKey` (String PK, column `field_key`, varchar 100) |
+| **Key Fields** | `label`, `helpText`, `fieldType` (TEXT/TEXTAREA/NUMBER/DATE/SELECT/RADIO/BOOLEAN/CHECKBOX/JSON), `isRequired`, `sortOrder`, `selectOptions` (pipe-delimited for SELECT/RADIO/CHECKBOX) |
+| **Relationships** | `applicationSection` → M:1 ApplicationSection |
+| **Notes** | ~95 fields across all sections. |
+
+### ApplicationFieldValue
+| | |
+|---|---|
+| **Class** | `ApplicationFieldValue` |
+| **ID** | `id` (Long, column `field_value_id`) |
+| **Relationships** | `application` → M:1 Application, `applicationField` → M:1 ApplicationField |
+| **Key Fields** | `fieldValue` (TEXT) |
 
 ### ApplicationModule
 | | |
 |---|---|
 | **Class** | `ApplicationModule` |
-| **ID** | `@EmbeddedId` ApplicationModuleID (composite: application_id, template_purpose_id) |
-| **Relationships** | `application` → M:1 Application, `templatePurpose` → M:1 TemplatePurpose |
-
-### ApplicationModuleID
-| | |
-|---|---|
-| **Class** | `ApplicationModuleID` (`@Embeddable`) |
-| **Key Fields** | `applicationId`, `templatePurposeId` |
+| **ID** | `ApplicationModuleID` (Embeddable composite: `application_id` + `template_purpose_id`) |
+| **Notes** | Links application to checklist templates for Setup creation. |
 
 ---
 
-## model/summit/archive — Employer/Employee/Benefit Archive
+## model/summit/archive — Employer/Employee Archive
 
-These are the **local source-of-truth tables** that mirror Summit data. They are populated and kept in sync by the import pipeline (`Importer` → staging tables → `Updater` → archive).
+These are the **primary local data tables**. They are populated and kept in sync by the import pipeline (`Importer` → staging tables → `Updater` → archive).
 
 ### Employer
 | | |
@@ -623,7 +733,7 @@ These are the **local source-of-truth tables** that mirror Summit data. They are
 | **ID** | `id` (int, column `benefit_id`) |
 | **Key Fields** | `planName`, `planDescription`, `effectiveDate`, `terminationDate`, `isActive`, `hasCards`, `lastRenewed`, `nextRenewalDue`, `pbBenId` |
 | **Relationships** | `employer` → M:1 Employer, `planType` → M:1 PlanType, `renewalItemList` → 1:M RenewalItem |
-| **Notes** | Unified benefit table combining Summit's CDH and Premium Billing exports. **Positive IDs** = CDH benefits (FSA, HRA, HSA, etc.). **Negative IDs** = Premium Billing benefits (COBRA, Direct Bill, Retiree Billing) — negated during import to prevent ID collision. Services administered: FSA, HRA, MERP, ICHRA, EBHRA, QSEHRA, COBRA, Transit, Retiree Billing, Direct Billing, LSA. |
+| **Notes** | Unified benefit table combining Summit's CDH and Premium Billing exports. **Positive IDs** = CDH benefits. **Negative IDs** = Premium Billing benefits — negated during import to prevent ID collision. |
 
 ### PlanType
 | | |
@@ -659,15 +769,12 @@ These `s`-prefix entities were the **original** mappings to Summit's live data. 
 |---|---|
 | **Class** | `sEmployer` |
 | **ID** | `organizationId` (int) |
-| **Key Fields** | Various Summit employer fields |
-| **Notes** | Summit's representation of an employer/organization. |
 
 ### sEmployee
 | | |
 |---|---|
 | **Class** | `sEmployee` |
 | **ID** | `id` (int, column `Participant_ID`) |
-| **Key Fields** | `firstName`, `lastName`, `dpiSuiteMmKey`, `email`, `userStatus`, address fields |
 | **Relationships** | `sEmployer` → M:1 sEmployer (`Organization_ID`) |
 
 ### sBenefit
@@ -675,7 +782,6 @@ These `s`-prefix entities were the **original** mappings to Summit's live data. 
 |---|---|
 | **Class** | `sBenefit` |
 | **ID** | `benefitId` (int, column `EmployerPlan_ID`) |
-| **Key Fields** | `planName`, `planDescription`, `effectiveDate`, `terminationDate`, `planStatus`, `cardEnabled` |
 | **Relationships** | `sEmployer` → M:1 sEmployer (`OrganizationID`), `PlanType` → M:1 PlanType (`PlanTypeID`) |
 
 ### sBenefitYear
@@ -689,119 +795,73 @@ These `s`-prefix entities were the **original** mappings to Summit's live data. 
 |---|---|
 | **Class** | `HsaAccount` |
 | **Key Fields** | `hsaId` (int), `firstName`, `lastName`, `employer` (String name), `active` |
-| **Notes** | Raw HSA account data imported from custodian files. |
-
-### HsaEe
-| | |
-|---|---|
-| **Class** | `HsaEe` |
-| **ID** | `hsaId` (int, column `hsa_id`) |
-| **Key Fields** | `firstName`, `lastName`, address fields, `phone` |
-| **Relationships** | `hsaEr` → M:1 HsaEr (`hsa_er_id`), `employee` → 1:1 Employee (`employee_id`) |
-
-### HsaEr
-| | |
-|---|---|
-| **Class** | `HsaEr` |
-| **ID** | `name` (String — employer name as PK) |
-| **Key Fields** | `billedDirect` |
-| **Relationships** | `employer` → 1:1 Employer (`organization_id`) |
 
 ---
 
-## model/summit/imports/order — Import Staging Tables (from Summit Exports)
+## model/summit/imports/order — Import Staging Tables
 
-These entities are populated from **Summit's export functionality** — CSV/Excel files exported from DataPath Summit and uploaded into beta_ssa. They serve as staging tables that the `Updater` service then uses to sync data into the archive tables (`Employer`, `Employee`, `Benefit`).
+Nine staging tables used by the monthly import pipeline. CSVs from Summit are imported into these tables, then the `Updater` service syncs them into the archive tables.
 
-**Import pipeline:** Summit Export → CSV files → `Importer` service → staging tables → `Updater` service → archive tables
-
-**Benefit ID convention:** `ImportBenefitCdh` (import4) holds CDH benefits with positive IDs. `ImportBenefitPb` (import7) holds Premium Billing benefits (COBRA, Direct Bill, Retiree). During sync to the `Benefit` archive table, Premium Billing IDs are **negated** to prevent overlap with CDH IDs.
-
-| Entity | Table | ID Column | Key FK |
-|--------|-------|-----------|--------|
-| `ImportEmployer` | `import1employer` | `OrganizationID` (int) | — |
-| `ImportEmployee` | `import2employee` | `Participant_ID` (int) | → ImportEmployer (`Organization_ID`) |
-| `ImportEmployeeAlt` | `import3employeealt` | `Participant_ID` (int) | → ImportEmployer (`Organization_ID`) |
-| `ImportBenefitCdh` | `import4benefitcdh` | `EmployerPlan_ID` (int) | → ImportEmployer (`OrganizationID`), → PlanType (`PlanTypeID`) |
-| `ImportBenefitYear` | `import5benefityear` | `EmployerPlanDetailForPlanYear_ID` (int) | → ImportBenefitCdh (`EmployerPlan_ID`) |
-| `ImportEnrollment` | `import6enrollment` | `ParticipantPlan_ID` (int) | → ImportEmployee (`Participant_ID`), → ImportBenefitYear (`EmployerPlanDetailForPlanYearID`) |
-| `ImportBenefitPb` | `import7benefitpb` | composite: `BenefitID` + `PlanYearID` | → ImportEmployer, → PlanType |
-| `ImportBenefitTier` | (default) | composite: `EmployerID` + `PBBenefitID` + `PlanYearID` + `TierID` | → ImportEmployer, → PlanType |
-| `ImportCobraQb` | `import8cobraqb` | various | → ImportEmployer |
-| `ImportCobPart` | `import9cobrapart` | `Participant_id` (int) | — |
-
-**Import Flow:** CSV upload → staging tables → `Updater` service syncs to archive tables (Employer, Employee, Benefit, etc.)
+| Entity | Table | Purpose |
+|--------|-------|---------|
+| `ImportEmployer` | `import1employer` | Employer/organization data |
+| `ImportEmployee` | `import2employee` | Employee/participant data |
+| `ImportBenefit` | `import3benefit` | CDH benefit plans |
+| `ImportBenefitYear` | `import4benefityear` | Benefit plan years |
+| `ImportEnrollment` | `import5enrollment` | CDH enrollment records |
+| `ImportPremiumBenefit` | `import6premiumbenefit` | Premium billing benefits (COBRA, Direct, Retiree) |
+| `ImportPremiumEnrollment` | `import7premiumenrollment` | Premium billing enrollments |
+| `ImportCobraQualify` | `import8cobraqualify` | COBRA qualifying events |
+| `ImportCobraParticipant` | `import9cobrapart` | COBRA participant details |
 
 ---
 
 ## model/summit/temp — Temp/Transactional
 
-### Coverage
-| | |
-|---|---|
-| **Class** | `Coverage` |
-| **ID** | `coverageId` (int) |
-| **Key Fields** | `status`, `isBillable`, `currentMonth`, `pbBenefitId`, `benefitName`, `tierName` |
-| **Relationships** | `employer` → M:1 Employer (`organization_id`), `employee` → M:1 Employee (`participant_id`), `PlanType` → M:1 PlanType, `billingGroup` → M:1 BillingGroup |
-
 ### Enrollment
 | | |
 |---|---|
 | **Class** | `Enrollment` |
-| **ID** | `enrollmentId` (int) |
-| **Key Fields** | `currentMonth`, `termDate`, `startDate`, `endDate`, `billable`, `employerName`, `participantName`, `benefitName`, `benefitGroup`, `cardEnabled` |
-| **Relationships** | `sEmployee` → M:1 sEmployee, `sEmployer` → M:1 sEmployer, `sBenefit` → M:1 sBenefit, `sBenefitYear` → M:1 sBenefitYear, `billingGroup` → M:1 BillingGroup |
+| **Notes** | Transactional enrollment data referencing `sEmployee`, `sEmployer`, `sBenefit`, `sBenefitYear`. |
+
+### HsaEr / HsaEe
+| | |
+|---|---|
+| **Class** | `HsaEr`, `HsaEe` |
+| **Notes** | HSA employer and employee entities used in HSA billing. `HsaEr` links to `Employer` via `organization_id`. `HsaEe` links to `HsaEr` and optionally to `Employee`. |
 
 ---
 
 ## model (root) — View-Backed DTOs & Constants
 
-### Constant
+### Activity25 / Activity25p / Activity25u ⚡ VIEW-BACKED
 | | |
 |---|---|
-| **Class** | `Constant` |
-| **Table** | `constant` |
-| **ID** | `name` (String) |
-| **Key Fields** | `value`, `note` |
-| **Notes** | Application configuration key-value pairs. |
-
-### Activity25 ⚡ VIEW-BACKED
-| | |
-|---|---|
-| **Class** | `Activity25` |
-| **Notes** | View-backed read-only DTO for the main activity list. Referenced by `AmsDataGlobal`. |
-
-### Activity25p ⚡ VIEW-BACKED
-| | |
-|---|---|
-| **Class** | `Activity25p` |
-| **Notes** | PSP-filtered variant of the activity view. |
-
-### Activity25u ⚡ VIEW-BACKED
-| | |
-|---|---|
-| **Class** | `Activity25u` |
-| **Notes** | User-filtered variant of the activity view. Referenced by `SessionVar`. |
+| **Notes** | View-backed read-only activity DTOs. `Activity25` is the primary display view. `Activity25p` and `Activity25u` are variant views. |
 
 ### Checklist25 ⚡ VIEW-BACKED
 | | |
 |---|---|
-| **Class** | `Checklist25` |
 | **Notes** | View-backed read-only DTO for checklist display. |
 
 ### EmployeeV ⚡ VIEW-BACKED
 | | |
 |---|---|
-| **Class** | `EmployeeV` |
 | **Notes** | View-backed read-only employee view. |
 
 ### PersonV ⚡ VIEW-BACKED
 | | |
 |---|---|
-| **Class** | `PersonV` |
 | **Notes** | View-backed read-only person view. |
 
 > **⚡ VIEW-BACKED entities are READ-ONLY.** They map to MySQL views, not tables. Never call `persist()` or `merge()` on them.
+
+### Constant
+| | |
+|---|---|
+| **Class** | `Constant` |
+| **Key Fields** | `name` (PK), `value`, `note` |
+| **Notes** | Application-wide configuration stored in DB. Includes SMTP settings, S3/Wasabi credentials, email colors, API keys. Queried via `AppConstantDAO.getConstantValue()`. |
 
 ---
 
@@ -817,6 +877,8 @@ These are DTOs or helper classes that appear in the model layer but are **not** 
 | `CheckListShell` | `model/activity/checklist/` | Lightweight checklist list item |
 | `ToDoOut` / `ToDoOut25` | `model/activity/checklist/tasks/` | ToDo display with state logic |
 | `SortedTask` | `model/activity/checklist/tasks/` | Task + sort order pair |
+| `GenSeq` | `model/activity/checklist/sequences/` | Sequence builder session DTO |
+| `ReqTaskListTix` | `model/` | DTO wrapping RequiredTaskList + TicketSubCategory for display |
 | `RenewalEmployer` | `model/activity/renewal/` | Employer renewal list item |
 | `EmployerVariance` | `model/billing/` | Billing variance comparison |
 | `RateTableID` | `model/sales/agency/` | `@Embeddable` composite key |
@@ -838,336 +900,12 @@ These M:N relationships are managed via `@JoinTable` — no separate entity clas
 | `agencyrates` | Agency | Rate | `agency_id`, `rate_id` |
 | `proposalitems` | Proposal | LOS | `proposal_id`, `los_id` |
 | `losmodules` | LOS | ServiceModule | `los_id`, `module_id` |
+| `enhancement_los` | Enhancement | LOS | `enhancement_id`, `los_id` |
+| `applicationsectionlos` | ApplicationSection | LOS | `section_id`, `los_id` |
+| `applicationsectionenhancement` | ApplicationSection | Enhancement | `section_id`, `enhancement_id` |
+| `ratediscountlos` | RateDiscount | LOS | `ratediscount_id`, `los_id` |
 | `days_of_week` | RecurringTaskList | DoW | `item_id`, `dow_id` |
 | `recurring_days` | RecurringItems | DoW | `item_id`, `dow_id` |
-
----
-
-## Entity Relationship Diagram
-
-```mermaid
-erDiagram
-    %% ===== CORE IDENTITY (SINGLE_TABLE) =====
-    Assignee {
-        Long id PK
-        String fullName
-    }
-    Person {
-        String firstName
-        String lastName
-        String email
-        String phone
-    }
-    PSP {
-        String taxId
-    }
-    Recipient {
-        String emailAddress
-    }
-    Address {
-        Long id PK
-        String address1
-        String city
-        String state
-        String zipCode
-    }
-    User_Entity {
-        String userName
-        String email
-        String passwordHash
-    }
-    UserRole {
-        int id PK
-        String description
-    }
-    WebLink {
-        Long id PK
-        String plainText
-        String linkPath
-    }
-    LinkType {
-        int id PK
-        String typeName
-    }
-
-    Assignee ||--o{ Person : "extends"
-    Assignee ||--o{ PSP : "extends"
-    Assignee ||--o{ Recipient : "extends"
-    Person ||--o| Address : "has"
-    Person }o--|| PSP : "belongs to"
-    Person ||--o| Employee : "linked to"
-    User_Entity ||--|| Person : "person_id"
-    User_Entity }o--o{ UserRole : "userinroles"
-    WebLink }o--|| LinkType : "type_id"
-
-    %% ===== ACTIVITY SYSTEM =====
-    Activity {
-        Timestamp dateCreated
-        Date dueDate
-        boolean isComplete
-    }
-    CheckList {
-        Long recurringListId
-    }
-    Renewal {
-        Long employerId
-    }
-    Ticket {
-        String description
-    }
-    Setup {
-        Long applicationId
-    }
-    Note {
-        Long id PK
-        String detail
-        Date dateGenerated
-    }
-    Email_Entity {
-        String subject
-    }
-    ReasonCreated {
-        int id PK
-        String description
-    }
-    ActivityStatus {
-        int id PK
-        String description
-    }
-
-    Assignee ||--o{ Activity : "extends"
-    Activity ||--o{ CheckList : "extends"
-    Activity ||--o{ Renewal : "extends"
-    Activity ||--o{ Ticket : "extends"
-    Activity ||--o{ Setup : "extends"
-    Activity }o--|| Person : "loggedBy"
-    Activity }o--o| Person : "primaryContact"
-    Activity }o--o| Assignee : "assignedTo"
-    Activity ||--o{ Note : "noteList"
-    Note ||--o{ Email_Entity : "extends"
-    Note }o--|| ReasonCreated : "reasonCreated"
-    Note }o--|| ActivityStatus : "status"
-    Note }o--|| Person : "createdBy"
-    Email_Entity }o--o{ Person : "email_recipents"
-
-    %% ===== CHECKLIST & TASKS =====
-    CheckList ||--o{ ToDo : "toDoList"
-    CheckList }o--o| RecurringTaskList : "recurring_list_id"
-    Ticket ||--o| CheckList : "checklist_id"
-    Renewal ||--o| CheckList : "checklist_id"
-    Setup ||--o| CheckList : "checklist_id"
-
-    ToDo {
-        Long id PK
-        int sortOrder
-        boolean isComplete
-    }
-    Task {
-        Long id PK
-        String description
-    }
-    ToDo }o--|| Task : "task"
-    ToDo }o--|| CheckList : "checkList"
-
-    %% ===== TASK SEQUENCES =====
-    TaskSequence {
-        Long id PK
-        String description
-    }
-    RequiredTaskList {
-        Long purposeId
-    }
-    RecurringTaskList {
-        int daysInAdvance
-        Date dateStart
-    }
-    TaskSequenceTable {
-        int sortOrder
-    }
-    TemplatePurpose {
-        int id PK
-        String description
-    }
-    TemplateGroup {
-        int id PK
-        String description
-    }
-    TaskFrequency {
-        int id PK
-        String description
-    }
-    DoW {
-        int id PK
-        String name
-    }
-
-    TaskSequence ||--o{ RequiredTaskList : "extends"
-    TaskSequence ||--o{ RecurringTaskList : "extends"
-    TaskSequence ||--o{ TaskSequenceTable : "tables"
-    TaskSequenceTable }o--|| Task : "task"
-    RequiredTaskList }o--|| TemplatePurpose : "purpose_id"
-    TemplatePurpose }o--|| TemplateGroup : "group"
-    RecurringTaskList }o--|| TaskFrequency : "frequency"
-    RecurringTaskList }o--o{ DoW : "days_of_week"
-    RecurringTaskList }o--|| Person : "assignee"
-
-    %% ===== TICKET SUPPORT =====
-    TicketCategory {
-        Long id PK
-        String description
-    }
-    TicketSubCategory {
-        Long id PK
-        String description
-    }
-    ContactMethod {
-        int id PK
-        String description
-    }
-
-    Ticket }o--|| TicketSubCategory : "ticket_category"
-    Ticket }o--|| ContactMethod : "method_id"
-    Ticket }o--o| Person : "contact"
-    TicketSubCategory }o--|| TicketCategory : "category_id"
-    TicketSubCategory }o--o| TemplatePurpose : "temp_purpose_id"
-
-    %% ===== RENEWALS =====
-    RenewalItem {
-        Long id PK
-    }
-    Renewal }o--|| Employer : "employer_id"
-    Renewal ||--o{ RenewalItem : "items"
-    RenewalItem }o--|| Benefit : "benefit"
-
-    %% ===== SALES =====
-    Agency {
-        Long id PK
-        String name
-    }
-    Prospect {
-        Long id PK
-        String name
-    }
-    Proposal {
-        Long id PK
-        String applicationGUID
-    }
-    Rate {
-        Long id PK
-        String description
-    }
-    Application_Entity {
-        Long id PK
-    }
-    ApplicationModule {
-        Long applicationId
-        int templatePurposeId
-    }
-    LOS {
-        Long id PK
-        String shortText
-    }
-    ServiceModule {
-        Long id PK
-        String shortText
-    }
-
-    Agency }o--|| PSP : "psp_id"
-    Agency }o--o{ Person : "agents"
-    Agency }o--o{ Rate : "agencyrates"
-    Prospect }o--|| Person : "agent"
-    Prospect ||--o{ Proposal : "proposals"
-    Proposal }o--|| Rate : "rate_id"
-    Proposal }o--o{ LOS : "proposalitems"
-    Proposal ||--o| Application_Entity : "application"
-    Application_Entity ||--o{ ApplicationModule : "modules"
-    ApplicationModule }o--|| TemplatePurpose : "template_purpose_id"
-    LOS }o--o{ ServiceModule : "losmodules"
-    LOS }o--|| PSP : "psp_id"
-    Setup }o--|| Application_Entity : "application"
-
-    %% ===== BILLING =====
-    BillingMonth {
-        int monthId PK
-        Date fullDate
-    }
-    BillingGroup {
-        int id PK
-        String description
-    }
-    BillingGrid {
-        String gridId PK
-        String currentStatus
-    }
-    BillingLink {
-        String billingId PK
-    }
-
-    BillingGrid }o--|| Employer : "employer_id"
-    BillingGrid }o--|| Employee : "employee_id"
-    BillingGrid }o--|| BillingMonth : "month_id"
-    BillingLink }o--|| BillingMonth : "month_id"
-    BillingLink }o--|| Employer : "employer_id"
-
-    %% ===== SUMMIT ARCHIVE =====
-    Employer {
-        int id PK
-        String employerName
-        boolean isActive
-    }
-    Employee {
-        int id PK
-        String firstName
-        String lastName
-        int mmKey
-    }
-    Benefit {
-        int id PK
-        String planName
-        Date nextRenewalDue
-    }
-    PlanType {
-        int planTypeId PK
-        String code
-        String planTypeName
-    }
-
-    Employee }o--|| Employer : "employer_id"
-    Benefit }o--|| Employer : "employer_id"
-    Benefit }o--|| PlanType : "plan_type_id"
-    PlanType }o--|| BillingGroup : "billing_group_id"
-    PlanType }o--o| TemplatePurpose : "purpose_id"
-    PSP }o--o| Employer : "employer_id"
-
-    %% ===== HSA =====
-    HsaEr {
-        String name PK
-        boolean billedDirect
-    }
-    HsaEe {
-        int hsaId PK
-        String firstName
-        String lastName
-    }
-    HsaAccount {
-        int hsaId PK
-        boolean active
-    }
-
-    HsaEr }o--|| Employer : "organization_id"
-    HsaEe }o--|| HsaEr : "hsa_er_id"
-    HsaEe }o--o| Employee : "employee_id"
-
-    %% ===== COVERAGE =====
-    CoverageStatus {
-        String id PK
-        boolean isActive
-    }
-    CoverageStatus }o--|| Employer : "employer_id"
-    CoverageStatus }o--|| Employee : "employee_id"
-    CoverageStatus }o--|| Benefit : "benefit_id"
-    CoverageStatus }o--|| BillingGroup : "billing_group_id"
-```
 
 ---
 
@@ -1177,14 +915,16 @@ erDiagram
 |---------------------|-----------|
 | What table does Person map to? | `assignee` (single-table inheritance) |
 | Relationship between Ticket and CheckList? | Ticket has `@OneToOne checkList` (column `checklist_id`) |
-| What are the Activity subtypes? | CheckList, Renewal, Ticket, Setup — all extend Activity which extends Assignee |
+| What are the Activity subtypes? | CheckList, Renewal, Ticket, Setup, Opportunity — all extend Activity which extends Assignee |
 | Which entities are read-only views? | Activity25, Activity25p, Activity25u, Checklist25, EmployeeV, PersonV, BillingSummary |
 | Where do Summit CSV imports go? | `model/summit/imports/order/` — tables `import1employer` through `import9cobrapart` |
 | Why are some Benefit IDs negative? | Premium Billing benefits (COBRA, Direct Bill, Retiree) have IDs negated to avoid collision with CDH benefit IDs |
 | What links Summit to local data? | `Updater` service syncs Import staging tables → archive tables (Employer, Employee, Benefit) |
 | What's the task template chain? | TemplateGroup → TemplatePurpose → RequiredTaskList → TaskSequenceTable → Task |
 | How does billing work? | BillingMonth → BillingGrid (per employee per month) with boolean flags per service type |
-| What's the difference between Person and Employee? | Every Employee is a Person, but Person also covers spouses, prospects, agents, contacts — anyone SSA interacts with |
-| What are the `s`-prefix entities? | Legacy Summit mappings (`sEmployer`, `sEmployee`, etc.) — largely replaced by `Import*` entities, but still referenced by some billing entities |
-| Are the sales entities active? | Mostly underdeveloped — Agency, Prospect, Proposal, Rate, Application exist but are seldom used in active code |
-| What is Summit? | DataPath Inc.'s cloud-based benefits administration platform — SSA's primary system for FSA, HRA, COBRA, etc. |
+| What's the sales pipeline chain? | Agency → Rate → Proposal → Application → Setup (with LOS/Enhancement/Feature/MarketingMaterial for content) |
+| What's the difference between Person and Employee? | Every Employee is a Person, but Person also covers spouses, prospects, agents, contacts |
+| What are the `s`-prefix entities? | Legacy Summit mappings — largely replaced by `Import*` entities, but still referenced by some billing entities |
+| What is Summit? | DataPath Inc.'s cloud-based benefits administration platform — SSA's primary system |
+| How do Opportunities work? | Opportunity extends Activity, tied to Prospect + Agency. Stages: NEW→CONTACTED→QUALIFIED→PROPOSAL_SENT→NEGOTIATION→WON/LOST |
+| How do invitations work? | Invitation entity with GUID link, 30-day expiry. PSP sends → agent registers → User created |

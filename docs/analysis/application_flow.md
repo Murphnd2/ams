@@ -1,33 +1,37 @@
-# SSA Web Application - Complete Entry Point & Flow Analysis
+# SSA Web Application — Entry Point & Flow Analysis
 
-**Generated:** Analysis Complete
-**Total Servlets Mapped:** 80+
+**Last Updated:** February 21, 2026
+**Total Servlets Mapped:** 100+
 
 ---
 
-## APPLICATION ENTRY POINTS
-
-### 1. PUBLIC ENTRY POINTS (No Authentication Required)
+## 1. PUBLIC ENTRY POINTS (No Authentication Required)
 
 These URLs are accessible without login (whitelisted in LoginFilter):
 
-| URL | Servlet | Purpose | Active |
-|-----|---------|---------|--------|
-| `/` | (none) | Root - likely redirects | ✓ |
-| `/login` | login | Login page | ✓ |
-| `/index.jsp` | (JSP direct) | Login form page | ✓ |
-| `/landing-page.jsp` | (JSP direct) | Public marketing landing page | ✓ |
-| `/market/landing` | LandingServlet | Market landing page | ✓ |
-| `/AuthenticateUser` | AuthenticateUser | POST login credentials | ✓ |
-| `/NeedsHelp` | NeedsHelp | Login help page | ✓ |
-| `/HelpUserLogin` | HelpUserLogin | Request password reset email | ✓ |
-| `/OneTimeUserLogin` | OneTimeUserLogin | Process GUID login links | ✓ |
-| `/ResetLogin` | ResetLogin | POST new password | ✓ |
-| `/initialize.jsp` | (JSP direct) | Database initialization form | ✓ |
-| `/GoInitialize25` | GoInitialize25 | Initialize form page | ✓ |
-| `/InitializeDataBase` | InitializeDataBase | **DANGER:** Initializes DB | ✓ |
-| `/EmployerBillingDetail` | (servlet TBD) | Employer billing | ✓ |
-| `/LogOut` | LogOut | Logout | ✓ |
+| URL | Servlet | Purpose |
+|-----|---------|---------|
+| `/` | (none) | Root — redirects to login |
+| `/login` | login | Login page |
+| `/index.jsp` | (JSP direct) | Login form page |
+| `/landing-page.jsp` | (JSP direct) | Public marketing landing page |
+| `/market/landing` | LandingServlet | Market landing page |
+| `/AuthenticateUser` | AuthenticateUser | POST login credentials |
+| `/NeedsHelp` | NeedsHelp | Login help page |
+| `/HelpUserLogin` | HelpUserLogin | Request password reset email |
+| `/OneTimeUserLogin` | OneTimeUserLogin | Process GUID login links |
+| `/ResetLogin` | ResetLogin | POST new password |
+| `/initialize.jsp` | (JSP direct) | Database initialization form |
+| `/GoInitialize25` | GoInitialize25 | Initialize form page |
+| `/InitializeDataBase` | InitializeDataBase | **DANGER:** Initializes DB |
+| `/EmployerBillingDetail` | (servlet) | Employer billing |
+| `/LogOut` | LogOut | Logout |
+| `/viewProposal/*` | ViewProposal | Public proposal landing page (GUID) |
+| `/apply/*` | ApplyForProposal | Public application form (GUID) |
+| `/saveApplication` | SaveApplicationProgress | AJAX auto-save field values |
+| `/uploadRateSheet` | UploadRateSheet | AJAX file upload to Wasabi |
+| `/ShowFileUpload` | ShowFileUpload | Pre-signed Wasabi URL redirect |
+| `/AcceptInvite` | AcceptInvite | Agent invitation registration (GUID) |
 
 **Static Resources (No Auth):**
 - /images/*, /css/*, /js/*, /fonts/*, /webfonts/*, /bootstrap-icons/*
@@ -39,10 +43,6 @@ These URLs are accessible without login (whitelisted in LoginFilter):
 ## 2. AUTHENTICATION FLOW
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                     AUTHENTICATION CHAIN                     │
-└─────────────────────────────────────────────────────────────┘
-
 START: User visits any protected URL
    ↓
 LoginFilter (/*) checks authentication
@@ -53,17 +53,18 @@ NOT AUTHENTICATED → redirect to /login
    ↓
 User submits form → /AuthenticateUser (POST)
    ↓
-AuthenticateUser validates credentials (dbAuth.validateLogin)
+AuthenticateUser validates credentials (AuthDAO.validateLogin)
    ↓
 SUCCESS:
   - Creates AmsDataLocal in session
   - Sets local.authenticated = true
   - Loads user data, PSP, roles
-  - Forward to ViewHome25 → Dashboard
+  - Role-based redirect:
+      PSP User/Admin → ViewHome25
+      Agent/Agency Manager → AgentHome
    ↓
 FAILURE:
-  - displayLoginFailure() called (FIXME: not implemented!)
-  - User stuck on form?
+  - displayLoginFailure() called (FIXME: not implemented)
 
 ALTERNATIVE FLOWS:
   Forgot Password → /NeedsHelp → /HelpUserLogin → Email with GUID
@@ -73,47 +74,39 @@ ALTERNATIVE FLOWS:
                     /WEB-INF/view/authentication/resetPassword.jsp
                                  ↓
   Submit new password → /ResetLogin → /index.jsp
+
+INVITATION FLOW:
+  PSP sends invite → email with /AcceptInvite?guid=xxx
+                                 ↓
+                    acceptInvite.jsp (registration form)
+                                 ↓
+  Submit → AcceptInvite POST → creates User → /index.jsp (login)
 ```
 
 ---
 
 ## 3. MAIN APPLICATION HUB SERVLETS
 
-After authentication, all traffic flows through these central hubs:
+After authentication, traffic flows through these central hubs based on role:
 
-### ViewHome25 (Main Dashboard)
+### ViewHome25 (PSP Dashboard)
 **URL:** `/ViewHome25`
-**Purpose:** Activity listing/dashboard - the home base
+**Purpose:** Activity listing/dashboard — the home base for PSP users
 **Forwards to:** Activity landing page (JSP)
 **Called by:** 30+ servlets after completing actions
 
-**Servlets that return to ViewHome25:**
-- CloseActivity25
-- ModifyRecurringTask25
-- WipeTables25
-- RefreshTicketEmployees
-- CreateChecklist25
-- All "complete action, return home" servlets
+### AgentHome (Agent/Agency Manager Dashboard)
+**URL:** `/AgentHome`
+**Purpose:** Pipeline view with opportunity management for agents
+**Forwards to:** `/WEB-INF/view/sales/agentHome25.jsp`
+**Features:** Stage-grouped opportunity list, detail panel, new opportunity modal, quick stats
 
 ### ViewActivity25 (Activity Detail View)
 **URL:** `/ViewActivity25`
-**Purpose:** Display single activity with all details
-**Forwards to:** /WEB-INF/view/a/activityDetail/activityDetail25.jsp
+**Purpose:** Display single activity with all details (notes, checklist, contacts, email)
+**Forwards to:** `/WEB-INF/view/a/activityDetail/activityDetail25.jsp`
+**Supports:** Ticket, Renewal, Setup, Opportunity activity types
 **Called by:** 20+ servlets after activity-related actions
-
-**Servlets that return to ViewActivity25:**
-- AddNoteToActivity25
-- AddActivityContact25
-- AddToDo25
-- SendEmail25
-- SendAutoFinal25
-- GoActivityDetail25 (prepares data, then forwards here)
-
-### GoAdminHome (Admin Dashboard)
-**URL:** `/GoAdminHome`
-**Purpose:** Admin control panel
-**Forwards to:** /WEB-INF/view/adminHome.jsp
-**Called by:** Many admin servlets
 
 ---
 
@@ -124,16 +117,17 @@ After authentication, all traffic flows through these central hubs:
 ```
 CreateEmail25 → /WEB-INF/view/a/general/emailMaster25.jsp
    ↓
-User fills form, clicks action button
+User fills form (CKEditor), adds recipients, attaches files
    ↓
 SaveEmailState25 (routes based on action parameter):
-   ├─ action="SE" → SendEmail25 → Microsoft Graph API → ViewActivity25
+   ├─ action="SE" → SendEmail25 → EmailTemplate wrap → SMTP via EmailDAO → ViewActivity25
+   ├─ action="AR" → AddRecipient25 → CreateEmail25
    ├─ action="DR" → RemoveRecipient25 → CreateEmail25
-   ├─ action="DA" → RemoveAttachment25 → CreateEmail25
-   └─ action="AR" → AddRecipient25 (TBD) → CreateEmail25
+   ├─ action="AA" → AddAttachment25 (uploads to Wasabi) → CreateEmail25
+   └─ action="DA" → RemoveAttachment25 → CreateEmail25
 ```
 
-**Technology:** Microsoft Graph API with Azure AD OAuth2
+**Technology:** SMTP via EmailDAO (branded HTML template via EmailTemplate class). Attachments stored in Wasabi S3.
 
 ### B. AUTOMATION EMAIL WORKFLOW
 
@@ -142,12 +136,12 @@ SendAuto25 → Displays automation form with inputs
    ↓
 User fills inputs
    ↓
-SendAutoFinal25 (with CSRF protection)
+SendAutoFinal25
    ↓
 - Processes automation template
 - Replaces placeholders <[{0}]> to <[{19}]>
 - Creates Email entity
-- Sends via dbEmail.sendEmail()
+- Sends via EmailDAO.sendEmail() (SMTP)
 - Appends email to Activity
    ↓
 ViewActivity25
@@ -157,9 +151,10 @@ ViewActivity25
 
 ```
 CREATE:
-  TaskBuilder25 → Creates activity setup
-     ↓
-  ViewActivity25 (new activity detail)
+  Ticket/Renewal/Setup:
+    TaskBuilder25 → Creates activity + checklist → ViewActivity25
+  Opportunity:
+    CreateOpportunity → Creates opportunity + checklist → redirect AgentHome
 
 VIEW:
   ViewById?id=123 → GoActivityDetail25 → ViewActivity25
@@ -176,25 +171,21 @@ CLOSE:
 ### D. CHECKLIST MANAGEMENT
 
 ```
-CURRENT (25 versions):
-  CreateChecklist25 → ViewHome25
-  ClearGrid25 → sequence builder form
-  MakeRecurringFromChecklist25 → converts to recurring
-
-LEGACY (previous package):
-  ChecklistManagerGo → checklist home
-  TaskDetailView → ChecklistManagerGo
-  ApplySequenceFilter → ChecklistManagerGo
+CreateChecklist25 → ViewHome25
+ClearGrid25 → sequence builder form
+MakeRecurringFromChecklist25 → converts to recurring
 ```
 
 ### E. SEQUENCE BUILDER FLOW
 
 ```
-SequenceHome → Main sequence management page
+SequenceBuilder25 → /WEB-INF/view/a/general/sequenceBuilder/sequenceManager25.jsp
    ↓
-ChangeTaskSequenceTable → switches between:
-   ├─ RequiredSequenceBuilder → SequenceHome
-   └─ RecurringSequenceBuilder → SequenceHome
+Two-panel layout: left = sequence list, right = task builder
+   ↓
+SequenceAction25 (handles SAVE, CREATE, DELETE)
+   ↓
+→ redirect SequenceBuilder25
 ```
 
 ### F. MONTHLY DATA IMPORT WORKFLOW
@@ -216,6 +207,48 @@ RunSelectedImportsServlet → Processes imports
 ViewActivity25
 ```
 
+### G. SALES PIPELINE FLOW
+
+```
+PROPOSAL:
+  ProposalBuilder (GET=form, POST=create) → ProposalDetail
+    ↓
+  SendProposal → email with GUID link
+    ↓
+  ViewProposal (public, GUID) → prospect views pricing/features
+    ↓
+  ApplyForProposal (public, GUID) → prospect fills application
+    ↓
+  SaveApplicationProgress (AJAX auto-save)
+    ↓
+  ApplyForProposal POST → submits application
+    ↓
+  ReviewApplications → list of submitted applications
+    ↓
+  ReviewApplication → approve/deny/more-info → Setup created on approval
+
+OPPORTUNITY:
+  AgentHome → CreateOpportunity → Opportunity created with checklist
+    ↓
+  ViewById → GoActivityDetail25 → ViewActivity25 (Opportunity detail)
+    ↓
+  UpdateOpportunityStage (AJAX stage dropdown)
+```
+
+### H. INVITATION FLOW
+
+```
+PSP Admin:
+  PspAgencyHome → Invite Modal → SendInvitation
+    ↓
+  Creates Agency (if new), Person, Invitation → sends email
+    ↓
+Agent:
+  Email link → AcceptInvite GET → acceptInvite.jsp (registration form)
+    ↓
+  AcceptInvite POST → creates User, grants role → redirect to login
+```
+
 ---
 
 ## 5. FILTER CHAIN
@@ -223,56 +256,61 @@ ViewActivity25
 ### LoginFilter (ACTIVE)
 - **Pattern:** `/*` (ALL requests)
 - **Purpose:** Authentication guard
-- **Behavior:** 
+- **Behavior:**
   - Checks `AmsDataLocal.isAuthenticated()` in session
-  - Allows public endpoints (see list above)
+  - Allows public endpoints (see §1)
   - Allows static resources
   - Redirects to /login if not authenticated
 
-### CsrfFilter (NOT ACTIVE - SECURITY ISSUE)
-- **Pattern:** None (no @WebFilter annotation!)
+### CsrfFilter (NOT ACTIVE — SECURITY ISSUE)
+- **Pattern:** None (no @WebFilter annotation)
 - **Purpose:** CSRF protection for automation emails
-- **Behavior:** 
-  - Generates CSRF token in session
-  - Checks token on requests with `sendAutoEmail` parameter
-- **ISSUE:** Filter class exists but is NOT REGISTERED as @WebFilter
-  - May not be active in production!
-  - CSRF protection may not be working
+- **ISSUE:** Filter class exists but is NOT REGISTERED as @WebFilter. CSRF protection may not be working.
 
 ---
 
-## 6. PACKAGE STRUCTURE & MIGRATION STATUS
+## 6. PACKAGE STRUCTURE
 
 ```
-┌────────────────────────────────────────────────────────┐
-│                    PACKAGE HIERARCHY                    │
-└────────────────────────────────────────────────────────┘
-
-controller (net.superiorstate.ams.controller)
-├─ Status: CURRENT/ACTIVE
-├─ Servlets: ~40
-├─ Examples: ViewHome25, ViewActivity25, SendEmail25
-└─ Pattern: Servlet names end in "25"
-
-previous.controller (net.superiorstate.ams.previous.controller)
-├─ Status: LEGACY - Still in use, migration in progress
-├─ Servlets: ~25
-├─ Examples: AuthenticateUser, GoAdminHome, RenewalHome
-└─ Sub-packages:
-    ├─ authentication (login system)
-    ├─ general.admin (admin features)
-    ├─ activity.* (activity management)
-    └─ checklist.* (checklist features)
-
-previous.archive (net.superiorstate.ams.previous.archive)
-├─ Status: DEAD CODE - Safe to delete
-├─ Servlets: ~10
-├─ Examples: sendAutomationFinal, emailActionsNew
-└─ All confirmed unused
-
-previous.filter
-├─ CsrfFilter (not registered!)
-└─ Status: Unclear if active
+src/main/java/net/superiorstate/ams/
+├── controller/
+│   ├── activity/           ← Activity CRUD, AddFileToTask, ShowFileUpload, StdAuto
+│   │   ├── contact/        ← AddContactToActivity, AddActivityContact25, ModifyContact25
+│   │   ├── renewal/        ← Renewal servlets
+│   │   ├── setup/          ← GenerateProp25, ProposalBuilder, ReviewApplication,
+│   │   │                     AgentHome, CreateOpportunity, SendInvitation, AcceptInvite,
+│   │   │                     PspAdminHome, PspAgencyHome, ServiceManagerHome, LibraryHome
+│   │   └── ticket/         ← CreateTicket25
+│   ├── assistant/          ← ChatAssistant (AI chatbot)
+│   ├── authentication/     ← AuthenticateUser, login
+│   ├── checklist/          ← Checklist management, AddRecurringSequence
+│   ├── data/               ← Import/export servlets
+│   ├── email/              ← Email workflow, ViewEmail
+│   ├── monthly/            ← Billing servlets
+│   ├── sequence/           ← SequenceBuilder25, SequenceAction25
+│   └── user/               ← User management
+├── data/
+│   ├── dao/                ← All database query classes (15 DAOs)
+│   ├── resolver/           ← Entity lookups, person resolution
+│   ├── service/            ← Business logic (billing, imports, sync, Claude API, knowledge search)
+│   └── util/               ← Validators, helpers, constants, EmailTemplate
+│   ├── AmsDataGlobal.java  ← Application-scoped state
+│   ├── AmsDataLocal.java   ← Session-scoped state
+│   └── ActivityFilter.java
+├── filter/                 ← LoginFilter
+└── model/
+    ├── activity/           ← Activity, Opportunity, CheckList, Renewal, Ticket, Setup
+    │   ├── checklist/      ← CheckList, ToDo, Task, sequences
+    │   ├── note/           ← Note, Email entity
+    │   ├── renewal/
+    │   └── ticket/
+    ├── billing/            ← Billing entities
+    ├── general/            ← Person, User, PSP, Address
+    ├── sales/              ← Agency, Prospect, Proposal, Application, Invitation
+    │   └── offering/       ← LOS, Enhancement, ServiceModule, Rate, Feature,
+    │                         ResourceCategory, MarketingMaterial
+    ├── summit/             ← Employee, Employer, Benefit (archive, imports, temp)
+    └── (root)              ← Activity25, Constant, view-backed DTOs
 ```
 
 ---
@@ -280,62 +318,38 @@ previous.filter
 ## 7. CRITICAL FINDINGS
 
 ### Security Issues
-1. **CsrfFilter not registered** - CSRF protection may not be working
-2. **InitializeDataBase accessible** - Dangerous admin function is whitelisted
-3. **AuthenticateUser.displayLoginFailure()** - Not implemented (FIXME)
-4. **No rate limiting** - Login attempts not throttled
+1. **CsrfFilter not registered** — CSRF protection may not be working
+2. **InitializeDataBase accessible** — Dangerous admin function is whitelisted
+3. **AuthenticateUser.displayLoginFailure()** — Not implemented (FIXME)
+4. **No rate limiting** — Login attempts not throttled
 
-### Dead Code Confirmed (Safe to Delete)
-**Archive Package:**
-- sendAutomationFinal
-- emailActionsNew  
-- doCheckListAction
-- goCheckListDetail
-- createSimpleChecklist
-
-**Other:**
-- HomeServlet (empty implementation)
-
-### Duplicate Resolution
-**Use these versions:**
-- TaskBuilder25 (not TaskBuilder)
-- ClearGrid25 (not ClearGrid)
-- MakeRecurringFromChecklist25 (not MakeRecurringFromChecklist)
-- SendAuto25/SendAutoFinal25 (not SendAutoEmail, SendAutomationEmailFinal)
-
-### Migration Targets (Still in previous.controller)
-**High Priority (used on every request):**
-- Authentication servlets (AuthenticateUser, LogOut, etc.)
-- GoAdminHome
-- ChecklistManagerGo
-
-**Medium Priority:**
-- RenewalHome
-- SequenceHome
-- Email servlets (GoEmailHome, EmailActions)
+### Completed Cleanup
+- **238 dead files deleted** across 5 sessions
+- **32 cryptic data classes renamed**
+- **`previous/` package entirely eliminated**
+- All code now in clean `controller/`, `data/`, `model/` packages
+- See `cleanup_sweep_summary.md` for full history
 
 ---
 
 ## 8. DEPENDENCY GRAPH
 
 ```
-Entry → LoginFilter → AuthenticateUser → ViewHome25
-                                            ↓
-                        ┌───────────────────┼───────────────────┐
-                        ↓                   ↓                   ↓
-                  ViewActivity25      GoAdminHome       ChecklistManagerGo
-                        ↓                   ↓                   ↓
-              [Activity Features]   [Admin Features]   [Checklist Features]
-                        ↓                   ↓                   ↓
-                  AddNote, ToDo,      RefreshData,      TaskDetailView,
-                  SendEmail,          UpdateSettings,   ApplyFilter,
-                  CloseActivity       SendAuto          SequenceBuilder
-                        ↓                   ↓                   ↓
-                  ViewActivity25      GoAdminHome       ChecklistManagerGo
-                        ↓                   ↓                   ↓
-                    [Return to home] ← ← ← ← ← ← ← ← ← ← ← ← ←
-                        ↓
-                   ViewHome25
+Entry → LoginFilter → AuthenticateUser
+                            ↓
+              ┌─────────────┼──────────────┐
+              ↓             ↓              ↓
+         ViewHome25    AgentHome    (admin pages)
+         (PSP users)   (Agents)
+              ↓             ↓              ↓
+        ViewActivity25 ← ← ┘     ServiceManagerHome
+              ↓                   PspAdminHome
+        [Activity Features]       PspAgencyHome
+        AddNote, ToDo,            LibraryHome
+        SendEmail,
+        CloseActivity
+              ↓
+        ViewHome25 / AgentHome
 ```
 
 ---
@@ -343,55 +357,37 @@ Entry → LoginFilter → AuthenticateUser → ViewHome25
 ## 9. TECHNOLOGY STACK
 
 **Backend:**
-- Jakarta EE 10 (Servlets, JPA)
+- Jakarta EE 10 (Servlets, JPA via EclipseLink)
 - Tomcat 10
+- Java 17, Maven WAR packaging
 - MySQL database (beta_ssa schema)
-- EntityManager (JPA) for database access
 
 **Authentication:**
 - Session-based (AmsDataLocal in session)
 - SHA-512 password hashing with salt
-- Azure AD OAuth2 (for email sending)
+- Role-based routing (PSP → ViewHome25, Agent → AgentHome)
 
 **Email:**
-- Microsoft Graph API
-- Azure AD authentication
-- Service account sending
+- SMTP via EmailDAO (provider-agnostic — SMTP2GO, Gmail, any SMTP service)
+- Branded HTML template via EmailTemplate class
+- PSP-specific colors from DB constants
+
+**Storage:**
+- Wasabi S3-compatible cloud storage (ams-file-storage bucket)
+- Pre-signed URLs for downloads (1-hour or 7-day expiry)
+- StorageDAO handles upload, download URL generation, delete
+
+**AI:**
+- Anthropic Claude API (Haiku 4.5) for employee knowledge chatbot
+- RAG with pre-indexed JSON knowledge bases + live ticket resolution queries
 
 **Frontend:**
 - JSP with JSTL
 - Bootstrap 5
 - Bootstrap Icons
+- CKEditor (email composer)
+- SortableJS (drag-and-drop in sequence builder, service manager)
 
 **Deployment:**
 - WAR file to Tomcat
 - Domain: superiorstate.biz
-
----
-
-## 10. NEXT STEPS FOR CLEANUP
-
-### Immediate Actions
-1. ✅ Delete archive package servlets (confirmed dead)
-2. ✅ Delete HomeServlet (empty implementation)
-3. ⚠️ Register CsrfFilter with @WebFilter or remove it
-4. ⚠️ Implement AuthenticateUser.displayLoginFailure()
-5. ⚠️ Remove InitializeDataBase from LoginFilter whitelist (or protect better)
-
-### Short Term
-1. Map all JSP files to identify orphaned pages
-2. Migrate authentication servlets from previous.controller to controller
-3. Add rate limiting to AuthenticateUser
-4. Add logging to LoginFilter
-
-### Medium Term
-1. Migrate remaining previous.controller servlets to controller
-2. Delete previous package entirely
-3. Consolidate duplicate JSP files
-4. Add comprehensive error handling
-
-### Long Term
-1. Replace session-based auth with JWT
-2. Add API endpoints (REST)
-3. Migrate from JSP to modern frontend framework
-4. Add comprehensive testing
