@@ -83,6 +83,7 @@
               <li><a class="dropdown-item" href="LibraryHome"><i class="bi bi-collection me-2"></i>Resource Library</a></li>
               <li><hr class="dropdown-divider"></li>
               <li><a class="dropdown-item" href="SequenceBuilder25"><i class="bi bi-list-check me-2"></i>Sequence Builder</a></li>
+              <li><a class="dropdown-item" href="ReviewTimeCorrections"><i class="bi bi-clock-history me-2"></i>Time Corrections</a></li>
             </ul>
           </div>
 

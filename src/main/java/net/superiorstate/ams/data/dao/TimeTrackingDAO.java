@@ -3,10 +3,7 @@ package net.superiorstate.ams.data.dao;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.NoResultException;
 import jakarta.persistence.Query;
-import net.superiorstate.ams.model.general.Person;
-import net.superiorstate.ams.model.general.TimeLog;
-import net.superiorstate.ams.model.general.TimeStretch;
-import net.superiorstate.ams.model.general.User;
+import net.superiorstate.ams.model.general.*;
 
 import java.sql.Date;
 import java.time.LocalDate;
@@ -47,11 +44,13 @@ public abstract class TimeTrackingDAO {
             timeStretch.setUser(user);
             timeStretch.setInDate(timeLogList.get(i).getPunchDate());
             timeStretch.setInTime(timeLogList.get(i).getPunchTime());
+            timeStretch.setInLogId(timeLogList.get(i).getId());       // ← ADD THIS
             TimeLog forTomorrow = checkTomorrow(em,timeLogList.get(0).getPunchDate());
             // Check to see if we are at there is no final punch out transaction for the date
             if(i+1 <= timeLogList.size()-1){
                 timeStretch.setOutDate(timeLogList.get(i+1).getPunchDate());
                 timeStretch.setOutTime(timeLogList.get(i+1).getPunchTime());
+                timeStretch.setOutLogId(timeLogList.get(i+1).getId()); // ← ADD THIS
             }
             // if we are at the last index and we are in a situation where there is not a punch out
             // for the date, check the next day to see if first transaction is a punch out transaction
@@ -59,6 +58,7 @@ public abstract class TimeTrackingDAO {
             else if(forTomorrow.getId()!=0L && !forTomorrow.isIn()){
                 timeStretch.setOutDate(forTomorrow.getPunchDate());
                 timeStretch.setOutTime(forTomorrow.getPunchTime());
+                timeStretch.setOutLogId(forTomorrow.getId());          // ← ADD THIS
             }
             myStretches.add(timeStretch);
             System.out.println(timeStretch.getInDate().toString());
@@ -101,7 +101,65 @@ public abstract class TimeTrackingDAO {
         }
         return timeLog;
     }
+// ── Add this method to TimeTrackingDAO ──
 
+    /**
+     * Returns a List of 7 DaySummary objects (Mon–Sun) for the week containing the given date.
+     * Each DaySummary has that day's stretches and computed totals.
+     */
+    public static List<DaySummary> getWeeklySummary(EntityManager em, Person user, LocalDate referenceDate) {
+        // Find Monday of the week containing referenceDate
+        LocalDate monday = referenceDate.with(java.time.DayOfWeek.MONDAY);
+
+        String[] dayLabels = {"Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"};
+        LocalDate today = LocalDate.now();
+
+        List<DaySummary> week = new ArrayList<>();
+        for (int i = 0; i < 7; i++) {
+            LocalDate day = monday.plusDays(i);
+            DaySummary ds = new DaySummary(
+                    Date.valueOf(day),
+                    dayLabels[i],
+                    day.equals(today)
+            );
+
+            // Only fetch stretches for days up to and including today
+            if (!day.isAfter(today)) {
+                Date sqlDate = Date.valueOf(day);
+                List<TimeStretch> stretches = getTimeHistoryForRange(em, user, sqlDate, sqlDate);
+                ds.setStretches(stretches);
+            }
+
+            week.add(ds);
+        }
+        return week;
+    }
+
+    /**
+     * Convenience overload — returns the current week's summary.
+     */
+    public static List<DaySummary> getWeeklySummary(EntityManager em, Person user) {
+        return getWeeklySummary(em, user, LocalDate.now());
+    }
+
+    /**
+     * Computes total minutes across all days in a weekly summary.
+     */
+    public static int getWeeklyTotalMinutes(List<DaySummary> week) {
+        int total = 0;
+        for (DaySummary ds : week) {
+            total += ds.getTotalMinutes();
+        }
+        return total;
+    }
+
+    /**
+     * Formats total minutes as "Xh Ym".
+     */
+    public static String formatMinutes(int totalMinutes) {
+        if (totalMinutes <= 0) return "—";
+        return (totalMinutes / 60) + "h " + String.format("%02d", totalMinutes % 60) + "m";
+    }
 
 
 

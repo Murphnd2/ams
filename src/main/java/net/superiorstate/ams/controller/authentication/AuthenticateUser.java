@@ -8,7 +8,9 @@ import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.AmsDataLocal;
 import net.superiorstate.ams.data.dao.AuthDAO;
+import net.superiorstate.ams.data.dao.TimeTrackingDAO;
 import net.superiorstate.ams.model.general.Person;
+import net.superiorstate.ams.model.general.TimeLog;
 import net.superiorstate.ams.model.general.User;
 import net.superiorstate.ams.model.general.UserRole;
 
@@ -53,8 +55,7 @@ public class AuthenticateUser extends HttpServlet {
         if (isAgent || isAgencyAdmin) {
             response.sendRedirect("AgentHome");
         } else {
-            RequestDispatcher dispatcher = getServletContext().getNamedDispatcher("ViewHome25");
-            dispatcher.forward(request, response);
+            response.sendRedirect("ViewHome25");
         }
     }
 
@@ -83,6 +84,14 @@ public class AuthenticateUser extends HttpServlet {
         local.intializeLocalData(em,request);
         AuthDAO.assignUserRoles(request, u);
         local.setPspAdmin((boolean) request.getSession().getAttribute("isPspAdmin"));
+        // Initialize timeclock state from DB
+        try {
+            TimeLog lastPunch = TimeTrackingDAO.getMyLastPunch(em, u);
+            local.setUserIsIn(lastPunch.isIn());
+        } catch (Exception e) {
+            local.setUserIsIn(false);
+        }
+        local.setMyTimeHistory(TimeTrackingDAO.getTodaysTimeHistory(em, p));
         request.getSession().setAttribute("local", local);
     }
 

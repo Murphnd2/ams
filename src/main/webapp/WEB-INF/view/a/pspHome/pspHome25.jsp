@@ -33,6 +33,7 @@
     <div class="col-12 col-lg-7 col-xl-3 order-last">
       <c:import url="/WEB-INF/view/a/pspHome/columns/timeClock/timeClockHeader.jsp"></c:import>
       <c:import url="/WEB-INF/view/a/pspHome/columns/timeClock/timeClockDetail25.jsp"></c:import>
+      <c:import url="/WEB-INF/view/a/pspHome/columns/timeClock/timeCorrectionModal.jsp"/>
     </div>
     <%-- ************************ A C T I V I T Y   C O L U M N ********************************************************* --%>
     <div class="col-12 col-lg-7 col-xl-6 order-first order-xl-2 ">

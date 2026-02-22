@@ -30,8 +30,7 @@ public class TimeClock25 extends HttpServlet {
         goToPage(request,response);
     }
     private void goToPage(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-        RequestDispatcher dispatcher = getServletContext().getNamedDispatcher("ViewHome25");
-        dispatcher.forward(request,response);
+        response.sendRedirect("ViewHome25");
     }
 
     private void setTimeClockItems(HttpServletRequest request){

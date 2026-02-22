@@ -11,12 +11,16 @@ import jakarta.servlet.http.HttpServletResponse;
 import net.superiorstate.ams.data.dao.ActivityLandingDao;
 import net.superiorstate.ams.data.AmsDataGlobal;
 import net.superiorstate.ams.data.AmsDataLocal;
+import net.superiorstate.ams.data.dao.TimeTrackingDAO;
 import net.superiorstate.ams.model.ActivityLandingFilter;
 import net.superiorstate.ams.model.ActivityLandingRow;
 import net.superiorstate.ams.model.ToDoOut25;
 import net.superiorstate.ams.model.activity.checklist.tasks.ToDo;
+import net.superiorstate.ams.model.general.DaySummary;
 
 import java.io.IOException;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -28,6 +32,7 @@ public class ViewHome25 extends HttpServlet {
             throws ServletException, IOException {
         processData(request);
         loadLandingRows(request);      // <-- Step 1 add
+        loadTimeclockData(request);
         goToPage(request, response);
     }
 
@@ -39,6 +44,54 @@ public class ViewHome25 extends HttpServlet {
         goToPage(request, response);
     }
 
+    private void loadTimeclockData(HttpServletRequest request) {
+        AmsDataLocal local = (AmsDataLocal) request.getSession().getAttribute("local");
+        EntityManagerFactory emf = (EntityManagerFactory) getServletContext().getAttribute("emf");
+        EntityManager em = emf.createEntityManager();
+
+        try {
+            // Weekly summary (Mon–Sun of current week)
+            List<DaySummary> weekSummary = TimeTrackingDAO.getWeeklySummary(em, local.getCurrentPerson());
+            int weekTotalMinutes = TimeTrackingDAO.getWeeklyTotalMinutes(weekSummary);
+
+            // Find today's entry for the "today" tab
+            DaySummary todaySummary = null;
+            for (DaySummary ds : weekSummary) {
+                if (ds.isToday()) {
+                    todaySummary = ds;
+                    break;
+                }
+            }
+
+            // Week label: "Feb 17 — Feb 21" (Monday through today or Friday)
+            LocalDate monday = LocalDate.now().with(java.time.DayOfWeek.MONDAY);
+            LocalDate friday = monday.plusDays(4);
+            DateTimeFormatter fmt = DateTimeFormatter.ofPattern("MMM d");
+            String weekLabel = monday.format(fmt) + " — " + friday.format(fmt);
+
+            // Avg per day (only count days that have stretches)
+            long daysWorked = weekSummary.stream()
+                    .filter(ds -> ds.getTotalMinutes() > 0)
+                    .count();
+            int avgMinutes = daysWorked > 0 ? (int)(weekTotalMinutes / daysWorked) : 0;
+
+            // Remaining toward 40h target
+            int targetMinutes = 2400; // 40 hours
+            int remainingMinutes = Math.max(0, targetMinutes - weekTotalMinutes);
+
+            // Set request attributes for JSP
+            request.setAttribute("weekSummary", weekSummary);
+            request.setAttribute("weekTotalMinutes", weekTotalMinutes);
+            request.setAttribute("weekTotalFormatted", TimeTrackingDAO.formatMinutes(weekTotalMinutes));
+            request.setAttribute("weekLabel", weekLabel);
+            request.setAttribute("avgPerDayFormatted", TimeTrackingDAO.formatMinutes(avgMinutes));
+            request.setAttribute("remainingFormatted", TimeTrackingDAO.formatMinutes(remainingMinutes));
+            request.setAttribute("todaySummary", todaySummary);
+
+        } finally {
+            em.close();
+        }
+    }
     private void processData(HttpServletRequest request) {
         AmsDataLocal local = (AmsDataLocal) request.getSession().getAttribute("local");
 
