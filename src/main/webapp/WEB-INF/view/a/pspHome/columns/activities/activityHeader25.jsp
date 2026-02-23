@@ -34,6 +34,7 @@
   <c:set var="vr" value=""/><c:if test="${af.isViewRenewal()==true}"><c:set var="vr" value="checked"/></c:if>
   <c:set var="vs" value=""/><c:if test="${af.isViewSetup()==true}"><c:set var="vs" value="checked"/></c:if>
   <c:set var="vt" value=""/><c:if test="${af.isViewTicket()==true}"><c:set var="vt" value="checked"/></c:if>
+  <c:set var="vo" value=""/><c:if test="${af.isViewOpportunity()==true}"><c:set var="vo" value="checked"/></c:if>
   <c:choose>
     <c:when test="${af.isViewWaitingOnUs()==false && af.isViewNeedsContact()==false}">
       <c:set var="qou" value=""/><c:set var="qnc" value=""/>
@@ -100,6 +101,12 @@
             <label class="btn btn-outline-info" for="vTicket" data-bs-toggle="tooltip" title="Tickets">
               <i class="bi bi-ticket-detailed"></i> T
             </label>
+            <c:if test="${sessionScope.isPspSales || sessionScope.isPspAdmin}">
+              <input type="checkbox" class="btn-check" name="vOpp" id="vOpp" autocomplete="off" value="7" ${vo}>
+              <label class="btn btn-outline-success" for="vOpp" data-bs-toggle="tooltip" title="Opportunities">
+                <i class="bi bi-graph-up-arrow"></i> O
+              </label>
+            </c:if>
           </div>
         </div>
 

@@ -173,6 +173,29 @@ Planning note: At 2 cores per PSP VPS, an 8-core quota supports 4 simultaneous P
 
 ---
 
+### D-24: Seed PSP House Agency with User Links
+
+**Priority:** HIGH — Required for opportunity/sales features to work out of the box
+**Status:** Not started
+**Files:** `DatabaseInitializer.java`, `CreatePspUser` (if exists)
+
+The initializer creates an Agency record during PSP setup but doesn't link PSP users to it. Without this link, PSP users can't create proposals or opportunities tied to their own agency.
+
+**Required changes:**
+
+1. **DatabaseInitializer:** After creating the house agency, set `manager_id` to the primary contact person, and insert the primary contact into the `agents` join table
+2. **DatabaseInitializer:** Grant the initialization user roles 1 (PSP User) + 5 (PSP Admin) + 9 (PSP Sales) — currently only grants 1 + 5
+3. **CreatePspUser (future):** When creating new PSP users, auto-add them to the house agency's `agents` join table. They do NOT get Agent role (ID 2) — the agency link is data-only for proposal/opportunity scoping
+4. **House agency naming:** Consider naming it `"{PSP Name} Direct Sales"` to distinguish from external agent agencies
+
+**Two proposal-building contexts to support:**
+
+- **PSP Admin:** Sees ALL rates across all agencies. Can build proposals on behalf of any agent. Full pipeline visibility. ProposalBuilder needs a future "build on behalf" mode for this.
+- **PSP Sales:** Scoped like an external agent. Sees only own prospects, only house agency rates. Creates and manages own direct-sale opportunities.
+
+**Depends on:** V010 migration (PSP Sales role must exist)
+
+---
 ## Completed Items
 
 ### Session: February 23, 2026

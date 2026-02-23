@@ -25,6 +25,7 @@ Run scripts in the order listed. Some depend on prior ones.
 | 7 | `resource_library_production_migration.sql` | ResourceCategory table, marketingmaterial.category_id FK, widen storage_guid to VARCHAR(50), feature.material_id FK | ✅ 2026-02-21 | ❌ NOT RUN | Prereq: script 1 (creates feature and marketingmaterial tables). |
 | 8 | `opportunity_migration_production.sql` | Assignee columns for Opportunity (prospect_id, agency_id_opp, opportunity_stage, etc.), sales TemplateGroup/TemplatePurpose/Task seed data | ✅ 2026-02-21 | ❌ NOT RUN | Do NOT add DEFAULT to opportunity_stage. Prereq: scripts 1–3. |
 | 9 | `timeclock_correction_migration.sql` | time_correction_request table with FKs to assignee and timelog, indexes on status/requestor/date | ❌ NOT RUN | ❌ NOT RUN | No prerequisites. Run before deploying timeclock correction code. |
+| 10 | `V010__psp_opportunity_integration.sql` | PSP Sales role (ID 9), managed_by_id on assignee for PSP-managed opportunities | ✅ 2026-02-22 | ❌ NOT RUN | Prereq: script 8 (opportunity columns must exist). Run BEFORE deploying activity list opportunity code. |
 
 ## Chatbot Migration (Standalone)
 
@@ -39,7 +40,7 @@ INSERT INTO constant (name, value, note) VALUES ('ANTHROPIC_API_KEY', '<key>', '
 ## How to Use
 
 1. Before deploying code changes to production, check this file for any pending migrations
-2. Run scripts in the order listed (1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9)
+2. Run scripts in the order listed (1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10)
 3. Update the Production column with date after running
 4. Commit this file back to GitHub
 

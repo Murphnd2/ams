@@ -14,6 +14,7 @@ public class ActivityLandingRow {
     private final boolean delegatedToMe;
     private final int dueBucket;
     private final String ticketEmployerNameLc;
+    private final String opportunityStage;
 
     public ActivityLandingRow(
             long activityId,
@@ -25,7 +26,8 @@ public class ActivityLandingRow {
             int daysSinceContact,
             boolean delegatedToMe,
             int dueBucket,
-            String ticketEmployerNameLc
+            String ticketEmployerNameLc,
+            String opportunityStage
     ) {
         this.activityId = activityId;
         this.dtype = dtype;
@@ -37,6 +39,7 @@ public class ActivityLandingRow {
         this.delegatedToMe = delegatedToMe;
         this.dueBucket = dueBucket;
         this.ticketEmployerNameLc = ticketEmployerNameLc;
+        this.opportunityStage = opportunityStage;
     }
 
     public long getActivityId() {
@@ -77,5 +80,9 @@ public class ActivityLandingRow {
 
     public String getTicketEmployerNameLc() {
         return ticketEmployerNameLc;
+    }
+
+    public String getOpportunityStage() {
+        return opportunityStage;
     }
 }

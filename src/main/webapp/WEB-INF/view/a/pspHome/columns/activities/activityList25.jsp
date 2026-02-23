@@ -31,6 +31,23 @@
   .act-type-R { background: #e3edfd; color: #1565c0; }
   .act-type-S { background: #ede7f6; color: #5e35b1; }
   .act-type-T { background: #e0f7fa; color: #00838f; }
+  .act-type-O { background: #e8f5e9; color: #2e7d32; }
+
+  .act-stage {
+    flex-shrink: 0;
+    font-size: 0.6rem;
+    font-weight: 600;
+    padding: 0.1rem 0.35rem;
+    border-radius: 3px;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  .act-stage-NEW          { background: #e3f2fd; color: #1565c0; }
+  .act-stage-CONTACTED    { background: #e8f5e9; color: #2e7d32; }
+  .act-stage-QUALIFIED    { background: #fff3e0; color: #e65100; }
+  .act-stage-PROPOSAL_SENT { background: #f3e5f5; color: #6a1b9a; }
+  .act-stage-NEGOTIATION  { background: #fce4ec; color: #b71c1c; }
+  .act-stage-ON_HOLD      { background: #f5f5f5; color: #616161; }
 
   .act-name { flex: 1; min-width: 0; font-size: 0.82rem; line-height: 1.25; }
   .act-name-text { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -100,6 +117,10 @@
         <c:when test="${activity.dtype == 'Setup'}">
           <c:set var="typeLabel" value="S"/>
           <c:set var="typeCls" value="act-type-S"/>
+        </c:when>
+        <c:when test="${activity.dtype == 'Opportunity'}">
+          <c:set var="typeLabel" value="O"/>
+          <c:set var="typeCls" value="act-type-O"/>
         </c:when>
         <c:otherwise>
           <c:set var="typeLabel" value="T"/>
@@ -185,6 +206,13 @@
             ${displayName}<c:if test="${not empty extra}"> <span class="act-extra">(${extra})</span></c:if>
           </span>
         </div>
+
+        <%-- Opportunity stage badge --%>
+        <c:if test="${activity.dtype == 'Opportunity' && not empty activity.opportunityStage}">
+          <span class="act-stage act-stage-${activity.opportunityStage}">
+            ${fn:replace(activity.opportunityStage, '_', ' ')}
+          </span>
+        </c:if>
 
         <%-- Due date --%>
         <span class="act-due ${dueCls}">

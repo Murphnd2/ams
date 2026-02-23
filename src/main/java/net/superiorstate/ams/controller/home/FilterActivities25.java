@@ -42,6 +42,7 @@ public class FilterActivities25 extends HttpServlet {
             af.setViewRenewal(true);
             af.setViewSetup(true);
             af.setViewTicket(true);
+            af.setViewOpportunity(true);
         } else if(viewAll!=null && viewAll.equals("MY")) {
             af.setViewWaitingOnUs(true);
             af.setViewNeedsContact(true);
@@ -50,6 +51,7 @@ public class FilterActivities25 extends HttpServlet {
             af.setViewRenewal(true);
             af.setViewSetup(true);
             af.setViewTicket(true);
+            af.setViewOpportunity(true);
         } else if(viewAll!=null && viewAll.equals("REN")){
             af.setViewWaitingOnUs(false);
             af.setViewNeedsContact(false);
@@ -58,6 +60,7 @@ public class FilterActivities25 extends HttpServlet {
             af.setViewRenewal(true);
             af.setViewSetup(false);
             af.setViewTicket(false);
+            af.setViewOpportunity(false);
         } else {
             String fOnUs = request.getParameter("fOnUs");
             af.setViewWaitingOnUs(fOnUs != null);
@@ -85,10 +88,13 @@ public class FilterActivities25 extends HttpServlet {
 
             String tk = request.getParameter("vTicket");
             af.setViewTicket(tk!=null);
+
+            String op = request.getParameter("vOpp");
+            af.setViewOpportunity(op != null);
         }
 
         local.setActivityFilter(af);
-        local.setFilteredActivityList(local.filterActivityListing());   // ← this is the correct line
+        local.setFilteredActivityList(local.filterActivityListing());
 
         request.getSession().setAttribute("local",local);
     }

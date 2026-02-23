@@ -30,7 +30,7 @@ public class ActivityLandingDao {
 
             Query q = em.createNativeQuery(sql);
 
-            // params CTE (1..9)
+            // params CTE (1..10)
             q.setParameter(1, mePersonId);
             q.setParameter(2, daysSinceWarn);
 
@@ -44,9 +44,11 @@ public class ActivityLandingDao {
 
             q.setParameter(9, f.sortAlphabetically ? 1 : 0);
 
-            // LIMIT/OFFSET (10..11)
-            q.setParameter(10, f.pageSize);
-            q.setParameter(11, f.offset);
+            q.setParameter(10, f.includeOpportunity ? 1 : 0);
+
+            // LIMIT/OFFSET (11..12)
+            q.setParameter(11, f.pageSize);
+            q.setParameter(12, f.offset);
 
             @SuppressWarnings("unchecked")
             List<Object[]> rows = q.getResultList();
@@ -76,6 +78,8 @@ public class ActivityLandingDao {
 
                 String ticketEmployerNameLc = (String) r[9];
 
+                String opportunityStage = (String) r[10];
+
                 out.add(new ActivityLandingRow(
                         activityId,
                         dtype,
@@ -86,7 +90,8 @@ public class ActivityLandingDao {
                         daysSinceContact,
                         delegatedToMe,
                         dueBucket,
-                        ticketEmployerNameLc
+                        ticketEmployerNameLc,
+                        opportunityStage
                 ));
             }
 
@@ -119,7 +124,8 @@ params AS (
     ? AS incTicket,
     ? AS viewNeedsContact,
     ? AS viewWaitingOnUs,
-    ? AS sortAlpha
+    ? AS sortAlpha,
+    ? AS incOpportunity
 ),
 
 open_act AS (
@@ -130,10 +136,17 @@ open_act AS (
     a.assigned_to_id,
     a.due_date,
     a.checklist_id,
-    a.primary_contact
+    a.primary_contact,
+    a.managed_by_id,
+    a.opportunity_stage
   FROM assignee a
   WHERE a.is_complete = 0
-    AND a.DTYPE IN ('Renewal', 'Setup', 'Ticket')
+    AND (
+      (a.DTYPE IN ('Renewal', 'Setup', 'Ticket'))
+      OR (a.DTYPE = 'Opportunity'
+          AND (a.opportunity_stage IS NULL
+               OR a.opportunity_stage NOT IN ('WON', 'LOST')))
+    )
 ),
 
 last_outbound AS (
@@ -187,6 +200,8 @@ base AS (
     oa.full_name AS full_name,
     oa.assigned_to_id AS assigned_to_id,
     oa.due_date AS due_date,
+    oa.managed_by_id AS managed_by_id,
+    oa.opportunity_stage AS opportunity_stage,
 
     CASE
       WHEN ls.status_id = 1 THEN 0
@@ -259,17 +274,24 @@ SELECT
   b.days_since_contact,
   b.delegated_to_me,
   b.due_bucket,
-  b.ticket_employer_name_lc
+  b.ticket_employer_name_lc,
+  b.opportunity_stage
 FROM base b
 CROSS JOIN params p
 WHERE 1 = 1
 
-  AND (p.myOpenOnly = 0 OR b.assigned_to_id = p.me)
+  AND (
+    p.myOpenOnly = 0
+    OR b.assigned_to_id = p.me
+    OR (b.dtype = 'Opportunity' AND b.managed_by_id = p.me)
+  )
 
   AND (
     (p.incRenewal = 1 AND b.dtype = 'Renewal')
     OR (p.incSetup = 1 AND b.dtype = 'Setup')
     OR (p.incTicket = 1 AND b.dtype = 'Ticket')
+    OR (p.incOpportunity = 1 AND b.dtype = 'Opportunity'
+        AND (b.assigned_to_id = p.me OR b.managed_by_id = p.me))
   )
 
   AND (
@@ -283,12 +305,10 @@ WHERE 1 = 1
   )
 
 ORDER BY
-  /* sortAlpha=1 => name sort; sortAlpha=0 => due date sort */
   CASE WHEN p.sortAlpha = 1 THEN b.full_name END ASC,
   CASE WHEN p.sortAlpha = 0 THEN (b.due_date IS NULL) END ASC,
   CASE WHEN p.sortAlpha = 0 THEN b.due_date END ASC,
 
-  /* stable tie-breakers (always) */
   b.full_name ASC,
   b.activity_id DESC
 

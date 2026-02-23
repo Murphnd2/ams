@@ -29,4 +29,5 @@ INSERT IGNORE INTO schema_version (version, description, script_name) VALUES
 ('V006', 'agency manager migration', 'agency_manager_migration.sql'),
 ('V007', 'invitation migration', 'invitation_migration.sql'),
 ('V008', 'sales pipeline 4', 'sales_pipeline_migration_4.sql'),
-('V009', 'timeclock correction', 'timeclock_correction_migration.sql');
+('V009', 'timeclock correction', 'timeclock_correction_migration.sql'),
+('V010', 'PSP opportunity integration - sales role and managed_by', 'V010__psp_opportunity_integration.sql');
