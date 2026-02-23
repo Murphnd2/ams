@@ -86,11 +86,11 @@ Find the commented-out SSL connector block (search for `8443`). Replace the enti
            protocol="org.apache.coyote.http11.Http11NioProtocol"
            maxThreads="150"
            SSLEnabled="true">
-    <SSLHostConfig>
-        <Certificate certificateFile="conf/cert.pem"
-                     certificateKeyFile="conf/privkey.pem"
-                     certificateChainFile="conf/chain.pem" />
-    </SSLHostConfig>
+   <SSLHostConfig>
+      <Certificate certificateFile="conf/cert.pem"
+                   certificateKeyFile="conf/privkey.pem"
+                   certificateChainFile="conf/chain.pem" />
+   </SSLHostConfig>
 </Connector>
 ```
 

@@ -50,8 +50,8 @@ Removed:
 - Accelergent BPO persons (IDs 101, 102), their user accounts, and role assignments
 
 Kept:
-- User roles 101-103 (Accelergent BPO/Admin/User) — still seeded, just no users assigned. BPO dropdown will be empty until vendors are configured via admin UI.
-- Demo benefits (HRA, FSA, COBRA) and ticket categories — to be moved to a demo seeder servlet in the future (see D-24, D-25)
+- User roles 101-103 (Accelergent BPO/Admin/User) — still seeded, just no users assigned
+- Demo benefits (HRA, FSA, COBRA) and ticket categories — to be moved to demo seeder servlet (see D-24)
 
 ---
 
@@ -116,6 +116,27 @@ Old scripts keep their descriptive names (already tracked in `schema_version`). 
 
 ---
 
+### D-13: Build Health Check Script ✅
+
+**Completed:** February 23, 2026 (Session 2)
+
+`/opt/ssa/scripts/healthcheck.sh` — Collects system status (Tomcat, MySQL, disk, backups, versions, errors) and emails daily report. Cron at 6:00 AM UTC.
+
+**SMTP config:** Reads from DB constants (`SYS_HEALTH_*`) with hardcoded fallback if DB unreachable. Updatable across all deployments via SQL migrations.
+
+**Kill switch:** `SYS_HEALTH_ENABLED` constant — set to `false` to disable emails (e.g., when master dashboard replaces email reports).
+
+**DB constants seeded during initialization:**
+- `SYS_HEALTH_ENABLED` = `true`
+- `SYS_HEALTH_EMAIL_TO` = `kevin@superiorstate.net`
+- `SYS_HEALTH_EMAIL_FROM` = `health@superiorstate.net`
+- `SYS_HEALTH_SMTP_SERVER` = `mail.smtp2go.com`
+- `SYS_HEALTH_SMTP_PORT` = `2525`
+- `SYS_HEALTH_SMTP_USER` = `jspSmtpSender`
+- `SYS_HEALTH_SMTP_PASSWORD` = (smtp2go credential)
+
+---
+
 ### D-15 through D-19: Master VPS Configuration ✅
 
 **Completed:** February 23, 2026 (Session 1)
@@ -138,6 +159,24 @@ No expiration, read-only, scoped to Murphnd2/ams.
 
 ---
 
+### D-27: Create Tomcat SSL Reference Doc ✅
+
+**Completed:** February 23, 2026 (Session 2)
+**File:** `docs/tomcat_ssl_setup.md`
+
+Step-by-step guide covering Certbot certificate generation, Tomcat `server.xml` HTTPS connector configuration, HTTP→HTTPS redirect, privileged port binding, and auto-renewal with deploy hooks. Referenced from `docs/deployment_runbook.md` Phase 3.
+
+---
+
+### D-28: Save Blank Schema Dump on Master Image ✅
+
+**Completed:** February 23, 2026 (Session 2)
+**Location:** `/opt/ssa/schema/beta_ssa_blank.sql` on master VPS
+
+Enables quick rollback: drop database, re-import blank schema, re-initialize. Referenced in deployment runbook rollback procedure.
+
+---
+
 ## Open Items
 
 ### D-07: Externalize Database Connection
@@ -149,23 +188,9 @@ The database connection is currently configured via Tomcat JNDI datasource in `c
 
 ---
 
-### D-13: Build Health Check Script
-
-**Priority:** LOW — Nice to have for first deployment, required by PSP #3-4
-**Status:** Not started
-
-Shell script installed on the master image at `/opt/ssa/scripts/healthcheck.sh`:
-
-- Collects: Tomcat status, MySQL status, disk usage, last backup time, WAR version, DB migration version, recent errors
-- Emails summary to `health@monitor.superiorstate.net` (or configurable address)
-- Subject line includes `PSP_ID`
-- Cron: nightly or twice daily
-
----
-
 ### D-14: Master Admin Dashboard & PSP Instance Management
 
-**Priority:** LOW — Phase 2 (after email monitoring is working)
+**Priority:** LOW — Phase 2 (after health check emails are operational)
 **Status:** Not started
 
 Build a dashboard view in the AMS application, accessible only to "Master Admin" role. This serves as the central management console for all PSP instances.
@@ -174,9 +199,11 @@ Build a dashboard view in the AMS application, accessible only to "Master Admin"
 - Receives health check data from all PSP VPSes and displays status grid
 - PSP instance registry: list of all deployed PSPs with status, domain, version, last backup
 - Deployment feedback: surface errors, version drift, failed updates
-- Could include a "Master Admin" concept that manages PSP installs
+- "Master Admin" concept that manages PSP installs
 
 **Architecture decision:** Build within the AMS app (role-gated) rather than a separate website. The infrastructure and auth system already exist.
+
+**When built:** Push migration to set `SYS_HEALTH_ENABLED=false` across all PSPs to stop email reports. Update deployment runbook Phase 7 to reference the new dashboard workflow.
 
 ---
 
@@ -228,44 +255,9 @@ The BPO source dropdown in task manager will populate from these registered vend
 
 ---
 
-### D-27: Create Tomcat SSL Reference Doc
-
-**Priority:** HIGH — Required before first PSP deployment
-**Status:** Not started
-
-Create a standalone reference document (`docs/tomcat_ssl_setup.md`) with step-by-step instructions for configuring Tomcat 10 to use Let's Encrypt certificates from Certbot. Referenced from Phase 3 of `docs/deployment_runbook.md`.
-
-Should cover:
-- Certbot standalone certificate generation
-- Tomcat `server.xml` connector configuration for HTTPS
-- Certificate renewal (Certbot auto-renewal + Tomcat restart)
-- Port configuration (443 HTTPS, redirect 80 → 443)
-
----
-
-### D-28: Save Blank Schema Dump on Master Image
-
-**Priority:** HIGH — Required before first PSP deployment
-**Status:** Not started
-
-Export the blank `beta_ssa` schema (tables, views, stored procedures — no data) as a SQL dump file and save it on the master image at `/opt/ssa/schema/beta_ssa_blank.sql`.
-
-This enables quick rollback during deployment: drop the database, re-import the blank schema, and re-initialize. Without this, a failed initialization requires re-cloning the entire VPS from the master snapshot.
-
-Add to master image setup:
-```bash
-sudo mkdir -p /opt/ssa/schema
-mysqldump -u root -p --no-data beta_ssa > /opt/ssa/schema/beta_ssa_blank.sql
-```
-
-Update the deployment runbook rollback procedure to reference this file.
-
----
-
 ## Remaining TODOs
 
 - Run `schema_version_migration.sql` on production database (holding until further testing)
-- Commit updated `deployment_backlog.md` to repo
-- Create `ssa.properties` file on each dev machine with local paths ✅
-- Update deployment runbook Phase 7 when PSP admin dashboard is built
-- Update master VPS snapshot after D-27 and D-28 are complete
+- Update master VPS snapshot version in runbook after future image updates
+- Update deployment runbook Phase 7 when PSP admin dashboard is built (D-14)
+- Reserve static IPs in IONOS for each PSP deployment
