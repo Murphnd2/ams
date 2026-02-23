@@ -89,7 +89,7 @@ public abstract class AuthDAO {
     }
 
     public static void assignUserRoles(HttpServletRequest request, User user){
-        boolean isAgent = false,isPspUser=false,isPspAdmin=false,isApplicant=false,isClient = false,isAgencyAdmin=false;
+        boolean isAgent = false,isPspUser=false,isPspAdmin=false,isApplicant=false,isClient = false,isAgencyAdmin=false,isPspSales=false;
         try{
             List<UserRole> userRoleList = user.getUserRoleList();
             for(UserRole ur:userRoleList){
@@ -100,6 +100,7 @@ public abstract class AuthDAO {
                     case 4: isApplicant=true;break;
                     case 5: isPspAdmin=true;break;
                     case 8: isAgencyAdmin=true;break;
+                    case 9: isPspSales=true;break;
                 }
             }
         } catch (Exception e){
@@ -111,6 +112,7 @@ public abstract class AuthDAO {
         request.getSession().setAttribute("isApplicant",isApplicant);
         request.getSession().setAttribute("isPspAdmin",isPspAdmin);
         request.getSession().setAttribute("isAgencyAdmin",isAgencyAdmin);
+        request.getSession().setAttribute("isPspSales",isPspSales);
     }
 
 

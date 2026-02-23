@@ -173,7 +173,9 @@ public class ViewHome25 extends HttpServlet {
         f.includeRenewal = local.getActivityFilter().isViewRenewal();
         f.includeSetup   = local.getActivityFilter().isViewSetup();
         f.includeTicket  = local.getActivityFilter().isViewTicket();
-
+        boolean isPspSales = Boolean.TRUE.equals(request.getSession().getAttribute("isPspSales"));
+        boolean isPspAdmin = Boolean.TRUE.equals(request.getSession().getAttribute("isPspAdmin"));
+        f.includeOpportunity = (isPspSales || isPspAdmin) && local.getActivityFilter().isViewOpportunity();
         f.viewNeedsContact = local.getActivityFilter().isViewNeedsContact();
         f.viewWaitingOnUs  = local.getActivityFilter().isViewWaitingOnUs();
 

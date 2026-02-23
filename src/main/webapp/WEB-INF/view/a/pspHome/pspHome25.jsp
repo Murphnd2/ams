@@ -44,7 +44,6 @@
     <div class="col-12 col-lg-5 col-xl-3 order-2 order-xl-first">
       <c:import url="/WEB-INF/view/a/pspHome/columns/toDos/toDoHeader.jsp"></c:import>
       <c:import url="/WEB-INF/view/a/pspHome/columns/toDos/toDoCurrentList25.jsp"></c:import>
-      <c:import url="/WEB-INF/view/a/pspHome/columns/toDos/toDoFutureList25.jsp"></c:import>
     </div>
   </div>
 </div>

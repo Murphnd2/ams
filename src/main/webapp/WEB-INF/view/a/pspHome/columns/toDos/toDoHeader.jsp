@@ -1,20 +1,14 @@
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
-<%@ taglib uri="http://java.sun.com/jsp/jstl/fmt" prefix="fmt" %>
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
-<div class="p-2 pt-1 border border-dark rounded w-100 mt-2 mb-2 text-light bg-dark fw-bold fs-3 align-items-center text-center">
-  <div class="row">
-    <div class="col-auto">
-      <button class="btn btn-sm btn-outline-warning pe-auto fs-6 border border-warning" type="button" data-bs-toggle="modal" data-bs-target="#addReminderModal">
+<div class="card border-0 shadow-sm mt-2 mb-2">
+  <div class="hdr-bar d-flex align-items-center justify-content-between">
+    <span><i class="bi bi-check2-square me-1"></i>ToDos</span>
+    <div class="d-flex gap-1">
+      <button class="btn btn-sm btn-outline-light" style="font-size: 0.7rem; padding: 0.15rem 0.45rem;" type="button" data-bs-toggle="modal" data-bs-target="#addReminderModal" title="New Reminder">
         <i class="bi bi-bell"></i>
       </button>
-    </div>
-    <div class="col">
-      <i class="bi bi-check-all"></i>
-      ToDos
-    </div>
-    <div class="col-auto">
-      <button class="btn btn-sm btn-outline-warning pe-auto fs-6 border border-warning" type="button" data-bs-toggle="modal" data-bs-target="#addSimpleChecklistModal">
-        <i class="bi bi-journal-check"></i>
+      <button class="btn btn-sm btn-outline-light" style="font-size: 0.7rem; padding: 0.15rem 0.45rem;" type="button" data-bs-toggle="modal" data-bs-target="#addSimpleChecklistModal" title="New Checklist">
+        <i class="bi bi-journal-plus"></i>
       </button>
     </div>
   </div>

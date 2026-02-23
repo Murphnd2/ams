@@ -7,9 +7,9 @@ public class ActivityLandingFilter {
     public boolean includeSetup = true;
     public boolean includeTicket = true;
 
+    public boolean includeOpportunity = false;
     public boolean viewNeedsContact;
     public boolean viewWaitingOnUs;
-
     public boolean sortAlphabetically;   // <-- used by SQL now
 
     public int pageSize = 500;

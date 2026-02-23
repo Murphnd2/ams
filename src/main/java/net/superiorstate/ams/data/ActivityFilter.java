@@ -9,6 +9,7 @@ public class ActivityFilter {
     private boolean sortAlphabetically;
     private int ownershipFilter;
 
+    private boolean viewOpportunity;
     private int needsContactWarning;
 
     public ActivityFilter(){}
@@ -76,6 +77,9 @@ public class ActivityFilter {
     public void setNeedsContactWarning(int needsContactWarning) {
         this.needsContactWarning = needsContactWarning;
     }
+
+    public boolean isViewOpportunity() { return viewOpportunity; }
+    public void setViewOpportunity(boolean viewOpportunity) { this.viewOpportunity = viewOpportunity; }
     public void initializeFilter(){
         setViewRenewal(true);
         setViewSetup(true);
@@ -84,5 +88,6 @@ public class ActivityFilter {
         setViewWaitingOnUs(true);
         setSortAlphabetically(false);
         setOwnershipFilter(1);
+        setViewOpportunity(false);
     }
 }

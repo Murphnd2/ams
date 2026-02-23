@@ -84,6 +84,11 @@ public class AmsDataLocal implements AutoCloseable {
         setDaysSinceContactWarning(global.getDaysSinceWarning());
         setActivityFilter(new ActivityFilter());
         getActivityFilter().initializeFilter();
+        boolean isPspSales = Boolean.TRUE.equals(request.getSession().getAttribute("isPspSales"));
+        boolean isPspAdminRole = Boolean.TRUE.equals(request.getSession().getAttribute("isPspAdmin"));
+        if (isPspSales || isPspAdminRole) {
+            getActivityFilter().setViewOpportunity(true);
+        }
         setCurrentEmail(new CurrentEmail());
         getCurrentEmail().initializeEmail();
         setActivitiesAllOpen(global.getActivitiesAllOpen());

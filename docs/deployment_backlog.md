@@ -1,6 +1,6 @@
 # Deployment Backlog
 
-**Last Updated:** February 22, 2026
+**Last Updated:** February 23, 2026
 **Reference:** See `docs/deployment_strategy.md` for full context on each item.
 
 Items are ordered by dependency (earlier items unblock later ones).
@@ -77,72 +77,37 @@ The initializer creates a "Fred Flintstone" person record (ID 50) with email `fr
 The `initialize.jsp` form collects a "Deployment Key" field. Need to verify:
 
 1. Is the key actually validated before initialization runs?
-2. What is it validated against? (A hardcoded value? A value in `ssa.properties`?)
-3. If validation is missing, add it — this is the only thing preventing unauthorized database initialization on a fresh VPS.
+2. Where is the expected key stored/compared?
+3. What happens if someone submits an invalid key?
 
-**Recommended approach:** Store the expected deployment key in `ssa.properties`. The servlet reads it from there and compares to the submitted value.
-
-**Depends on:** D-01
+If not validated, add validation against `DEPLOYMENT_KEY` in `ssa.properties`.
 
 ---
 
-### D-06: Prevent Re-Initialization
+### D-06: Prevent Re-Initialization After Setup
 
 **Priority:** HIGH
 **Status:** Needs investigation
 
-After the database is initialized, the `/InitializeDataBase` endpoint should refuse to run again. The current `EmfListener` checks for `SSL_PORT=443` to determine if the DB is initialized, but does the initialization servlet itself check this?
-
-**Fix:** At the top of `DatabaseInitializer.initializeDataBase()`, check if `SSL_PORT` constant already exists in the database. If yes, abort and return an error.
+After `DatabaseInitializer` runs, the `/InitializeDataBase` endpoint should refuse to run again. Current mechanism relies on `SSL_PORT` constant existing in the DB. Verify this is bulletproof.
 
 ---
 
-### D-07: Externalize Database Connection from `persistence.xml`
+### D-07: Externalize Database Connection
 
-**Priority:** HIGH — Required for identical WARs across PSPs
-**Status:** Not started
-**File:** `src/main/resources/META-INF/persistence.xml`
+**Priority:** MEDIUM — Currently working via JNDI in context.xml
+**Status:** Deferred
 
-Currently the database URL, username, and password are in `persistence.xml` inside the WAR. This means the WAR is environment-specific and can't be deployed identically to every VPS.
-
-**Fix:** Use EclipseLink's ability to override persistence properties programmatically. The `EmfListener` (or new config listener) reads DB credentials from `ssa.properties` and passes them as a properties map to `Persistence.createEntityManagerFactory("ssaPU", propertiesMap)`.
-
-**Depends on:** D-01
+The database connection is currently configured via Tomcat JNDI datasource in `context.xml`, which is outside the WAR. This works for multi-PSP deployment. Moving it to `ssa.properties` is a future nice-to-have but not blocking.
 
 ---
 
-### D-08: Audit Hardcoded Entity IDs in `DatabaseInitializer`
+### D-08: Verify Reserved ID Ranges in DatabaseInitializer
 
 **Priority:** MEDIUM
 **Status:** Not started
-**File:** `src/main/java/net/superiorstate/ams/data/service/DatabaseInitializer.java`
 
-The initializer uses hardcoded IDs: Person 104, Person 50, PSP 4, Agency 14, Employer -1, CheckList 29, various Task IDs (28, 30, 32, 34). The sequence seed starts at 200.
-
-**Risk:** If the blank schema ever includes auto-increment tables or pre-seeded rows that conflict with these IDs, initialization would fail.
-
-**Action:** Verify that the blank schema has no conflicting IDs. Document the reserved ID ranges. Consider whether any of these can use auto-generated IDs instead.
-
----
-
-### D-09: Create `schema_version` Table
-
-**Priority:** MEDIUM — Required before automated updates
-**Status:** Not started
-
-Add a `schema_version` table to the blank database schema:
-
-```sql
-CREATE TABLE schema_version (
-    version VARCHAR(10) NOT NULL,
-    description VARCHAR(200),
-    script_name VARCHAR(200),
-    applied_on TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (version)
-);
-```
-
-Retroactively insert rows for all existing migrations (scripts 1-9 in `migration_tracker.md`) on production and dev environments.
+The initializer uses hardcoded IDs (PSP=4, person=50, agency sequences starting at 200). Verify that the blank schema has no conflicting IDs. Document the reserved ID ranges.
 
 ---
 
@@ -162,44 +127,6 @@ V009__timeclock_correction.sql
 ```
 
 This is a one-time rename + documentation task. The actual SQL content doesn't change.
-
----
-
-### D-11: Build Backup Script
-
-**Priority:** MEDIUM — Required before first PSP deployment
-**Status:** Not started
-
-Shell script installed on the master image at `/opt/ssa/scripts/backup.sh`:
-
-- Reads `PSP_ID` from `ssa.properties`
-- Skips if `PSP_ID=UNINITIALIZED`
-- Runs `mysqldump` on `beta_ssa`
-- Compresses output
-- Uploads to Wasabi bucket under `PSP_ID/db/` folder
-- Logs results
-- Cron: nightly, before update script runs
-
----
-
-### D-12: Build Update Script
-
-**Priority:** MEDIUM — Required before first PSP deployment
-**Status:** Not started
-
-Shell script installed on the master image at `/opt/ssa/scripts/update.sh`:
-
-- Reads `PSP_ID` from `ssa.properties`
-- Skips if `UNINITIALIZED`
-- Checks GitHub Releases API for latest release
-- Compares to `/opt/ssa/current_version.txt`
-- Downloads and applies new SQL migrations (checking `schema_version`)
-- Downloads and deploys new WAR (with backup of previous)
-- Restarts Tomcat
-- Logs results
-- Cron: nightly, after backup completes
-
-**Depends on:** D-09, D-10
 
 ---
 
@@ -228,98 +155,6 @@ Lives in the same codebase, deployed on your master/control VPS. Other PSP VPSes
 
 ---
 
-### D-15: Create Standard Data Directory on Master Image
-
-**Priority:** HIGH — Simple, do during master image setup
-**Status:** Not started
-
-```bash
-sudo mkdir -p /var/lib/tomcat10/data
-sudo chown tomcat:tomcat /var/lib/tomcat10/data
-```
-
-This is a one-time command on the master image. All clones inherit it.
-
----
-
-### D-16: Update Master Image — MySQL Driver in Tomcat Lib
-
-**Priority:** HIGH — Without this, every clone fails on first WAR deploy
-**Status:** Not started (needs master VPS restarted)
-
-Copy `mysql-connector-j-8.4.0.jar` into `/var/lib/tomcat10/lib/` on the master image. The JNDI connection pool needs the driver in Tomcat's classloader, not just inside the WAR.
-
-Command: `cp mysql-connector-j-8.4.0.jar /var/lib/tomcat10/lib/`
-
-Source: Extract from WAR or download directly from Maven Central.
-
----
-
-### D-17: Update Master Image — Remove Default ROOT Directory
-
-**Priority:** HIGH — Without this, Tomcat serves its default page instead of the WAR
-**Status:** Not started (needs master VPS restarted)
-
-The Ubuntu `tomcat10` package installs a default `ROOT/` directory in webapps. This takes precedence over `ROOT.war`. Delete it on the master so clones don't have this problem.
-
-Command: `rm -rf /var/lib/tomcat10/webapps/ROOT`
-
----
-
-### D-18: Update Master Image — Fix awscli Install in Provisioning Script
-
-**Priority:** LOW — Only matters if script is re-run on a fresh VPS
-**Status:** Not started
-
-The `apt install awscli` command fails on Ubuntu 24.04. Replace with the official AWS installer:
-
-```bash
-curl -s "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "/tmp/awscliv2.zip"
-unzip -q /tmp/awscliv2.zip -d /tmp
-/tmp/aws/install
-rm -rf /tmp/awscliv2.zip /tmp/aws
-```
-
----
-
-### D-19: Update Master Image — Open Port 8080 in UFW
-
-**Priority:** MEDIUM — Needed until reverse proxy (Nginx) is set up
-**Status:** Not started
-
-Tomcat listens on 8080. The provisioning script's firewall only opens 22, 80, 443. Either:
-
-- Option A: Add `ufw allow 8080/tcp` to the master (simple, works now)
-- Option B: Set up Nginx as a reverse proxy from 80/443 → 8080 (proper, do later)
-
-Decision: Use Option A for now, plan Option B for when SSL/Certbot is configured.
-
----
-
-### D-20: Re-Snapshot Master Image After Updates
-
-**Priority:** HIGH — Blocked by D-16, D-17, D-18, D-19
-**Status:** Not started
-
-After applying D-16 through D-19 on the master VPS:
-
-1. Start SSA-Master in IONOS DCD
-2. SSH in and apply the fixes
-3. Stop Tomcat, verify clean state (no WAR deployed, no data in DB)
-4. Create new snapshot: `SSA-Master-Base-v2-2026-MM-DD`
-5. Stop SSA-Master
-
----
-
-### D-21: Regenerate GitHub Personal Access Token
-
-**Priority:** HIGH — Security: token was exposed during setup session
-**Status:** Not started
-
-Go to https://github.com/settings/tokens and regenerate the `SSA-VPS-Deploy` token. Update the token value in `ssa.properties` on any VPS that uses it.
-
----
-
 ### D-22: Investigate IONOS vCPU Core Quota
 
 **Priority:** MEDIUM — Affects how many PSP VPSes can run simultaneously
@@ -331,25 +166,34 @@ During demo setup, IONOS blocked provisioning due to an 8-core personal limit. N
 - How do you request an increase? (Support ticket? Self-service?)
 - Is the quota per-VDC or per-account?
 - What is the cost model — pay-per-use for cores, or fixed allocation?
-- Can stopped VPSes release their cores back to the quota? (Yes — confirmed during this session)
+- Can stopped VPSes release their cores back to the quota? (Yes — confirmed during Feb 22 session)
 - What quota do we need for N PSP clients? (2 cores × N servers + 2 for master when running)
 
 Planning note: At 2 cores per PSP VPS, an 8-core quota supports 4 simultaneous PSPs (with master stopped). For 10+ PSPs, a quota increase will be required.
 
 ---
 
-### D-23: Publish GitHub Release (Remove Draft Status)
-
-**Priority:** MEDIUM
-**Status:** Not started
-
-The v0.1.0-beta release was created as a draft. For the automated update scripts to find it via the API, it needs to be published (not draft). Go to GitHub → Releases → edit → uncheck draft → publish.
-
-Note: Draft releases don't appear in the standard releases API endpoint, which is why the initial `curl` download returned "Not Found".
-
----
-
 ## Completed Items
+
+### Session: February 23, 2026
+
+- ✅ **D-09:** Created `schema_version` table on master (also needs to be run on local dev and production)
+- ✅ **D-11:** Built and tested `backup.sh` — mysqldump → gzip → Wasabi upload, 7-day local retention
+- ✅ **D-12:** Built and tested `update.sh` — GitHub Releases API → SQL migrations → WAR deploy → Tomcat restart
+- ✅ **D-15:** Created `/var/lib/tomcat10/data` directory on master
+- ✅ **D-16:** Installed `mysql-connector-j-8.4.0.jar` in `/var/lib/tomcat10/lib/`
+- ✅ **D-17:** Removed default ROOT webapps directory
+- ✅ **D-18:** Confirmed awscli already working on Ubuntu 24.04 (no fix needed)
+- ✅ **D-19:** Opened port 8080 in UFW
+- ✅ **D-20:** Snapshotted master (superseded by v3 snapshot)
+- ✅ **D-21:** GitHub PAT regenerated — no expiration, read-only, scoped to `Murphnd2/ams`
+- ✅ **D-23:** Published GitHub release (removed draft status)
+- ✅ Wasabi setup: created `ssa-backups` bucket, `ssa-backup-service` IAM user (WasabiFullAccess), configured AWS CLI `wasabi` profile on master
+- ✅ Cron jobs: backup at 2:00 AM UTC, update at 2:30 AM UTC
+- ✅ Fixed `ams_app` DB user/password in `ssa.properties`
+- ✅ Updated `RELEASE_REPO` to actual GitHub repo URL in `ssa.properties`
+- ✅ Deleted SSA-Demo VPS (freed cores)
+- ✅ Final snapshot: `SSA-Master-Base-v3-2026-02-23` (old snapshots deleted)
 
 ### Session: February 22, 2026
 

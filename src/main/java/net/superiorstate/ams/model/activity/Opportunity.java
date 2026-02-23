@@ -2,6 +2,7 @@ package net.superiorstate.ams.model.activity;
 
 import jakarta.persistence.*;
 import net.superiorstate.ams.model.activity.checklist.CheckList;
+import net.superiorstate.ams.model.general.Person;
 import net.superiorstate.ams.model.sales.agency.Agency;
 import net.superiorstate.ams.model.sales.agency.Prospect;
 
@@ -33,6 +34,10 @@ public class Opportunity extends Activity {
 
     @Column(name = "expected_close_date")
     private Date expectedCloseDate;
+
+    @ManyToOne
+    @JoinColumn(name = "managed_by_id")
+    private Person managedBy;
 
     public Opportunity() {}
 
@@ -92,6 +97,13 @@ public class Opportunity extends Activity {
         this.expectedCloseDate = expectedCloseDate;
     }
 
+    public Person getManagedBy() {
+        return managedBy;
+    }
+
+    public void setManagedBy(Person managedBy) {
+        this.managedBy = managedBy;
+    }
     @Override
     public String getFullName() {
         if (this.getProspect() != null)
