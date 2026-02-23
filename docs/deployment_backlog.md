@@ -55,11 +55,48 @@ Kept:
 
 ---
 
+### D-05: Validate Deployment Key in `InitializeDataBase` ✅
+
+**Completed:** February 23, 2026
+**File:** `src/main/java/net/superiorstate/ams/controller/authentication/InitializeDataBase.java` (new)
+
+Created the `InitializeDataBase` servlet (was previously missing entirely — form posted to a non-existent URL). Validates `deploymentKey` from form against `DEPLOYMENT_KEY` in `ssa.properties`. Rejects if key is missing, blank, or doesn't match.
+
+---
+
+### D-06: Prevent Re-Initialization After Setup ✅
+
+**Completed:** February 23, 2026
+**File:** `src/main/java/net/superiorstate/ams/controller/authentication/InitializeDataBase.java`
+
+Built into the new servlet. Checks for `SSL_PORT=443` constant in DB before allowing initialization. If found, redirects to login page.
+
+---
+
+### D-08: Verify Reserved ID Ranges in DatabaseInitializer ✅
+
+**Completed:** February 23, 2026
+
+Verified no conflicts on a fresh blank schema. Reserved ranges documented:
+- IDs 1-103: seed data (statuses, roles, persons, tasks, etc.)
+- Negative IDs: PSP employer/employee placeholders
+- 1000+: application-generated IDs via SEQ_GEN (bumped from 200 to 1000 for breathing room)
+
+---
+
 ### D-09: Create `schema_version` Table ✅
 
 **Completed:** February 23, 2026 (Session 1)
 
 Applied to master VPS image and local dev. Production pending.
+
+---
+
+### D-10: Renumber Existing Migrations ✅
+
+**Completed:** February 23, 2026 — Resolved by convention.
+
+Old scripts keep their descriptive names (already tracked in `schema_version`). All new scripts follow `V{NNN}__description.sql` convention (V010 already does). No renames needed.
 
 ---
 
@@ -103,65 +140,12 @@ No expiration, read-only, scoped to Murphnd2/ams.
 
 ## Open Items
 
-### D-05: Validate Deployment Key in `InitializeDataBase`
-
-**Priority:** HIGH
-**Status:** Needs investigation
-**File:** Servlet that handles `/InitializeDataBase` POST
-
-The `initialize.jsp` form collects a "Deployment Key" field. Need to verify:
-
-1. Is the key actually validated before initialization runs?
-2. Where is the expected key stored/compared?
-3. What happens if someone submits an invalid key?
-
-If not validated, add validation against `DEPLOYMENT_KEY` in `ssa.properties`.
-
----
-
-### D-06: Prevent Re-Initialization After Setup
-
-**Priority:** HIGH
-**Status:** Needs investigation
-
-After `DatabaseInitializer` runs, the `/InitializeDataBase` endpoint should refuse to run again. Current mechanism relies on `SSL_PORT` constant existing in the DB. Verify this is bulletproof.
-
----
-
 ### D-07: Externalize Database Connection
 
 **Priority:** MEDIUM — Currently working via JNDI in context.xml
 **Status:** Deferred
 
 The database connection is currently configured via Tomcat JNDI datasource in `context.xml`, which is outside the WAR. This works for multi-PSP deployment. Moving it to `ssa.properties` is a future nice-to-have but not blocking.
-
----
-
-### D-08: Verify Reserved ID Ranges in DatabaseInitializer
-
-**Priority:** MEDIUM
-**Status:** Not started
-
-The initializer uses hardcoded IDs (PSP=4, person=104, agency=14, sequences starting at 200). Verify that the blank schema has no conflicting IDs. Document the reserved ID ranges.
-
----
-
-### D-10: Renumber Existing Migrations to Standard Convention
-
-**Priority:** MEDIUM
-**Status:** Not started
-
-Current migration scripts have descriptive names (`sales_pipeline_migration.sql`, `opportunity_migration_production.sql`, etc.). For the automated update system, adopt a sequential numbering convention:
-
-```
-V001__initial_schema.sql
-V002__sales_pipeline.sql
-V003__sales_pipeline_2.sql
-...
-V009__timeclock_correction.sql
-```
-
-This is a one-time rename + documentation task. The actual SQL content doesn't change.
 
 ---
 
@@ -179,12 +163,20 @@ Shell script installed on the master image at `/opt/ssa/scripts/healthcheck.sh`:
 
 ---
 
-### D-14: Master Admin Dashboard
+### D-14: Master Admin Dashboard & PSP Instance Management
 
 **Priority:** LOW — Phase 2 (after email monitoring is working)
 **Status:** Not started
 
-Build a dashboard view in the AMS application, accessible only to "Master Admin" role. Receives health check POSTs from all PSP VPSes and displays status grid.
+Build a dashboard view in the AMS application, accessible only to "Master Admin" role. This serves as the central management console for all PSP instances.
+
+**Features:**
+- Receives health check data from all PSP VPSes and displays status grid
+- PSP instance registry: list of all deployed PSPs with status, domain, version, last backup
+- Deployment feedback: surface errors, version drift, failed updates
+- Could include a "Master Admin" concept that manages PSP installs
+
+**Architecture decision:** Build within the AMS app (role-gated) rather than a separate website. The infrastructure and auth system already exist.
 
 ---
 
@@ -200,7 +192,7 @@ Determine if IONOS has a per-account limit on vCPU cores and whether additional 
 ### D-24: Create Demo Seeder Servlet
 
 **Priority:** MEDIUM
-**Status:** Not started (new)
+**Status:** Not started
 
 Create a protected servlet (master admin only) that seeds demo data onto a fresh initialized database for demonstration purposes. Should include:
 
@@ -215,7 +207,7 @@ This replaces the test data previously hardcoded in `DatabaseInitializer`. Demo 
 ### D-25: Manual Benefit Creation UI
 
 **Priority:** MEDIUM
-**Status:** Not started (new)
+**Status:** Not started
 
 Build an admin page to manually create Benefit records without requiring a Summit import. Currently benefits can only enter the system through the Summit CSV import pipeline or the demo data in the initializer.
 
@@ -224,7 +216,7 @@ Build an admin page to manually create Benefit records without requiring a Summi
 ### D-26: Vendor Management Admin Page
 
 **Priority:** MEDIUM
-**Status:** Not started (new)
+**Status:** Not started
 
 Build an admin page to register third-party vendor contacts (persons + users with BPO roles). Replaces the hardcoded Accelergent persons previously in `DatabaseInitializer`. Should allow PSP admins to:
 
@@ -236,8 +228,44 @@ The BPO source dropdown in task manager will populate from these registered vend
 
 ---
 
-## Remaining TODOs (from Session 1)
+### D-27: Create Tomcat SSL Reference Doc
+
+**Priority:** HIGH — Required before first PSP deployment
+**Status:** Not started
+
+Create a standalone reference document (`docs/tomcat_ssl_setup.md`) with step-by-step instructions for configuring Tomcat 10 to use Let's Encrypt certificates from Certbot. Referenced from Phase 3 of `docs/deployment_runbook.md`.
+
+Should cover:
+- Certbot standalone certificate generation
+- Tomcat `server.xml` connector configuration for HTTPS
+- Certificate renewal (Certbot auto-renewal + Tomcat restart)
+- Port configuration (443 HTTPS, redirect 80 → 443)
+
+---
+
+### D-28: Save Blank Schema Dump on Master Image
+
+**Priority:** HIGH — Required before first PSP deployment
+**Status:** Not started
+
+Export the blank `beta_ssa` schema (tables, views, stored procedures — no data) as a SQL dump file and save it on the master image at `/opt/ssa/schema/beta_ssa_blank.sql`.
+
+This enables quick rollback during deployment: drop the database, re-import the blank schema, and re-initialize. Without this, a failed initialization requires re-cloning the entire VPS from the master snapshot.
+
+Add to master image setup:
+```bash
+sudo mkdir -p /opt/ssa/schema
+mysqldump -u root -p --no-data beta_ssa > /opt/ssa/schema/beta_ssa_blank.sql
+```
+
+Update the deployment runbook rollback procedure to reference this file.
+
+---
+
+## Remaining TODOs
 
 - Run `schema_version_migration.sql` on production database (holding until further testing)
 - Commit updated `deployment_backlog.md` to repo
-- Create `ssa.properties` file on each dev machine with local paths
+- Create `ssa.properties` file on each dev machine with local paths ✅
+- Update deployment runbook Phase 7 when PSP admin dashboard is built
+- Update master VPS snapshot after D-27 and D-28 are complete
