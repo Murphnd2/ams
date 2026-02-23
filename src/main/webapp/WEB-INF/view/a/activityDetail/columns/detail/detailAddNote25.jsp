@@ -1,64 +1,105 @@
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 <%@ taglib prefix="fmt" uri="http://java.sun.com/jsp/jstl/fmt" %>
-<div class="row m-1">
-  <div class="col">
-    <div class="row">
-      <div class="col">
-        <span class="text-danger fw-bolder fs-5">Add Notes To ${sessionScope.local.getCurrentActivity().getActivity().getClass().getSimpleName()}</span>
-      </div>
-      <div class="col-auto"></div>
+<link href="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.snow.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js"></script>
+<style>
+  .note-dd select { font-size: 0.72rem; padding: 0.1rem 1.2rem 0.1rem 0.3rem; height: auto; border-color: rgba(255,255,255,0.4); background-color: transparent; color: white; }
+  .note-dd select:focus { background-color: white; color: #333; border-color: white; }
+  .note-dd select option { color: #333; background: white; }
+  #noteEditorWrap .ql-toolbar { padding: 3px 5px; border: none; border-bottom: 1px solid #dee2e6; }
+  #noteEditorWrap .ql-toolbar button { width: 22px; height: 22px; padding: 1px; }
+  #noteEditorWrap .ql-toolbar .ql-picker-label { font-size: 0.75rem; padding: 0 2px; }
+  #noteEditorWrap .ql-container { border: none; font-size: 0.8rem; resize: vertical; overflow: hidden; min-height: 60px; }
+  #noteEditorWrap .ql-editor { min-height: 60px; max-height: 300px; overflow-y: auto; padding: 6px 8px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+  #noteEditorWrap .ql-editor.ql-blank::before { font-size: 0.8rem; font-style: italic; color: #adb5bd; }
+</style>
+
+<form method="post" action="AddNoteToActivity25" id="addNoteForm" class="mt-2 mb-0 flex-shrink-0">
+  <div class="hdr-bar d-flex align-items-center justify-content-between">
+    <div class="d-flex align-items-center">
+      <a class="text-white text-decoration-none d-flex align-items-center" role="button"
+         data-bs-toggle="collapse" data-bs-target="#addNoteBody" aria-expanded="true" aria-controls="addNoteBody">
+        <i class="bi bi-journal-plus me-1"></i>
+        <span class="fw-semibold">Add Note</span>
+        <i class="bi bi-chevron-up ms-2" id="addNoteChevron" style="font-size: 0.65rem; transition: transform 0.2s;"></i>
+      </a>
     </div>
-    <form method="post" action="AddNoteToActivity25" id="myForm" >
-      <div class="row mb-0 pb-0">
-        <div class="col mb-0 pb-0">
-          <textarea class="form-control rounded-0 rounded-top" name="noteText" id="editor" rows="6" type="text" placeholder="Add text here for the note"></textarea>
-          <script>
-            document.addEventListener('DOMContentLoaded', function () {
-              ClassicEditor
-                      .create(document.querySelector('#editor'), {
-                        toolbar: {
-                          items: ['bold', 'italic', 'link', '|','bulletedList','numberedList', '|', 'undo','redo','code'],
-                          shouldNotGroupWhenFull: true  // Prevent grouping when full
-                        }
-                      })
-                      .then(editor => {
-                        // When the form is submitted
-                        document.querySelector('#myForm').addEventListener('submit', function (event) {
-                          // Update the textarea's value with the editor's data
-                          editor.getData().then(data => {
-                            document.querySelector('#editor').value = data;
-                          }).then(() => {
-                            // Allow form submission
-                            event.currentTarget.submit(); // Submit the form
-                          }).catch(error => {
-                            console.error('Error updating textarea value:', error);
-                          });
-
-                          // Prevent the default submission until the CKEditor data is set
-                          event.preventDefault();
-                        });
-                      })
-                      .catch(error => {
-                        console.error(error);
-                      });
-            });
-          </script>
-        </div>
-      </div>
-      <div class="row mt-1">
-        <div class="col mt-0 pt-0">
-          <div class="input-group input-group-sm rounded-0 d rounded-bottom">
-            <span class="input-group-text d-none d-sm-inline d-md-none d-lg-inline">Reason</span>
-            <c:import url="/WEB-INF/view/a/general/globalDropDowns/ddReasons25.jsp"> </c:import>
-            <span class="input-group-text d-none d-sm-inline d-md-none d-lg-inline">Status</span>
-            <c:import url="/WEB-INF/view/a/general/globalDropDowns/ddNoteStatus25.jsp"> </c:import>
-            <button type="submit" name="btnAddNote1" value="Save" class="btn btn-danger">
-              <i class="bi bi-journal-plus"></i> Save
-            </button>
-          </div>
-        </div>
-      </div>
-    </form>
-
+    <div class="d-flex align-items-center gap-2 note-dd">
+      <c:import url="/WEB-INF/view/a/general/globalDropDowns/ddReasons25.jsp"></c:import>
+      <c:import url="/WEB-INF/view/a/general/globalDropDowns/ddNoteStatus25.jsp"></c:import>
+    </div>
   </div>
-</div>
+  <div class="collapse show" id="addNoteBody">
+    <div class="border border-top-0" style="border-radius: 0 0 6px 6px; border-color: #dee2e6 !important;">
+      <div id="noteEditorWrap">
+        <div id="noteQuill"></div>
+      </div>
+      <input type="hidden" name="noteText" id="noteTextHidden">
+      <div class="d-flex justify-content-end p-1">
+        <button type="submit" name="btnAddNote1" value="Save" class="btn btn-sm btn-ssa px-2 py-0"
+                title="Save Note" style="font-size: 0.8rem;">
+          <i class="bi bi-floppy"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+</form>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // Init Quill
+    var quill = new Quill('#noteQuill', {
+      theme: 'snow',
+      placeholder: 'Add a note...',
+      modules: {
+        toolbar: [['bold', 'italic'], [{ 'list': 'ordered'}, { 'list': 'bullet' }], ['link']]
+      }
+    });
+    window._noteEditor = quill;
+
+    // Restore saved height
+    var savedHeight = localStorage.getItem('noteEditorHeight');
+    var container = document.querySelector('#noteEditorWrap .ql-container');
+    if (savedHeight && container) {
+      container.style.height = savedHeight;
+    }
+
+    // Watch for resize and persist
+    if (container) {
+      var resizeObserver = new ResizeObserver(function(entries) {
+        for (var entry of entries) {
+          localStorage.setItem('noteEditorHeight', entry.target.style.height || entry.contentRect.height + 'px');
+        }
+      });
+      resizeObserver.observe(container);
+    }
+
+    // Tab goes to save button
+    quill.keyboard.bindings[9] = [];
+    quill.root.addEventListener('keydown', function(e) {
+      if (e.key === 'Tab' && !e.shiftKey) {
+        e.preventDefault();
+        document.querySelector('#addNoteForm button[type="submit"]').focus();
+      }
+    });
+
+    // Form submit
+    document.getElementById('addNoteForm').addEventListener('submit', function(e) {
+      var html = quill.root.innerHTML;
+      if (html === '<p><br></p>') html = '';
+      document.getElementById('noteTextHidden').value = html;
+    });
+
+    // Chevron toggle
+    var collapseEl = document.getElementById('addNoteBody');
+    var chevron = document.getElementById('addNoteChevron');
+    if (collapseEl && chevron) {
+      collapseEl.addEventListener('hide.bs.collapse', function () {
+        chevron.style.transform = 'rotate(180deg)';
+      });
+      collapseEl.addEventListener('show.bs.collapse', function () {
+        chevron.style.transform = 'rotate(0deg)';
+      });
+    }
+  });
+</script>

@@ -40,10 +40,12 @@
         <div class="col-12 col-md-7 col-lg-7 col-xl-5 order-first order-xl-2">
           <c:import url="/WEB-INF/view/a/activityDetail/columns/detail/detailHeader25.jsp"></c:import>
           <c:import url="/WEB-INF/view/a/activityDetail/columns/detail/detailDetail25.jsp"></c:import>
-          <c:import url="/WEB-INF/view/a/activityDetail/columns/detail/detailAddNote25.jsp"></c:import>
           <c:import url="/WEB-INF/view/a/activityDetail/columns/detail/detailFooter25.jsp"></c:import><%-- --%>
         </div>
         <div class="col-12 col-md-7 col-xl-4 order-last">
+          <c:if test="${sessionScope.local.getCurrentActivity().getActivity().isComplete()==false}">
+            <c:import url="/WEB-INF/view/a/activityDetail/columns/detail/detailAddNote25.jsp"></c:import>
+          </c:if>
           <c:import url="/WEB-INF/view/a/activityDetail/columns/history/historyHeader.jsp"></c:import>
           <c:import url="/WEB-INF/view/a/activityDetail/columns/history/historyDetail25.jsp"></c:import>
         </div>

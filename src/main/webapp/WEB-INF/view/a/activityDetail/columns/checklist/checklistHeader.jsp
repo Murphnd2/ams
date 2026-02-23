@@ -1,4 +1,4 @@
-<div class="btn btn-dark w-100 mt-2 mb-2 fw-bold fs-3 pe-none">
-  <i class="bi bi-check2-square"></i>
-  Checklist
+<div class="hdr-bar mt-2 mb-2 d-flex align-items-center">
+  <i class="bi bi-check2-square me-2"></i>
+  <span>Checklist</span>
 </div>

@@ -22,6 +22,14 @@
       flex-wrap: wrap;            /* Allow wrapping */
       box-sizing: border-box;     /* Include padding and border in width */
     }
+    .icon-action {
+      transition: font-size 0.15s, color 0.15s;
+      font-size: 0.9rem;
+    }
+    .icon-action:hover {
+      font-size: 1.1rem;
+      color: #06357a !important;
+    }
   </style>
 </head>
 <body>
@@ -49,14 +57,16 @@
             <c:import url="/WEB-INF/view/a/activityDetail/columns/detail/detailPrimaryContact25.jsp"></c:import>
           </c:if>
           <c:import url="/WEB-INF/view/a/activityDetail/columns/detail/detailDetail25.jsp"></c:import>
+          <c:import url="/WEB-INF/view/a/activityDetail/columns/detail/detailFooter25.jsp"></c:import><%-- --%>
+        </div>
+        <div class="col-12 col-xl-4 order-last d-xl-flex flex-xl-column" style="max-height: calc(100vh - 70px); overflow: hidden;">
           <c:if test="${sessionScope.local.getCurrentActivity().getActivity().isComplete()==false}">
             <c:import url="/WEB-INF/view/a/activityDetail/columns/detail/detailAddNote25.jsp"></c:import>
           </c:if>
-          <c:import url="/WEB-INF/view/a/activityDetail/columns/detail/detailFooter25.jsp"></c:import><%-- --%>
-        </div>
-        <div class="col-12 col-md-7 col-xl-4 order-last">
           <c:import url="/WEB-INF/view/a/activityDetail/columns/history/historyHeader.jsp"></c:import>
-          <c:import url="/WEB-INF/view/a/activityDetail/columns/history/historyDetail25.jsp"></c:import>
+          <div class="flex-grow-1 overflow-auto">
+            <c:import url="/WEB-INF/view/a/activityDetail/columns/history/historyDetail25.jsp"></c:import>
+          </div>
         </div>
       </div>
     </c:when>
