@@ -257,7 +257,6 @@ public abstract class DatabaseInitializer {
         PSP psp = createPSP(em,4L,getPspName(),a);
         //Create First Person
         Person p = createMainContact(em,104L,getFirstName(),getLastName(),a,psp,getEmail());
-        Person p1 = createMainContact(em,50L,"Fred","Flintstone",a,psp,"fred.flintstone@srag.com");
         //Update PSP with Person
         updatePspWithContact(em,psp,p);
         //Create Agency
@@ -265,16 +264,12 @@ public abstract class DatabaseInitializer {
         //Create Employer
         String fullName = getFirstName().trim() + " " + getLastName().trim();
         Employer er = createEmployer(em,-1,getPspName(),getEmail(),fullName,-1);
-        Employer er1 = createEmployer(em,-2,"Slate Rock and Gravel","fred.flintstone@srag.com","Fred Flintstone",-2);
         //Create Employee
         Employee ee = createEmployee(em,-1,p,er);
-        Employee ee1 = createEmployee(em,-2,p1,er1);
         //Assign Person to Employee
         em.getTransaction().begin();
         p.setEmployee(ee);
-        p1.setEmployee(ee1);
         em.persist(p);
-        em.persist(p1);
         em.getTransaction().commit();
         //Create Billing Group
         BillingGroup bg0 = createBillingGroup(em,7,"Other");
@@ -472,13 +467,7 @@ public abstract class DatabaseInitializer {
         UserRole ur13 = createUserRole(em,103, "Accelergent User");
         //Assign User To PSP Roles
         assignRoles(em,user,ur5,ur1);
-        //Add Accelergent Background Data
-        Person ac1 = createMainContact(em,101L,"Accelergent","BPO",a,psp,"bpo@dpath.com");
-        Person ac2 = createMainContact(em,102L,"Accelergent","Admin",a,psp,"bpoAdmin@dpath.com");
-        User au1 = createUser(em,ac1,ac1.getEmail(),"Passw0rd!");
-        User au2 = createUser(em,ac2,ac2.getEmail(),"Passw0rd!");
-        assignRoles(em,au1,ur11,ur13);
-        assignRoles(em,au2,ur12,ur13);
+        // Vendor users removed — configure via admin UI (future backlog item)
         // Add PSP Constants
         addPspConstants(em);
         // Create Initialization Checklist
@@ -575,8 +564,7 @@ public abstract class DatabaseInitializer {
     private static void addPspConstants(EntityManager em){
         if(getConstantByName(em,"FALSE_CLOSE")==null)
             createConstant(em,"FALSE_CLOSE",Date.valueOf(LocalDate.of(2000,1,1)).toString());
-        if(getConstantByName(em,"SAVE_PATH")==null)
-            createConstant(em,"SAVE_PATH","C:\\data\\");
+
         if(getConstantByName(em,"SMTP_PASSWORD")==null)
             createConstant(em,"SMTP_PASSWORD",getSmtpPassword());
         if(getConstantByName(em,"SMTP_PORT")==null)

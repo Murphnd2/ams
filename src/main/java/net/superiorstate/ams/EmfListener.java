@@ -24,6 +24,9 @@ public class EmfListener implements ServletContextListener, HttpSessionListener,
 
     @Override
     public void contextInitialized(ServletContextEvent sce) {
+        // D-01: Load infrastructure config before anything else
+        AppConfig.load();
+
         try {
             EntityManagerFactory emf = Persistence.createEntityManagerFactory("ssaPU");
             sce.getServletContext().setAttribute("emf", emf);
@@ -67,8 +70,9 @@ public class EmfListener implements ServletContextListener, HttpSessionListener,
 
     private static void logStartupError(Throwable t) {
         try {
-            Path logPath = Paths.get(System.getProperty("catalina.base", "."),
-                    "logs", "emf_error.log");
+            String logDir = AppConfig.get("LOG_PATH",
+                    System.getProperty("catalina.base", ".") + "/logs");
+            Path logPath = Paths.get(logDir, "emf_error.log");
             Files.createDirectories(logPath.getParent());
             Files.writeString(
                     logPath,

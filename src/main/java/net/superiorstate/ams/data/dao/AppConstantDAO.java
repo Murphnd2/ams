@@ -4,6 +4,7 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
 import jakarta.persistence.Query;
 import jakarta.servlet.http.HttpServletRequest;
+import net.superiorstate.ams.AppConfig;
 import net.superiorstate.ams.model.Constant;
 
 import java.sql.Date;
@@ -47,23 +48,10 @@ public abstract class AppConstantDAO {
     }
 
     /**
-     * Gets the value of the "SAVE_PATH" constant from EntityManager.
+     * Gets SAVE_PATH from ssa.properties (infrastructure config).
      */
-    public static String getSavePath(EntityManager em) {
-        return getConstantValue(em, "SAVE_PATH");
-    }
-
-    /**
-     * Gets the value of the "SAVE_PATH" constant using request context.
-     */
-    public static String getSavePath(HttpServletRequest request) {
-        EntityManagerFactory emf = (EntityManagerFactory) request.getServletContext().getAttribute("emf");
-        EntityManager em = emf.createEntityManager();
-        try {
-            return getSavePath(em);
-        } finally {
-            em.close();
-        }
+    public static String getSavePath() {
+        return AppConfig.get("SAVE_PATH", "/var/lib/tomcat10/data/");
     }
 
     /**

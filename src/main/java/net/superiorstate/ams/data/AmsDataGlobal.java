@@ -4,6 +4,7 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
 import jakarta.persistence.NoResultException;
 import jakarta.persistence.Query;
+import net.superiorstate.ams.AppConfig;
 import net.superiorstate.ams.model.Activity25;
 import net.superiorstate.ams.model.Activity25p;
 import net.superiorstate.ams.model.Activity25u;
@@ -184,11 +185,7 @@ public class AmsDataGlobal {
         } catch (Exception e){falseClose="2000-01-01";}
         setFalseClose(falseClose);
 
-        String savePath;
-        try{
-            savePath = getConstantValue(em,"SAVE_PATH");
-        } catch (Exception e){savePath = "c:\\data\\";}
-        setSavePath(savePath);
+        setSavePath(AppConfig.get("SAVE_PATH", "/var/lib/tomcat10/data/"));
 
         String smtpPassword;
         try{
