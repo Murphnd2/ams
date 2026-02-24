@@ -1,0 +1,95 @@
+package net.superiorstate.ams.model.activity.checklist.tasks;
+
+import jakarta.persistence.*;
+import net.superiorstate.ams.model.general.Person;
+
+import java.sql.Timestamp;
+
+@Entity
+@Table(name="todo_note")
+public class ToDoNote {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name="note_id")
+    private Long id;
+
+    @ManyToOne
+    @JoinColumn(name="todo_id", nullable=false)
+    private ToDo toDo;
+
+    @ManyToOne
+    @JoinColumn(name="created_by_id", nullable=false)
+    private Person createdBy;
+
+    @Column(name="created_date", nullable=false)
+    private Timestamp createdDate;
+
+    @Column(name="note_text", nullable=false, columnDefinition="TEXT")
+    private String noteText;
+
+    @Column(name="source_type", nullable=false, length=10)
+    private String sourceType;
+
+    public ToDoNote() {}
+
+    @PrePersist
+    private void setDefaults() {
+        if (this.createdDate == null) {
+            this.createdDate = new Timestamp(System.currentTimeMillis());
+        }
+        if (this.sourceType == null) {
+            this.sourceType = "PSP";
+        }
+    }
+
+    // --- Getters/Setters ---
+
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public ToDo getToDo() {
+        return toDo;
+    }
+
+    public void setToDo(ToDo toDo) {
+        this.toDo = toDo;
+    }
+
+    public Person getCreatedBy() {
+        return createdBy;
+    }
+
+    public void setCreatedBy(Person createdBy) {
+        this.createdBy = createdBy;
+    }
+
+    public Timestamp getCreatedDate() {
+        return createdDate;
+    }
+
+    public void setCreatedDate(Timestamp createdDate) {
+        this.createdDate = createdDate;
+    }
+
+    public String getNoteText() {
+        return noteText;
+    }
+
+    public void setNoteText(String noteText) {
+        this.noteText = noteText;
+    }
+
+    public String getSourceType() {
+        return sourceType;
+    }
+
+    public void setSourceType(String sourceType) {
+        this.sourceType = sourceType;
+    }
+}

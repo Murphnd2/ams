@@ -5,6 +5,7 @@ import net.superiorstate.ams.model.activity.checklist.CheckList;
 import net.superiorstate.ams.model.general.Person;
 
 import java.sql.Date;
+import java.util.UUID;
 
 @Entity
 public class ToDo {
@@ -35,7 +36,38 @@ public class ToDo {
     @JoinColumn(name="checklist_id")
     private CheckList checkList;
 
+    // --- BPO fields ---
+
+    @Column(name="todo_guid", nullable=false, length=36)
+    private String todoGuid;
+
+    @Column(name="bpo_completed")
+    private boolean bpoCompleted;
+
+    @Column(name="bpo_completed_date")
+    private Date bpoCompletedDate;
+
+    @ManyToOne
+    @JoinColumn(name="bpo_completed_by_id")
+    private Person bpoCompletedBy;
+
+    @Column(name="is_reverted")
+    private boolean isReverted;
+
+    @ManyToOne
+    @JoinColumn(name="bpo_assigned_to_id")
+    private Person bpoAssignedTo;
+
     public ToDo(){}
+
+    @PrePersist
+    private void generateGuid() {
+        if (this.todoGuid == null) {
+            this.todoGuid = UUID.randomUUID().toString();
+        }
+    }
+
+    // --- Original getters/setters ---
 
     public Long getId() {
         return id;
@@ -93,5 +125,53 @@ public class ToDo {
         this.checkList = checkList;
     }
 
+    // --- BPO getters/setters ---
 
+    public String getTodoGuid() {
+        return todoGuid;
+    }
+
+    public void setTodoGuid(String todoGuid) {
+        this.todoGuid = todoGuid;
+    }
+
+    public boolean isBpoCompleted() {
+        return bpoCompleted;
+    }
+
+    public void setBpoCompleted(boolean bpoCompleted) {
+        this.bpoCompleted = bpoCompleted;
+    }
+
+    public Date getBpoCompletedDate() {
+        return bpoCompletedDate;
+    }
+
+    public void setBpoCompletedDate(Date bpoCompletedDate) {
+        this.bpoCompletedDate = bpoCompletedDate;
+    }
+
+    public Person getBpoCompletedBy() {
+        return bpoCompletedBy;
+    }
+
+    public void setBpoCompletedBy(Person bpoCompletedBy) {
+        this.bpoCompletedBy = bpoCompletedBy;
+    }
+
+    public boolean isReverted() {
+        return isReverted;
+    }
+
+    public void setReverted(boolean reverted) {
+        isReverted = reverted;
+    }
+
+    public Person getBpoAssignedTo() {
+        return bpoAssignedTo;
+    }
+
+    public void setBpoAssignedTo(Person bpoAssignedTo) {
+        this.bpoAssignedTo = bpoAssignedTo;
+    }
 }

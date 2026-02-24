@@ -102,6 +102,11 @@
     <%-- LEFT: PSP Icon + Page Title --%>
     <div class="d-flex align-items-center">
       <c:choose>
+        <c:when test="${sessionScope.isBpo || sessionScope.isBpoAdmin || sessionScope.isBpoUser}">
+          <a href="BpoHome" class="me-2">
+            <img src="${pageContext.request.contextPath}/images/logoD.png" alt="Home" style="height:36px;">
+          </a>
+        </c:when>
         <c:when test="${sessionScope.isAgent || sessionScope.isAgencyAdmin}">
           <a href="AgentHome" class="me-2">
             <img src="${pageContext.request.contextPath}/images/logoD.png" alt="Home" style="height:36px;">
@@ -192,6 +197,25 @@
             <i class="bi bi-file-earmark-plus"></i><span class="d-lg-none d-xl-inline ms-1">New Proposal</span>
           </a>
         </c:if>
+
+            <%-- ═══ BPO USER LINKS ═══ --%>
+          <c:if test="${sessionScope.isBpo || sessionScope.isBpoAdmin || sessionScope.isBpoUser}">
+            <a class="nav-ghost" href="BpoHome">
+              <i class="bi bi-house"></i><span class="d-lg-none d-xl-inline ms-1">Home</span>
+            </a>
+            <c:if test="${sessionScope.isBpoAdmin}">
+              <div class="nav-divider d-none d-lg-block"></div>
+              <div class="dropdown">
+                <button class="nav-ghost nav-ghost-warn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                  <i class="bi bi-gear"></i><span class="d-lg-none d-xl-inline ms-1">Admin</span>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                  <li><a class="dropdown-item" href="#"><i class="bi bi-people me-2"></i>Manage Staff</a></li>
+                  <li><a class="dropdown-item" href="#"><i class="bi bi-building me-2"></i>PSP Connections</a></li>
+                </ul>
+              </div>
+            </c:if>
+          </c:if>
 
         <%-- ═══ UNAUTHENTICATED / LOGOUT ═══ --%>
         <div class="nav-divider d-none d-lg-block"></div>

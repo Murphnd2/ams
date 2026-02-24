@@ -52,7 +52,12 @@ public class AuthenticateUser extends HttpServlet {
     private void goToPage(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         boolean isAgent = (boolean) request.getSession().getAttribute("isAgent");
         boolean isAgencyAdmin = (boolean) request.getSession().getAttribute("isAgencyAdmin");
-        if (isAgent || isAgencyAdmin) {
+        boolean isBpo = (boolean) request.getSession().getAttribute("isBpo");
+        boolean isBpoAdmin = (boolean) request.getSession().getAttribute("isBpoAdmin");
+        boolean isBpoUser = (boolean) request.getSession().getAttribute("isBpoUser");
+        if (isBpo || isBpoAdmin || isBpoUser) {
+            response.sendRedirect("BpoHome");
+        } else if (isAgent || isAgencyAdmin) {
             response.sendRedirect("AgentHome");
         } else {
             response.sendRedirect("ViewHome25");

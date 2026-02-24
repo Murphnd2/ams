@@ -8,6 +8,7 @@ import net.superiorstate.ams.model.general.Person;
 import net.superiorstate.ams.model.general.WebLink;
 
 import java.util.List;
+import java.util.UUID;
 
 @Entity
 public class Task {
@@ -84,7 +85,19 @@ public class Task {
     @Column(name="allow_non_owner")
     private boolean allowNonOwner;
 
+    // --- BPO field ---
+
+    @Column(name="task_guid", nullable=false, length=36)
+    private String taskGuid;
+
     public Task(){}
+
+    @PrePersist
+    private void generateGuid() {
+        if (this.taskGuid == null) {
+            this.taskGuid = UUID.randomUUID().toString();
+        }
+    }
 
     public Long getId() {
         return id;
@@ -245,5 +258,15 @@ public class Task {
 
     public void setAutomation(Automation automation) {
         this.automation = automation;
+    }
+
+    // --- BPO getter/setter ---
+
+    public String getTaskGuid() {
+        return taskGuid;
+    }
+
+    public void setTaskGuid(String taskGuid) {
+        this.taskGuid = taskGuid;
     }
 }
