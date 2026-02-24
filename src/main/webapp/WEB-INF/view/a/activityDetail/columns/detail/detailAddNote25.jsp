@@ -47,8 +47,17 @@
 
 <script>
   document.addEventListener('DOMContentLoaded', function() {
-    // Init Quill
-    var quill = new Quill('#noteQuill', {
+    // Find the visible noteQuill element (handles dual layout)
+    var targets = document.querySelectorAll('#noteQuill');
+    var target = null;
+    for (var i = 0; i < targets.length; i++) {
+      if (targets[i].offsetParent !== null) { target = targets[i]; break; }
+    }
+    if (!target && targets.length > 0) target = targets[targets.length - 1];
+    if (!target) return;
+
+    // Init Quill on the visible instance
+    var quill = new Quill(target, {
       theme: 'snow',
       placeholder: 'Add a note...',
       modules: {
@@ -57,9 +66,9 @@
     });
     window._noteEditor = quill;
 
-    // Restore saved height
+    // Restore saved editor height
     var savedHeight = localStorage.getItem('noteEditorHeight');
-    var container = document.querySelector('#noteEditorWrap .ql-container');
+    var container = target.closest('#noteEditorWrap').querySelector('.ql-container');
     if (savedHeight && container) {
       container.style.height = savedHeight;
     }
@@ -79,20 +88,25 @@
     quill.root.addEventListener('keydown', function(e) {
       if (e.key === 'Tab' && !e.shiftKey) {
         e.preventDefault();
-        document.querySelector('#addNoteForm button[type="submit"]').focus();
+        target.closest('form').querySelector('button[type="submit"]').focus();
       }
     });
 
-    // Form submit
-    document.getElementById('addNoteForm').addEventListener('submit', function(e) {
-      var html = quill.root.innerHTML;
-      if (html === '<p><br></p>') html = '';
-      document.getElementById('noteTextHidden').value = html;
-    });
+    // Form submit — find the correct form (the one containing the visible editor)
+    var form = target.closest('form');
+    if (form) {
+      form.addEventListener('submit', function(e) {
+        var html = quill.root.innerHTML;
+        if (html === '<p><br></p>') html = '';
+        form.querySelector('[name="noteText"]').value = html;
+      });
+    }
 
-    // Chevron toggle
-    var collapseEl = document.getElementById('addNoteBody');
-    var chevron = document.getElementById('addNoteChevron');
+    // Chevron toggle — find the visible collapse
+    var collapseEl = target.closest('form').querySelector('#addNoteBody')
+            || document.getElementById('addNoteBody');
+    var chevron = target.closest('form').querySelector('#addNoteChevron')
+            || document.getElementById('addNoteChevron');
     if (collapseEl && chevron) {
       collapseEl.addEventListener('hide.bs.collapse', function () {
         chevron.style.transform = 'rotate(180deg)';

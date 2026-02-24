@@ -55,6 +55,20 @@
       </c:otherwise>
     </c:choose>
   </span>
+  <c:if test="${sessionScope.local.getCurrentActivity().getActivity().isComplete() == false}">
+    <button type="button" class="btn btn-sm btn-outline-light border-0 p-0 px-1 ms-1"
+            data-bs-toggle="modal" data-bs-target="#ownershipModal" title="Change Owner">
+      <i class="bi bi-key" style="font-size: 0.8rem;"></i>
+    </button>
+    <button type="button" class="btn btn-sm btn-outline-light border-0 p-0 px-1"
+            data-bs-toggle="modal" data-bs-target="#dueDateModal" title="Change Due Date">
+      <i class="bi bi-calendar-event" style="font-size: 0.8rem;"></i>
+    </button>
+  </c:if>
+  <button type="button" class="btn btn-sm btn-outline-light border-0 p-0 px-1"
+          data-bs-toggle="modal" data-bs-target="#viewPastActivity" title="Past ${sessionScope.local.getCurrentActivity().getActivity().getClass().getSimpleName()}s">
+    <i class="bi bi-archive" style="font-size: 0.8rem;"></i>
+  </button>
   <span class="ms-2 badge rounded-pill" style="background-color: ${badgeColor}; font-size: 0.7rem;">
     ${badgeLabel}
   </span>
@@ -101,3 +115,5 @@
     &mdash; Closed <fmt:formatDate value="${sessionScope.local.getCurrentActivity().getActivity().getDateCompleted()}" pattern="MM/dd/yyyy"/>
   </div>
 </c:if>
+<c:import url="/WEB-INF/view/a/general/activityToolbar/ownerAndDateChange/ownerModal25.jsp"></c:import>
+<c:import url="/WEB-INF/view/a/activityDetail/columns/modals/pastActivityModal25.jsp"></c:import>

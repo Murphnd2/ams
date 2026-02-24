@@ -208,3 +208,40 @@ Built the Opportunity system and Agent Landing Page:
 - `opportunity_migration_production.sql` created
 
 Remaining items (tracked in backlog): PspAgencyHome scoping (T10), CheckList.java backref (LOW), StdAuto.java Opportunity case (LOW), layout/appearance consolidation (T11).
+
+# Session History Archive — Append Entry
+
+Add the following entry at the end of `docs/analysis/session_history_archive.md`:
+
+---
+
+## February 23–24, 2026 — Activity Detail GUI Modernization
+
+**Full reference:** `docs/analysis/session_summary_activity_detail_modernization.md`
+
+Comprehensive GUI modernization of the Activity Detail page, completing Track A items A1–A7, A11, A12:
+
+- **Section headers:** Checklist and History headers → `.hdr-bar` pattern
+- **Detail header:** SSA blue bar with type badge pill, driver subtitle, inline action icons (owner, due date, past activities)
+- **Primary contact:** SSA card with left blue border, pencil edit
+- **Type-specific panels:** All 4 types (Ticket, Renewal, Setup, Opportunity) rewritten with card layouts, scroll/expand, data-driven iteration
+- **Add Note:** Replaced CKEditor with Quill editor, collapsible with `.hdr-bar` header, inline dropdowns, resizable editor (localStorage height), tab-to-save
+- **Footer decomposition:** Monolithic button row → Additional Contacts card, Documents & Links card, header action icons. Footer stripped to modal imports only.
+- **History body:** SSA styling, fixed duplicate date bug, empty state
+- **Modal standardization:** All modals → `modal-sm`, SSA blue headers. Owner and Due Date split into separate modals.
+- **Resizable three-panel layout:** Drag dividers between panels, widths persisted to localStorage, CSS media queries for responsive stacking (eliminated dual mobile/desktop layout blocks that caused modal duplication)
+- **Wasabi document upload:** New `AddDocumentToActivity25` servlet replaces deleted local-disk servlet. Download links fixed to use `ShowFileUpload?doc=` with pre-signed Wasabi URLs.
+- **CKEditor removed:** Quill loaded via CDN, dramatically smaller toolbar, controllable borders, system font stack
+
+New files: `AddDocumentToActivity25.java`, `detailAdditionalContacts25.jsp`, `detailDocsLinks25.jsp`
+No database changes.
+
+---
+
+# Project Backlog Update
+
+Update the following in `docs/analysis/project_backlog.md`:
+
+Add to Reference Documents Index table:
+| `session_summary_activity_detail_modernization.md` | `docs/analysis/` | Activity Detail GUI modernization — Track A items, resizable panels, Quill, Wasabi upload |
+| `activity_detail_transition_plan.md` | `docs/analysis/` | Activity Detail transition plan — Track A/B status, layout diagram, execution order |
