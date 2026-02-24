@@ -1,8 +1,8 @@
 # Activity Detail Page — Transition Plan
 
 **Document Created:** February 23, 2026
-**Last Updated:** February 24, 2026
-**Status:** Track A in progress — A1–A7, A11, A12 complete
+**Last Updated:** February 25, 2026
+**Status:** Track A near complete — A1–A12 done, 4 polish items remaining
 
 ---
 
@@ -13,7 +13,7 @@ This document tracks the modernization and feature expansion of the Activity Det
 - **Track A — GUI Modernization:** Restyle all existing components to SSA design patterns, improve usability, and lay visual groundwork for upcoming features.
 - **Track B — Feature Expansion:** Introduce new backend capabilities (Unified Activity Drivers, Questionnaire System) that extend the page's functionality.
 
-Track A is actively in progress. Track B items are built incrementally and integrated as they become ready. The GUI work is designed with Track B in mind so that new features slot in without rework.
+Track A is near complete. Track B items are built incrementally and integrated as they become ready. The GUI work is designed with Track B in mind so that new features slot in without rework.
 
 ---
 
@@ -40,10 +40,10 @@ Track A is actively in progress. Track B items are built incrementally and integ
 │              │                        │                         │
 │  Checklist   │  Detail Header         │  Add Note (Quill)       │
 │  Header      │  + owner/date/archive  │  (collapsible,          │
-│  Automation  │  Primary Contact       │   resizable editor)     │
-│  ToDo List   │  Additional Contacts   │  History Header         │
-│  Footer      │  Type-Specific Detail  │  History Notes          │
-│  (Recurring) │  Documents & Links     │  (flex-grow scroll)     │
+│  ToDo List   │  Primary Contact       │   resizable editor)     │
+│  Footer      │  Additional Contacts   │  History Header         │
+│  (Close +    │  Type-Specific Detail  │  History Notes          │
+│   modals)    │  Documents & Links     │  (flex-grow scroll)     │
 │              │  Modal Imports          │                         │
 ├──────────────┴────────────────────────┴─────────────────────────┤
 │  ║ = draggable panel dividers (widths saved to localStorage)    │
@@ -82,23 +82,23 @@ Track A is actively in progress. Track B items are built incrementally and integ
 
 | ID | Component | Status | Notes |
 |----|-----------|--------|-------|
-| A1 | Checklist Header | ✅ Done | `.hdr-bar` pattern |
+| A1 | Checklist Header | ✅ Done | `.hdr-bar` pattern, "+" button for add task |
 | A2 | History Header | ✅ Done | `.hdr-bar` pattern |
 | A3+S1+S2 | Detail Header + type badge + driver subtitle | ✅ Done | + owner/date/archive action icons |
 | A4 | Primary Contact Section | ✅ Done | SSA card, pencil edit |
 | A5 | Type-Specific Panels (all 4) | ✅ Done | Ticket, Renewal, Setup, Opportunity |
 | A6 | Add Note Section | ✅ Done | Quill editor, collapsible, resizable |
 | A7 | Footer Decomposition | ✅ Done | Contacts card, Docs card, header icons |
-| **A8** | **Checklist Body (ToDo list)** | **Not Started** | **Next item — biggest single piece** |
-| A9 | Checklist Automation Section | Not Started | |
-| A10 | Checklist Footer | Not Started | |
+| A8 | Checklist Body (ToDo list) | ✅ Done | Card-based rows, left-border urgency, open scroll + completed pinned |
+| A9 | Checklist Automation | ✅ Done | Lightning bolt on automated tasks, modal preview/send, info icons |
+| A10 | Checklist Footer/Layout | ✅ Done | Simplified to Close + modals. Panel CSS flex column. |
 | A11 | History Body | ✅ Done | SSA styling, fixed duplicate date bug |
 | A12 | Modals Standardization | ✅ Done | All modals SSA `modal-sm` pattern |
-| A13 | Closed Activity Banner | Not Started | |
-| A14 | Auto-Save UX | Not Started | |
+| A13 | Closed Activity Banner | Not Started | Restyle yellow completed banner |
+| A14 | Auto-Save UX | Not Started | Visual indicator for pending/saved state |
 | S3 | Questionnaire Placeholder | Not Started | Hidden section for Track B |
-| S4 | Standardize `pe-none` gating | Not Started | |
-| S5 | Mobile stacking polish | Not Started | |
+| S4 | Standardize `pe-none` gating | Not Started | Currently inconsistent across panels |
+| S5 | Mobile stacking polish | Not Started | Verify responsive layout at all breakpoints |
 
 ### 3.3 Infrastructure Completed
 
@@ -109,6 +109,8 @@ Track A is actively in progress. Track B items are built incrementally and integ
 | Quill editor | Replaced CKEditor, resizable, tab-to-save, localStorage height |
 | `AddDocumentToActivity25` | New Wasabi upload servlet for activity documents |
 | Download link fix | `ShowFileUpload?doc=` replaces dead `DownloadActivityDoc` |
+| Add Task modal | SSA styling, stacked layout, "At the top"/"At the bottom" positioning |
+| Task Manager page | `taskManager25.jsp` fully rewritten with SSA patterns (two-column, flex layout) |
 
 ---
 
@@ -141,35 +143,6 @@ Track A is actively in progress. Track B items are built incrementally and integ
 
 ## 5. Execution Order
 
-### Phase 1 — GUI Foundation (Track A) — IN PROGRESS
-1. ~~A1 + A2~~ ✅
-2. ~~A3 + S1 + S2~~ ✅
-3. ~~A4~~ ✅
-4. ~~A5~~ ✅
-5. ~~A6~~ ✅
-6. ~~A7~~ ✅
-7. **A8** — Checklist body ← **NEXT**
-8. A9 + A10 — Checklist automation + footer
-9. ~~A11~~ ✅
-10. ~~A12~~ ✅
-11. A13 + A14 + S4 + S5 — Polish items
-
-### Phase 2–5 — unchanged from original plan
-
----
-
-## 6. Change Log
-
-| Date | Change |
-|------|--------|
-| 2026-02-23 | Document created. Track A and Track B outlined. |
-| 2026-02-24 | A1–A7, A11, A12 completed. Resizable panel layout. Quill editor. Wasabi document upload. Single-layout architecture. |
-
-
-| 2026-02-25 | A8, A9, A10 completed. Checklist panel fully modernized (body, automation, footer/layout). Add Task modal modernized. Task Manager page (`taskManager25.jsp`) rewritten with SSA patterns. |
-
-Update Phase 1 execution order:
-
 ### Phase 1 — GUI Foundation (Track A) — NEAR COMPLETE
 1. ~~A1 + A2~~ ✅
 2. ~~A3 + S1 + S2~~ ✅
@@ -182,3 +155,16 @@ Update Phase 1 execution order:
 9. ~~A11~~ ✅
 10. ~~A12~~ ✅
 11. A13 + A14 + S4 + S5 — Polish items ← **NEXT**
+
+### Phase 2–5 — unchanged from original plan
+
+---
+
+## 6. Change Log
+
+| Date | Change |
+|------|--------|
+| 2026-02-23 | Document created. Track A and Track B outlined. |
+| 2026-02-24 | A1–A7, A11, A12 completed. Resizable panel layout. Quill editor. Wasabi document upload. Single-layout architecture. |
+| 2026-02-25 | A8, A9, A10 completed. Checklist panel fully modernized (body, automation, footer/layout). Add Task modal modernized. Task Manager page rewritten with SSA patterns. |
+| 2026-02-25 | Document cleanup: consolidated duplicate execution order sections, updated §3.2 status table, removed stale append instructions. |

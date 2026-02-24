@@ -2,13 +2,11 @@
 
 > **Purpose:** Consolidated historical record of all build sessions. For current project state, see `project_backlog.md`. For current architecture, see `application_flow.md` and `entity_reference.md`.
 >
-> **Last Updated:** February 21, 2026
+> **Last Updated:** February 25, 2026
 
 ---
 
 ## February 15–17, 2026 — Code Cleanup (5 sessions)
-
-**Replaces:** `cleanup_sweep_summary.md` (deleted in earlier cleanup)
 
 Eliminated the entire `previous/` package tree and cleaned up the codebase:
 
@@ -20,8 +18,6 @@ Eliminated the entire `previous/` package tree and cleaned up the codebase:
 ---
 
 ## February 17, 2026 — Performance Session
-
-**Replaces:** `perf_session_summary.md`
 
 Optimized login speed and checklist rendering:
 
@@ -48,8 +44,6 @@ Modernized the email system:
 
 ## February 19, 2026 — Sequence Builder Overhaul
 
-**Replaces:** `sequence_overhaul_summary.md` (deleted in earlier cleanup)
-
 Replaced the old sequence builder with a modern UI:
 
 - Created `SequenceBuilder25` servlet (consolidates `GoTicketTemplate25` + `SequenceHome`)
@@ -61,8 +55,6 @@ Replaced the old sequence builder with a modern UI:
 ---
 
 ## February 19, 2026 — AI Chatbot (Phase 1 & 2)
-
-**Replaces:** `chatbot_session_summary.md` (deleted in earlier cleanup)
 
 Built the AI Knowledge Assistant chatbot:
 
@@ -77,11 +69,18 @@ Built the AI Knowledge Assistant chatbot:
 
 Key decisions: live ticket KB over static export, legacy cutoff date (2026-02-19), resolution flag on Note, Gson for JSON, KnowledgeSearchService in application scope.
 
+**Schema changes (not yet a numbered migration):**
+```sql
+ALTER TABLE note ADD COLUMN is_resolution TINYINT(1) NOT NULL DEFAULT 0;
+INSERT INTO constant (name, value, note) VALUES ('ANTHROPIC_API_KEY', '<key>', 'Claude API key for chatbot');
+-- Ticket category updates: 9 expired, 9 updated, 7 new service-oriented categories
+```
+
 ---
 
 ## February 19–20, 2026 — Sales Pipeline (Sessions 1–4)
 
-**Detailed reference:** `sales_pipeline_reference.md` (kept separately)
+**Living reference:** `sales_pipeline_reference.md` (kept separately)
 
 Built the complete sales pipeline over 4 sessions:
 
@@ -99,8 +98,6 @@ Key decisions: Application uses Proposal as PK (not generated Long), `LEFT JOIN 
 
 ## February 20, 2026 — Service Manager (Session 1)
 
-**Replaces:** `service_manager_session_summary.md` (deleted in earlier cleanup)
-
 Built the Service Manager for configuring Lines of Service, Enhancements, and Application Sections:
 
 - Created `Enhancement` entity with M:N to LOS
@@ -114,8 +111,6 @@ Built the Service Manager for configuring Lines of Service, Enhancements, and Ap
 
 ## February 20, 2026 — Rate Manager (Session 1)
 
-**Replaces:** `rate_manager_build_log.md`
-
 Built the Rate Manager UI for rate configuration:
 
 - Created `PspAdminHome` servlet — Rate Manager home (rates, fee types, modules, agencies, locked rate detection)
@@ -127,8 +122,6 @@ Built the Rate Manager UI for rate configuration:
 ---
 
 ## February 20, 2026 — Agency Manager + Rate Manager Session 2
-
-**Replaces:** `rate_manager_session2_log.md`
 
 Built Agency Manager and enhanced Rate Manager:
 
@@ -144,8 +137,6 @@ Key decisions: LOS/Enhancement selection in add-row modal hides ServiceModule ab
 
 ## February 20, 2026 — Service Manager Session 2
 
-**Replaces:** `service_manager_session2_summary.md`
-
 Enhanced Service Manager with suppress fix and SortableJS improvements:
 
 - Fixed suppress buttons not rendering (cached JSP issue resolved)
@@ -155,8 +146,6 @@ Enhanced Service Manager with suppress fix and SortableJS improvements:
 ---
 
 ## February 21, 2026 — Resource Library + Feature Rendering
-
-**Replaces:** `session_summary_feb21.md` (deleted in earlier cleanup), `serviceManager25_feature_additions.md`
 
 Built the Resource Library and connected features to proposals:
 
@@ -175,8 +164,6 @@ Built the Resource Library and connected features to proposals:
 
 ## February 21, 2026 — Invitation System
 
-**Replaces:** `invitation_system_summary.md` (deleted in earlier cleanup)
-
 Built the complete invitation workflow from PSP to agent registration:
 
 - Agency Manager enhancements: rate pricing popover, rate assignment state tracking, expanded edit modal
@@ -190,8 +177,6 @@ Built the complete invitation workflow from PSP to agent registration:
 ---
 
 ## February 21, 2026 — Opportunity System + Agent Landing Page
-
-**Replaces:** `opportunity_agent_landing_spec.md` (deleted in earlier cleanup), `opportunity_build_log.md` (deleted), `opportunity_spec_update.md` (deleted)
 
 Built the Opportunity system and Agent Landing Page:
 
@@ -207,41 +192,152 @@ Built the Opportunity system and Agent Landing Page:
 - Sales task seed data: TemplateGroup 5, TemplatePurpose 30, Tasks 900001–900005
 - `opportunity_migration_production.sql` created
 
-Remaining items (tracked in backlog): PspAgencyHome scoping (T10), CheckList.java backref (LOW), StdAuto.java Opportunity case (LOW), layout/appearance consolidation (T11).
+Remaining items (tracked in backlog): PspAgencyHome scoping (T10), layout/appearance consolidation (T11).
 
-# Session History Archive — Append Entry
+---
 
-Add the following entry at the end of `docs/analysis/session_history_archive.md`:
+## February 21, 2026 — Layout & Navigation Consolidation
+
+Unified the navbar, layout, and CSS across all main authenticated pages:
+
+- Rewrote `navbar25.jsp` as single navigation component for all roles (PSP User, PSP Admin, Agent, Agency Manager)
+- Dark branded bar (`#0d5681`) with role-aware menu items, collapses to hamburger on mobile
+- Eliminated standalone `adminNav.jsp` dropdown — absorbed into navbar's Admin dropdown
+- All admin pages (Service Manager, Rate Manager, Agency Manager, Library, Sequence Builder) converted to use unified navbar
+- Agent pages (AgentHome) converted to use unified navbar
+- Consistent `pageTitle`/`pageIcon` request attributes across all pages
+- Chatbot gated to PSP users only
+
+---
+
+## February 21, 2026 — Create Ticket Form Overhaul
+
+Rebuilt the Create Ticket modal from a basic datalist form into a modern typeahead system:
+
+- **Person typeahead:** Replaced `<datalist>` with custom JS dropdown — filters on name/employer/email, shows styled badge on selection, comma-tolerant search (`murphy, k` works), hidden `employeeId` field for direct lookup
+- **Person resolution chain in servlet:** employeeId → direct lookup; else freeform text → email path (employee by email → person by email → create from email) → name path (employee by name → person by name → create from name). Handles single-word names, email-to-name parsing.
+- **Grouped reason dropdown:** Client-side JS regroups flat `<option>` list into `<optgroup>` by TicketCategory. No backend change.
+- **Removed dead UI:** Contact method dropdown (hardcoded, never read), empty `getName()` function
+- **Servlet stale state fix:** All instance variables nulled at top of each request (servlets are singletons)
+- **Immutable list fix:** `AmsDataLocal.respondToActivityUpdate()` ADD_TICKET case — switched from direct `.add()` to mutable copy pattern (pre-existing bug)
+- **Sequence suppress toggle:** Added "Hide from Dropdown" / "Restore to Dropdown" button in Sequence Manager for ticket sequences. Toggles `TicketSubCategory.isActive`, refreshes global cache.
+- No database changes required.
+
+---
+
+## February 22, 2026 — Timeclock Redesign + Correction Workflow
+
+Redesigned the ViewHome25 timeclock column and built a time correction request workflow:
+
+- **UI Redesign:** Replaced flat date/in/out rows with two-tab layout: Today (day selector, stretch timeline with progress bars, per-stretch durations, pulsing active dot) and Week (horizontal bar chart per day with 8h marker, overtime coloring, avg/day + remaining stats)
+- **DaySummary DTO** (`model/general/`) — aggregates stretches per day with computed totals, overtime flag, progress percentage
+- **TimeStretch enhanced** with `inLogId`/`outLogId`, fixed `getMinutesWorked()` bug (uses `Duration.between()` instead of broken `compareTo`), added `getMinutesFormatted()` and `isComplete()`
+- **TimeCorrectionRequest entity** (`model/general/`) — PENDING/APPROVED/DENIED workflow. References TimeLog records via FK. Snapshots original values. Nullable requested times.
+- **SubmitTimeCorrection servlet** (`controller/user/`) — employee modal form submission
+- **timeCorrectionModal.jsp** — Bootstrap modal with time input validation (in < out, no overlap with adjacent stretches), boundary hints
+- **ReviewTimeCorrections servlet + JSP** (`controller/user/`) — admin review page with filter tabs, approve/deny with comment, auto-updates TimeLog on approve
+- **Correction status badges** on stretch timeline (Pending=orange, Approved=green, Denied=red) via `correctionMap` loaded in ViewHome25
+- **Navbar:** Added "Time Corrections" link to Admin dropdown
+- **Bug fixes:** TimeClock25 forward→redirect, AuthenticateUser time init on login + forward→redirect, clock state correct on relogin
+- **Migration:** `timeclock_correction_migration.sql` (#9) — `time_correction_request` table with FKs to assignee and timelog
+
+---
+
+## February 22, 2026 — Activity List Modernization + PSP Opportunity Integration
+
+Modernized the ViewHome25 activity list (center column) with SSA branding and integrated Opportunity tracking for PSP users:
+
+### Activity Column Modernization
+- **activityHeader25.jsp:** Replaced old styled block with `.hdr-bar` pattern. Quick-view buttons (ALL/MY/REN) on left, filter toggle on right. Filter panel: TYPE toggles (R/S/T/O), ATTENTION toggles (On Us / Needs Contact), OWNER radios, SORT radios, branded Apply button
+- **activityList25.jsp:** Replaced `input-group` strips with `.act-card` flex rows. Left border colored by due bucket (red=overdue, orange=warning). Compact type badge pills (R/S/T/O). Urgency icons (waiting-on-us, needs-contact). Opportunity stage badge. Due date with color-coded urgency. Empty state message.
+
+### PSP Opportunity Integration
+- **New Role: PSP Sales** (UserRole ID 9) — gates opportunity visibility for PSP users
+- **managed_by_id** FK on assignee — tracks which PSP user manages an opportunity
+- **ActivityListDAO updates:** `loadActivities()` includes Opportunities for PSP Sales/Admin users. Opportunities managed by current user flagged as "mine". Quick-view ALL/MY includes managed opportunities.
+- **ActivityFilter updates:** New `filterOpportunity` toggle, Opportunity stage badge in list rows
+- **Migration:** `V010__psp_opportunity_integration.sql` — PSP Sales role seed + managed_by_id column
+
+---
+
+## February 23, 2026 — Email Screen + Checklist Listing Modernization
+
+Two-part session modernizing the last un-modernized navbar-triggered screens:
+
+### Email Compose Screen (`emailMaster25.jsp`)
+- Card + hdr-bar wrapper with SSA button classes
+- Compact inline type-badge + name replacing full-width colored banner
+- Chip-style recipients + attachments (`.recipient-chip` / `.attach-chip` with ✕ remove)
+- Modals modernized (SSA headers, `btn-ssa` actions)
+- jQuery removed — vanilla JS `DOMContentLoaded` + `bootstrap.Modal`
+- CKEditor submit fix: captures `clickedAction`, injects hidden input before submit
+- **Bug fix:** Attachment upload blank screen — `getLinkName()` doesn't exist on WebLink, changed to `getPlainText()`
+
+### Checklist Listing Column (ViewHome25 ToDo column)
+- **toDoCurrentList25.jsp** complete rewrite: card-based items with left-border urgency coloring (red=overdue, orange=due today/tomorrow, blue=delinquent multi-task), inline action icons (reassign, change date), kebab menus
+- **Checklist header:** `.hdr-bar` pattern with filter/create icons
+- **Future checklists** integrated into same column (collapsible section)
+- **Creation modals** modernized (SSA styling)
+
+---
+
+## February 23, 2026 — Multi-PSP Deployment (Sessions 1 & 2)
+
+**Living references:** `deployment_strategy.md`, `deployment_runbook.md`, `deployment_backlog.md` (kept separately)
+
+Built the complete multi-PSP deployment infrastructure over two sessions:
+
+- **D-01 through D-06:** `AppConfig` properties loader, fixed hardcoded paths (EmfListener, SAVE_PATH), removed test data from DatabaseInitializer, created `InitializeDataBase` servlet with deployment key validation and re-init prevention
+- **D-08:** Verified reserved ID ranges, bumped SEQ_GEN from 200 to 1000
+- **D-09/D-10:** Created `schema_version` table, established V-numbering convention
+- **D-11:** Backup script (`backup.sh`) — mysqldump → gzip → Wasabi, 7-day retention, cron 2:00 AM
+- **D-12:** Update script (`update.sh`) — GitHub Releases API → SQL migrations → WAR deploy → Tomcat restart, cron 2:30 AM
+- **D-13:** Health check script (`healthcheck.sh`) — system status email digest, cron 6:00 AM, kill switch via `SYS_HEALTH_ENABLED` constant
+- **D-15 through D-19:** Master VPS configuration (data dir, MySQL connector, default ROOT removal, awscli, port 8080)
+- **D-21:** GitHub PAT (read-only, no expiration)
+- **D-23:** First release published
+- **D-27:** Tomcat SSL setup guide (`tomcat_ssl_setup.md`)
+- **D-28:** Blank schema dump saved on master image
+- Master VPS snapshot: `SSA-Master-Base-v4-2026-02-23`
 
 ---
 
 ## February 23–24, 2026 — Activity Detail GUI Modernization
 
-**Full reference:** `docs/analysis/session_summary_activity_detail_modernization.md`
-
-Comprehensive GUI modernization of the Activity Detail page, completing Track A items A1–A7, A11, A12:
+Comprehensive GUI modernization of the Activity Detail page (`activityDetail25.jsp`), completing Track A items A1–A7, A11, A12:
 
 - **Section headers:** Checklist and History headers → `.hdr-bar` pattern
-- **Detail header:** SSA blue bar with type badge pill, driver subtitle, inline action icons (owner, due date, past activities)
+- **Detail header:** SSA blue bar with type badge pill, driver subtitle, inline action icons (owner, due date, past activities). Icons gated with `pe-none` for closed activities.
 - **Primary contact:** SSA card with left blue border, pencil edit
-- **Type-specific panels:** All 4 types (Ticket, Renewal, Setup, Opportunity) rewritten with card layouts, scroll/expand, data-driven iteration
-- **Add Note:** Replaced CKEditor with Quill editor, collapsible with `.hdr-bar` header, inline dropdowns, resizable editor (localStorage height), tab-to-save
+- **Type-specific panels:** All 4 types rewritten — Ticket (expandable card), Renewal (benefit list with add/remove), Setup (data-driven module iteration replacing 8 hardcoded `c:if` blocks), Opportunity (two-card: details + proposals)
+- **Add Note:** Replaced CKEditor with Quill editor, collapsible with `.hdr-bar` header, inline Reason + Status dropdowns, resizable editor (localStorage height), tab-to-save
 - **Footer decomposition:** Monolithic button row → Additional Contacts card, Documents & Links card, header action icons. Footer stripped to modal imports only.
 - **History body:** SSA styling, fixed duplicate date bug, empty state
-- **Modal standardization:** All modals → `modal-sm`, SSA blue headers. Owner and Due Date split into separate modals.
-- **Resizable three-panel layout:** Drag dividers between panels, widths persisted to localStorage, CSS media queries for responsive stacking (eliminated dual mobile/desktop layout blocks that caused modal duplication)
-- **Wasabi document upload:** New `AddDocumentToActivity25` servlet replaces deleted local-disk servlet. Download links fixed to use `ShowFileUpload?doc=` with pre-signed Wasabi URLs.
-- **CKEditor removed:** Quill loaded via CDN, dramatically smaller toolbar, controllable borders, system font stack
+- **Modal standardization:** All modals → `modal-sm`, SSA blue headers
+- **Resizable three-panel layout:** Drag dividers between panels, widths persisted to localStorage, CSS media queries for responsive stacking
+- **Wasabi document upload:** New `AddDocumentToActivity25` servlet. Download links use `ShowFileUpload?doc=` with pre-signed Wasabi URLs.
+- **CKEditor → Quill migration:** Quill via CDN, compressed toolbar, system font stack, `ResizeObserver` persists height
 
 New files: `AddDocumentToActivity25.java`, `detailAdditionalContacts25.jsp`, `detailDocsLinks25.jsp`
 No database changes.
 
 ---
 
-# Project Backlog Update
+## February 24–25, 2026 — Checklist Panel Layout + Task Manager Modernization
 
-Update the following in `docs/analysis/project_backlog.md`:
+Completed checklist panel restructuring (A8–A10) and task manager page modernization:
 
-Add to Reference Documents Index table:
-| `session_summary_activity_detail_modernization.md` | `docs/analysis/` | Activity Detail GUI modernization — Track A items, resizable panels, Quill, Wasabi upload |
-| `activity_detail_transition_plan.md` | `docs/analysis/` | Activity Detail transition plan — Track A/B status, layout diagram, execution order |
+### Checklist Panel (Track A completion)
+- **A9 — Automation integration:** Removed separate `checklistAutomation25.jsp` bar. Lightning bolt icon on first open automated task. Modal-based automation preview/send workflow. Info icon inline next to task descriptions.
+- **A10 — Panel restructuring:** Header gained "+" button for add task. Body (`checklistBasic25.jsp`) removed fixed max-height — open items scroll in flex-grow area, completed section pinned below. Footer simplified to Close button + modal imports. Panel CSS changed to flex column layout.
+- **Add Task Modal:** SSA blue gradient header, stacked layout, "At the top" first / "At the bottom" default, only shows open tasks in "After:" dropdown
+
+### Task Manager Page (`taskManager25.jsp`) — Complete Rewrite
+- Two-column layout: left 1/3 task settings, right 2/3 email automation
+- Full viewport height via flex layout, no page scrollbar
+- Left column: four SSA-bordered sections (Ordering, Employee Assignment, Vendor Sourcing, Links)
+- Right column: Quill-powered automation email editor with placeholder variable pills
+- SSA design patterns throughout
+
+### Track A Status After This Session
+A1–A12 complete. Remaining: A13 (closed activity banner), A14 (auto-save UX), S4 (pe-none standardization), S5 (mobile polish).
