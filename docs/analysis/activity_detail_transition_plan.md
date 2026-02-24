@@ -2,7 +2,7 @@
 
 **Document Created:** February 23, 2026
 **Last Updated:** February 25, 2026
-**Status:** Track A near complete — A1–A12 done, 4 polish items remaining
+**Status:** Track A complete — A1–A14 + S4 done. S5 (mobile polish) remaining.
 
 ---
 
@@ -13,7 +13,7 @@ This document tracks the modernization and feature expansion of the Activity Det
 - **Track A — GUI Modernization:** Restyle all existing components to SSA design patterns, improve usability, and lay visual groundwork for upcoming features.
 - **Track B — Feature Expansion:** Introduce new backend capabilities (Unified Activity Drivers, Questionnaire System) that extend the page's functionality.
 
-Track A is near complete. Track B items are built incrementally and integrated as they become ready. The GUI work is designed with Track B in mind so that new features slot in without rework.
+Track A is complete (except S5 mobile polish). Track B items are built incrementally and integrated as they become ready. The GUI work is designed with Track B in mind so that new features slot in without rework.
 
 ---
 
@@ -94,10 +94,10 @@ Track A is near complete. Track B items are built incrementally and integrated a
 | A10 | Checklist Footer/Layout | ✅ Done | Simplified to Close + modals. Panel CSS flex column. |
 | A11 | History Body | ✅ Done | SSA styling, fixed duplicate date bug |
 | A12 | Modals Standardization | ✅ Done | All modals SSA `modal-sm` pattern |
-| A13 | Closed Activity Banner | Not Started | Restyle yellow completed banner |
-| A14 | Auto-Save UX | Not Started | Visual indicator for pending/saved state |
+| A13 | Closed Activity Banner | ✅ Done | Muted gray archived feel, "by [name]" when available |
+| A14 | Auto-Save UX | ✅ Done | Amber "Unsaved" dot next to Save, Quill text-change listener |
 | S3 | Questionnaire Placeholder | Not Started | Hidden section for Track B |
-| S4 | Standardize `pe-none` gating | Not Started | Currently inconsistent across panels |
+| S4 | Standardize `pe-none` gating | ✅ Done | Audit confirmed all panels already gated. No changes needed. |
 | S5 | Mobile stacking polish | Not Started | Verify responsive layout at all breakpoints |
 
 ### 3.3 Infrastructure Completed
@@ -143,7 +143,7 @@ Track A is near complete. Track B items are built incrementally and integrated a
 
 ## 5. Execution Order
 
-### Phase 1 — GUI Foundation (Track A) — NEAR COMPLETE
+### Phase 1 — GUI Foundation (Track A) — COMPLETE
 1. ~~A1 + A2~~ ✅
 2. ~~A3 + S1 + S2~~ ✅
 3. ~~A4~~ ✅
@@ -154,7 +154,8 @@ Track A is near complete. Track B items are built incrementally and integrated a
 8. ~~A9 + A10~~ ✅ — Checklist automation + footer/layout
 9. ~~A11~~ ✅
 10. ~~A12~~ ✅
-11. A13 + A14 + S4 + S5 — Polish items ← **NEXT**
+11. ~~A13 + A14 + S4~~ ✅ — Polish items complete
+12. S5 — Mobile stacking polish ← **NEXT**
 
 ### Phase 2–5 — unchanged from original plan
 
@@ -168,3 +169,4 @@ Track A is near complete. Track B items are built incrementally and integrated a
 | 2026-02-24 | A1–A7, A11, A12 completed. Resizable panel layout. Quill editor. Wasabi document upload. Single-layout architecture. |
 | 2026-02-25 | A8, A9, A10 completed. Checklist panel fully modernized (body, automation, footer/layout). Add Task modal modernized. Task Manager page rewritten with SSA patterns. |
 | 2026-02-25 | Document cleanup: consolidated duplicate execution order sections, updated §3.2 status table, removed stale append instructions. |
+| 2026-02-25 | A13, A14, S4 completed. Navbar restyled (ghost buttons, bottom radius, unauthenticated transparent bar). Email view screens modernized (ViewEmail, ViewEmailHistory — new servlets + SSA JSPs). Track A effectively complete except S5 mobile polish. |

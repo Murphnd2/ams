@@ -109,10 +109,14 @@
 
 <%-- Closed activity banner --%>
 <c:if test="${sessionScope.local.getCurrentActivity().getActivity().isComplete()}">
-  <div class="d-flex align-items-center justify-content-center px-2 py-1 fw-semibold" style="background-color: #fff3cd; border: 1px solid #ffc107; border-radius: 0 0 6px 6px; font-size: 0.82rem; color: #664d03;">
-    <i class="bi bi-lock-fill me-1"></i>
+  <div class="d-flex align-items-center justify-content-center px-2 py-1 fw-semibold"
+       style="background-color: #f0f0f0; border: 1px solid #ccc; border-radius: 0 0 6px 6px; font-size: 0.82rem; color: #6c757d;">
+    <i class="bi bi-lock-fill me-1" style="color: #999;"></i>
     Created <fmt:formatDate value="${sessionScope.local.getCurrentActivity().getActivity().getDateCreated()}" pattern="MM/dd/yyyy"/>
     &mdash; Closed <fmt:formatDate value="${sessionScope.local.getCurrentActivity().getActivity().getDateCompleted()}" pattern="MM/dd/yyyy"/>
+    <c:if test="${sessionScope.local.getCurrentActivity().getActivity().getCompletedBy() != null}">
+      <span class="ms-1">by ${sessionScope.local.getCurrentActivity().getActivity().getCompletedBy().getFirstName()}</span>
+    </c:if>
   </div>
 </c:if>
 <c:import url="/WEB-INF/view/a/general/activityToolbar/ownerAndDateChange/ownerModal25.jsp"></c:import>

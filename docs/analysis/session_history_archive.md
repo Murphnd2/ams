@@ -341,3 +341,40 @@ Completed checklist panel restructuring (A8–A10) and task manager page moderni
 
 ### Track A Status After This Session
 A1–A12 complete. Remaining: A13 (closed activity banner), A14 (auto-save UX), S4 (pe-none standardization), S5 (mobile polish).
+
+---
+## February 25, 2026 — Track A Polish + Navbar Restyle + Email Screens
+
+Completed Track A polish items A13, A14, S4 and restyled the navbar and email viewing screens.
+
+### Track A Polish (A13, A14, S4)
+- **A13 — Closed Activity Banner:** Restyled from yellow warning to muted gray archived feel. Background `#f0f0f0`, border `#ccc`, text `#6c757d`, lighter lock icon. Added "by [FirstName]" when completedBy is available.
+- **A14 — Auto-Save UX Indicator:** Added amber "Unsaved" dot next to Save button in Quill note editor. Appears on `text-change` when content exists, clears when editor empty or on form submit (page reload). Purely visual — no server-side auto-save.
+- **S4 — pe-none Audit:** Full audit of all activity detail panels confirmed all interactive elements are already gated for closed activities. Mix of `pe-none` class (`isPast`/`penone` variables) and `c:if isComplete()==false` (hidden entirely). No changes needed.
+
+### Navbar Restyle (`navbar25.jsp`)
+- **Ghost-style nav links** replacing `btn btn-sm btn-outline-light` — new `.nav-ghost` class with no borders, subtle hover highlight (`rgba(255,255,255,0.13)`), modern clean feel
+- **Taller padding** (`0.35rem` → `0.55rem`)
+- **Bottom radius** (`border-radius: 0 0 8px 8px`) — connects visually with rounded `.hdr-bar` headers below
+- **Dropped full-bleed hack** — removed `margin-left: calc(-50vw + 50%); width: 100vw;` so navbar respects container padding
+- **Admin warm tone** — `.nav-ghost-warn` (amber tint) distinguishes admin from regular nav
+- **Logout dimmed** — `.nav-ghost-logout` at lower opacity
+- **Thin dividers** — `.nav-divider` (1px vertical line) between groups on desktop
+- **Dropdown menus** — smaller font (0.82rem) consistent with nav items
+- **Unauthenticated state** — transparent background (no dark bar) for login/initialize pages, SSA-blue ghost button
+- Hamburger border removed for cleaner mobile toggle
+
+### Email Screens Modernization
+- **ViewEmail servlet** — Rewritten with fetch-join query (recipients + weblinks in one JPQL), force-init of lazy fields while EM open, request attributes instead of session pollution, input validation, forwards to new JSP
+- **emailView25.jsp** (new) — SSA card with `hdr-bar` header showing subject + timestamp. Clean metadata rows (From, To with chip-style recipients, Files with chip-style download links). Email body in padded area. No jQuery, no old sub-JSPs.
+- **ViewEmailHistory servlet** (new/replace) — Uses `EmailDAO.getEmailsToRecipient()`, force-inits lazy fields, request attributes (`emailHistoryList`, `emailHistoryAddress`, `emailHistoryCount`)
+- **emailHistoryList25.jsp** (new) — SSA card with `hdr-bar` showing email address + count. Compact column headers (Date/From/Subject). Clickable rows open `ViewEmail?id=` in new tab. Hover highlight, truncating text, scroll at 600px.
+
+Both email screens use `navbar25.jsp` with page titles. Old JSPs (`emailView.jsp`, `emailList.jsp`) and old sub-JSPs (`toWhoList2.jsp`, `attachmentList2.jsp`) no longer referenced by the new servlets.
+
+### Track A Final Status
+A1–A14 and S4 complete. Remaining: S3 (questionnaire placeholder — Track B dependency), S5 (mobile stacking polish).
+
+New files: `emailView25.jsp`, `emailHistoryList25.jsp`, `ViewEmailHistory.java`
+Modified files: `ViewEmail.java`, `navbar25.jsp`, `detailHeader25.jsp`, `detailAddNote25.jsp`
+No database changes.

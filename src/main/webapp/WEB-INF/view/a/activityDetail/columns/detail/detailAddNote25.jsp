@@ -35,7 +35,10 @@
         <div id="noteQuill"></div>
       </div>
       <input type="hidden" name="noteText" id="noteTextHidden">
-      <div class="d-flex justify-content-end p-1">
+      <div class="d-flex justify-content-end align-items-center p-1 gap-2">
+    <span id="noteUnsavedIndicator" class="d-none" style="font-size: 0.72rem; color: #b08000; transition: opacity 0.3s;">
+      <i class="bi bi-circle-fill me-1" style="font-size: 0.35rem; vertical-align: middle;"></i>Unsaved
+    </span>
         <button type="submit" name="btnAddNote1" value="Save" class="btn btn-sm btn-ssa px-2 py-0"
                 title="Save Note" style="font-size: 0.8rem;">
           <i class="bi bi-floppy"></i>
@@ -65,6 +68,14 @@
       }
     });
     window._noteEditor = quill;
+
+    // Unsaved content indicator
+    quill.on('text-change', function() {
+      var indicator = document.getElementById('noteUnsavedIndicator');
+      if (!indicator) return;
+      var hasContent = quill.getText().trim().length > 0;
+      indicator.classList.toggle('d-none', !hasContent);
+    });
 
     // Restore saved editor height
     var savedHeight = localStorage.getItem('noteEditorHeight');
