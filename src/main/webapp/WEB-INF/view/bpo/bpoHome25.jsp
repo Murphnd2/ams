@@ -125,6 +125,7 @@
                                          data-due-date="<fmt:formatDate value='${dueDate}' pattern='MM/dd/yyyy'/>"
                                          data-goto="${todo.getTask().hasGoTo() && todo.getTask().getGoToLink() != null ? todo.getTask().getGoToLink().getLinkPath() : ''}"
                                          data-info="${todo.getTask().hasInfo() && todo.getTask().getInfoLink() != null ? todo.getTask().getInfoLink().getLinkPath() : ''}"
+                                         data-assigned-to="${todo.getBpoAssignedTo() != null ? todo.getBpoAssignedTo().getId() : '0'}"
                                          onclick="openBpoModal(this)"
                                          style="cursor:pointer;">
                                         <div class="col-5">
@@ -201,11 +202,6 @@
     </div>
 </div>
 
-<%-- ============================================================
-     ADD THIS: BPO Task Detail Modal
-     Place this just before the closing </body> tag in bpoHome25.jsp
-     ============================================================ --%>
-
 <%-- ═══ TASK DETAIL MODAL ═══ --%>
 <div class="modal fade" id="bpoTaskModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-fullscreen-sm-down">
@@ -248,6 +244,21 @@
                     </div>
                 </div>
 
+                <%-- Assign To (BPO Admin only) --%>
+                <c:if test="${sessionScope.isBpoAdmin}">
+                    <div class="row mb-3">
+                        <div class="col-sm-6">
+                            <div style="font-size:0.75rem; color:#6c757d; text-transform:uppercase; letter-spacing:0.03em;">Assign To</div>
+                            <select id="modalAssignTo" class="form-select form-select-sm mt-1" onchange="assignTaskAjax()">
+                                <option value="0">-- Unassigned --</option>
+                                <c:forEach var="bpo" items="${applicationScope.global.getBpoUsers()}">
+                                    <option value="${bpo.getId()}">${bpo.getFirstName()} ${bpo.getLastName()}</option>
+                                </c:forEach>
+                            </select>
+                        </div>
+                    </div>
+                </c:if>
+
                 <hr style="margin:0.5rem 0;">
 
                 <%-- Notes section --%>
@@ -289,6 +300,7 @@
         const dueDate = row.dataset.dueDate;
         const gotoUrl = row.dataset.goto;
         const infoUrl = row.dataset.info;
+        const assignedTo = row.dataset.assignedTo || '0';
 
         // Populate fields
         document.getElementById('modalTaskName').textContent = taskName;
@@ -296,6 +308,12 @@
         document.getElementById('modalActivityName').textContent = activityName;
         document.getElementById('modalDueDate').textContent = dueDate;
         document.getElementById('modalCompleteToDoId').value = todoId;
+
+        // Pre-select Assign To dropdown (if present)
+        const assignSelect = document.getElementById('modalAssignTo');
+        if (assignSelect) {
+            assignSelect.value = assignedTo;
+        }
 
         // Links
         const linksRow = document.getElementById('modalLinksRow');
@@ -337,6 +355,44 @@
         // Show modal
         new bootstrap.Modal(document.getElementById('bpoTaskModal')).show();
     }
+
+    function assignTaskAjax() {
+        const todoId = document.getElementById('modalCompleteToDoId').value;
+        const assignSelect = document.getElementById('modalAssignTo');
+        const assigneeId = assignSelect.value;
+
+        assignSelect.disabled = true;
+
+        fetch('BpoCompleteTask', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: 'action=assign&todoId=' + todoId + '&assigneeId=' + assigneeId
+        })
+            .then(r => {
+                if (r.ok) {
+                    // Update the row's data attribute and status badge
+                    const row = document.querySelector('.bpo-todo-row[data-todo-id="' + todoId + '"]');
+                    if (row) {
+                        row.dataset.assignedTo = assigneeId;
+                        const badge = row.querySelector('.bpo-badge-status');
+                        if (badge) {
+                            if (assigneeId === '0') {
+                                badge.className = 'bpo-badge-status bpo-badge-unassigned';
+                                badge.textContent = 'Unassigned';
+                            } else {
+                                badge.className = 'bpo-badge-status bpo-badge-assigned';
+                                badge.textContent = 'Assigned';
+                            }
+                        }
+                    }
+                }
+            })
+            .catch(() => {})
+            .finally(() => {
+                assignSelect.disabled = false;
+            });
+    }
+
     function addNoteAjax() {
         const input = document.getElementById('modalNoteInput');
         const noteText = input.value.trim();

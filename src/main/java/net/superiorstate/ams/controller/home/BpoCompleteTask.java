@@ -29,7 +29,12 @@ public class BpoCompleteTask extends HttpServlet {
         } else if ("addNote".equals(action)) {
             addNote(request);
             response.setStatus(200);
+            // In doPost(), add after the addNote block:
+        } else if ("assign".equals(action)) {
+            assignTask(request);
+            response.setStatus(200);
         }
+
     }
 
     private void markComplete(HttpServletRequest request) {
@@ -89,6 +94,36 @@ public class BpoCompleteTask extends HttpServlet {
             note.setNoteText(noteText.trim());
             note.setSourceType("BPO");
             em.persist(note);
+            em.getTransaction().commit();
+        } catch (Exception e) {
+            if (em.getTransaction().isActive()) em.getTransaction().rollback();
+            e.printStackTrace();
+        } finally {
+            em.close();
+        }
+    }
+    private void assignTask(HttpServletRequest request) {
+        EntityManagerFactory emf = (EntityManagerFactory) getServletContext().getAttribute("emf");
+        EntityManager em = emf.createEntityManager();
+
+        try {
+            long todoId = Long.parseLong(request.getParameter("todoId"));
+            String assigneeIdStr = request.getParameter("assigneeId");
+
+            ToDo todo = em.find(ToDo.class, todoId);
+            if (todo == null) return;
+
+            em.getTransaction().begin();
+
+            if (assigneeIdStr == null || assigneeIdStr.isEmpty() || "0".equals(assigneeIdStr)) {
+                todo.setBpoAssignedTo(null);
+            } else {
+                long assigneeId = Long.parseLong(assigneeIdStr);
+                Person assignee = em.find(Person.class, assigneeId);
+                todo.setBpoAssignedTo(assignee);
+            }
+
+            em.persist(todo);
             em.getTransaction().commit();
         } catch (Exception e) {
             if (em.getTransaction().isActive()) em.getTransaction().rollback();
