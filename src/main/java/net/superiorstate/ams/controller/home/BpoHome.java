@@ -70,7 +70,7 @@ public class BpoHome extends HttpServlet {
      * Returns Object[] rows: [ToDo, checklistName, dueDate, pspName]
      */
     private List<Object[]> getMyBpoToDos(EntityManager em, Long bpoUserId) {
-        String jpql = "SELECT t, cl.fullName, cl.dueDate, task.psp.fullName, TYPE(cl) " +
+        String jpql = "SELECT t, cl.fullName, cl.dueDate, task.psp.fullName " +
                 "FROM ToDo t " +
                 "JOIN t.checkList cl " +
                 "JOIN t.task task " +
@@ -90,7 +90,7 @@ public class BpoHome extends HttpServlet {
     }
 
     private List<Object[]> getAllOpenBpoToDos(EntityManager em) {
-        String jpql = "SELECT t, cl.fullName, cl.dueDate, task.psp.fullName, TYPE(cl) " +
+        String jpql = "SELECT t, cl.fullName, cl.dueDate, task.psp.fullName " +
                 "FROM ToDo t " +
                 "JOIN t.checkList cl " +
                 "JOIN t.task task " +

@@ -34,8 +34,15 @@ public class ModifyRecurringTask25 extends HttpServlet {
         goToPage(request,response);
     }
     private void goToPage(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-        RequestDispatcher dispatcher = getServletContext().getNamedDispatcher("ViewHome25");
-        dispatcher.forward(request,response);
+        boolean isBpo = Boolean.TRUE.equals(request.getSession().getAttribute("isBpo"));
+        boolean isBpoAdmin = Boolean.TRUE.equals(request.getSession().getAttribute("isBpoAdmin"));
+        boolean isBpoUser = Boolean.TRUE.equals(request.getSession().getAttribute("isBpoUser"));
+        if (isBpo || isBpoAdmin || isBpoUser) {
+            response.sendRedirect("BpoHome");
+        } else {
+            RequestDispatcher dispatcher = getServletContext().getNamedDispatcher("ViewHome25");
+            dispatcher.forward(request, response);
+        }
     }
 
     private void updateSequence(HttpServletRequest request){

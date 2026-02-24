@@ -1,6 +1,6 @@
 # Deployment Backlog
 
-**Last Updated:** February 23, 2026 (Session 2)
+**Last Updated:** February 24, 2026 (BPO Feature Session)
 **Reference:** See `docs/deployment_strategy.md` for full context on each item.
 
 Items are ordered by dependency (earlier items unblock later ones).
@@ -61,87 +61,6 @@ Kept:
 **File:** `src/main/java/net/superiorstate/ams/controller/authentication/InitializeDataBase.java` (new)
 
 Created the `InitializeDataBase` servlet (was previously missing entirely — form posted to a non-existent URL). Validates `deploymentKey` from form against `DEPLOYMENT_KEY` in `ssa.properties`. Rejects if key is missing, blank, or doesn't match.
-
----
-
-### D-06: Prevent Re-Initialization After Setup ✅
-
-**Completed:** February 23, 2026
-**File:** `src/main/java/net/superiorstate/ams/controller/authentication/InitializeDataBase.java`
-
-Built into the new servlet. Checks for `SSL_PORT=443` constant in DB before allowing initialization. If found, redirects to login page.
-
----
-
-### D-08: Verify Reserved ID Ranges in DatabaseInitializer ✅
-
-**Completed:** February 23, 2026
-
-Verified no conflicts on a fresh blank schema. Reserved ranges documented:
-- IDs 1-103: seed data (statuses, roles, persons, tasks, etc.)
-- Negative IDs: PSP employer/employee placeholders
-- 1000+: application-generated IDs via SEQ_GEN (bumped from 200 to 1000 for breathing room)
-
----
-
-### D-09: Create `schema_version` Table ✅
-
-**Completed:** February 23, 2026 (Session 1)
-
-Applied to master VPS image and local dev. Production pending.
-
----
-
-### D-10: Renumber Existing Migrations ✅
-
-**Completed:** February 23, 2026 — Resolved by convention.
-
-Old scripts keep their descriptive names (already tracked in `schema_version`). All new scripts follow `V{NNN}__description.sql` convention (V010 already does). No renames needed.
-
----
-
-### D-11: Build Backup Script ✅
-
-**Completed:** February 23, 2026 (Session 1)
-
-`/opt/ssa/scripts/backup.sh` — mysqldump → gzip → Wasabi upload, 7-day local retention. Cron at 2:00 AM UTC.
-
----
-
-### D-12: Build Update Script ✅
-
-**Completed:** February 23, 2026 (Session 1)
-
-`/opt/ssa/scripts/update.sh` — GitHub Releases API → SQL migrations → WAR deploy → Tomcat restart. Cron at 2:30 AM UTC.
-
----
-
-### D-13: Build Health Check Script ✅
-
-**Completed:** February 23, 2026 (Session 2)
-
-`/opt/ssa/scripts/healthcheck.sh` — Collects system status (Tomcat, MySQL, disk, backups, versions, errors) and emails daily report. Cron at 6:00 AM UTC.
-
-**SMTP config:** Reads from DB constants (`SYS_HEALTH_*`) with hardcoded fallback if DB unreachable. Updatable across all deployments via SQL migrations.
-
-**Kill switch:** `SYS_HEALTH_ENABLED` constant — set to `false` to disable emails (e.g., when master dashboard replaces email reports).
-
-**DB constants seeded during initialization:**
-- `SYS_HEALTH_ENABLED` = `true`
-- `SYS_HEALTH_EMAIL_TO` = `kevin@superiorstate.net`
-- `SYS_HEALTH_EMAIL_FROM` = `health@superiorstate.net`
-- `SYS_HEALTH_SMTP_SERVER` = `mail.smtp2go.com`
-- `SYS_HEALTH_SMTP_PORT` = `2525`
-- `SYS_HEALTH_SMTP_USER` = `jspSmtpSender`
-- `SYS_HEALTH_SMTP_PASSWORD` = (smtp2go credential)
-
----
-
-### D-15 through D-19: Master VPS Configuration ✅
-
-**Completed:** February 23, 2026 (Session 1)
-
-Data dir, MySQL connector, remove default ROOT, confirm awscli, open 8080.
 
 ---
 
@@ -219,13 +138,14 @@ Determine if IONOS has a per-account limit on vCPU cores and whether additional 
 ### D-24: Create Demo Seeder Servlet
 
 **Priority:** MEDIUM
-**Status:** Not started
+**Status:** Partially started (SeedBpoDemoData exists, needs purpose-built demo data with clear names)
 
 Create a protected servlet (master admin only) that seeds demo data onto a fresh initialized database for demonstration purposes. Should include:
 
 - Demo benefits (HRA, FSA, COBRA) with realistic dates
-- Sample employers and employees
-- Sample activities (tickets, renewals, setups) to showcase the UI
+- Sample employers and employees with obvious names (e.g., "Acme Corp", "Widget Inc")
+- Sample activities (tickets, renewals, setups) with sourced tasks for BPO demo
+- BPO test users with role assignments
 
 This replaces the test data previously hardcoded in `DatabaseInitializer`. Demo data should be clearly identifiable and removable.
 
@@ -252,6 +172,24 @@ Build an admin page to register third-party vendor contacts (persons + users wit
 - View/edit/deactivate existing vendors
 
 The BPO source dropdown in task manager will populate from these registered vendors.
+
+---
+
+### D-29: BPO Task Assignment from BPO Dashboard
+
+**Priority:** MEDIUM
+**Status:** Not started (design completed, code ready to implement)
+
+Add an "Assign To" dropdown inside the BPO task detail modal so BPO admins can assign unassigned delegated tasks to specific BPO users. Uses the `bpo_assigned_to_id` column on the `todo` table. The modal dropdown pre-selects the current assignee and updates via AJAX through the existing `BpoCompleteTask` servlet.
+
+---
+
+### D-30: BPO Automation Email — Contact-less Checklist Support
+
+**Priority:** MEDIUM
+**Status:** Not started (design discussion completed)
+
+The ManageTask25 automation feature uses the activity's primary contact for email To:/Cc: fields. Checklists have no primary contacts, so automation is currently hidden for BPO users. Design needed: in the absence of valid email addresses, show a prompt for manual email entry (validated, semicolon-separated or add-one-at-a-time). This benefits all standalone checklists, not just BPO.
 
 ---
 

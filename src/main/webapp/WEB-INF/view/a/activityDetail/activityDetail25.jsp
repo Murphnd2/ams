@@ -55,6 +55,7 @@
       #panelCenter .card, #panelCenter .hdr-bar { max-width: 100%; }
       #panelRight { display: flex; flex-direction: column; overflow: hidden; min-width: 200px; flex: 0 0 30%; }
       #panelRight .history-scroll { flex-grow: 1; overflow: auto; }
+      body.checklist-mode #panelRight { flex: 1 1 auto !important; min-width: 300px; }
     }
 
     /* Tablet/Mobile: stacked, dividers hidden */
@@ -72,11 +73,11 @@
     }
   </style>
 </head>
-<body>
+<body class="${sessionScope.local.getCurrentActivity().getActivity().getClass().getSimpleName().equals('CheckList') ? 'checklist-mode' : ''}">
 <div class="container-fluid">
   <c:import url="/WEB-INF/view/a/general/navbar25.jsp"></c:import>
   <c:choose>
-    <c:when test="${sessionScope.isPspUser || sessionScope.isPspAdmin || sessionScope.isAgent || sessionScope.isAgencyAdmin}">
+    <c:when test="${sessionScope.isPspUser || sessionScope.isPspAdmin || sessionScope.isAgent || sessionScope.isAgencyAdmin || sessionScope.isBpo || sessionScope.isBpoAdmin || sessionScope.isBpoUser}">
 
       <div id="actLayout">
         <div id="panelLeft">
@@ -90,20 +91,24 @@
           </c:if>
         </div>
 
-        <div class="panel-divider" id="dividerLeft"></div>
-
-        <div id="panelCenter">
-          <c:import url="/WEB-INF/view/a/activityDetail/columns/detail/detailHeader25.jsp"></c:import>
-          <c:if test="${!sessionScope.local.getCurrentActivity().getActivity().getClass().getSimpleName().equals(\"CheckList\")}">
-            <c:import url="/WEB-INF/view/a/activityDetail/columns/detail/detailPrimaryContact25.jsp"></c:import>
-            <c:import url="/WEB-INF/view/a/activityDetail/columns/detail/detailAdditionalContacts25.jsp"></c:import>
-          </c:if>
-          <c:import url="/WEB-INF/view/a/activityDetail/columns/detail/detailDetail25.jsp"></c:import>
-          <c:import url="/WEB-INF/view/a/activityDetail/columns/detail/detailDocsLinks25.jsp"></c:import>
-          <c:import url="/WEB-INF/view/a/activityDetail/columns/detail/detailFooter25.jsp"></c:import>
-        </div>
-
-        <div class="panel-divider" id="dividerRight"></div>
+        <c:choose>
+          <c:when test="${sessionScope.local.getCurrentActivity().getActivity().getClass().getSimpleName().equals('CheckList')}">
+            <%-- CheckList: no center panel, single divider to right --%>
+            <div class="panel-divider" id="dividerLeft"></div>
+          </c:when>
+          <c:otherwise>
+            <div class="panel-divider" id="dividerLeft"></div>
+            <div id="panelCenter">
+              <c:import url="/WEB-INF/view/a/activityDetail/columns/detail/detailHeader25.jsp"></c:import>
+              <c:import url="/WEB-INF/view/a/activityDetail/columns/detail/detailPrimaryContact25.jsp"></c:import>
+              <c:import url="/WEB-INF/view/a/activityDetail/columns/detail/detailAdditionalContacts25.jsp"></c:import>
+              <c:import url="/WEB-INF/view/a/activityDetail/columns/detail/detailDetail25.jsp"></c:import>
+              <c:import url="/WEB-INF/view/a/activityDetail/columns/detail/detailDocsLinks25.jsp"></c:import>
+              <c:import url="/WEB-INF/view/a/activityDetail/columns/detail/detailFooter25.jsp"></c:import>
+            </div>
+            <div class="panel-divider" id="dividerRight"></div>
+          </c:otherwise>
+        </c:choose>
 
         <div id="panelRight">
           <c:if test="${sessionScope.local.getCurrentActivity().getActivity().isComplete()==false}">
@@ -204,9 +209,8 @@
         document.addEventListener('mouseup', onUp);
       });
     }
-
     initDrag(divL, left, true);
-    initDrag(divR, right, false);
+    if (divR) initDrag(divR, right, false);
   })();
 </script>
 </body>

@@ -26,25 +26,4 @@ Run scripts in the order listed. Some depend on prior ones.
 | 8 | `opportunity_migration_production.sql` | Assignee columns for Opportunity (prospect_id, agency_id_opp, opportunity_stage, etc.), sales TemplateGroup/TemplatePurpose/Task seed data | ✅ 2026-02-21 | ❌ NOT RUN | Do NOT add DEFAULT to opportunity_stage. Prereq: scripts 1–3. |
 | 9 | `timeclock_correction_migration.sql` | time_correction_request table with FKs to assignee and timelog, indexes on status/requestor/date | ❌ NOT RUN | ❌ NOT RUN | No prerequisites. Run before deploying timeclock correction code. |
 | 10 | `V010__psp_opportunity_integration.sql` | PSP Sales role (ID 9), managed_by_id on assignee for PSP-managed opportunities | ✅ 2026-02-22 | ❌ NOT RUN | Prereq: script 8 (opportunity columns must exist). Run BEFORE deploying activity list opportunity code. |
-
-## Chatbot Migration (Standalone)
-
-Not a numbered script file — these are individual SQL statements. Run on production before deploying chatbot code.
-
-```sql
-ALTER TABLE note ADD COLUMN is_resolution TINYINT(1) NOT NULL DEFAULT 0;
-INSERT INTO constant (name, value, note) VALUES ('ANTHROPIC_API_KEY', '<key>', 'Claude API key for chatbot');
--- Ticket category updates: see chatbot_session_summary.md for full SQL
-```
-
-## How to Use
-
-1. Before deploying code changes to production, check this file for any pending migrations
-2. Run scripts in the order listed (1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10)
-3. Update the Production column with date after running
-4. Commit this file back to GitHub
-
-## Rules
-- Never deploy code that depends on schema changes without running the migration first
-- Always test the migration on local before running on production
-- Keep old migration scripts in `docs/` for history — don't delete them
+| 11 | `V011__bpo_delegation_feature.sql` | BPO columns on todo (bpo_completed, bpo_completed_date, bpo_completed_by_id, bpo_assigned_to_id), todo_note table, BPO user roles (101-103) | ✅ 2026-02-24 | ❌ NOT RUN | Prereq: V010. Run BEFORE deploying BPO feature code. |

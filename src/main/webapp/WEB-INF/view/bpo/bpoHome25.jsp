@@ -12,6 +12,9 @@
     <title>BPO Dashboard</title>
     <c:import url="/WEB-INF/view/css-js.jsp"/>
     <style>
+        .hdr-bar { background-color: #87a948 !important; }
+    </style>
+    <style>
         .bpo-todo-row { padding: 0.5rem 0.75rem; border-bottom: 1px solid #eee; transition: background 0.15s; cursor: pointer; }
         .bpo-todo-row:hover { background: #f0f7fb; }
         .bpo-todo-row:last-child { border-bottom: none; }
@@ -98,7 +101,6 @@
                                     <c:set var="activityName" value="${row[1]}"/>
                                     <c:set var="dueDate" value="${row[2]}"/>
                                     <c:set var="pspName" value="${row[3]}"/>
-                                    <c:set var="activityType" value="${row[4].getSimpleName()}"/>
                                     <%-- Due date styling --%>
                                     <c:choose>
                                         <c:when test="${dueDate < Date.valueOf(LocalDate.now())}">
@@ -119,7 +121,7 @@
                                          data-todo-id="${todo.getId()}"
                                          data-task-name="${todo.getTask().getDescription()}"
                                          data-psp-name="${pspName}"
-                                         data-activity-name="${activityName} ${activityType}"
+                                         data-activity-name="${todo.getCheckList().getRenewal() != null ? todo.getCheckList().getRenewal().getFullName().concat(' Renewal') : todo.getCheckList().getSetup() != null ? todo.getCheckList().getSetup().getFullName().concat(' Setup') : todo.getCheckList().getTicket() != null ? todo.getCheckList().getTicket().getFullName().concat(' Ticket') : activityName}"
                                          data-due-date="<fmt:formatDate value='${dueDate}' pattern='MM/dd/yyyy'/>"
                                          data-goto="${todo.getTask().hasGoTo() && todo.getTask().getGoToLink() != null ? todo.getTask().getGoToLink().getLinkPath() : ''}"
                                          data-info="${todo.getTask().hasInfo() && todo.getTask().getInfoLink() != null ? todo.getTask().getInfoLink().getLinkPath() : ''}"
@@ -129,7 +131,20 @@
                                             <div style="font-size:0.85rem; font-weight:500;">
                                                     ${todo.getTask().getDescription()}
                                             </div>
-                                            <span style="font-size:0.7rem; color:#6c757d;">${activityName} ${activityType}</span>
+                                            <c:choose>
+                                                <c:when test="${todo.getCheckList().getRenewal() != null}">
+                                                    <span style="font-size:0.7rem; color:#6c757d;">${todo.getCheckList().getRenewal().getFullName()} Renewal</span>
+                                                </c:when>
+                                                <c:when test="${todo.getCheckList().getSetup() != null}">
+                                                    <span style="font-size:0.7rem; color:#6c757d;">${todo.getCheckList().getSetup().getFullName()} Setup</span>
+                                                </c:when>
+                                                <c:when test="${todo.getCheckList().getTicket() != null}">
+                                                    <span style="font-size:0.7rem; color:#6c757d;">${todo.getCheckList().getTicket().getFullName()} Ticket</span>
+                                                </c:when>
+                                                <c:otherwise>
+                                                    <span style="font-size:0.7rem; color:#6c757d;">${activityName}</span>
+                                                </c:otherwise>
+                                            </c:choose>
                                         </div>
                                         <div class="col-3">
                                             <span class="bpo-badge-psp">${pspName}</span>
@@ -158,6 +173,26 @@
                             </c:otherwise>
                         </c:choose>
                     </div>
+
+                        <%-- ===== COMPLETED TASKS (collapsed) ===== --%>
+                        <div class="px-3 pb-2 pt-1" style="border-top:1px solid #dee2e6;">
+                            <div class="d-flex align-items-center gap-2">
+                                <a class="d-flex align-items-center" data-bs-toggle="collapse" href="#bpoCompletedSection" role="button" aria-expanded="false"
+                                   style="font-size:0.8rem; color:#6c757d; cursor:pointer; text-decoration:none;">
+                                    <i class="bi bi-chevron-right me-1" id="completedChevron"></i>Completed
+                                    <span id="completedCount" class="text-muted ms-1"></span>
+                                </a>
+                                <div class="ms-auto d-flex gap-1">
+                                    <button type="button" class="btn btn-sm btn-outline-ssa completed-range active" data-days="1" onclick="setCompletedRange(this)" style="font-size:0.68rem; padding:0.1rem 0.45rem;">1 Day</button>
+                                    <button type="button" class="btn btn-sm btn-outline-ssa completed-range" data-days="3" onclick="setCompletedRange(this)" style="font-size:0.68rem; padding:0.1rem 0.45rem;">3 Day</button>
+                                    <button type="button" class="btn btn-sm btn-outline-ssa completed-range" data-days="7" onclick="setCompletedRange(this)" style="font-size:0.68rem; padding:0.1rem 0.45rem;">1 Week</button>
+                                </div>
+                            </div>
+                            <div class="collapse" id="bpoCompletedSection">
+                                <div id="completedTasksList" class="mt-1">
+                                </div>
+                            </div>
+                        </div>
 
                 </div>
             </div>
@@ -371,6 +406,58 @@
         });
 
         rows.forEach(row => list.appendChild(row));
+    }
+</script>
+<script>
+    var completedDays = 1;
+
+    document.getElementById('bpoCompletedSection')?.addEventListener('show.bs.collapse', function(){
+        document.getElementById('completedChevron')?.classList.replace('bi-chevron-right','bi-chevron-down');
+        loadCompletedTasks();
+    });
+    document.getElementById('bpoCompletedSection')?.addEventListener('hide.bs.collapse', function(){
+        document.getElementById('completedChevron')?.classList.replace('bi-chevron-down','bi-chevron-right');
+    });
+
+    function setCompletedRange(btn) {
+        document.querySelectorAll('.completed-range').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        completedDays = parseInt(btn.dataset.days);
+        loadCompletedTasks();
+    }
+
+    function loadCompletedTasks() {
+        const container = document.getElementById('completedTasksList');
+        container.innerHTML = '<div class="text-center text-muted fst-italic py-2" style="font-size:0.8rem;">Loading...</div>';
+
+        fetch('BpoCompletedTasks?days=' + completedDays)
+            .then(r => r.json())
+            .then(items => {
+                document.getElementById('completedCount').textContent = '(' + items.length + ')';
+                if (items.length === 0) {
+                    container.innerHTML = '<div class="text-center text-muted fst-italic py-2" style="font-size:0.8rem;">' +
+                        '<i class="bi bi-check-circle" style="font-size:1.1rem; display:block; margin-bottom:0.15rem; color:#c8c8c8;"></i>' +
+                        'No completed tasks</div>';
+                    return;
+                }
+                let html = '';
+                items.forEach(item => {
+                    html += '<div style="border-left:4px solid #198754; border-radius:3px; padding:0.25rem 0.4rem; margin-bottom:0.2rem; background:#f8f9fa; opacity:0.75;">';
+                    html += '  <div class="d-flex align-items-center">';
+                    html += '    <i class="bi bi-check-circle-fill text-success me-2" style="font-size:0.85rem;"></i>';
+                    html += '    <div class="flex-grow-1" style="min-width:0;">';
+                    html += '      <div style="font-size:0.8rem; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; text-decoration:line-through; color:#6c757d;">' + item.taskName + '</div>';
+                    html += '      <div style="font-size:0.7rem; color:#999;">' + item.activityName + ' &middot; ' + item.pspName + '</div>';
+                    html += '    </div>';
+                    html += '    <span style="font-size:0.68rem; color:#6c757d; white-space:nowrap; margin-left:0.5rem;">' + item.completedBy + (item.completedDate ? ' &middot; ' + item.completedDate : '') + '</span>';
+                    html += '  </div>';
+                    html += '</div>';
+                });
+                container.innerHTML = html;
+            })
+            .catch(() => {
+                container.innerHTML = '<div class="text-center text-danger py-2" style="font-size:0.8rem;">Error loading tasks</div>';
+            });
     }
 </script>
 </body>

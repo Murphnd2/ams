@@ -120,7 +120,7 @@
       <%-- ============================================================ --%>
       <%-- LEFT COLUMN: Task Settings                                   --%>
       <%-- ============================================================ --%>
-      <div class="col-12 col-lg-4 tm-col-left">
+        <div class="col-12 ${sessionScope.isBpo || sessionScope.isBpoAdmin || sessionScope.isBpoUser ? 'col-lg-12' : 'col-lg-4'} tm-col-left">
         <div class="tm-card tm-left">
 
           <%-- ORDERING --%>
@@ -159,7 +159,7 @@
             </div>
             <div id="eeDropDown" class="${showEE}">
               <select class="form-select form-select-sm tm-select" name="ownerId" id="ownerId">
-                <c:forEach var="user" items="${applicationScope.global.getUsers()}">
+                <c:forEach var="user" items="${sessionScope.isBpo || sessionScope.isBpoAdmin || sessionScope.isBpoUser ? applicationScope.global.getBpoUsers() : applicationScope.global.getUsers()}">
                   <c:set var="uSelect" value=""/>
                   <c:if test="${toDo.getTask().hasOwner() && toDo.getTask().getOwner()!=null && toDo.getTask().getOwner().getId()==user.getId()}">
                     <c:set var="uSelect" value="selected"/>
@@ -171,29 +171,31 @@
             </div>
           </div>
 
-          <%-- VENDOR SOURCING --%>
-          <div class="tm-section">
-            <div class="tm-label"><i class="bi bi-building me-1"></i>Vendor Sourcing</div>
-            <div class="tm-toggle-row mb-2">
-              <input type="radio" class="btn-check" id="cb4a" name="isSourced" value="0" ${acb1} autocomplete="off" onchange="toggleBPO()">
-              <label class="btn btn-outline-success" for="cb4a">Internal</label>
-              <input type="radio" class="btn-check" id="cb4b" name="isSourced" value="1" ${acb2} autocomplete="off" onchange="toggleBPO()">
-              <label class="btn btn-outline-warning text-dark" for="cb4b">Sourced</label>
-              <input type="radio" class="btn-check" id="cb4c" name="isSourced" value="2" ${acb3} autocomplete="off" onchange="toggleBPO()">
-              <label class="btn btn-outline-danger" for="cb4c">Vendor Only</label>
-            </div>
-            <div id="bpoDropDown" class="${showBPO}">
-              <select class="form-select form-select-sm tm-select" name="sourceId" id="sourceId">
-                <c:forEach var="bpo" items="${applicationScope.global.getBpoUsers()}">
-                  <c:set var="bSelect" value=""/>
-                  <c:if test="${toDo.getTask().isSourced() && toDo.getTask().getSourceOwner()!=null && toDo.getTask().getSourceOwner().getId()==bpo.getId()}">
-                    <c:set var="bSelect" value="selected"/>
-                  </c:if>
-                  <option value="${bpo.getId()}" ${bSelect}>${bpo.getLastName()}, ${bpo.getFirstName()}</option>
-                </c:forEach>
-              </select>
-            </div>
-          </div>
+            <%-- VENDOR SOURCING (PSP only) --%>
+            <c:if test="${!sessionScope.isBpo && !sessionScope.isBpoAdmin && !sessionScope.isBpoUser}">
+              <div class="tm-section">
+                <div class="tm-label"><i class="bi bi-building me-1"></i>Vendor Sourcing</div>
+                <div class="tm-toggle-row mb-2">
+                  <input type="radio" class="btn-check" id="cb4a" name="isSourced" value="0" ${acb1} autocomplete="off" onchange="toggleBPO()">
+                  <label class="btn btn-outline-success" for="cb4a">Internal</label>
+                  <input type="radio" class="btn-check" id="cb4b" name="isSourced" value="1" ${acb2} autocomplete="off" onchange="toggleBPO()">
+                  <label class="btn btn-outline-warning text-dark" for="cb4b">Sourced</label>
+                  <input type="radio" class="btn-check" id="cb4c" name="isSourced" value="2" ${acb3} autocomplete="off" onchange="toggleBPO()">
+                  <label class="btn btn-outline-danger" for="cb4c">Vendor Only</label>
+                </div>
+                <div id="bpoDropDown" class="${showBPO}">
+                  <select class="form-select form-select-sm tm-select" name="sourceId" id="sourceId">
+                    <c:forEach var="bpo" items="${applicationScope.global.getBpoUsers()}">
+                      <c:set var="bSelect" value=""/>
+                      <c:if test="${toDo.getTask().isSourced() && toDo.getTask().getSourceOwner()!=null && toDo.getTask().getSourceOwner().getId()==bpo.getId()}">
+                        <c:set var="bSelect" value="selected"/>
+                      </c:if>
+                      <option value="${bpo.getId()}" ${bSelect}>${bpo.getLastName()}, ${bpo.getFirstName()}</option>
+                    </c:forEach>
+                  </select>
+                </div>
+              </div>
+            </c:if>
 
           <%-- LINKS --%>
           <div class="tm-section">
@@ -235,6 +237,11 @@
             </button>
             <span class="mx-1" style="color:#dee2e6;">|</span>
             <c:choose>
+              <c:when test="${sessionScope.isBpo || sessionScope.isBpoAdmin || sessionScope.isBpoUser}">
+                <a href="BpoHome" class="tm-action cancel" style="text-decoration:none;">
+                  <i class="bi bi-x-lg me-1"></i>Cancel
+                </a>
+              </c:when>
               <c:when test="${sessionScope.local.getCurrentActivity().getActivity().getClass().getSimpleName().equals(\"CheckList\")}">
                 <a href="goCheckListDetail" class="tm-action cancel" style="text-decoration:none;">
                   <i class="bi bi-x-lg me-1"></i>Cancel
@@ -254,7 +261,8 @@
       <%-- ============================================================ --%>
       <%-- RIGHT COLUMN: Automation Email                               --%>
       <%-- ============================================================ --%>
-      <div class="col-12 col-lg-8 tm-col-right">
+      <c:if test="${!sessionScope.isBpo && !sessionScope.isBpoAdmin && !sessionScope.isBpoUser}">
+          <div class="col-12 col-lg-8 tm-col-right">
         <div class="tm-card">
           <c:choose>
             <c:when test="${toDo.getTask().isAutomated()==true && toDo.getTask().getAutomation()==null}">
@@ -294,6 +302,7 @@
           </c:choose>
         </div>
       </div>
+      </c:if>
 
     </div>
 

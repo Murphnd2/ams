@@ -44,7 +44,7 @@ public class ChecklistAction25 extends HttpServlet {
         boolean isBpo = Boolean.TRUE.equals(request.getSession().getAttribute("isBpo"));
         boolean isBpoAdmin = Boolean.TRUE.equals(request.getSession().getAttribute("isBpoAdmin"));
         boolean isBpoUser = Boolean.TRUE.equals(request.getSession().getAttribute("isBpoUser"));
-        if (isBpo || isBpoAdmin || isBpoUser) {
+        if ((isBpo || isBpoAdmin || isBpoUser) && "ViewHome25".equals(getPath())) {
             response.sendRedirect("BpoHome");
         } else {
             RequestDispatcher dispatcher = getServletContext().getNamedDispatcher(getPath());

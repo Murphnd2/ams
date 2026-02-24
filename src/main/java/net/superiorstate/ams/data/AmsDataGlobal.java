@@ -30,6 +30,7 @@ import net.superiorstate.ams.model.general.WebLink;
 import net.superiorstate.ams.model.summit.archive.Employer;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public class AmsDataGlobal {
@@ -77,7 +78,16 @@ public class AmsDataGlobal {
         this.emf = em.getEntityManagerFactory();
         setPsp(EntityLookup.getPspById(em,4L));
         setUsers(RecurringChecklistDAO.getPspUserList(em,getPsp()));
-        setBpoUsers(AuthenticateUser.getUsersByRole(em,101));
+        List<Person> allBpo = new ArrayList<>();
+        allBpo.addAll(AuthenticateUser.getUsersByRole(em, 101));
+        for (Person p : AuthenticateUser.getUsersByRole(em, 102)) {
+            if (!allBpo.contains(p)) allBpo.add(p);
+        }
+        for (Person p : AuthenticateUser.getUsersByRole(em, 103)) {
+            if (!allBpo.contains(p)) allBpo.add(p);
+        }
+        Collections.sort(allBpo);
+        setBpoUsers(allBpo);
         setTemplateGroups(SequenceDAO.getTemplateGroups(em));
         setTemplatePurposes(SequenceDAO.getTemplatePurposes(em));
         setReasonsCreated(TicketQueryDAO.getReasons(em));
