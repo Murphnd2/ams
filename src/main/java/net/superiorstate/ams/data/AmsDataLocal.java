@@ -617,9 +617,8 @@ public class AmsDataLocal implements AutoCloseable {
                     t.getToDo().setDateCompleted(Date.valueOf(LocalDate.now()));
                     t.getToDo().setCompletedBy(getCurrentPerson());
                     t.getToDo().setComplete(true);
-                    getCurrentActivity().getToDoList().remove(t);
-                    getCurrentActivity().getToDoList().add(t);
                 }
+                getCurrentActivity().reSortToDoList();
             }
             case "TODO_CLOSE" -> {
                 toDoId = (Long) o;
@@ -672,6 +671,7 @@ public class AmsDataLocal implements AutoCloseable {
                 ToDoOut25 t25 = new ToDoOut25(toDo);
                 newList.add(i,t25);
                 getCurrentActivity().setToDoList(newList);
+                getCurrentActivity().reSortToDoList();
             }
             case "CLOSE_ACTIVITY" -> {
                 Activity activity = (Activity) o;

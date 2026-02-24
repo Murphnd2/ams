@@ -49,7 +49,7 @@
     /* Desktop: side-by-side flex panels */
     @media (min-width: 1200px) {
       #actLayout { display: flex; height: calc(100vh - 70px); overflow: hidden; }
-      #panelLeft { overflow: hidden auto; min-width: 180px; flex: 0 0 22%; }
+      #panelLeft { display: flex; flex-direction: column; overflow: hidden; min-width: 180px; flex: 0 0 22%; }
       #panelCenter { overflow: hidden auto; min-width: 200px; flex: 1 1 auto; }
       #panelCenter * { box-sizing: border-box; }
       #panelCenter .card, #panelCenter .hdr-bar { max-width: 100%; }
@@ -81,9 +81,6 @@
       <div id="actLayout">
         <div id="panelLeft">
           <c:import url="/WEB-INF/view/a/activityDetail/columns/checklist/checklistHeader.jsp"></c:import>
-          <c:if test="${sessionScope.local.getCurrentActivity().getActivity().isComplete()==false}">
-            <c:import url="/WEB-INF/view/a/activityDetail/columns/checklist/checklistAutomation25.jsp"></c:import>
-          </c:if>
           <c:import url="/WEB-INF/view/a/activityDetail/columns/checklist/checklistBasic25.jsp"></c:import>
           <c:if test="${sessionScope.local.getCurrentActivity().getActivity().isComplete()==false}">
             <c:import url="/WEB-INF/view/a/activityDetail/columns/checklist/checklistFooter25.jsp"></c:import>
