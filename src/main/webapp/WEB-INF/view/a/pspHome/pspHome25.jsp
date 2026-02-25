@@ -28,7 +28,7 @@
 <body>
 <div class="container-fluid">
   <c:import url="/WEB-INF/view/a/general/navbar25.jsp"></c:import>
-  <div class="row">
+  <div class="row" >
     <%-- ************************ T I M E C L O C K   C O L U M N ********************************************************* --%>
     <div class="col-12 col-lg-7 col-xl-3 order-last">
       <c:import url="/WEB-INF/view/a/pspHome/columns/timeClock/timeClockHeader.jsp"></c:import>

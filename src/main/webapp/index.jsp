@@ -113,7 +113,7 @@
     <div class="login-wrapper">
         <div class="login-card">
             <div class="login-header">
-                <c:set var="loginLogo" value="${not empty applicationScope.global.logoLogin ? applicationScope.global.logoLogin : '/images/logoD.png'}"/>
+                <c:set var="loginLogo" value="${not empty applicationScope.global.logoLogin ? applicationScope.global.logoLogin : '/images/logoA.png'}"/>
                 <img src="${pageContext.request.contextPath}${loginLogo}" class="img-fluid" alt="Logo" style="max-height: 400px;">
             </div>
             <div class="login-body">

@@ -32,30 +32,8 @@
   <c:set var="pageTitle" value="Agency Manager" scope="request"/>
   <c:set var="pageIcon" value="bi-people-fill" scope="request"/>
   <c:import url="/WEB-INF/view/a/general/navbar25.jsp"/>
-  <div class="row align-items-center py-2">
-    <div class="col">
-      <c:if test="${not empty selectedAgency}">
-        <h5 class="mb-0">
-          <i class="bi bi-building me-1"></i>${selectedAgency.getName()}
-        </h5>
-      </c:if>
-    </div>
-  </div>
 
-  <%-- Header --%>
-  <div class="d-flex justify-content-between align-items-center mb-3">
-    <div>
-      <h4 class="mb-0"><i class="bi bi-people-fill me-2"></i>Agency Manager</h4>
-      <small class="text-muted">Manage agencies, rate assignments, and agents</small>
-    </div>
-    <div>
-      <c:set var="adminCurrentPage" value="agencyManager" scope="request"/>
-      <c:import url="/WEB-INF/view/sales/adminNav.jsp"/>
-    </div>
-  </div>
-
-  <div class="row g-3">
-
+  <div class="row" style="margin-top:0.5rem">
     <%-- ======================== LEFT COLUMN: Agency List ======================== --%>
     <div class="col-lg-3">
       <div class="card">

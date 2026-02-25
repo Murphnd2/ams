@@ -121,6 +121,7 @@
           <span class="me-2">&nbsp;</span>
         </c:otherwise>
       </c:choose>
+      <span class="me-2 text-light">&nbsp;|</span>
       <c:if test="${not empty pageTitle}">
         <span class="text-white fw-semibold" style="font-size: 1.1rem; letter-spacing: 0.01em;">
           <c:if test="${not empty pageIcon}"><i class="bi ${pageIcon} me-1"></i></c:if>${pageTitle}

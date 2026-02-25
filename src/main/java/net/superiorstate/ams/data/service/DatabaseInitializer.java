@@ -484,6 +484,7 @@ public abstract class DatabaseInitializer {
                 System.out.println("⚠️ Unknown demo tag: " + demoTag + " — skipping");
         }
     }
+
     private static void createInitializationChecklist(EntityManager em) {
         Person person = EntityLookup.getPersonById(em, 104L);
         PSP psp = EntityLookup.getPspById(em, 4L);
@@ -504,6 +505,7 @@ public abstract class DatabaseInitializer {
         checkList.setToDoList(toDoList);
         em.persist(checkList);
     }
+
     private static final String EXPORT_INSTRUCTIONS_LINK =
             "https://docs.google.com/document/d/1Z8I_-5z53AiDNZu2B6wiMe8yRcOK1pZ6B53TBJl3pHg/edit?usp=sharing";
 
@@ -527,8 +529,6 @@ public abstract class DatabaseInitializer {
         return todo;
     }
 
-
-
     private static ToDo createToDoWithTask(EntityManager em, CheckList checklist, PSP psp, Long taskId, String servlet, String label, int sortOrder) {
         Task task = new Task();
         task.setId(taskId);
@@ -539,7 +539,7 @@ public abstract class DatabaseInitializer {
         em.persist(task);
 
         ToDo toDo = new ToDo();
-        toDo.setId(taskId+1L); // Replace with proper ID generator if applicable
+        toDo.setId(taskId+1L);
         toDo.setTask(task);
         toDo.setCheckList(checklist);
         toDo.setSortOrder(sortOrder);
@@ -553,7 +553,7 @@ public abstract class DatabaseInitializer {
     }
 
     private static Long generateToDoId() {
-        return 33L; // Replace this with a real ID generation strategy if needed
+        return 33L;
     }
 
     private static void createRequiredTaskList(EntityManager em, TemplatePurpose tp, PSP psp){
@@ -565,7 +565,6 @@ public abstract class DatabaseInitializer {
         rtl.setInActive(false);
         em.persist(rtl);
         em.getTransaction().commit();
-
     }
 
     private static void addPspConstants(EntityManager em){
@@ -605,7 +604,7 @@ public abstract class DatabaseInitializer {
         if(getConstantByName(em,"LOGO_NAVBAR")==null)
             createConstant(em,"LOGO_NAVBAR","/images/logoA.png");
         if(getConstantByName(em,"LOGO_LOGIN")==null)
-            createConstant(em,"LOGO_LOGIN","/images/logoD.png");
+            createConstant(em,"LOGO_LOGIN","/images/logoA.png");
         if(getConstantByName(em,"FAVICON")==null)
             createConstant(em,"FAVICON","/favicon.ico");
     }
@@ -640,6 +639,7 @@ public abstract class DatabaseInitializer {
         em.persist(u);
         em.getTransaction().commit();
     }
+
     private static void assignRoles(EntityManager em, User u, UserRole ur){
         em.getTransaction().begin();
         u.addUserToRole(ur);
@@ -743,6 +743,7 @@ public abstract class DatabaseInitializer {
     public static void createTimeEntry(EntityManager em, Person p){
         createTimeEntry(em,p,1L,2L);
     }
+
     public static void createTimeEntry(EntityManager em, Person p,Long one, Long two){
         em.getTransaction().begin();
         TimeLog t = new TimeLog();
@@ -764,7 +765,6 @@ public abstract class DatabaseInitializer {
         t.setPerson(p);
         em.persist(t);
         em.getTransaction().commit();
-
     }
 
     public static TicketSubCategory createTicketSubCategory(EntityManager em, Long id,  TicketCategory tc, TemplatePurpose tp){
@@ -807,6 +807,7 @@ public abstract class DatabaseInitializer {
         em.getTransaction().commit();
         return t;
     }
+
     public static Task createTask(EntityManager em, Long id, String name, String servletName, PSP psp, Person p, boolean hasAutomation){
         if(EntityLookup.getTaskById(em,id)!=null)
             return EntityLookup.getTaskById(em,id);
@@ -831,9 +832,11 @@ public abstract class DatabaseInitializer {
         em.getTransaction().commit();
         return t;
     }
+
     public static Task createTask(EntityManager em, Long id, String name, String servletName,PSP psp, Person p){
         return createTask(em,id,name,servletName,psp,p,true);
     }
+
     public static ReasonCreated createReasonCreated(EntityManager em, int id, String name, boolean outbound){
         if(EntityLookup.getReasonById(em,id)!=null)
             return EntityLookup.getReasonById(em,id);
@@ -891,6 +894,7 @@ public abstract class DatabaseInitializer {
 
         em.getTransaction().commit();
     }
+
     private static void createPricing(EntityManager em, double price, ServiceModule sm, PriceItem pi, Rate r){
         em.getTransaction().begin();
         RateTable rt = new RateTable();
@@ -918,7 +922,6 @@ public abstract class DatabaseInitializer {
         em.persist(r);
         em.getTransaction().commit();
         return r;
-
     }
 
     public static PriceItem createPriceItem(EntityManager em, Long id,String name, int sortOrder, PSP psp){
@@ -957,8 +960,6 @@ public abstract class DatabaseInitializer {
         em.persist(s);
         em.getTransaction().commit();
         return s;
-
-
     }
 
     public static LOS createLos(EntityManager em, long id, String name, String shortText, PSP psp){
@@ -974,6 +975,7 @@ public abstract class DatabaseInitializer {
         em.getTransaction().commit();
         return l;
     }
+
     public static LinkType createLinkType(EntityManager em, int id, String name){
         if(EntityLookup.getLinkTypeById(em,id)!=null)
             return EntityLookup.getLinkTypeById(em,id);
@@ -1003,6 +1005,7 @@ public abstract class DatabaseInitializer {
         }
         return d;
     }
+
     public static ContactMethod createContactMethod(EntityManager em, int id, String name){
         em.getTransaction().begin();
         ContactMethod cm = new ContactMethod();
@@ -1020,6 +1023,7 @@ public abstract class DatabaseInitializer {
         }
         return cm;
     }
+
     public static Benefit createBenefit(EntityManager em, int id, String name, Employer er, PlanType pt, Date theDate){
         LocalDate currentDate = theDate.toLocalDate();
         LocalDate effectiveDate = currentDate.minusYears(1L);
@@ -1138,6 +1142,7 @@ public abstract class DatabaseInitializer {
         em.getTransaction().commit();
         return er;
     }
+
     private static void updatePspWithContact(EntityManager em, PSP psp, Person p){
         PSP thePsp = EntityLookup.getPspById(em,psp.getId());
         em.getTransaction().begin();
@@ -1163,6 +1168,7 @@ public abstract class DatabaseInitializer {
         em.getTransaction().commit();
         return p;
     }
+
     public static PSP createPSP(EntityManager em, long id, String name, Address a){
         if(EntityLookup.getPspById(em,id)!=null)
             return EntityLookup.getPspById(em,id);
@@ -1195,7 +1201,6 @@ public abstract class DatabaseInitializer {
         em.persist(a);
         em.getTransaction().commit();
         return a;
-
     }
 
     public static Address createAddress(EntityManager em, long id, String ad1, String ad2, String city, String state, String zip){

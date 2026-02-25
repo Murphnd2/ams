@@ -241,19 +241,27 @@ public class CreateTicket25 extends HttpServlet {
             }
         }
 
-        private TicketCategory getTicketCategory(EntityManager em){
-            String textToCheck = getReasonField().toLowerCase();
-            long catId = 21;
-            if(textToCheck.contains("claim"))
-                catId = 11;
-            else if(textToCheck.contains("enrol"))
-                catId = 16;
-            else if (textToCheck.contains("access") || textToCheck.contains("online"))
-                catId = 12;
-            else if (textToCheck.contains("quote") || textToCheck.contains("fsa") || textToCheck.contains("hra") || textToCheck.contains("pop") || textToCheck.contains("hsa") || textToCheck.contains("cobra") || textToCheck.contains("transit"))
-                catId = 17;
-            return EntityLookup.getTicketCategoryById(em,catId);
-        }
+    private TicketCategory getTicketCategory(EntityManager em){
+        String t = getReasonField().toLowerCase();
+        long catId = 21; // default = General
+        if(t.contains("claim"))
+            catId = 11;
+        else if(t.contains("access") || t.contains("online") || t.contains("log in") || t.contains("portal"))
+            catId = 12;
+        else if(t.contains("debit") || t.contains("card"))
+            catId = 13;
+        else if(t.contains("cobra"))
+            catId = 14;
+        else if(t.contains("hsa"))
+            catId = 15;
+        else if(t.contains("enrol") || t.contains("new hire") || t.contains("life event"))
+            catId = 16;
+        else if(t.contains("quote") || t.contains("fsa") || t.contains("hra") || t.contains("pop") || t.contains("transit"))
+            catId = 17;
+        else if(t.contains("bill") || t.contains("invoice") || t.contains("payment"))
+            catId = 18;
+        return EntityLookup.getTicketCategoryById(em, catId);
+    }
 
         private void processTicketType(EntityManager em){
             if(reasonId==0){

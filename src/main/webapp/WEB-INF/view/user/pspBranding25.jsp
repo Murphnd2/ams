@@ -126,7 +126,7 @@
                     <div class="specs">PNG &bull; Max 800 × 400 px &bull; Featured on the sign-in page</div>
                     <div class="row align-items-center">
                         <div class="col-4">
-                            <div class="preview-box login-preview" id="loginPreviewBox">
+                            <div class="preview-box login-preview dark-bg" id="loginPreviewBox">
                                 <img id="loginPreview" src="${pageContext.request.contextPath}${requestScope.currentLoginLogo}" alt="Current">
                             </div>
                             <div class="current-label">Current</div>
