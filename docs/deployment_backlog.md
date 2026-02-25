@@ -193,6 +193,29 @@ The ManageTask25 automation feature uses the activity's primary contact for emai
 
 ---
 
+### D-31: Microsoft 365 SSO (Optional Per-PSP)
+
+**Priority:** LOW — Phase 2 (after multi-PSP foundation is stable)
+**Status:** Not started
+
+Add optional "Sign in with Microsoft" button on login page using Microsoft Entra ID (Azure AD) with OpenID Connect / OAuth 2.0. Existing username/password auth remains as the default and fallback.
+
+**Design considerations:**
+- Per-PSP opt-in: each PSP decides whether to enable SSO via a `SSO_ENABLED` database constant
+- Azure AD app registration: one multi-tenant app or per-PSP registrations (TBD)
+- OAuth callback URLs must be domain-specific (each PSP has its own domain)
+- User matching: SSO email matched to existing AMS user record — no auto-provisioning initially
+- Fallback required for users without M365 accounts (agents, clients, external contacts)
+- Session setup must follow same `AmsDataLocal` initialization path as normal login
+
+**Implementation approach (when ready):**
+- Add `microsoft-identity-web` or manual OAuth 2.0 authorization code flow
+- New servlet: `MicrosoftLoginCallback` to handle the OAuth redirect
+- Login page: conditional "Sign in with Microsoft" button when `SSO_ENABLED=true`
+- Map authenticated email → `User.email` → full `loadSessionData25()` flow
+
+---
+
 ## Remaining TODOs
 
 - Run `schema_version_migration.sql` on production database (holding until further testing)

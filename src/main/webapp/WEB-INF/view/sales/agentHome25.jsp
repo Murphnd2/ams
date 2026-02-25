@@ -53,25 +53,7 @@
 <body>
 <div class="container-fluid">
     <%-- Navbar --%>
-    <nav class="navbar navbar-light bg-white border-bottom mb-3 px-2">
-        <div class="d-flex align-items-center">
-            <img src="${pageContext.request.contextPath}/images/logo1.png" alt="Logo" style="height: 32px;" class="me-3">
-            <c:if test="${not empty agency}">
-                <span class="fw-bold">${fn:escapeXml(agency.getName())}</span>
-            </c:if>
-        </div>
-        <div class="d-flex align-items-center gap-2">
-            <span class="text-muted" style="font-size: 0.85rem;">
-                <i class="bi bi-person-circle me-1"></i>${sessionScope.local.getCurrentPerson().getFirstName()} ${sessionScope.local.getCurrentPerson().getLastName()}
-            </span>
-            <c:if test="${sessionScope.isAgencyAdmin}">
-                <a href="PspAgencyHome?agencyId=${agency.getId()}" class="btn btn-outline-secondary btn-sm" title="Agency Manager View">
-                    <i class="bi bi-gear"></i>
-                </a>
-            </c:if>
-            <a href="LogOut" class="btn btn-outline-danger btn-sm"><i class="bi bi-box-arrow-right"></i></a>
-        </div>
-    </nav>
+    <c:import url="/WEB-INF/view/a/general/navbar25.jsp"/>
 
     <c:choose>
         <c:when test="${empty agency}">

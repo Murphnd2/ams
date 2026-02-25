@@ -121,8 +121,17 @@ The existing `constant` table holds values that are:
 | `WEB_PATH` | Domain for email links | initialize.jsp form |
 | `SUMMIT_PATH` | Path to Summit data | initialize.jsp form |
 | `SSL_PORT` | HTTPS port (always "443") | Hardcoded |
-| `SAVE_PATH` | File storage path | Hardcoded (to be removed — see §3.3) |
 | `FALSE_CLOSE` | Business logic date | Hardcoded |
+| `LOGO_NAVBAR` | Navbar logo path (PSP-customizable) | Hardcoded default, updatable via Branding page |
+| `LOGO_LOGIN` | Login page logo path (PSP-customizable) | Hardcoded default, updatable via Branding page |
+| `FAVICON` | Browser tab icon path (PSP-customizable) | Hardcoded default, updatable via Branding page |
+| `SYS_HEALTH_EMAIL_TO` | Health check recipient | Hardcoded |
+| `SYS_HEALTH_SMTP_SERVER` | Health check SMTP server | Hardcoded |
+| `SYS_HEALTH_SMTP_PORT` | Health check SMTP port | Hardcoded |
+| `SYS_HEALTH_SMTP_USER` | Health check SMTP user | Hardcoded |
+| `SYS_HEALTH_SMTP_PASSWORD` | Health check SMTP password | Hardcoded |
+| `SYS_HEALTH_ENABLED` | Health check on/off switch | Hardcoded (true) |
+| `SYS_HEALTH_EMAIL_FROM` | Health check sender address | Hardcoded |
 
 ### 3.3 Migration Plan: What Moves to `ssa.properties`
 

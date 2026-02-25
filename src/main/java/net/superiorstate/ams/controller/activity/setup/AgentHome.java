@@ -40,6 +40,8 @@ public class AgentHome extends HttpServlet {
 
     private void goToPage(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         RequestDispatcher dispatcher = request.getRequestDispatcher("/WEB-INF/view/sales/agentHome25.jsp");
+        request.setAttribute("pageTitle", "Agent Pipeline");
+        request.setAttribute("pageIcon", "bi-kanban");
         dispatcher.forward(request, response);
     }
 

@@ -104,17 +104,17 @@
       <c:choose>
         <c:when test="${sessionScope.isBpo || sessionScope.isBpoAdmin || sessionScope.isBpoUser}">
           <a href="BpoHome" class="me-2">
-            <img src="${pageContext.request.contextPath}/images/logoD.png" alt="Home" style="height:36px;">
+            <img src="${pageContext.request.contextPath}${not empty applicationScope.global.logoNavbar ? applicationScope.global.logoNavbar : '/images/logoA.png'}" alt="Home" style="height:36px;">
           </a>
         </c:when>
         <c:when test="${sessionScope.isAgent || sessionScope.isAgencyAdmin}">
           <a href="AgentHome" class="me-2">
-            <img src="${pageContext.request.contextPath}/images/logoD.png" alt="Home" style="height:36px;">
+            <img src="${pageContext.request.contextPath}${not empty applicationScope.global.logoNavbar ? applicationScope.global.logoNavbar : '/images/logoA.png'}" alt="Home" style="height:36px;">
           </a>
         </c:when>
         <c:when test="${sessionScope.local.isAuthenticated() == true}">
           <a href="ViewHome25" class="me-2">
-            <img src="${pageContext.request.contextPath}/images/logoD.png" alt="Home" style="height:36px;">
+            <img src="${pageContext.request.contextPath}${not empty applicationScope.global.logoNavbar ? applicationScope.global.logoNavbar : '/images/logoA.png'}" alt="Home" style="height:36px;">
           </a>
         </c:when>
         <c:otherwise>
@@ -177,6 +177,9 @@
               <li><hr class="dropdown-divider"></li>
               <li><a class="dropdown-item" href="SequenceBuilder25"><i class="bi bi-list-check me-2"></i>Sequence Builder</a></li>
               <li><a class="dropdown-item" href="ReviewTimeCorrections"><i class="bi bi-clock-history me-2"></i>Time Corrections</a></li>
+              <li><hr class="dropdown-divider"></li>
+              <li><button class="dropdown-item" type="button" data-bs-toggle="modal" data-bs-target="#createUserModal"><i class="bi bi-person-plus me-2"></i>Create User</button></li>
+              <li><a class="dropdown-item" href="UploadPspBranding"><i class="bi bi-palette me-2"></i>Branding</a></li>
             </ul>
           </div>
 
@@ -188,15 +191,20 @@
           </c:if>
         </c:if>
 
-        <%-- ═══ AGENT / AGENCY MANAGER LINKS ═══ --%>
-        <c:if test="${sessionScope.isAgent || sessionScope.isAgencyAdmin}">
-          <a class="nav-ghost" href="AgentHome">
-            <i class="bi bi-kanban"></i><span class="d-lg-none d-xl-inline ms-1">Pipeline</span>
-          </a>
-          <a class="nav-ghost" href="ProposalBuilder">
-            <i class="bi bi-file-earmark-plus"></i><span class="d-lg-none d-xl-inline ms-1">New Proposal</span>
-          </a>
-        </c:if>
+            <%-- ═══ AGENT / AGENCY MANAGER LINKS ═══ --%>
+          <c:if test="${sessionScope.isAgent || sessionScope.isAgencyAdmin}">
+            <a class="nav-ghost" href="AgentHome">
+              <i class="bi bi-kanban"></i><span class="d-lg-none d-xl-inline ms-1">Pipeline</span>
+            </a>
+            <a class="nav-ghost" href="ProposalBuilder">
+              <i class="bi bi-file-earmark-plus"></i><span class="d-lg-none d-xl-inline ms-1">New Proposal</span>
+            </a>
+            <c:if test="${sessionScope.isAgencyAdmin}">
+              <button class="nav-ghost" type="button" data-bs-toggle="modal" data-bs-target="#createUserModal">
+                <i class="bi bi-person-plus"></i><span class="d-lg-none d-xl-inline ms-1">Add Agent</span>
+              </button>
+            </c:if>
+          </c:if>
 
             <%-- ═══ BPO USER LINKS ═══ --%>
           <c:if test="${sessionScope.isBpo || sessionScope.isBpoAdmin || sessionScope.isBpoUser}">
@@ -210,7 +218,7 @@
                   <i class="bi bi-gear"></i><span class="d-lg-none d-xl-inline ms-1">Admin</span>
                 </button>
                 <ul class="dropdown-menu dropdown-menu-end">
-                  <li><a class="dropdown-item" href="#"><i class="bi bi-people me-2"></i>Manage Staff</a></li>
+                  <li><button class="dropdown-item" type="button" data-bs-toggle="modal" data-bs-target="#createUserModal"><i class="bi bi-person-plus me-2"></i>Create User</button></li>
                   <li><a class="dropdown-item" href="#"><i class="bi bi-building me-2"></i>PSP Connections</a></li>
                 </ul>
               </div>

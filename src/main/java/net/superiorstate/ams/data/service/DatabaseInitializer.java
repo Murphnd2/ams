@@ -457,14 +457,10 @@ public abstract class DatabaseInitializer {
         UserRole ur3 = createUserRole(em,3,"Client");
         UserRole ur4 = createUserRole(em,4,"Applicant");
         UserRole ur5 = createUserRole(em,5,"PSP Admin");
-        UserRole ur6 = createUserRole(em,6,"Pending Agent");
-        UserRole ur7 = createUserRole(em,7,"Anonymous");
         UserRole ur8 = createUserRole(em,8,"Agency Admin");
         UserRole ur9 = createUserRole(em,9,"PSP Super User");
-        UserRole ur10 = createUserRole(em,10,"Other");
-        UserRole ur11 = createUserRole(em,101, "Accelergent BPO");
-        UserRole ur12 = createUserRole(em,102, "Accelergent Admin");
-        UserRole ur13 = createUserRole(em,103, "Accelergent User");
+        UserRole ur12 = createUserRole(em,102, "BPO Admin");
+        UserRole ur13 = createUserRole(em,103, "BPO User");
         //Assign User To PSP Roles
         assignRoles(em,user,ur5,ur1);
         // Vendor users removed — configure via admin UI (future backlog item)
@@ -594,6 +590,13 @@ public abstract class DatabaseInitializer {
             createConstant(em,"SYS_HEALTH_ENABLED","true");
         if(getConstantByName(em,"SYS_HEALTH_EMAIL_FROM")==null)
             createConstant(em,"SYS_HEALTH_EMAIL_FROM","health@superiorstate.net");
+        // Logo and favicon (defaults — PSP can upload custom via admin)
+        if(getConstantByName(em,"LOGO_NAVBAR")==null)
+            createConstant(em,"LOGO_NAVBAR","/images/logoA.png");
+        if(getConstantByName(em,"LOGO_LOGIN")==null)
+            createConstant(em,"LOGO_LOGIN","/images/logoD.png");
+        if(getConstantByName(em,"FAVICON")==null)
+            createConstant(em,"FAVICON","/favicon.ico");
     }
 
     private static void createConstant(EntityManager em, String name, String value){

@@ -5,15 +5,12 @@ import jakarta.persistence.EntityManagerFactory;
 import jakarta.persistence.NoResultException;
 import jakarta.persistence.Query;
 import net.superiorstate.ams.AppConfig;
+import net.superiorstate.ams.data.dao.*;
 import net.superiorstate.ams.model.Activity25;
 import net.superiorstate.ams.model.Activity25p;
 import net.superiorstate.ams.model.Activity25u;
 import net.superiorstate.ams.model.Constant;
 import net.superiorstate.ams.controller.authentication.AuthenticateUser;
-import net.superiorstate.ams.data.dao.ChecklistDAO;
-import net.superiorstate.ams.data.dao.RecurringChecklistDAO;
-import net.superiorstate.ams.data.dao.TicketQueryDAO;
-import net.superiorstate.ams.data.dao.SequenceDAO;
 import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.model.activity.checklist.sequences.support.TaskFrequency;
 import net.superiorstate.ams.model.activity.checklist.sequences.support.TemplateGroup;
@@ -26,7 +23,9 @@ import net.superiorstate.ams.model.activity.ticket.TicketSubCategory;
 import net.superiorstate.ams.model.activity.ticket.tEmployee;
 import net.superiorstate.ams.model.general.PSP;
 import net.superiorstate.ams.model.general.Person;
+import net.superiorstate.ams.model.general.UserRole;
 import net.superiorstate.ams.model.general.WebLink;
+import net.superiorstate.ams.model.sales.agency.Agency;
 import net.superiorstate.ams.model.summit.archive.Employer;
 
 import java.util.ArrayList;
@@ -67,40 +66,49 @@ public class AmsDataGlobal {
     private String smtpServer;
     private String smtpUser;
     private String sslPort;
+    private String logoNavbar;
+    private String logoLogin;
+    private String favicon;
     private List<Activity25u> activitiesAllOpen;
-
+    private List<Agency> agencies;
     private List<Activity25p> activitiesWithDelegation;
 
     public AmsDataGlobal(){};
 
     public void initializeGlobalData(EntityManager em){
         System.out.println("[DEBUG] initializeGlobalData called");
-        this.emf = em.getEntityManagerFactory();
-        setPsp(EntityLookup.getPspById(em,4L));
-        setUsers(RecurringChecklistDAO.getPspUserList(em,getPsp()));
-        List<Person> allBpo = new ArrayList<>();
-        allBpo.addAll(AuthenticateUser.getUsersByRole(em, 101));
-        for (Person p : AuthenticateUser.getUsersByRole(em, 102)) {
-            if (!allBpo.contains(p)) allBpo.add(p);
+        try {
+            this.emf = em.getEntityManagerFactory();
+            setPsp(EntityLookup.getPspById(em,4L));
+            setUsers(RecurringChecklistDAO.getPspUserList(em,getPsp()));
+            List<Person> allBpo = new ArrayList<>();
+            allBpo.addAll(AuthenticateUser.getUsersByRole(em, 102));
+            for (Person p : AuthenticateUser.getUsersByRole(em, 103)) {
+                if (!allBpo.contains(p)) allBpo.add(p);
+            }
+            Collections.sort(allBpo);
+            setBpoUsers(allBpo);
+            setTemplateGroups(SequenceDAO.getTemplateGroups(em));
+            setTemplatePurposes(SequenceDAO.getTemplatePurposes(em));
+            setReasonsCreated(TicketQueryDAO.getReasons(em));
+            setContactMethods(TicketQueryDAO.getContactMethods(em));
+            setTicketCategories(TicketQueryDAO.getTicketCategories(em));
+            setTicketSubCategories(TicketQueryDAO.getTicketSubCategoryList(em));
+            setTaskFrequencies(ChecklistDAO.getTaskFrequencies(em));
+            setActivityStatuses(TicketQueryDAO.getActivityStatuses(em));
+            setInsertLinks(TicketQueryDAO.getInsertLinkList(em));
+            setEmployers(generateEmployerList(em));
+            setActivitiesAllOpen(retrieveActivitiesAllOpen(em));
+            setActivitiesWithDelegation(retrieveActivitiesWithDependencies(em));
+            setAgencies(SalesDAO.getAgencyList(em, getPsp().getId().intValue()));
+            setAssignableRoles(loadAssignableRoles(em));
+            setConstants(em);
+        } catch (Exception e) {
+            System.err.println("❌ initializeGlobalData FAILED: " + e.getMessage());
+            e.printStackTrace();
+            throw e; // re-throw so EmfListener catches it too
         }
-        for (Person p : AuthenticateUser.getUsersByRole(em, 103)) {
-            if (!allBpo.contains(p)) allBpo.add(p);
-        }
-        Collections.sort(allBpo);
-        setBpoUsers(allBpo);
-        setTemplateGroups(SequenceDAO.getTemplateGroups(em));
-        setTemplatePurposes(SequenceDAO.getTemplatePurposes(em));
-        setReasonsCreated(TicketQueryDAO.getReasons(em));
-        setContactMethods(TicketQueryDAO.getContactMethods(em));
-        setTicketCategories(TicketQueryDAO.getTicketCategories(em));
-        setTicketSubCategories(TicketQueryDAO.getTicketSubCategoryList(em));
-        setTaskFrequencies(ChecklistDAO.getTaskFrequencies(em));
-        setActivityStatuses(TicketQueryDAO.getActivityStatuses(em));
-        setInsertLinks(TicketQueryDAO.getInsertLinkList(em));
-        setEmployers(generateEmployerList(em));
-        setActivitiesAllOpen(retrieveActivitiesAllOpen(em));
-        setActivitiesWithDelegation(retrieveActivitiesWithDependencies(em));
-        setConstants(em);
+
 
 
         //setEmployees(dbTicket.getTicketEmployeeList(em));
@@ -114,7 +122,7 @@ public class AmsDataGlobal {
         setEmployers(generateEmployerList(em));
 
     }
-
+    private List<UserRole> assignableRoles;
     public List<TicketCategory> getTicketCategories() {
         return ticketCategories;
     }
@@ -238,6 +246,28 @@ public class AmsDataGlobal {
             webPath = getConstantValue(em,"WEB_PATH");
         } catch (Exception e){webPath = "https://superiorstate.biz/";}
         setWebPath(webPath);
+
+        // Logo and favicon paths (PSP-customizable, with generic fallback)
+        String lNav;
+        try {
+            lNav = getConstantValue(em, "LOGO_NAVBAR");
+            if (lNav == null || lNav.isBlank()) lNav = "/images/ssa-logo-default.png";
+        } catch (Exception e) { lNav = "/images/ssa-logo-default.png"; }
+        setLogoNavbar(lNav);
+
+        String lLogin;
+        try {
+            lLogin = getConstantValue(em, "LOGO_LOGIN");
+            if (lLogin == null || lLogin.isBlank()) lLogin = "/images/ssa-logo-login-default.png";
+        } catch (Exception e) { lLogin = "/images/ssa-logo-login-default.png"; }
+        setLogoLogin(lLogin);
+
+        String fav;
+        try {
+            fav = getConstantValue(em, "FAVICON");
+            if (fav == null || fav.isBlank()) fav = "/images/favicon-default.ico";
+        } catch (Exception e) { fav = "/images/favicon-default.ico"; }
+        setFavicon(fav);
     }
 
     public String getConstantValue(EntityManager em, String constantName){
@@ -293,7 +323,23 @@ public class AmsDataGlobal {
     public void setTicketSubCategories(List<TicketSubCategory> ticketSubCategories) {
         this.ticketSubCategories = ticketSubCategories;
     }
+    private List<UserRole> loadAssignableRoles(EntityManager em) {
+        Query q = em.createQuery(
+                "SELECT ur FROM UserRole ur WHERE ur.id NOT IN (2, 3, 4, 8, 9, 102, 103) ORDER BY ur.description");
+        try {
+            return q.getResultList();
+        } catch (Exception e) {
+            return new ArrayList<>();
+        }
+    }
 
+    public List<UserRole> getAssignableRoles() {
+        return assignableRoles;
+    }
+
+    public void setAssignableRoles(List<UserRole> assignableRoles) {
+        this.assignableRoles = assignableRoles;
+    }
     public void setTaskFrequencies(List<TaskFrequency> taskFrequencies) {
         this.taskFrequencies = taskFrequencies;
     }
@@ -358,6 +404,13 @@ public class AmsDataGlobal {
         this.sslPort = sslPort;
     }
 
+    public String getLogoNavbar() { return logoNavbar; }
+    public void setLogoNavbar(String logoNavbar) { this.logoNavbar = logoNavbar; }
+    public String getLogoLogin() { return logoLogin; }
+    public void setLogoLogin(String logoLogin) { this.logoLogin = logoLogin; }
+    public String getFavicon() { return favicon; }
+    public void setFavicon(String favicon) { this.favicon = favicon; }
+
     public PSP getPsp() {
         return psp;
     }
@@ -401,7 +454,13 @@ public class AmsDataGlobal {
     public List<WebLink> getInsertLinks() {
         return insertLinks;
     }
+    public List<Agency> getAgencies() {
+        return agencies;
+    }
 
+    public void setAgencies(List<Agency> agencies) {
+        this.agencies = agencies;
+    }
     public List<tEmployee> getEmployees() {
         if (!employeesLoaded && emf != null) {
             EntityManager em = emf.createEntityManager();

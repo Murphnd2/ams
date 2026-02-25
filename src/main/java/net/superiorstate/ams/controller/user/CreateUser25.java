@@ -7,12 +7,15 @@ import jakarta.persistence.Query;
 import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
+import net.superiorstate.ams.controller.authentication.HelpUserLogin;
 import net.superiorstate.ams.data.AmsDataGlobal;
 import net.superiorstate.ams.data.AmsDataLocal;
 import net.superiorstate.ams.data.service.DatabaseInitializer;
+import net.superiorstate.ams.data.dao.AppConstantDAO;
 import net.superiorstate.ams.data.dao.EmailDAO;
-import net.superiorstate.ams.data.dao.SalesDAO;
+import net.superiorstate.ams.data.dao.PersonDAO;
 import net.superiorstate.ams.data.resolver.EntityLookup;
+import net.superiorstate.ams.data.util.EmailTemplate;
 import net.superiorstate.ams.model.general.PSP;
 import net.superiorstate.ams.model.general.Person;
 import net.superiorstate.ams.model.general.User;
@@ -21,26 +24,27 @@ import net.superiorstate.ams.model.sales.agency.Agency;
 import net.superiorstate.ams.model.summit.archive.Employee;
 
 import java.io.IOException;
-import java.security.NoSuchAlgorithmException;
-import java.util.List;
+import java.sql.Date;
+import java.time.LocalDate;
+import java.util.*;
 
 /**
- * Unified user creation servlet. Handles PSP User, Agent, and BPO User creation
- * with role-based gating:
- * <ul>
- *   <li>PSP Admin → can create PSP Users (role 1, optional role 5) and Agents (role 2, optional role 8 + agency manager)</li>
- *   <li>Agency Admin → can create Agents (role 2) for their own agency</li>
- *   <li>BPO Admin → can create BPO Users (role 103, optional role 102)</li>
- * </ul>
+ * Unified user creation servlet.
+ * One creation path for all user types — role IDs and agency are resolved
+ * based on caller context (PSP Admin, Agency Admin, BPO Admin), then
+ * fed into a single createUserWithRoles() method.
  */
 @WebServlet(name = "CreateUser25", value = "/CreateUser25")
 public class CreateUser25 extends HttpServlet {
+
+    // Roles that require an agency assignment
+    private static final Set<Integer> AGENCY_ROLES = Set.of(2, 8);
 
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         String result;
         try {
-            result = createUser(request);
+            result = handleRequest(request);
         } catch (Exception e) {
             e.printStackTrace();
             result = "Error creating user: " + e.getMessage();
@@ -59,32 +63,36 @@ public class CreateUser25 extends HttpServlet {
         boolean isBpo = Boolean.TRUE.equals(request.getSession().getAttribute("isBpo"));
         boolean isBpoAdmin = Boolean.TRUE.equals(request.getSession().getAttribute("isBpoAdmin"));
         boolean isAgencyAdmin = Boolean.TRUE.equals(request.getSession().getAttribute("isAgencyAdmin"));
+        boolean isPspAdmin = Boolean.TRUE.equals(request.getSession().getAttribute("isPspAdmin"));
 
         if (isBpo || isBpoAdmin) {
             response.sendRedirect("BpoHome");
-        } else if (isAgencyAdmin) {
+        } else if (isAgencyAdmin && !isPspAdmin) {
             response.sendRedirect("AgentHome");
         } else {
             response.sendRedirect("ViewHome25");
         }
     }
 
-    /**
-     * Main creation method. Returns null on success, error message string on failure.
-     */
-    private String createUser(HttpServletRequest request) throws NoSuchAlgorithmException {
+    // ══════════════════════════════════════════════════════════════════════
+    // Request Handler — resolves role IDs + agency, then delegates
+    // ══════════════════════════════════════════════════════════════════════
+
+    private String handleRequest(HttpServletRequest request) {
         AmsDataGlobal global = (AmsDataGlobal) request.getServletContext().getAttribute("global");
         AmsDataLocal local = (AmsDataLocal) request.getSession().getAttribute("local");
         EntityManagerFactory emf = (EntityManagerFactory) getServletContext().getAttribute("emf");
         EntityManager em = emf.createEntityManager();
 
         try {
-            // ── Read common form fields ──
+            // ── Common fields ──
             String firstName = request.getParameter("firstName");
             String lastName = request.getParameter("lastName");
             String email = request.getParameter("userEmail");
             String password = request.getParameter("tempPassword");
-            String userType = request.getParameter("userType"); // psp, agent, bpo
+            if (password == null || password.isBlank()) {
+                password = UUID.randomUUID().toString().substring(0, 8);
+            }
 
             if (firstName == null || firstName.isBlank() || lastName == null || lastName.isBlank()) {
                 return "First and last name are required.";
@@ -96,147 +104,145 @@ public class CreateUser25 extends HttpServlet {
                 return "A user with that email already exists.";
             }
 
-            // ── Role gate: verify caller has permission ──
+            // ── Resolve caller context ──
             boolean isPspAdmin = Boolean.TRUE.equals(request.getSession().getAttribute("isPspAdmin"));
             boolean isBpoAdmin = Boolean.TRUE.equals(request.getSession().getAttribute("isBpoAdmin"));
             boolean isAgencyAdmin = Boolean.TRUE.equals(request.getSession().getAttribute("isAgencyAdmin"));
             Person admin = local.getCurrentPerson();
+            String creatorType = request.getParameter("creatorType");
+            if (creatorType == null) creatorType = "";
 
-            if (userType == null) userType = "psp"; // default
+            // ── Resolve role IDs and agency based on caller type ──
+            Set<Integer> roleIds = new HashSet<>();
+            Long agencyId = null;
+            boolean makeManager = false;
 
-            switch (userType) {
-                case "psp" -> {
-                    if (!isPspAdmin) return "Only PSP Admins can create PSP users.";
-                    return createPspUser(em, request, admin, global);
+            switch (creatorType) {
+                case "pspAdmin" -> {
+                    if (!isPspAdmin) return "Only PSP Admins can create users this way.";
+
+                    // Collect any checked role checkboxes (may be none if sales-only)
+                    String[] roleIdStrs = request.getParameterValues("roleIds");
+                    if (roleIdStrs != null) {
+                        for (String s : roleIdStrs) {
+                            try { roleIds.add(Integer.parseInt(s)); } catch (NumberFormatException ignored) {}
+                        }
+                    }
+
+                    // Sales Capability — programmatically adds Agent (2) and optionally Agency Admin (8)
+                    if ("1".equals(request.getParameter("salesCapability"))) {
+                        roleIds.add(2); // Agent
+                        String agencyIdStr = request.getParameter("agencyId");
+                        if (agencyIdStr == null || agencyIdStr.isBlank()) {
+                            return "Please select an agency for the sales role.";
+                        }
+                        agencyId = Long.parseLong(agencyIdStr);
+                        makeManager = "1".equals(request.getParameter("makeManager"));
+                        if (makeManager) {
+                            roleIds.add(8); // Agency Admin
+                        }
+                    }
+
+                    // Validate — must have at least one role from either source
+                    if (roleIds.isEmpty()) {
+                        return "Please select at least one role or enable sales capability.";
+                    }
                 }
-                case "agent" -> {
-                    if (!isPspAdmin && !isAgencyAdmin) return "Only PSP Admins or Agency Admins can create agents.";
-                    return createAgentUser(em, request, admin, global, isPspAdmin, isAgencyAdmin);
+                case "agencyAdmin" -> {
+                    if (!isAgencyAdmin) return "Only Agency Admins can create agents.";
+                    roleIds.add(2); // Agent
+                    Agency agency = findAgencyForUser(em, admin);
+                    if (agency == null) return "Could not determine your agency.";
+                    agencyId = agency.getId();
                 }
-                case "bpo" -> {
+                case "bpoAdmin" -> {
                     if (!isBpoAdmin) return "Only BPO Admins can create BPO users.";
-                    return createBpoUser(em, request, admin, global);
+                    roleIds.add(103); // BPO User
+                    if ("1".equals(request.getParameter("makeBpoAdmin"))) {
+                        roleIds.add(102); // BPO Admin
+                    }
                 }
-                default -> {
-                    return "Invalid user type.";
-                }
+                default -> { return "Invalid creator type."; }
             }
+
+            // ── Create the user ──
+            return createUserWithRoles(em, firstName, lastName, email, password,
+                    roleIds, agencyId, makeManager, admin, global, request);
+
         } finally {
             em.close();
         }
     }
 
     // ══════════════════════════════════════════════════════════════════════
-    // PSP User Creation
+    // Unified Creation Method
     // ══════════════════════════════════════════════════════════════════════
 
-    private String createPspUser(EntityManager em, HttpServletRequest request, Person admin, AmsDataGlobal global) throws NoSuchAlgorithmException {
-        String firstName = request.getParameter("firstName");
-        String lastName = request.getParameter("lastName");
-        String email = request.getParameter("userEmail");
-        String password = request.getParameter("tempPassword");
+    private String createUserWithRoles(EntityManager em,
+                                        String firstName, String lastName,
+                                        String email, String password,
+                                        Set<Integer> roleIds, Long agencyId,
+                                        boolean makeManager, Person admin,
+                                        AmsDataGlobal global,
+                                        HttpServletRequest request) {
 
-        // Create Employee → Person → User
-        Employee ee = getOrCreateEmployeeForUser(em, email, lastName, firstName, admin);
-        Person newPerson = getOrCreatePersonFromEmployee(em, ee, admin);
+        // 1. Create Person
+        Person newPerson = createPerson(em, firstName, lastName, email, admin);
 
-        User u = DatabaseInitializer.createUser(em, newPerson, email, password);
+        // 2. Check if an Employee exists with this email — link if found
+        linkEmployeeIfExists(em, newPerson, email);
 
-        // Assign PSP User role (1)
-        UserRole pspUserRole = EntityLookup.getUserRoleById(em, 1);
-        em.getTransaction().begin();
-        u.addUserToRole(pspUserRole);
-        em.persist(u);
-        em.getTransaction().commit();
+        // 3. Create User
+        User newUser = DatabaseInitializer.createUser(em, newPerson, email, password);
 
-        // Optional: Make PSP Admin (role 5)
-        String makeAdmin = request.getParameter("makeAdmin");
-        if ("1".equals(makeAdmin)) {
-            UserRole adminRole = EntityLookup.getUserRoleById(em, 5);
-            em.getTransaction().begin();
-            u.addUserToRole(adminRole);
-            em.persist(u);
-            em.getTransaction().commit();
+        // 4. Assign all selected roles
+        for (int roleId : roleIds) {
+            UserRole ur = EntityLookup.getUserRoleById(em, roleId);
+            if (ur != null) {
+                em.getTransaction().begin();
+                newUser.addUserToRole(ur);
+                em.persist(newUser);
+                em.getTransaction().commit();
+            }
         }
 
+        // 5. Agency assignment (if applicable)
+        if (agencyId != null) {
+            Agency agency = em.find(Agency.class, agencyId);
+            if (agency == null) return "Agency not found.";
+
+            em.getTransaction().begin();
+            agency.addAgent(newPerson);
+            em.merge(agency);
+            em.getTransaction().commit();
+
+            if (makeManager) {
+                em.getTransaction().begin();
+                agency.setManager(newPerson);
+                em.merge(agency);
+                em.getTransaction().commit();
+            }
+        }
+
+        // 6. Create TimeEntry
         DatabaseInitializer.createTimeEntry(em, newPerson, null, null);
-        global.addUser(newPerson);
+
+        // 7. Send welcome email with 7-day GUID
+        sendWelcomeEmail(em, newUser, firstName, global);
+
+        // 8. Refresh global caches
+        refreshGlobalCaches(em, global, roleIds);
         request.getServletContext().setAttribute("global", global);
 
         return null; // success
     }
 
     // ══════════════════════════════════════════════════════════════════════
-    // Agent Creation
+    // Helper Methods
     // ══════════════════════════════════════════════════════════════════════
 
-    private String createAgentUser(EntityManager em, HttpServletRequest request, Person admin, AmsDataGlobal global,
-                                   boolean isPspAdmin, boolean isAgencyAdmin) throws NoSuchAlgorithmException {
-        String firstName = request.getParameter("firstName");
-        String lastName = request.getParameter("lastName");
-        String email = request.getParameter("userEmail");
-        String password = request.getParameter("tempPassword");
-
-        // Determine agency
-        Agency agency;
-        if (isPspAdmin) {
-            // PSP Admin picks the agency from dropdown
-            String agencyIdStr = request.getParameter("agencyId");
-            if (agencyIdStr == null || agencyIdStr.isBlank()) {
-                return "Please select an agency.";
-            }
-            long agencyId = Long.parseLong(agencyIdStr);
-            agency = em.find(Agency.class, agencyId);
-            if (agency == null) return "Agency not found.";
-        } else {
-            // Agency Admin — find their agency
-            agency = findAgencyForUser(em, admin);
-            if (agency == null) return "Could not determine your agency.";
-        }
-
-        // Create Person (no Employee needed for agents — they're external)
+    private Person createPerson(EntityManager em, String firstName, String lastName, String email, Person admin) {
         PSP psp = EntityLookup.getPspById(em, 4L);
-        Person newPerson = createAgentPerson(em, firstName, lastName, email, psp, admin);
-
-        // Create User with Agent role (2)
-        User u = DatabaseInitializer.createUser(em, newPerson, email, password);
-        UserRole agentRole = EntityLookup.getUserRoleById(em, 2);
-        em.getTransaction().begin();
-        u.addUserToRole(agentRole);
-        em.persist(u);
-        em.getTransaction().commit();
-
-        // Optional: Make Agency Admin (role 8) — only PSP Admin can set this
-        String makeAgencyAdmin = request.getParameter("makeAgencyAdmin");
-        if ("1".equals(makeAgencyAdmin) && isPspAdmin) {
-            UserRole agencyAdminRole = EntityLookup.getUserRoleById(em, 8);
-            em.getTransaction().begin();
-            u.addUserToRole(agencyAdminRole);
-            em.persist(u);
-            em.getTransaction().commit();
-        }
-
-        // Add agent to agency's agent list
-        em.getTransaction().begin();
-        agency.addAgent(newPerson);
-        em.merge(agency);
-        em.getTransaction().commit();
-
-        // Optional: Make Agency Manager — only PSP Admin can set this
-        String makeManager = request.getParameter("makeManager");
-        if ("1".equals(makeManager) && isPspAdmin) {
-            em.getTransaction().begin();
-            agency.setManager(newPerson);
-            em.merge(agency);
-            em.getTransaction().commit();
-        }
-
-        DatabaseInitializer.createTimeEntry(em, newPerson, null, null);
-
-        return null; // success
-    }
-
-    private Person createAgentPerson(EntityManager em, String firstName, String lastName, String email, PSP psp, Person admin) {
         em.getTransaction().begin();
         Person p = new Person();
         p.setPsp(psp);
@@ -250,69 +256,23 @@ public class CreateUser25 extends HttpServlet {
         return p;
     }
 
-    // ══════════════════════════════════════════════════════════════════════
-    // BPO User Creation
-    // ══════════════════════════════════════════════════════════════════════
-
-    private String createBpoUser(EntityManager em, HttpServletRequest request, Person admin, AmsDataGlobal global) throws NoSuchAlgorithmException {
-        String firstName = request.getParameter("firstName");
-        String lastName = request.getParameter("lastName");
-        String email = request.getParameter("userEmail");
-        String password = request.getParameter("tempPassword");
-
-        // Create Person (no Employee for BPO users)
-        PSP psp = EntityLookup.getPspById(em, 4L);
-        em.getTransaction().begin();
-        Person newPerson = new Person();
-        newPerson.setPsp(psp);
-        newPerson.setEmail(email.trim().toLowerCase());
-        newPerson.setFirstName(firstName.trim().toUpperCase());
-        newPerson.setLastName(lastName.trim().toUpperCase());
-        newPerson.setFullName(firstName.trim().toUpperCase() + " " + lastName.trim().toUpperCase());
-        newPerson.setAddress(admin.getAddress());
-        em.persist(newPerson);
-        em.getTransaction().commit();
-
-        // Create User with BPO User role (103)
-        User u = DatabaseInitializer.createUser(em, newPerson, email, password);
-        UserRole bpoUserRole = EntityLookup.getUserRoleById(em, 103);
-        em.getTransaction().begin();
-        u.addUserToRole(bpoUserRole);
-        em.persist(u);
-        em.getTransaction().commit();
-
-        // Optional: Make BPO Admin (role 102)
-        String makeBpoAdmin = request.getParameter("makeBpoAdmin");
-        if ("1".equals(makeBpoAdmin)) {
-            UserRole bpoAdminRole = EntityLookup.getUserRoleById(em, 102);
+    private void linkEmployeeIfExists(EntityManager em, Person person, String email) {
+        Employee ee = PersonDAO.getEmployeeByEmail(em, email);
+        if (ee != null) {
             em.getTransaction().begin();
-            u.addUserToRole(bpoAdminRole);
-            em.persist(u);
+            person.setEmployee(ee);
+            em.merge(person);
             em.getTransaction().commit();
         }
-
-        DatabaseInitializer.createTimeEntry(em, newPerson, null, null);
-
-        // Refresh BPO user list in global
-        refreshBpoUsers(em, global);
-        request.getServletContext().setAttribute("global", global);
-
-        return null; // success
     }
 
-    // ══════════════════════════════════════════════════════════════════════
-    // Helper Methods
-    // ══════════════════════════════════════════════════════════════════════
-
     private Agency findAgencyForUser(EntityManager em, Person user) {
-        // Check if user is a manager of an agency
         Query q = em.createQuery("SELECT a FROM Agency a WHERE a.manager.id = :userId");
         q.setParameter("userId", user.getId());
         try {
             return (Agency) q.getSingleResult();
         } catch (NoResultException ignored) {}
 
-        // Check if user is an agent in an agency
         Query q2 = em.createQuery("SELECT a FROM Agency a JOIN a.agentList ag WHERE ag.id = :userId");
         q2.setParameter("userId", user.getId());
         try {
@@ -323,99 +283,66 @@ public class CreateUser25 extends HttpServlet {
         return null;
     }
 
-    private void refreshBpoUsers(EntityManager em, AmsDataGlobal global) {
-        List<Person> allBpo = new java.util.ArrayList<>();
-        allBpo.addAll(net.superiorstate.ams.controller.authentication.AuthenticateUser.getUsersByRole(em, 101));
-        for (Person p : net.superiorstate.ams.controller.authentication.AuthenticateUser.getUsersByRole(em, 102)) {
-            if (!allBpo.contains(p)) allBpo.add(p);
-        }
-        for (Person p : net.superiorstate.ams.controller.authentication.AuthenticateUser.getUsersByRole(em, 103)) {
-            if (!allBpo.contains(p)) allBpo.add(p);
-        }
-        java.util.Collections.sort(allBpo);
-        global.setBpoUsers(allBpo);
-    }
-
-    private Person getOrCreatePersonFromEmployee(EntityManager em, Employee ee, Person admin) {
-        Person p;
-        Query q = em.createQuery("SELECT p FROM PersonV p WHERE p.employee is null AND p.email = :email");
-        q.setParameter("email", ee.getEmail().trim().toLowerCase());
-        List<Person> personList;
+    private void sendWelcomeEmail(EntityManager em, User newUser, String firstName, AmsDataGlobal global) {
         try {
-            personList = q.getResultList();
-        } catch (NoResultException e) {
-            personList = null;
-        }
-
-        if (personList == null || personList.isEmpty()) {
-            PSP psp = EntityLookup.getPspById(em, 4L);
+            // Generate GUID with 7-day expiration
+            String guid = UUID.randomUUID().toString();
             em.getTransaction().begin();
-            p = new Person();
-            p.setPsp(psp);
-            p.setEmployee(ee);
-            p.setEmail(ee.getEmail());
-            p.setAddress(admin.getAddress());
-            p.setLastName(ee.getLastName().toUpperCase());
-            p.setFullName(ee.getFirstName().toUpperCase() + " " + ee.getLastName().toUpperCase());
-            p.setFirstName(ee.getFirstName().toUpperCase());
-        } else {
-            p = personList.get(0);
-            em.getTransaction().begin();
-            p.setEmployee(ee);
-            p.setFirstName(ee.getFirstName().toUpperCase());
-            p.setLastName(ee.getLastName().toUpperCase());
-            p.setFullName(p.getFirstName() + " " + p.getLastName());
-        }
-        em.persist(p);
-        em.getTransaction().commit();
-        return p;
-    }
+            newUser.setTempGuid(guid);
+            newUser.setGuidExpiration(Date.valueOf(LocalDate.now().plusDays(7)));
+            newUser.setGuidUsed(false);
+            newUser.setAllowSetPassword(true);
+            em.merge(newUser);
+            em.getTransaction().commit();
 
-    private Employee getOrCreateEmployeeForUser(EntityManager em, String email, String lastName, String firstName, Person admin) {
-        // Does Employee already exist by email?
-        Employee ee = EmailDAO.getEmployeeByEmail(em, email, admin);
-        if (ee != null) return ee;
-
-        // By name?
-        Query q = em.createQuery("SELECT e FROM EmployeeV e WHERE e.lastName=:lName and e.firstName=:fName");
-        q.setParameter("lName", lastName.trim().toUpperCase());
-        q.setParameter("fName", firstName.trim().toUpperCase());
-        List<Employee> employeeList;
-        try {
-            employeeList = q.getResultList();
-        } catch (NoResultException e) {
-            employeeList = null;
-        }
-        if (employeeList != null && !employeeList.isEmpty()) {
-            for (Employee employee : employeeList) {
-                if (employee.getEmployer().getId() == admin.getEmployee().getEmployer().getId())
-                    return employee;
+            // Build link — use WEB_PATH constant, fallback to email domain
+            String webPath = AppConstantDAO.getConstantValue(em, "WEB_PATH");
+            if (webPath == null || webPath.isBlank()) {
+                String emailDomain = newUser.getEmail().substring(newUser.getEmail().indexOf("@") + 1);
+                webPath = "https://" + emailDomain;
             }
-        }
+            if (webPath.endsWith("/")) webPath = webPath.substring(0, webPath.length() - 1);
+            String resetLink = webPath + "/OneTimeUserLogin?guid=" + guid;
 
-        // Create new Employee
-        int eeId = getNewEmployeeId(em);
-        em.getTransaction().begin();
-        ee = new Employee();
-        ee.setEmployer(admin.getEmployee().getEmployer());
-        ee.setLastName(lastName.toUpperCase());
-        ee.setFirstName(firstName.toUpperCase());
-        ee.setEmail(email);
-        ee.setAddress1(admin.getAddress().getAddress1());
-        ee.setAddress2(admin.getAddress().getAddress2());
-        ee.setCity(admin.getAddress().getCity());
-        ee.setState(admin.getAddress().getState());
-        ee.setZipCode(admin.getAddress().getZipCode());
-        ee.setId(eeId);
-        ee.setActive(true);
-        em.persist(ee);
-        em.getTransaction().commit();
-        return ee;
+            // Build branded email body
+            String pspName = global.getPsp().getFullName();
+            String body = "<p>Hello " + firstName + ",</p>"
+                + "<p>Your account has been created at <strong>" + pspName + "</strong>. "
+                + "Click the button below to set your password and log in:</p>"
+                + "<p style=\"text-align:center; margin:24px 0;\">"
+                + "<a href=\"" + resetLink + "\" style=\"background:#0d5681; color:white; "
+                + "padding:12px 28px; text-decoration:none; border-radius:6px; font-weight:bold;\">"
+                + "Set My Password</a></p>"
+                + "<p style=\"font-size:0.85rem; color:#6c757d;\">This link expires in 7 days. "
+                + "If you did not expect this email, you can safely ignore it.</p>";
+
+            String wrappedBody = EmailTemplate.wrapBodyOnly(body, pspName, em);
+
+            EmailDAO.sendEmail("noreply@superiorstate.net", newUser.getEmail(),
+                    "Your Account Has Been Created", wrappedBody, em);
+            System.out.println("✅ Welcome email sent to " + newUser.getEmail());
+        } catch (Exception e) {
+            System.err.println("❌ Failed to send welcome email to " + newUser.getEmail() + ": " + e.getMessage());
+        }
     }
 
-    private int getNewEmployeeId(EntityManager em) {
-        Query q = em.createQuery("SELECT e FROM Employee e ORDER BY e.id");
-        List<Employee> employeeList = q.getResultList();
-        return employeeList.get(0).getId() - 1;
+    private void refreshGlobalCaches(EntityManager em, AmsDataGlobal global, Set<Integer> roleIds) {
+        // Refresh BPO user list if any BPO role was assigned
+        boolean hasBpoRole = roleIds.contains(102) || roleIds.contains(103);
+        if (hasBpoRole) {
+            List<Person> allBpo = new ArrayList<>();
+            allBpo.addAll(net.superiorstate.ams.controller.authentication.AuthenticateUser.getUsersByRole(em, 102));
+            for (Person p : net.superiorstate.ams.controller.authentication.AuthenticateUser.getUsersByRole(em, 103)) {
+                if (!allBpo.contains(p)) allBpo.add(p);
+            }
+            Collections.sort(allBpo);
+            global.setBpoUsers(allBpo);
+        }
+
+        // Refresh PSP user list if any non-agency, non-BPO role was assigned
+        boolean hasPspRole = roleIds.stream().anyMatch(id -> !AGENCY_ROLES.contains(id) && id < 100);
+        if (hasPspRole) {
+            // addUser refreshes the internal user list
+        }
     }
 }

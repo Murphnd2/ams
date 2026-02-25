@@ -22,6 +22,11 @@ public class LoginFilter implements Filter {
             "/landing-page.jsp", "/ShowFileUpload", "/AcceptInvite", "/CreateBpoTestUser"
     )));
 
+    /** Paths that should still work even when DB is uninitialized */
+    private static final Set<String> INIT_ALLOWED = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(
+            "/initialize.jsp", "/GoInitialize25", "/InitializeDataBase"
+    )));
+
     @Override
     public void init(FilterConfig config) throws ServletException {
     }
@@ -40,30 +45,45 @@ public class LoginFilter implements Filter {
 
         String path = request.getRequestURI().substring(request.getContextPath().length()).replaceAll("[/]+$", "");
 
+        // Always allow static resources (images, css, js, fonts, icons)
+        if (isStaticResource(path)) {
+            chain.doFilter(req, res);
+            return;
+        }
+
+        // Check if database is uninitialized
+        boolean uninitialized = false;
+        try {
+            Integer uninit = (Integer) request.getSession().getAttribute("uninitialized");
+            uninitialized = (uninit != null && uninit == 0);
+        } catch (Exception ignored) {}
+
+        // If uninitialized, only allow init-related paths — redirect everything else to initialize.jsp
+        if (uninitialized) {
+            if (INIT_ALLOWED.contains(path)) {
+                chain.doFilter(req, res);
+            } else {
+                response.sendRedirect(request.getContextPath() + "/initialize.jsp");
+            }
+            return;
+        }
+
+        // Normal auth check
         boolean isAuthenticated = false;
         try {
             AmsDataLocal local = (AmsDataLocal) request.getSession().getAttribute("local");
             isAuthenticated = local.isAuthenticated();
         } catch (Exception e) {
-            // optional: log the error
         }
 
         boolean loggedIn = (session != null && isAuthenticated);
-        boolean allowedPath = isAllowedPath(path);
+        boolean allowedPath = ALLOWED_ENDPOINTS.contains(path) || path.startsWith("/proposal/") || path.startsWith("/apply/") || path.equals("/uploadRateSheet") || path.equals("/saveApplication");
 
         if (loggedIn || allowedPath) {
             chain.doFilter(req, res);
-            if (loggedIn)
-                System.out.println("LoggedIn");
-            else
-                System.out.println("Not logged in but PATH GOOD");
         } else {
             response.sendRedirect(request.getContextPath() + "/login");
         }
-    }
-
-    private boolean isAllowedPath(String path) {
-        return ALLOWED_ENDPOINTS.contains(path) || isStaticResource(path) || path.startsWith("/proposal/") || path.startsWith("/apply/") || path.equals("/uploadRateSheet") || path.equals("/saveApplication");
     }
 
     private boolean isStaticResource(String path) {
@@ -73,7 +93,7 @@ public class LoginFilter implements Filter {
                 || path.startsWith("/fonts/")
                 || path.startsWith("/webfonts/")
                 || path.startsWith("/bootstrap-icons/")
-                || path.startsWith("/logo") // e.g., /logo.png, /logoC.png
+                || path.startsWith("/logo")
                 || path.endsWith(".png")
                 || path.endsWith(".jpg")
                 || path.endsWith(".jpeg")
@@ -82,4 +102,3 @@ public class LoginFilter implements Filter {
                 || path.endsWith(".ico");
     }
 }
-

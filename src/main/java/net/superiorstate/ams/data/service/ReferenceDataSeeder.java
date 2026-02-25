@@ -518,10 +518,10 @@ public abstract class ReferenceDataSeeder {
         createUserRole(em,3,"Client");
         createUserRole(em,4,"Applicant");
         createUserRole(em,5,"PSP Admin");
-        createUserRole(em,6,"Pending Agent");
-        createUserRole(em,7,"Anonymous");
         createUserRole(em,8,"Agency Admin");
         createUserRole(em,9,"PSP Super User");
+        createUserRole(em,102,"BPO Admin");
+        createUserRole(em,103,"BPO User");
     }
     private static void createUserRole(EntityManager em, int id, String desc){
         UserRole ur = new UserRole();
