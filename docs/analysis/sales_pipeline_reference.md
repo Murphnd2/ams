@@ -357,30 +357,20 @@ Mirrors `GenerateProp25.createSetup()` / `createChecklist()` / `fillToDoList()`:
 
 ## Database Migration Scripts
 
-All scripts are in `docs/` at the repo root. Run in order.
+All sales pipeline scripts are now tracked in the centralized `docs/analysis/migration_tracker.md` (V001–V003). The individual per-version `.sql` files in `docs/` contain column name bugs that were found and corrected during validation on February 25, 2026.
 
-| Script | Session | Description |
-|--------|---------|-------------|
-| `sales_pipeline_migration.sql` | 1 | New tables (feature, ratediscount, marketingmaterial, applicationfield, applicationfieldvalue), column adds to proposal + application, entity renames |
-| `sales_pipeline_migration_2.sql` | 2 | `proposal.source_activity_id` nullable FK |
-| `sales_pipeline_migration_3.sql` | 3 | LOS expansion (IDs 11-19), applicationsection + applicationsectionlos, ~95 applicationfield seeds, irslimit, billingtype, benefittype, constant inserts for S3 |
+**For production deployment**, use the validated combined upgrade script at `docs/importscript/production_upgrade_V001_to_V013.sql` — do NOT run the individual scripts.
 
-### Migration Status
+**For dev baseline reset**, import `docs/importscript/beta_ssa_dev_baseline_thru_V013.sql` which includes all V001–V013 schema changes pre-applied.
 
-| Environment | Script 1 | Script 2 | Script 3 |
-|-------------|----------|----------|----------|
-| Local (Work) | ✅ | ✅ | ✅ |
-| Local (Home) | ✅ | ✅ | ✅ |
-| Production | ❌ | ❌ | ❌ |
-
-**Production note:** S3/Wasabi constants (`S3_ENDPOINT`, `S3_BUCKET`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`) in the `constant` table are INSERT IGNORE — values must be filled in manually on production after running script 3.
+See `migration_tracker.md` for full environment status and bug details.
 
 ---
 
 ## Remaining Work
 
 1. **Refactor manual setup to dynamic LOS** — `GenerateProp25` uses hardcoded `q1`–`q8` flags mapped to old LOS IDs. Needs refactor to accept dynamic LOS list from DB. See backlog T9. (CONF priority)
-2. **Production migration** — Run all 3 migration scripts, fill in S3 constants, deploy code
+2. **Production migration** — Validated upgrade script ready. See `migration_tracker.md`.
 3. **Empty checklist handling** — Remove task-153 dummy workaround. See backlog T8. (LOW priority)
 
 ---

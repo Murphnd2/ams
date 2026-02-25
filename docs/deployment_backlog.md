@@ -233,7 +233,22 @@ The branding upload servlet (`UploadPspBranding`) now saves logos and favicons t
 
 ---
 
+### D-33: Update Master VPS Blank Schema to V013
 
+**Priority:** HIGH — Required before onboarding new PSPs
+**Status:** Not started
+
+The master VPS image (`SSA-Master-Base-v4-2026-02-23`) contains the original blank schema (pre-V001). New PSP instances cloned from this image would need to run the full V001–V013 migration chain before initialization.
+
+**Action:** Replace `/opt/ssa/schema/beta_ssa_blank.sql` on the master VPS with the validated V013 baseline (`docs/importscript/beta_ssa_dev_baseline_thru_V013.sql`). Then take a new snapshot (`SSA-Master-Base-v5-2026-02-XX`).
+
+This ensures new PSP clones start at V013 and only need incremental migrations going forward.
+
+**Also update:**
+- `deployment_runbook.md` — master snapshot version reference
+- `deployment_strategy.md` §2.2 — master VPS image version
+
+---
 
 ## Remaining TODOs
 
