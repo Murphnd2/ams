@@ -56,6 +56,77 @@ public abstract class ActivityListDAO {
         return getMyCheckLists(em,p,1);
     }
 
+    /**
+     * Checks whether the given person has at least one actionable (not blocked)
+     * delegated task on the specified activity's checklist.
+     */
+    public static boolean isActionableForPerson(EntityManager em, long activityId, long personId) {
+        // Get the checklist_id for this activity
+        Query clQ = em.createNativeQuery(
+                "SELECT a.checklist_id FROM assignee a WHERE a.id = ?1");
+        clQ.setParameter(1, activityId);
+        Object clResult;
+        try {
+            clResult = clQ.getSingleResult();
+        } catch (Exception e) {
+            return false;
+        }
+        if (clResult == null) return false;
+        long checklistId = ((Number) clResult).longValue();
+
+        // Get all open todos for this checklist, ordered by sort_order
+        Query q = em.createNativeQuery(
+                "SELECT td.task_id, td.sort_order, " +
+                        "       tsk.has_owner, tsk.owner_id, " +
+                        "       tsk.is_sourced, tsk.source_owner, " +
+                        "       tsk.allow_early, tsk.allow_future " +
+                        "FROM todo td " +
+                        "JOIN task tsk ON tsk.task_id = td.task_id " +
+                        "WHERE td.checklist_id = ?1 AND td.is_complete = 0 " +
+                        "ORDER BY td.sort_order ASC");
+        q.setParameter(1, checklistId);
+
+        @SuppressWarnings("unchecked")
+        List<Object[]> todos = q.getResultList();
+        if (todos.isEmpty()) return false;
+
+        int topSort = ((Number) todos.get(0)[1]).intValue();
+
+        for (Object[] row : todos) {
+            int sortOrder       = ((Number) row[1]).intValue();
+            boolean hasOwner    = toBool(row[2]);
+            Long ownerId        = row[3] == null ? null : ((Number) row[3]).longValue();
+            boolean isSourced   = toBool(row[4]);
+            Long sourceOwnerId  = row[5] == null ? null : ((Number) row[5]).longValue();
+            boolean allowEarly  = toBool(row[6]);
+            boolean allowFuture = toBool(row[7]);
+
+            boolean isMyTask = (hasOwner && ownerId != null && ownerId == personId)
+                    || (isSourced && sourceOwnerId != null && sourceOwnerId == personId);
+
+            if (isMyTask) {
+                if (sortOrder <= topSort || allowEarly) {
+                    return true;
+                }
+            }
+
+            if (!allowFuture) {
+                break;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * MySQL TINYINT(1) columns may return Boolean or Number depending on
+     * the JDBC driver. This handles both safely.
+     */
+    private static boolean toBool(Object val) {
+        if (val == null) return false;
+        if (val instanceof Boolean b) return b;
+        if (val instanceof Number n) return n.intValue() != 0;
+        return false;
+    }
     public static void setMyCurrentItems(EntityManager em, Person p, HttpServletRequest request){
         List<CheckListShell> allItems = getMyOpenItems(em,p);
         System.out.println(allItems.size()+" is all");

@@ -98,18 +98,76 @@ public class AddToDo25 extends HttpServlet {
         return task;
     }
 
+    /**
+     * Determines the sort_order for a newly inserted todo and ensures
+     * there are no collisions with existing todos.
+     *
+     * positionId == -1  → append after last  (max + 10)
+     * positionId ==  0  → insert before first (min - 10)
+     * positionId ==  N  → insert AFTER todo N
+     *
+     * For "insert after", we try to find a gap between the target and
+     * the next todo. If there's no gap (consecutive or duplicate
+     * sort_orders), we shift all todos below the target down by 10
+     * to make room.
+     */
     private int calculateSortOrder(EntityManager em, List<ToDoOut25> toDoList, long positionId) {
-        OptionalInt sortValue;
 
         if (positionId == -1) {
-            sortValue = toDoList.stream().mapToInt(ToDoOut25::getSortOrder).max();
-            return sortValue.orElse(0) + 1;
-        } else if (positionId != 0) {
-            ToDo targetToDo = EntityLookup.getToDoById(em, positionId);
-            return targetToDo != null ? targetToDo.getSortOrder() : 0;
+            // ── Append at bottom: max + 10 ──
+            OptionalInt max = toDoList.stream().mapToInt(ToDoOut25::getSortOrder).max();
+            return max.orElse(0) + 10;
+
+        } else if (positionId == 0) {
+            // ── Insert at top: min - 10 ──
+            OptionalInt min = toDoList.stream().mapToInt(ToDoOut25::getSortOrder).min();
+            return min.orElse(10) - 10;
+
         } else {
-            sortValue = toDoList.stream().mapToInt(ToDoOut25::getSortOrder).min();
-            return sortValue.orElse(0) - 1;
+            // ── Insert AFTER the target todo ──
+            ToDo targetToDo = EntityLookup.getToDoById(em, positionId);
+            if (targetToDo == null) return 0;
+
+            int targetSort = targetToDo.getSortOrder();
+            long checklistId = targetToDo.getCheckList().getId();
+
+            // Find the sort_order of the next todo after the target
+            List<?> nextResult = em.createNativeQuery(
+                            "SELECT MIN(sort_order) FROM todo " +
+                                    "WHERE checklist_id = ?1 AND sort_order > ?2 AND is_complete = 0")
+                    .setParameter(1, checklistId)
+                    .setParameter(2, targetSort)
+                    .getResultList();
+
+            Integer nextSort = null;
+            if (!nextResult.isEmpty() && nextResult.get(0) != null) {
+                nextSort = ((Number) nextResult.get(0)).intValue();
+            }
+
+            if (nextSort == null) {
+                // Target is the last todo — just add 10
+                return targetSort + 10;
+            }
+
+            int gap = nextSort - targetSort;
+
+            if (gap >= 2) {
+                // There's room — place in the middle
+                return targetSort + (gap / 2);
+            } else {
+                // No room (gap is 0 or 1) — shift everything after target down by 10
+                em.getTransaction().begin();
+                em.createNativeQuery(
+                                "UPDATE todo SET sort_order = sort_order + 10 " +
+                                        "WHERE checklist_id = ?1 AND sort_order > ?2")
+                        .setParameter(1, checklistId)
+                        .setParameter(2, targetSort)
+                        .executeUpdate();
+                em.getTransaction().commit();
+
+                // Now there's a gap of at least 10 after the target
+                return targetSort + 5;
+            }
         }
     }
 

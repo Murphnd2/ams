@@ -35,16 +35,16 @@
       <c:import url="/WEB-INF/view/a/pspHome/columns/timeClock/timeClockDetail25.jsp"></c:import>
       <c:import url="/WEB-INF/view/a/pspHome/columns/timeClock/timeCorrectionModal.jsp"/>
     </div>
-    <%-- ************************ A C T I V I T Y   C O L U M N ********************************************************* --%>
-    <div class="col-12 col-lg-7 col-xl-6 order-first order-xl-2 ">
-      <c:import url="/WEB-INF/view/a/pspHome/columns/activities/activityHeader25.jsp"></c:import>
-      <c:import url="/WEB-INF/view/a/pspHome/columns/activities/activityList25.jsp"></c:import>
-    </div>
-    <%-- ************************ T O D O   C O L U M N ********************************************************* --%>
-    <div class="col-12 col-lg-5 col-xl-3 order-2 order-xl-first">
-      <c:import url="/WEB-INF/view/a/pspHome/columns/toDos/toDoHeader.jsp"></c:import>
-      <c:import url="/WEB-INF/view/a/pspHome/columns/toDos/toDoCurrentList25.jsp"></c:import>
-    </div>
+      <%-- ************************ A C T I V I T Y   C O L U M N ********************************************************* --%>
+      <div class="col-12 col-lg-7 col-xl-6 order-first order-xl-2 d-flex flex-column" style="height: calc(100vh - 70px); min-height: 400px;">
+        <c:import url="/WEB-INF/view/a/pspHome/columns/activities/activityHeader25.jsp"></c:import>
+        <c:import url="/WEB-INF/view/a/pspHome/columns/activities/activityList25.jsp"></c:import>
+      </div>
+      <%-- ************************ T O D O   C O L U M N ********************************************************* --%>
+      <div class="col-12 col-lg-5 col-xl-3 order-2 order-xl-first d-flex flex-column" style="height: calc(100vh - 70px); min-height: 400px;">
+        <c:import url="/WEB-INF/view/a/pspHome/columns/toDos/toDoHeader.jsp"></c:import>
+        <c:import url="/WEB-INF/view/a/pspHome/columns/toDos/toDoCurrentList25.jsp"></c:import>
+      </div>
   </div>
 </div>
 </body>

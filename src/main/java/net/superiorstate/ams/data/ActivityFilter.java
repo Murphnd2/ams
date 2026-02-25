@@ -12,6 +12,10 @@ public class ActivityFilter {
     private boolean viewOpportunity;
     private int needsContactWarning;
 
+    // New: single int replacing the two-boolean attention matrix
+    // 0=Show All, 1=Needs Attention (either), 2=Waiting On Us only, 3=Needs Contact only
+    private int attentionFilter;
+
     public ActivityFilter(){}
 
     public boolean isViewRenewal() {
@@ -80,12 +84,34 @@ public class ActivityFilter {
 
     public boolean isViewOpportunity() { return viewOpportunity; }
     public void setViewOpportunity(boolean viewOpportunity) { this.viewOpportunity = viewOpportunity; }
+
+    public int getAttentionFilter() { return attentionFilter; }
+
+    /**
+     * Sets the attention filter and syncs the legacy boolean fields so that
+     * downstream code (ActivityLandingDao, AmsDataLocal.filterActivityListing)
+     * continues to work without changes.
+     *
+     * 0 = Show All        → both false
+     * 1 = Needs Attention  → both true (either flag matches)
+     * 2 = Waiting On Us    → waitingOnUs=true, needsContact=false
+     * 3 = Needs Contact    → waitingOnUs=false, needsContact=true
+     */
+    public void setAttentionFilter(int attentionFilter) {
+        this.attentionFilter = attentionFilter;
+        switch (attentionFilter) {
+            case 1 -> { viewWaitingOnUs = true;  viewNeedsContact = true;  }
+            case 2 -> { viewWaitingOnUs = true;  viewNeedsContact = false; }
+            case 3 -> { viewWaitingOnUs = false; viewNeedsContact = true;  }
+            default -> { viewWaitingOnUs = false; viewNeedsContact = false; }
+        }
+    }
+
     public void initializeFilter(){
         setViewRenewal(true);
         setViewSetup(true);
         setViewTicket(true);
-        setViewNeedsContact(true);
-        setViewWaitingOnUs(true);
+        setAttentionFilter(1);
         setSortAlphabetically(false);
         setOwnershipFilter(1);
         setViewOpportunity(false);

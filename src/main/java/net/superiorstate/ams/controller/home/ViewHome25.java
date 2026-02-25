@@ -11,6 +11,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import net.superiorstate.ams.data.dao.ActivityLandingDao;
 import net.superiorstate.ams.data.AmsDataGlobal;
 import net.superiorstate.ams.data.AmsDataLocal;
+import net.superiorstate.ams.data.dao.ActivityListDAO;
 import net.superiorstate.ams.data.dao.TimeTrackingDAO;
 import net.superiorstate.ams.model.ActivityLandingFilter;
 import net.superiorstate.ams.model.ActivityLandingRow;
@@ -151,9 +152,13 @@ public class ViewHome25 extends HttpServlet {
         request.getSession().setAttribute("local", local);
     }
 
+
     /**
-     * Step 1: Populate requestScope.activityRows for the JSP.
-     * This is the new SQL-first landing dataset.
+     * SQL-first landing dataset with ownership-aware filtering.
+     * For "My World" (1) and "Helping On" (3), the SQL returns candidate
+     * delegated rows, then a Java post-filter applies the blocking check
+     * (task sort order, allow_early, allow_future) to ensure only
+     * actionable delegated items appear.
      */
     private void loadLandingRows(HttpServletRequest request) {
         AmsDataLocal local = (AmsDataLocal) request.getSession().getAttribute("local");
@@ -167,8 +172,7 @@ public class ViewHome25 extends HttpServlet {
 
         ActivityLandingFilter f = new ActivityLandingFilter();
 
-        int own = local.getActivityFilter().getOwnershipFilter();
-        f.myOpenOnly = (own == 1 || own == 2);
+        f.ownershipFilter = local.getActivityFilter().getOwnershipFilter();
 
         f.includeRenewal = local.getActivityFilter().isViewRenewal();
         f.includeSetup   = local.getActivityFilter().isViewSetup();
@@ -190,6 +194,27 @@ public class ViewHome25 extends HttpServlet {
         ActivityLandingDao dao = new ActivityLandingDao(emf);
 
         List<ActivityLandingRow> rows = dao.fetchLandingRows(me, daysWarn, f);
+
+        // Post-filter: for ownership 1 or 3, remove delegated rows that are blocked
+        if (f.ownershipFilter == 1 || f.ownershipFilter == 3) {
+            EntityManager em = emf.createEntityManager();
+            try {
+                rows = rows.stream().filter(row -> {
+                    // Rows I own are always kept (only applies to filter 1)
+                    if (row.getAssignedToId() != null && row.getAssignedToId() == me) {
+                        return true;
+                    }
+                    // Delegated row: check if my task is actionable (not blocked)
+                    if (row.isDelegatedToMe()) {
+                        return ActivityListDAO.isActionableForPerson(em, row.getActivityId(), me);
+                    }
+                    // Managed opportunity — keep
+                    return true;
+                }).toList();
+            } finally {
+                em.close();
+            }
+        }
 
         request.setAttribute("activityRows", rows);
     }

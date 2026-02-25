@@ -34,7 +34,7 @@ public class ActivityLandingDao {
             q.setParameter(1, mePersonId);
             q.setParameter(2, daysSinceWarn);
 
-            q.setParameter(3, f.myOpenOnly ? 1 : 0);
+            q.setParameter(3, f.ownershipFilter);
             q.setParameter(4, f.includeRenewal ? 1 : 0);
             q.setParameter(5, f.includeSetup ? 1 : 0);
             q.setParameter(6, f.includeTicket ? 1 : 0);
@@ -118,7 +118,7 @@ params AS (
   SELECT
     ? AS me,
     ? AS daysSinceWarn,
-    ? AS myOpenOnly,
+    ? AS ownFilter,
     ? AS incRenewal,
     ? AS incSetup,
     ? AS incTicket,
@@ -223,8 +223,10 @@ base AS (
           ON tsk.task_id = td.task_id
         WHERE td.checklist_id = oa.checklist_id
           AND td.is_complete = 0
-          AND tsk.has_owner = 1
-          AND (tsk.owner_id = p.me OR tsk.source_owner = p.me)
+          AND (
+            (tsk.has_owner = 1 AND tsk.owner_id = p.me)
+            OR (tsk.is_sourced = 1 AND tsk.source_owner = p.me)
+          )
         LIMIT 1
       ) THEN 1
       ELSE 0
@@ -280,12 +282,32 @@ FROM base b
 CROSS JOIN params p
 WHERE 1 = 1
 
+  /* ── Ownership filter ── */
   AND (
-    p.myOpenOnly = 0
-    OR b.assigned_to_id = p.me
-    OR (b.dtype = 'Opportunity' AND b.managed_by_id = p.me)
+    /* 0 = All Open: no ownership restriction */
+    p.ownFilter = 0
+
+    /* 1 = My World: I own it, or I manage it, or I have a delegated task */
+    OR (p.ownFilter = 1 AND (
+         b.assigned_to_id = p.me
+         OR (b.dtype = 'Opportunity' AND b.managed_by_id = p.me)
+         OR b.delegated_to_me = 1
+       ))
+
+    /* 2 = I Own: assigned to me or I manage it */
+    OR (p.ownFilter = 2 AND (
+         b.assigned_to_id = p.me
+         OR (b.dtype = 'Opportunity' AND b.managed_by_id = p.me)
+       ))
+
+    /* 3 = Helping On: delegated to me AND I don't own it */
+    OR (p.ownFilter = 3 AND (
+         b.delegated_to_me = 1
+         AND b.assigned_to_id != p.me
+       ))
   )
 
+  /* ── Type filter ── */
   AND (
     (p.incRenewal = 1 AND b.dtype = 'Renewal')
     OR (p.incSetup = 1 AND b.dtype = 'Setup')
@@ -294,6 +316,7 @@ WHERE 1 = 1
         AND (b.assigned_to_id = p.me OR b.managed_by_id = p.me))
   )
 
+  /* ── Attention filter ── */
   AND (
     (p.viewNeedsContact = 0 AND p.viewWaitingOnUs = 0)
     OR (p.viewNeedsContact = 1 AND p.viewWaitingOnUs = 1

@@ -85,7 +85,7 @@
 <c:set var="daysD" value="${applicationScope.global.getDaysSinceDanger()}"/>
 <c:set var="daysW" value="${applicationScope.global.getDaysSinceWarning()}"/>
 
-<div class="overflow-auto" style="max-height: 700px;">
+<div class="overflow-auto flex-grow-1" style="min-height: 0;">
   <form method="post" action="GoActivityDetail25">
     <input type="hidden" name="formSender" value="viewActivity">
 

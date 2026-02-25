@@ -57,6 +57,7 @@ public class AmsDataLocal implements AutoCloseable {
     private List<Checklist25u> checklistsFuture;
 
     private List<RenewalEmployer> renewalEmployers;
+    private List<UserFilterPreset> filterPresets;
     private CurrentActivity currentActivity;
     private CurrentChecklist currentChecklist;
 
@@ -82,8 +83,20 @@ public class AmsDataLocal implements AutoCloseable {
         setCurrentActivity(new CurrentActivity());
         setCurrentChecklist(new CurrentChecklist());
         setDaysSinceContactWarning(global.getDaysSinceWarning());
+        // Load user's 3 filter presets
+        Query presetQuery = em.createQuery(
+                "SELECT p FROM UserFilterPreset p WHERE p.user = :user ORDER BY p.slotNumber",
+                UserFilterPreset.class);
+        presetQuery.setParameter("user", getCurrentUser());
+        setFilterPresets(presetQuery.getResultList());
+
+        // Initialize filter from preset slot 1 (My Actionable) if available
         setActivityFilter(new ActivityFilter());
-        getActivityFilter().initializeFilter();
+        if (getFilterPresets() != null && !getFilterPresets().isEmpty()) {
+            applyPresetToFilter(getFilterPresets().get(0));
+        } else {
+            getActivityFilter().initializeFilter();
+        }
         boolean isPspSales = Boolean.TRUE.equals(request.getSession().getAttribute("isPspSales"));
         boolean isPspAdminRole = Boolean.TRUE.equals(request.getSession().getAttribute("isPspAdmin"));
         if (isPspSales || isPspAdminRole) {
@@ -100,10 +113,12 @@ public class AmsDataLocal implements AutoCloseable {
         global.setWebPath(global.getConstantValue(em,"WEB_PATH"));
     }
 
-
     public void refreshRenewals(EntityManager em){
         setRenewalEmployers(fillRenewalEmployers(em));
     }
+
+    public List<UserFilterPreset> getFilterPresets() { return filterPresets; }
+    public void setFilterPresets(List<UserFilterPreset> filterPresets) { this.filterPresets = filterPresets; }
 
     public CurrentEmail getCurrentEmail() {
         return currentEmail;
@@ -839,6 +854,16 @@ public class AmsDataLocal implements AutoCloseable {
 
         list1 = getChecklistsAll().stream().filter(obj->obj.getSortKey()==3).toList();
         setChecklistsFuture(list1);
+    }
+    public void applyPresetToFilter(UserFilterPreset preset) {
+        ActivityFilter af = getActivityFilter();
+        af.setViewRenewal(preset.isViewRenewal());
+        af.setViewSetup(preset.isViewSetup());
+        af.setViewTicket(preset.isViewTicket());
+        af.setViewOpportunity(preset.isViewOpportunity());
+        af.setOwnershipFilter(preset.getOwnershipFilter());
+        af.setAttentionFilter(preset.getAttentionFilter());
+        af.setSortAlphabetically(preset.isSortAlphabetically());
     }
 
     @Override
