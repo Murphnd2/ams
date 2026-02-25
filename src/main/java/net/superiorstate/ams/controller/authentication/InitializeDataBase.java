@@ -7,6 +7,7 @@ import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.AppConfig;
+import net.superiorstate.ams.data.AmsDataGlobal;
 import net.superiorstate.ams.data.service.DatabaseInitializer;
 import net.superiorstate.ams.model.Constant;
 
@@ -33,7 +34,7 @@ public class InitializeDataBase extends HttpServlet {
                 return;
             }
 
-            // D-05: Validate deployment key
+            // D-05: Validate deployment key (with optional demo tag support)
             String submittedKey = request.getParameter("deploymentKey");
             String expectedKey = AppConfig.get("DEPLOYMENT_KEY");
 
@@ -43,16 +44,43 @@ public class InitializeDataBase extends HttpServlet {
                 return;
             }
 
-            if (!expectedKey.equals(submittedKey)) {
+            // Parse optional demo tag: key contains no hyphens by convention.
+            // If a hyphen is present, everything before it is the key, everything after is the tag.
+            String baseKey = submittedKey;
+            String demoTag = null;
+            if (submittedKey != null) {
+                int hyphen = submittedKey.indexOf('-');
+                if (hyphen > 0) {
+                    baseKey = submittedKey.substring(0, hyphen);
+                    demoTag = submittedKey.substring(hyphen + 1);
+                }
+            }
+
+            if (!expectedKey.equals(baseKey)) {
                 System.out.println("⛔ InitializeDataBase blocked — invalid deployment key");
                 response.sendRedirect("GoInitialize25");
                 return;
             }
 
-            // Run initialization
+            // Run standard initialization
             System.out.println("🚀 InitializeDataBase — key validated, starting initialization...");
             DatabaseInitializer.initializeDataBase(request, em);
             System.out.println("✅ InitializeDataBase — initialization complete");
+
+            // Run optional demo seeder if tag was provided
+            if (demoTag != null && !demoTag.isBlank()) {
+                System.out.println("🎭 Demo tag detected: " + demoTag);
+                DatabaseInitializer.seedDemoData(em, demoTag);
+            }
+
+            // Load global data so a server restart is not required
+            AmsDataGlobal global = new AmsDataGlobal();
+            global.initializeGlobalData(em);
+            getServletContext().setAttribute("global", global);
+            System.out.println("✅ Global data loaded after initialization");
+
+            // Fix session so LoginFilter stops redirecting to initialize.jsp
+            request.getSession().setAttribute("uninitialized", 1);
 
         } finally {
             if (em.isOpen()) em.close();

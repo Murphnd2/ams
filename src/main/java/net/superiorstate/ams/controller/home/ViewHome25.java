@@ -24,6 +24,7 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 @WebServlet(name = "ViewHome25", value = "/ViewHome25")
 public class ViewHome25 extends HttpServlet {
@@ -88,6 +89,28 @@ public class ViewHome25 extends HttpServlet {
             request.setAttribute("avgPerDayFormatted", TimeTrackingDAO.formatMinutes(avgMinutes));
             request.setAttribute("remainingFormatted", TimeTrackingDAO.formatMinutes(remainingMinutes));
             request.setAttribute("todaySummary", todaySummary);
+
+            // Load correction request statuses for this week's stretches (keyed by inLogId)
+            Map<Long, String> correctionMap = new java.util.HashMap<>();
+            try {
+                jakarta.persistence.Query cq = em.createQuery(
+                        "SELECT t.inLog.id, t.status FROM TimeCorrectionRequest t " +
+                                "WHERE t.requestor = :person AND t.inLog IS NOT NULL " +
+                                "ORDER BY t.dateRequested DESC");
+                cq.setParameter("person", local.getCurrentPerson());
+                List<Object[]> cResults = cq.getResultList();
+                for (Object[] row : cResults) {
+                    Long logId = ((Number) row[0]).longValue();
+                    String status = (String) row[1];
+                    // Only keep the most recent request per stretch (first one wins due to ORDER BY DESC)
+                    if (!correctionMap.containsKey(logId)) {
+                        correctionMap.put(logId, status);
+                    }
+                }
+            } catch (Exception e) {
+                System.out.println("[ViewHome25] Could not load correction map: " + e.getMessage());
+            }
+            request.setAttribute("correctionMap", correctionMap);
 
         } finally {
             em.close();

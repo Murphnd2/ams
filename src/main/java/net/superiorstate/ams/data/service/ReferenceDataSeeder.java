@@ -467,20 +467,43 @@ public abstract class ReferenceDataSeeder {
         sc.setSortOrder(id);
         em.persist(sc);
     }*/
-    public static void loadDefaultTicketCategories(EntityManager em){
-        createTicketCategory(em,1L,"How Do I Do Something?","HOW");
-        createTicketSubCategory(em,1L,1L,"How-Get Online?");
-        createTicketSubCategory(em,1L,2L,"How-Submit a Claim?");
-        createTicketSubCategory(em,1L,3L,"How-Complete Testing Form?");
-        createTicketCategory(em,2L,"Why Did This Happen?","WHY");
-        createTicketSubCategory(em,2L,4L,"Why-Debit Card Not Work?");
-        createTicketSubCategory(em,2L,5L,"Why-Claim Didn't Pay?");
-        createTicketSubCategory(em,2L,6L,"Why-Test Failed?");
-        createTicketCategory(em,3L,"Did SSA Receive Something?", "GET");
-        createTicketCategory(em,4L,"What Does The Law Allow For?","LAW");
-        createTicketCategory(em,5L,"What Else Can SSA Do For Us?","OTHER");
-        createTicketCategory(em,6L,"I Need Something!","NEED");
-    }
+   public static void loadDefaultTicketCategories(EntityManager em){
+
+       // ── Service-Oriented Categories (match production IDs and getTicketCategory() in CreateTicket25) ──
+       createTicketCategory(em, 11L, "Claims",            "Claims");
+       createTicketCategory(em, 12L, "Access / Online",   "Access");
+       createTicketCategory(em, 13L, "Debit Card",        "Debit");
+       createTicketCategory(em, 14L, "COBRA",             "COBRA");
+       createTicketCategory(em, 15L, "HSA",               "HSA");
+       createTicketCategory(em, 16L, "Enrollment",        "Enroll");
+       createTicketCategory(em, 17L, "Plan Services",     "Plans");
+       createTicketCategory(em, 18L, "Billing",           "Billing");
+       createTicketCategory(em, 21L, "General",           "General");
+
+       // ── Starter SubCategories (no TemplatePurpose — just dropdown entries) ──
+       // These give a new PSP immediate ticket categorization options.
+       // Sequences can be built later through Sequence Builder, which creates its own SubCategories.
+       createStarterSubCategory(em, 101L, 11L, "Claim not paid");
+       createStarterSubCategory(em, 102L, 11L, "Claim paid incorrectly");
+       createStarterSubCategory(em, 103L, 12L, "Can't log in to portal");
+       createStarterSubCategory(em, 104L, 12L, "Need online access");
+       createStarterSubCategory(em, 105L, 13L, "Debit card not working");
+       createStarterSubCategory(em, 106L, 13L, "Debit card replacement");
+       createStarterSubCategory(em, 107L, 14L, "COBRA enrollment");
+       createStarterSubCategory(em, 108L, 14L, "COBRA payment issue");
+       createStarterSubCategory(em, 109L, 15L, "HSA contribution question");
+       createStarterSubCategory(em, 110L, 15L, "HSA eligible expense question");
+       createStarterSubCategory(em, 111L, 16L, "New hire enrollment");
+       createStarterSubCategory(em, 112L, 16L, "Open enrollment");
+       createStarterSubCategory(em, 113L, 16L, "Qualifying life event");
+       createStarterSubCategory(em, 114L, 17L, "FSA question");
+       createStarterSubCategory(em, 115L, 17L, "HRA question");
+       createStarterSubCategory(em, 116L, 17L, "Plan quote request");
+       createStarterSubCategory(em, 117L, 18L, "Billing discrepancy");
+       createStarterSubCategory(em, 118L, 18L, "Invoice request");
+       createStarterSubCategory(em, 119L, 21L, "General inquiry");
+       createStarterSubCategory(em, 120L, 21L, "Other");
+   }
 
     public static void createTicketSubCategory(EntityManager em, Long catId, Long subCatId, String name){
         if(EntityLookup.getTicketCategoryById(em,catId)==null)
@@ -743,6 +766,24 @@ public abstract class ReferenceDataSeeder {
         sm.setPsp(psp);
         sm.setSortOrder(sortOrder);
         em.persist(sm);
+    }
+    /**
+     * Creates a starter TicketSubCategory with no TemplatePurpose (no sequence).
+     * These are just dropdown options for categorizing tickets.
+     * isActive=true so they appear in the Create Ticket dropdown.
+     */
+    private static void createStarterSubCategory(EntityManager em, Long subCatId, Long catId, String description){
+        TicketCategory tc = EntityLookup.getTicketCategoryById(em, catId);
+        if(tc == null) return;
+        em.getTransaction().begin();
+        TicketSubCategory tsc = new TicketSubCategory();
+        tsc.setId(subCatId);
+        tsc.setTicketCategory(tc);
+        tsc.setDescription(description);
+        tsc.setActive(true);
+        // No templatePurpose — these are standalone dropdown entries
+        em.persist(tsc);
+        em.getTransaction().commit();
     }
 
     private static void fillServiceModules(EntityManager em,PSP psp){

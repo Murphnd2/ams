@@ -463,6 +463,8 @@ public abstract class DatabaseInitializer {
         UserRole ur13 = createUserRole(em,103, "BPO User");
         //Assign User To PSP Roles
         assignRoles(em,user,ur5,ur1);
+        // Seed default filter presets for the new user
+        seedFilterPresets(em, user);
         // Vendor users removed — configure via admin UI (future backlog item)
         // Add PSP Constants
         addPspConstants(em);
@@ -473,6 +475,15 @@ public abstract class DatabaseInitializer {
 
     }
 
+    public static void seedDemoData(EntityManager em, String demoTag) {
+        System.out.println("🎭 seedDemoData called with tag: " + demoTag);
+        switch (demoTag.toUpperCase()) {
+            // Future: case "DEMO_SALES": seedSalesDemo(em); break;
+            // Future: case "DEMO_FULL": seedFullDemo(em); break;
+            default:
+                System.out.println("⚠️ Unknown demo tag: " + demoTag + " — skipping");
+        }
+    }
     private static void createInitializationChecklist(EntityManager em) {
         Person person = EntityLookup.getPersonById(em, 104L);
         PSP psp = EntityLookup.getPspById(em, 4L);
@@ -836,6 +847,50 @@ public abstract class DatabaseInitializer {
         return r;
     }
 
+    private static void seedFilterPresets(EntityManager em, User user) {
+        em.getTransaction().begin();
+
+        UserFilterPreset p1 = new UserFilterPreset();
+        p1.setUser(user);
+        p1.setSlotNumber(1);
+        p1.setLabel("My Actionable");
+        p1.setViewRenewal(true);
+        p1.setViewSetup(true);
+        p1.setViewTicket(true);
+        p1.setViewOpportunity(true);
+        p1.setOwnershipFilter(1);
+        p1.setAttentionFilter(1);
+        p1.setSortAlphabetically(false);
+        em.persist(p1);
+
+        UserFilterPreset p2 = new UserFilterPreset();
+        p2.setUser(user);
+        p2.setSlotNumber(2);
+        p2.setLabel("All Open");
+        p2.setViewRenewal(true);
+        p2.setViewSetup(true);
+        p2.setViewTicket(true);
+        p2.setViewOpportunity(true);
+        p2.setOwnershipFilter(0);
+        p2.setAttentionFilter(0);
+        p2.setSortAlphabetically(true);
+        em.persist(p2);
+
+        UserFilterPreset p3 = new UserFilterPreset();
+        p3.setUser(user);
+        p3.setSlotNumber(3);
+        p3.setLabel("My Renewals");
+        p3.setViewRenewal(true);
+        p3.setViewSetup(false);
+        p3.setViewTicket(false);
+        p3.setViewOpportunity(false);
+        p3.setOwnershipFilter(1);
+        p3.setAttentionFilter(0);
+        p3.setSortAlphabetically(true);
+        em.persist(p3);
+
+        em.getTransaction().commit();
+    }
     private static void createPricing(EntityManager em, double price, ServiceModule sm, PriceItem pi, Rate r){
         em.getTransaction().begin();
         RateTable rt = new RateTable();

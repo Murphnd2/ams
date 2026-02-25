@@ -216,6 +216,25 @@ Add optional "Sign in with Microsoft" button on login page using Microsoft Entra
 
 ---
 
+### D-32: Add BRANDING_PATH to ssa.properties on Production
+
+**Priority:** HIGH — Required before deploying branding upload feature
+**Status:** Not started
+
+Add `BRANDING_PATH=/var/lib/tomcat10/branding/` to `ssa.properties` on production (and any PSP VPS instances). Create the directory with proper Tomcat ownership:
+```bash
+sudo mkdir -p /var/lib/tomcat10/branding
+sudo chown tomcat:tomcat /var/lib/tomcat10/branding
+```
+
+The branding upload servlet (`UploadPspBranding`) now saves logos and favicons to this external directory instead of inside the webapp. The `ServeBrandingFile` servlet serves them at `/branding/*`. Without this config, branding uploads will fail with a "BRANDING_PATH not configured" error.
+
+**Also applies to:** Master VPS image — update snapshot after adding this.
+
+---
+
+
+
 ## Remaining TODOs
 
 - Run `schema_version_migration.sql` on production database (holding until further testing)

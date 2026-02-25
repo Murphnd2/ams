@@ -105,6 +105,16 @@
   .tc-stat-label { color: #6c757d; }
   .tc-stat-value { font-weight: 700; color: #212529; }
 
+  /* ─── CORRECTION BADGES ─── */
+  .tc-corr-badge {
+    font-size: 0.6rem; font-weight: 700; padding: 0.1rem 0.4rem;
+    border-radius: 3px; text-transform: uppercase; letter-spacing: 0.02em;
+    margin-left: 0.25rem; flex-shrink: 0;
+  }
+  .tc-corr-pending  { background: #fff3cd; color: #856404; }
+  .tc-corr-approved { background: #d4edda; color: #155724; }
+  .tc-corr-denied   { background: #f8d7da; color: #842029; }
+
   /* ─── CLOSE PANEL ─── */
   .tc-panel-bottom { border-radius: 0 0 10px 10px; overflow: hidden; }
 </style>
@@ -190,7 +200,21 @@
                             <fmt:formatDate value="${ts.getOutTime()}" pattern="h:mm a" />
                           </span>
                         <span class="tc-stretch-dur">${ts.getMinutesFormatted()}</span>
-                        <i class="bi bi-pencil-square" style="color:#adb5bd; font-size:0.72rem; margin-left:0.3rem;"></i>
+                        <c:set var="corrStatus" value="${correctionMap[ts.getInLogId()]}"/>
+                        <c:choose>
+                          <c:when test="${corrStatus == 'PENDING'}">
+                            <span class="tc-corr-badge tc-corr-pending">Pending</span>
+                          </c:when>
+                          <c:when test="${corrStatus == 'APPROVED'}">
+                            <span class="tc-corr-badge tc-corr-approved">Approved</span>
+                          </c:when>
+                          <c:when test="${corrStatus == 'DENIED'}">
+                            <span class="tc-corr-badge tc-corr-denied">Denied</span>
+                          </c:when>
+                          <c:otherwise>
+                            <i class="bi bi-pencil-square" style="color:#adb5bd; font-size:0.72rem; margin-left:0.3rem;"></i>
+                          </c:otherwise>
+                        </c:choose>
                       </div>
                     </c:when>
                     <%-- Active stretch (still clocked in) — not clickable --%>
