@@ -69,6 +69,8 @@ public class AmsDataGlobal {
     private String logoNavbar;
     private String logoLogin;
     private String favicon;
+
+    private String brandingPath;
     private List<Activity25u> activitiesAllOpen;
     private List<Agency> agencies;
     private List<Activity25p> activitiesWithDelegation;
@@ -204,6 +206,7 @@ public class AmsDataGlobal {
         setFalseClose(falseClose);
 
         setSavePath(AppConfig.get("SAVE_PATH", "/var/lib/tomcat10/data/"));
+        setBrandingPath(AppConfig.get("BRANDING_PATH", System.getProperty("catalina.base") + "/branding/"));
 
         String smtpPassword;
         try{
@@ -410,7 +413,8 @@ public class AmsDataGlobal {
     public void setLogoLogin(String logoLogin) { this.logoLogin = logoLogin; }
     public String getFavicon() { return favicon; }
     public void setFavicon(String favicon) { this.favicon = favicon; }
-
+    public String getBrandingPath() { return brandingPath; }
+    public void setBrandingPath(String brandingPath) { this.brandingPath = brandingPath; }
     public PSP getPsp() {
         return psp;
     }

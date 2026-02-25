@@ -111,19 +111,19 @@
       <%-- Type badge --%>
       <c:choose>
         <c:when test="${activity.dtype == 'Renewal'}">
-          <c:set var="typeLabel" value="R"/>
+          <c:set var="typeIcon" value="repeat"/>
           <c:set var="typeCls" value="act-type-R"/>
         </c:when>
         <c:when test="${activity.dtype == 'Setup'}">
-          <c:set var="typeLabel" value="S"/>
+          <c:set var="typeIcon" value="buildings"/>
           <c:set var="typeCls" value="act-type-S"/>
         </c:when>
         <c:when test="${activity.dtype == 'Opportunity'}">
-          <c:set var="typeLabel" value="O"/>
+          <c:set var="typeIcon" value="graph-up-arrow"/>
           <c:set var="typeCls" value="act-type-O"/>
         </c:when>
         <c:otherwise>
-          <c:set var="typeLabel" value="T"/>
+          <c:set var="typeIcon" value="ticket-detailed"/>
           <c:set var="typeCls" value="act-type-T"/>
         </c:otherwise>
       </c:choose>
@@ -134,35 +134,32 @@
         <c:set var="extra" value="${activity.ticketEmployerNameLc}"/>
       </c:if>
 
-      <%-- Name display: waiting-on-us = UPPER + bold --%>
+      <%-- Needs-contact flag (derived from days since contact vs warning threshold) --%>
+      <c:set var="needsContact" value="${daysS > daysW}"/>
+
+      <%-- Attention icon + name weight based on combined status --%>
       <c:choose>
-        <c:when test="${activity.waitingOnUs}">
-          <c:set var="displayName" value="${fn:toUpperCase(activity.fullName)}"/>
+        <c:when test="${activity.waitingOnUs && needsContact}">
+          <c:set var="attentionIcon" value="exclamation-triangle"/>
+          <c:set var="attentionCls" value="act-urg-danger"/>
           <c:set var="nameWeight" value="fw-bold"/>
         </c:when>
-        <c:otherwise>
-          <c:set var="displayName" value="${fn:toLowerCase(activity.fullName)}"/>
+        <c:when test="${activity.waitingOnUs}">
+          <c:set var="attentionIcon" value="hourglass-split"/>
+          <c:set var="attentionCls" value="act-urg-onus"/>
           <c:set var="nameWeight" value=""/>
+        </c:when>
+        <c:when test="${needsContact}">
+          <c:set var="attentionIcon" value="telephone"/>
+          <c:set var="attentionCls" value="act-urg-warning"/>
+          <c:set var="nameWeight" value=""/>
+        </c:when>
+        <c:otherwise>
+          <c:set var="attentionIcon" value=""/>
+          <c:set var="attentionCls" value=""/>
+          <c:set var="nameWeight" value="text-muted"/>
         </c:otherwise>
       </c:choose>
-
-      <%-- Contact urgency: phone icon (color-coded) + on-us icon --%>
-      <c:set var="phoneIcon" value=""/>
-      <c:set var="phoneCls" value=""/>
-      <c:choose>
-        <c:when test="${daysS > daysD}">
-          <c:set var="phoneIcon" value="telephone-fill"/>
-          <c:set var="phoneCls" value="act-urg-danger"/>
-        </c:when>
-        <c:when test="${daysS > daysW}">
-          <c:set var="phoneIcon" value="telephone-fill"/>
-          <c:set var="phoneCls" value="act-urg-warning"/>
-        </c:when>
-      </c:choose>
-      <c:set var="onUsIcon" value=""/>
-      <c:if test="${activity.waitingOnUs}">
-        <c:set var="onUsIcon" value="stack-overflow"/>
-      </c:if>
 
       <%-- Due bucket → card left border + date class --%>
       <c:choose>
@@ -192,18 +189,17 @@
         </span>
 
         <%-- Type badge --%>
-        <span class="act-type-badge ${typeCls}">${typeLabel}</span>
+          <span class="act-type-badge ${typeCls}"><i class="bi bi-${typeIcon}"></i></span>
 
-        <%-- Urgency icons: phone (needs contact) + stack (waiting on us) --%>
-        <span class="act-urgency">
-          <c:if test="${not empty onUsIcon}"><i class="bi bi-${onUsIcon} act-urg-onus"></i></c:if>
-          <c:if test="${not empty phoneIcon}"><i class="bi bi-${phoneIcon} ${phoneCls}"></i></c:if>
+            <%-- Attention icon --%>
+          <span class="act-urgency">
+          <c:if test="${not empty attentionIcon}"><i class="bi bi-${attentionIcon} ${attentionCls}"></i></c:if>
         </span>
 
         <%-- Name + extra --%>
         <div class="act-name">
-          <span class="act-name-text ${nameWeight}">
-            ${displayName}<c:if test="${not empty extra}"> <span class="act-extra">(${extra})</span></c:if>
+          <span class="act-name-text ${nameWeight}" style="text-transform: capitalize;">
+            ${fn:toLowerCase(activity.fullName)}<c:if test="${not empty extra}"> <span class="act-extra">(${extra})</span></c:if>
           </span>
         </div>
 

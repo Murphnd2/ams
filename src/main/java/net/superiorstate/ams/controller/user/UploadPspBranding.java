@@ -23,9 +23,10 @@ import java.nio.file.StandardCopyOption;
  * PSP Branding Upload — allows PSP Admins to upload custom navbar logo, login logo, and favicon.
  *
  * GET  → forwards to branding management page
- * POST → processes file uploads, validates dimensions, saves to /images/psp/, updates DB constants
+ * POST → processes file uploads, validates dimensions, saves to external BRANDING_PATH, updates DB constants
  *
- * Files are saved to the webapp's images/psp/ directory so they're served as static resources.
+ * Files are saved to a persistent directory outside the webapp (configured via BRANDING_PATH in ssa.properties)
+ * so they survive redeployments. They are served by the ServeBrandingFile servlet at /branding/*.
  */
 @WebServlet(name = "UploadPspBranding", value = "/UploadPspBranding")
 @MultipartConfig(
@@ -79,18 +80,24 @@ public class UploadPspBranding extends HttpServlet {
         boolean anyUpdated = false;
 
         try {
-            // Resolve the webapp's images/psp/ directory on disk
-            String webappRoot = getServletContext().getRealPath("/");
-            Path pspDir = Paths.get(webappRoot, "images", "psp");
-            Files.createDirectories(pspDir);
+            // Resolve the persistent branding directory from AmsDataGlobal
+            AmsDataGlobal global = (AmsDataGlobal) getServletContext().getAttribute("global");
+            String brandingPath = global.getBrandingPath();
+            if (brandingPath == null || brandingPath.isBlank()) {
+                response.sendRedirect("UploadPspBranding?error=" +
+                        java.net.URLEncoder.encode("BRANDING_PATH not configured. Check ssa.properties.", "UTF-8"));
+                return;
+            }
+            Path brandingDir = Paths.get(brandingPath);
+            Files.createDirectories(brandingDir);
 
             // --- Navbar Logo ---
             Part navbarPart = request.getPart("navbarLogo");
             if (navbarPart != null && navbarPart.getSize() > 0) {
-                String result = processImageUpload(navbarPart, pspDir, "logo-navbar.png",
+                String result = processImageUpload(navbarPart, brandingDir, "logo-navbar.png",
                         NAVBAR_MAX_WIDTH, NAVBAR_MAX_HEIGHT, "Navbar logo");
                 if (result == null) {
-                    updateConstant(em, "LOGO_NAVBAR", "/images/psp/logo-navbar.png");
+                    updateConstant(em, "LOGO_NAVBAR", "/branding/logo-navbar.png?v=" + System.currentTimeMillis());
                     anyUpdated = true;
                 } else {
                     errors.append(result).append(" ");
@@ -100,10 +107,10 @@ public class UploadPspBranding extends HttpServlet {
             // --- Login Logo ---
             Part loginPart = request.getPart("loginLogo");
             if (loginPart != null && loginPart.getSize() > 0) {
-                String result = processImageUpload(loginPart, pspDir, "logo-login.png",
+                String result = processImageUpload(loginPart, brandingDir, "logo-login.png",
                         LOGIN_MAX_WIDTH, LOGIN_MAX_HEIGHT, "Login logo");
                 if (result == null) {
-                    updateConstant(em, "LOGO_LOGIN", "/images/psp/logo-login.png");
+                    updateConstant(em, "LOGO_LOGIN", "/branding/logo-login.png?v=" + System.currentTimeMillis());
                     anyUpdated = true;
                 } else {
                     errors.append(result).append(" ");
@@ -113,9 +120,9 @@ public class UploadPspBranding extends HttpServlet {
             // --- Favicon ---
             Part faviconPart = request.getPart("favicon");
             if (faviconPart != null && faviconPart.getSize() > 0) {
-                String result = processFaviconUpload(faviconPart, pspDir);
+                String result = processFaviconUpload(faviconPart, brandingDir);
                 if (result == null) {
-                    updateConstant(em, "FAVICON", "/images/psp/favicon.ico");
+                    updateConstant(em, "FAVICON", "/branding/favicon.ico?v=" + System.currentTimeMillis());
                     anyUpdated = true;
                 } else {
                     errors.append(result).append(" ");
@@ -124,7 +131,6 @@ public class UploadPspBranding extends HttpServlet {
 
             // Refresh AmsDataGlobal so changes take effect immediately
             if (anyUpdated) {
-                AmsDataGlobal global = (AmsDataGlobal) getServletContext().getAttribute("global");
                 EntityManager em2 = emf.createEntityManager();
                 try {
                     global.initializeGlobalData(em2);
@@ -225,32 +231,41 @@ public class UploadPspBranding extends HttpServlet {
             }
         }
 
-        System.out.println("✅ Saved favicon: " + targetDir.resolve("favicon.ico"));
+        System.out.println("✅ Saved branding favicon: " + targetDir.resolve("favicon.ico"));
         return null;
     }
 
     /**
-     * Updates or inserts a constant value in the database.
+     * Updates a constant value in the database (insert or update).
      */
     private void updateConstant(EntityManager em, String name, String value) {
         em.getTransaction().begin();
         try {
             Query q = em.createQuery("SELECT c FROM Constant c WHERE c.name = :name");
             q.setParameter("name", name);
-            Constant c = (Constant) q.getSingleResult();
-            c.setValue(value);
-            em.persist(c);
+            try {
+                Constant c = (Constant) q.getSingleResult();
+                c.setValue(value);
+                em.merge(c);
+            } catch (Exception e) {
+                Constant c = new Constant();
+                c.setName(name);
+                c.setValue(value);
+                em.persist(c);
+            }
+            em.getTransaction().commit();
         } catch (Exception e) {
-            // Constant doesn't exist yet — create it
-            Constant c = new Constant();
-            c.setName(name);
-            c.setValue(value);
-            em.persist(c);
+            if (em.getTransaction().isActive()) em.getTransaction().rollback();
+            throw e;
         }
-        em.getTransaction().commit();
     }
 
     private boolean isPspAdmin(HttpServletRequest request) {
-        return Boolean.TRUE.equals(request.getSession().getAttribute("isPspAdmin"));
+        try {
+            AmsDataLocal local = (AmsDataLocal) request.getSession().getAttribute("local");
+            return local != null && local.isPspAdmin();
+        } catch (Exception e) {
+            return false;
+        }
     }
 }

@@ -93,6 +93,7 @@ public class LoginFilter implements Filter {
                 || path.startsWith("/fonts/")
                 || path.startsWith("/webfonts/")
                 || path.startsWith("/bootstrap-icons/")
+                || path.startsWith("/branding/")
                 || path.startsWith("/logo")
                 || path.endsWith(".png")
                 || path.endsWith(".jpg")

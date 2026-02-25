@@ -319,7 +319,7 @@
           </div>
           <div class="af-radio ${af.getOwnershipFilter()==1 ? 'selected' : ''}" data-val="1" onclick="afSelectOwner(this)">
             <span class="af-radio-dot"></span>
-            <i class="bi bi-person-plus af-radio-icon"></i> My World
+            <i class="bi bi-person-check af-radio-icon"></i> My World
           </div>
           <div class="af-radio ${af.getOwnershipFilter()==2 ? 'selected' : ''}" data-val="2" onclick="afSelectOwner(this)">
             <span class="af-radio-dot"></span>
@@ -327,7 +327,7 @@
           </div>
           <div class="af-radio ${af.getOwnershipFilter()==3 ? 'selected' : ''}" data-val="3" onclick="afSelectOwner(this)">
             <span class="af-radio-dot"></span>
-            <i class="bi bi-person-check af-radio-icon"></i> Helping On
+            <i class="bi bi-check-lg af-radio-icon"></i> Helping On
           </div>
         </div>
 
