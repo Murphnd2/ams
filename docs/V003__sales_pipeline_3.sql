@@ -4,8 +4,8 @@
 -- Date: February 19-20, 2026
 --
 -- PREREQUISITES:
---   sales_pipeline_migration.sql   (Session 1) must be run first
---   sales_pipeline_migration_2.sql (Session 2) must be run first
+--   V001__sales_pipeline.sql   (Session 1) must be run first
+--   V002__sales_pipeline_2.sql (Session 2) must be run first
 --
 -- Run this BEFORE deploying Session 3 code changes.
 -- =============================================================================

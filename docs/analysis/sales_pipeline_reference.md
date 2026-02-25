@@ -383,14 +383,14 @@ See `migration_tracker.md` for full environment status and bug details.
 - Refactored DataKey/DataPair/ApplicationData → ApplicationField/ApplicationFieldValue
 - Built ProposalBuilder servlet + JSP (3-step form)
 - Built ProposalDetail servlet + JSP
-- Created `sales_pipeline_migration.sql`
+- Created `V001__sales_pipeline.sql`
 
 ### Session 2 (Feb 19, 2026)
 - Built SendProposal servlet (email with GUID link)
 - Built ViewProposal servlet + landing page JSP (public, features + pricing + discounts)
 - Added Proposal.sourceActivity FK for ticket→proposal linking
 - Fixed ProposalBuilder bugs (null-safe sort, prospect loading via new `SalesDAO.getProspectsByPsp()`)
-- Created `sales_pipeline_migration_2.sql`
+- Created `V002__sales_pipeline_2.sql`
 
 ### Session 3 (Feb 19-20, 2026)
 - Expanded LOS: deleted LOS 7 (HRA/MERP), added IDs 11-19 (HRA, MERP, ICHRA, EBHRA, QSEHRA, RETIREE, DIRECT, LSA, ADOPTION)
@@ -402,7 +402,7 @@ See `migration_tracker.md` for full environment status and bug details.
 - Built UploadRateSheet servlet (Wasabi storage)
 - Built applicationConfirmation.jsp
 - Completed ApplyForProposal POST handler (submit, set SUBMITTED/APPLIED statuses)
-- Created `sales_pipeline_migration_3.sql`
+- Created `V003__sales_pipeline_3.sql`
 
 ### Session 4 (Feb 20, 2026)
 - Built ReviewApplications servlet + JSP (list view with multi-select status filtering, defaults to SUBMITTED)

@@ -3,7 +3,7 @@
 -- Date: February 21, 2026
 -- Target: production beta_ssa schema
 --
--- Prerequisites: sales_pipeline_migration.sql must have already been applied
+-- Prerequisites: V001__sales_pipeline.sql must have already been applied
 -- (creates feature and marketingmaterial tables)
 --
 -- This script adds:

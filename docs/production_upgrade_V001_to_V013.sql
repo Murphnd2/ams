@@ -26,7 +26,7 @@
 
 SET FOREIGN_KEY_CHECKS = 0;
 SET SQL_SAFE_UPDATES = 0;
-
+-- USE beta_ssa;  -- Uncomment or specify target schema before running
 -- =============================================================================
 -- V001: COMPLETE THE PARTIAL APPLICATION (Sales Pipeline)
 -- =============================================================================
@@ -374,10 +374,10 @@ INSERT INTO benefittype (benefittype_id, name, psp_id, sort_order) VALUES
 
 -- S3/Wasabi constants (INSERT IGNORE — fill in real values after running)
 INSERT IGNORE INTO constant (name, value, note) VALUES
-('S3_ENDPOINT',   'FILL_ME_IN', 'Wasabi S3 endpoint'),
-('S3_BUCKET',     'FILL_ME_IN', 'Wasabi bucket name'),
-('S3_ACCESS_KEY', 'FILL_ME_IN', 'Wasabi access key'),
-('S3_SECRET_KEY', 'FILL_ME_IN', 'Wasabi secret key');
+('S3_ENDPOINT',   'https://s3.us-east-1.wasabisys.com', 'Wasabi S3 endpoint'),
+('S3_BUCKET',     'ams-file-storage', 'Wasabi bucket name'),
+('S3_ACCESS_KEY', 'TCGCSKSLNRDXDMZRJLT0', 'Wasabi access key'),
+('S3_SECRET_KEY', 'OGnJ4cOZAhLLeH28sp2wBFunqFCc17vHsZFejX3i', 'Wasabi secret key');
 
 
 -- =============================================================================
@@ -558,21 +558,21 @@ ALTER TABLE assignee ADD CONSTRAINT fk_opp_agency
   FOREIGN KEY (agency_id_opp) REFERENCES agency(agency_id);
 
 -- Sales template group
-INSERT IGNORE INTO templategroup (id, description) VALUES (5, 'Sales');
+INSERT IGNORE INTO templategroup (group_id, description) VALUES (5, 'Sales');
 
 -- New Opportunity template purpose
-INSERT IGNORE INTO templatepurpose (id, description, sort_order, template_group)
+INSERT IGNORE INTO templatepurpose (purpose_id, description, sort_order, group_id)
   VALUES (30, 'New Opportunity', 100, 5);
 
 -- Sales tasks (900000+ range)
-INSERT INTO task (id, description, allow_early, allow_future) VALUES
+INSERT INTO task (task_id, description, allow_early, allow_future) VALUES
   (900001, 'Initial contact with prospect', 1, 1),
   (900002, 'Qualify prospect needs', 1, 1),
   (900003, 'Send proposal', 1, 1),
   (900004, 'Follow up on proposal', 1, 1),
   (900005, 'Close deal', 1, 1);
 
-INSERT INTO tasksequence (id, description, DTYPE, purpose_id)
+INSERT INTO tasksequence (sequence_id, description, DTYPE, purpose_id)
   VALUES (900001, 'New Opportunity Tasks', 'RequiredTaskList', 30);
 
 INSERT INTO tasksequencetable (sequence_id, task_id, sort_order) VALUES
@@ -697,7 +697,7 @@ CREATE TABLE user_filter_preset (
     filter_attention_contact TINYINT(1) NOT NULL DEFAULT 0,
     filter_owner VARCHAR(10) NOT NULL DEFAULT 'all',
     filter_sort VARCHAR(20) NOT NULL DEFAULT 'name',
-    CONSTRAINT fk_preset_user FOREIGN KEY (user_id) REFERENCES user(user_id),
+    CONSTRAINT fk_preset_user FOREIGN KEY (user_id) REFERENCES `user`(person_id),
     CONSTRAINT uq_user_slot UNIQUE (user_id, slot_number)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
@@ -705,19 +705,20 @@ CREATE TABLE user_filter_preset (
 INSERT INTO user_filter_preset (user_id, slot_number, preset_name,
     filter_type_renewal, filter_type_setup, filter_type_ticket, filter_type_opportunity,
     filter_attention_onus, filter_attention_contact, filter_owner, filter_sort)
-SELECT u.user_id, 1, 'All Activities', 1, 1, 1, 0, 0, 0, 'all', 'name'
+SELECT u.person_id, 1, 'All Activities', 1, 1, 1, 0, 0, 0, 'all', 'name'
 FROM user u;
 
 INSERT INTO user_filter_preset (user_id, slot_number, preset_name,
     filter_type_renewal, filter_type_setup, filter_type_ticket, filter_type_opportunity,
     filter_attention_onus, filter_attention_contact, filter_owner, filter_sort)
-SELECT u.user_id, 2, 'My Urgent', 1, 1, 1, 0, 1, 0, 'mine', 'due';
+SELECT u.person_id, 2, 'My Urgent', 1, 1, 1, 0, 1, 0, 'mine', 'due'
+FROM user u;
 
 INSERT INTO user_filter_preset (user_id, slot_number, preset_name,
     filter_type_renewal, filter_type_setup, filter_type_ticket, filter_type_opportunity,
     filter_attention_onus, filter_attention_contact, filter_owner, filter_sort)
-SELECT u.user_id, 3, 'Renewals', 1, 0, 0, 0, 0, 0, 'all', 'due';
-
+SELECT u.person_id, 3, 'Renewals', 1, 0, 0, 0, 0, 0, 'all', 'due'
+FROM user u;
 
 -- =============================================================================
 -- SCHEMA VERSION TABLE + REGISTRATION
@@ -732,15 +733,15 @@ CREATE TABLE IF NOT EXISTS schema_version (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 INSERT IGNORE INTO schema_version (version, description, script_name) VALUES
-('V001', 'Sales pipeline - tables, columns, entity renames', 'sales_pipeline_migration.sql'),
-('V002', 'Sales pipeline 2 - proposal source_activity_id', 'sales_pipeline_migration_2.sql'),
-('V003', 'Sales pipeline 3 - LOS expansion, app sections, IRS limits', 'sales_pipeline_migration_3.sql'),
-('V004', 'Service manager - enhancement, join tables, SM FKs, LOS columns', 'service_manager_production_migration.sql'),
-('V005', 'Rate manager - ratetable sort_order', 'rate_manager_session2_production_migration.sql'),
-('V006', 'Invitation system - invitation table, agency manager_id', 'invitation_system_migration.sql'),
-('V007', 'Resource library - category, material FK, feature FK', 'resource_library_production_migration.sql'),
-('V008', 'Opportunity system - assignee columns, sales tasks', 'opportunity_migration_production.sql'),
-('V009', 'Timeclock correction - request table', 'timeclock_correction_migration.sql'),
+('V001', 'Sales pipeline - tables, columns, entity renames', 'V001__sales_pipeline.sql'),
+('V002', 'Sales pipeline 2 - proposal source_activity_id', 'V002__sales_pipeline_2.sql'),
+('V003', 'Sales pipeline 3 - LOS expansion, app sections, IRS limits', 'V003__sales_pipeline_3.sql'),
+('V004', 'Service manager - enhancement, join tables, SM FKs, LOS columns', 'V004__service_manager.sql'),
+('V005', 'Rate manager - ratetable sort_order', 'V005__rate_manager.sql'),
+('V006', 'Invitation system - invitation table, agency manager_id', 'V006__invitation_system.sql'),
+('V007', 'Resource library - category, material FK, feature FK', 'V007__resource_library.sql'),
+('V008', 'Opportunity system - assignee columns, sales tasks', 'V008__opportunity_system.sql'),
+('V009', 'Timeclock correction - request table', 'V009__timeclock_correction.sql'),
 ('V010', 'PSP opportunity integration - sales role, managed_by', 'V010__psp_opportunity_integration.sql'),
 ('V011', 'BPO delegation - todo BPO columns, todo_note, BPO roles', 'V011__bpo_delegation_feature.sql'),
 ('V012', 'Role cleanup and PSP branding constants', 'V012__role_cleanup_psp_branding_constants.sql'),

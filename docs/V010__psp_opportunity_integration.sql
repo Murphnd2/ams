@@ -1,7 +1,7 @@
 -- =============================================================================
 -- V010: PSP Opportunity Integration
 -- Date: February 22, 2026
--- Prerequisites: V004 (opportunity_migration_production.sql)
+-- Prerequisites: V004 (V008__opportunity_system.sql)
 --
 -- Changes:
 --   1. Add PSP Sales role (UserRole ID 9) — gates opportunity visibility

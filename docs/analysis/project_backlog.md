@@ -115,30 +115,29 @@
 
 ## AI Chatbot — Deployment Checklist
 
-Code is complete. Production deployment requires a **V014 migration script** (not yet created) containing:
+Code is complete. Production deployment requires **V014** (`V014__chatbot_deployment.sql` — now created):
 
-- [ ] `ALTER TABLE note ADD COLUMN is_resolution TINYINT(1) NOT NULL DEFAULT 0;`
-- [ ] `INSERT IGNORE INTO constant (name, value, note) VALUES ('ANTHROPIC_API_KEY', '<key>', 'Claude API key for chatbot');`
-- [ ] Ticket category updates: 9 expired, 9 updated, 7 new service-oriented categories (see `session_history_archive.md` Feb 19 chatbot entry for specific SQL)
+- [x] `ALTER TABLE note ADD COLUMN is_resolution TINYINT(1) NOT NULL DEFAULT 0;`
+- [x] `INSERT IGNORE INTO constant (name, value, note) VALUES ('ANTHROPIC_API_KEY', '<key>', 'Claude API key for chatbot');`
+- [x] Ticket category updates: deactivate old categories, insert 9 new service-oriented categories + 20 starter subcategories
 
-Additionally:
+Still needed for production:
+- [ ] Run V014 migration script
+- [ ] Fill in actual ANTHROPIC_API_KEY value on production
 - [ ] Deploy WAR with chatbot code
 - [ ] Verify knowledge base JSON files are deployed to `src/main/resources/knowledge/`
-- [ ] Fill in actual API key value on production after migration
-
-**Note:** These SQL changes are currently unversioned. They should be wrapped into `V014__chatbot_deployment.sql` before production deployment.
 
 ---
 
-## Unversioned SQL Changes — Need Migration Scripts
+## Previously Unversioned SQL Changes — Now Tracked
 
-The following SQL changes were applied to dev databases during development but have not been wrapped in versioned migration scripts. They must be versioned before production deployment:
+The following SQL changes were previously applied to dev databases without versioned migration scripts. They are now wrapped in **V014** (`V014__chatbot_deployment.sql`):
 
-| Change | Applied To | Target Version | Notes |
-|--------|-----------|----------------|-------|
-| `note.is_resolution` column | Dev (beta_ssa) | V014 | Chatbot resolution flag |
-| `ANTHROPIC_API_KEY` constant | Dev (beta_ssa) | V014 | Chatbot API key |
-| Ticket category updates (9 expire + 9 update + 7 new) | Dev (beta_ssa) | V014 | Service-oriented categories |
+| Change | Applied To | Version | Status |
+|--------|-----------|---------|--------|
+| `note.is_resolution` column | Dev (beta_ssa) | V014 | ✅ Script created |
+| `ANTHROPIC_API_KEY` constant | Dev (beta_ssa) | V014 | ✅ Script created (placeholder value) |
+| Ticket category updates | Dev (beta_ssa) | V014 | ✅ Script created |
 
 ---
 

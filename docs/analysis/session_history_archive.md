@@ -84,11 +84,11 @@ INSERT INTO constant (name, value, note) VALUES ('ANTHROPIC_API_KEY', '<key>', '
 
 Built the complete sales pipeline over 4 sessions:
 
-**Session 1:** Proposal/Application entity redesign (DataKey/DataPair → ApplicationField/ApplicationFieldValue), Feature/RateDiscount/MarketingMaterial entities, ProposalBuilder + ProposalDetail servlets, `sales_pipeline_migration.sql`
+**Session 1:** Proposal/Application entity redesign (DataKey/DataPair → ApplicationField/ApplicationFieldValue), Feature/RateDiscount/MarketingMaterial entities, ProposalBuilder + ProposalDetail servlets, `V001__sales_pipeline.sql`
 
-**Session 2:** SendProposal (email with GUID), ViewProposal (public landing page), Proposal.sourceActivity FK, `sales_pipeline_migration_2.sql`
+**Session 2:** SendProposal (email with GUID), ViewProposal (public landing page), Proposal.sourceActivity FK, `V002__sales_pipeline_2.sql`
 
-**Session 3:** LOS expansion (IDs 11–19), ApplicationSection entity + 20 seeded sections with LOS scoping, IrsLimit/BenefitType/BillingType entities, ApplyForProposal (dynamic form), SaveApplicationProgress (AJAX auto-save), UploadRateSheet (Wasabi), `sales_pipeline_migration_3.sql`
+**Session 3:** LOS expansion (IDs 11–19), ApplicationSection entity + 20 seeded sections with LOS scoping, IrsLimit/BenefitType/BillingType entities, ApplyForProposal (dynamic form), SaveApplicationProgress (AJAX auto-save), UploadRateSheet (Wasabi), `V003__sales_pipeline_3.sql`
 
 **Session 4:** ReviewApplications + ReviewApplication servlets (list + detail with approve/deny/more-info), automated Setup + CheckList + ToDo creation on approval, manualSetup.jsp for GenerateProp25, full end-to-end pipeline test passed.
 
@@ -105,7 +105,7 @@ Built the Service Manager for configuring Lines of Service, Enhancements, and Ap
 - Added nullable `los` and `enhancement` direct FKs to ServiceModule
 - Created `ServiceManagerHome` (GET) + `ServiceManagerAction` (POST, 14 actions) + `ServiceManagerSort` (AJAX reorder)
 - Created `serviceManager25.jsp` — tabbed Services/Enhancements with detail panel
-- `service_manager_production_migration.sql` created
+- `V004__service_manager.sql` created
 
 ---
 
@@ -129,7 +129,7 @@ Built Agency Manager and enhanced Rate Manager:
 - Created `AgencyAction` servlet — Agency CRUD (createAgency, editAgency, addAgent, removeAgent, removeRate)
 - **Rate Manager enhancements:** Add-pricing-row reworked to use LOS/Enhancement selection (hides ServiceModule abstraction), per-rate sort ordering (`ratetable.sort_order`), inline AJAX price editing, rate copying ("Make New From"), Grid Sort tab for per-rate drag reorder
 - **Proposal rendering updates:** `SalesDAO.getPricing()` rewritten as two-query approach (LOS-linked + Enhancement-linked, merged), ViewProposal renders Enhancement feature cards, pricing headers show LOS/Enhancement names
-- `rate_manager_session2_production_migration.sql` created
+- `V005__rate_manager.sql` created
 
 Key decisions: LOS/Enhancement selection in add-row modal hides ServiceModule abstraction from user. Per-rate sort order column on `ratetable` (not just ServiceModule sort). Two-query approach for getPricing() because single JPQL with OR/subquery failed in EclipseLink. `cloneRate` vs `copyRate`: clone moves agencies + suppresses original (for locked rates), copy just duplicates pricing (for convenience).
 
@@ -158,7 +158,7 @@ Built the Resource Library and connected features to proposals:
 - Feature description supports inline `[text](resourceId)` markdown-style links
 - ViewProposal renders features with inline links + end-icons by file type
 - Rate suppress-when-locked fix in RateTableAction
-- `resource_library_production_migration.sql` created
+- `V007__resource_library.sql` created
 
 ---
 
@@ -172,7 +172,7 @@ Built the complete invitation workflow from PSP to agent registration:
 - Created `AcceptInvite` servlet + `acceptInvite.jsp` — validates GUID, registration form
 - Existing user handling: auto-grant role if no conflicts, block if agent in different agency
 - Added `manager_id` FK to Agency
-- `invitation_system_migration.sql` created
+- `V006__invitation_system.sql` created
 
 ---
 
@@ -190,7 +190,7 @@ Built the Opportunity system and Agent Landing Page:
 - Navigation made role-aware (back buttons, navbar links)
 - Stages: NEW → CONTACTED → QUALIFIED → PROPOSAL_SENT → NEGOTIATION → WON/LOST/ON_HOLD
 - Sales task seed data: TemplateGroup 5, TemplatePurpose 30, Tasks 900001–900005
-- `opportunity_migration_production.sql` created
+- `V008__opportunity_system.sql` created
 
 Remaining items (tracked in backlog): PspAgencyHome scoping (T10), layout/appearance consolidation (T11).
 
@@ -239,7 +239,7 @@ Redesigned the ViewHome25 timeclock column and built a time correction request w
 - **Correction status badges** on stretch timeline (Pending=orange, Approved=green, Denied=red) via `correctionMap` loaded in ViewHome25
 - **Navbar:** Added "Time Corrections" link to Admin dropdown
 - **Bug fixes:** TimeClock25 forward→redirect, AuthenticateUser time init on login + forward→redirect, clock state correct on relogin
-- **Migration:** `timeclock_correction_migration.sql` (#9) — `time_correction_request` table with FKs to assignee and timelog
+- **Migration:** `V009__timeclock_correction.sql` (#9) — `time_correction_request` table with FKs to assignee and timelog
 
 ---
 
