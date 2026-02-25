@@ -31,4 +31,5 @@ INSERT IGNORE INTO schema_version (version, description, script_name) VALUES
 ('V008', 'sales pipeline 4', 'sales_pipeline_migration_4.sql'),
 ('V009', 'timeclock correction', 'timeclock_correction_migration.sql'),
 ('V010', 'PSP opportunity integration - sales role and managed_by', 'V010__psp_opportunity_integration.sql'),
-('V011', 'BPO delegation feature - todo BPO columns and todo_note table', 'V011__bpo_delegation_feature.sql');
+('V011', 'BPO delegation feature - todo BPO columns and todo_note table', 'V011__bpo_delegation_feature.sql'),
+('V012', 'Role cleanup and PSP branding constants', 'V012__role_cleanup_psp_branding_constants.sql');
