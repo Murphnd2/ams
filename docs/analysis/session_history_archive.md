@@ -378,3 +378,19 @@ A1–A14 and S4 complete. Remaining: S3 (questionnaire placeholder — Track B d
 New files: `emailView25.jsp`, `emailHistoryList25.jsp`, `ViewEmailHistory.java`
 Modified files: `ViewEmail.java`, `navbar25.jsp`, `detailHeader25.jsp`, `detailAddNote25.jsp`
 No database changes.
+
+---
+
+## February 26, 2026 — Email System + Health Config + Admin Cleanup (Session 2)
+
+Redesigned email template, built SMTP settings UI, migrated health config, started admin page cleanup:
+
+- **SendAutoEmail recovery:** Created redirect wrapper servlet for legacy `task.servletName` DB records pointing to `SendAutoEmail?aeId=123` — forwards to `SendAuto25`
+- **SMTP Settings Modal:** `UpdateSmtpSettings` servlet (GET=JSON, POST=update) + `smtpSettingsMod25.jsp` Bootstrap modal — PSP Admin can configure SMTP_SERVER, SMTP_PORT, SMTP_USER, SMTP_PASSWORD, SMTP_FROM, EMAIL_FOOTER_TEXT
+- **Email Template redesign:** Complete rewrite of `EmailTemplate.java` — system font stack, clean white card layout, attachments moved after signature/above footer, Capital Case signature name normalization, configurable footer text via `EMAIL_FOOTER_TEXT` constant
+- **V017 migration:** Moves 7 `SYS_HEALTH_*` constants from DB to `ssa.properties` (same pattern as V015 S3 keys), seeds `EMAIL_FOOTER_TEXT`
+- **healthcheck.sh update:** Reads SYS_HEALTH_* from `ssa.properties` via `prop()` helper, validates required keys. Updated on master VPS, tested, ready for snapshot
+- **Admin page header cleanup (started):** Identified redundant `adminNav.jsp` toolbar + duplicate h4 headers on serviceManager25.jsp, rateManager25.jsp, library25.jsp. serviceManager edit confirmed, others pending. agencyManager25.jsp already clean
+- `V017__health_constants_to_properties.sql` created
+
+Key decisions: Health monitoring config belongs in infrastructure (ssa.properties) not PSP-specific DB constants. EMAIL_FOOTER_TEXT seeded with PSP name for per-deployment customization. Admin toolbar fully redundant now that unified navbar has Admin dropdown.

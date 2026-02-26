@@ -13,7 +13,7 @@ Tracks which migration scripts have been applied to each environment.
 | Local (either) | 127.0.0.1:3306 | dev_ssa | Initialization testing (wiped regularly) |
 | Production | superiorstate.biz | beta_ssa | Live server |
 
-## Current Highest Version: V016
+## Current Highest Version: V017
 
 ## Dev Baseline
 
@@ -109,57 +109,13 @@ Scripts V001–V009 were originally created with descriptive names before the `V
 | 5 | V005 | `V005__rate_manager.sql` | Per-rate `sort_order` column on ratetable, backfill from servicemodule | ✅ 2026-02-20 | ❌ NOT RUN | Prereq: V004 |
 | 6 | V006 | `V006__invitation_system.sql` | Invitation table, agency.manager_id FK, UserRole seed | ✅ 2026-02-21 | ❌ NOT RUN | ⚠️ Original has column name bug |
 | 7 | V007 | `V007__resource_library.sql` | ResourceCategory table, marketingmaterial.category_id FK, widen storage_guid, feature.material_id FK | ✅ 2026-02-21 | ❌ NOT RUN | Prereq: V001 |
-| 8 | V008 | `V008__opportunity_system.sql` | Assignee columns for Opportunity, sales TemplateGroup/TemplatePurpose/Task seed data | ✅ 2026-02-21 | ❌ NOT RUN | ⚠️ Original has 4 column name bugs. Prereq: V001–V003 |
-| 9 | V009 | `V009__timeclock_correction.sql` | time_correction_request table with FKs and indexes | ✅ 2026-02-25 | ❌ NOT RUN | No prerequisites |
-| 10 | V010 | `V010__psp_opportunity_integration.sql` | PSP Sales role (ID 9), managed_by_id on assignee | ✅ 2026-02-22 | ❌ NOT RUN | Prereq: V008 |
-| 11 | V011 | `V011__bpo_delegation_feature.sql` | BPO columns on todo, **todo_guid, is_reverted, task_guid**, todo_note table, BPO user roles (101-103) | ✅ 2026-02-24 | ❌ NOT RUN | ⚠️ Original has FK + column bugs + missing guid/revert columns. Prereq: V010 |
-| 12 | V012 | `V012__role_cleanup_psp_branding_constants.sql` | Delete unused roles (6,7,10), rename BPO roles, seed branding constants | ✅ 2026-02-25 | ❌ NOT RUN | Prereq: V011 |
-| 13 | V013 | `V013__user_filter_presets.sql` | user_filter_preset table, 3 configurable slots per user | ✅ 2026-02-25 | ❌ NOT RUN | ⚠️ Original has FK + column bugs |
-| 14 | V014 | `V014__chatbot_deployment.sql` | note.is_resolution column, ANTHROPIC_API_KEY constant, ticket category refresh (9 categories, 20 subcategories) | ✅ 2026-02-25 | ❌ NOT RUN | Prereq: V013 |
-| 15 | V015 | `V015__constants_to_properties.sql` | Move S3 + ANTHROPIC_API_KEY constants to ssa.properties, delete dead SAVE_PATH row | ✅ 2026-02-25 | ❌ NOT RUN | Prereq: V014. **Deploy code first.** |
-| 16 | V016 | `V016__bpo_registration_tables.sql` | BPO registration and PSP assignment tables (previously untracked) | ✅ 2026-02-25 | ❌ NOT RUN | Prereq: V011. `CREATE IF NOT EXISTS` — safe on all environments. |
-
-## Production Deployment Instructions
-
-**Do NOT run the individual per-version scripts on production.** They contain bugs that will cause failures.
-
-Instead, use the combined, validated upgrade script:
-
-```bash
-# SSH into production
-ssh kevinmurphy@superiorstate.biz
-
-# Take backup first!
-LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu mysqldump -u root -p \
-  --socket=/var/run/mysqld/mysqld.sock --routines --triggers --events \
-  beta_ssa > /tmp/pre_upgrade_backup_$(date +%Y%m%d).sql
-
-# Upload the upgrade script (from local machine, separate terminal):
-scp production_upgrade_V001_to_V016.sql kevinmurphy@superiorstate.biz:/tmp/
-
-# Run the upgrade (on production server)
-# NOTE: If binary logging is enabled, prepend SET sql_log_bin = 0; to the script
-#       or add --sql-log-bin=0 to the mysql command
-LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu mysql -u root -p \
-  --socket=/var/run/mysqld/mysqld.sock beta_ssa < /tmp/production_upgrade_V001_to_V016.sql
-
-# Verify
-LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu mysql -u root -p \
-  --socket=/var/run/mysqld/mysqld.sock -e "SELECT * FROM beta_ssa.schema_version ORDER BY version;"
-```
-
-### Post-Upgrade Steps
-
-1. **V015 deletes S3/API constants from DB** — ensure `ssa.properties` has all values before deploying V015-aware code
-2. **Verify key structures:**
-   ```sql
-   DESCRIBE todo;       -- should show bpo_* columns, todo_guid, is_reverted
-   DESCRIBE task;       -- should show task_guid
-   DESCRIBE note;       -- should show is_resolution
-   DESCRIBE assignee;   -- should show prospect_id, agency_id_opp, opportunity_stage, managed_by_id
-   SELECT COUNT(*) FROM schema_version;  -- should be 16
-   ```
-
-## schema_version_migration.sql Status
-
-Updated February 26, 2026 — includes V001–V016 entries. V016 entry added, V011 description updated to mention guid columns and is_reverted.
+| 8 | V008 | `V008__opportunity_system.sql` | Assignee columns for Opportunity, sales TemplateGroup/TemplatePurpose/Task seed data | ✅ 2026-02-21 | ❌ NOT RUN | ⚠️ Original has 4 column name bugs |
+| 9 | V009 | `V009__timeclock_correction.sql` | TimeCorrectionRequest table | ✅ 2026-02-22 | ❌ NOT RUN | |
+| 10 | V010 | `V010__psp_opportunity_integration.sql` | Sales role and managed_by column for opportunity/prospect | ✅ 2026-02-23 | ❌ NOT RUN | |
+| 11 | V011 | `V011__bpo_delegation_feature.sql` | BPO roles, todo BPO columns, todo_guid, is_reverted, task_guid, todo_note table | ✅ 2026-02-24 | ❌ NOT RUN | ⚠️ Original has FK + column bugs; upgrade script has todo_guid/is_reverted/task_guid additions |
+| 12 | V012 | `V012__role_cleanup_psp_branding_constants.sql` | Role cleanup and PSP branding constants | ✅ 2026-02-24 | ❌ NOT RUN | |
+| 13 | V013 | `V013__user_filter_presets.sql` | User filter presets — 3 configurable slots per user | ✅ 2026-02-25 | ❌ NOT RUN | ⚠️ Original has FK + column bugs |
+| 14 | V014 | `V014__chatbot_deployment.sql` | note.is_resolution, ANTHROPIC_API_KEY, ticket categories | ✅ 2026-02-25 | ❌ NOT RUN | API key now in ssa.properties (V015) |
+| 15 | V015 | `V015__constants_to_properties.sql` | Move S3 and API key constants to ssa.properties, delete dead SAVE_PATH | ✅ 2026-02-25 | ❌ NOT RUN | Prereq: update ssa.properties first |
+| 16 | V016 | `V016__bpo_registration_tables.sql` | BPO registration and PSP assignment tables | ✅ 2026-02-25 | ❌ NOT RUN | |
+| 17 | V017 | `V017__health_constants_to_properties.sql` | Move SYS_HEALTH_* constants to ssa.properties, seed EMAIL_FOOTER_TEXT | ❌ NOT YET | ❌ NOT RUN | Prereq: add SYS_HEALTH_* to ssa.properties first |

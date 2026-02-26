@@ -181,6 +181,7 @@
               <li><hr class="dropdown-divider"></li>
               <li><button class="dropdown-item" type="button" data-bs-toggle="modal" data-bs-target="#createUserModal"><i class="bi bi-person-plus me-2"></i>Create User</button></li>
               <li><a class="dropdown-item" href="UploadPspBranding"><i class="bi bi-palette me-2"></i>Branding</a></li>
+              <li><button class="dropdown-item" type="button" data-bs-toggle="modal" data-bs-target="#smtpSettingsMod"><i class="bi bi-envelope-gear me-2"></i>Email Settings</button></li>
             </ul>
           </div>
 
@@ -289,6 +290,9 @@
 <c:import url="/WEB-INF/view/a/renew/upcomingRenewalsModal25.jsp"/>
 <c:import url="/WEB-INF/view/a/navbar/createTicket25.jsp"/>
 <c:import url="/WEB-INF/view/a/checklistDetail/makeRecurringModal25.jsp"/>
+<c:if test="${sessionScope.isPspAdmin}">
+  <c:import url="/WEB-INF/view/a/general/smtpSettingsMod25.jsp"/>
+</c:if>
 
 <%-- Chatbot — PSP users only --%>
 <c:if test="${(sessionScope.isPspUser || sessionScope.isPspAdmin) && applicationScope.global.chatbotEnabled}">

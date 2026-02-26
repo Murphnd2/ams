@@ -2,7 +2,7 @@
 -- Schema Version Table
 -- Required for automated update script (D-09)
 -- Date: February 23, 2026
--- Updated: February 26, 2026 — V016 added, V011 description updated
+-- Updated: February 26, 2026 — V017 added
 --
 -- Run on: local dev, production, and any existing PSP databases
 -- (Already applied to master VPS image as of SSA-Master-Base-v3-2026-02-23)
@@ -42,4 +42,5 @@ INSERT IGNORE INTO schema_version (version, description, script_name) VALUES
 ('V013', 'User filter presets - 3 configurable slots per user', 'V013__user_filter_presets.sql'),
 ('V014', 'Chatbot deployment - note.is_resolution, API key, ticket categories', 'V014__chatbot_deployment.sql'),
 ('V015', 'Move S3 and API key constants to ssa.properties, delete dead SAVE_PATH', 'V015__constants_to_properties.sql'),
-('V016', 'BPO registration and PSP assignment tables', 'V016__bpo_registration_tables.sql');
+('V016', 'BPO registration and PSP assignment tables', 'V016__bpo_registration_tables.sql'),
+('V017', 'Move SYS_HEALTH constants to ssa.properties, add EMAIL_FOOTER_TEXT', 'V017__health_constants_to_properties.sql');

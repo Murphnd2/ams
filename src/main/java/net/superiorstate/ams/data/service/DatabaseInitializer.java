@@ -607,6 +607,8 @@ public abstract class DatabaseInitializer {
             createConstant(em,"LOGO_LOGIN","/images/logoA.png");
         if(getConstantByName(em,"FAVICON")==null)
             createConstant(em,"FAVICON","/favicon.ico");
+        if(getConstantByName(em,"EMAIL_FOOTER_TEXT")==null)
+            createConstant(em,"EMAIL_FOOTER_TEXT",getPspName());
     }
 
     private static void createConstant(EntityManager em, String name, String value){

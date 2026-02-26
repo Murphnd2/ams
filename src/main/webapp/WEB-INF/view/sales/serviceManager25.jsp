@@ -38,7 +38,8 @@
     <c:set var="pageTitle" value="Service Manager" scope="request"/>
     <c:set var="pageIcon" value="bi-diagram-3" scope="request"/>
     <c:import url="/WEB-INF/view/a/general/navbar25.jsp"/>
-    <div class="row align-items-center py-2">
+
+    <div class="row align-items-center mt-2 mb-2">
         <div class="col">
             <c:if test="${not empty selectedLos}">
                 <h5 class="mb-0">
@@ -52,33 +53,6 @@
                     <a href="#" class="edit-link" data-bs-toggle="modal" data-bs-target="#editEnhModal" title="Edit"><i class="bi bi-pencil"></i></a>
                 </h5>
             </c:if>
-        </div>
-    </div>
-
-    <%-- ======================== HEADER ======================== --%>
-    <div class="row align-items-center mb-3">
-        <div class="col-lg-4">
-            <h4 class="mb-0" style="font-size: 1.5rem; font-weight: 500;">
-                <i class="bi bi-diagram-3 me-2"></i>Service Manager
-            </h4>
-        </div>
-        <div class="col-lg-5">
-            <c:if test="${not empty selectedLos}">
-                <h4 class="mb-0" style="font-size: 1.5rem; font-weight: 500;">
-                    <i class="bi bi-briefcase me-1"></i>${selectedLos.getDescription()}
-                    <a href="#" class="edit-link" data-bs-toggle="modal" data-bs-target="#editLosModal" title="Edit"><i class="bi bi-pencil"></i></a>
-                </h4>
-            </c:if>
-            <c:if test="${not empty selectedEnhancement}">
-                <h4 class="mb-0" style="font-size: 1.5rem; font-weight: 500;">
-                    <i class="bi bi-puzzle me-1"></i>${selectedEnhancement.getDescription()}
-                    <a href="#" class="edit-link" data-bs-toggle="modal" data-bs-target="#editEnhModal" title="Edit"><i class="bi bi-pencil"></i></a>
-                </h4>
-            </c:if>
-        </div>
-        <div class="col-lg-3 text-end">
-            <c:set var="adminCurrentPage" value="serviceManager" scope="request"/>
-            <c:import url="/WEB-INF/view/sales/adminNav.jsp"/>
         </div>
     </div>
 
