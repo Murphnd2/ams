@@ -2,7 +2,7 @@
 
 Tracks which migration scripts have been applied to each environment.
 
-**Last Updated:** February 25, 2026
+**Last Updated:** February 26, 2026
 
 ## Environments
 
@@ -19,15 +19,48 @@ Tracks which migration scripts have been applied to each environment.
 
 A validated V016 schema baseline is available at `docs/importscript/beta_ssa_dev_baseline_thru_V016.sql`. This was created by exporting the structure of `dev_ssa` after applying all migrations through V016.
 
+**Note:** The current baseline does NOT include the `todo_guid`, `todo.is_reverted`, or `task_guid` columns. These were added ad-hoc to dev `beta_ssa` during BPO development but missed from the baseline dump. The production upgrade script (V016) includes them, so after production migration a fresh baseline dump should be taken that includes these columns.
+
 **To reset a dev database:** Import the baseline, then run `DatabaseInitializer` (start the app). For `beta_ssa`, also re-import Datapath exports. Future migrations (V017+) are applied incrementally on top of this baseline.
 
 The previous V013 baseline (`beta_ssa_dev_baseline_thru_V013.sql`) is superseded but retained for reference.
 
 ## Production Upgrade
 
-Production has a partially-applied V001 (table rename + proposal columns done, application columns + new tables missing). A validated combined upgrade script exists at `docs/importscript/production_upgrade_V001_to_V013.sql` that handles this partial state and applies all remaining changes through V013.
+Production has a partially-applied V001 (table rename + proposal columns done, application columns + new tables missing). A validated combined upgrade script exists at `docs/importscript/production_upgrade_V001_to_V016.sql` that handles this partial state and applies all remaining changes through V016.
 
-**Bugs found and corrected in the upgrade script (not present in original per-version scripts):**
+**Supersedes:** `docs/importscript/production_upgrade_V001_to_V013.sql` (retained for reference).
+
+### Backward Compatibility Validated (February 26, 2026)
+
+The V016 upgrade script was tested by:
+1. Dumping production `beta_ssa` via SSH (`mysqldump` + `scp`)
+2. Importing into local `beta_ssa`
+3. Running `production_upgrade_V001_to_V016.sql` — all 16 versions applied cleanly
+4. Running the `main` branch (pre-BPO code) against the upgraded schema
+5. Smoke testing: activity list, ticket creation, renewals, setups, checklists — all passed
+
+**Findings:**
+- `SET sql_log_bin = 0;` required on local MySQL to avoid replication warning on `DEFAULT (UUID())`
+- Pre-existing bug found in `CloseActivity25.java` (`.toList()` returning immutable list) — not migration-related, fixed separately on `main` branch
+- Ticket category dropdown empty on old code — expected, since V014 deactivates old categories and new ones aren't wired to templates in old code
+- Email sending fails on local dev — missing Azure environment variables, not migration-related
+
+### Previously Untracked Columns (Now in V011 Section)
+
+Three columns were added ad-hoc to dev `beta_ssa` during BPO development but never appeared in any migration script. They are now included in the V011 section of the production upgrade script:
+
+| Table | Column | Type | Purpose |
+|-------|--------|------|---------|
+| `todo` | `todo_guid` | `VARCHAR(36) NOT NULL DEFAULT (UUID()), UNIQUE` | Cross-system BPO sync identity |
+| `todo` | `is_reverted` | `TINYINT(1) NOT NULL DEFAULT 0` | PSP sent task back to BPO |
+| `task` | `task_guid` | `VARCHAR(36) NOT NULL DEFAULT (UUID()), UNIQUE` | Cross-system BPO sync identity |
+
+The `DEFAULT (UUID())` expressions ensure backward compatibility — old code that doesn't know about these columns can still INSERT without errors. This was the root cause of the backward compatibility issue found on February 25 and the reason for creating the V016 upgrade script.
+
+### Bugs Found and Corrected in the Upgrade Script
+
+(Not present in original per-version scripts — these are production-specific corrections)
 
 | Original Script | Bug | Fix |
 |----------------|-----|-----|
@@ -42,6 +75,7 @@ Production has a partially-applied V001 (table rename + proposal columns done, a
 | V011 (`V011__bpo_delegation_feature.sql`) | `INSERT INTO userrole (id, ...)` | Column is `role_id` |
 | V011 | `todo_note` FK `REFERENCES person(person_id)` | Changed to `REFERENCES assignee(id)` |
 | V011 | `todo` BPO FKs `REFERENCES person(person_id)` | Changed to `REFERENCES assignee(id)` |
+| V011 | Missing `todo_guid`, `is_reverted`, `task_guid` columns | Added with `DEFAULT (UUID())` / `DEFAULT 0` |
 | V013 (`V013__user_filter_presets.sql`) | `REFERENCES user(user_id)` | Column is `person_id`, changed to `REFERENCES user(person_id)` |
 | V013 | `SELECT u.user_id` in seed INSERTs | Changed to `u.person_id` |
 | V013 | Slots 2 and 3 missing `FROM user u` clause | Added |
@@ -78,7 +112,7 @@ Scripts V001–V009 were originally created with descriptive names before the `V
 | 8 | V008 | `V008__opportunity_system.sql` | Assignee columns for Opportunity, sales TemplateGroup/TemplatePurpose/Task seed data | ✅ 2026-02-21 | ❌ NOT RUN | ⚠️ Original has 4 column name bugs. Prereq: V001–V003 |
 | 9 | V009 | `V009__timeclock_correction.sql` | time_correction_request table with FKs and indexes | ✅ 2026-02-25 | ❌ NOT RUN | No prerequisites |
 | 10 | V010 | `V010__psp_opportunity_integration.sql` | PSP Sales role (ID 9), managed_by_id on assignee | ✅ 2026-02-22 | ❌ NOT RUN | Prereq: V008 |
-| 11 | V011 | `V011__bpo_delegation_feature.sql` | BPO columns on todo, todo_note table, BPO user roles (101-103) | ✅ 2026-02-24 | ❌ NOT RUN | ⚠️ Original has FK + column bugs. Prereq: V010 |
+| 11 | V011 | `V011__bpo_delegation_feature.sql` | BPO columns on todo, **todo_guid, is_reverted, task_guid**, todo_note table, BPO user roles (101-103) | ✅ 2026-02-24 | ❌ NOT RUN | ⚠️ Original has FK + column bugs + missing guid/revert columns. Prereq: V010 |
 | 12 | V012 | `V012__role_cleanup_psp_branding_constants.sql` | Delete unused roles (6,7,10), rename BPO roles, seed branding constants | ✅ 2026-02-25 | ❌ NOT RUN | Prereq: V011 |
 | 13 | V013 | `V013__user_filter_presets.sql` | user_filter_preset table, 3 configurable slots per user | ✅ 2026-02-25 | ❌ NOT RUN | ⚠️ Original has FK + column bugs |
 | 14 | V014 | `V014__chatbot_deployment.sql` | note.is_resolution column, ANTHROPIC_API_KEY constant, ticket category refresh (9 categories, 20 subcategories) | ✅ 2026-02-25 | ❌ NOT RUN | Prereq: V013 |
@@ -93,27 +127,39 @@ Instead, use the combined, validated upgrade script:
 
 ```bash
 # SSH into production
+ssh kevinmurphy@superiorstate.biz
+
 # Take backup first!
 LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu mysqldump -u root -p \
-  --socket=/var/run/mysqld/mysqld.sock beta_ssa > /opt/ssa/backups/pre_upgrade_backup.sql
+  --socket=/var/run/mysqld/mysqld.sock --routines --triggers --events \
+  beta_ssa > /tmp/pre_upgrade_backup_$(date +%Y%m%d).sql
 
-# Run the upgrade
+# Upload the upgrade script (from local machine, separate terminal):
+scp production_upgrade_V001_to_V016.sql kevinmurphy@superiorstate.biz:/tmp/
+
+# Run the upgrade (on production server)
+# NOTE: If binary logging is enabled, prepend SET sql_log_bin = 0; to the script
+#       or add --sql-log-bin=0 to the mysql command
 LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu mysql -u root -p \
-  --socket=/var/run/mysqld/mysqld.sock beta_ssa < production_upgrade_V001_to_V013.sql
+  --socket=/var/run/mysqld/mysqld.sock beta_ssa < /tmp/production_upgrade_V001_to_V016.sql
 
 # Verify
 LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu mysql -u root -p \
   --socket=/var/run/mysqld/mysqld.sock -e "SELECT * FROM beta_ssa.schema_version ORDER BY version;"
 ```
 
-After running, fill in the S3/Wasabi constants:
-```sql
-UPDATE constant SET value = '...' WHERE name = 'S3_ENDPOINT';
-UPDATE constant SET value = '...' WHERE name = 'S3_BUCKET';
-UPDATE constant SET value = '...' WHERE name = 'S3_ACCESS_KEY';
-UPDATE constant SET value = '...' WHERE name = 'S3_SECRET_KEY';
-```
+### Post-Upgrade Steps
+
+1. **V015 deletes S3/API constants from DB** — ensure `ssa.properties` has all values before deploying V015-aware code
+2. **Verify key structures:**
+   ```sql
+   DESCRIBE todo;       -- should show bpo_* columns, todo_guid, is_reverted
+   DESCRIBE task;       -- should show task_guid
+   DESCRIBE note;       -- should show is_resolution
+   DESCRIBE assignee;   -- should show prospect_id, agency_id_opp, opportunity_stage, managed_by_id
+   SELECT COUNT(*) FROM schema_version;  -- should be 16
+   ```
 
 ## schema_version_migration.sql Status
 
-Updated February 25, 2026 — all script_name values now use standard `V{NNN}__` naming convention. V014 entry added.
+Updated February 26, 2026 — includes V001–V016 entries. V016 entry added, V011 description updated to mention guid columns and is_reverted.
