@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.sql.Date;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @WebServlet(name = "CloseActivity25", value = "/CloseActivity25")
 public class CloseActivity25 extends HttpServlet {
@@ -90,11 +91,11 @@ public class CloseActivity25 extends HttpServlet {
     private void updateOpenActivityLists(Activity activity, AmsDataLocal local, AmsDataGlobal global) {
         List<Activity25u> updatedAllOpen = global.getActivitiesAllOpen().stream()
                 .filter(au -> !au.getActivity().getId().equals(activity.getId()))
-                .toList();
+                .collect(Collectors.toList());
 
         List<Activity25p> updatedWithDelegation = global.getActivitiesWithDelegation().stream()
                 .filter(ap -> !ap.getActivity().getId().equals(activity.getId()))
-                .toList();
+                .collect(Collectors.toList());
 
         global.setActivitiesAllOpen(updatedAllOpen);
         local.setActivitiesAllOpen(updatedAllOpen);
