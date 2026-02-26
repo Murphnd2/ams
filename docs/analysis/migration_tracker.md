@@ -1,6 +1,6 @@
 # Database Migration Tracker
 
-Tracks which migration scripts have been applied to each environment.
+Tracks database schema versions across environments.
 
 **Last Updated:** February 26, 2026
 
@@ -15,107 +15,64 @@ Tracks which migration scripts have been applied to each environment.
 
 ## Current Highest Version: V017
 
+## All Environments Synced
+
+As of February 26, 2026, production and local dev are both at **V017**. The full V001–V017 upgrade was applied to production and validated.
+
 ## Dev Baseline
 
-A validated V016 schema baseline is available at `docs/importscript/beta_ssa_dev_baseline_thru_V016.sql`. This was created by exporting the structure of `dev_ssa` after applying all migrations through V016.
+The current baseline is `docs/importscript/beta_ssa_dev_baseline_thru_V017.sql` — a structure-only dump from production after all migrations were applied.
 
-**Note:** The current baseline does NOT include the `todo_guid`, `todo.is_reverted`, or `task_guid` columns. These were added ad-hoc to dev `beta_ssa` during BPO development but missed from the baseline dump. The production upgrade script (V016) includes them, so after production migration a fresh baseline dump should be taken that includes these columns.
+**To reset a dev database:**
+1. Import the baseline: `mysql -u root -p beta_ssa < beta_ssa_dev_baseline_thru_V017.sql`
+2. Run `DatabaseInitializer` (start the app with empty DB)
+3. For `beta_ssa`, also re-import Datapath exports
 
-**To reset a dev database:** Import the baseline, then run `DatabaseInitializer` (start the app). For `beta_ssa`, also re-import Datapath exports. Future migrations (V017+) are applied incrementally on top of this baseline.
+Future migrations (V018+) are applied incrementally on top of this baseline.
 
-The previous V013 baseline (`beta_ssa_dev_baseline_thru_V013.sql`) is superseded but retained for reference.
+## Schema Version Reference
 
-## Production Upgrade
+The `schema_version` table is seeded by the baseline dump. For fresh databases created outside the baseline (e.g., `dev_ssa` after initialization), run `docs/schema_version_migration.sql` to register all versions.
 
-Production has a partially-applied V001 (table rename + proposal columns done, application columns + new tables missing). A validated combined upgrade script exists at `docs/importscript/production_upgrade_V001_to_V016.sql` that handles this partial state and applies all remaining changes through V016.
+## Going Forward
 
-**Supersedes:** `docs/importscript/production_upgrade_V001_to_V013.sql` (retained for reference).
+All new schema changes must follow these rules:
+1. Create a versioned script: `V{NNN}__{description}.sql`
+2. Script must self-register via `INSERT IGNORE INTO schema_version`
+3. Update this tracker with the new version
+4. Update `docs/schema_version_migration.sql` with the new INSERT row
 
-### Backward Compatibility Validated (February 26, 2026)
-
-The V016 upgrade script was tested by:
-1. Dumping production `beta_ssa` via SSH (`mysqldump` + `scp`)
-2. Importing into local `beta_ssa`
-3. Running `production_upgrade_V001_to_V016.sql` — all 16 versions applied cleanly
-4. Running the `main` branch (pre-BPO code) against the upgraded schema
-5. Smoke testing: activity list, ticket creation, renewals, setups, checklists — all passed
-
-**Findings:**
-- `SET sql_log_bin = 0;` required on local MySQL to avoid replication warning on `DEFAULT (UUID())`
-- Pre-existing bug found in `CloseActivity25.java` (`.toList()` returning immutable list) — not migration-related, fixed separately on `main` branch
-- Ticket category dropdown empty on old code — expected, since V014 deactivates old categories and new ones aren't wired to templates in old code
-- Email sending fails on local dev — missing Azure environment variables, not migration-related
-
-### Previously Untracked Columns (Now in V011 Section)
-
-Three columns were added ad-hoc to dev `beta_ssa` during BPO development but never appeared in any migration script. They are now included in the V011 section of the production upgrade script:
-
-| Table | Column | Type | Purpose |
-|-------|--------|------|---------|
-| `todo` | `todo_guid` | `VARCHAR(36) NOT NULL DEFAULT (UUID()), UNIQUE` | Cross-system BPO sync identity |
-| `todo` | `is_reverted` | `TINYINT(1) NOT NULL DEFAULT 0` | PSP sent task back to BPO |
-| `task` | `task_guid` | `VARCHAR(36) NOT NULL DEFAULT (UUID()), UNIQUE` | Cross-system BPO sync identity |
-
-The `DEFAULT (UUID())` expressions ensure backward compatibility — old code that doesn't know about these columns can still INSERT without errors. This was the root cause of the backward compatibility issue found on February 25 and the reason for creating the V016 upgrade script.
-
-### Bugs Found and Corrected in the Upgrade Script
-
-(Not present in original per-version scripts — these are production-specific corrections)
-
-| Original Script | Bug | Fix |
-|----------------|-----|-----|
-| V004 (`V004__service_manager.sql`) | `REFERENCES psp(psp_id)` — no `psp` table exists | Changed to `REFERENCES assignee(id)` |
-| V004 | `psp_id INT NOT NULL` — wrong type | Changed to `BIGINT` |
-| V004 | Enhancement seed data used `psp_id=1` | Changed to `psp_id=4` (production PSP ID) |
-| V006 (`V006__invitation_system.sql`) | `INSERT INTO userrole (id, ...)` | Column is `role_id`, not `id` |
-| V008 (`V008__opportunity_system.sql`) | `INSERT INTO templategroup (id, ...)` | Column is `group_id` |
-| V008 | `INSERT INTO templatepurpose (id, ..., template_group)` | Columns are `purpose_id` and `group_id` |
-| V008 | `INSERT INTO task (id, ...)` | Column is `task_id` |
-| V008 | `INSERT INTO tasksequence (id, ...)` | Column is `sequence_id` |
-| V011 (`V011__bpo_delegation_feature.sql`) | `INSERT INTO userrole (id, ...)` | Column is `role_id` |
-| V011 | `todo_note` FK `REFERENCES person(person_id)` | Changed to `REFERENCES assignee(id)` |
-| V011 | `todo` BPO FKs `REFERENCES person(person_id)` | Changed to `REFERENCES assignee(id)` |
-| V011 | Missing `todo_guid`, `is_reverted`, `task_guid` columns | Added with `DEFAULT (UUID())` / `DEFAULT 0` |
-| V013 (`V013__user_filter_presets.sql`) | `REFERENCES user(user_id)` | Column is `person_id`, changed to `REFERENCES user(person_id)` |
-| V013 | `SELECT u.user_id` in seed INSERTs | Changed to `u.person_id` |
-| V013 | Slots 2 and 3 missing `FROM user u` clause | Added |
-
-**These bugs exist in the original per-version `.sql` files in `docs/` but are corrected in the combined upgrade script.** The per-version files should be considered historical — the upgrade script is the validated source of truth.
-
-## Script Rename History (V001–V009)
-
-Scripts V001–V009 were originally created with descriptive names before the `V{NNN}__` convention was established. They were renamed on February 25, 2026:
-
-| Old Name | New Name |
-|----------|----------|
-| `sales_pipeline_migration.sql` | `V001__sales_pipeline.sql` |
-| `sales_pipeline_migration_2.sql` | `V002__sales_pipeline_2.sql` |
-| `sales_pipeline_migration_3.sql` | `V003__sales_pipeline_3.sql` |
-| `service_manager_production_migration.sql` | `V004__service_manager.sql` |
-| `rate_manager_session2_production_migration.sql` | `V005__rate_manager.sql` |
-| `invitation_system_migration.sql` | `V006__invitation_system.sql` |
-| `resource_library_production_migration.sql` | `V007__resource_library.sql` |
-| `opportunity_migration_production.sql` | `V008__opportunity_system.sql` |
-| `timeclock_correction_migration.sql` | `V009__timeclock_correction.sql` |
+Individual migration scripts are no longer stored in the repo. The baseline dump + `schema_version_migration.sql` are the source of truth. Session summaries document what each version changed.
 
 ## Migration Log
 
-| # | Version | Script | Description | Local | Production | Notes |
-|---|---------|--------|-------------|-------|------------|-------|
-| 1 | V001 | `V001__sales_pipeline.sql` | New tables (feature, ratediscount, marketingmaterial, applicationfield/value), column adds to proposal + application, entity renames | ✅ 2026-02-19 | ⚠️ PARTIAL | Rename + proposal cols done. Application cols + new tables NOT done. |
-| 2 | V002 | `V002__sales_pipeline_2.sql` | Proposal `source_activity_id` nullable FK | ✅ 2026-02-19 | ❌ NOT RUN | |
-| 3 | V003 | `V003__sales_pipeline_3.sql` | LOS expansion (IDs 11–19), applicationsection + applicationsectionlos, ~95 applicationfield seeds, irslimit, billingtype, benefittype, S3 constants | ✅ 2026-02-20 | ❌ NOT RUN | **Must fill in S3 constants on production.** |
-| 4 | V004 | `V004__service_manager.sql` | Enhancement table, join tables, servicemodule FKs, LOS columns (sort_order, suppressed), seed data | ✅ 2026-02-20 | ❌ NOT RUN | ⚠️ Original has FK bug (see above) |
-| 5 | V005 | `V005__rate_manager.sql` | Per-rate `sort_order` column on ratetable, backfill from servicemodule | ✅ 2026-02-20 | ❌ NOT RUN | Prereq: V004 |
-| 6 | V006 | `V006__invitation_system.sql` | Invitation table, agency.manager_id FK, UserRole seed | ✅ 2026-02-21 | ❌ NOT RUN | ⚠️ Original has column name bug |
-| 7 | V007 | `V007__resource_library.sql` | ResourceCategory table, marketingmaterial.category_id FK, widen storage_guid, feature.material_id FK | ✅ 2026-02-21 | ❌ NOT RUN | Prereq: V001 |
-| 8 | V008 | `V008__opportunity_system.sql` | Assignee columns for Opportunity, sales TemplateGroup/TemplatePurpose/Task seed data | ✅ 2026-02-21 | ❌ NOT RUN | ⚠️ Original has 4 column name bugs |
-| 9 | V009 | `V009__timeclock_correction.sql` | TimeCorrectionRequest table | ✅ 2026-02-22 | ❌ NOT RUN | |
-| 10 | V010 | `V010__psp_opportunity_integration.sql` | Sales role and managed_by column for opportunity/prospect | ✅ 2026-02-23 | ❌ NOT RUN | |
-| 11 | V011 | `V011__bpo_delegation_feature.sql` | BPO roles, todo BPO columns, todo_guid, is_reverted, task_guid, todo_note table | ✅ 2026-02-24 | ❌ NOT RUN | ⚠️ Original has FK + column bugs; upgrade script has todo_guid/is_reverted/task_guid additions |
-| 12 | V012 | `V012__role_cleanup_psp_branding_constants.sql` | Role cleanup and PSP branding constants | ✅ 2026-02-24 | ❌ NOT RUN | |
-| 13 | V013 | `V013__user_filter_presets.sql` | User filter presets — 3 configurable slots per user | ✅ 2026-02-25 | ❌ NOT RUN | ⚠️ Original has FK + column bugs |
-| 14 | V014 | `V014__chatbot_deployment.sql` | note.is_resolution, ANTHROPIC_API_KEY, ticket categories | ✅ 2026-02-25 | ❌ NOT RUN | API key now in ssa.properties (V015) |
-| 15 | V015 | `V015__constants_to_properties.sql` | Move S3 and API key constants to ssa.properties, delete dead SAVE_PATH | ✅ 2026-02-25 | ❌ NOT RUN | Prereq: update ssa.properties first |
-| 16 | V016 | `V016__bpo_registration_tables.sql` | BPO registration and PSP assignment tables | ✅ 2026-02-25 | ❌ NOT RUN | |
-| 17 | V017 | `V017__health_constants_to_properties.sql` | Move SYS_HEALTH_* constants to ssa.properties, seed EMAIL_FOOTER_TEXT | ❌ NOT YET | ❌ NOT RUN | Prereq: add SYS_HEALTH_* to ssa.properties first |
+| # | Version | Description | Applied |
+|---|---------|-------------|---------|
+| 1 | V001 | Sales pipeline — tables, columns, entity renames | ✅ All |
+| 2 | V002 | Proposal source_activity_id FK | ✅ All |
+| 3 | V003 | LOS expansion, app sections, IRS limits, S3 constants | ✅ All |
+| 4 | V004 | Service manager — enhancement, join tables, SM FKs | ✅ All |
+| 5 | V005 | Rate manager — ratetable sort_order | ✅ All |
+| 6 | V006 | Invitation system — invitation table, agency manager_id | ✅ All |
+| 7 | V007 | Resource library — category, material FK, feature FK | ✅ All |
+| 8 | V008 | Opportunity system — assignee columns, sales tasks | ✅ All |
+| 9 | V009 | Timeclock correction — request table | ✅ All |
+| 10 | V010 | PSP opportunity integration — sales role, managed_by | ✅ All |
+| 11 | V011 | BPO delegation — todo BPO columns, todo_guid, task_guid, todo_note | ✅ All |
+| 12 | V012 | Role cleanup and PSP branding constants | ✅ All |
+| 13 | V013 | User filter presets — 3 slots per user | ✅ All |
+| 14 | V014 | Chatbot deployment — note.is_resolution, ticket categories | ✅ All |
+| 15 | V015 | Move S3 and API key constants to ssa.properties | ✅ All |
+| 16 | V016 | BPO registration and PSP assignment tables | ✅ All |
+| 17 | V017 | Move SYS_HEALTH constants to ssa.properties, seed EMAIL_FOOTER_TEXT | ✅ All |
+
+## Production Upgrade History
+
+**February 26, 2026:** Full V001–V017 upgrade applied to production.
+- Backup taken via `mysqldump` before upgrade
+- `production_upgrade_V001_to_V016.sql` run first (combined script handling partial V001 state)
+- Two `DEFAULT (UUID())` columns required manual workaround (MySQL replication mode blocked non-deterministic defaults — split into ALTER + UPDATE + MODIFY)
+- `V017__health_constants_to_properties.sql` run separately
+- `ssa.properties` updated with `SYS_HEALTH_*` keys
+- Backward compatibility confirmed: `main` branch (old code) runs cleanly against V017 schema
+- Old upgrade scripts and per-version migration files deleted from repo after successful upgrade

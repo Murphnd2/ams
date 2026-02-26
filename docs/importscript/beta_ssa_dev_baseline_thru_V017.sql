@@ -1,13 +1,13 @@
--- MySQL dump 10.13  Distrib 8.0.45, for Win64 (x86_64)
+-- MySQL dump 10.13  Distrib 8.0.43, for Linux (x86_64)
 --
--- Host: localhost    Database: dev_ssa
+-- Host: localhost    Database: beta_ssa
 -- ------------------------------------------------------
--- Server version	8.0.45
+-- Server version	8.0.43-0ubuntu0.24.04.1
 
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
 /*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
 /*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
-/*!50503 SET NAMES utf8 */;
+/*!50503 SET NAMES utf8mb4 */;
 /*!40103 SET @OLD_TIME_ZONE=@@TIME_ZONE */;
 /*!40103 SET TIME_ZONE='+00:00' */;
 /*!40014 SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0 */;
@@ -736,8 +736,12 @@ CREATE TABLE `applicationfield` (
   `is_required` tinyint DEFAULT '0',
   `sort_order` int DEFAULT '0',
   `select_options` varchar(500) DEFAULT NULL,
+  `section_id` bigint DEFAULT NULL,
+  `help_text` varchar(500) DEFAULT NULL,
   PRIMARY KEY (`field_key`),
   KEY `FK_DATAKEY_template_purpose_id` (`template_purpose_id`),
+  KEY `fk_appfield_section` (`section_id`),
+  CONSTRAINT `fk_appfield_section` FOREIGN KEY (`section_id`) REFERENCES `applicationsection` (`section_id`),
   CONSTRAINT `FK_DATAKEY_template_purpose_id` FOREIGN KEY (`template_purpose_id`) REFERENCES `templatepurpose` (`purpose_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -1025,12 +1029,15 @@ DROP TABLE IF EXISTS `benefittype`;
 CREATE TABLE `benefittype` (
   `benefittype_id` bigint NOT NULL AUTO_INCREMENT,
   `name` varchar(100) NOT NULL,
+  `default_billingtype_id` bigint DEFAULT NULL,
   `psp_id` bigint NOT NULL,
   `sort_order` int NOT NULL DEFAULT '0',
   PRIMARY KEY (`benefittype_id`),
+  KEY `default_billingtype_id` (`default_billingtype_id`),
   KEY `psp_id` (`psp_id`),
-  CONSTRAINT `benefittype_ibfk_1` FOREIGN KEY (`psp_id`) REFERENCES `assignee` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=12 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+  CONSTRAINT `benefittype_ibfk_1` FOREIGN KEY (`default_billingtype_id`) REFERENCES `billingtype` (`billingtype_id`),
+  CONSTRAINT `benefittype_ibfk_2` FOREIGN KEY (`psp_id`) REFERENCES `assignee` (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -1820,14 +1827,14 @@ CREATE TABLE `feature` (
   `sort_order` int DEFAULT NULL,
   `module_id` bigint NOT NULL,
   `psp_id` bigint NOT NULL,
-  `material_id` bigint DEFAULT NULL,
+  `library_resource_id` bigint DEFAULT NULL,
   PRIMARY KEY (`feature_id`),
   KEY `module_id` (`module_id`),
   KEY `psp_id` (`psp_id`),
-  KEY `fk_feature_material` (`material_id`),
+  KEY `fk_feature_library_resource` (`library_resource_id`),
   CONSTRAINT `feature_ibfk_1` FOREIGN KEY (`module_id`) REFERENCES `servicemodule` (`module_id`),
   CONSTRAINT `feature_ibfk_2` FOREIGN KEY (`psp_id`) REFERENCES `assignee` (`id`),
-  CONSTRAINT `fk_feature_material` FOREIGN KEY (`material_id`) REFERENCES `marketingmaterial` (`material_id`)
+  CONSTRAINT `fk_feature_library_resource` FOREIGN KEY (`library_resource_id`) REFERENCES `marketingmaterial` (`material_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -2414,7 +2421,7 @@ CREATE TABLE `irslimit` (
   `limit_key` varchar(50) NOT NULL,
   `plan_year` int NOT NULL,
   `amount` double NOT NULL,
-  `description` varchar(200) DEFAULT NULL,
+  `description` varchar(200) NOT NULL,
   PRIMARY KEY (`limit_key`,`plan_year`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -2703,12 +2710,12 @@ DROP TABLE IF EXISTS `plandocs_customer`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `plandocs_customer` (
-  `customer_id` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `employer_name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `customer_id` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `employer_name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   `plan_year_start` date DEFAULT NULL,
   `plan_year_end` date DEFAULT NULL,
   `effective_date` date DEFAULT NULL,
-  `plan_type` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `plan_type` varchar(32) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `tokens_json` json DEFAULT NULL,
   PRIMARY KEY (`customer_id`)
@@ -2725,9 +2732,9 @@ DROP TABLE IF EXISTS `plandocs_entity`;
 CREATE TABLE `plandocs_entity` (
   `entity_id` bigint NOT NULL AUTO_INCREMENT,
   `organization_id` int DEFAULT NULL,
-  `ein` varchar(16) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `employer_name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `created_from` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'unknown',
+  `ein` varchar(16) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `employer_name` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `created_from` varchar(32) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'unknown',
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`entity_id`),
@@ -2744,16 +2751,16 @@ DROP TABLE IF EXISTS `plandocs_field`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `plandocs_field` (
-  `field_key` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `label` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `data_type` enum('string','date','number','bool','email','phone','ein','zip','state','json') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'string',
+  `field_key` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `label` varchar(128) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `data_type` enum('string','date','number','bool','email','phone','ein','zip','state','json') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'string',
   `is_required` tinyint(1) NOT NULL DEFAULT '0',
-  `default_value` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `validation_regex` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `notes` varchar(512) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `default_value` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `validation_regex` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `notes` varchar(512) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  `overwrite_mode` enum('ALWAYS','IF_BLANK','NEVER','ASK') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'ALWAYS',
-  `authoritative_source` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `overwrite_mode` enum('ALWAYS','IF_BLANK','NEVER','ASK') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'ALWAYS',
+  `authoritative_source` varchar(32) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   PRIMARY KEY (`field_key`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -2824,8 +2831,8 @@ DROP TABLE IF EXISTS `plandocs_import_header`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `plandocs_import_header` (
-  `import_type_id` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `header_name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `import_type_id` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `header_name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   `seen_count` int NOT NULL DEFAULT '0',
   `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`import_type_id`,`header_name`)
@@ -2862,10 +2869,10 @@ DROP TABLE IF EXISTS `plandocs_import_mapping`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `plandocs_import_mapping` (
-  `import_type_id` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `source_column` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `field_key` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `transform` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `import_type_id` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `source_column` varchar(128) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `field_key` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `transform` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `is_customer_id` tinyint(1) NOT NULL DEFAULT '0',
   PRIMARY KEY (`import_type_id`,`source_column`),
   KEY `fk_plandocs_import_mapping_field` (`field_key`),
@@ -2882,9 +2889,9 @@ DROP TABLE IF EXISTS `plandocs_import_type`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `plandocs_import_type` (
-  `import_type_id` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `display_name` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `notes` varchar(512) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `import_type_id` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `display_name` varchar(128) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `notes` varchar(512) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`import_type_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -2898,9 +2905,9 @@ DROP TABLE IF EXISTS `plandocs_style`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `plandocs_style` (
-  `style_id` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `display_name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `description` varchar(1000) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `style_id` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `display_name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `description` varchar(1000) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `published_version_id` bigint DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -2917,11 +2924,11 @@ DROP TABLE IF EXISTS `plandocs_style_version`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `plandocs_style_version` (
   `style_version_id` bigint NOT NULL AUTO_INCREMENT,
-  `style_id` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `status` varchar(16) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `css` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `notes` varchar(1000) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `created_by` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `style_id` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `status` varchar(16) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `css` longtext COLLATE utf8mb4_unicode_ci NOT NULL,
+  `notes` varchar(1000) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `created_by` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`style_version_id`),
   KEY `idx_plandocs_style_version_style` (`style_id`,`created_at`),
@@ -2937,11 +2944,11 @@ DROP TABLE IF EXISTS `plandocs_template`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `plandocs_template` (
-  `template_id` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `display_name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `doc_type` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `plan_type` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `style_id` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `template_id` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `display_name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `doc_type` varchar(32) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `plan_type` varchar(32) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `style_id` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
   `is_active` tinyint(1) NOT NULL DEFAULT '1',
   `published_version_id` bigint DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -2962,11 +2969,11 @@ DROP TABLE IF EXISTS `plandocs_template_version`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `plandocs_template_version` (
   `template_version_id` bigint NOT NULL AUTO_INCREMENT,
-  `template_id` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `status` varchar(16) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `html` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `notes` varchar(1000) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `created_by` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `template_id` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `status` varchar(16) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `html` longtext COLLATE utf8mb4_unicode_ci NOT NULL,
+  `notes` varchar(1000) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `created_by` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`template_version_id`),
   KEY `idx_plandocs_template_version_template` (`template_id`,`created_at`),
@@ -2983,9 +2990,9 @@ DROP TABLE IF EXISTS `plandocs_value_current`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `plandocs_value_current` (
   `entity_id` bigint NOT NULL,
-  `field_key` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `value_text` mediumtext CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
-  `last_source` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `field_key` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `value_text` mediumtext COLLATE utf8mb4_unicode_ci,
+  `last_source` varchar(32) COLLATE utf8mb4_unicode_ci NOT NULL,
   `last_batch_id` bigint DEFAULT NULL,
   `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`entity_id`,`field_key`),
@@ -3005,11 +3012,11 @@ DROP TABLE IF EXISTS `plandocs_value_history`;
 CREATE TABLE `plandocs_value_history` (
   `history_id` bigint NOT NULL AUTO_INCREMENT,
   `entity_id` bigint NOT NULL,
-  `field_key` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `old_value` mediumtext CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
-  `new_value` mediumtext CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
-  `changed_by` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `source_system` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `field_key` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `old_value` mediumtext COLLATE utf8mb4_unicode_ci,
+  `new_value` mediumtext COLLATE utf8mb4_unicode_ci,
+  `changed_by` varchar(32) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `source_system` varchar(32) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `batch_id` bigint DEFAULT NULL,
   `changed_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`history_id`),
@@ -3321,7 +3328,8 @@ DROP TABLE IF EXISTS `resourcecategory`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `resourcecategory` (
   `category_id` bigint NOT NULL AUTO_INCREMENT,
-  `name` varchar(100) NOT NULL,
+  `name` varchar(50) NOT NULL,
+  `icon_class` varchar(50) DEFAULT NULL,
   `sort_order` int NOT NULL DEFAULT '0',
   `psp_id` bigint NOT NULL,
   PRIMARY KEY (`category_id`),
@@ -3845,7 +3853,9 @@ CREATE TABLE `task` (
   `allow_early` tinyint(1) DEFAULT '1',
   `allow_future` tinyint(1) DEFAULT '1',
   `auto_id` bigint DEFAULT NULL,
+  `task_guid` varchar(36) NOT NULL,
   PRIMARY KEY (`task_id`),
+  UNIQUE KEY `uq_task_guid` (`task_guid`),
   KEY `FK_TASK_psp_id` (`psp_id`),
   CONSTRAINT `FK_TASK_psp_id` FOREIGN KEY (`psp_id`) REFERENCES `assignee` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
@@ -4349,13 +4359,13 @@ CREATE TABLE `time_correction_request` (
   `request_id` bigint NOT NULL AUTO_INCREMENT,
   `requestor_id` bigint NOT NULL,
   `in_log_id` bigint NOT NULL,
-  `out_log_id` bigint NOT NULL,
+  `out_log_id` bigint DEFAULT NULL,
   `original_date` date NOT NULL,
   `original_in_time` time NOT NULL,
-  `original_out_time` time NOT NULL,
+  `original_out_time` time DEFAULT NULL,
   `requested_in_time` time DEFAULT NULL,
   `requested_out_time` time DEFAULT NULL,
-  `correction_note` varchar(500) DEFAULT NULL,
+  `request_note` varchar(500) DEFAULT NULL,
   `status` varchar(20) NOT NULL DEFAULT 'PENDING',
   `date_requested` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `reviewer_id` bigint DEFAULT NULL,
@@ -4413,7 +4423,10 @@ CREATE TABLE `todo` (
   `checklist_id` bigint DEFAULT NULL,
   `completed_by_id` bigint DEFAULT NULL,
   `task_id` bigint DEFAULT NULL,
+  `is_reverted` tinyint(1) NOT NULL DEFAULT '0',
+  `todo_guid` varchar(36) NOT NULL,
   PRIMARY KEY (`todo_id`),
+  UNIQUE KEY `uq_todo_guid` (`todo_guid`),
   KEY `FK_TODO_task_id` (`task_id`),
   KEY `FK_TODO_completed_by_id` (`completed_by_id`),
   KEY `FK_TODO_checklist_id` (`checklist_id`),
@@ -4438,15 +4451,15 @@ CREATE TABLE `todo_note` (
   `note_id` bigint NOT NULL AUTO_INCREMENT,
   `todo_id` bigint NOT NULL,
   `created_by_id` bigint NOT NULL,
+  `created_date` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `note_text` text NOT NULL,
-  `source_type` varchar(20) DEFAULT 'PSP',
-  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `source_type` varchar(10) NOT NULL DEFAULT 'PSP',
   PRIMARY KEY (`note_id`),
-  KEY `fk_todonote_person` (`created_by_id`),
+  KEY `FK_TODONOTE_created_by` (`created_by_id`),
   KEY `idx_todonote_todo` (`todo_id`),
-  KEY `idx_todonote_created` (`created_at`),
-  CONSTRAINT `fk_todonote_person` FOREIGN KEY (`created_by_id`) REFERENCES `assignee` (`id`),
-  CONSTRAINT `fk_todonote_todo` FOREIGN KEY (`todo_id`) REFERENCES `todo` (`todo_id`)
+  KEY `idx_todonote_created_date` (`created_date`),
+  CONSTRAINT `FK_TODONOTE_created_by` FOREIGN KEY (`created_by_id`) REFERENCES `assignee` (`id`),
+  CONSTRAINT `FK_TODONOTE_todo` FOREIGN KEY (`todo_id`) REFERENCES `todo` (`todo_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -4585,22 +4598,21 @@ DROP TABLE IF EXISTS `user_filter_preset`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `user_filter_preset` (
-  `preset_id` bigint NOT NULL AUTO_INCREMENT,
+  `id` bigint NOT NULL AUTO_INCREMENT,
   `user_id` bigint NOT NULL,
   `slot_number` int NOT NULL,
-  `preset_name` varchar(50) NOT NULL,
-  `filter_type_renewal` tinyint(1) NOT NULL DEFAULT '1',
-  `filter_type_setup` tinyint(1) NOT NULL DEFAULT '1',
-  `filter_type_ticket` tinyint(1) NOT NULL DEFAULT '1',
-  `filter_type_opportunity` tinyint(1) NOT NULL DEFAULT '0',
-  `filter_attention_onus` tinyint(1) NOT NULL DEFAULT '0',
-  `filter_attention_contact` tinyint(1) NOT NULL DEFAULT '0',
-  `filter_owner` varchar(10) NOT NULL DEFAULT 'all',
-  `filter_sort` varchar(20) NOT NULL DEFAULT 'name',
-  PRIMARY KEY (`preset_id`),
+  `label` varchar(16) NOT NULL,
+  `view_renewal` tinyint(1) NOT NULL DEFAULT '1',
+  `view_setup` tinyint(1) NOT NULL DEFAULT '1',
+  `view_ticket` tinyint(1) NOT NULL DEFAULT '1',
+  `view_opportunity` tinyint(1) NOT NULL DEFAULT '0',
+  `ownership_filter` int NOT NULL DEFAULT '0',
+  `attention_filter` int NOT NULL DEFAULT '0',
+  `sort_alphabetically` tinyint(1) NOT NULL DEFAULT '1',
+  PRIMARY KEY (`id`),
   UNIQUE KEY `uq_user_slot` (`user_id`,`slot_number`),
   CONSTRAINT `fk_preset_user` FOREIGN KEY (`user_id`) REFERENCES `user` (`person_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=22 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -4655,6 +4667,14 @@ CREATE TABLE `weblink` (
   CONSTRAINT `FK_WEBLINK_type_id` FOREIGN KEY (`type_id`) REFERENCES `linktype` (`link_type_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping events for database 'beta_ssa'
+--
+
+--
+-- Dumping routines for database 'beta_ssa'
+--
 
 --
 -- Final view structure for view `a25_activity_list_op`
@@ -5709,4 +5729,4 @@ CREATE TABLE `weblink` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-02-25 18:49:45
+-- Dump completed on 2026-02-26 20:20:24

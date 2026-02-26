@@ -1,16 +1,14 @@
 -- =============================================================================
--- Schema Version Table
--- Required for automated update script (D-09)
--- Date: February 23, 2026
--- Updated: February 26, 2026 — V017 added
---
--- Run on: local dev, production, and any existing PSP databases
--- (Already applied to master VPS image as of SSA-Master-Base-v3-2026-02-23)
---
--- NOTE: For production, use the validated combined upgrade script
--- (docs/importscript/production_upgrade_V001_to_V016.sql) instead of this file.
+-- Schema Version Reference
+-- =============================================================================
 -- This file is for reference and for seeding schema_version on fresh databases
--- that were created from the V016 baseline dump.
+-- (e.g., dev_ssa after initialization, or databases created from the V017
+-- baseline dump that don't yet have schema_version populated).
+--
+-- The V017 baseline dump (beta_ssa_dev_baseline_thru_V017.sql) includes the
+-- schema_version table structure but no data rows.
+--
+-- Run this after importing the baseline to register all applied versions.
 -- =============================================================================
 
 CREATE TABLE IF NOT EXISTS schema_version (
