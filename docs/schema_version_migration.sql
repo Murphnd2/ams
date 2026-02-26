@@ -41,4 +41,6 @@ INSERT IGNORE INTO schema_version (version, description, script_name) VALUES
 ('V014', 'Chatbot deployment - note.is_resolution, API key, ticket categories', 'V014__chatbot_deployment.sql'),
 ('V015', 'Move S3 and API key constants to ssa.properties, delete dead SAVE_PATH', 'V015__constants_to_properties.sql'),
 ('V016', 'BPO registration and PSP assignment tables', 'V016__bpo_registration_tables.sql'),
-('V017', 'Move SYS_HEALTH constants to ssa.properties, add EMAIL_FOOTER_TEXT', 'V017__health_constants_to_properties.sql');
+('V017', 'Move SYS_HEALTH constants to ssa.properties, add EMAIL_FOOTER_TEXT', 'V017__health_constants_to_properties.sql'),
+('V018', 'Application section suppressed column', 'V018__application_section_suppressed.sql'),
+('V019', 'Application field suppressed column', 'V019__application_field_suppressed.sql');

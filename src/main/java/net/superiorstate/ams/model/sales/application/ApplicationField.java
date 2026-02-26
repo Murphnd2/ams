@@ -33,6 +33,9 @@ public class ApplicationField {
     @Column(name="select_options",columnDefinition = "varchar(500)")
     private String selectOptions;
 
+    @Column(columnDefinition = "TINYINT")
+    private boolean suppressed;
+
     public ApplicationField(){}
 
     public String getFieldKey() {
@@ -99,6 +102,14 @@ public class ApplicationField {
 
     public void setSelectOptions(String selectOptions) {
         this.selectOptions = selectOptions;
+    }
+
+    public boolean isSuppressed() {
+        return suppressed;
+    }
+
+    public void setSuppressed(boolean suppressed) {
+        this.suppressed = suppressed;
     }
 
     public List<String> getSelectOptionsList() {

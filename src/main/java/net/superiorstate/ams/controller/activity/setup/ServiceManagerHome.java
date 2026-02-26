@@ -8,6 +8,7 @@ import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.AmsDataLocal;
+import net.superiorstate.ams.model.sales.application.ApplicationField;
 import net.superiorstate.ams.model.sales.application.ApplicationSection;
 import net.superiorstate.ams.model.sales.offering.*;
 
@@ -36,7 +37,7 @@ public class ServiceManagerHome extends HttpServlet {
             List<Enhancement> enhancementList = getEnhancementList(em, pspId);
             request.setAttribute("enhancementList", enhancementList);
 
-            // Load all ApplicationSections with fields eagerly fetched (for preview)
+            // Load all ApplicationSections with fields eagerly fetched (for preview + section tab)
             List<ApplicationSection> appSectionList = getAppSectionListWithFields(em, pspId);
             request.setAttribute("appSectionList", appSectionList);
 
@@ -47,9 +48,10 @@ public class ServiceManagerHome extends HttpServlet {
                     .getResultList();
             request.setAttribute("libraryResources", libraryResources);
 
-            // Determine which tab is active: "los" (default) or "enhancement"
+            // Determine which tab is active: "los" (default), "enhancement", or "section"
             String tab = request.getParameter("tab");
-            if (tab == null) tab = "los";
+            if (tab == null)
+                tab = "los";
             request.setAttribute("activeTab", tab);
 
             // If a LOS is selected
@@ -99,6 +101,26 @@ public class ServiceManagerHome extends HttpServlet {
                         List<Feature> features = getFeaturesForModule(em, enhModule.getId());
                         request.setAttribute("featureList", features);
                     }
+                }
+            }
+
+            // If an ApplicationSection is selected (section tab)
+            String sectionIdParam = request.getParameter("sectionId");
+            if (sectionIdParam != null && !sectionIdParam.isEmpty()) {
+                long sectionId = Long.parseLong(sectionIdParam);
+                // Fresh query to reliably load fields (avoids EclipseLink DISTINCT+JOIN FETCH cache issues)
+                ApplicationSection selectedSection = getAppSectionWithFields(em, sectionId);
+                if (selectedSection != null) {
+                    request.setAttribute("selectedSection", selectedSection);
+                    request.setAttribute("activeTab", "section");
+
+                    // Load LOS associations for this section
+                    List<LOS> sectionLosItems = getLosForSection(em, sectionId);
+                    request.setAttribute("sectionLosItems", sectionLosItems);
+
+                    // Load Enhancement associations for this section
+                    List<Enhancement> sectionEnhItems = getEnhancementsForSection(em, sectionId);
+                    request.setAttribute("sectionEnhItems", sectionEnhItems);
                 }
             }
 
@@ -194,6 +216,26 @@ public class ServiceManagerHome extends HttpServlet {
         }
     }
 
+    private List<LOS> getLosForSection(EntityManager em, long sectionId) {
+        Query q = em.createQuery("SELECT l FROM ApplicationSection s JOIN s.losList l WHERE s.id = :sectionId ORDER BY l.sortOrder");
+        q.setParameter("sectionId", sectionId);
+        try {
+            return (List<LOS>) q.getResultList();
+        } catch (NoResultException e) {
+            return new ArrayList<>();
+        }
+    }
+
+    private List<Enhancement> getEnhancementsForSection(EntityManager em, long sectionId) {
+        Query q = em.createQuery("SELECT e FROM ApplicationSection s JOIN s.enhancementList e WHERE s.id = :sectionId ORDER BY e.sortOrder");
+        q.setParameter("sectionId", sectionId);
+        try {
+            return (List<Enhancement>) q.getResultList();
+        } catch (NoResultException e) {
+            return new ArrayList<>();
+        }
+    }
+
     private ServiceModule findModuleByLos(EntityManager em, long losId) {
         try {
             return em.createQuery(
@@ -224,6 +266,21 @@ public class ServiceManagerHome extends HttpServlet {
                 .getResultList();
     }
 
+    // ── Single-section detail query (bypasses DISTINCT+JOIN FETCH issues) ─────
+
+    private ApplicationSection getAppSectionWithFields(EntityManager em, long sectionId) {
+        try {
+            ApplicationSection section = em.find(ApplicationSection.class, sectionId);
+            if (section != null && section.getFieldList() != null) {
+                section.getFieldList().size(); // force lazy init
+                section.getFieldList().sort(java.util.Comparator.comparingInt(f -> f.getSortOrder()));
+            }
+            return section;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
     // ── List search helpers ────────────────────────────────────────────────────
 
     private LOS findById(List<LOS> list, long id) {
@@ -236,6 +293,13 @@ public class ServiceManagerHome extends HttpServlet {
     private Enhancement findEnhById(List<Enhancement> list, long id) {
         for (Enhancement e : list) {
             if (e.getId() == id) return e;
+        }
+        return null;
+    }
+
+    private ApplicationSection findSectionById(List<ApplicationSection> list, long id) {
+        for (ApplicationSection s : list) {
+            if (s.getId() == id) return s;
         }
         return null;
     }

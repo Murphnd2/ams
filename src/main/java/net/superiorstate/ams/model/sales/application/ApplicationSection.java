@@ -27,6 +27,9 @@ public class ApplicationSection implements Comparable<ApplicationSection> {
     @Column(name="sort_order")
     private int sortOrder;
 
+    @Column(columnDefinition = "TINYINT")
+    private boolean suppressed;
+
     @ManyToOne
     @JoinColumn(name="psp_id",nullable = false)
     private PSP psp;
@@ -63,6 +66,9 @@ public class ApplicationSection implements Comparable<ApplicationSection> {
 
     public int getSortOrder() { return sortOrder; }
     public void setSortOrder(int sortOrder) { this.sortOrder = sortOrder; }
+
+    public boolean isSuppressed() { return suppressed; }
+    public void setSuppressed(boolean suppressed) { this.suppressed = suppressed; }
 
     public PSP getPsp() { return psp; }
     public void setPsp(PSP psp) { this.psp = psp; }

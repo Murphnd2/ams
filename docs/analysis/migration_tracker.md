@@ -13,11 +13,7 @@ Tracks database schema versions across environments.
 | Local (either) | 127.0.0.1:3306 | dev_ssa | Initialization testing (wiped regularly) |
 | Production | superiorstate.biz | beta_ssa | Live server |
 
-## Current Highest Version: V017
-
-## All Environments Synced
-
-As of February 26, 2026, production and local dev are both at **V017**. The full V001–V017 upgrade was applied to production and validated.
+## Current Highest Version: V019
 
 ## Dev Baseline
 
@@ -27,8 +23,9 @@ The current baseline is `docs/importscript/beta_ssa_dev_baseline_thru_V017.sql` 
 1. Import the baseline: `mysql -u root -p beta_ssa < beta_ssa_dev_baseline_thru_V017.sql`
 2. Run `DatabaseInitializer` (start the app with empty DB)
 3. For `beta_ssa`, also re-import Datapath exports
+4. Run V018 and V019 incrementally on top of the baseline
 
-Future migrations (V018+) are applied incrementally on top of this baseline.
+Future migrations (V020+) are applied incrementally on top of this baseline.
 
 ## Schema Version Reference
 
@@ -65,6 +62,8 @@ Individual migration scripts are no longer stored in the repo. The baseline dump
 | 15 | V015 | Move S3 and API key constants to ssa.properties | ✅ All |
 | 16 | V016 | BPO registration and PSP assignment tables | ✅ All |
 | 17 | V017 | Move SYS_HEALTH constants to ssa.properties, seed EMAIL_FOOTER_TEXT | ✅ All |
+| 18 | V018 | Application section suppressed column | ✅ Dev only |
+| 19 | V019 | Application field suppressed column | ✅ Dev only |
 
 ## Production Upgrade History
 

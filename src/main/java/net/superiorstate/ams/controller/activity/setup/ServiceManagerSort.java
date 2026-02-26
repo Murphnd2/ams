@@ -6,6 +6,7 @@ import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.resolver.EntityLookup;
+import net.superiorstate.ams.model.sales.application.ApplicationField;
 import net.superiorstate.ams.model.sales.application.ApplicationSection;
 import net.superiorstate.ams.model.sales.offering.Enhancement;
 import net.superiorstate.ams.model.sales.offering.Feature;
@@ -37,9 +38,9 @@ public class ServiceManagerSort extends HttpServlet {
             em.getTransaction().begin();
             int sortOrder = 100;
             for (String idStr : ids) {
-                long id = Long.parseLong(idStr);
                 switch (type) {
                     case "los" -> {
+                        long id = Long.parseLong(idStr);
                         LOS los = EntityLookup.getLosById(em, id);
                         if (los != null) {
                             los.setSortOrder(sortOrder);
@@ -47,6 +48,7 @@ public class ServiceManagerSort extends HttpServlet {
                         }
                     }
                     case "enhancement" -> {
+                        long id = Long.parseLong(idStr);
                         Enhancement enh = em.find(Enhancement.class, id);
                         if (enh != null) {
                             enh.setSortOrder(sortOrder);
@@ -54,6 +56,7 @@ public class ServiceManagerSort extends HttpServlet {
                         }
                     }
                     case "appSection" -> {
+                        long id = Long.parseLong(idStr);
                         ApplicationSection section = em.find(ApplicationSection.class, id);
                         if (section != null) {
                             section.setSortOrder(sortOrder);
@@ -61,10 +64,19 @@ public class ServiceManagerSort extends HttpServlet {
                         }
                     }
                     case "feature" -> {
+                        long id = Long.parseLong(idStr);
                         Feature feature = em.find(Feature.class, id);
                         if (feature != null) {
                             feature.setSortOrder(sortOrder);
                             em.merge(feature);
+                        }
+                    }
+                    case "appField" -> {
+                        // ApplicationField PK is String (field_key), not Long
+                        ApplicationField field = em.find(ApplicationField.class, idStr);
+                        if (field != null) {
+                            field.setSortOrder(sortOrder);
+                            em.merge(field);
                         }
                     }
                 }
