@@ -4,7 +4,7 @@ import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import jakarta.persistence.EntityManager;
-import net.superiorstate.ams.data.dao.AppConstantDAO;
+import net.superiorstate.ams.AppConfig;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -17,6 +17,9 @@ import java.time.Duration;
 /**
  * Sends requests to the Anthropic Messages API and returns the response text.
  * Uses java.net.http.HttpClient (built-in) and Gson for JSON.
+ *
+ * API key is read from ssa.properties via AppConfig (ANTHROPIC_API_KEY).
+ * The EntityManager parameter is retained on ask() for caller compatibility but is no longer used.
  */
 public class ClaudeApiService {
 
@@ -35,15 +38,15 @@ public class ClaudeApiService {
     /**
      * Sends a question with context chunks to Claude and returns the response text.
      *
-     * @param em           EntityManager for retrieving the API key
+     * @param em           EntityManager (retained for caller compatibility — not used internally)
      * @param systemPrompt the system prompt instructing Claude's behavior
      * @param userMessage  the user's question combined with context chunks
      * @return Claude's response text, or an error message if the call fails
      */
     public static String ask(EntityManager em, String systemPrompt, String userMessage) {
-        String apiKey = AppConstantDAO.getConstantValue(em, "ANTHROPIC_API_KEY");
-        if (apiKey == null || apiKey.isBlank()) {
-            log.error("ANTHROPIC_API_KEY not found in constants table");
+        String apiKey = AppConfig.get("ANTHROPIC_API_KEY");
+        if (apiKey == null || apiKey.isBlank() || "FILL_ME_IN".equals(apiKey)) {
+            log.error("ANTHROPIC_API_KEY not configured in ssa.properties");
             return "The AI assistant is not configured. Please contact an administrator.";
         }
 

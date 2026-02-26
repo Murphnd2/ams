@@ -1,6 +1,7 @@
 package net.superiorstate.ams.data.dao;
 
 import jakarta.persistence.EntityManager;
+import net.superiorstate.ams.AppConfig;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.core.sync.RequestBody;
@@ -19,15 +20,18 @@ import java.time.Duration;
 
 /**
  * Wasabi/S3-compatible object storage utility.
- * Reads credentials from DB constants: S3_ENDPOINT, S3_BUCKET, S3_ACCESS_KEY, S3_SECRET_KEY.
+ * Reads credentials from ssa.properties via AppConfig: S3_ENDPOINT, S3_BUCKET, S3_ACCESS_KEY, S3_SECRET_KEY.
  * Files are stored under a PSP-specific prefix (slugified PSP name).
+ *
+ * NOTE: The EntityManager parameter is retained on public methods for caller compatibility
+ * but is no longer used internally. S3 config now comes from ssa.properties, not the DB.
  */
 public abstract class StorageDAO {
 
     /**
      * Uploads a file to S3/Wasabi storage.
      *
-     * @param em          EntityManager for reading DB constants
+     * @param em          EntityManager (retained for caller compatibility — not used internally)
      * @param pspName     PSP full name (will be slugified for the folder prefix)
      * @param objectKey   the file name (e.g., UUID.extension)
      * @param displayName the human-readable file name for downloads (e.g., "Benefits_Summary.pdf")
@@ -39,12 +43,12 @@ public abstract class StorageDAO {
                                   InputStream inputStream, long contentLength, String contentType) {
 
         String fullKey = slugify(pspName) + "/" + objectKey;
-        String bucket = getConstant(em, "S3_BUCKET");
+        String bucket = getConfig("S3_BUCKET");
 
         // Content-Disposition tells the browser what filename to use on download
         String disposition = "attachment; filename=\"" + sanitizeFileName(displayName) + "\"";
 
-        S3Client s3 = buildClient(em);
+        S3Client s3 = buildClient();
         try {
             PutObjectRequest putRequest = PutObjectRequest.builder()
                     .bucket(bucket)
@@ -64,7 +68,7 @@ public abstract class StorageDAO {
      * Generates a pre-signed download URL for a stored file.
      * URL is valid for the specified duration.
      *
-     * @param em        EntityManager for reading DB constants
+     * @param em        EntityManager (retained for caller compatibility — not used internally)
      * @param pspName   PSP full name (will be slugified for the folder prefix)
      * @param objectKey the file name (e.g., UUID.extension)
      * @param duration  how long the URL is valid
@@ -73,9 +77,9 @@ public abstract class StorageDAO {
     public static String getDownloadUrl(EntityManager em, String pspName, String objectKey, Duration duration) {
 
         String fullKey = slugify(pspName) + "/" + objectKey;
-        String bucket = getConstant(em, "S3_BUCKET");
+        String bucket = getConfig("S3_BUCKET");
 
-        S3Presigner presigner = buildPresigner(em);
+        S3Presigner presigner = buildPresigner();
         try {
             GetObjectRequest getRequest = GetObjectRequest.builder()
                     .bucket(bucket)
@@ -106,16 +110,16 @@ public abstract class StorageDAO {
     /**
      * Deletes a file from S3/Wasabi storage.
      *
-     * @param em        EntityManager for reading DB constants
+     * @param em        EntityManager (retained for caller compatibility — not used internally)
      * @param pspName   PSP full name (will be slugified for the folder prefix)
      * @param objectKey the file name (e.g., UUID.extension)
      */
     public static void deleteFile(EntityManager em, String pspName, String objectKey) {
 
         String fullKey = slugify(pspName) + "/" + objectKey;
-        String bucket = getConstant(em, "S3_BUCKET");
+        String bucket = getConfig("S3_BUCKET");
 
-        S3Client s3 = buildClient(em);
+        S3Client s3 = buildClient();
         try {
             DeleteObjectRequest deleteRequest = DeleteObjectRequest.builder()
                     .bucket(bucket)
@@ -131,32 +135,37 @@ public abstract class StorageDAO {
 
     // ----------------------------- internal helpers -----------------------------
 
-    private static S3Client buildClient(EntityManager em) {
+    private static S3Client buildClient() {
         return S3Client.builder()
-                .endpointOverride(URI.create(getConstant(em, "S3_ENDPOINT")))
+                .endpointOverride(URI.create(getConfig("S3_ENDPOINT")))
                 .region(Region.US_EAST_1)
                 .credentialsProvider(StaticCredentialsProvider.create(
                         AwsBasicCredentials.create(
-                                getConstant(em, "S3_ACCESS_KEY"),
-                                getConstant(em, "S3_SECRET_KEY"))))
+                                getConfig("S3_ACCESS_KEY"),
+                                getConfig("S3_SECRET_KEY"))))
                 .build();
     }
 
-    private static S3Presigner buildPresigner(EntityManager em) {
+    private static S3Presigner buildPresigner() {
         return S3Presigner.builder()
-                .endpointOverride(URI.create(getConstant(em, "S3_ENDPOINT")))
+                .endpointOverride(URI.create(getConfig("S3_ENDPOINT")))
                 .region(Region.US_EAST_1)
                 .credentialsProvider(StaticCredentialsProvider.create(
                         AwsBasicCredentials.create(
-                                getConstant(em, "S3_ACCESS_KEY"),
-                                getConstant(em, "S3_SECRET_KEY"))))
+                                getConfig("S3_ACCESS_KEY"),
+                                getConfig("S3_SECRET_KEY"))))
                 .build();
     }
 
-    private static String getConstant(EntityManager em, String name) {
-        String value = AppConstantDAO.getConstantValue(em, name);
+    /**
+     * Reads an S3 config value from ssa.properties via AppConfig.
+     * Throws IllegalStateException if not configured.
+     */
+    private static String getConfig(String name) {
+        String value = AppConfig.get(name);
         if (value == null || value.isBlank()) {
-            throw new IllegalStateException("Missing DB constant: " + name);
+            throw new IllegalStateException("Missing ssa.properties config: " + name
+                    + " — add it to your ssa.properties file");
         }
         return value;
     }

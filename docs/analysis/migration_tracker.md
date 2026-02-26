@@ -13,17 +13,15 @@ Tracks which migration scripts have been applied to each environment.
 | Local (either) | 127.0.0.1:3306 | dev_ssa | Initialization testing (wiped regularly) |
 | Production | superiorstate.biz | beta_ssa | Live server |
 
-## Current Highest Version: V014
+## Current Highest Version: V016
 
 ## Dev Baseline
 
-A validated V013 schema baseline is available at `docs/importscript/beta_ssa_dev_baseline_thru_V013.sql`. This was created by:
+A validated V016 schema baseline is available at `docs/importscript/beta_ssa_dev_baseline_thru_V016.sql`. This was created by exporting the structure of `dev_ssa` after applying all migrations through V016.
 
-1. Dumping production structure (V000 + partial V001)
-2. Running the validated upgrade script (`production_upgrade_V001_to_V013.sql`) against it
-3. Exporting the resulting structure
+**To reset a dev database:** Import the baseline, then run `DatabaseInitializer` (start the app). For `beta_ssa`, also re-import Datapath exports. Future migrations (V017+) are applied incrementally on top of this baseline.
 
-**To reset a dev database:** Import the baseline, then run `DatabaseInitializer` (start the app). For `beta_ssa`, also re-import Datapath exports. Future migrations (V014+) are applied incrementally on top of this baseline.
+The previous V013 baseline (`beta_ssa_dev_baseline_thru_V013.sql`) is superseded but retained for reference.
 
 ## Production Upgrade
 
@@ -84,6 +82,8 @@ Scripts V001–V009 were originally created with descriptive names before the `V
 | 12 | V012 | `V012__role_cleanup_psp_branding_constants.sql` | Delete unused roles (6,7,10), rename BPO roles, seed branding constants | ✅ 2026-02-25 | ❌ NOT RUN | Prereq: V011 |
 | 13 | V013 | `V013__user_filter_presets.sql` | user_filter_preset table, 3 configurable slots per user | ✅ 2026-02-25 | ❌ NOT RUN | ⚠️ Original has FK + column bugs |
 | 14 | V014 | `V014__chatbot_deployment.sql` | note.is_resolution column, ANTHROPIC_API_KEY constant, ticket category refresh (9 categories, 20 subcategories) | ✅ 2026-02-25 | ❌ NOT RUN | Prereq: V013 |
+| 15 | V015 | `V015__constants_to_properties.sql` | Move S3 + ANTHROPIC_API_KEY constants to ssa.properties, delete dead SAVE_PATH row | ✅ 2026-02-25 | ❌ NOT RUN | Prereq: V014. **Deploy code first.** |
+| 16 | V016 | `V016__bpo_registration_tables.sql` | BPO registration and PSP assignment tables (previously untracked) | ✅ 2026-02-25 | ❌ NOT RUN | Prereq: V011. `CREATE IF NOT EXISTS` — safe on all environments. |
 
 ## Production Deployment Instructions
 

@@ -291,6 +291,6 @@
 <c:import url="/WEB-INF/view/a/checklistDetail/makeRecurringModal25.jsp"/>
 
 <%-- Chatbot — PSP users only --%>
-<c:if test="${sessionScope.isPspUser || sessionScope.isPspAdmin}">
+<c:if test="${(sessionScope.isPspUser || sessionScope.isPspAdmin) && applicationScope.global.chatbotEnabled}">
   <c:import url="/WEB-INF/view/a/general/chatAssistant25.jsp"/>
 </c:if>

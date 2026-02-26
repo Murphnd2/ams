@@ -70,6 +70,7 @@ public class AmsDataGlobal {
     private String logoLogin;
     private String favicon;
 
+    private boolean chatbotEnabled;
     private String brandingPath;
     private List<Activity25u> activitiesAllOpen;
     private List<Agency> agencies;
@@ -207,6 +208,7 @@ public class AmsDataGlobal {
 
         setSavePath(AppConfig.get("SAVE_PATH", "/var/lib/tomcat10/data/"));
         setBrandingPath(AppConfig.get("BRANDING_PATH", System.getProperty("catalina.base") + "/branding/"));
+        this.chatbotEnabled = "true".equalsIgnoreCase(AppConfig.get("CHATBOT_ENABLED", "false"));
 
         String smtpPassword;
         try{
@@ -415,6 +417,8 @@ public class AmsDataGlobal {
     public void setFavicon(String favicon) { this.favicon = favicon; }
     public String getBrandingPath() { return brandingPath; }
     public void setBrandingPath(String brandingPath) { this.brandingPath = brandingPath; }
+
+    public boolean isChatbotEnabled() { return chatbotEnabled; }
     public PSP getPsp() {
         return psp;
     }

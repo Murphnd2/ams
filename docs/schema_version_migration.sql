@@ -40,4 +40,5 @@ INSERT IGNORE INTO schema_version (version, description, script_name) VALUES
 ('V011', 'BPO delegation feature - todo BPO columns and todo_note table', 'V011__bpo_delegation_feature.sql'),
 ('V012', 'Role cleanup and PSP branding constants', 'V012__role_cleanup_psp_branding_constants.sql'),
 ('V013', 'User filter presets - 3 configurable slots per user', 'V013__user_filter_presets.sql'),
-('V014', 'Chatbot deployment - note.is_resolution, API key, ticket categories', 'V014__chatbot_deployment.sql');
+('V014', 'Chatbot deployment - note.is_resolution, API key, ticket categories', 'V014__chatbot_deployment.sql'),
+('V015', 'Move S3 and API key constants to ssa.properties, delete dead SAVE_PATH', 'V015__constants_to_properties.sql');
