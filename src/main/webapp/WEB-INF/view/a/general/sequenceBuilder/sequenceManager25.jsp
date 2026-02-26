@@ -40,7 +40,9 @@
     </style>
 </head>
 <body>
-<c:import url="/WEB-INF/view/a/general/navbar25.jsp"></c:import>
+<c:set var="pageTitle" value="Sequence Manager" scope="request"/>
+<c:set var="pageIcon" value="bi-signpost-split" scope="request"/>
+<c:import url="/WEB-INF/view/a/general/navbar25.jsp"/>
 <div class="container-fluid px-3 px-lg-4 mt-2">
     <div class="row g-3">
 

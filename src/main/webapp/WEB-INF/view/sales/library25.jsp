@@ -36,26 +36,17 @@
         </div>
     </c:if>
 
-    <%-- ======================== HEADER ======================== --%>
-    <div class="row align-items-center mb-3">
-        <div class="col-lg-4">
-            <h4 class="mb-0" style="font-size: 1.5rem; font-weight: 500;">
-                <i class="bi bi-collection me-2"></i>Resource Library
-            </h4>
-        </div>
-        <div class="col-lg-5">
+    <div class="row align-items-center mt-2 mb-2">
+        <div class="col">
             <c:if test="${not empty selectedResource}">
-                <h4 class="mb-0" style="font-size: 1.5rem; font-weight: 500;">
+                <h5 class="mb-0">
                     <c:if test="${not empty selectedResource.getCategory()}">
                         <i class="${selectedResource.getCategory().getIconClass()} me-1"></i>
                     </c:if>
-                    ${selectedResource.getTitle()}
+                        ${selectedResource.getTitle()}
                     <a href="#" class="edit-link" data-bs-toggle="modal" data-bs-target="#editResourceModal" title="Edit"><i class="bi bi-pencil"></i></a>
-                </h4>
+                </h5>
             </c:if>
-        </div>
-        <div class="col-lg-3 text-end">
-            <c:import url="/WEB-INF/view/sales/adminNav.jsp"/>
         </div>
     </div>
 

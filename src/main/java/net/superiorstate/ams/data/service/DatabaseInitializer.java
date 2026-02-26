@@ -585,21 +585,7 @@ public abstract class DatabaseInitializer {
             createConstant(em,"SUMMIT_PATH",getSummitPath());
         if(getConstantByName(em,"SSL_PORT")==null)
             createConstant(em,"SSL_PORT","443");
-        // Health check email config (managed by SSA, updatable via migrations)
-        if(getConstantByName(em,"SYS_HEALTH_EMAIL_TO")==null)
-            createConstant(em,"SYS_HEALTH_EMAIL_TO","kevin@superiorstate.net");
-        if(getConstantByName(em,"SYS_HEALTH_SMTP_SERVER")==null)
-            createConstant(em,"SYS_HEALTH_SMTP_SERVER","mail.smtp2go.com");
-        if(getConstantByName(em,"SYS_HEALTH_SMTP_PORT")==null)
-            createConstant(em,"SYS_HEALTH_SMTP_PORT","2525");
-        if(getConstantByName(em,"SYS_HEALTH_SMTP_USER")==null)
-            createConstant(em,"SYS_HEALTH_SMTP_USER","jspSmtpSender");
-        if(getConstantByName(em,"SYS_HEALTH_SMTP_PASSWORD")==null)
-            createConstant(em,"SYS_HEALTH_SMTP_PASSWORD","MZSVP0ZYm3YiTK0w");
-        if(getConstantByName(em,"SYS_HEALTH_ENABLED")==null)
-            createConstant(em,"SYS_HEALTH_ENABLED","true");
-        if(getConstantByName(em,"SYS_HEALTH_EMAIL_FROM")==null)
-            createConstant(em,"SYS_HEALTH_EMAIL_FROM","health@superiorstate.net");
+
         // Logo and favicon (defaults — PSP can upload custom via admin)
         if(getConstantByName(em,"LOGO_NAVBAR")==null)
             createConstant(em,"LOGO_NAVBAR","/images/logoA.png");

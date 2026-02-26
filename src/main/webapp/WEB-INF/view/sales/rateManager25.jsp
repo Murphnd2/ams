@@ -44,7 +44,8 @@
     <c:set var="pageTitle" value="Rate Manager" scope="request"/>
     <c:set var="pageIcon" value="bi-cash-coin" scope="request"/>
     <c:import url="/WEB-INF/view/a/general/navbar25.jsp"/>
-    <div class="row align-items-center py-2">
+
+    <div class="row align-items-center mt-2 mb-2">
         <div class="col">
             <c:if test="${not empty selectedRate}">
                 <h5 class="mb-0">
@@ -60,35 +61,6 @@
                     </form>
                 </h5>
             </c:if>
-        </div>
-    </div>
-
-    <%-- ======================== HEADER ======================== --%>
-    <div class="row align-items-center mb-3">
-        <div class="col-lg-4">
-            <h4 class="mb-0" style="font-size: 1.5rem; font-weight: 500;">
-                <i class="bi bi-cash-coin me-2"></i>Rate Manager
-            </h4>
-        </div>
-        <div class="col-lg-5">
-            <c:if test="${not empty selectedRate}">
-                <h4 class="mb-0" style="font-size: 1.5rem; font-weight: 500;">
-                    <c:if test="${isLocked}"><i class="bi bi-lock-fill me-1" style="font-size: 1rem; opacity: 0.6;"></i></c:if>
-                        ${selectedRate.getDescription()}
-                    <c:if test="${!isLocked}">
-                        <a href="#" data-bs-toggle="modal" data-bs-target="#editRateModal" style="color: inherit; font-size: 1rem; opacity: 0.6;" title="Edit rate name"><i class="bi bi-pencil"></i></a>
-                    </c:if>
-                    <form method="post" action="RateTableAction" class="d-inline ms-2" onsubmit="return confirm('Suppress this rate? It will be hidden from lists but won\'t affect existing proposals.');">
-                        <input type="hidden" name="action" value="suppressRate"/>
-                        <input type="hidden" name="rateId" value="${selectedRate.getId()}"/>
-                        <button type="submit" style="background:none;border:none;color:inherit;font-size:1rem;opacity:0.6;cursor:pointer;" title="Suppress rate"><i class="bi bi-eye-slash"></i></button>
-                    </form>
-                </h4>
-            </c:if>
-        </div>
-        <div class="col-lg-3 text-end">
-            <c:set var="adminCurrentPage" value="rateManager" scope="request"/>
-            <c:import url="/WEB-INF/view/sales/adminNav.jsp"/>
         </div>
     </div>
 

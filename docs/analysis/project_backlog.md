@@ -164,3 +164,12 @@ The following SQL changes were previously applied to dev databases without versi
 | `session_summary_2026-02-25_s2.md` | `docs/analysis/` | Feb 25 session 2 (branding fix, filter presets, display) |
 | `bpo_feature_session_history.md` | `docs/analysis/` | BPO delegation feature build history |
 | `activity_detail_transition_plan.md` | `docs/analysis/` | Activity Detail Track A/B status and execution order |
+
+### Softer Fail on Invalid Login
+
+**Priority:** LOW
+**Status:** 💡 Backlog
+
+`AuthDAO.validUserName()` throws NPE when `getUserByUserName()` returns null (user not found). Should return a proper "invalid credentials" message instead of a stack trace. Add null check before calling `.getUserName()` on the lookup result.
+
+**File:** `src/main/java/net/superiorstate/ams/data/dao/AuthDAO.java` (line ~46)
