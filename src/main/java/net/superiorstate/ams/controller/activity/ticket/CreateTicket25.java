@@ -173,6 +173,9 @@ public class CreateTicket25 extends HttpServlet {
             t.setDueDate(Date.valueOf(LocalDate.now().plusDays(7)));
             t.setDescription(getIssue());
             t.setTicketSubCategory(getCategory());
+            // Dual-write: also set direct ServiceItem FK for new tickets
+            if(getCategory() != null && getCategory().getServiceItem() != null)
+                t.setTicketServiceItem(getCategory().getServiceItem());
             t.setContact(getContact());
             t.setPrimaryContact(getContact());
             t.setComplete(false);

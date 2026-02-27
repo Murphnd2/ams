@@ -13,6 +13,7 @@ import net.superiorstate.ams.data.util.BillingHelper;
 import net.superiorstate.ams.model.activity.checklist.sequences.support.ActivityCategory;
 import net.superiorstate.ams.model.activity.checklist.sequences.support.ServiceItem;
 import net.superiorstate.ams.model.billing.BillingGroup;
+import net.superiorstate.ams.model.general.PSP;
 import net.superiorstate.ams.model.summit.archive.Benefit;
 import net.superiorstate.ams.model.summit.archive.PlanType;
 import net.superiorstate.ams.model.summit.imports.HsaAccount;
@@ -600,16 +601,25 @@ public abstract class Importer {
                 pt.setPlanTypeName(name);
                 pt.setBillingGroup(bg);
 
+                PSP psp = em.find(PSP.class, 4L);
+
                 ServiceItem tp = new ServiceItem();
                 tp.setDescription(name);
                 tp.setSortOrder(id);
                 tp.setActivityCategory(defaultGroup);
+                tp.setPsp(psp);
+                tp.setSourceType("DATAPATH");
+                tp.setProviderRef(String.valueOf(id));
                 em.persist(tp);
 
                 ServiceItem tp2 = new ServiceItem();
                 tp2.setDescription(name);
                 tp2.setSortOrder(id);
                 tp2.setActivityCategory(secondaryGroup);
+                tp2.setPsp(psp);
+                tp2.setSourceType("DATAPATH");
+                tp2.setProviderRef(String.valueOf(id));
+                tp2.setDefaultRenewalMonths(12);
                 em.persist(tp2);
 
                 pt.setServiceItem(tp2);
@@ -683,10 +693,15 @@ public abstract class Importer {
                 pt.setPlanTypeName(name);
                 pt.setBillingGroup(bg);
 
+                PSP psp = em.find(PSP.class, 4L);
+
                 ServiceItem tp = new ServiceItem();
                 tp.setDescription(name);
                 tp.setSortOrder(id);
                 tp.setActivityCategory(defaultGroup);
+                tp.setPsp(psp);
+                tp.setSourceType("DATAPATH");
+                tp.setProviderRef(String.valueOf(id));
                 em.persist(tp);
 
                 pt.setServiceItem(tp);

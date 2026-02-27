@@ -192,11 +192,25 @@ public abstract class TicketQueryDAO {
         Query q = em.createQuery("SELECT r FROM ReasonCreated r ORDER BY r.description");
         return (List<ReasonCreated>) q.getResultList();
     }
-
+    /**
+     * Resolves the ServiceItem for a ticket.
+     * Prefers the new direct ticketServiceItem FK; falls back to ticketSubCategory chain for legacy tickets.
+     */
+    private static ServiceItem resolveServiceItemForTicket(EntityManager em, Ticket t){
+        // New path: direct FK
+        if(t.getTicketServiceItem() != null)
+            return t.getTicketServiceItem();
+        // Legacy path: through TicketSubCategory
+        try {
+            if(t.getTicketSubCategory() != null && t.getTicketSubCategory().getServiceItem() != null)
+                return t.getTicketSubCategory().getServiceItem();
+        } catch (Exception ignored){}
+        return null;
+    }
     public static List<SortedTask> getTasksRequiredForTheTicket(EntityManager em, Ticket t){
         List<SortedTask> sortedTaskList = new ArrayList<>();
-        TicketSubCategory tsc = EntityLookup.getSubCategoryById(em,t.getTicketSubCategory().getId());
-        ServiceItem tp = EntityLookup.getServiceItemById(em,tsc.getServiceItem().getId());
+        ServiceItem tp = resolveServiceItemForTicket(em, t);
+        if(tp == null) return sortedTaskList;
         RequiredTaskList rtl;
         Query q = em.createQuery("SELECT rtl FROM RequiredTaskList rtl WHERE rtl.serviceItem.id = :id");
         q.setParameter("id",tp.getId());
@@ -225,17 +239,13 @@ public abstract class TicketQueryDAO {
 
 
     public static List<SortedTask> getTasksRequiredForTicket(EntityManager em, Ticket t){
-        int tpId;
-        try{
-            tpId = t.getTicketSubCategory().getServiceItem().getId();
-        } catch (Exception e){
-            tpId = -1;
-        }
+        ServiceItem tp = resolveServiceItemForTicket(em, t);
+        int tpId = (tp != null) ? tp.getId() : -1;
         List<SortedTask> sortedTaskList = new ArrayList<>();
         if(tpId<0)
             return sortedTaskList;
         Query q = em.createQuery("SELECT rtl FROM RequiredTaskList rtl WHERE rtl.serviceItem.id = :id");
-        q.setParameter("id",t.getTicketSubCategory().getServiceItem().getId());
+        q.setParameter("id",tpId);
         RequiredTaskList rtl;
         try{
             rtl = (RequiredTaskList) q.getSingleResult();

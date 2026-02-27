@@ -1,6 +1,7 @@
 package net.superiorstate.ams.model.sales.offering;
 
 import jakarta.persistence.*;
+import net.superiorstate.ams.model.activity.checklist.sequences.support.ServiceItem;
 import net.superiorstate.ams.model.general.PSP;
 import net.superiorstate.ams.model.sales.application.ApplicationSection;
 
@@ -28,6 +29,10 @@ public class Enhancement implements Comparable<Enhancement> {
     @ManyToOne
     @JoinColumn(name = "psp_id")
     private PSP psp;
+
+    @ManyToOne
+    @JoinColumn(name = "service_item_id")
+    private ServiceItem serviceItem;
 
     @ManyToMany
     @JoinTable(name = "enhancement_los",
@@ -57,6 +62,9 @@ public class Enhancement implements Comparable<Enhancement> {
 
     public PSP getPsp() { return psp; }
     public void setPsp(PSP psp) { this.psp = psp; }
+
+    public ServiceItem getServiceItem() { return serviceItem; }
+    public void setServiceItem(ServiceItem serviceItem) { this.serviceItem = serviceItem; }
 
     public List<LOS> getLosList() { return losList; }
     public void setLosList(List<LOS> losList) { this.losList = losList; }

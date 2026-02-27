@@ -15,7 +15,6 @@ import net.superiorstate.ams.model.activity.checklist.sequences.RequiredTaskList
 import net.superiorstate.ams.model.activity.checklist.sequences.support.TaskSequenceTable;
 import net.superiorstate.ams.model.activity.checklist.sequences.support.ServiceItem;
 import net.superiorstate.ams.model.activity.checklist.tasks.Task;
-import net.superiorstate.ams.model.activity.ticket.TicketSubCategory;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -87,7 +86,7 @@ public class SequenceBuilder25 extends HttpServlet {
         }
         request.setAttribute("taskCountMap", taskCountMap);
 
-        // Ticket sequences need the TicketSubCategory wrapper for display (category - name)
+        // Ticket sequences need the ReqTaskListTix wrapper for display (category - name)
         List<ReqTaskListTix> ticketDisplay = new ArrayList<>();
         for (RequiredTaskList rtl : ticketList) {
             try {
@@ -169,14 +168,7 @@ public class SequenceBuilder25 extends HttpServlet {
             // Check if this is a ticket sequence and whether it's suppressed
             boolean isSuppressed = false;
             if (rtl.getServiceItem().getActivityCategory().getId() == 3) {
-                // It's a ticket sequence — check the linked TicketSubCategory
-                try {
-                    TicketSubCategory tsc = (TicketSubCategory) em.createQuery(
-                                    "SELECT tsc FROM TicketSubCategory tsc WHERE tsc.serviceItem.id = :pid")
-                            .setParameter("pid", rtl.getServiceItem().getId())
-                            .getSingleResult();
-                    isSuppressed = !tsc.isActive();
-                } catch (Exception ignored) {}
+                isSuppressed = rtl.getServiceItem().isSuppressed();
             }
             request.getSession().setAttribute("sbIsSuppressed", isSuppressed);
         } catch (NumberFormatException ignored) {

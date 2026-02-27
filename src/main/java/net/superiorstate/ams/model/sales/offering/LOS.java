@@ -1,6 +1,7 @@
 package net.superiorstate.ams.model.sales.offering;
 
 import jakarta.persistence.*;
+import net.superiorstate.ams.model.activity.checklist.sequences.support.ServiceItem;
 import net.superiorstate.ams.model.general.PSP;
 import net.superiorstate.ams.model.sales.agency.Proposal;
 
@@ -39,6 +40,10 @@ public class LOS implements Comparable<LOS> {
     @JoinColumn(name="psp_id")
     private PSP psp;
 
+    @ManyToOne
+    @JoinColumn(name="service_item_id")
+    private ServiceItem serviceItem;
+
     @ManyToMany
     @JoinTable(name="losmodules",
             joinColumns = @JoinColumn(name="los_id"),inverseJoinColumns = @JoinColumn(name="module_id"))
@@ -64,6 +69,8 @@ public class LOS implements Comparable<LOS> {
     public void setSuppressed(boolean suppressed) { this.suppressed = suppressed; }
     public PSP getPsp() { return psp; }
     public void setPsp(PSP psp) { this.psp = psp; }
+    public ServiceItem getServiceItem() { return serviceItem; }
+    public void setServiceItem(ServiceItem serviceItem) { this.serviceItem = serviceItem; }
 
     public List<ServiceModule> getServiceModuleList() { return serviceModuleList; }
     public void setServiceModuleList(List<ServiceModule> serviceModuleList) { this.serviceModuleList = serviceModuleList; }

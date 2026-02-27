@@ -47,6 +47,9 @@ public class Benefit {
     @Column(name="next_renewal_due")
     private Date nextRenewalDue;
 
+    @Column(name="renewal_months")
+    private int renewalMonths = 12;
+
     @Column(name="benid_pb")
     private int pbBenId;
 
@@ -141,6 +144,14 @@ public class Benefit {
 
     public void setNextRenewalDue(Date nextRenewalDue) {
         this.nextRenewalDue = nextRenewalDue;
+    }
+
+    public int getRenewalMonths() {
+        return renewalMonths;
+    }
+
+    public void setRenewalMonths(int renewalMonths) {
+        this.renewalMonths = renewalMonths;
     }
 
     public List<RenewalItem> getRenewalItemList() {

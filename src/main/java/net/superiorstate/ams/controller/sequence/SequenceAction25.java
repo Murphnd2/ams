@@ -38,7 +38,7 @@ import java.util.List;
  *   ticketCategoryId = (ticket only) TicketCategory id, or -1 for new category
  *   newCategoryName  = (ticket only, when ticketCategoryId=-1) new category description
  *   newCategoryShort = (ticket only, when ticketCategoryId=-1) new category short code
- *   purposeId        = (renewal/setup only) TemplatePurpose id
+ *   purposeId        = (renewal/setup only) ServiceItem id
  *
  * DELETE params:
  *   sequenceId   = RequiredTaskList id to deactivate
@@ -184,7 +184,7 @@ public class SequenceAction25 extends HttpServlet {
         ServiceItem tp;
 
         if ("ticket".equals(type)) {
-            // Tickets: create TicketSubCategory + TemplatePurpose + RequiredTaskList
+            // Tickets: create TicketSubCategory + ServiceItem + RequiredTaskList
             long catId = Long.parseLong(request.getParameter("ticketCategoryId"));
             TicketCategory tc;
 
@@ -232,16 +232,19 @@ public class SequenceAction25 extends HttpServlet {
             em.persist(tsc);
             em.getTransaction().commit();
 
-            // Create ServiceItem
+            // Create ServiceItem with V020 fields
             em.getTransaction().begin();
             tp = new ServiceItem();
             tp.setSortOrder(100);
             tp.setDescription(name.trim());
             tp.setActivityCategory(tg);
+            tp.setPsp(psp);
+            tp.setSourceType("MANUAL");
+            tp.setTicketCategory(tc);
             em.persist(tp);
             em.getTransaction().commit();
 
-            // Link them
+            // Link TSC to ServiceItem (backward compatibility)
             em.getTransaction().begin();
             tsc.setServiceItem(tp);
             em.persist(tsc);
@@ -304,18 +307,25 @@ public class SequenceAction25 extends HttpServlet {
         RequiredTaskList rtl = EntityLookup.getReqListById(em, seqId);
         if (rtl == null || rtl.getServiceItem() == null) return -1;
 
-        // Find the TicketSubCategory linked to this sequence's TemplatePurpose
-        TicketSubCategory tsc = findSubCategoryByPurpose(em, rtl.getServiceItem().getId());
-        if (tsc == null) return seqId;
+        ServiceItem si = rtl.getServiceItem();
 
-        // Toggle isActive
+        // Toggle suppressed
         em.getTransaction().begin();
-        tsc.setActive(!tsc.isActive());
-        em.persist(tsc);
+        si.setSuppressed(!si.isSuppressed());
+        em.persist(si);
         em.getTransaction().commit();
 
         // Flag whether the item is now suppressed (for redirect logic)
-        request.setAttribute("justSuppressed", !tsc.isActive());
+        request.setAttribute("justSuppressed", si.isSuppressed());
+
+        // Also keep the legacy TicketSubCategory in sync if one exists
+        TicketSubCategory tsc = findSubCategoryByPurpose(em, si.getId());
+        if (tsc != null) {
+            em.getTransaction().begin();
+            tsc.setActive(!si.isSuppressed());
+            em.persist(tsc);
+            em.getTransaction().commit();
+        }
 
         // Refresh the global ticket subcategory cache
         AmsDataGlobal global = (AmsDataGlobal) getServletContext().getAttribute("global");
@@ -325,8 +335,8 @@ public class SequenceAction25 extends HttpServlet {
             getServletContext().setAttribute("global", global);
         }
 
-        System.out.println("✅ SequenceAction25 SUPPRESS: subcategory " + tsc.getId()
-                + " (" + tsc.getDescription() + ") → isActive=" + tsc.isActive());
+        System.out.println("✅ SequenceAction25 SUPPRESS: ServiceItem " + si.getId()
+                + " (" + si.getDescription() + ") → suppressed=" + si.isSuppressed());
 
         return seqId;
     }

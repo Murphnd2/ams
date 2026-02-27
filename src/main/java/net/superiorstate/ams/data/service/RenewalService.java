@@ -221,7 +221,8 @@ public abstract class RenewalService {
         em.getTransaction().begin();
         Benefit b = EntityLookup.getBenefitById(em, benefit.getId());
         b.setLastRenewed(b.getNextRenewalDue());
-        b.setNextRenewalDue(Date.valueOf(b.getNextRenewalDue().toLocalDate().plusYears(1)));
+        int months = b.getRenewalMonths();
+        b.setNextRenewalDue(Date.valueOf(b.getNextRenewalDue().toLocalDate().plusMonths(months)));
         em.persist(b);
         em.getTransaction().commit();
     }

@@ -286,32 +286,32 @@ public abstract class DatabaseInitializer {
         ActivityCategory tg2 = createTemplateGroup(em,2,"Setup");
         ActivityCategory tg3 = createTemplateGroup(em,3,"Ticket");
         //Create Template Purposes
-        ServiceItem tp1 = createServiceItem(em,2,"Health FSA",2,tg1);
-        ServiceItem tp5 = createServiceItem(em,12,"Health FSA",12,tg2);
+        ServiceItem tp1 = createServiceItem(em,2,"Health FSA",2,tg1,psp);
+        ServiceItem tp5 = createServiceItem(em,12,"Health FSA",12,tg2,psp);
 
-        ServiceItem tp2 = createServiceItem(em,3,"Dependent Care",3,tg1);
-        ServiceItem tp02 = createServiceItem(em,21,"Dep Care",12,tg2);
+        ServiceItem tp2 = createServiceItem(em,3,"Dependent Care",3,tg1,psp);
+        ServiceItem tp02 = createServiceItem(em,21,"Dep Care",12,tg2,psp);
 
-        ServiceItem tp3 = createServiceItem(em,5,"HRA",5,tg1);
-        ServiceItem tp6 = createServiceItem(em,13,"HRA",13, tg2);
+        ServiceItem tp3 = createServiceItem(em,5,"HRA",5,tg1,psp);
+        ServiceItem tp6 = createServiceItem(em,13,"HRA",13,tg2,psp);
 
-        ServiceItem tp4 = createServiceItem(em,7,"COBRA Insurance",7,tg1);
-        ServiceItem tp7 = createServiceItem(em,14,"COBRA", 14, tg2);
+        ServiceItem tp4 = createServiceItem(em,7,"COBRA Insurance",7,tg1,psp);
+        ServiceItem tp7 = createServiceItem(em,14,"COBRA",14,tg2,psp);
 
-        ServiceItem tp08 = createServiceItem(em,22,"MERP",6,tg1);
-        ServiceItem tp8 = createServiceItem(em,12,"MERP",5,tg2);
+        ServiceItem tp08 = createServiceItem(em,22,"MERP",6,tg1,psp);
+        ServiceItem tp8 = createServiceItem(em,12,"MERP",5,tg2,psp);
 
-        ServiceItem tp09 = createServiceItem(em,23,"HSA",6,tg1);
-        ServiceItem tp9 = createServiceItem(em,16,"HSA",16,tg2);
+        ServiceItem tp09 = createServiceItem(em,23,"HSA",6,tg1,psp);
+        ServiceItem tp9 = createServiceItem(em,16,"HSA",16,tg2,psp);
 
-        ServiceItem tpA = createServiceItem(em,24,"Transit",9,tg1);
-        ServiceItem tp10 = createServiceItem(em,15,"Transit",15,tg2);
+        ServiceItem tpA = createServiceItem(em,24,"Transit",9,tg1,psp);
+        ServiceItem tp10 = createServiceItem(em,15,"Transit",15,tg2,psp);
 
-        ServiceItem tpB = createServiceItem(em,26,"POP",1,tg1);
-        ServiceItem tp11 = createServiceItem(em,11,"POP",11,tg2);
+        ServiceItem tpB = createServiceItem(em,26,"POP",1,tg1,psp);
+        ServiceItem tp11 = createServiceItem(em,11,"POP",11,tg2,psp);
 
-        ServiceItem tpC = createServiceItem(em,27,"LSA",10,tg1);
-        ServiceItem tp12 = createServiceItem(em,17,"LSA",20,tg2);
+        ServiceItem tpC = createServiceItem(em,27,"LSA",10,tg1,psp);
+        ServiceItem tp12 = createServiceItem(em,17,"LSA",20,tg2,psp);
 
         //Create Plan Types
         PlanType pt1 = createPlanType(em,1,"DCA","Dependent Care Account",bg1,tp2);
@@ -438,10 +438,10 @@ public abstract class DatabaseInitializer {
         createTaskFrequency(em,19,"Last Friday of Month");
         //Create Ticket Categories
         TicketCategory tc = createTicketCategory(em,18L,"How Do I?","HOW");
-        ServiceItem tp800 = createServiceItem(em,25,"Get Online",100,tg3);
+        ServiceItem tp800 = createServiceItem(em,25,"Get Online",100,tg3,psp);
         TicketSubCategory tsc = createTicketSubCategory(em,10L,tc,tp800);
         TicketCategory tc1 = createTicketCategory(em,19L,"Please Update My...","UPDATE");
-        ServiceItem tp101 = createServiceItem(em,30,"Banking Information",200,tg3);
+        ServiceItem tp101 = createServiceItem(em,30,"Banking Information",200,tg3,psp);
         TicketSubCategory tsc1 = createTicketSubCategory(em,11L,tc1,tp101);
         TicketCategory tc2 = createTicketCategory(em,20L,"Something is Wrong","FIX");
         createRequiredTaskList(em,tp8,psp);
@@ -1051,7 +1051,7 @@ public abstract class DatabaseInitializer {
         return pt;
     }
 
-    public static ServiceItem createServiceItem(EntityManager em, int id, String name, int sortOrder, ActivityCategory tg){
+    public static ServiceItem createServiceItem(EntityManager em, int id, String name, int sortOrder, ActivityCategory tg, PSP psp){
         if(EntityLookup.getServiceItemById(em,id,true)!=null)
             return EntityLookup.getServiceItemById(em,id,true);
         em.getTransaction().begin();
@@ -1060,6 +1060,9 @@ public abstract class DatabaseInitializer {
         tp.setSortOrder(sortOrder);
         tp.setDescription(name);
         tp.setId(id);
+        tp.setPsp(psp);
+        tp.setSourceType("SYSTEM");
+        if(tg.getId() == 1) tp.setDefaultRenewalMonths(12);
         em.persist(tp);
         em.getTransaction().commit();
         return tp;

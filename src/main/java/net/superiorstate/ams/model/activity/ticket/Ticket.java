@@ -3,6 +3,7 @@ package net.superiorstate.ams.model.activity.ticket;
 import jakarta.persistence.*;
 import net.superiorstate.ams.model.activity.Activity;
 import net.superiorstate.ams.model.activity.checklist.CheckList;
+import net.superiorstate.ams.model.activity.checklist.sequences.support.ServiceItem;
 import net.superiorstate.ams.model.general.Person;
 
 @Entity
@@ -18,6 +19,10 @@ public class Ticket extends Activity {
     @ManyToOne
     @JoinColumn(name="ticket_category")
     private TicketSubCategory ticketSubCategory;
+
+    @ManyToOne
+    @JoinColumn(name="ticket_service_item_id")
+    private ServiceItem ticketServiceItem;
 
     @ManyToOne
     @JoinColumn(name="method_id")
@@ -51,6 +56,14 @@ public class Ticket extends Activity {
 
     public void setTicketSubCategory(TicketSubCategory ticketSubCategory) {
         this.ticketSubCategory = ticketSubCategory;
+    }
+
+    public ServiceItem getTicketServiceItem() {
+        return ticketServiceItem;
+    }
+
+    public void setTicketServiceItem(ServiceItem ticketServiceItem) {
+        this.ticketServiceItem = ticketServiceItem;
     }
 
     public ContactMethod getContactMethod() {
