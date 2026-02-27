@@ -13,6 +13,7 @@ import net.superiorstate.ams.model.sales.application.ApplicationSection;
 import net.superiorstate.ams.model.sales.offering.*;
 
 import java.io.IOException;
+import java.util.List;
 
 @WebServlet(name = "ServiceManagerAction", value = "/ServiceManagerAction")
 public class ServiceManagerAction extends HttpServlet {
@@ -46,6 +47,24 @@ public class ServiceManagerAction extends HttpServlet {
                     em.getTransaction().begin();
                     em.persist(los);
                     em.getTransaction().commit();
+
+                    // Auto-link all ALL-scoped sections to this new LOS
+                    List<ApplicationSection> allScopedSections = em.createQuery(
+                                    "SELECT s FROM ApplicationSection s WHERE s.psp.id = :pspId AND s.scope = 'ALL' AND s.suppressed = false",
+                                    ApplicationSection.class)
+                            .setParameter("pspId", psp.getId().longValue())
+                            .getResultList();
+                    if (!allScopedSections.isEmpty()) {
+                        em.getTransaction().begin();
+                        for (ApplicationSection section : allScopedSections) {
+                            if (!section.getLosList().contains(los)) {
+                                section.getLosList().add(los);
+                                em.merge(section);
+                            }
+                        }
+                        em.getTransaction().commit();
+                    }
+
                     losIdParam = los.getId().toString();
                 }
 
@@ -82,6 +101,24 @@ public class ServiceManagerAction extends HttpServlet {
                     em.getTransaction().begin();
                     em.persist(enh);
                     em.getTransaction().commit();
+
+                    // Auto-link all ALL-scoped sections to this new Enhancement
+                    List<ApplicationSection> allScopedSections = em.createQuery(
+                                    "SELECT s FROM ApplicationSection s WHERE s.psp.id = :pspId AND s.scope = 'ALL' AND s.suppressed = false",
+                                    ApplicationSection.class)
+                            .setParameter("pspId", psp.getId().longValue())
+                            .getResultList();
+                    if (!allScopedSections.isEmpty()) {
+                        em.getTransaction().begin();
+                        for (ApplicationSection section : allScopedSections) {
+                            if (!section.getEnhancementList().contains(enh)) {
+                                section.getEnhancementList().add(enh);
+                                em.merge(section);
+                            }
+                        }
+                        em.getTransaction().commit();
+                    }
+
                     enhIdParam = enh.getId().toString();
                 }
 
@@ -220,12 +257,31 @@ public class ServiceManagerAction extends HttpServlet {
                     em.getTransaction().begin();
                     em.persist(section);
                     em.getTransaction().commit();
+
+                    // Auto-link ALL-scoped sections to every active LOS and Enhancement
+                    if ("ALL".equals(section.getScope())) {
+                        List<LOS> allLos = em.createQuery(
+                                        "SELECT l FROM LOS l WHERE l.psp.id = :pspId AND l.suppressed = false", LOS.class)
+                                .setParameter("pspId", psp.getId().longValue())
+                                .getResultList();
+                        List<Enhancement> allEnh = em.createQuery(
+                                        "SELECT e FROM Enhancement e WHERE e.psp.id = :pspId AND e.suppressed = false", Enhancement.class)
+                                .setParameter("pspId", psp.getId().longValue())
+                                .getResultList();
+                        em.getTransaction().begin();
+                        section.setLosList(new java.util.ArrayList<>(allLos));
+                        section.setEnhancementList(new java.util.ArrayList<>(allEnh));
+                        em.merge(section);
+                        em.getTransaction().commit();
+                    }
+
                     sectionIdParam = section.getId().toString();
                 }
 
                 case "editAppSection" -> {
                     long sId = Long.parseLong(sectionIdParam);
                     ApplicationSection section = em.find(ApplicationSection.class, sId);
+                    String oldScope = section.getScope();
                     em.getTransaction().begin();
                     section.setName(request.getParameter("name").trim());
                     String desc = request.getParameter("description");
@@ -234,6 +290,31 @@ public class ServiceManagerAction extends HttpServlet {
                     section.setScope(scope != null ? scope.trim() : section.getScope());
                     em.merge(section);
                     em.getTransaction().commit();
+
+                    // If scope changed TO "ALL", auto-link to all active LOSs and Enhancements
+                    if ("ALL".equals(section.getScope()) && !"ALL".equals(oldScope)) {
+                        List<LOS> allLos = em.createQuery(
+                                        "SELECT l FROM LOS l WHERE l.psp.id = :pspId AND l.suppressed = false", LOS.class)
+                                .setParameter("pspId", psp.getId().longValue())
+                                .getResultList();
+                        List<Enhancement> allEnh = em.createQuery(
+                                        "SELECT e FROM Enhancement e WHERE e.psp.id = :pspId AND e.suppressed = false", Enhancement.class)
+                                .setParameter("pspId", psp.getId().longValue())
+                                .getResultList();
+                        em.getTransaction().begin();
+                        for (LOS l : allLos) {
+                            if (!section.getLosList().contains(l)) {
+                                section.getLosList().add(l);
+                            }
+                        }
+                        for (Enhancement e : allEnh) {
+                            if (!section.getEnhancementList().contains(e)) {
+                                section.getEnhancementList().add(e);
+                            }
+                        }
+                        em.merge(section);
+                        em.getTransaction().commit();
+                    }
                 }
 
                 case "suppressAppSection" -> {

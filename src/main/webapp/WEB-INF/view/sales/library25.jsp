@@ -36,21 +36,7 @@
         </div>
     </c:if>
 
-    <div class="row align-items-center mt-2 mb-2">
-        <div class="col">
-            <c:if test="${not empty selectedResource}">
-                <h5 class="mb-0">
-                    <c:if test="${not empty selectedResource.getCategory()}">
-                        <i class="${selectedResource.getCategory().getIconClass()} me-1"></i>
-                    </c:if>
-                        ${selectedResource.getTitle()}
-                    <a href="#" class="edit-link" data-bs-toggle="modal" data-bs-target="#editResourceModal" title="Edit"><i class="bi bi-pencil"></i></a>
-                </h5>
-            </c:if>
-        </div>
-    </div>
-
-    <div class="row g-3">
+    <div class="row g-3 mt-3">
 
         <%-- ======================== LEFT COLUMN ======================== --%>
         <div class="col-lg-4">
@@ -143,7 +129,11 @@
                         <%-- Resource Detail Card --%>
                         <div class="card mb-3">
                             <div class="hdr-bar d-flex justify-content-between align-items-center">
-                                <span><i class="bi bi-info-circle me-1"></i>Details</span>
+                                <span>
+                                    <c:if test="${not empty selectedResource.getCategory()}"><i class="${selectedResource.getCategory().getIconClass()} me-1"></i></c:if>
+                                    <c:if test="${empty selectedResource.getCategory()}"><i class="bi bi-info-circle me-1"></i></c:if>
+                                    ${selectedResource.getTitle()}
+                                </span>
                                 <div>
                                     <a href="#" class="btn btn-sm btn-outline-light" data-bs-toggle="modal" data-bs-target="#editResourceModal"><i class="bi bi-pencil me-1"></i>Edit</a>
                                     <button class="btn btn-sm btn-outline-light" data-bs-toggle="modal" data-bs-target="#deleteResourceModal"><i class="bi bi-trash me-1"></i>Delete</button>

@@ -350,6 +350,7 @@
                                             <div class="d-flex align-items-center">
                                                 <i class="bi bi-grip-vertical drag-handle"></i>
                                                 <span class="fw-semibold">${section.getName()}</span>
+                                                <c:if test="${section.getScope() == 'ALL'}"><span class="badge bg-primary ms-1" style="font-size:0.6rem;">ALL</span></c:if>
                                                 <c:if test="${not empty section.getFieldList()}">
                                                     <a href="#" class="preview-link section-preview" tabindex="0"
                                                        data-section-id="los-${section.getId()}"><i
@@ -371,14 +372,16 @@
                                                     <small class="text-muted ms-2 d-none d-lg-inline">${section.getDescription()}</small>
                                                 </c:if>
                                             </div>
-                                            <form method="post" action="ServiceManagerAction" class="d-inline"
-                                                  onsubmit="return confirm('Remove ${section.getName()} from this line of service?');">
-                                                <input type="hidden" name="action" value="removeAppSectionFromLos"/>
-                                                <input type="hidden" name="losId" value="${selectedLos.getId()}"/>
-                                                <input type="hidden" name="sectionId" value="${section.getId()}"/>
-                                                <button type="submit" class="btn-remove"><i class="bi bi-x-lg"></i>
-                                                </button>
-                                            </form>
+                                            <c:if test="${section.getScope() != 'ALL'}">
+                                                <form method="post" action="ServiceManagerAction" class="d-inline"
+                                                      onsubmit="return confirm('Remove ${section.getName()} from this line of service?');">
+                                                    <input type="hidden" name="action" value="removeAppSectionFromLos"/>
+                                                    <input type="hidden" name="losId" value="${selectedLos.getId()}"/>
+                                                    <input type="hidden" name="sectionId" value="${section.getId()}"/>
+                                                    <button type="submit" class="btn-remove"><i class="bi bi-x-lg"></i>
+                                                    </button>
+                                                </form>
+                                            </c:if>
                                         </div>
                                     </c:forEach>
                                 </c:when>
@@ -494,6 +497,7 @@
                                             <div class="d-flex align-items-center">
                                                 <i class="bi bi-grip-vertical drag-handle"></i>
                                                 <span class="fw-semibold">${section.getName()}</span>
+                                                <c:if test="${section.getScope() == 'ALL'}"><span class="badge bg-primary ms-1" style="font-size:0.6rem;">ALL</span></c:if>
                                                 <c:if test="${not empty section.getFieldList()}">
                                                     <a href="#" class="preview-link section-preview" tabindex="0"
                                                        data-section-id="enh-${section.getId()}"><i
@@ -515,16 +519,18 @@
                                                     <small class="text-muted ms-2 d-none d-lg-inline">${section.getDescription()}</small>
                                                 </c:if>
                                             </div>
-                                            <form method="post" action="ServiceManagerAction" class="d-inline"
-                                                  onsubmit="return confirm('Remove ${section.getName()} from this enhancement?');">
-                                                <input type="hidden" name="action"
-                                                       value="removeAppSectionFromEnhancement"/>
-                                                <input type="hidden" name="enhId"
-                                                       value="${selectedEnhancement.getId()}"/>
-                                                <input type="hidden" name="sectionId" value="${section.getId()}"/>
-                                                <button type="submit" class="btn-remove"><i class="bi bi-x-lg"></i>
-                                                </button>
-                                            </form>
+                                            <c:if test="${section.getScope() != 'ALL'}">
+                                                <form method="post" action="ServiceManagerAction" class="d-inline"
+                                                      onsubmit="return confirm('Remove ${section.getName()} from this enhancement?');">
+                                                    <input type="hidden" name="action"
+                                                           value="removeAppSectionFromEnhancement"/>
+                                                    <input type="hidden" name="enhId"
+                                                           value="${selectedEnhancement.getId()}"/>
+                                                    <input type="hidden" name="sectionId" value="${section.getId()}"/>
+                                                    <button type="submit" class="btn-remove"><i class="bi bi-x-lg"></i>
+                                                    </button>
+                                                </form>
+                                            </c:if>
                                         </div>
                                     </c:forEach>
                                 </c:when>
@@ -718,15 +724,7 @@
                                                        onclick="openEditField('${field.getFieldKey()}', '${fn:escapeXml(field.getLabel())}', '${fn:escapeXml(field.getHelpText())}', ${field.isRequired()}, '${fn:escapeXml(field.getSelectOptions())}', '${field.getFieldType()}'); return false;">
                                                         <i class="bi bi-pencil"></i>
                                                     </a>
-                                                    <form method="post" action="ServiceManagerAction" class="d-inline"
-                                                          onsubmit="return confirm('${field.isSuppressed() ? 'Unsuppress' : 'Suppress'} field: ${fn:escapeXml(field.getLabel())}?');">
-                                                        <input type="hidden" name="action" value="suppressAppField"/>
-                                                        <input type="hidden" name="fieldKey" value="${field.getFieldKey()}"/>
-                                                        <input type="hidden" name="sectionId" value="${selectedSection.getId()}"/>
-                                                        <button type="submit" class="btn-remove" title="${field.isSuppressed() ? 'Unsuppress' : 'Suppress'}">
-                                                            <i class="bi bi-eye${field.isSuppressed() ? '' : '-slash'}"></i>
-                                                        </button>
-                                                    </form>
+
                                                 </td>
                                             </tr>
                                         </c:forEach>
@@ -1007,7 +1005,7 @@
                                 <c:if test="${assigned.getId() == section.getId()}"><c:set var="alreadyAssigned"
                                                                                            value="true"/></c:if>
                             </c:forEach>
-                            <c:if test="${alreadyAssigned == 'false'}">
+                            <c:if test="${alreadyAssigned == 'false' && section.getScope() != 'ALL'}">
                                 <option value="${section.getId()}">${section.getName()}</option>
                             </c:if>
                         </c:forEach>
@@ -1041,7 +1039,7 @@
                                 <c:if test="${assigned.getId() == section.getId()}"><c:set var="alreadyAssigned"
                                                                                            value="true"/></c:if>
                             </c:forEach>
-                            <c:if test="${alreadyAssigned == 'false'}">
+                            <c:if test="${alreadyAssigned == 'false' && section.getScope() != 'ALL'}">
                                 <option value="${section.getId()}">${section.getName()}</option>
                             </c:if>
                         </c:forEach>

@@ -45,26 +45,7 @@
     <c:set var="pageIcon" value="bi-cash-coin" scope="request"/>
     <c:import url="/WEB-INF/view/a/general/navbar25.jsp"/>
 
-    <div class="row align-items-center mt-2 mb-2">
-        <div class="col">
-            <c:if test="${not empty selectedRate}">
-                <h5 class="mb-0">
-                    <c:if test="${isLocked}"><i class="bi bi-lock-fill me-1" style="font-size: 0.9rem; opacity: 0.6;"></i></c:if>
-                        ${selectedRate.getDescription()}
-                    <c:if test="${!isLocked}">
-                        <a href="#" class="edit-link" data-bs-toggle="modal" data-bs-target="#editRateModal" title="Edit rate name"><i class="bi bi-pencil"></i></a>
-                    </c:if>
-                    <form method="post" action="RateTableAction" class="d-inline ms-2" onsubmit="return confirm('Suppress this rate? It will be hidden from lists but won\'t affect existing proposals.');">
-                        <input type="hidden" name="action" value="suppressRate"/>
-                        <input type="hidden" name="rateId" value="${selectedRate.getId()}"/>
-                        <button type="submit" style="background:none;border:none;color:var(--ssa);font-size:0.9rem;opacity:0.6;cursor:pointer;" title="Suppress rate"><i class="bi bi-eye-slash"></i></button>
-                    </form>
-                </h5>
-            </c:if>
-        </div>
-    </div>
-
-    <div class="row g-3">
+    <div class="row g-3 mt-3">
 
         <%-- ======================== LEFT COLUMN ======================== --%>
         <div class="col-lg-4">
@@ -227,8 +208,19 @@
                     </c:if>
                     <div class="card">
                         <div class="hdr-bar d-flex justify-content-between align-items-center">
-                            <span><i class="bi bi-grid-3x3-gap me-1"></i>Pricing Grid</span>
-                            <div class="d-flex gap-1">
+                            <span>
+                                <c:if test="${isLocked}"><i class="bi bi-lock-fill me-1"></i></c:if>
+                                <i class="bi bi-grid-3x3-gap me-1"></i>${selectedRate.getDescription()} Pricing Grid
+                            </span>
+                            <div class="d-flex gap-1 align-items-center">
+                                <c:if test="${!isLocked}">
+                                    <a href="#" class="btn btn-sm btn-outline-light" data-bs-toggle="modal" data-bs-target="#editRateModal" title="Edit rate name"><i class="bi bi-pencil"></i></a>
+                                </c:if>
+                                <form method="post" action="RateTableAction" class="d-inline" onsubmit="return confirm('Suppress this rate? It will be hidden from lists but won\'t affect existing proposals.');">
+                                    <input type="hidden" name="action" value="suppressRate"/>
+                                    <input type="hidden" name="rateId" value="${selectedRate.getId()}"/>
+                                    <button type="submit" class="btn btn-sm btn-outline-light" title="Suppress rate"><i class="bi bi-eye-slash"></i></button>
+                                </form>
                                 <button type="button" class="btn btn-sm btn-outline-light" data-bs-toggle="modal" data-bs-target="#copyRateModal" title="Make new rate from this one"><i class="bi bi-copy me-1"></i>Make New From</button>
                                 <c:if test="${!isLocked}">
                                     <button type="button" class="btn btn-sm btn-outline-light" data-bs-toggle="modal" data-bs-target="#addRateTableRowModal"><i class="bi bi-plus-lg"></i></button>
