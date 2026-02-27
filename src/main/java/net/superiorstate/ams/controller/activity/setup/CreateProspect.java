@@ -6,6 +6,7 @@ import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.AmsDataLocal;
+import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.model.general.Person;
 import net.superiorstate.ams.model.sales.agency.Agency;
 import net.superiorstate.ams.model.sales.agency.Prospect;
@@ -31,10 +32,24 @@ public class CreateProspect extends HttpServlet {
 
             Agency agency = em.find(Agency.class, agencyId);
 
-            // Get agent from agency (same pattern as GenerateProp)
+            // Determine agent: explicit agentId param > first agent in agency > null
             Person agent = null;
-            if (agency.getAgentList() != null && !agency.getAgentList().isEmpty()) {
-                agent = agency.getAgentList().get(0);
+            String agentIdParam = request.getParameter("agentId");
+            if (agentIdParam != null && !agentIdParam.isEmpty()) {
+                try {
+                    agent = EntityLookup.getPersonById(em, Long.parseLong(agentIdParam));
+                } catch (NumberFormatException ignored) {}
+            }
+            if (agent == null && agency.getAgentList() != null && !agency.getAgentList().isEmpty()) {
+                // For plain agents (no agentId sent), default to the current user if they're in this agency
+                boolean isPspAdmin = Boolean.TRUE.equals(request.getSession().getAttribute("isPspAdmin"));
+                if (!isPspAdmin) {
+                    // Non-admin: assign to current user
+                    agent = local.getCurrentPerson();
+                } else {
+                    // PSP Admin fallback: first agent in agency
+                    agent = agency.getAgentList().get(0);
+                }
             }
 
             // Create contact person
@@ -57,7 +72,7 @@ public class CreateProspect extends HttpServlet {
             em.persist(prospect);
             em.getTransaction().commit();
 
-            System.out.println("Prospect created: " + prospectName + " (ID=" + prospect.getId() + ")");
+            System.out.println("Prospect created: " + prospectName + " (ID=" + prospect.getId() + ") agent=" + (agent != null ? agent.getFullName() : "none"));
 
         } finally {
             em.close();

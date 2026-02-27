@@ -171,6 +171,8 @@
               <i class="bi bi-gear"></i><span class="d-lg-none d-xl-inline ms-1">Admin</span>
             </button>
             <ul class="dropdown-menu dropdown-menu-end">
+              <li><a class="dropdown-item" href="PspDashboardHome"><i class="bi bi-speedometer2 me-2"></i>Dashboard</a></li>
+              <li><hr class="dropdown-divider"></li>
               <li><a class="dropdown-item" href="ServiceManagerHome"><i class="bi bi-diagram-3 me-2"></i>Service Manager</a></li>
               <li><a class="dropdown-item" href="PspAdminHome"><i class="bi bi-cash-coin me-2"></i>Rate Manager</a></li>
               <li><a class="dropdown-item" href="PspAgencyHome"><i class="bi bi-people-fill me-2"></i>Agency Manager</a></li>

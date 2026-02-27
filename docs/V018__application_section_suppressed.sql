@@ -9,5 +9,5 @@ ALTER TABLE applicationsection
     ADD COLUMN suppressed TINYINT(1) NOT NULL DEFAULT 0 AFTER sort_order;
 
 -- Self-register
-INSERT IGNORE INTO schema_version (version, description, script, installed_on)
+INSERT IGNORE INTO schema_version (version, description, script_name, applied_on)
 VALUES ('V018', 'Application section suppressed column', 'V018__application_section_suppressed.sql', NOW());

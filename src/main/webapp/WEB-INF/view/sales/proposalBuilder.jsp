@@ -73,6 +73,20 @@
                             </c:forEach>
                         </select>
                     </div>
+
+                    <%-- Expand button: PSP Admin → "All Agencies", Agency Manager → "All Agency Prospects" --%>
+                    <c:if test="${canExpand}">
+                        <div class="col-auto">
+                            <button type="button" class="btn btn-outline-secondary btn-sm" id="btnExpandProspects" onclick="expandProspects()" title="${isPspAdmin ? 'Show prospects from all agencies' : 'Show all agency prospects'}">
+                                <i class="bi bi-people me-1"></i>
+                                <c:choose>
+                                    <c:when test="${isPspAdmin}">All Agencies</c:when>
+                                    <c:otherwise>All Agency</c:otherwise>
+                                </c:choose>
+                            </button>
+                        </div>
+                    </c:if>
+
                     <div class="col-auto">
                         <span class="text-muted">or</span>
                     </div>
@@ -155,36 +169,85 @@
     </form>
 </div>
 
-<%-- New Prospect Modal --%>
+<%-- ═══════════════════════════════════════════════════════════════════ --%>
+<%-- NEW PROSPECT MODAL — role-conditional fields                       --%>
+<%-- ═══════════════════════════════════════════════════════════════════ --%>
 <div class="modal fade" id="newProspectModal" tabindex="-1" aria-labelledby="newProspectLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="newProspectLabel">New Prospect</h5>
+                <h5 class="modal-title" id="newProspectLabel"><i class="bi bi-plus-circle me-2"></i>New Prospect</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <form method="post" action="CreateProspect">
                 <div class="modal-body">
+
+                    <%-- ── PSP Admin: Agency + Agent dropdowns ── --%>
+                    <c:if test="${isPspAdmin}">
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Agency</label>
+                            <select class="form-select" name="agencyId" id="modalAgencyId" required onchange="updateAgentDropdown()">
+                                <c:forEach var="agency" items="${agencyList}">
+                                    <option value="${agency.getId()}" ${agency.getId() == defaultAgencyId ? 'selected' : ''}>${agency.getName()}</option>
+                                </c:forEach>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Assign to Agent</label>
+                            <select class="form-select" name="agentId" id="modalAgentId">
+                                <%-- Populated by JS based on agency selection --%>
+                            </select>
+                        </div>
+                    </c:if>
+
+                    <%-- ── Agency Manager: hidden agency, agent dropdown ── --%>
+                    <c:if test="${isAgencyAdmin && !isPspAdmin}">
+                        <input type="hidden" name="agencyId" value="${userAgency.getId()}">
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Assign to Agent</label>
+                            <select class="form-select" name="agentId" id="modalAgentId">
+                                <c:forEach var="agt" items="${agencyAgents}">
+                                    <option value="${agt.getId()}" ${agt.getId() == currentUserId ? 'selected' : ''}>${agt.getFirstName()} ${agt.getLastName()}</option>
+                                </c:forEach>
+                            </select>
+                        </div>
+                    </c:if>
+
+                    <%-- ── Agent: hidden agency, no agent dropdown (auto-assigned to self) ── --%>
+                    <c:if test="${isAgent && !isAgencyAdmin && !isPspAdmin}">
+                        <input type="hidden" name="agencyId" value="${userAgency != null ? userAgency.getId() : ''}">
+                        <%-- agentId not sent — servlet defaults to current user --%>
+                    </c:if>
+
+                    <%-- ── Common fields ── --%>
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Company Name</label>
-                        <input type="text" name="name" class="form-control" required>
+                        <input type="text" name="prospectName" class="form-control" required>
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">Contact First Name</label>
-                        <input type="text" name="firstName" class="form-control" required>
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label class="form-label fw-semibold">Contact First Name</label>
+                            <input type="text" name="contactFirst" class="form-control" required>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-semibold">Contact Last Name</label>
+                            <input type="text" name="contactLast" class="form-control" required>
+                        </div>
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">Contact Last Name</label>
-                        <input type="text" name="lastName" class="form-control" required>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">Email</label>
-                        <input type="email" name="email" class="form-control" required>
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label class="form-label fw-semibold">Email</label>
+                            <input type="email" name="contactEmail" class="form-control" required>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-semibold">Phone</label>
+                            <input type="text" name="contactPhone" class="form-control">
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Create Prospect</button>
+                    <button type="submit" class="btn btn-ssa"><i class="bi bi-check-lg me-1"></i>Create Prospect</button>
                 </div>
             </form>
         </div>
@@ -192,41 +255,103 @@
 </div>
 
 <script>
-    // Rate → available LOS IDs map (built server-side)
+    // ── Rate → available LOS IDs map (built server-side) ──
     const rateLosMap = ${rateLosMapJson};
 
     let selectedRateId = null;
     let selectedLosIds = new Set();
+    let isExpanded = false;
+
+    // ── Expanded prospect data (for "Show All" toggle) ──
+    <c:if test="${canExpand}">
+    const expandedProspects = [
+        <c:forEach var="p" items="${allProspects}" varStatus="st">
+        {id: '${p.getId()}', name: '${p.getName().replace("'", "\\'")}'${p.getAgent() != null ? ", agent: '".concat(p.getAgent().getFirstName().replace("'", "\\\\'")).concat(" ").concat(p.getAgent().getLastName().replace("'", "\\\\'")).concat("'") : ""}}<c:if test="${!st.last}">,</c:if>
+        </c:forEach>
+    ];
+    const defaultProspects = [
+        <c:forEach var="p" items="${prospectList}" varStatus="st">
+        {id: '${p.getId()}', name: '${p.getName().replace("'", "\\'")}'}<c:if test="${!st.last}">,</c:if>
+        </c:forEach>
+    ];
+    </c:if>
+
+    function expandProspects() {
+        <c:if test="${canExpand}">
+        var sel = document.getElementById('prospectId');
+        var btn = document.getElementById('btnExpandProspects');
+        var currentVal = sel.value;
+
+        isExpanded = !isExpanded;
+        var list = isExpanded ? expandedProspects : defaultProspects;
+
+        // Clear and rebuild
+        sel.innerHTML = '<option value="">-- Choose a prospect --</option>';
+        list.forEach(function(p) {
+            var opt = document.createElement('option');
+            opt.value = p.id;
+            var label = p.name;
+            if (isExpanded && p.agent) label += ' (' + p.agent + ')';
+            opt.textContent = label;
+            if (p.id === currentVal) opt.selected = true;
+            sel.appendChild(opt);
+        });
+
+        btn.classList.toggle('btn-outline-secondary', !isExpanded);
+        btn.classList.toggle('btn-secondary', isExpanded);
+        btn.innerHTML = isExpanded
+            ? '<i class="bi bi-person me-1"></i>${isPspAdmin ? "My Agency" : "My Prospects"}'
+            : '<i class="bi bi-people me-1"></i>${isPspAdmin ? "All Agencies" : "All Agency"}';
+        </c:if>
+    }
+
+    // ── PSP Admin: agent dropdown driven by agency selection ──
+    <c:if test="${isPspAdmin}">
+    const agentMap = ${agentMapJson};
+    const currentUserId = ${currentUserId};
+
+    function updateAgentDropdown() {
+        var agencyId = document.getElementById('modalAgencyId').value;
+        var agentSel = document.getElementById('modalAgentId');
+        agentSel.innerHTML = '';
+        var agents = agentMap[agencyId] || [];
+        agents.forEach(function(a) {
+            var opt = document.createElement('option');
+            opt.value = a.id;
+            opt.textContent = a.name;
+            if (a.id === currentUserId) opt.selected = true;
+            agentSel.appendChild(opt);
+        });
+    }
+    // Initialize on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        updateAgentDropdown();
+    });
+    </c:if>
 
     function selectRate(el, rateId) {
-        // Clear previous selection
-        document.querySelectorAll('.rate-option').forEach(card => {
+        document.querySelectorAll('.rate-option').forEach(function(card) {
             card.classList.remove('selected');
             card.querySelector('.rate-icon').className = 'bi bi-circle me-2 rate-icon';
         });
-        // Select this one
         el.classList.add('selected');
         el.querySelector('.rate-icon').className = 'bi bi-check-circle-fill me-2 rate-icon text-primary';
         selectedRateId = rateId;
         document.getElementById('rateId').value = rateId;
-
-        // Filter LOS cards based on rate availability
         filterLosCards(rateId);
-
         updateSteps();
     }
 
     function filterLosCards(rateId) {
-        const availableIds = rateLosMap[rateId] || [];
-        let visibleCount = 0;
+        var availableIds = rateLosMap[rateId] || [];
+        var visibleCount = 0;
 
-        // Hide the "select a rate" prompt, show the grid
         document.getElementById('losSelectRateMsg').style.display = 'none';
         document.getElementById('losCardGrid').style.display = '';
 
-        document.querySelectorAll('.los-card-wrapper').forEach(wrapper => {
-            const losId = parseInt(wrapper.dataset.losId);
-            const card = wrapper.querySelector('.los-card');
+        document.querySelectorAll('.los-card-wrapper').forEach(function(wrapper) {
+            var losId = parseInt(wrapper.dataset.losId);
+            var card = wrapper.querySelector('.los-card');
             if (availableIds.includes(losId)) {
                 wrapper.style.display = '';
                 card.classList.remove('unavailable');
@@ -234,7 +359,6 @@
             } else {
                 wrapper.style.display = 'none';
                 card.classList.add('unavailable');
-                // Deselect if it was selected
                 if (selectedLosIds.has(losId)) {
                     selectedLosIds.delete(losId);
                     card.classList.remove('selected');
@@ -243,14 +367,13 @@
             }
         });
 
-        // Show "no LOS" message if none available
-        document.getElementById('losNoneMsg').style.display = visibleCount === 0 ? 'block' : 'none';
-
-        // Rebuild hidden inputs after filtering
+        document.getElementById('losNoneMsg').style.display = visibleCount === 0 ? '' : 'none';
         rebuildLosInputs();
+        updateSteps();
     }
 
     function toggleLos(el, losId) {
+        if (el.classList.contains('unavailable')) return;
         if (selectedLosIds.has(losId)) {
             selectedLosIds.delete(losId);
             el.classList.remove('selected');
@@ -265,10 +388,10 @@
     }
 
     function rebuildLosInputs() {
-        let container = document.getElementById('losInputs');
+        var container = document.getElementById('losInputs');
         container.innerHTML = '';
-        selectedLosIds.forEach(id => {
-            let input = document.createElement('input');
+        selectedLosIds.forEach(function(id) {
+            var input = document.createElement('input');
             input.type = 'hidden';
             input.name = 'losIds';
             input.value = id;
@@ -277,37 +400,24 @@
     }
 
     function updateSteps() {
-        let hasProspect = document.getElementById('prospectId').value !== '';
-        let hasRate = selectedRateId !== null;
-        let hasLos = selectedLosIds.size > 0;
+        var prospectOk = document.getElementById('prospectId').value !== '';
+        var rateOk = selectedRateId !== null;
+        var losOk = selectedLosIds.size > 0;
 
-        // Update step badges
-        document.getElementById('stepBadge1').className = 'step-badge me-3 ' + (hasProspect ? 'step-complete' : 'step-active');
-        document.getElementById('stepBadge2').className = 'step-badge me-3 ' + (hasRate ? 'step-complete' : (hasProspect ? 'step-active' : 'step-pending'));
-        document.getElementById('stepBadge3').className = 'step-badge me-3 ' + (hasLos ? 'step-complete' : (hasRate ? 'step-active' : 'step-pending'));
+        document.getElementById('stepBadge1').className = 'step-badge ' + (prospectOk ? 'step-complete' : 'step-active') + ' me-3';
+        document.getElementById('stepBadge2').className = 'step-badge ' + (rateOk ? 'step-complete' : (prospectOk ? 'step-active' : 'step-pending')) + ' me-3';
+        document.getElementById('stepBadge3').className = 'step-badge ' + (losOk ? 'step-complete' : (rateOk ? 'step-active' : 'step-pending')) + ' me-3';
 
-        // Enable/disable submit
-        document.getElementById('btnCreate').disabled = !(hasProspect && hasRate && hasLos);
+        document.getElementById('btnCreate').disabled = !(prospectOk && rateOk && losOk);
     }
 
-    // Auto-trigger step update if prospect is pre-selected
+    // Auto-select rate if only one
     document.addEventListener('DOMContentLoaded', function() {
-        if (document.getElementById('prospectId').value) {
-            updateSteps();
-        }
-    });
-
-    // Auto-select rate if only one available
-    document.addEventListener('DOMContentLoaded', function() {
-        var autoRateId = '${autoSelectedRateId != null ? autoSelectedRateId : ""}';
-        if (autoRateId) {
-            var rateCards = document.querySelectorAll('.rate-option');
-            rateCards.forEach(function(card) {
-                if (card.getAttribute('onclick').includes(autoRateId)) {
-                    selectRate(card, parseInt(autoRateId));
-                }
-            });
-        }
+        <c:if test="${autoSelectedRateId != null}">
+        var autoRate = document.querySelector('.rate-option');
+        if (autoRate) selectRate(autoRate, ${autoSelectedRateId});
+        </c:if>
+        updateSteps();
     });
 </script>
 </body>

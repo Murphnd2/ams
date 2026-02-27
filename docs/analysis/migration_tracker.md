@@ -2,7 +2,7 @@
 
 Tracks database schema versions across environments.
 
-**Last Updated:** February 26, 2026
+**Last Updated:** February 27, 2026
 
 ## Environments
 
@@ -17,25 +17,28 @@ Tracks database schema versions across environments.
 
 ## Dev Baseline
 
-The current baseline is `docs/importscript/beta_ssa_dev_baseline_thru_V017.sql` — a structure-only dump from production after all migrations were applied.
+The current baseline is `docs/importscript/beta_ssa_dev_baseline_thru_V017.sql` — a structure-only dump from production after V017 was applied. **Needs update to V019** — re-export from any `beta_ssa` that is current.
 
 **To reset a dev database:**
-1. Import the baseline: `mysql -u root -p beta_ssa < beta_ssa_dev_baseline_thru_V017.sql`
-2. Run `DatabaseInitializer` (start the app with empty DB)
-3. For `beta_ssa`, also re-import Datapath exports
-4. Run V018 and V019 incrementally on top of the baseline
+1. Export new baseline: Workbench → Server → Data Export → `beta_ssa` → Structure Only → save as `beta_ssa_dev_baseline_thru_V019.sql`
+2. Reset target: `DROP DATABASE IF EXISTS dev_ssa; CREATE DATABASE dev_ssa;`
+3. Import baseline: Workbench → Server → Data Import → select file → target `dev_ssa`
+4. Start app against `dev_ssa` → `DatabaseInitializer` seeds data
+5. For `beta_ssa`, also re-import Datapath exports after baseline import
 
-Future migrations (V020+) are applied incrementally on top of this baseline.
+Future migrations (V020+) are applied incrementally on top of the baseline.
 
-## Schema Version Reference
+## Schema Version Table
 
-The `schema_version` table is seeded by the baseline dump. For fresh databases created outside the baseline (e.g., `dev_ssa` after initialization), run `docs/schema_version_migration.sql` to register all versions.
+The `schema_version` table columns are: `version` (PK), `description`, `script_name`, `applied_on` (timestamp, auto-default).
+
+The table is seeded by the baseline dump. For fresh databases created outside the baseline (e.g., `dev_ssa` after initialization), run `docs/schema_version_migration.sql` to register all versions.
 
 ## Going Forward
 
 All new schema changes must follow these rules:
 1. Create a versioned script: `V{NNN}__{description}.sql`
-2. Script must self-register via `INSERT IGNORE INTO schema_version`
+2. Script must self-register via `INSERT IGNORE INTO schema_version (version, description, script_name, applied_on) VALUES (..., NOW());`
 3. Update this tracker with the new version
 4. Update `docs/schema_version_migration.sql` with the new INSERT row
 
@@ -62,8 +65,8 @@ Individual migration scripts are no longer stored in the repo. The baseline dump
 | 15 | V015 | Move S3 and API key constants to ssa.properties | ✅ All |
 | 16 | V016 | BPO registration and PSP assignment tables | ✅ All |
 | 17 | V017 | Move SYS_HEALTH constants to ssa.properties, seed EMAIL_FOOTER_TEXT | ✅ All |
-| 18 | V018 | Application section suppressed column | ✅ Dev only |
-| 19 | V019 | Application field suppressed column | ✅ Dev only |
+| 18 | V018 | Application section suppressed column | ✅ All |
+| 19 | V019 | Application field suppressed column | ✅ All |
 
 ## Production Upgrade History
 
@@ -75,3 +78,9 @@ Individual migration scripts are no longer stored in the repo. The baseline dump
 - `ssa.properties` updated with `SYS_HEALTH_*` keys
 - Backward compatibility confirmed: `main` branch (old code) runs cleanly against V017 schema
 - Old upgrade scripts and per-version migration files deleted from repo after successful upgrade
+
+**February 27, 2026:** V018 + V019 applied to production.
+- V018: `applicationsection.suppressed` column already existed from earlier manual run; only `schema_version` registration was needed
+- V019: Full ALTER + registration applied cleanly
+- Both scripts had incorrect column names in self-registration INSERTs (`script`→`script_name`, `installed_on`→`applied_on`); corrected in repo
+- All environments now at V019

@@ -117,7 +117,9 @@
                     </button>
                   </c:when>
                   <c:otherwise>
-                    <div class="cl-spacer"></div>
+                    <button type="submit" class="cl-btn check" style="color: var(--ssa);" name="btnCheckList" value="V-${list.getActivity().getId()}" title="Open">
+                      <i class="bi bi-box-arrow-in-right"></i>
+                    </button>
                   </c:otherwise>
                 </c:choose>
 
