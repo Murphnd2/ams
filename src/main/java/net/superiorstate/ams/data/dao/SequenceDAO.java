@@ -6,10 +6,10 @@ import jakarta.persistence.Query;
 import jakarta.servlet.http.HttpServletRequest;
 import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.model.activity.checklist.sequences.TaskSequence;
+import net.superiorstate.ams.model.activity.checklist.sequences.support.ServiceItem;
 import net.superiorstate.ams.model.activity.checklist.sequences.support.TaskSequenceTable;
 import net.superiorstate.ams.model.activity.checklist.sequences.support.DoW;
-import net.superiorstate.ams.model.activity.checklist.sequences.support.TemplateGroup;
-import net.superiorstate.ams.model.activity.checklist.sequences.support.TemplatePurpose;
+import net.superiorstate.ams.model.activity.checklist.sequences.support.ActivityCategory;
 import net.superiorstate.ams.model.activity.checklist.tasks.Task;
 import net.superiorstate.ams.model.general.LinkType;
 import net.superiorstate.ams.model.general.WebLink;
@@ -20,7 +20,7 @@ import java.util.List;
 public abstract class SequenceDAO {
 
     public static boolean sequenceLoggedForPurpose(EntityManager em, int purposeId){
-        Query q = em.createQuery("SELECT ts FROM TaskSequence ts WHERE ts.templatePurpose.id = :purpose_id");
+        Query q = em.createQuery("SELECT rtl FROM RequiredTaskList rtl WHERE rtl.serviceItem.id = :purpose_id");
         q.setParameter("purpose_id",purposeId);
         boolean hasSequence = false;
         try{
@@ -36,9 +36,9 @@ public abstract class SequenceDAO {
         }
     }
 
-    public static List<TemplatePurpose> getSetupModuleList(EntityManager em){
-        Query q = em.createQuery("SELECT tp FROM TemplatePurpose tp WHERE tp.id >10 AND tp.id < 20 AND tp.id <> 18 order by tp.id");
-        return (List<TemplatePurpose>) q.getResultList();
+    public static List<ServiceItem> getSetupModuleList(EntityManager em){
+        Query q = em.createQuery("SELECT tp FROM ServiceItem tp WHERE tp.id >10 AND tp.id < 20 AND tp.id <> 18 order by tp.id");
+        return (List<ServiceItem>) q.getResultList();
     }
 
     public static void flipFilterFlags(HttpServletRequest request, int groupId){
@@ -60,23 +60,23 @@ public abstract class SequenceDAO {
     }
 
 
-    public static TemplateGroup getTemplateGroupByPurposeId(EntityManager em, int purposeId){
+    public static ActivityCategory getActivityCategoryByServiceItemId(EntityManager em, int purposeId){
         if(!sequenceLoggedForPurpose(em,purposeId))
-            return new TemplateGroup();
-        TemplatePurpose templatePurpose = EntityLookup.getTemplatePurposeById(em,purposeId);
-        return templatePurpose.getTemplateGroup();
+            return new ActivityCategory();
+        ServiceItem serviceItem = EntityLookup.getServiceItemById(em,purposeId);
+        return serviceItem.getActivityCategory();
     }
-    public static List<TemplateGroup> getTemplateGroups(EntityManager em){
-        List<TemplateGroup> templateGroupList = null;
+    public static List<ActivityCategory> getTemplateGroups(EntityManager em){
+        List<ActivityCategory> activityCategoryList = null;
         try{
-            Query q = em.createQuery("SELECT tg FROM TemplateGroup tg");
-            templateGroupList = (List<TemplateGroup>) q.getResultList();
+            Query q = em.createQuery("SELECT tg FROM ActivityCategory tg");
+            activityCategoryList = (List<ActivityCategory>) q.getResultList();
         } catch (NoResultException e){
             e.printStackTrace();
-            templateGroupList = new ArrayList<>();
+            activityCategoryList = new ArrayList<>();
         }
         finally {
-            return templateGroupList;
+            return activityCategoryList;
         }
     }
 
@@ -115,16 +115,16 @@ public abstract class SequenceDAO {
         em.persist(linkType);
         em.getTransaction().commit();
     }
-    public static List<TemplatePurpose> getTemplatePurposes(EntityManager em){
-        List<TemplatePurpose> templatePurposeList = null;
+    public static List<ServiceItem> getServiceItems(EntityManager em){
+        List<ServiceItem> serviceItemList = null;
         try{
-            Query q = em.createQuery("SELECT tp FROM TemplatePurpose tp INNER JOIN FETCH tp.templateGroup tg");
-            templatePurposeList = (List<TemplatePurpose>) q.getResultList();
+            Query q = em.createQuery("SELECT tp FROM ServiceItem tp INNER JOIN FETCH tp.activityCategory tg");
+            serviceItemList = (List<ServiceItem>) q.getResultList();
         } catch (NoResultException e){
             e.printStackTrace();
-            templatePurposeList = new ArrayList<>();
+            serviceItemList = new ArrayList<>();
         } finally {
-            return templatePurposeList;
+            return serviceItemList;
         }
     }
 

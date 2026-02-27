@@ -9,28 +9,28 @@
 <c:set var="cPay" value=""></c:set>
 <c:set var="cCrd" value=""></c:set>
 <c:forEach var="moduleItem" items="${sessionScope.moduleList}">
-  <c:if test="${moduleItem.getTemplatePurpose().getId()==11}">
+  <c:if test="${moduleItem.getServiceItem().getId()==11}">
     <c:set var="cPop" value="checked"></c:set>
   </c:if>
-  <c:if test="${moduleItem.getTemplatePurpose().getId()==12}">
+  <c:if test="${moduleItem.getServiceItem().getId()==12}">
     <c:set var="cFsa" value="checked"></c:set>
   </c:if>
-  <c:if test="${moduleItem.getTemplatePurpose().getId()==13}">
+  <c:if test="${moduleItem.getServiceItem().getId()==13}">
     <c:set var="cHra" value="checked"></c:set>
   </c:if>
-  <c:if test="${moduleItem.getTemplatePurpose().getId()==16}">
+  <c:if test="${moduleItem.getServiceItem().getId()==16}">
     <c:set var="cHsa" value="checked"></c:set>
   </c:if>
-  <c:if test="${moduleItem.getTemplatePurpose().getId()==14}">
+  <c:if test="${moduleItem.getServiceItem().getId()==14}">
     <c:set var="cCob" value="checked"></c:set>
   </c:if>
-  <c:if test="${moduleItem.getTemplatePurpose().getId()==15}">
+  <c:if test="${moduleItem.getServiceItem().getId()==15}">
     <c:set var="cTra" value="checked"></c:set>
   </c:if>
-  <c:if test="${moduleItem.getTemplatePurpose().getId()==17}">
+  <c:if test="${moduleItem.getServiceItem().getId()==17}">
     <c:set var="cPay" value="checked"></c:set>
   </c:if>
-  <c:if test="${moduleItem.getTemplatePurpose().getId()==19}">
+  <c:if test="${moduleItem.getServiceItem().getId()==19}">
     <c:set var="cCrd" value="checked"></c:set>
   </c:if>
 </c:forEach>

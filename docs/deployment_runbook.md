@@ -46,6 +46,26 @@ Before deploying any PSP, ensure:
    sudo mkdir -p /var/lib/tomcat10/data
    sudo chown tomcat:tomcat /var/lib/tomcat10/data
    ```
+
+8.5. [ ] Verify branding directory exists and has correct ownership + systemd write permission:
+   ```bash
+   ls -la /var/lib/tomcat10/branding/
+   # If missing:
+   sudo mkdir -p /var/lib/tomcat10/branding
+   sudo chown tomcat:tomcat /var/lib/tomcat10/branding
+   ```
+Verify systemd override allows writes (should be baked into master image):
+   ```bash
+   systemctl cat tomcat10 | grep branding
+   # Should show: ReadWritePaths=/var/lib/tomcat10/branding/
+   # If missing:
+   sudo systemctl edit tomcat10
+   # Add:
+   # [Service]
+   # ReadWritePaths=/var/lib/tomcat10/branding/
+   # Then: sudo systemctl daemon-reload
+   ```
+
 9. [ ] Verify Wasabi credentials are configured in AWS CLI:
    ```bash
    aws s3 ls --profile wasabi --endpoint-url https://s3.us-east-1.wasabisys.com s3://ssa-backups/

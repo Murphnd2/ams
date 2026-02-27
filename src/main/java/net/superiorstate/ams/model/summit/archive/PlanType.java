@@ -1,7 +1,7 @@
 package net.superiorstate.ams.model.summit.archive;
 
 import jakarta.persistence.*;
-import net.superiorstate.ams.model.activity.checklist.sequences.support.TemplatePurpose;
+import net.superiorstate.ams.model.activity.checklist.sequences.support.ServiceItem;
 import net.superiorstate.ams.model.billing.BillingGroup;
 
 @Entity
@@ -23,7 +23,7 @@ public class PlanType {
 
     @ManyToOne
     @JoinColumn(name="purpose_id")
-    private TemplatePurpose templatePurpose;
+    private ServiceItem serviceItem;
 
     public PlanType(){}
 
@@ -59,11 +59,11 @@ public class PlanType {
         this.billingGroup = billingGroup;
     }
 
-    public TemplatePurpose getTemplatePurpose() {
-        return templatePurpose;
+    public ServiceItem getServiceItem() {
+        return serviceItem;
     }
 
-    public void setTemplatePurpose(TemplatePurpose templatePurpose) {
-        this.templatePurpose = templatePurpose;
+    public void setServiceItem(ServiceItem serviceItem) {
+        this.serviceItem = serviceItem;
     }
 }

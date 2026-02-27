@@ -1,12 +1,10 @@
 package net.superiorstate.ams.model.activity.checklist.sequences.support;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.Id;
+import jakarta.persistence.*;
 
 @Entity
-public class TemplateGroup {
+@Table(name = "templategroup")
+public class ActivityCategory {
     @Id
     @GeneratedValue
     @Column(name="group_id")
@@ -15,7 +13,7 @@ public class TemplateGroup {
     @Column(name="description",columnDefinition = "varchar(200)")
     private String description;
 
-    public TemplateGroup(){}
+    public ActivityCategory(){}
 
     public int getId() {
         return id;

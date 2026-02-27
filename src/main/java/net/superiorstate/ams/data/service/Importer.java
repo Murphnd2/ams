@@ -10,8 +10,8 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.NoResultException;
 import jakarta.persistence.Query;
 import net.superiorstate.ams.data.util.BillingHelper;
-import net.superiorstate.ams.model.activity.checklist.sequences.support.TemplateGroup;
-import net.superiorstate.ams.model.activity.checklist.sequences.support.TemplatePurpose;
+import net.superiorstate.ams.model.activity.checklist.sequences.support.ActivityCategory;
+import net.superiorstate.ams.model.activity.checklist.sequences.support.ServiceItem;
 import net.superiorstate.ams.model.billing.BillingGroup;
 import net.superiorstate.ams.model.summit.archive.Benefit;
 import net.superiorstate.ams.model.summit.archive.PlanType;
@@ -575,8 +575,8 @@ public abstract class Importer {
                 em.persist(bg);
             }
 
-            TemplateGroup defaultGroup = em.find(TemplateGroup.class, 2);
-            TemplateGroup secondaryGroup = em.find(TemplateGroup.class, 1);
+            ActivityCategory defaultGroup = em.find(ActivityCategory.class, 2);
+            ActivityCategory secondaryGroup = em.find(ActivityCategory.class, 1);
             if (defaultGroup == null) {
                 throw new IllegalStateException("TemplateGroup with ID 2 not found.");
             } else if (secondaryGroup == null) {
@@ -600,19 +600,19 @@ public abstract class Importer {
                 pt.setPlanTypeName(name);
                 pt.setBillingGroup(bg);
 
-                TemplatePurpose tp = new TemplatePurpose();
+                ServiceItem tp = new ServiceItem();
                 tp.setDescription(name);
                 tp.setSortOrder(id);
-                tp.setTemplateGroup(defaultGroup);
+                tp.setActivityCategory(defaultGroup);
                 em.persist(tp);
 
-                TemplatePurpose tp2 = new TemplatePurpose();
+                ServiceItem tp2 = new ServiceItem();
                 tp2.setDescription(name);
                 tp2.setSortOrder(id);
-                tp2.setTemplateGroup(secondaryGroup);
+                tp2.setActivityCategory(secondaryGroup);
                 em.persist(tp2);
 
-                pt.setTemplatePurpose(tp2);
+                pt.setServiceItem(tp2);
                 em.persist(pt);
 
                 if (++added % 50 == 0) {
@@ -664,7 +664,7 @@ public abstract class Importer {
                 em.persist(bg);
             }
 
-            TemplateGroup defaultGroup = em.find(TemplateGroup.class, 2);
+            ActivityCategory defaultGroup = em.find(ActivityCategory.class, 2);
             if (defaultGroup == null)
                 throw new IllegalStateException("TemplateGroup with ID 2 not found.");
 
@@ -683,13 +683,13 @@ public abstract class Importer {
                 pt.setPlanTypeName(name);
                 pt.setBillingGroup(bg);
 
-                TemplatePurpose tp = new TemplatePurpose();
+                ServiceItem tp = new ServiceItem();
                 tp.setDescription(name);
                 tp.setSortOrder(id);
-                tp.setTemplateGroup(defaultGroup);
+                tp.setActivityCategory(defaultGroup);
                 em.persist(tp);
 
-                pt.setTemplatePurpose(tp);
+                pt.setServiceItem(tp);
                 em.persist(pt);
 
                 if (++added % 50 == 0) {

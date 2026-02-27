@@ -5,9 +5,9 @@ import net.superiorstate.ams.data.dao.SequenceDAO;
 import net.superiorstate.ams.data.dao.SalesDAO;
 import net.superiorstate.ams.data.dao.AuthDAO;
 import net.superiorstate.ams.data.resolver.EntityLookup;
+import net.superiorstate.ams.model.activity.checklist.sequences.support.ActivityCategory;
 import net.superiorstate.ams.model.activity.checklist.sequences.support.TaskFrequency;
-import net.superiorstate.ams.model.activity.checklist.sequences.support.TemplateGroup;
-import net.superiorstate.ams.model.activity.checklist.sequences.support.TemplatePurpose;
+import net.superiorstate.ams.model.activity.checklist.sequences.support.ServiceItem;
 import net.superiorstate.ams.model.activity.note.ActivityStatus;
 import net.superiorstate.ams.model.activity.note.ReasonCreated;
 import net.superiorstate.ams.model.activity.ticket.ContactMethod;
@@ -20,7 +20,7 @@ import net.superiorstate.ams.model.sales.agency.PriceItem;
 import net.superiorstate.ams.model.sales.agency.Rate;
 import net.superiorstate.ams.model.sales.agency.RateTable;
 import net.superiorstate.ams.model.sales.offering.LOS;
-import net.superiorstate.ams.model.sales.offering.ServiceItem;
+import net.superiorstate.ams.model.sales.offering.ModuleDetail;
 import net.superiorstate.ams.model.sales.offering.ServiceModule;
 import net.superiorstate.ams.model.summit.archive.PlanType;
 
@@ -41,7 +41,7 @@ public abstract class ReferenceDataSeeder {
     }
 
     private static PlanType createSummitPlanType(EntityManager em, int typeId, String code, String name, int groupId, int tpId){
-        TemplatePurpose tp = EntityLookup.getTemplatePurposeById(em,tpId);
+        ServiceItem tp = EntityLookup.getServiceItemById(em,tpId);
         BillingGroup bg = EntityLookup.getBillingGroupById(em,groupId);
         em.getTransaction().begin();
         PlanType PlanType = new PlanType();
@@ -49,7 +49,7 @@ public abstract class ReferenceDataSeeder {
         PlanType.setCode(code);
         PlanType.setPlanTypeName(name);
         PlanType.setBillingGroup(bg);
-        PlanType.setTemplatePurpose(tp);
+        PlanType.setServiceItem(tp);
         em.persist(PlanType);
         em.getTransaction().commit();
         return PlanType;
@@ -553,18 +553,18 @@ public abstract class ReferenceDataSeeder {
         em.persist(ur);
     }
 
-    private static TemplateGroup createTemplateCategory(EntityManager em, int id, String desc) {
-        TemplateGroup tc = new TemplateGroup();
+    private static ActivityCategory createTemplateCategory(EntityManager em, int id, String desc) {
+        ActivityCategory tc = new ActivityCategory();
         tc.setId(id);
         tc.setDescription(desc);
         return tc;
     }
 
     private static void fillTemplateType(EntityManager em) {
-        TemplateGroup renewal = createTemplateCategory(em, 1, "Renewal");
-        TemplateGroup setup = createTemplateCategory(em, 2, "Setup");
-        TemplateGroup ticket = createTemplateCategory(em, 3, "Ticket");
-        TemplateGroup user = createTemplateCategory(em, 4, "User");
+        ActivityCategory renewal = createTemplateCategory(em, 1, "Renewal");
+        ActivityCategory setup = createTemplateCategory(em, 2, "Setup");
+        ActivityCategory ticket = createTemplateCategory(em, 3, "Ticket");
+        ActivityCategory user = createTemplateCategory(em, 4, "User");
         em.persist(renewal);
         em.persist(setup);
         em.persist(ticket);
@@ -594,12 +594,12 @@ public abstract class ReferenceDataSeeder {
         createTemplateType(em,23,"Other",renewal);
     }
 
-    private static void createTemplateType(EntityManager em, int id, String desc, TemplateGroup group) {
-        TemplatePurpose tt = new TemplatePurpose();
+    private static void createTemplateType(EntityManager em, int id, String desc, ActivityCategory group) {
+        ServiceItem tt = new ServiceItem();
         tt.setId(id);
         tt.setDescription(desc);
         tt.setSortOrder(id);
-        tt.setTemplateGroup(group);
+        tt.setActivityCategory(group);
         em.persist(tt);
     }
 
@@ -831,7 +831,7 @@ public abstract class ReferenceDataSeeder {
         createServiceItem(em,psp,"iPhone and Android Phone App Access and Claim Filing",600,"");
     }
     private static void createServiceItem(EntityManager em, PSP psp, String bullet, int sortOrder, String desc){
-        ServiceItem si = new ServiceItem();
+        ModuleDetail si = new ModuleDetail();
         si.setSuppressed(false);
         si.setBulletPoint(bullet);
         si.setDescription(desc);

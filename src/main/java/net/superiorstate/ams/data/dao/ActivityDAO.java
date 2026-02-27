@@ -5,7 +5,7 @@ import jakarta.persistence.NoResultException;
 import jakarta.persistence.Query;
 import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.model.activity.Activity;
-import net.superiorstate.ams.model.activity.checklist.sequences.support.TemplatePurpose;
+import net.superiorstate.ams.model.activity.checklist.sequences.support.ServiceItem;
 import net.superiorstate.ams.model.activity.renewal.Renewal;
 import net.superiorstate.ams.model.activity.ticket.setup.Setup;
 import net.superiorstate.ams.model.activity.ticket.Ticket;
@@ -21,8 +21,8 @@ import java.util.List;
 
 public abstract class ActivityDAO {
 
-    public static boolean moduleExists(EntityManager em, Application a, TemplatePurpose tp){
-        Query q = em.createQuery("SELECT am FROM ApplicationModule am WHERE am.application.proposal.id = :aId AND am.templatePurpose.id = :tpId");
+    public static boolean moduleExists(EntityManager em, Application a, ServiceItem tp){
+        Query q = em.createQuery("SELECT am FROM ApplicationModule am WHERE am.application.proposal.id = :aId AND am.serviceItem.id = :tpId");
         q.setParameter("aId",a.getProposal().getId());
         q.setParameter("tpId",tp.getId());
         ApplicationModule applicationModule;
@@ -37,13 +37,13 @@ public abstract class ActivityDAO {
         System.out.println("Application Module for TP ID: " + tp.getId()+ " ALREADY in application.");
         return true;
     }
-    public static void addModule(EntityManager em, Application a, TemplatePurpose tp){
+    public static void addModule(EntityManager em, Application a, ServiceItem tp){
         if(moduleExists(em,a,tp))
             return;
 
         em.getTransaction().begin();
         ApplicationModule am = new ApplicationModule();
-        am.setTemplatePurpose(tp);
+        am.setServiceItem(tp);
         am.setApplication(a);
         em.persist(am);
         em.getTransaction().commit();

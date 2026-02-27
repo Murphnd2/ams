@@ -8,7 +8,7 @@ import net.superiorstate.ams.model.general.Person;
 import net.superiorstate.ams.model.general.UserRole;
 import net.superiorstate.ams.model.sales.agency.*;
 import net.superiorstate.ams.model.sales.offering.LOS;
-import net.superiorstate.ams.model.sales.offering.ServiceItem;
+import net.superiorstate.ams.model.sales.offering.ModuleDetail;
 import net.superiorstate.ams.model.sales.offering.ServiceModule;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -118,10 +118,10 @@ public abstract class SalesDAO {
         q.setParameter("psp_id",pspID);
         return (List<PriceItem>) q.getResultList();
     }
-    public static List<ServiceItem> getServiceItemList(EntityManager em, int pspID){
-        Query q = em.createQuery("SELECT si FROM ServiceItem si WHERE si.psp.id = :psp_id");
+    public static List<ModuleDetail> getServiceItemList(EntityManager em, int pspID){
+        Query q = em.createQuery("SELECT si FROM ModuleDetail si WHERE si.psp.id = :psp_id");
         q.setParameter("psp_id",pspID);
-        return (List<ServiceItem>) q.getResultList();
+        return (List<ModuleDetail>) q.getResultList();
     }
 
     public static List<RateTable> getRateTableList(EntityManager em, long rateId){

@@ -5,7 +5,7 @@ import jakarta.persistence.Query;
 import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.model.activity.checklist.sequences.RequiredTaskList;
 import net.superiorstate.ams.model.activity.checklist.sequences.support.TaskSequenceTable;
-import net.superiorstate.ams.model.activity.checklist.sequences.support.TemplatePurpose;
+import net.superiorstate.ams.model.activity.checklist.sequences.support.ServiceItem;
 import net.superiorstate.ams.model.activity.checklist.tasks.SortedTask;
 import net.superiorstate.ams.model.activity.note.ActivityStatus;
 import net.superiorstate.ams.model.activity.note.ReasonCreated;
@@ -196,9 +196,9 @@ public abstract class TicketQueryDAO {
     public static List<SortedTask> getTasksRequiredForTheTicket(EntityManager em, Ticket t){
         List<SortedTask> sortedTaskList = new ArrayList<>();
         TicketSubCategory tsc = EntityLookup.getSubCategoryById(em,t.getTicketSubCategory().getId());
-        TemplatePurpose tp = EntityLookup.getTemplatePurposeById(em,tsc.getTemplatePurpose().getId());
+        ServiceItem tp = EntityLookup.getServiceItemById(em,tsc.getServiceItem().getId());
         RequiredTaskList rtl;
-        Query q = em.createQuery("SELECT rtl FROM RequiredTaskList rtl WHERE rtl.templatePurpose.id = :id");
+        Query q = em.createQuery("SELECT rtl FROM RequiredTaskList rtl WHERE rtl.serviceItem.id = :id");
         q.setParameter("id",tp.getId());
         try{
             rtl = (RequiredTaskList) q.getSingleResult();
@@ -227,15 +227,15 @@ public abstract class TicketQueryDAO {
     public static List<SortedTask> getTasksRequiredForTicket(EntityManager em, Ticket t){
         int tpId;
         try{
-            tpId = t.getTicketSubCategory().getTemplatePurpose().getId();
+            tpId = t.getTicketSubCategory().getServiceItem().getId();
         } catch (Exception e){
             tpId = -1;
         }
         List<SortedTask> sortedTaskList = new ArrayList<>();
         if(tpId<0)
             return sortedTaskList;
-        Query q = em.createQuery("SELECT rtl FROM RequiredTaskList rtl WHERE rtl.templatePurpose.id = :id");
-        q.setParameter("id",t.getTicketSubCategory().getTemplatePurpose().getId());
+        Query q = em.createQuery("SELECT rtl FROM RequiredTaskList rtl WHERE rtl.serviceItem.id = :id");
+        q.setParameter("id",t.getTicketSubCategory().getServiceItem().getId());
         RequiredTaskList rtl;
         try{
             rtl = (RequiredTaskList) q.getSingleResult();

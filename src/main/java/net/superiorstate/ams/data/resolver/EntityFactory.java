@@ -4,7 +4,7 @@ import jakarta.persistence.EntityManager;
 import net.superiorstate.ams.data.dao.RequiredTaskDAO;
 import net.superiorstate.ams.model.activity.checklist.CheckList;
 import net.superiorstate.ams.model.activity.checklist.sequences.RequiredTaskList;
-import net.superiorstate.ams.model.activity.checklist.sequences.support.TemplatePurpose;
+import net.superiorstate.ams.model.activity.checklist.sequences.support.ServiceItem;
 import net.superiorstate.ams.model.activity.checklist.tasks.Task;
 import net.superiorstate.ams.model.activity.checklist.tasks.ToDo;
 import net.superiorstate.ams.model.general.LinkType;
@@ -69,13 +69,13 @@ public abstract class EntityFactory {
         return task;
     }
 
-    public static RequiredTaskList createReqList(EntityManager em, String name, PSP psp, TemplatePurpose tp){
+    public static RequiredTaskList createReqList(EntityManager em, String name, PSP psp, ServiceItem tp){
         if(RequiredTaskDAO.listExistsForPurpose(em,tp))
             return RequiredTaskDAO.getRtlForPurpose(em,tp);
         em.getTransaction().begin();
         RequiredTaskList r = new RequiredTaskList();
         r.setDescription(name);
-        r.setTemplatePurpose(tp);
+        r.setServiceItem(tp);
         r.setPsp(psp);
         r.setInActive(false);
         em.persist(r);

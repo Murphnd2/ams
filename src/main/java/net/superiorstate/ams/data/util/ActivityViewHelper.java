@@ -14,15 +14,13 @@ import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.model.activity.Activity;
 import net.superiorstate.ams.model.activity.Opportunity;
 import net.superiorstate.ams.model.activity.checklist.CheckList;
-import net.superiorstate.ams.model.activity.checklist.sequences.support.TemplatePurpose;
+import net.superiorstate.ams.model.activity.checklist.sequences.support.ServiceItem;
 import net.superiorstate.ams.model.activity.checklist.tasks.Task;
 import net.superiorstate.ams.model.activity.checklist.tasks.ToDo;
 import net.superiorstate.ams.model.activity.renewal.Renewal;
 import net.superiorstate.ams.model.activity.ticket.setup.Setup;
 import net.superiorstate.ams.model.activity.ticket.Ticket;
 import net.superiorstate.ams.model.general.Person;
-import net.superiorstate.ams.model.general.User;
-import net.superiorstate.ams.model.general.UserRole;
 import net.superiorstate.ams.model.general.WebLink;
 import net.superiorstate.ams.model.sales.agency.Proposal;
 import net.superiorstate.ams.model.sales.application.ApplicationModule;
@@ -30,7 +28,6 @@ import net.superiorstate.ams.model.summit.archive.Benefit;
 import net.superiorstate.ams.model.summit.archive.Employee;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
@@ -65,17 +62,17 @@ public abstract class ActivityViewHelper {
         String appLink = DocumentConstants.ONLINE_APPLICATION_DATA + "&entry=" + s.getApplication().getProposal().getApplicationGUID();
         request.getSession().setAttribute("proposalLink",propLink);
         request.getSession().setAttribute("appLink",appLink);
-        List<TemplatePurpose> remainingModules = remainingModules(request,em,moduleList);
+        List<ServiceItem> remainingModules = remainingModules(request,em,moduleList);
         request.getSession().setAttribute("remainingMods",remainingModules);
     }
 
-    public static List<TemplatePurpose> remainingModules(HttpServletRequest request,EntityManager em, List<ApplicationModule> currentMods){
-        List<TemplatePurpose> allModulesList = (List<TemplatePurpose>) request.getSession().getAttribute("setupModules");
-        List<TemplatePurpose> remainingModules = new ArrayList<>();
-        for(TemplatePurpose mod: allModulesList){
+    public static List<ServiceItem> remainingModules(HttpServletRequest request, EntityManager em, List<ApplicationModule> currentMods){
+        List<ServiceItem> allModulesList = (List<ServiceItem>) request.getSession().getAttribute("setupModules");
+        List<ServiceItem> remainingModules = new ArrayList<>();
+        for(ServiceItem mod: allModulesList){
             boolean inList = false;
             for(ApplicationModule am: currentMods){
-                if(am.getTemplatePurpose().getId()==mod.getId()){
+                if(am.getServiceItem().getId()==mod.getId()){
                     inList = true;
                     break;
                 }
@@ -426,7 +423,7 @@ public abstract class ActivityViewHelper {
         String appLink = DocumentConstants.ONLINE_APPLICATION_DATA + "&entry=" + s.getApplication().getProposal().getApplicationGUID();
         request.getSession().setAttribute("proposalLink",propLink);
         request.getSession().setAttribute("appLink",appLink);
-        List<TemplatePurpose> remainingModules = remainingModules(request,em,moduleList);
+        List<ServiceItem> remainingModules = remainingModules(request,em,moduleList);
         request.getSession().setAttribute("remainingMods",remainingModules);
     }
 

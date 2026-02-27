@@ -6,7 +6,7 @@ import net.superiorstate.ams.model.general.PSP;
 import java.util.List;
 
 @Entity
-public class ServiceItem {
+public class ModuleDetail {
     @Id
     @GeneratedValue
     @Column(name="service_item_id")
@@ -28,10 +28,10 @@ public class ServiceItem {
     @JoinColumn(name="psp_id")
     private PSP psp;
 
-    @ManyToMany(mappedBy = "serviceItemList")
+    @ManyToMany(mappedBy = "moduleDetailList")
     List<ServiceModule> listOfModulesWithThisServiceItem;
 
-    public ServiceItem(){}
+    public ModuleDetail(){}
 
     public Long getId() {
         return id;

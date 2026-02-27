@@ -30,7 +30,7 @@
           <c:forEach var="moduleItem" items="${sessionScope.local.getCurrentActivity().getActivity().getApplication().getApplicationModuleList()}">
             <div class="d-flex align-items-center py-1 border-bottom" style="font-size: 0.88rem;">
               <span class="badge me-2" style="background-color: var(--ssa); font-size: 0.7rem;">
-                  ${moduleItem.getTemplatePurpose().getDescription()}
+                  ${moduleItem.getServiceItem().getDescription()}
               </span>
             </div>
           </c:forEach>
@@ -52,7 +52,7 @@
         <c:forEach var="moduleItem" items="${sessionScope.local.getCurrentActivity().getActivity().getApplication().getApplicationModuleList()}">
           <div class="d-flex align-items-center py-1 border-bottom" style="font-size: 0.88rem;">
             <span class="badge me-2" style="background-color: var(--ssa); font-size: 0.7rem;">
-                ${moduleItem.getTemplatePurpose().getDescription()}
+                ${moduleItem.getServiceItem().getDescription()}
             </span>
           </div>
         </c:forEach>

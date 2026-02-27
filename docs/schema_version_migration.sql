@@ -1,9 +1,6 @@
 -- =============================================================================
--- Schema Version Reference
+-- schema_version_migration.sql
 -- =============================================================================
--- This file is for reference and for seeding schema_version on fresh databases
--- (e.g., dev_ssa after initialization, or databases created from the V017
--- baseline dump that don't yet have schema_version populated).
 --
 -- The V017 baseline dump (beta_ssa_dev_baseline_thru_V017.sql) includes the
 -- schema_version table structure but no data rows.
@@ -43,4 +40,5 @@ INSERT IGNORE INTO schema_version (version, description, script_name) VALUES
 ('V016', 'BPO registration and PSP assignment tables', 'V016__bpo_registration_tables.sql'),
 ('V017', 'Move SYS_HEALTH constants to ssa.properties, add EMAIL_FOOTER_TEXT', 'V017__health_constants_to_properties.sql'),
 ('V018', 'Application section suppressed column', 'V018__application_section_suppressed.sql'),
-('V019', 'Application field suppressed column', 'V019__application_field_suppressed.sql');
+('V019', 'Application field suppressed column', 'V019__application_field_suppressed.sql'),
+('V020', 'ServiceItem unification - schema additions and data backfill', 'V020__service_item_unification.sql');

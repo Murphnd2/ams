@@ -12,9 +12,9 @@ import net.superiorstate.ams.model.Activity25u;
 import net.superiorstate.ams.model.Constant;
 import net.superiorstate.ams.controller.authentication.AuthenticateUser;
 import net.superiorstate.ams.data.resolver.EntityLookup;
+import net.superiorstate.ams.model.activity.checklist.sequences.support.ActivityCategory;
+import net.superiorstate.ams.model.activity.checklist.sequences.support.ServiceItem;
 import net.superiorstate.ams.model.activity.checklist.sequences.support.TaskFrequency;
-import net.superiorstate.ams.model.activity.checklist.sequences.support.TemplateGroup;
-import net.superiorstate.ams.model.activity.checklist.sequences.support.TemplatePurpose;
 import net.superiorstate.ams.model.activity.note.ActivityStatus;
 import net.superiorstate.ams.model.activity.note.ReasonCreated;
 import net.superiorstate.ams.model.activity.ticket.ContactMethod;
@@ -37,8 +37,8 @@ public class AmsDataGlobal {
 
     private List<Person> users;
     private List<Person> bpoUsers;
-    private List<TemplateGroup> templateGroups;
-    private List<TemplatePurpose> templatePurposes;
+    private List<ActivityCategory> activityCategories;
+    private List<ServiceItem> serviceItems;
     private List<ReasonCreated> reasonsCreated;
     private List<ContactMethod> contactMethods;
 
@@ -92,7 +92,7 @@ public class AmsDataGlobal {
             Collections.sort(allBpo);
             setBpoUsers(allBpo);
             setTemplateGroups(SequenceDAO.getTemplateGroups(em));
-            setTemplatePurposes(SequenceDAO.getTemplatePurposes(em));
+            setServiceItems(SequenceDAO.getServiceItems(em));
             setReasonsCreated(TicketQueryDAO.getReasons(em));
             setContactMethods(TicketQueryDAO.getContactMethods(em));
             setTicketCategories(TicketQueryDAO.getTicketCategories(em));
@@ -120,7 +120,7 @@ public class AmsDataGlobal {
 
     public void miniUpdate(EntityManager em){
 
-        setTemplatePurposes(SequenceDAO.getTemplatePurposes(em));
+        setServiceItems(SequenceDAO.getServiceItems(em));
 
         setEmployers(generateEmployerList(em));
 
@@ -298,12 +298,12 @@ public class AmsDataGlobal {
         this.bpoUsers = bpoUsers;
     }
 
-    public void setTemplateGroups(List<TemplateGroup> templateGroups) {
-        this.templateGroups = templateGroups;
+    public void setTemplateGroups(List<ActivityCategory> activityCategories) {
+        this.activityCategories = activityCategories;
     }
 
-    public void setTemplatePurposes(List<TemplatePurpose> templatePurposes) {
-        this.templatePurposes = templatePurposes;
+    public void setServiceItems(List<ServiceItem> serviceItems) {
+        this.serviceItems = serviceItems;
     }
     public void markDelegationDirty() {
         this.delegationDirty = true;
@@ -431,12 +431,12 @@ public class AmsDataGlobal {
         return bpoUsers;
     }
 
-    public List<TemplateGroup> getTemplateGroups() {
-        return templateGroups;
+    public List<ActivityCategory> getTemplateGroups() {
+        return activityCategories;
     }
 
-    public List<TemplatePurpose> getTemplatePurposes() {
-        return templatePurposes;
+    public List<ServiceItem> getServiceItems() {
+        return serviceItems;
     }
 
     public List<ReasonCreated> getReasonsCreated() {

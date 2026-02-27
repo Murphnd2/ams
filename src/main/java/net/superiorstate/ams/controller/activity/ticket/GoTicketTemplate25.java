@@ -10,7 +10,7 @@ import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.model.ReqTaskListTix;
 import net.superiorstate.ams.model.activity.checklist.sequences.GenSeq;
 import net.superiorstate.ams.model.activity.checklist.sequences.RequiredTaskList;
-import net.superiorstate.ams.model.activity.checklist.sequences.support.TemplatePurpose;
+import net.superiorstate.ams.model.activity.checklist.sequences.support.ServiceItem;
 import net.superiorstate.ams.model.activity.checklist.tasks.Task;
 import net.superiorstate.ams.model.activity.ticket.TicketCategory;
 import net.superiorstate.ams.model.activity.ticket.TicketSubCategory;
@@ -98,24 +98,24 @@ public class GoTicketTemplate25 extends HttpServlet {
         return (List<TicketSubCategory>) q.getResultList();
     }
 
-    private List<TemplatePurpose> getTemplatesNotSet(EntityManager em, int groupId){
+    private List<ServiceItem> getTemplatesNotSet(EntityManager em, int groupId){
         List<RequiredTaskList> requiredTaskLists = getRequiredTaskLists(em,groupId);
-        Query q = em.createQuery("SELECT t FROM TemplatePurpose t WHERE t.templateGroup.id =:id");
+        Query q = em.createQuery("SELECT t FROM ServiceItem t WHERE t.templateGroup.id =:id");
         q.setParameter("id",groupId);
-        List<TemplatePurpose> purposeList;
+        List<ServiceItem> purposeList;
         try{
-            purposeList = (List<TemplatePurpose>) q.getResultList();
+            purposeList = (List<ServiceItem>) q.getResultList();
         } catch (NoResultException e){
             return new ArrayList<>();
         }
         if(purposeList==null || purposeList.size()==0)
             return new ArrayList<>();
-        List<TemplatePurpose> newList = new ArrayList<>();
+        List<ServiceItem> newList = new ArrayList<>();
         for(RequiredTaskList rtl: requiredTaskLists){
-            if(!newList.contains(rtl.getTemplatePurpose()))
-                newList.add(rtl.getTemplatePurpose());
+            if(!newList.contains(rtl.getServiceItem()))
+                newList.add(rtl.getServiceItem());
         }
-        for(TemplatePurpose tp:newList){
+        for(ServiceItem tp:newList){
             purposeList.remove(tp);
         }
 
@@ -124,7 +124,7 @@ public class GoTicketTemplate25 extends HttpServlet {
     }
 
     private List<RequiredTaskList> getRequiredTaskLists(EntityManager em, int groupId){
-        Query q = em.createQuery("SELECT r From RequiredTaskList r WHERE r.templatePurpose.templateGroup.id=:id AND r.inActive=false");
+        Query q = em.createQuery("SELECT r From RequiredTaskList r WHERE r.serviceItem.templateGroup.id=:id AND r.inActive=false");
         q.setParameter("id",groupId);
         List<RequiredTaskList> requiredTaskLists;
         try{

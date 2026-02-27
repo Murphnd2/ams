@@ -7,9 +7,9 @@ import net.superiorstate.ams.model.activity.Activity;
 import net.superiorstate.ams.model.activity.Opportunity;
 import net.superiorstate.ams.model.activity.checklist.CheckList;
 import net.superiorstate.ams.model.activity.checklist.sequences.RequiredTaskList;
+import net.superiorstate.ams.model.activity.checklist.sequences.support.ActivityCategory;
+import net.superiorstate.ams.model.activity.checklist.sequences.support.ServiceItem;
 import net.superiorstate.ams.model.activity.checklist.sequences.support.TaskFrequency;
-import net.superiorstate.ams.model.activity.checklist.sequences.support.TemplateGroup;
-import net.superiorstate.ams.model.activity.checklist.sequences.support.TemplatePurpose;
 import net.superiorstate.ams.model.activity.checklist.tasks.Task;
 import net.superiorstate.ams.model.activity.checklist.tasks.ToDo;
 import net.superiorstate.ams.model.activity.note.ActivityStatus;
@@ -581,35 +581,35 @@ public abstract class EntityLookup {
         return t;
     }
 
-    public static TemplateGroup getTemplateGroupById(EntityManager em, int id){
-        Query q = em.createQuery("SELECT tg FROM TemplateGroup tg WHERE tg.id = :id");
+    public static ActivityCategory getTemplateGroupById(EntityManager em, int id){
+        Query q = em.createQuery("SELECT tg FROM ActivityCategory tg WHERE tg.id = :id");
         q.setParameter("id",id);
-        TemplateGroup t;
+        ActivityCategory t;
         try{
-            t = (TemplateGroup) q.getSingleResult();
+            t = (ActivityCategory) q.getSingleResult();
         } catch (NoResultException e){
             return null;
         }
         return t;
     }
-    public static TemplatePurpose getTemplatePurposeById(EntityManager em, int id){
-        TemplatePurpose templatePurpose = null;
+    public static ServiceItem getServiceItemById(EntityManager em, int id){
+        ServiceItem serviceItem = null;
         try{
-            Query q = em.createQuery("SELECT tp FROM TemplatePurpose tp WHERE tp.id = :id");
+            Query q = em.createQuery("SELECT tp FROM ServiceItem tp WHERE tp.id = :id");
             q.setParameter("id",id);
-            templatePurpose = (TemplatePurpose) q.getSingleResult();
+            serviceItem = (ServiceItem) q.getSingleResult();
         } catch (NoResultException e){
-            templatePurpose = new TemplatePurpose();
+            serviceItem = new ServiceItem();
         } finally {
-            return templatePurpose;
+            return serviceItem;
         }
     }
-    public static TemplatePurpose getTemplatePurposeById(EntityManager em, int id, boolean returnNull){
-        Query q = em.createQuery("SELECT tp FROM TemplatePurpose tp WHERE tp.id = :id");
+    public static ServiceItem getServiceItemById(EntityManager em, int id, boolean returnNull){
+        Query q = em.createQuery("SELECT tp FROM ServiceItem tp WHERE tp.id = :id");
         q.setParameter("id",id);
-        TemplatePurpose t;
+        ServiceItem t;
         try{
-            t = (TemplatePurpose) q.getSingleResult();
+            t = (ServiceItem) q.getSingleResult();
         } catch (NoResultException e){
             return null;
         }

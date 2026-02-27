@@ -13,9 +13,8 @@ import net.superiorstate.ams.model.ReqTaskListTix;
 import net.superiorstate.ams.model.activity.checklist.sequences.GenSeq;
 import net.superiorstate.ams.model.activity.checklist.sequences.RequiredTaskList;
 import net.superiorstate.ams.model.activity.checklist.sequences.support.TaskSequenceTable;
-import net.superiorstate.ams.model.activity.checklist.sequences.support.TemplatePurpose;
+import net.superiorstate.ams.model.activity.checklist.sequences.support.ServiceItem;
 import net.superiorstate.ams.model.activity.checklist.tasks.Task;
-import net.superiorstate.ams.model.activity.ticket.TicketCategory;
 import net.superiorstate.ams.model.activity.ticket.TicketSubCategory;
 
 import java.io.IOException;
@@ -165,16 +164,16 @@ public class SequenceBuilder25 extends HttpServlet {
             request.getSession().setAttribute("sbListBuilder", builder);
             request.getSession().setAttribute("sbSelectedId", rtl.getId());
             request.getSession().setAttribute("sbSelectedName", rtl.getDescription());
-            request.getSession().setAttribute("sbSelectedGroupId", rtl.getTemplatePurpose().getTemplateGroup().getId());
+            request.getSession().setAttribute("sbSelectedGroupId", rtl.getServiceItem().getActivityCategory().getId());
 
             // Check if this is a ticket sequence and whether it's suppressed
             boolean isSuppressed = false;
-            if (rtl.getTemplatePurpose().getTemplateGroup().getId() == 3) {
+            if (rtl.getServiceItem().getActivityCategory().getId() == 3) {
                 // It's a ticket sequence — check the linked TicketSubCategory
                 try {
                     TicketSubCategory tsc = (TicketSubCategory) em.createQuery(
-                                    "SELECT tsc FROM TicketSubCategory tsc WHERE tsc.templatePurpose.id = :pid")
-                            .setParameter("pid", rtl.getTemplatePurpose().getId())
+                                    "SELECT tsc FROM TicketSubCategory tsc WHERE tsc.serviceItem.id = :pid")
+                            .setParameter("pid", rtl.getServiceItem().getId())
                             .getSingleResult();
                     isSuppressed = !tsc.isActive();
                 } catch (Exception ignored) {}
@@ -215,7 +214,7 @@ public class SequenceBuilder25 extends HttpServlet {
     // ── Helpers ──────────────────────────────────────────────────────────────────
 
     private List<RequiredTaskList> getRequiredTaskLists(EntityManager em, int groupId) {
-        Query q = em.createQuery("SELECT r FROM RequiredTaskList r WHERE r.templatePurpose.templateGroup.id = :id AND r.inActive = false ORDER BY r.description");
+        Query q = em.createQuery("SELECT r FROM RequiredTaskList r WHERE r.serviceItem.activityCategory.id = :id AND r.inActive = false ORDER BY r.description");
         q.setParameter("id", groupId);
         try {
             return (List<RequiredTaskList>) q.getResultList();
@@ -224,19 +223,19 @@ public class SequenceBuilder25 extends HttpServlet {
         }
     }
 
-    private List<TemplatePurpose> getUnassignedPurposes(EntityManager em, int groupId) {
+    private List<ServiceItem> getUnassignedPurposes(EntityManager em, int groupId) {
         List<RequiredTaskList> assigned = getRequiredTaskLists(em, groupId);
-        Query q = em.createQuery("SELECT t FROM TemplatePurpose t WHERE t.templateGroup.id = :id ORDER BY t.description");
+        Query q = em.createQuery("SELECT t FROM ServiceItem t WHERE t.activityCategory.id = :id ORDER BY t.description");
         q.setParameter("id", groupId);
-        List<TemplatePurpose> allPurposes;
+        List<ServiceItem> allPurposes;
         try {
-            allPurposes = new ArrayList<>((List<TemplatePurpose>) q.getResultList());
+            allPurposes = new ArrayList<>((List<ServiceItem>) q.getResultList());
         } catch (NoResultException e) {
             return new ArrayList<>();
         }
 
         for (RequiredTaskList rtl : assigned) {
-            allPurposes.remove(rtl.getTemplatePurpose());
+            allPurposes.remove(rtl.getServiceItem());
         }
         return allPurposes;
     }

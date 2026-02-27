@@ -271,7 +271,7 @@ All `Assignee` subtypes share the same database table with a discriminator colum
 | **Class** | `TicketSubCategory` |
 | **ID** | `id` (Long, column `subcategory_id`) |
 | **Key Fields** | `description`, `isActive` |
-| **Relationships** | `ticketCategory` → M:1 TicketCategory (`category_id`), `templatePurpose` → 1:1 TemplatePurpose (`temp_purpose_id`) |
+| **Relationships** | `ticketCategory` → M:1 TicketCategory (`category_id`), `serviceItem` → 1:1 TemplatePurpose (`temp_purpose_id`) |
 
 ### ContactMethod
 | | |
@@ -377,7 +377,7 @@ All `Assignee` subtypes share the same database table with a discriminator colum
 | | |
 |---|---|
 | **Class** | `RequiredTaskList extends TaskSequence` |
-| **Relationships** | `templatePurpose` → 1:1 TemplatePurpose (`purpose_id`) |
+| **Relationships** | `serviceItem` → 1:1 TemplatePurpose (`purpose_id`) |
 | **Notes** | Links a TemplatePurpose to a set of required tasks. Used for Setup, Ticket, and Opportunity checklists. |
 
 ### RecurringTaskList
@@ -410,7 +410,7 @@ All `Assignee` subtypes share the same database table with a discriminator colum
 |---|---|
 | **Class** | `TemplatePurpose` |
 | **Key Fields** | `id` (int), `description`, `sortOrder` |
-| **Relationships** | `templateGroup` → M:1 TemplateGroup |
+| **Relationships** | `activityCategory` → M:1 TemplateGroup |
 | **Notes** | Defines specific service purposes (Health FSA, HRA, COBRA, HSA, Transit, POP, New Opportunity, etc.) tied to both billing groups and task templates. |
 
 ### TemplateGroup
@@ -741,7 +741,7 @@ These are the **primary local data tables**. They are populated and kept in sync
 | **Class** | `PlanType` |
 | **ID** | `planTypeId` (int, column `PlanType_ID`) |
 | **Key Fields** | `code`, `planTypeName` |
-| **Relationships** | `billingGroup` → M:1 BillingGroup, `templatePurpose` → M:1 TemplatePurpose (`purpose_id`) |
+| **Relationships** | `billingGroup` → M:1 BillingGroup, `serviceItem` → M:1 TemplatePurpose (`purpose_id`) |
 | **Notes** | Maps Summit's plan type codes to billing groups and template purposes. CDH types: DCA, FSA, HRA, HSA, LFSA, MERP, PRA, ICHRA, EBHRA, DRiP, LSA. Premium Billing types: PRK, TRN, Dental, EAP, Life, Medical, Pharmacy, Vision, NEFSA. |
 
 ### CoverageStatus

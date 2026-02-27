@@ -10,8 +10,8 @@ import net.superiorstate.ams.data.AmsDataGlobal;
 import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.model.activity.checklist.sequences.RequiredTaskList;
 import net.superiorstate.ams.model.activity.checklist.sequences.support.TaskSequenceTable;
-import net.superiorstate.ams.model.activity.checklist.sequences.support.TemplateGroup;
-import net.superiorstate.ams.model.activity.checklist.sequences.support.TemplatePurpose;
+import net.superiorstate.ams.model.activity.checklist.sequences.support.ActivityCategory;
+import net.superiorstate.ams.model.activity.checklist.sequences.support.ServiceItem;
 import net.superiorstate.ams.model.activity.checklist.tasks.Task;
 import net.superiorstate.ams.model.activity.ticket.TicketCategory;
 import net.superiorstate.ams.model.activity.ticket.TicketSubCategory;
@@ -181,7 +181,7 @@ public class SequenceAction25 extends HttpServlet {
 
         PSP psp = EntityLookup.getPspById(em, 4L);
         AmsDataGlobal global = (AmsDataGlobal) getServletContext().getAttribute("global");
-        TemplatePurpose tp;
+        ServiceItem tp;
 
         if ("ticket".equals(type)) {
             // Tickets: create TicketSubCategory + TemplatePurpose + RequiredTaskList
@@ -221,7 +221,7 @@ public class SequenceAction25 extends HttpServlet {
                 tc = EntityLookup.getTicketCategoryById(em, catId);
             }
 
-            TemplateGroup tg = EntityLookup.getTemplateGroupById(em, 3);
+            ActivityCategory tg = EntityLookup.getTemplateGroupById(em, 3);
 
             // Create TicketSubCategory
             em.getTransaction().begin();
@@ -232,18 +232,18 @@ public class SequenceAction25 extends HttpServlet {
             em.persist(tsc);
             em.getTransaction().commit();
 
-            // Create TemplatePurpose
+            // Create ServiceItem
             em.getTransaction().begin();
-            tp = new TemplatePurpose();
+            tp = new ServiceItem();
             tp.setSortOrder(100);
             tp.setDescription(name.trim());
-            tp.setTemplateGroup(tg);
+            tp.setActivityCategory(tg);
             em.persist(tp);
             em.getTransaction().commit();
 
             // Link them
             em.getTransaction().begin();
-            tsc.setTemplatePurpose(tp);
+            tsc.setServiceItem(tp);
             em.persist(tsc);
             em.getTransaction().commit();
 
@@ -257,7 +257,7 @@ public class SequenceAction25 extends HttpServlet {
         } else {
             // Renewal or Setup: use existing unassigned TemplatePurpose
             int purposeId = Integer.parseInt(request.getParameter("purposeId"));
-            tp = EntityLookup.getTemplatePurposeById(em, purposeId);
+            tp = EntityLookup.getServiceItemById(em, purposeId);
             if (tp == null) return -1;
         }
 
@@ -267,7 +267,7 @@ public class SequenceAction25 extends HttpServlet {
         RequiredTaskList rtl = new RequiredTaskList();
         rtl.setInActive(false);
         rtl.setPsp(psp);
-        rtl.setTemplatePurpose(tp);
+        rtl.setServiceItem(tp);
         rtl.setDescription(prefix + tp.getDescription());
         em.persist(rtl);
         em.getTransaction().commit();
@@ -302,10 +302,10 @@ public class SequenceAction25 extends HttpServlet {
 
         long seqId = Long.parseLong(seqIdParam);
         RequiredTaskList rtl = EntityLookup.getReqListById(em, seqId);
-        if (rtl == null || rtl.getTemplatePurpose() == null) return -1;
+        if (rtl == null || rtl.getServiceItem() == null) return -1;
 
         // Find the TicketSubCategory linked to this sequence's TemplatePurpose
-        TicketSubCategory tsc = findSubCategoryByPurpose(em, rtl.getTemplatePurpose().getId());
+        TicketSubCategory tsc = findSubCategoryByPurpose(em, rtl.getServiceItem().getId());
         if (tsc == null) return seqId;
 
         // Toggle isActive
@@ -334,7 +334,7 @@ public class SequenceAction25 extends HttpServlet {
     private TicketSubCategory findSubCategoryByPurpose(EntityManager em, int purposeId) {
         try {
             return (TicketSubCategory) em.createQuery(
-                            "SELECT tsc FROM TicketSubCategory tsc WHERE tsc.templatePurpose.id = :pid")
+                            "SELECT tsc FROM TicketSubCategory tsc WHERE tsc.serviceItem.id = :pid")
                     .setParameter("pid", purposeId)
                     .getSingleResult();
         } catch (Exception e) {

@@ -33,7 +33,7 @@ public abstract class ApplicationTaskDAO {
         List<RequiredTaskList> requiredTaskLists = new ArrayList<>();
         for(ApplicationModule am:applicationModuleList){
             List<RequiredTaskList> list = getTaskListsForModule(em,am);
-            System.out.println("Tasks for Application ID-" + am.getApplication().getProposal().getId() + ":TP ID-"+am.getTemplatePurpose().getId() +" = " + list.size());
+            System.out.println("Tasks for Application ID-" + am.getApplication().getProposal().getId() + ":TP ID-"+am.getServiceItem().getId() +" = " + list.size());
             for(RequiredTaskList rtl: list){
                 requiredTaskLists.add(rtl);
             }
@@ -69,8 +69,8 @@ public abstract class ApplicationTaskDAO {
     }
 
     public static List<RequiredTaskList> getTaskListsForModule(EntityManager em, ApplicationModule am){
-        Query q = em.createQuery("SELECT rtl FROM RequiredTaskList rtl WHERE rtl.templatePurpose.id = :id");
-        q.setParameter("id",am.getTemplatePurpose().getId());
+        Query q = em.createQuery("SELECT rtl FROM RequiredTaskList rtl WHERE rtl.serviceItem.id = :id");
+        q.setParameter("id",am.getServiceItem().getId());
         List<RequiredTaskList> requiredTaskLists;
         try{
             requiredTaskLists = (List<RequiredTaskList>) q.getResultList();

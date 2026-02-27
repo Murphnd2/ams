@@ -9,7 +9,7 @@ import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.model.activity.checklist.CheckList;
 import net.superiorstate.ams.model.activity.checklist.sequences.RequiredTaskList;
 import net.superiorstate.ams.model.activity.checklist.sequences.support.TaskSequenceTable;
-import net.superiorstate.ams.model.activity.checklist.sequences.support.TemplatePurpose;
+import net.superiorstate.ams.model.activity.checklist.sequences.support.ServiceItem;
 import net.superiorstate.ams.model.activity.checklist.tasks.SortedTask;
 import net.superiorstate.ams.model.activity.checklist.tasks.Task;
 import net.superiorstate.ams.model.activity.checklist.tasks.ToDo;
@@ -360,12 +360,12 @@ public abstract class RenewalService {
 
    public static List<SortedTask> getTasksRequiredForRenewal2(EntityManager em, RenewalItem ri){
 
-        List<TemplatePurpose> templatePurposeList = new ArrayList<>();
-        templatePurposeList.add(ri.getBenefit().getPlanType().getTemplatePurpose());
+        List<ServiceItem> serviceItemList = new ArrayList<>();
+        serviceItemList.add(ri.getBenefit().getPlanType().getServiceItem());
 
         List<RequiredTaskList> requiredTaskLists = new ArrayList<>();
-        for(TemplatePurpose tp:templatePurposeList){
-            Query q = em.createQuery("SELECT rtl FROM RequiredTaskList rtl WHERE rtl.templatePurpose.id = :id");
+        for(ServiceItem tp: serviceItemList){
+            Query q = em.createQuery("SELECT rtl FROM RequiredTaskList rtl WHERE rtl.serviceItem.id = :id");
             q.setParameter("id",tp.getId());
             List<RequiredTaskList> requiredTaskLists1;
             try{
@@ -406,8 +406,8 @@ public abstract class RenewalService {
         List<SortedTask> requiredTaskList = new ArrayList<>();
         for(RenewalItem ri: r.getRenewalItemList()){
             List<RequiredTaskList> requiredTaskLists;
-            Query q = em.createQuery("SELECT rtl FROM RequiredTaskList rtl WHERE rtl.templatePurpose.id = :tpId");
-            q.setParameter("tpId",ri.getBenefit().getPlanType().getTemplatePurpose().getId());
+            Query q = em.createQuery("SELECT rtl FROM RequiredTaskList rtl WHERE rtl.serviceItem.id = :tpId");
+            q.setParameter("tpId",ri.getBenefit().getPlanType().getServiceItem().getId());
             try{
                 requiredTaskLists = (List<RequiredTaskList>) q.getResultList();
             } catch (NoResultException e){
@@ -444,8 +444,8 @@ public abstract class RenewalService {
 
     private static List<SortedTask> getTasksRequiredForBenefit(EntityManager em, Benefit b){
         List<SortedTask> requiredList = new ArrayList<>();
-        Query q = em.createQuery("SELECT r FROM RequiredTaskList r WHERE r.templatePurpose.id = :id");
-        q.setParameter("id",b.getPlanType().getTemplatePurpose().getId());
+        Query q = em.createQuery("SELECT r FROM RequiredTaskList r WHERE r.serviceItem.id = :id");
+        q.setParameter("id",b.getPlanType().getServiceItem().getId());
         List<RequiredTaskList> requiredTaskLists;
         try{
             requiredTaskLists = (List<RequiredTaskList>) q.getResultList();

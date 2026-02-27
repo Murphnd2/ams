@@ -15,7 +15,7 @@ import net.superiorstate.ams.model.activity.Activity;
 import net.superiorstate.ams.model.activity.checklist.CheckList;
 import net.superiorstate.ams.model.activity.checklist.sequences.RequiredTaskList;
 import net.superiorstate.ams.model.activity.checklist.sequences.support.TaskSequenceTable;
-import net.superiorstate.ams.model.activity.checklist.sequences.support.TemplatePurpose;
+import net.superiorstate.ams.model.activity.checklist.sequences.support.ServiceItem;
 import net.superiorstate.ams.model.activity.checklist.tasks.Task;
 import net.superiorstate.ams.model.activity.checklist.tasks.ToDo;
 import net.superiorstate.ams.model.activity.ticket.setup.Setup;
@@ -72,7 +72,7 @@ public class AddSetupModule25 extends HttpServlet {
         EntityManager em = emf.createEntityManager();
 
         try {
-            TemplatePurpose tp = EntityLookup.getTemplatePurposeById(em, tpId);
+            ServiceItem tp = EntityLookup.getServiceItemById(em, tpId);
             ActivityDAO.addModule(em, app, tp);
 
             // Load and update checklist
@@ -81,7 +81,7 @@ public class AddSetupModule25 extends HttpServlet {
             if (dbChecklist == null)
                 return;
 
-            addMissingTasksFromTemplatePurpose(em, tp, dbChecklist);
+            addMissingTasksFromServiceItem(em, tp, dbChecklist);
 
             // Refresh updated checklist from database
             CheckList updatedChecklist = em.find(CheckList.class, dbChecklist.getId());
@@ -103,12 +103,12 @@ public class AddSetupModule25 extends HttpServlet {
 
 
 
-    private void addMissingTasksFromTemplatePurpose(
+    private void addMissingTasksFromServiceItem(
             EntityManager em,
-            TemplatePurpose tp,
+            ServiceItem tp,
             CheckList checkList) {
 
-        Query q = em.createQuery("SELECT rtl FROM RequiredTaskList rtl WHERE rtl.templatePurpose.id = :id");
+        Query q = em.createQuery("SELECT rtl FROM RequiredTaskList rtl WHERE rtl.serviceItem.id = :id");
         q.setParameter("id", tp.getId());
 
         RequiredTaskList rtl;

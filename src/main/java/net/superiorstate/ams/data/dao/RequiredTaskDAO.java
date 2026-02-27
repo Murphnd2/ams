@@ -5,8 +5,8 @@ import jakarta.persistence.NoResultException;
 import jakarta.persistence.Query;
 import net.superiorstate.ams.model.activity.checklist.sequences.RequiredTaskList;
 import net.superiorstate.ams.model.activity.checklist.sequences.TaskSequence;
+import net.superiorstate.ams.model.activity.checklist.sequences.support.ServiceItem;
 import net.superiorstate.ams.model.activity.checklist.sequences.support.TaskSequenceTable;
-import net.superiorstate.ams.model.activity.checklist.sequences.support.TemplatePurpose;
 import net.superiorstate.ams.model.activity.checklist.tasks.Task;
 
 import java.util.ArrayList;
@@ -48,9 +48,9 @@ public abstract class RequiredTaskDAO {
         return remainingTaskList;
     }
 
-    public static RequiredTaskList getRtlForPurpose(EntityManager em, TemplatePurpose tp){
+    public static RequiredTaskList getRtlForPurpose(EntityManager em, ServiceItem tp){
         RequiredTaskList rtl;
-        Query q = em.createQuery("SELECT rtl FROM RequiredTaskList rtl WHERE rtl.templatePurpose.id = :id");
+        Query q = em.createQuery("SELECT rtl FROM RequiredTaskList rtl WHERE rtl.serviceItem.id = :id");
         q.setParameter("id",tp.getId());
         try{
             rtl = (RequiredTaskList) q.getSingleResult();
@@ -61,7 +61,7 @@ public abstract class RequiredTaskDAO {
         return rtl;
     }
 
-    public static boolean listExistsForPurpose(EntityManager em, TemplatePurpose tp){
+    public static boolean listExistsForPurpose(EntityManager em, ServiceItem tp){
         boolean itExists = getRtlForPurpose(em, tp).getId() != -1L;
         return itExists;
     }

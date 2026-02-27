@@ -16,7 +16,7 @@ import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.model.activity.Activity;
 import net.superiorstate.ams.model.activity.checklist.CheckList;
 import net.superiorstate.ams.model.activity.checklist.sequences.UpcomingSequence;
-import net.superiorstate.ams.model.activity.checklist.sequences.support.TemplatePurpose;
+import net.superiorstate.ams.model.activity.checklist.sequences.support.ServiceItem;
 import net.superiorstate.ams.model.activity.checklist.tasks.ToDo;
 import net.superiorstate.ams.model.activity.checklist.tasks.ToDoOut;
 import net.superiorstate.ams.model.activity.note.Email;
@@ -958,8 +958,8 @@ public class AmsDataLocal implements AutoCloseable {
         private boolean reFilterOnExit;
         private CheckList checkList;
 
-        private List<TemplatePurpose> modsNotInSetup;
-        private List<TemplatePurpose> modsInSetup;
+        private List<ServiceItem> modsNotInSetup;
+        private List<ServiceItem> modsInSetup;
 
         public CurrentActivity(){};
 
@@ -1043,19 +1043,19 @@ public class AmsDataLocal implements AutoCloseable {
             this.additionalContacts = additionalContacts;
         }
 
-        public List<TemplatePurpose> getModsNotInSetup() {
+        public List<ServiceItem> getModsNotInSetup() {
             return modsNotInSetup;
         }
 
-        public void setModsNotInSetup(List<TemplatePurpose> modsNotInSetup) {
+        public void setModsNotInSetup(List<ServiceItem> modsNotInSetup) {
             this.modsNotInSetup = modsNotInSetup;
         }
 
-        public List<TemplatePurpose> getModsInSetup() {
+        public List<ServiceItem> getModsInSetup() {
             return modsInSetup;
         }
 
-        public void setModsInSetup(List<TemplatePurpose> modsInSetup) {
+        public void setModsInSetup(List<ServiceItem> modsInSetup) {
             this.modsInSetup = modsInSetup;
         }
 
@@ -1091,7 +1091,7 @@ public class AmsDataLocal implements AutoCloseable {
             System.out.println("⏱️ intializeActivity took " + (System.currentTimeMillis() - start) + "ms");
         }
 
-        private List<TemplatePurpose> getModsInSetup(Setup s) {
+        private List<ServiceItem> getModsInSetup(Setup s) {
             if (s == null || s.getApplication() == null || s.getApplication().getApplicationModuleList() == null) {
                 return Collections.emptyList();
             }
@@ -1099,7 +1099,7 @@ public class AmsDataLocal implements AutoCloseable {
             return s.getApplication()
                     .getApplicationModuleList()
                     .stream()
-                    .map(ApplicationModule::getTemplatePurpose)
+                    .map(ApplicationModule::getServiceItem)
                     .filter(Objects::nonNull)
                     .distinct()
                     .collect(Collectors.toList());
@@ -1113,9 +1113,9 @@ public class AmsDataLocal implements AutoCloseable {
                 return;
             }
 
-            List<TemplatePurpose> allMods = em.createQuery(
-                    "SELECT t FROM TemplatePurpose t WHERE t.templateGroup.id = 2 ORDER BY t.sortOrder",
-                    TemplatePurpose.class
+            List<ServiceItem> allMods = em.createQuery(
+                    "SELECT t FROM ServiceItem t WHERE t.templateGroup.id = 2 ORDER BY t.sortOrder",
+                    ServiceItem.class
             ).getResultList();
 
             if (allMods.isEmpty()) {
@@ -1123,14 +1123,14 @@ public class AmsDataLocal implements AutoCloseable {
                 return;
             }
 
-            Set<TemplatePurpose> modsInSetup = s.getApplication()
+            Set<ServiceItem> modsInSetup = s.getApplication()
                     .getApplicationModuleList()
                     .stream()
-                    .map(ApplicationModule::getTemplatePurpose)
+                    .map(ApplicationModule::getServiceItem)
                     .filter(Objects::nonNull)
                     .collect(Collectors.toSet());
 
-            List<TemplatePurpose> modsNotInSetup = allMods.stream()
+            List<ServiceItem> modsNotInSetup = allMods.stream()
                     .filter(tp -> !modsInSetup.contains(tp))
                     .collect(Collectors.toList());
 

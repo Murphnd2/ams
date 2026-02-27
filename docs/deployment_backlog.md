@@ -216,22 +216,37 @@ Add optional "Sign in with Microsoft" button on login page using Microsoft Entra
 
 ---
 
-### D-32: Add BRANDING_PATH to ssa.properties on Production
+### D-32: Add BRANDING_PATH and Systemd Write Permission on Production ✅
 
+**Completed:** February 27, 2026
 **Priority:** HIGH — Required before deploying branding upload feature
-**Status:** Not started
 
-Add `BRANDING_PATH=/var/lib/tomcat10/branding/` to `ssa.properties` on production (and any PSP VPS instances). Create the directory with proper Tomcat ownership:
-```bash
-sudo mkdir -p /var/lib/tomcat10/branding
-sudo chown tomcat:tomcat /var/lib/tomcat10/branding
-```
+**Steps performed on production:**
 
-The branding upload servlet (`UploadPspBranding`) now saves logos and favicons to this external directory instead of inside the webapp. The `ServeBrandingFile` servlet serves them at `/branding/*`. Without this config, branding uploads will fail with a "BRANDING_PATH not configured" error.
+1. `BRANDING_PATH=/var/lib/tomcat10/branding/` was already in `ssa.properties`
+2. Created directory with Tomcat ownership:
+   ```bash
+   sudo mkdir -p /var/lib/tomcat10/branding
+   sudo chown tomcat:tomcat /var/lib/tomcat10/branding
+   ```
+3. Added systemd override to allow Tomcat to write to the branding directory (Tomcat 10 on Ubuntu uses `ProtectSystem=strict` which makes the filesystem read-only except for explicitly allowed paths):
+   ```bash
+   sudo systemctl edit tomcat10
+   ```
+   Added:
+   ```ini
+   [Service]
+   ReadWritePaths=/var/lib/tomcat10/branding/
+   ```
+   Then:
+   ```bash
+   sudo systemctl daemon-reload && sudo systemctl restart tomcat10
+   ```
 
-**Also applies to:** Master VPS image — update snapshot after adding this.
-
----
+**Also applies to:** Master VPS image — must be baked into the snapshot so cloned PSP instances work out of the box. Update the master image with:
+- Directory created and owned by `tomcat:tomcat`
+- `BRANDING_PATH` in `ssa.properties`
+- Systemd override in place
 
 ### D-33: Update Master VPS Blank Schema to V013
 

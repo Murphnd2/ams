@@ -4,14 +4,14 @@
     <div class="col">
       <div class="input-group">
         <input type="text" class="form-control text-primary fw-bold" name="sequenceName" required value="${currentTaskSequence.getDescription()}">
-        <select class="form-select" aria-label="recurring freq type drop down" name="templatePurposeList" id="templatePurposeList">
-          <c:forEach var="templatePurpose" items="${sessionScope.templatePurposeList}">
+        <select class="form-select" aria-label="recurring freq type drop down" name="serviceItemList" id="serviceItemList">
+          <c:forEach var="serviceItem" items="${sessionScope.serviceItemList}">
             <c:choose>
-              <c:when test="${templatePurpose.getId()==currentTaskSequence.getTemplatePurpose().getId()}">
-                <option value="${templatePurpose.getId()}" selected>(${templatePurpose.getTemplateGroup().getDescription()}) ${templatePurpose.getDescription()}</option>
+              <c:when test="${serviceItem.getId()==currentTaskSequence.getServiceItem().getId()}">
+                <option value="${serviceItem.getId()}" selected>(${serviceItem.getActivityCategory().getDescription()}) ${serviceItem.getDescription()}</option>
               </c:when>
               <c:otherwise>
-                <option value="${templatePurpose.getId()}">(${templatePurpose.getTemplateGroup().getDescription()}) ${templatePurpose.getDescription()}</option>
+                <option value="${serviceItem.getId()}">(${serviceItem.getActivityCategory().getDescription()}) ${serviceItem.getDescription()}</option>
               </c:otherwise>
             </c:choose>
           </c:forEach>

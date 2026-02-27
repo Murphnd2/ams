@@ -1,7 +1,7 @@
 package net.superiorstate.ams.model.activity.ticket;
 
 import jakarta.persistence.*;
-import net.superiorstate.ams.model.activity.checklist.sequences.support.TemplatePurpose;
+import net.superiorstate.ams.model.activity.checklist.sequences.support.ServiceItem;
 
 @Entity
 public class TicketSubCategory {
@@ -17,7 +17,7 @@ public class TicketSubCategory {
 
     @OneToOne
     @JoinColumn(name="temp_purpose_id")
-    private TemplatePurpose templatePurpose;
+    private ServiceItem serviceItem;
 
     @Column(columnDefinition = "varchar(200)")
     private String description;
@@ -59,12 +59,12 @@ public class TicketSubCategory {
         this.ticketCategory = ticketCategory;
     }
 
-    public TemplatePurpose getTemplatePurpose() {
-        return templatePurpose;
+    public ServiceItem getServiceItem() {
+        return serviceItem;
     }
 
-    public void setTemplatePurpose(TemplatePurpose templatePurpose) {
-        this.templatePurpose = templatePurpose;
+    public void setServiceItem(ServiceItem serviceItem) {
+        this.serviceItem = serviceItem;
     }
     public TicketCategory getNoteCategory() {
         return ticketCategory;

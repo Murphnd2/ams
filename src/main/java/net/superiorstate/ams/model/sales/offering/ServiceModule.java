@@ -41,7 +41,7 @@ public class ServiceModule implements Comparable<ServiceModule> {
     @ManyToMany
     @JoinTable(name="moduleitems",
             joinColumns = @JoinColumn(name="module_id"),inverseJoinColumns = @JoinColumn(name="item_id"))
-    List<ServiceItem> serviceItemList;
+    List<ModuleDetail> moduleDetailList;
 
     @ManyToMany(mappedBy = "serviceModuleList")
     List<LOS> listOfLosWithThisModule;
@@ -120,12 +120,12 @@ public class ServiceModule implements Comparable<ServiceModule> {
         this.enhancement = enhancement;
     }
 
-    public List<ServiceItem> getServiceItemList() {
-        return serviceItemList;
+    public List<ModuleDetail> getServiceItemList() {
+        return moduleDetailList;
     }
 
-    public void setServiceItemList(List<ServiceItem> serviceItemList) {
-        this.serviceItemList = serviceItemList;
+    public void setServiceItemList(List<ModuleDetail> moduleDetailList) {
+        this.moduleDetailList = moduleDetailList;
     }
 
     public List<LOS> getListOfLosWithThisModule() {
@@ -136,14 +136,14 @@ public class ServiceModule implements Comparable<ServiceModule> {
         this.listOfLosWithThisModule = listOfLosWithThisModule;
     }
 
-    public void addServiceItem(ServiceItem serviceItem){
-        this.serviceItemList.add(serviceItem);
-        serviceItem.getListOfModulesWithThisServiceItem().add(this);
+    public void addServiceItem(ModuleDetail moduleDetail){
+        this.moduleDetailList.add(moduleDetail);
+        moduleDetail.getListOfModulesWithThisServiceItem().add(this);
     }
 
-    public void removeServiceItem(ServiceItem serviceItem){
-        this.serviceItemList.remove(serviceItem);
-        serviceItem.getListOfModulesWithThisServiceItem().remove(this);
+    public void removeServiceItem(ModuleDetail moduleDetail){
+        this.moduleDetailList.remove(moduleDetail);
+        moduleDetail.getListOfModulesWithThisServiceItem().remove(this);
     }
 
     @Override

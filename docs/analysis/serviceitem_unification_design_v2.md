@@ -247,7 +247,7 @@ public class ServiceItem {
 
     @ManyToOne
     @JoinColumn(name = "group_id")
-    private ActivityCategory activityCategory;  // RENAMED from activityCategory
+    private ActivityCategory activityCategory;  // RENAMED from templateGroup
 
     @ManyToOne
     @JoinColumn(name = "psp_id")
@@ -272,7 +272,7 @@ public class ServiceItem {
     @JoinColumn(name = "category_id")
     private TicketCategory ticketCategory;    // NEW (nullable, only for group 3)
 
-    @OneToMany(mappedBy = "moduleDetail")     // RENAMED from serviceItem
+    @OneToMany(mappedBy = "serviceItem")     // RENAMED from templatePurpose
     private List<ApplicationModule> applicationModuleList;
 }
 ```
@@ -281,12 +281,12 @@ public class ServiceItem {
 
 | File | Change |
 |------|--------|
-| `RequiredTaskList.java` | `serviceItem` field → `moduleDetail` |
-| `PlanType.java` | `serviceItem` field → `moduleDetail` |
+| `RequiredTaskList.java` | `templatePurpose` field → `serviceItem` |
+| `PlanType.java` | `templatePurpose` field → `serviceItem` |
 | `TicketSubCategory.java` | Eventually removed; during transition, keep FK |
-| `ApplicationModule.java` | `serviceItem` reference → `moduleDetail` |
-| `LOS.java` | Add `moduleDetail` field (new 1:1 FK) |
-| `Enhancement.java` | Add `moduleDetail` field (new 1:1 FK) |
+| `ApplicationModule.java` | `templatePurpose` reference → `serviceItem` |
+| `LOS.java` | Add `serviceItem` field (new 1:1 FK) |
+| `Enhancement.java` | Add `serviceItem` field (new 1:1 FK) |
 | `Benefit.java` | Add `renewalMonths` field |
 | `SequenceBuilder25.java` | All TemplatePurpose references → ServiceItem |
 | `SequenceAction25.java` | TemplatePurpose creation logic → ServiceItem |
@@ -302,7 +302,7 @@ public class ServiceItem {
 ### JSP files to grep
 
 ```bash
-grep -rl "serviceItem\|TemplatePurpose\|activityCategory\|TemplateGroup" src/main/webapp/
+grep -rl "templatePurpose\|TemplatePurpose\|templateGroup\|TemplateGroup" src/main/webapp/
 ```
 
 ---
@@ -310,7 +310,7 @@ grep -rl "serviceItem\|TemplatePurpose\|activityCategory\|TemplateGroup" src/mai
 ## 8. TicketSubCategory Elimination — Transition Plan
 
 ### Current state
-- `TicketSubCategory` has: `id`, `description`, `isActive`, `ticketCategory`, `serviceItem`
+- `TicketSubCategory` has: `id`, `description`, `isActive`, `ticketCategory`, `templatePurpose`
 - Used in ticket creation dropdowns and sequence builder
 
 ### Transition

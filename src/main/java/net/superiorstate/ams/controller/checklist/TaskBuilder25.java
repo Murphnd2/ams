@@ -12,9 +12,9 @@ import net.superiorstate.ams.data.AmsDataLocal;
 import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.model.activity.checklist.sequences.GenSeq;
 import net.superiorstate.ams.model.activity.checklist.sequences.RequiredTaskList;
+import net.superiorstate.ams.model.activity.checklist.sequences.support.ActivityCategory;
 import net.superiorstate.ams.model.activity.checklist.sequences.support.TaskSequenceTable;
-import net.superiorstate.ams.model.activity.checklist.sequences.support.TemplateGroup;
-import net.superiorstate.ams.model.activity.checklist.sequences.support.TemplatePurpose;
+import net.superiorstate.ams.model.activity.checklist.sequences.support.ServiceItem;
 import net.superiorstate.ams.model.activity.checklist.tasks.Task;
 import net.superiorstate.ams.model.activity.ticket.TicketCategory;
 import net.superiorstate.ams.model.activity.ticket.TicketSubCategory;
@@ -137,9 +137,9 @@ public class TaskBuilder25 extends HttpServlet {
                 assert tc != null;
                 lText = tc.getShortText()+": " + textTikNew;
             } else if(radioTikRenSet.equals("2") && radioSetExNew.equals("1"))
-                lText = "(Setup) " + EntityLookup.getTemplatePurposeById(em,selectedSequenceId.intValue()).getDescription();
+                lText = "(Setup) " + EntityLookup.getServiceItemById(em,selectedSequenceId.intValue()).getDescription();
             else if(radioTikRenSet.equals("1") && radioRenExNew.equals("1"))
-                lText ="(Renewal) " + EntityLookup.getTemplatePurposeById(em,selectedSequenceId.intValue()).getDescription();
+                lText ="(Renewal) " + EntityLookup.getServiceItemById(em,selectedSequenceId.intValue()).getDescription();
             else {
                 lText = EntityLookup.getReqListById(em,selectedSequenceId).getDescription();
             }
@@ -170,12 +170,12 @@ public class TaskBuilder25 extends HttpServlet {
             isNewList=true;
         else if(radioTikRenSet.equals("2") && radioSetExNew.equals("1"))
             isNewList = true;
-        TemplatePurpose tp;
+        ServiceItem tp;
         if(isNewList){
             if(radioTikRenSet.equals("0")){
                 TicketSubCategory tsc = new TicketSubCategory();
                 TicketCategory tc = EntityLookup.getTicketCategoryById(em,categoryId);
-                TemplateGroup tg = EntityLookup.getTemplateGroupById(em,3);
+                ActivityCategory tg = EntityLookup.getTemplateGroupById(em,3);
                 em.getTransaction().begin();
                 tsc.setActive(true);
                 tsc.setDescription(textTikNew);
@@ -184,16 +184,16 @@ public class TaskBuilder25 extends HttpServlet {
                 em.getTransaction().commit();
 
                 em.getTransaction().begin();
-                tp = new TemplatePurpose();
+                tp = new ServiceItem();
                 tp.setSortOrder(100);
                 assert tc != null;
                 tp.setDescription(textTikNew);
-                tp.setTemplateGroup(tg);
+                tp.setActivityCategory(tg);
                 em.persist(tp);
                 em.getTransaction().commit();
 
                 em.getTransaction().begin();
-                tsc.setTemplatePurpose(tp);
+                tsc.setServiceItem(tp);
                 em.persist(tsc);
                 em.getTransaction().commit();
 
@@ -204,13 +204,13 @@ public class TaskBuilder25 extends HttpServlet {
 
 
             } else {
-                tp = EntityLookup.getTemplatePurposeById(em,selectedSequenceId.intValue());
+                tp = EntityLookup.getServiceItemById(em,selectedSequenceId.intValue());
             }
             em.getTransaction().begin();
             rtl = new RequiredTaskList();
             rtl.setInActive(false);
             rtl.setPsp(psp);
-            rtl.setTemplatePurpose(tp);
+            rtl.setServiceItem(tp);
             if(radioTikRenSet.equals("2"))
                 rtl.setDescription("(Setup) "+tp.getDescription());
             else if(radioTikRenSet.equals("1"))

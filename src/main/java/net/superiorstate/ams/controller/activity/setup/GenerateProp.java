@@ -11,7 +11,7 @@ import net.superiorstate.ams.data.dao.ApplicationTaskDAO;
 import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.data.util.ActivityViewHelper;
 import net.superiorstate.ams.model.activity.checklist.CheckList;
-import net.superiorstate.ams.model.activity.checklist.sequences.support.TemplatePurpose;
+import net.superiorstate.ams.model.activity.checklist.sequences.support.ServiceItem;
 import net.superiorstate.ams.model.activity.checklist.tasks.SortedTask;
 import net.superiorstate.ams.model.activity.checklist.tasks.Task;
 import net.superiorstate.ams.model.activity.checklist.tasks.ToDo;
@@ -206,8 +206,8 @@ public class GenerateProp extends HttpServlet {
             addModule(em,a,19);
     }
 
-    private void addModule(EntityManager em, Application a, int templatePurposeId){
-        TemplatePurpose tp = EntityLookup.getTemplatePurposeById(em,templatePurposeId);
+    private void addModule(EntityManager em, Application a, int serviceItemId){
+        ServiceItem tp = EntityLookup.getServiceItemById(em,serviceItemId);
 
 
         ActivityDAO.addModule(em,a,tp);

@@ -1,7 +1,7 @@
 package net.superiorstate.ams.model.sales.application;
 
 import jakarta.persistence.*;
-import net.superiorstate.ams.model.activity.checklist.sequences.support.TemplatePurpose;
+import net.superiorstate.ams.model.activity.checklist.sequences.support.ServiceItem;
 
 @Entity
 public class ApplicationModule {
@@ -18,7 +18,7 @@ public class ApplicationModule {
     @ManyToOne
     @MapsId("templatePurposeId")
     @JoinColumn(name = "template_purpose_id")
-    private TemplatePurpose templatePurpose;
+    private ServiceItem serviceItem;
 
     public ApplicationModule(){}
 
@@ -38,11 +38,11 @@ public class ApplicationModule {
         this.application = application;
     }
 
-    public TemplatePurpose getTemplatePurpose() {
-        return templatePurpose;
+    public ServiceItem getServiceItem() {
+        return serviceItem;
     }
 
-    public void setTemplatePurpose(TemplatePurpose templatePurpose) {
-        this.templatePurpose = templatePurpose;
+    public void setServiceItem(ServiceItem serviceItem) {
+        this.serviceItem = serviceItem;
     }
 }

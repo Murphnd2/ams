@@ -13,20 +13,20 @@ Tracks database schema versions across environments.
 | Local (either) | 127.0.0.1:3306 | dev_ssa | Initialization testing (wiped regularly) |
 | Production | superiorstate.biz | beta_ssa | Live server |
 
-## Current Highest Version: V019
+## Current Highest Version: V020
 
 ## Dev Baseline
 
-The current baseline is `docs/importscript/beta_ssa_dev_baseline_thru_V017.sql` — a structure-only dump from production after V017 was applied. **Needs update to V019** — re-export from any `beta_ssa` that is current.
+The current baseline is `docs/importscript/beta_ssa_dev_baseline_thru_V017.sql` — a structure-only dump from production after V017 was applied. **Needs update to V020** — re-export from any database that is current.
 
 **To reset a dev database:**
-1. Export new baseline: Workbench → Server → Data Export → `beta_ssa` → Structure Only → save as `beta_ssa_dev_baseline_thru_V019.sql`
+1. Export new baseline: Workbench → Server → Data Export → `beta_ssa` → Structure Only → save as `beta_ssa_dev_baseline_thru_V020.sql`
 2. Reset target: `DROP DATABASE IF EXISTS dev_ssa; CREATE DATABASE dev_ssa;`
 3. Import baseline: Workbench → Server → Data Import → select file → target `dev_ssa`
 4. Start app against `dev_ssa` → `DatabaseInitializer` seeds data
 5. For `beta_ssa`, also re-import Datapath exports after baseline import
 
-Future migrations (V020+) are applied incrementally on top of the baseline.
+Future migrations (V021+) are applied incrementally on top of the baseline.
 
 ## Schema Version Table
 
@@ -67,6 +67,7 @@ Individual migration scripts are no longer stored in the repo. The baseline dump
 | 17 | V017 | Move SYS_HEALTH constants to ssa.properties, seed EMAIL_FOOTER_TEXT | ✅ All |
 | 18 | V018 | Application section suppressed column | ✅ All |
 | 19 | V019 | Application field suppressed column | ✅ All |
+| 20 | V020 | ServiceItem unification — schema additions and data backfill | ✅ dev_ssa |
 
 ## Production Upgrade History
 
@@ -84,3 +85,8 @@ Individual migration scripts are no longer stored in the repo. The baseline dump
 - V019: Full ALTER + registration applied cleanly
 - Both scripts had incorrect column names in self-registration INSERTs (`script`→`script_name`, `installed_on`→`applied_on`); corrected in repo
 - All environments now at V019
+
+## Notes
+
+- V020 requires corresponding Java code changes (TemplatePurpose → ServiceItem, TemplateGroup → ActivityCategory class/field renames). The V020 schema is backward-compatible for column additions but the code branch with renames must be deployed alongside the schema change.
+- V020 does NOT drop the `ticketsubcategory` table — that will be a future migration after all Java references are removed.
