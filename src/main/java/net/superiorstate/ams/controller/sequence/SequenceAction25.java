@@ -22,11 +22,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Handles SAVE, CREATE, and DELETE actions from the Sequence Template Manager.
+ * Handles SAVE, CREATE, DELETE, and SUPPRESS actions from the Sequence Template Manager.
  * Always redirects back to SequenceBuilder25 after completion.
  *
  * POST params:
- *   action       = "SAVE" | "CREATE" | "DELETE"
+ *   action       = "SAVE" | "CREATE" | "DELETE" | "SUPPRESS"
  *
  * SAVE params:
  *   sequenceId   = existing RequiredTaskList id
@@ -35,11 +35,16 @@ import java.util.List;
  * CREATE params:
  *   newSeqType       = "ticket" | "renewal" | "setup"
  *   seqName          = sequence name
- *   ticketCategoryId = (ticket only) TicketCategory id
+ *   ticketCategoryId = (ticket only) TicketCategory id, or -1 for new category
+ *   newCategoryName  = (ticket only, when ticketCategoryId=-1) new category description
+ *   newCategoryShort = (ticket only, when ticketCategoryId=-1) new category short code
  *   purposeId        = (renewal/setup only) TemplatePurpose id
  *
  * DELETE params:
  *   sequenceId   = RequiredTaskList id to deactivate
+ *
+ * SUPPRESS params:
+ *   sequenceId   = RequiredTaskList id whose TicketSubCategory.isActive to toggle
  */
 @WebServlet(name = "SequenceAction25", value = "/SequenceAction25")
 public class SequenceAction25 extends HttpServlet {
@@ -58,7 +63,7 @@ public class SequenceAction25 extends HttpServlet {
                 case "SAVE" -> redirectId = handleSave(request, em);
                 case "CREATE" -> redirectId = handleCreate(request, em);
                 case "DELETE" -> handleDelete(request, em);
-                case "SUPPRESS" -> redirectId = handleSuppress(request,em);
+                case "SUPPRESS" -> redirectId = handleSuppress(request, em);
             }
         } catch (Exception e) {
             System.out.println("❌ SequenceAction25 error (" + action + "): " + e.getMessage());
@@ -68,11 +73,32 @@ public class SequenceAction25 extends HttpServlet {
             if (em.isOpen()) em.close();
         }
 
-        if (redirectId > 0) {
-            response.sendRedirect("SequenceBuilder25?load=" + redirectId);
+        // Build redirect with view state params
+        String f = request.getParameter("f");
+        String ss = request.getParameter("ss");
+        StringBuilder redir = new StringBuilder("SequenceBuilder25");
+
+        // SUPPRESS special case: if item was just suppressed and view is "hide suppressed",
+        // deselect (don't load it) so it disappears cleanly from the list.
+        // If item was just restored, or view is "show suppressed", stay on it.
+        boolean justSuppressed = Boolean.TRUE.equals(request.getAttribute("justSuppressed"));
+        boolean viewingHidden = "1".equals(ss);
+
+        if ("SUPPRESS".equals(action) && justSuppressed && !viewingHidden) {
+            // Item just got hidden and view hides suppressed → deselect, keep same view state
+            redir.append("?");
+        } else if ("SUPPRESS".equals(action) && justSuppressed && viewingHidden) {
+            // Item just got hidden but view shows suppressed → stay on it
+            redir.append("?load=").append(redirectId);
+        } else if (redirectId > 0) {
+            redir.append("?load=").append(redirectId);
         } else {
-            response.sendRedirect("SequenceBuilder25");
+            redir.append("?");
         }
+        if (f != null && !f.isEmpty()) redir.append("&f=").append(f);
+        if (ss != null && !ss.isEmpty()) redir.append("&ss=").append(ss);
+
+        response.sendRedirect(redir.toString());
     }
 
     // ── SAVE: Update task list for an existing sequence ──────────────────────────
@@ -160,7 +186,41 @@ public class SequenceAction25 extends HttpServlet {
         if ("ticket".equals(type)) {
             // Tickets: create TicketSubCategory + TemplatePurpose + RequiredTaskList
             long catId = Long.parseLong(request.getParameter("ticketCategoryId"));
-            TicketCategory tc = EntityLookup.getTicketCategoryById(em, catId);
+            TicketCategory tc;
+
+            if (catId == -1) {
+                // ── Create new TicketCategory on-the-fly ──
+                String newCatName = request.getParameter("newCategoryName");
+                String newCatShort = request.getParameter("newCategoryShort");
+                if (newCatName == null || newCatName.trim().isEmpty()) return -1;
+                if (newCatShort == null || newCatShort.trim().isEmpty()) {
+                    newCatShort = newCatName.trim().length() > 20
+                            ? newCatName.trim().substring(0, 20)
+                            : newCatName.trim();
+                }
+
+                em.getTransaction().begin();
+                tc = new TicketCategory();
+                tc.setDescription(newCatName.trim());
+                tc.setShortText(newCatShort.trim());
+                tc.setActive(true);
+                em.persist(tc);
+                em.getTransaction().commit();
+
+                // Update global cache with new category
+                if (global != null) {
+                    List<TicketCategory> updatedCats = new ArrayList<>(global.getTicketCategories());
+                    updatedCats.add(tc);
+                    updatedCats.sort((a, b) -> a.getDescription().compareToIgnoreCase(b.getDescription()));
+                    global.setTicketCategories(updatedCats);
+                }
+
+                System.out.println("✅ SequenceAction25 CREATE: new TicketCategory '" + tc.getDescription()
+                        + "' id=" + tc.getId());
+            } else {
+                tc = EntityLookup.getTicketCategoryById(em, catId);
+            }
+
             TemplateGroup tg = EntityLookup.getTemplateGroupById(em, 3);
 
             // Create TicketSubCategory
@@ -187,7 +247,7 @@ public class SequenceAction25 extends HttpServlet {
             em.persist(tsc);
             em.getTransaction().commit();
 
-            // Update global cache
+            // Update global subcategory cache
             if (global != null) {
                 List<TicketSubCategory> updated = new ArrayList<>(global.getTicketSubCategories());
                 updated.add(tsc);
@@ -253,6 +313,9 @@ public class SequenceAction25 extends HttpServlet {
         tsc.setActive(!tsc.isActive());
         em.persist(tsc);
         em.getTransaction().commit();
+
+        // Flag whether the item is now suppressed (for redirect logic)
+        request.setAttribute("justSuppressed", !tsc.isActive());
 
         // Refresh the global ticket subcategory cache
         AmsDataGlobal global = (AmsDataGlobal) getServletContext().getAttribute("global");

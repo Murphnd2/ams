@@ -6,8 +6,8 @@
     <c:import url="/WEB-INF/view/css-js.jsp"></c:import>
     <title>Sequence Template Manager</title>
     <style>
-        .seq-panel { background: #fff; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
-        .seq-panel-header { background: #0d6681; color: #fff; padding: 12px 16px; border-radius: 8px 8px 0 0; font-weight: 600; font-size: 0.95rem; }
+        .seq-panel { background: #fff; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); display: flex; flex-direction: column; height: calc(100vh - 80px); }
+        .seq-panel-header { background: #0d6681; color: #fff; padding: 12px 16px; border-radius: 8px 8px 0 0; font-weight: 600; font-size: 0.95rem; flex-shrink: 0; }
         .seq-item { padding: 10px 14px; border-bottom: 1px solid #eee; cursor: pointer; transition: background 0.15s; display: flex; align-items: center; gap: 10px; text-decoration: none; color: inherit; }
         .seq-item:hover { background: #f0f7fa; color: inherit; }
         .seq-item.active { background: #e8f4f8; border-left: 3px solid #0d6681; }
@@ -33,8 +33,8 @@
         .save-bar { position: sticky; bottom: 0; background: #fff; border-top: 1px solid #eee; padding: 12px 20px; border-radius: 0 0 8px 8px; }
         .empty-state { text-align: center; padding: 60px 20px; color: #999; }
         .empty-state i { font-size: 3rem; margin-bottom: 16px; display: block; color: #ccc; }
-        .new-seq-form { padding: 12px; border-top: 1px solid #eee; background: #fafbfc; border-radius: 0 0 8px 8px; }
-        .seq-list-scroll { max-height: 55vh; overflow-y: auto; }
+        .new-seq-form { padding: 12px; border-top: 1px solid #eee; background: #fafbfc; border-radius: 0 0 8px 8px; flex-shrink: 0; }
+        .seq-list-scroll { flex: 1 1 0; min-height: 80px; overflow-y: auto; }
         .filter-tabs .btn { font-size: 0.78rem; padding: 4px 8px; }
         .filter-tabs .btn.active-filter { background: #0d6681; color: #fff; border-color: #0d6681; }
         /* Suppressed sequences: hidden by default, shown via toggle */
@@ -61,25 +61,25 @@
                 </div>
 
                 <%-- Filter Tabs --%>
-                <div class="px-2 pt-2 pb-2" style="background: #fafbfc; border-bottom: 1px solid #eee;">
+                <div class="px-2 pt-2 pb-2" style="background: #fafbfc; border-bottom: 1px solid #eee; flex-shrink: 0;">
                     <div class="btn-group w-100 filter-tabs" role="group">
                         <button type="button" class="btn btn-outline-secondary btn-sm active-filter" onclick="filterSeq('all',this)">
                             All
                         </button>
                         <button type="button" class="btn btn-outline-secondary btn-sm" onclick="filterSeq('ticket',this)">
-                            <i class="bi bi-ticket-detailed"></i> ${seqTicketCount}
+                            <i class="bi bi-ticket-detailed"></i> <span id="countTicket">${seqTicketCount}</span>
                         </button>
                         <button type="button" class="btn btn-outline-secondary btn-sm" onclick="filterSeq('renewal',this)">
-                            <i class="bi bi-repeat"></i> ${seqRenewalCount}
+                            <i class="bi bi-repeat"></i> <span id="countRenewal">${seqRenewalCount}</span>
                         </button>
                         <button type="button" class="btn btn-outline-secondary btn-sm" onclick="filterSeq('setup',this)">
-                            <i class="bi bi-buildings"></i> ${seqSetupCount}
+                            <i class="bi bi-buildings"></i> <span id="countSetup">${seqSetupCount}</span>
                         </button>
                     </div>
                 </div>
 
                 <%-- Search + Suppressed Toggle --%>
-                <div class="p-2 d-flex align-items-center gap-2" style="border-bottom: 1px solid #eee;">
+                <div class="p-2 d-flex align-items-center gap-2" style="border-bottom: 1px solid #eee; flex-shrink: 0;">
                     <div class="input-group input-group-sm flex-fill">
                         <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
                         <input type="text" class="form-control border-start-0" placeholder="Filter sequences..." id="seqSearch" oninput="searchSeq()">
@@ -138,6 +138,8 @@
                     <div class="collapse mt-2" id="newSeqCollapse">
                         <form method="post" action="SequenceAction25" id="newSeqForm">
                             <input type="hidden" name="action" value="CREATE">
+                            <input type="hidden" name="f" value="${param.f}">
+                            <input type="hidden" name="ss" value="${param.ss}">
                             <div class="mb-2">
                                 <select class="form-select form-select-sm" name="newSeqType" id="newSeqType" onchange="toggleNewSeqFields()" required>
                                     <option value="" selected disabled>Activity Type</option>
@@ -147,12 +149,23 @@
                                 </select>
                             </div>
                             <div class="mb-2 d-none" id="ticketCatRow">
-                                <select class="form-select form-select-sm" name="ticketCategoryId">
+                                <select class="form-select form-select-sm" name="ticketCategoryId" id="ticketCatSelect" onchange="toggleNewCatFields()">
                                     <option selected disabled>Ticket Category</option>
                                     <c:forEach var="cat" items="${sessionScope.sbTicketCategories}">
                                         <option value="${cat.getId()}">${cat.getDescription()}</option>
                                     </c:forEach>
+                                    <option value="-1">+ New Category...</option>
                                 </select>
+                            </div>
+                            <div class="mb-2 d-none" id="newCatRow">
+                                <div class="input-group input-group-sm">
+                                    <span class="input-group-text" style="font-size:0.75rem;">Category Name</span>
+                                    <input type="text" class="form-control form-control-sm" name="newCategoryName" id="newCategoryName" placeholder="e.g. Payroll Issues">
+                                </div>
+                                <div class="input-group input-group-sm mt-1">
+                                    <span class="input-group-text" style="font-size:0.75rem;">Short Code</span>
+                                    <input type="text" class="form-control form-control-sm" name="newCategoryShort" id="newCategoryShort" placeholder="e.g. Payroll" maxlength="20">
+                                </div>
                             </div>
                             <div class="mb-2 d-none" id="renewalPurposeRow">
                                 <select class="form-select form-select-sm" name="purposeId">
@@ -202,6 +215,8 @@
                                 <form method="post" action="SequenceAction25" class="d-inline ms-2">
                                     <input type="hidden" name="action" value="SUPPRESS">
                                     <input type="hidden" name="sequenceId" value="${sessionScope.sbSelectedId}">
+                                    <input type="hidden" name="f" value="${param.f}">
+                                    <input type="hidden" name="ss" value="${param.ss}">
                                     <c:choose>
                                         <c:when test="${sessionScope.sbIsSuppressed}">
                                             <button type="submit" class="btn btn-sm btn-outline-success"
@@ -225,6 +240,8 @@
                             <input type="hidden" name="action" value="SAVE">
                             <input type="hidden" name="sequenceId" value="${sessionScope.sbSelectedId}">
                             <input type="hidden" name="taskOrder" id="taskOrderField" value="">
+                            <input type="hidden" name="f" value="${param.f}">
+                            <input type="hidden" name="ss" value="${param.ss}">
 
                             <div id="taskList">
                                 <c:forEach var="gs" items="${sessionScope.sbListBuilder}" varStatus="idx">
@@ -302,28 +319,64 @@
 </div>
 
 <script>
+    /* ── View state from URL params ── */
+    var urlParams = new URLSearchParams(window.location.search);
+    var currentFilter = urlParams.get('f') || 'all';
+    var showSuppressedInit = urlParams.get('ss') === '1';
+
+    /* ── Helper: build query string for current view state ── */
+    function viewQS() {
+        var container = document.getElementById('seqListContainer');
+        var ss = container.classList.contains('show-suppressed') ? '1' : '0';
+        var f = currentFilter;
+        return 'f=' + f + '&ss=' + ss;
+    }
+
+    /* ── Rewrite all sequence links to carry view state ── */
+    function updateSeqLinks() {
+        var qs = viewQS();
+        document.querySelectorAll('.seq-item').forEach(function(a) {
+            var base = a.href.split('?')[0];
+            var loadParam = new URL(a.href).searchParams.get('load');
+            a.href = base + '?load=' + loadParam + '&' + qs;
+        });
+        /* Also update all form hidden fields for f and ss */
+        document.querySelectorAll('input[name="f"]').forEach(function(el) { el.value = currentFilter; });
+        var ssVal = document.getElementById('seqListContainer').classList.contains('show-suppressed') ? '1' : '0';
+        document.querySelectorAll('input[name="ss"]').forEach(function(el) { el.value = ssVal; });
+    }
+
+    /* ── Update filter tab counts based on visible items ── */
+    function updateCounts() {
+        var showSuppressed = document.getElementById('seqListContainer').classList.contains('show-suppressed');
+        var tickets = 0, renewals = 0, setups = 0;
+        document.querySelectorAll('.seq-item').forEach(function(item) {
+            var isSuppressed = item.getAttribute('data-suppressed') === 'true';
+            if (isSuppressed && !showSuppressed) return;
+            var type = item.getAttribute('data-type');
+            if (type === 'ticket') tickets++;
+            else if (type === 'renewal') renewals++;
+            else if (type === 'setup') setups++;
+        });
+        document.getElementById('countTicket').textContent = tickets;
+        document.getElementById('countRenewal').textContent = renewals;
+        document.getElementById('countSetup').textContent = setups;
+    }
+
     /* ── Suppressed toggle ── */
     function toggleSuppressed(el) {
         var container = document.getElementById('seqListContainer');
         var showing = container.classList.toggle('show-suppressed');
         el.innerHTML = showing ? '<i class="bi bi-eye"></i>' : '<i class="bi bi-eye-slash"></i>';
         el.title = showing ? 'Hide suppressed sequences' : 'Show suppressed sequences';
+        updateCounts();
+        applyFilter();
+        updateSeqLinks();
     }
 
-    /* ── If the currently selected sequence is suppressed, auto-show suppressed on load ── */
-    <c:if test="${sessionScope.sbIsSuppressed}">
-    (function() {
-        var container = document.getElementById('seqListContainer');
-        container.classList.add('show-suppressed');
-        var toggle = document.querySelector('.suppress-toggle');
-        if (toggle) { toggle.innerHTML = '<i class="bi bi-eye"></i>'; toggle.title = 'Hide suppressed sequences'; }
-    })();
-    </c:if>
-
-    /* ── Filter by type ── */
-    function filterSeq(type, btn) {
-        document.querySelectorAll('.filter-tabs .btn').forEach(function(b) { b.classList.remove('active-filter'); });
-        btn.classList.add('active-filter');
+    /* ── Apply current filter to items ── */
+    function applyFilter() {
+        var type = currentFilter;
         var showSuppressed = document.getElementById('seqListContainer').classList.contains('show-suppressed');
         document.querySelectorAll('.seq-item').forEach(function(item) {
             var matchesType = (type === 'all' || item.getAttribute('data-type') === type);
@@ -331,11 +384,20 @@
             if (!matchesType) {
                 item.style.display = 'none';
             } else if (isSuppressed && !showSuppressed) {
-                item.style.display = '';  /* let CSS class handle hiding */
+                item.style.display = '';
             } else {
                 item.style.display = 'flex';
             }
         });
+    }
+
+    /* ── Filter by type (from button click) ── */
+    function filterSeq(type, btn) {
+        document.querySelectorAll('.filter-tabs .btn').forEach(function(b) { b.classList.remove('active-filter'); });
+        btn.classList.add('active-filter');
+        currentFilter = type;
+        applyFilter();
+        updateSeqLinks();
     }
 
     /* ── Search filter ── */
@@ -349,12 +411,47 @@
             if (!matchesSearch) {
                 item.style.display = 'none';
             } else if (isSuppressed && !showSuppressed) {
-                item.style.display = '';  /* let CSS class handle hiding */
+                item.style.display = '';
             } else {
                 item.style.display = 'flex';
             }
         });
     }
+
+    /* ── Restore view state on page load ── */
+    (function initViewState() {
+        var container = document.getElementById('seqListContainer');
+        var toggle = document.querySelector('.suppress-toggle');
+
+        // Restore show-suppressed state
+        if (showSuppressedInit) {
+            container.classList.add('show-suppressed');
+            if (toggle) { toggle.innerHTML = '<i class="bi bi-eye"></i>'; toggle.title = 'Hide suppressed sequences'; }
+        }
+        // Auto-show if selected sequence is suppressed (even if ss param wasn't set)
+        <c:if test="${sessionScope.sbIsSuppressed}">
+        if (!container.classList.contains('show-suppressed')) {
+            container.classList.add('show-suppressed');
+            if (toggle) { toggle.innerHTML = '<i class="bi bi-eye"></i>'; toggle.title = 'Hide suppressed sequences'; }
+        }
+        </c:if>
+
+        // Restore active filter tab
+        if (currentFilter !== 'all') {
+            var btns = document.querySelectorAll('.filter-tabs .btn');
+            btns.forEach(function(b) {
+                b.classList.remove('active-filter');
+                var onclick = b.getAttribute('onclick') || '';
+                if (onclick.indexOf("'" + currentFilter + "'") >= 0) {
+                    b.classList.add('active-filter');
+                }
+            });
+            applyFilter();
+        }
+
+        updateCounts();
+        updateSeqLinks();
+    })();
 
     function toggleAddMode() {
         var isNew = document.getElementById('addNew').checked;
@@ -434,6 +531,14 @@
         document.getElementById('ticketCatRow').className = v === 'ticket' ? 'mb-2' : 'mb-2 d-none';
         document.getElementById('renewalPurposeRow').className = v === 'renewal' ? 'mb-2' : 'mb-2 d-none';
         document.getElementById('setupPurposeRow').className = v === 'setup' ? 'mb-2' : 'mb-2 d-none';
+        if (v !== 'ticket') { document.getElementById('newCatRow').className = 'mb-2 d-none'; }
+    }
+
+    function toggleNewCatFields() {
+        var sel = document.getElementById('ticketCatSelect');
+        var isNew = sel.value === '-1';
+        document.getElementById('newCatRow').className = isNew ? 'mb-2' : 'mb-2 d-none';
+        if (isNew) { document.getElementById('newCategoryName').focus(); }
     }
 
     function prepareSubmit() {
