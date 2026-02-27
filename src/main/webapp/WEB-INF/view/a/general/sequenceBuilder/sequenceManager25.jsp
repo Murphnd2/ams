@@ -37,6 +37,12 @@
         .seq-list-scroll { max-height: 55vh; overflow-y: auto; }
         .filter-tabs .btn { font-size: 0.78rem; padding: 4px 8px; }
         .filter-tabs .btn.active-filter { background: #0d6681; color: #fff; border-color: #0d6681; }
+        /* Suppressed sequences: hidden by default, shown via toggle */
+        .seq-suppressed { display: none !important; }
+        .seq-list-scroll.show-suppressed .seq-suppressed { display: flex !important; opacity: 0.45; font-style: italic; }
+        .seq-list-scroll.show-suppressed .seq-suppressed.active { opacity: 0.7; }
+        .suppress-toggle { font-size: 0.75rem; cursor: pointer; user-select: none; }
+        .suppress-toggle:hover { color: #0d6681; }
     </style>
 </head>
 <body>
@@ -72,12 +78,15 @@
                     </div>
                 </div>
 
-                <%-- Search --%>
-                <div class="p-2" style="border-bottom: 1px solid #eee;">
-                    <div class="input-group input-group-sm">
+                <%-- Search + Suppressed Toggle --%>
+                <div class="p-2 d-flex align-items-center gap-2" style="border-bottom: 1px solid #eee;">
+                    <div class="input-group input-group-sm flex-fill">
                         <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
                         <input type="text" class="form-control border-start-0" placeholder="Filter sequences..." id="seqSearch" oninput="searchSeq()">
                     </div>
+                    <span class="suppress-toggle text-muted" onclick="toggleSuppressed(this)" title="Show/hide suppressed sequences">
+                        <i class="bi bi-eye-slash"></i>
+                    </span>
                 </div>
 
                 <%-- Sequence List --%>
@@ -87,11 +96,13 @@
                         <c:if test="${sessionScope.sbSelectedId == tix.getId()}"><c:set var="isActive" value="active" /></c:if>
                         <c:set var="suppressedClass" value="" />
                         <c:set var="suppressedBadge" value="" />
+                        <c:set var="suppressedAttr" value="false" />
                         <c:if test="${tix.getTicketSubCategory() != null && !tix.getTicketSubCategory().isActive()}">
-                            <c:set var="suppressedClass" value="opacity-50" />
+                            <c:set var="suppressedClass" value="seq-suppressed" />
                             <c:set var="suppressedBadge"><span class="badge bg-warning text-dark ms-1" style="font-size:0.65rem;">hidden</span></c:set>
+                            <c:set var="suppressedAttr" value="true" />
                         </c:if>
-                        <a href="SequenceBuilder25?load=${tix.getId()}" class="seq-item ${isActive} ${suppressedClass}" data-type="ticket" data-searchname="${tix.getDescription()}">
+                        <a href="SequenceBuilder25?load=${tix.getId()}" class="seq-item ${isActive} ${suppressedClass}" data-type="ticket" data-searchname="${tix.getDescription()}" data-suppressed="${suppressedAttr}">
                             <span class="stat-chip ticket">Ticket</span>
                             <span class="seq-name flex-fill">${tix.getDescription()}${suppressedBadge}</span>
                             <span class="task-count-badge">${taskCountMap[tix.getId()]} tasks</span>
@@ -101,7 +112,7 @@
                     <c:forEach var="ren" items="${sessionScope.seqRenewalList}">
                         <c:set var="isActive" value="" />
                         <c:if test="${sessionScope.sbSelectedId == ren.getId()}"><c:set var="isActive" value="active" /></c:if>
-                        <a href="SequenceBuilder25?load=${ren.getId()}" class="seq-item ${isActive}" data-type="renewal" data-searchname="${ren.getDescription()}">
+                        <a href="SequenceBuilder25?load=${ren.getId()}" class="seq-item ${isActive}" data-type="renewal" data-searchname="${ren.getDescription()}" data-suppressed="false">
                             <span class="stat-chip renewal">Renewal</span>
                             <span class="seq-name flex-fill">${ren.getDescription()}</span>
                             <span class="task-count-badge">${taskCountMap[ren.getId()]} tasks</span>
@@ -110,7 +121,7 @@
                     <c:forEach var="setup" items="${sessionScope.seqSetupList}">
                         <c:set var="isActive" value="" />
                         <c:if test="${sessionScope.sbSelectedId == setup.getId()}"><c:set var="isActive" value="active" /></c:if>
-                        <a href="SequenceBuilder25?load=${setup.getId()}" class="seq-item ${isActive}" data-type="setup" data-searchname="${setup.getDescription()}">
+                        <a href="SequenceBuilder25?load=${setup.getId()}" class="seq-item ${isActive}" data-type="setup" data-searchname="${setup.getDescription()}" data-suppressed="false">
                             <span class="stat-chip setup">Setup</span>
                             <span class="seq-name flex-fill">${setup.getDescription()}</span>
                             <span class="task-count-badge">${taskCountMap[setup.getId()]} tasks</span>
@@ -221,12 +232,12 @@
                                         <div class="task-row" draggable="true"
                                              data-task-id="${gs.getTask() != null ? gs.getTask().getId() : -1}"
                                              data-desc="${gs.getDescription()}"
-                                             data-reusable="${gs.isPublicTask()}">
+                                             data-reusable="${gs.getTask() != null && gs.getTask().isReUsable()}">
                                             <span class="drag-handle"><i class="bi bi-grip-vertical"></i></span>
                                             <span class="step-badge">${idx.count}</span>
                                             <div style="flex:1; font-size:0.9rem; padding:4px 8px;">${gs.getDescription()}</div>
                                             <div class="task-flags">
-                                                <span class="flag <c:if test='${gs.isPublicTask()}'>on</c:if>" title="Reusable"><i class="bi bi-floppy"></i></span>
+                                                <span class="flag ${gs.getTask() != null && gs.getTask().isReUsable() ? 'on' : ''}" title="Reusable"><i class="bi bi-floppy"></i></span>
                                             </div>
                                             <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeTask(this)"><i class="bi bi-x-lg"></i></button>
                                         </div>
@@ -234,33 +245,31 @@
                                 </c:forEach>
                             </div>
 
-                                <%-- Add Task Bar --%>
+                            <%-- Add Task Bar --%>
                             <div class="add-task-bar">
                                 <div class="row g-2 align-items-center">
                                     <div class="col-auto">
-                                        <div class="btn-group btn-group-sm">
-                                            <input type="radio" class="btn-check" name="addMode" id="addNew" checked onchange="toggleAddMode()">
-                                            <label class="btn btn-outline-success" for="addNew"><i class="bi bi-pencil"></i> New</label>
-                                            <input type="radio" class="btn-check" name="addMode" id="addExisting" onchange="toggleAddMode()">
-                                            <label class="btn btn-outline-success" for="addExisting"><i class="bi bi-journal-text"></i> Existing</label>
+                                        <div class="btn-group btn-group-sm" role="group">
+                                            <input type="radio" name="addMode" id="addExisting" class="btn-check" autocomplete="off" checked onclick="toggleAddMode()">
+                                            <label class="btn btn-outline-secondary" for="addExisting"><i class="bi bi-journal-text"></i> Existing</label>
+                                            <input type="radio" name="addMode" id="addNew" class="btn-check" autocomplete="off" onclick="toggleAddMode()">
+                                            <label class="btn btn-outline-secondary" for="addNew"><i class="bi bi-journal-plus"></i> New</label>
                                         </div>
                                     </div>
-                                    <div class="col" id="newTaskInput">
-                                        <input type="text" class="form-control form-control-sm" placeholder="Type new task description..." id="newTaskDesc"
-                                               onkeydown="if(event.key==='Enter'){event.preventDefault();addTask();}">
-                                    </div>
-                                    <div class="col d-none" id="existingTaskInput">
+                                    <div class="col" id="existingTaskInput">
                                         <select class="form-select form-select-sm" id="existingTaskSelect">
-                                            <option value="-1" selected disabled>Select from reusable tasks...</option>
+                                            <option value="-1">Select a reusable task...</option>
                                             <c:forEach var="rt" items="${sessionScope.sbReusableTasks}">
                                                 <option value="${rt.getId()}" data-desc="${rt.getDescription()}">${rt.getDescription()}</option>
                                             </c:forEach>
                                         </select>
                                     </div>
-                                    <div class="col-auto">
-                                        <div class="form-check form-check-inline mb-0">
-                                            <input class="form-check-input" type="checkbox" id="saveReusable">
-                                            <label class="form-check-label small" for="saveReusable"><i class="bi bi-floppy"></i> Reusable</label>
+                                    <div class="col d-none" id="newTaskInput">
+                                        <div class="input-group input-group-sm">
+                                            <input type="text" class="form-control" id="newTaskDesc" placeholder="New task description">
+                                            <span class="input-group-text">
+                                                <input type="checkbox" class="form-check-input me-1" id="saveReusable"> <label for="saveReusable" style="font-size:0.75rem; cursor:pointer;">Save</label>
+                                            </span>
                                         </div>
                                     </div>
                                     <div class="col-auto">
@@ -293,19 +302,57 @@
 </div>
 
 <script>
+    /* ── Suppressed toggle ── */
+    function toggleSuppressed(el) {
+        var container = document.getElementById('seqListContainer');
+        var showing = container.classList.toggle('show-suppressed');
+        el.innerHTML = showing ? '<i class="bi bi-eye"></i>' : '<i class="bi bi-eye-slash"></i>';
+        el.title = showing ? 'Hide suppressed sequences' : 'Show suppressed sequences';
+    }
+
+    /* ── If the currently selected sequence is suppressed, auto-show suppressed on load ── */
+    <c:if test="${sessionScope.sbIsSuppressed}">
+    (function() {
+        var container = document.getElementById('seqListContainer');
+        container.classList.add('show-suppressed');
+        var toggle = document.querySelector('.suppress-toggle');
+        if (toggle) { toggle.innerHTML = '<i class="bi bi-eye"></i>'; toggle.title = 'Hide suppressed sequences'; }
+    })();
+    </c:if>
+
+    /* ── Filter by type ── */
     function filterSeq(type, btn) {
         document.querySelectorAll('.filter-tabs .btn').forEach(function(b) { b.classList.remove('active-filter'); });
         btn.classList.add('active-filter');
+        var showSuppressed = document.getElementById('seqListContainer').classList.contains('show-suppressed');
         document.querySelectorAll('.seq-item').forEach(function(item) {
-            item.style.display = (type === 'all' || item.getAttribute('data-type') === type) ? 'flex' : 'none';
+            var matchesType = (type === 'all' || item.getAttribute('data-type') === type);
+            var isSuppressed = item.getAttribute('data-suppressed') === 'true';
+            if (!matchesType) {
+                item.style.display = 'none';
+            } else if (isSuppressed && !showSuppressed) {
+                item.style.display = '';  /* let CSS class handle hiding */
+            } else {
+                item.style.display = 'flex';
+            }
         });
     }
 
+    /* ── Search filter ── */
     function searchSeq() {
         var term = document.getElementById('seqSearch').value.toLowerCase();
+        var showSuppressed = document.getElementById('seqListContainer').classList.contains('show-suppressed');
         document.querySelectorAll('.seq-item').forEach(function(item) {
             var name = (item.getAttribute('data-searchname') || '').toLowerCase();
-            item.style.display = name.indexOf(term) >= 0 ? 'flex' : 'none';
+            var matchesSearch = name.indexOf(term) >= 0;
+            var isSuppressed = item.getAttribute('data-suppressed') === 'true';
+            if (!matchesSearch) {
+                item.style.display = 'none';
+            } else if (isSuppressed && !showSuppressed) {
+                item.style.display = '';  /* let CSS class handle hiding */
+            } else {
+                item.style.display = 'flex';
+            }
         });
     }
 
