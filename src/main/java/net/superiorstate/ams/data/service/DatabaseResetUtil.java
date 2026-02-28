@@ -48,6 +48,8 @@ public abstract class DatabaseResetUtil {
         public String smtpPort;
         public String smtpUser;
         public String smtpPassword;
+        /** Captured rows from schema_version: [version, description, script_name] */
+        public List<Object[]> schemaVersionRows;
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -104,8 +106,20 @@ public abstract class DatabaseResetUtil {
         s.domain = getConstant(em, "WEB_PATH");
         s.summitPath = getConstant(em, "SUMMIT_PATH");
 
+        // Capture schema_version rows (if the table exists)
+        try {
+            s.schemaVersionRows = em.createNativeQuery(
+                    "SELECT version, description, script_name FROM schema_version ORDER BY version"
+            ).getResultList();
+        } catch (Exception e) {
+            s.schemaVersionRows = List.of();  // table may not exist yet
+        }
+
         log(out, "Captured initialization state for: <strong>" + s.pspName
                 + "</strong> (" + s.firstName + " " + s.lastName + " / " + s.email + ")");
+        if (s.schemaVersionRows != null && !s.schemaVersionRows.isEmpty()) {
+            log(out, "Captured <strong>" + s.schemaVersionRows.size() + "</strong> schema_version rows.");
+        }
         return s;
     }
 
@@ -202,6 +216,26 @@ public abstract class DatabaseResetUtil {
         DatabaseInitializer.performInitialization(em);
 
         log(out, "Database re-initialized.");
+
+        // Restore schema_version rows
+        if (s.schemaVersionRows != null && !s.schemaVersionRows.isEmpty()) {
+            try {
+                em.getTransaction().begin();
+                for (Object[] row : s.schemaVersionRows) {
+                    em.createNativeQuery(
+                            "INSERT IGNORE INTO schema_version (version, description, script_name) VALUES (?1, ?2, ?3)")
+                            .setParameter(1, row[0])
+                            .setParameter(2, row[1])
+                            .setParameter(3, row[2])
+                            .executeUpdate();
+                }
+                em.getTransaction().commit();
+                log(out, "Restored <strong>" + s.schemaVersionRows.size() + "</strong> schema_version rows.");
+            } catch (Exception e) {
+                if (em.getTransaction().isActive()) em.getTransaction().rollback();
+                log(out, "Warning: could not restore schema_version: " + e.getMessage());
+            }
+        }
 
         // Restore the admin user's password hash+salt (since we can't recover plaintext)
         if (s.passwordHash != null && s.salt != null) {

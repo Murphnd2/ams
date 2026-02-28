@@ -242,37 +242,37 @@ public class SeedDemoData extends HttpServlet {
             PlanType ptVision = em.find(PlanType.class, 14);
 
             // Acme (4 benefits)
-            Benefit bAcmeFsa = seedBenefit(em, out, -100, "Acme Health FSA", acme, ptFSA,
+            Benefit bAcmeFsa = seedBenefit(em, out, 99800, "CDH", "Acme Health FSA", acme, ptFSA,
                     Date.valueOf(firstOfMonth.plusMonths(1)));
-            Benefit bAcmeHra = seedBenefit(em, out, -101, "Acme HRA", acme, ptHRA,
+            Benefit bAcmeHra = seedBenefit(em, out, 99801, "CDH", "Acme HRA", acme, ptHRA,
                     Date.valueOf(firstOfMonth.plusMonths(3)));
-            seedBenefit(em, out, -102, "Acme COBRA", acme, ptMedical,
+            seedBenefit(em, out, 99802, "COBRA", "Acme COBRA", acme, ptMedical,
                     Date.valueOf(firstOfMonth.plusMonths(6)));
-            seedBenefit(em, out, -103, "Acme HSA", acme, ptHSA,
+            seedBenefit(em, out, 99803, "CDH", "Acme HSA", acme, ptHSA,
                     Date.valueOf(firstOfMonth.plusMonths(2)));
 
             // Bright Horizons (2)
-            seedBenefit(em, out, -104, "Bright Horizons FSA", bright, ptFSA,
+            seedBenefit(em, out, 99804, "CDH", "Bright Horizons FSA", bright, ptFSA,
                     Date.valueOf(firstOfMonth.plusMonths(4)));
-            seedBenefit(em, out, -105, "Bright Horizons DCA", bright, ptDCA,
+            seedBenefit(em, out, 99805, "CDH", "Bright Horizons DCA", bright, ptDCA,
                     Date.valueOf(firstOfMonth.plusMonths(4)));
 
             // Cascade (2)
-            Benefit bCascadeHra = seedBenefit(em, out, -106, "Cascade HRA", cascade, ptHRA,
+            Benefit bCascadeHra = seedBenefit(em, out, 99806, "CDH", "Cascade HRA", cascade, ptHRA,
                     Date.valueOf(firstOfMonth.plusMonths(2)));
-            seedBenefit(em, out, -107, "Cascade HSA", cascade, ptHSA,
+            seedBenefit(em, out, 99807, "CDH", "Cascade HSA", cascade, ptHSA,
                     Date.valueOf(firstOfMonth.plusMonths(5)));
 
             // Delta (3)
-            Benefit bDeltaCobra = seedBenefit(em, out, -108, "Delta COBRA", delta, ptMedical,
+            Benefit bDeltaCobra = seedBenefit(em, out, 99808, "COBRA", "Delta COBRA", delta, ptMedical,
                     Date.valueOf(firstOfMonth.minusMonths(1)));
-            seedBenefit(em, out, -109, "Delta Dental", delta, ptDental,
+            seedBenefit(em, out, 99809, "CDH", "Delta Dental", delta, ptDental,
                     Date.valueOf(firstOfMonth.plusMonths(8)));
-            seedBenefit(em, out, -110, "Delta Vision", delta, ptVision,
+            seedBenefit(em, out, 99810, "CDH", "Delta Vision", delta, ptVision,
                     Date.valueOf(firstOfMonth.plusMonths(8)));
 
             // Evergreen (1)
-            seedBenefit(em, out, -111, "Evergreen FSA", evergreen, ptFSA,
+            seedBenefit(em, out, 99811, "CDH", "Evergreen FSA", evergreen, ptFSA,
                     Date.valueOf(firstOfMonth.plusMonths(7)));
 
             // ═══════════════════════════════════════════
@@ -522,8 +522,9 @@ public class SeedDemoData extends HttpServlet {
     // ═══════════════════════════════════════════════════════════════
 
     private Benefit seedBenefit(EntityManager em, PrintWriter out,
-                                int id, String name, Employer employer, PlanType planType, Date nextRenewalDue) {
-        Benefit existing = EntityLookup.getBenefitById(em, id, true);
+                                int summitId, String sourceType, String name,
+                                Employer employer, PlanType planType, Date nextRenewalDue) {
+        Benefit existing = EntityLookup.getBenefitBySummitKey(em, sourceType, summitId);
         if (existing != null) {
             log(out, "&nbsp;&nbsp;Benefit exists: " + name);
             return existing;
@@ -533,7 +534,8 @@ public class SeedDemoData extends HttpServlet {
 
         em.getTransaction().begin();
         Benefit b = new Benefit();
-        b.setId(id);
+        b.setSummitId(summitId);
+        b.setSourceType(sourceType);
         b.setPlanName(name);
         b.setPlanDescription(name);
         b.setEmployer(employer);

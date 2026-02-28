@@ -29,12 +29,13 @@ public abstract class SummitSync {
         for(sBenefitTierPB sbt:benefitTierPBList)
             whenNoPbTierAdd(em,sbt);
     }
-    private static String getId(sBenefitTierPB bt){
-        return -bt.getBenefitId()+"-"+bt.getPlanYearId()+"-"+bt.getTierId();
-    }
     private static void whenNoPbTierAdd(EntityManager em, sBenefitTierPB sbt){
+        Benefit benefit = getBenefit(em, sbt);
+        if (benefit == null) return;
+
+        String id = benefit.getId() + "-" + sbt.getPlanYearId() + "-" + sbt.getTierId();
         Query q = em.createQuery("SELECT bt FROM BenefitTier bt WHERE bt.id = :id");
-        q.setParameter("id",getId(sbt));
+        q.setParameter("id", id);
         BenefitTier bt;
         try{
             bt = (BenefitTier) q.getSingleResult();
@@ -45,8 +46,8 @@ public abstract class SummitSync {
             return;
         em.getTransaction().begin();
         BenefitTier benefitTier = new BenefitTier();
-        benefitTier.setId(getId(sbt));
-        benefitTier.setBenefit(getBenefit(em,sbt));
+        benefitTier.setId(id);
+        benefitTier.setBenefit(benefit);
         benefitTier.setTierName(sbt.getTierId());
         benefitTier.setTierDescription(sbt.getTierName());
         benefitTier.setStartDate(sbt.getPlanStartDate());
@@ -69,7 +70,8 @@ public abstract class SummitSync {
             if(b==null){
                 em.getTransaction().begin();
                 Benefit benefit = new Benefit();
-                benefit.setId(-1*sbt.getBenefitId());
+                benefit.setSummitId(sbt.getBenefitId());
+                benefit.setSourceType("COBRA");
                 benefit.setPbBenId(sbt.getBenefitId());
                 benefit.setPlanType(sbt.getsPlanType());
                 benefit.setEmployer(getEmployer(em,sbt.getsEmployer().getOrganizationId()));
@@ -97,7 +99,7 @@ public abstract class SummitSync {
         return b;
     }
     public static void createNewBenefitsCDH(EntityManager em){
-        Query q = em.createQuery("SELECT sb FROM sBenefit sb LEFT OUTER JOIN Benefit b ON sb.benefitId=b.id WHERE b.id is null");
+        Query q = em.createQuery("SELECT sb FROM sBenefit sb LEFT OUTER JOIN Benefit b ON sb.benefitId=b.summitId AND b.sourceType = 'CDH' WHERE b.summitId is null");
         List<sBenefit> sBenefitList;
         try{
             sBenefitList = (List<sBenefit>) q.getResultList();
@@ -111,8 +113,8 @@ public abstract class SummitSync {
             Date renDate = Date.valueOf(effDate.toLocalDate().plusYears(1L));
             em.getTransaction().begin();
             Benefit b = new Benefit();
-            b.setId(sb.getBenefitId());
-            em.persist(b);
+            b.setSummitId(sb.getBenefitId());
+            b.setSourceType("CDH");
             b.setPlanType(sb.getSummitPlanType());
             b.setEmployer(getEmployer(em, sb));
             b.setPlanName(sb.getPlanName());
@@ -384,7 +386,7 @@ public abstract class SummitSync {
         }
     }
     public static void reactivateBenefits(EntityManager em){
-        Query q = em.createQuery("SELECT b FROM Benefit b INNER JOIN sBenefit sb ON sb.benefitId=b.id " +
+        Query q = em.createQuery("SELECT b FROM Benefit b INNER JOIN sBenefit sb ON sb.benefitId=b.summitId AND b.sourceType = 'CDH' " +
                 "WHERE b.isActive=false AND sb.planStatus<>'Inactive'");
         List<Benefit> benefitList;
         try{
@@ -402,7 +404,7 @@ public abstract class SummitSync {
         }
     }
     public static void closeInactiveBenefits(EntityManager em){
-        Query q = em.createQuery("SELECT b FROM Benefit b INNER JOIN sBenefit sb ON sb.benefitId=b.id " +
+        Query q = em.createQuery("SELECT b FROM Benefit b INNER JOIN sBenefit sb ON sb.benefitId=b.summitId AND b.sourceType = 'CDH' " +
                 "WHERE b.isActive=true AND (sb.planStatus='Inactive' OR b.terminationDate < :dt)");
         q.setParameter("dt", BillingHelper.getMonthFor());
         List<Benefit> benefitList;

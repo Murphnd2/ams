@@ -72,14 +72,25 @@
                    accept=".csv,.txt" style="max-width: 450px;">
         </div>
 
-        <%-- Benefits --%>
+        <%-- Benefits CDH (J4) --%>
         <div class="upload-card">
             <div class="upload-label">
-                <i class="bi bi-heart-pulse"></i> Benefits
+                <i class="bi bi-heart-pulse"></i> Benefits — CDH
                 <span class="badge bg-secondary">CSV</span>
             </div>
-            <div class="upload-hint">J4 — Employer Benefit Plans (drives renewal pipeline)</div>
+            <div class="upload-hint">J4 — CDH Employer Benefit Plans (FSA, HRA, etc. — drives renewal pipeline)</div>
             <input type="file" class="form-control form-control-sm" name="benefitFile"
+                   accept=".csv,.txt" style="max-width: 450px;">
+        </div>
+
+        <%-- Benefits COBRA (J7) --%>
+        <div class="upload-card">
+            <div class="upload-label">
+                <i class="bi bi-shield-check"></i> Benefits — COBRA
+                <span class="badge bg-secondary">CSV</span>
+            </div>
+            <div class="upload-hint">J7 — COBRA / Post-Benefit Employer Plans</div>
+            <input type="file" class="form-control form-control-sm" name="benefitCobraFile"
                    accept=".csv,.txt" style="max-width: 450px;">
         </div>
 

@@ -259,7 +259,7 @@ public class MonthlyBiller extends Biller {
         int count = 0;
 
         for (Enrollment2 e : list) {
-            Benefit b = EntityLookup.getBenefitById(em, e.getImportBenefitCdh().getBenefitId());
+            Benefit b = EntityLookup.getBenefitBySummitKey(em, "CDH", e.getImportBenefitCdh().getBenefitId());
             Employee ee = EntityLookup.getEmployeeById(em, e.getImportEmployee().getId());
 
             CoverageStatus cs = new CoverageStatus();
@@ -292,7 +292,7 @@ public class MonthlyBiller extends Biller {
         for (Coverage coverage : coverages) {
             if (erId != 0 && coverage.getSummitOrganization().getId() != erId) continue;
 
-            Benefit b = EntityLookup.getBenefitById(em, coverage.getPbBenefitId());
+            Benefit b = EntityLookup.getBenefitBySummitKey(em, "COBRA", coverage.getPbBenefitId());
             Employee ee = EntityLookup.getEmployeeById(em, coverage.getSummitEmployee().getId());
 
             if (b == null || ee == null) continue;

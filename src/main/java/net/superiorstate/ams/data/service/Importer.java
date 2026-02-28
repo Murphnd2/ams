@@ -195,8 +195,8 @@ public abstract class Importer {
         return "INSERT INTO `" + tableName + "` (" + columnsPart + ") VALUES (" + placeholders + ")";
     }
 
-    public static String getId(ImportBenefitTier bt) {
-        return -bt.getBenefitId() + "-" + bt.getPlanYearId() + "-" + bt.getTierId();
+    public static String getId(Benefit benefit, ImportBenefitTier bt) {
+        return benefit.getId() + "-" + bt.getPlanYearId() + "-" + bt.getTierId();
     }
     private static Benefit getBenefit(EntityManager em, int id) {
         Query q = em.createQuery("SELECT b FROM Benefit b WHERE b.pbBenId = :id");

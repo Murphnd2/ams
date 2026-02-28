@@ -172,6 +172,19 @@ public abstract class EntityLookup {
         return benefit;
     }
 
+    /** Lookup Benefit by source-discriminated Summit key (source_type + summit_id). */
+    public static Benefit getBenefitBySummitKey(EntityManager em, String sourceType, int summitId) {
+        try {
+            return em.createQuery(
+                    "SELECT b FROM Benefit b WHERE b.sourceType = :src AND b.summitId = :sid", Benefit.class)
+                    .setParameter("src", sourceType)
+                    .setParameter("sid", summitId)
+                    .getSingleResult();
+        } catch (NoResultException e) {
+            return null;
+        }
+    }
+
     public static BillingGroup getBillingGroupById(EntityManager em, int id){
         BillingGroup billingGroup;
         Query q = em.createQuery("SELECT bg FROM BillingGroup bg WHERE bg.id = :id");

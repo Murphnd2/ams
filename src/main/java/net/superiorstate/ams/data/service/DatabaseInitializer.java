@@ -351,9 +351,9 @@ public abstract class DatabaseInitializer {
         LocalDate firstOfMonth = LocalDate.of(today.getYear(),today.getMonthValue(),1);
         LocalDate lastMonth = firstOfMonth.minusMonths(1L);
         LocalDate sixMonthsFromNow = firstOfMonth.plusMonths(6L);
-        Benefit b1 = createBenefit(em,-3,"Demo HRA",er,pt3,Date.valueOf(firstOfMonth));
-        Benefit b2 = createBenefit(em,-2,"Demo FSA",er,pt2,Date.valueOf(lastMonth));
-        Benefit b3 = createBenefit(em,-1,"Demo COBRA",er,pt4,Date.valueOf(sixMonthsFromNow));
+        Benefit b1 = createBenefit(em,99901,"CDH","Demo HRA",er,pt3,Date.valueOf(firstOfMonth));
+        Benefit b2 = createBenefit(em,99902,"CDH","Demo FSA",er,pt2,Date.valueOf(lastMonth));
+        Benefit b3 = createBenefit(em,99903,"COBRA","Demo COBRA",er,pt4,Date.valueOf(sixMonthsFromNow));
 
         //TODO: Not necessary anymore? removed from log ticket
         //Create Contact Methods
@@ -1042,17 +1042,18 @@ public abstract class DatabaseInitializer {
         return cm;
     }
 
-    public static Benefit createBenefit(EntityManager em, int id, String name, Employer er, PlanType pt, Date theDate){
+    public static Benefit createBenefit(EntityManager em, int summitId, String sourceType, String name, Employer er, PlanType pt, Date theDate){
         LocalDate currentDate = theDate.toLocalDate();
         LocalDate effectiveDate = currentDate.minusYears(1L);
         Date dateEffective = Date.valueOf(effectiveDate);
 
-        if(EntityLookup.getBenefitById(em,id,true)!=null)
-            return EntityLookup.getBenefitById(em,id,true);
+        Benefit existing = EntityLookup.getBenefitBySummitKey(em, sourceType, summitId);
+        if(existing != null)
+            return existing;
         em.getTransaction().begin();
         Benefit b = new Benefit();
-        b.setId(id);
-
+        b.setSummitId(summitId);
+        b.setSourceType(sourceType);
         b.setEffectiveDate(dateEffective);
         b.setNextRenewalDue(theDate);
         b.setPlanDescription(name);

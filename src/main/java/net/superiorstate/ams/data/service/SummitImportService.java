@@ -529,7 +529,7 @@ public class SummitImportService {
             String planStatus = row.getOrDefault("planstatus", "").trim();
             if (planStatus.equalsIgnoreCase("Inactive")) {
                 // If exists and was active, mark inactive
-                Benefit existing = em.find(Benefit.class, benefitId);
+                Benefit existing = findBenefitBySummitKey(em, "CDH", benefitId);
                 if (existing != null && existing.isActive()) {
                     em.getTransaction().begin();
                     existing.setActive(false);
@@ -568,7 +568,7 @@ public class SummitImportService {
 
             int renewalMonths = getRenewalMonths(renewalMonthsMap, planTypeId);
 
-            Benefit existing = em.find(Benefit.class, benefitId);
+            Benefit existing = findBenefitBySummitKey(em, "CDH", benefitId);
 
             if (existing != null) {
                 boolean changed = false;
@@ -587,7 +587,8 @@ public class SummitImportService {
             } else {
                 em.getTransaction().begin();
                 Benefit b = new Benefit();
-                b.setId(benefitId);
+                b.setSummitId(benefitId);
+                b.setSourceType("CDH");
                 b.setEmployer(employer);
                 b.setPlanType(planType);
                 b.setPlanName(planName);
@@ -620,6 +621,153 @@ public class SummitImportService {
         }
 
         return result;
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    //  BENEFIT IMPORT — COBRA/PB (J7 CSV)
+    // ═══════════════════════════════════════════════════════════════
+
+    /**
+     * Imports COBRA/PB Benefits from a Summit J7 CSV export.
+     * Upsert by (source_type='COBRA', summit_id=BenefitID).
+     * Also sets pbBenId from the PBBenefitID column.
+     *
+     * @param em               Active EntityManager
+     * @param csvFile          J7 — PB Employer Benefit Detail Report CSV
+     * @param renewalMonthsMap Map of PlanType_ID → renewal months
+     * @return ImportResult
+     */
+    public static ImportResult importBenefitsCobra(EntityManager em, File csvFile,
+                                                    Map<Integer, Integer> renewalMonthsMap) throws Exception {
+        ImportResult result = new ImportResult();
+
+        List<Map<String, String>> rows = parseCsv(csvFile);
+        if (rows.isEmpty()) {
+            result.addWarning("COBRA Benefits CSV is empty or has no data rows.");
+            return result;
+        }
+
+        // Validate required columns
+        Map<String, String> sample = rows.get(0);
+        for (String req : List.of("benefitid", "organizationid", "plantypeid")) {
+            if (!sample.containsKey(req)) {
+                result.addWarning("Missing required column: " + req);
+                result.addError();
+                return result;
+            }
+        }
+
+        // J7 has multiple rows per benefit (one per plan year / tier).
+        // We only need to create/update the benefit once — track which we've processed.
+        Set<Integer> processedSummitIds = new HashSet<>();
+
+        for (Map<String, String> row : rows) {
+            int summitBenefitId = parseIntSafe(row.getOrDefault("benefitid", "0"));
+            if (summitBenefitId == 0) {
+                result.addError();
+                continue;
+            }
+
+            // Skip if already processed this benefit (J7 has multiple rows per benefit)
+            if (processedSummitIds.contains(summitBenefitId)) continue;
+            processedSummitIds.add(summitBenefitId);
+
+            int orgId = parseIntSafe(row.getOrDefault("organizationid", "0"));
+            int planTypeId = parseIntSafe(row.getOrDefault("plantypeid", "0"));
+            int pbBenefitId = parseIntSafe(row.getOrDefault("pbbenefitid", "0"));
+
+            // Validate FKs
+            Employer employer = em.find(Employer.class, orgId);
+            if (employer == null) {
+                result.addWarning("COBRA Benefit " + summitBenefitId + ": employer " + orgId + " not found, skipping.");
+                result.addError();
+                continue;
+            }
+
+            PlanType planType = em.find(PlanType.class, planTypeId);
+            if (planType == null) {
+                result.addWarning("COBRA Benefit " + summitBenefitId + ": PlanType " + planTypeId + " not found, skipping.");
+                result.addError();
+                continue;
+            }
+
+            String benefitName = row.getOrDefault("benefitname", "").trim();
+            String effectiveDateStr = row.getOrDefault("effectivedate", "").trim();
+            String startDateStr = row.getOrDefault("startdate", "").trim();
+            String endDateStr = row.getOrDefault("enddate", "").trim();
+
+            Date effectiveDate = parseDate(effectiveDateStr);
+            Date terminationDate = parseDate(endDateStr);
+            if (effectiveDate == null) effectiveDate = parseDate(startDateStr);
+
+            int renewalMonths = getRenewalMonths(renewalMonthsMap, planTypeId);
+
+            Benefit existing = findBenefitBySummitKey(em, "COBRA", summitBenefitId);
+
+            if (existing != null) {
+                boolean changed = false;
+                if (!benefitName.isEmpty() && !benefitName.equals(existing.getPlanName())) { existing.setPlanName(benefitName); changed = true; }
+                if (pbBenefitId != 0 && pbBenefitId != existing.getPbBenId()) { existing.setPbBenId(pbBenefitId); changed = true; }
+
+                if (changed) {
+                    em.getTransaction().begin();
+                    em.merge(existing);
+                    em.getTransaction().commit();
+                    result.addUpdated();
+                } else {
+                    result.addSkipped();
+                }
+            } else {
+                em.getTransaction().begin();
+                Benefit b = new Benefit();
+                b.setSummitId(summitBenefitId);
+                b.setSourceType("COBRA");
+                b.setPbBenId(pbBenefitId);
+                b.setEmployer(employer);
+                b.setPlanType(planType);
+                b.setPlanName(benefitName);
+                b.setEffectiveDate(effectiveDate);
+                b.setTerminationDate(terminationDate);
+                b.setRenewalMonths(renewalMonths);
+                b.setActive(true);
+
+                if (effectiveDate != null) {
+                    LocalDate eff = effectiveDate.toLocalDate();
+                    LocalDate nextDue = eff.plusMonths(renewalMonths);
+                    while (nextDue.isBefore(LocalDate.now())) {
+                        nextDue = nextDue.plusMonths(renewalMonths);
+                    }
+                    b.setNextRenewalDue(Date.valueOf(nextDue));
+                }
+
+                em.persist(b);
+                em.getTransaction().commit();
+                result.addInserted();
+            }
+
+            if (result.total() % 50 == 0) {
+                em.clear();
+            }
+        }
+
+        return result;
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    //  BENEFIT LOOKUP HELPER
+    // ═══════════════════════════════════════════════════════════════
+
+    /** Lookup Benefit by source-discriminated Summit key. Returns null if not found. */
+    private static Benefit findBenefitBySummitKey(EntityManager em, String sourceType, int summitId) {
+        try {
+            return em.createQuery(
+                    "SELECT b FROM Benefit b WHERE b.sourceType = :src AND b.summitId = :sid", Benefit.class)
+                    .setParameter("src", sourceType)
+                    .setParameter("sid", summitId)
+                    .getSingleResult();
+        } catch (NoResultException e) {
+            return null;
+        }
     }
 
     // ═══════════════════════════════════════════════════════════════

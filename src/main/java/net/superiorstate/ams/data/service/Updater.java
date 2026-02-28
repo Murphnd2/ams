@@ -710,7 +710,7 @@ public abstract class Updater {
                 .collect(Collectors.toSet());
 
         List<ImportBenefitCdh> imports = em.createQuery(
-                "SELECT i FROM ImportBenefitCdh i LEFT JOIN Benefit b ON i.benefitId = b.id WHERE b.id IS NULL",
+                "SELECT i FROM ImportBenefitCdh i LEFT JOIN Benefit b ON i.benefitId = b.summitId AND b.sourceType = 'CDH' WHERE b.summitId IS NULL",
                 ImportBenefitCdh.class
         ).getResultList();
 
@@ -740,7 +740,8 @@ public abstract class Updater {
                 Date renDue = BillingHelper.getNextRenewalDate(effDate);
 
                 Benefit b = new Benefit();
-                b.setId(i.getBenefitId());
+                b.setSummitId(i.getBenefitId());
+                b.setSourceType("CDH");
                 b.setPlanType(i.getPlanType());
                 b.setEmployer(employer);
                 b.setPlanName(i.getPlanName());
@@ -775,7 +776,7 @@ public abstract class Updater {
                 .collect(Collectors.toSet());
 
         List<ImportBenefitPb> imports = em.createQuery(
-                "SELECT i FROM ImportBenefitPb i LEFT JOIN Benefit b ON b.id = -i.benefitId WHERE b.id IS NULL",
+                "SELECT i FROM ImportBenefitPb i LEFT JOIN Benefit b ON b.summitId = i.benefitId AND b.sourceType = 'COBRA' WHERE b.summitId IS NULL",
                 ImportBenefitPb.class
         ).getResultList();
 
@@ -806,7 +807,8 @@ public abstract class Updater {
                 Date termDate = i.getEndDate();
 
                 Benefit b = new Benefit();
-                b.setId(-i.getBenefitId());  // Store with negative ID
+                b.setSummitId(i.getBenefitId());
+                b.setSourceType("COBRA");
                 b.setEmployer(employer);
                 b.setPlanType(i.getPlanType());
                 b.setPlanName(i.getBenefitName());
@@ -853,7 +855,7 @@ public abstract class Updater {
             System.out.println("→ Running CDH deactivation query...");
             List<Benefit> list = em.createQuery(
                     "SELECT b FROM Benefit b " +
-                            "JOIN ImportBenefitCdh sb ON sb.benefitId = b.id " +
+                            "JOIN ImportBenefitCdh sb ON sb.benefitId = b.summitId AND b.sourceType = 'CDH' " +
                             "WHERE b.isActive = true AND (LOWER(sb.planStatus) = 'inactive' OR b.terminationDate < :cutoff)",
                     Benefit.class
             ).setParameter("cutoff", cutoff).getResultList();
@@ -870,7 +872,7 @@ public abstract class Updater {
             System.out.println("→ Running CDH reactivation query...");
             List<Benefit> list = em.createQuery(
                     "SELECT b FROM Benefit b " +
-                            "JOIN ImportBenefitCdh sb ON sb.benefitId = b.id " +
+                            "JOIN ImportBenefitCdh sb ON sb.benefitId = b.summitId AND b.sourceType = 'CDH' " +
                             "WHERE b.isActive = false AND LOWER(sb.planStatus) <> 'inactive'",
                     Benefit.class
             ).getResultList();
@@ -887,7 +889,7 @@ public abstract class Updater {
             System.out.println("→ Running PB deactivation query...");
             List<Benefit> list = em.createQuery(
                     "SELECT b FROM Benefit b " +
-                            "JOIN ImportBenefitPb p ON b.id = -p.benefitId " +
+                            "JOIN ImportBenefitPb p ON b.summitId = p.benefitId AND b.sourceType = 'COBRA' " +
                             "WHERE b.isActive = true AND (" +
                             "  :today < FUNCTION('STR_TO_DATE', p.startDate, '%m/%d/%Y') " +
                             "  OR :today > FUNCTION('STR_TO_DATE', p.endDate, '%m/%d/%Y')" +
@@ -907,7 +909,7 @@ public abstract class Updater {
             System.out.println("→ Running PB reactivation query...");
             List<Benefit> list = em.createQuery(
                     "SELECT b FROM Benefit b " +
-                            "JOIN ImportBenefitPb p ON b.id = -p.benefitId " +
+                            "JOIN ImportBenefitPb p ON b.summitId = p.benefitId AND b.sourceType = 'COBRA' " +
                             "WHERE b.isActive = false AND " +
                             "  :today BETWEEN FUNCTION('STR_TO_DATE', p.startDate, '%m/%d/%Y') " +
                             "  AND FUNCTION('STR_TO_DATE', p.endDate, '%m/%d/%Y')",
@@ -942,8 +944,8 @@ public abstract class Updater {
             if (b.isActive() != shouldBeActive) {
                 b.setActive(shouldBeActive);
 
-                // If deactivating an I7 benefit, set termination date
-                if (!shouldBeActive && b.getId() < 0) {
+                // If deactivating a COBRA benefit, set termination date
+                if (!shouldBeActive && "COBRA".equals(b.getSourceType())) {
                     b.setTerminationDate(i7TermDate);
                 }
 
@@ -977,7 +979,14 @@ public abstract class Updater {
         int skippedExists = 0;
 
         for (ImportBenefitTier sbt : importTiers) {
-            String tierId = Importer.getId(sbt);
+            // Lookup matching Benefit using pbBenId
+            Benefit benefit = Importer.getBenefit(em, sbt);
+            if (benefit == null) {
+                skippedNoBenefit++;
+                continue;
+            }
+
+            String tierId = Importer.getId(benefit, sbt);
 
             // Check for existing BenefitTier
             boolean exists = !em.createQuery("SELECT bt.id FROM BenefitTier bt WHERE bt.id = :id")
@@ -985,13 +994,6 @@ public abstract class Updater {
                     .getResultList().isEmpty();
             if (exists) {
                 skippedExists++;
-                continue;
-            }
-
-            // Lookup matching Benefit using pbBenId
-            Benefit benefit = Importer.getBenefit(em, sbt);
-            if (benefit == null) {
-                skippedNoBenefit++;
                 continue;
             }
 

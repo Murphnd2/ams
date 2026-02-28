@@ -45,6 +45,7 @@ public class SummitImportWizard extends HttpServlet {
     private static final String SI_EMPLOYEE_J2_FILE = "si_employeeJ2File";
     private static final String SI_EMPLOYEE_J3_FILE = "si_employeeJ3File";
     private static final String SI_BENEFIT_FILE = "si_benefitFile";
+    private static final String SI_BENEFIT_COBRA_FILE = "si_benefitCobraFile";
     private static final String SI_RESULTS = "si_results";
 
     // ═══════════════════════════════════════════════════════════════
@@ -118,7 +119,8 @@ public class SummitImportWizard extends HttpServlet {
         processUpload(request, "employerFile", tempDir, SI_EMPLOYER_FILE, "Employers", uploadSummary, errors, false);
         processUpload(request, "employeeJ2File", tempDir, SI_EMPLOYEE_J2_FILE, "Employees (Contact)", uploadSummary, errors, false);
         processUpload(request, "employeeJ3File", tempDir, SI_EMPLOYEE_J3_FILE, "Employees (Status)", uploadSummary, errors, false);
-        processUpload(request, "benefitFile", tempDir, SI_BENEFIT_FILE, "Benefits", uploadSummary, errors, false);
+        processUpload(request, "benefitFile", tempDir, SI_BENEFIT_FILE, "Benefits (CDH)", uploadSummary, errors, false);
+        processUpload(request, "benefitCobraFile", tempDir, SI_BENEFIT_COBRA_FILE, "Benefits (COBRA)", uploadSummary, errors, false);
 
         // At least one file should be uploaded
         if (request.getSession().getAttribute(SI_PLAN_TYPE_FILE) == null
@@ -132,7 +134,8 @@ public class SummitImportWizard extends HttpServlet {
         boolean hasEmployerFile = request.getSession().getAttribute(SI_EMPLOYER_FILE) != null;
         boolean hasEmployeeFiles = request.getSession().getAttribute(SI_EMPLOYEE_J2_FILE) != null
                 || request.getSession().getAttribute(SI_EMPLOYEE_J3_FILE) != null;
-        boolean hasBenefitFile = request.getSession().getAttribute(SI_BENEFIT_FILE) != null;
+        boolean hasBenefitFile = request.getSession().getAttribute(SI_BENEFIT_FILE) != null
+                || request.getSession().getAttribute(SI_BENEFIT_COBRA_FILE) != null;
 
         if ((hasEmployeeFiles || hasBenefitFile) && !hasEmployerFile) {
             // Check if employers already exist in the database
@@ -155,9 +158,11 @@ public class SummitImportWizard extends HttpServlet {
                     uploadSummary.remove("Employees (Status)");
                 }
                 if (hasBenefitFile) {
-                    errors.add("Benefit file requires employer data. Upload an Employer file first, or import employers in a separate run before benefits.");
+                    errors.add("Benefit files require employer data. Upload an Employer file first, or import employers in a separate run before benefits.");
                     request.getSession().removeAttribute(SI_BENEFIT_FILE);
-                    uploadSummary.remove("Benefits");
+                    request.getSession().removeAttribute(SI_BENEFIT_COBRA_FILE);
+                    uploadSummary.remove("Benefits (CDH)");
+                    uploadSummary.remove("Benefits (COBRA)");
                 }
             }
         }
@@ -255,11 +260,18 @@ public class SummitImportWizard extends HttpServlet {
                 results.put("Employees", eeResult);
             }
 
-            // 4. Benefits (need employers and plan types)
+            // 4. Benefits — CDH (need employers and plan types)
             String benefitFile = (String) request.getSession().getAttribute(SI_BENEFIT_FILE);
             if (benefitFile != null) {
                 ImportResult bResult = SummitImportService.importBenefits(em, new File(benefitFile), renewalMonthsMap);
-                results.put("Benefits", bResult);
+                results.put("Benefits (CDH)", bResult);
+            }
+
+            // 5. Benefits — COBRA/PB (need employers and plan types)
+            String benefitCobraFile = (String) request.getSession().getAttribute(SI_BENEFIT_COBRA_FILE);
+            if (benefitCobraFile != null) {
+                ImportResult bCobraResult = SummitImportService.importBenefitsCobra(em, new File(benefitCobraFile), renewalMonthsMap);
+                results.put("Benefits (COBRA)", bCobraResult);
             }
 
             // Reload global state (employers, service items, etc.)
@@ -376,6 +388,7 @@ public class SummitImportWizard extends HttpServlet {
         request.getSession().removeAttribute(SI_EMPLOYEE_J2_FILE);
         request.getSession().removeAttribute(SI_EMPLOYEE_J3_FILE);
         request.getSession().removeAttribute(SI_BENEFIT_FILE);
+        request.getSession().removeAttribute(SI_BENEFIT_COBRA_FILE);
         request.getSession().removeAttribute(SI_RESULTS);
     }
 }

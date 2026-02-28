@@ -12,8 +12,15 @@ import java.util.List;
 @Entity
 public class Benefit {
     @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name="benefit_id")
     private int id;
+
+    @Column(name="summit_id", nullable = false)
+    private int summitId;
+
+    @Column(name="source_type", nullable = false)
+    private String sourceType = "CDH";
 
     @ManyToOne
     @JoinColumn(name="employer_id")
@@ -64,6 +71,22 @@ public class Benefit {
 
     public void setId(int id) {
         this.id = id;
+    }
+
+    public int getSummitId() {
+        return summitId;
+    }
+
+    public void setSummitId(int summitId) {
+        this.summitId = summitId;
+    }
+
+    public String getSourceType() {
+        return sourceType;
+    }
+
+    public void setSourceType(String sourceType) {
+        this.sourceType = sourceType;
     }
 
     public Employer getEmployer() {
