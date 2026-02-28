@@ -1,6 +1,6 @@
 # Deployment Backlog
 
-**Last Updated:** February 27, 2026
+**Last Updated:** February 28, 2026
 **Reference:** See `docs/deployment_strategy.md` for full context on each item.
 
 Items are ordered by dependency (earlier items unblock later ones).
@@ -135,19 +135,21 @@ Determine if IONOS has a per-account limit on vCPU cores and whether additional 
 
 ---
 
-### D-24: Create Demo Seeder Servlet
+### D-24: Create Demo Seeder Servlet ✅
 
-**Priority:** MEDIUM
-**Status:** Partially started (SeedBpoDemoData exists, needs purpose-built demo data with clear names)
+**Completed:** February 28, 2026
+**File:** `src/main/java/net/superiorstate/ams/controller/home/SeedDemoData.java`
 
-Create a protected servlet (master admin only) that seeds demo data onto a fresh initialized database for demonstration purposes. Should include:
+PSP-Admin-only servlet (`/SeedDemoData`) that seeds comprehensive demo data onto a fresh initialized database. Idempotent via `DEMO_DATA_SEEDED` constant.
 
-- Demo benefits (HRA, FSA, COBRA) with realistic dates
-- Sample employers and employees with obvious names (e.g., "Acme Corp", "Widget Inc")
-- Sample activities (tickets, renewals, setups) with sourced tasks for BPO demo
-- BPO test users with role assignments
+**Data created:**
+- 5 employers (Acme Manufacturing, Bright Horizons Childcare, Cascade Financial, Delta Regional Medical, Evergreen Landscaping) with 16 employees
+- 12 benefits across FSA, HRA, HSA, COBRA, DCA, Dental, Vision
+- 3 renewals (upcoming, in-progress, overdue), 2 setups, 5 tickets — all with linked checklists
+- 2 BPO vendor users (Alex Rivera / BPO Admin, Priya Sharma / BPO User)
+- 1 PSP staff user (Jennifer Martinez / PSP User) — all with password `demo123`
 
-This replaces the test data previously hardcoded in `DatabaseInitializer`. Demo data should be clearly identifiable and removable.
+**Also in this session:** Fixed billing GUID 404 (`BillingQueryDAO`), redesigned `sendBillingForm.jsp` with CKEditor 5, context-aware billing link URL, branding fallback fix, Billing added to Admin navbar dropdown, `.gitignore` updated for `/out/` and `.claude/`.
 
 ---
 

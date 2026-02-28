@@ -1,7 +1,7 @@
 # AMS Project Backlog
 
 **Created:** February 19, 2026
-**Last Updated:** February 27, 2026
+**Last Updated:** February 28, 2026
 **Reference:** `docs/ams_to_be_vision.md` for full project descriptions
 
 ---
@@ -44,7 +44,7 @@
 
 | # | Feature | Priority | Status | Spec Doc | Notes |
 |---|---------|----------|--------|----------|-------|
-| 10 | Monthly Billing Automation | HIGH | 🔨 Active | `ams_to_be_vision.md` §10 | Core billing flow exists. Enhancements ongoing. |
+| 10 | Monthly Billing Automation | HIGH | 🔨 Active | `ams_to_be_vision.md` §10 | Core billing flow exists. Enhancements ongoing. GUID 404 fixed, send billing redesigned (Feb 28). |
 | 11 | Time Tracking | MED | ✅ Done | `session_history_archive.md` (Feb 22) | UI redesigned (daily/weekly views). Correction request workflow built. Payroll export TBD. |
 | 12 | Employee Onboarding Portal | MED | 💡 Backlog | `ams_to_be_vision.md` §12 | Self-service portal for new hires. |
 | 13 | Invoicing System | MED | 💡 Backlog | `ams_to_be_vision.md` §13 | Replace Wave invoicing. Auto-generate from rate data. |
@@ -74,6 +74,7 @@
 | T15 | User filter presets | MED | ✅ Done | `session_history_archive.md` (Feb 25) | 3 configurable filter slots per user. V013 migration. |
 | T16 | Client-side activity list filtering | MED | 💡 Backlog | — | Convert ViewHome25 center column from server-side form submit to client-side JS filtering (same pattern as PspDashboard). |
 | T17 | ServiceItem Unification | HIGH | ✅ Done | `serviceitem_unification_design_v2.md` | TemplatePurpose → ServiceItem rename, TicketSubCategory eliminated, all tickets backfilled. V020–V024. |
+| T18 | Demo Data Seeder (D-24) | CONF | ✅ Done | `session_history_archive.md` (Feb 28) | `SeedDemoData` servlet: 5 employers, 16 employees, 12 benefits, 10 activities, BPO/staff demo users. |
 
 ---
 

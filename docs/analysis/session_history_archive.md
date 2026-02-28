@@ -2,7 +2,7 @@
 
 > **Purpose:** Consolidated historical record of all build sessions. For current project state, see `project_backlog.md`. For current architecture, see `application_flow.md` and `entity_reference.md`.
 >
-> **Last Updated:** February 27, 2026
+> **Last Updated:** February 28, 2026
 
 ---
 
@@ -356,3 +356,29 @@ Major project consolidating the four divergent "activity item → task sequence"
 - Consolidated 10 individual session summary files into this archive
 - Updated `migration_tracker.md` (V024, all environments ✅)
 - Updated `schema_version_migration.sql` (V024 entry added)
+
+---
+
+## February 28, 2026 — Billing Fixes & Demo Seeder (Session 7)
+
+### Billing Fixes
+- **GUID 404 fix:** `BillingQueryDAO.getEmployerByBillingGuid()` was doing an indirect lookup through `sEmployer.organizationId` → `EntityLookup.getEmployerById()` (wrong PK space). Changed to use direct `employer` FK on `BillingLink`. Also fixed `getBillingMonthByBillingGuid()` double-call.
+- **Send Billing redesign:** `sendBillingForm.jsp` fully rewritten with CKEditor 5 rich text editor, chip-based recipient toggles, collapsible extra contacts, improved default message text. `SendEmployerBillingDetail.getMessage()` updated for single `emailBody` param with legacy fallback.
+- **Context-aware billing link:** `EmailBillingToEmployer` now derives base URL from `request` instead of `AppConstantDAO.getWebPath()` — works correctly on localhost and production.
+
+### Branding Fallback Fix
+- `AmsDataGlobal.setConstants()` — added `brandingFileExists()` helper that checks if `/branding/*` paths actually exist on disk before using them. Prevents broken images when switching between environments with shared database.
+
+### Navbar Update
+- Added `BillingAction` to PSP Admin dropdown in `navbar25.jsp`.
+
+### Demo Seeder (D-24)
+- **New file:** `SeedDemoData.java` — PSP-Admin-only servlet at `/SeedDemoData`
+- Idempotent via `DEMO_DATA_SEEDED` database constant
+- Creates: 5 employers (Acme Manufacturing, Bright Horizons, Cascade Financial, Delta Medical, Evergreen Landscaping), 16 employees, 12 benefits (FSA/HRA/HSA/COBRA/DCA/Dental/Vision), 3 renewals, 2 setups, 5 tickets — all with linked checklists
+- Creates demo user accounts: Jennifer Martinez (PSP User), Alex Rivera (BPO Admin), Priya Sharma (BPO User) — all password `demo123`
+- Negative IDs for employers/employees/benefits to avoid collision with real data
+
+### Git / Infrastructure
+- `.gitignore` updated: added `/out/` (IntelliJ artifact output) and `.claude/` (Claude Code metadata)
+- Removed stale `.claude/worktrees/` entries from git tracking

@@ -1,5 +1,9 @@
 # Build output
 /target/
+/out/
+
+# Claude Code
+.claude/
 
 # IntelliJ (ignore everything)
 .idea/*
