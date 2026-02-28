@@ -74,15 +74,15 @@ public class ReSeedDb extends HttpServlet {
         EntityManager em = emf.createEntityManager();
 
         try {
-            executeReset(em, out);
+            em = executeReset(em, out);
             renderSuccessMessage(out);
         } catch (Exception e) {
-            if (em.getTransaction().isActive()) em.getTransaction().rollback();
+            if (em.isOpen() && em.getTransaction().isActive()) em.getTransaction().rollback();
             out.println("<div class='alert alert-danger'><strong>Error:</strong> "
                     + escapeHtml(e.getMessage()) + "</div>");
             e.printStackTrace();
         } finally {
-            em.close();
+            if (em.isOpen()) em.close();
         }
 
         renderPageFooter(out);
@@ -90,20 +90,31 @@ public class ReSeedDb extends HttpServlet {
 
     /**
      * Core reset logic — can be called by subclasses (ReSeedDemoData).
+     * Returns the fresh EntityManager created after truncation (the original is closed).
      */
-    protected void executeReset(EntityManager em, PrintWriter out) {
+    protected EntityManager executeReset(EntityManager em, PrintWriter out) {
         // 1. Capture current initialization state
         SavedState state = DatabaseResetUtil.captureInitState(em, out);
 
         // 2. Clear all tables
         DatabaseResetUtil.clearAllTables(em, out);
 
-        // 3. Re-initialize from saved state
-        DatabaseResetUtil.reinitialize(em, state, out);
+        // Close the EM that performed native SQL truncation — EclipseLink's internal
+        // identity maps get confused when the same EM is reused after bulk native deletes.
+        em.close();
+
+        // 3. Re-initialize from saved state using a fresh EntityManager
+        EntityManagerFactory emf = (EntityManagerFactory) getServletContext().getAttribute("emf");
+        DatabaseResetUtil.evictEntityCaches(emf);  // Per-class L2 eviction (evictAll corrupts EclipseLink descriptors)
+        EntityManager freshEm = emf.createEntityManager();
+
+        DatabaseResetUtil.reinitialize(freshEm, state, out);
 
         // 4. Reload global application state
         AmsDataGlobal global = (AmsDataGlobal) getServletContext().getAttribute("global");
-        DatabaseResetUtil.reloadGlobals(em, global, out);
+        DatabaseResetUtil.reloadGlobals(freshEm, global, out);
+
+        return freshEm;
     }
 
     // ═══════════════════════════════════════════════════════════════

@@ -59,6 +59,9 @@ public class CloseActivity25 extends HttpServlet {
             AmsDataLocal local = (AmsDataLocal) request.getSession().getAttribute("local");
             AmsDataGlobal global = (AmsDataGlobal) request.getServletContext().getAttribute("global");
 
+            if (local == null || local.getCurrentActivity() == null
+                    || local.getCurrentActivity().getActivity() == null) return;
+
             Activity activity = EntityLookup.getActivityById(em, local.getCurrentActivity().getActivity().getId());
             if (activity == null) return;
 

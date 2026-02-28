@@ -389,3 +389,15 @@ Major project consolidating the four divergent "activity item → task sequence"
 ### Git / Infrastructure
 - `.gitignore` updated: added `/out/` (IntelliJ artifact output) and `.claude/` (Claude Code metadata)
 - Removed stale `.claude/worktrees/` entries from git tracking
+
+---
+
+## February 28, 2026 — Factory Reset Bug Fixes (Session 8)
+
+### ReSeedDb / ReSeedDemoData Fixes
+- **SMTP Settings NPE:** `CloseActivity25.processActivityClosure()` threw NPE when browser URL pointed to `/CloseActivity25` (via `RequestDispatcher.forward()`) and SMTP settings form posted back. Added null guard for `local.getCurrentActivity()`. Also changed `UpdateSmtpSettings` to always redirect to `ViewHome25` instead of using unreliable referer.
+- **User PK type error:** `DatabaseResetUtil` used `em.find(User.class, person)` but User's `@Id @OneToOne Person` maps to Long PK. Changed both occurrences to `em.find(User.class, person.getId())`.
+- **FK constraint on BillingGroup:** After TRUNCATE, EclipseLink's L2 shared cache still had stale BillingGroup entities, causing `DatabaseInitializer.createBillingGroup()` to skip INSERTs. PlanType then failed on FK. Added L2 cache eviction after truncation.
+- **EclipseLink identity map corruption:** Reusing the same EntityManager after native SQL TRUNCATE confused EclipseLink's internal identity maps. Changed `executeReset()` to close the old EM and return a fresh one.
+- **Three-EM pattern for ReSeedDemoData:** Init EM had managed entities (Person 104, CheckList 29, Ticket 99) whose cross-references confused EclipseLink. `ReSeedDemoData.executeReset()` now closes the init EM and creates a third fresh EM for demo seeding.
+- **EclipseLink `evictAll()` descriptor corruption (critical):** `emf.getCache().evictAll()` in EclipseLink 3.0.2 corrupts internal descriptor metadata — Person entity was mapped to ASSIGNEE table (`RelationalDescriptor(Person --> [DatabaseTable(ASSIGNEE)])`). Replaced with per-class eviction via JPA Metamodel API: `DatabaseResetUtil.evictEntityCaches(emf)` iterates `emf.getMetamodel().getEntities()` and evicts each class individually.

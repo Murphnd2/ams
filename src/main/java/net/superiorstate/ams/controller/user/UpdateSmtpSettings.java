@@ -97,13 +97,9 @@ public class UpdateSmtpSettings extends HttpServlet {
             em.close();
         }
 
-        // Redirect back to referring page (or home)
-        String referer = request.getHeader("Referer");
-        if (referer != null && !referer.isBlank()) {
-            response.sendRedirect(referer);
-        } else {
-            response.sendRedirect("ViewHome25");
-        }
+        // Always redirect to home — referer is unreliable (may point to action servlets
+        // like CloseActivity25 that use server-side forward, leaving stale URLs in the address bar)
+        response.sendRedirect("ViewHome25");
     }
 
     private void updateConstant(EntityManager em, String name, String value) {

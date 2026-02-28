@@ -1,7 +1,10 @@
 package net.superiorstate.ams.data.service;
 
+import jakarta.persistence.Cache;
 import jakarta.persistence.EntityManager;
+import jakarta.persistence.EntityManagerFactory;
 import jakarta.persistence.Query;
+import jakarta.persistence.metamodel.EntityType;
 import net.superiorstate.ams.data.AmsDataGlobal;
 import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.model.Constant;
@@ -70,7 +73,7 @@ public abstract class DatabaseResetUtil {
 
         // From User — password hash + salt (can't recover plaintext)
         if (person != null) {
-            User user = em.find(User.class, person);
+            User user = em.find(User.class, person.getId());
             if (user != null) {
                 s.passwordHash = user.getPasswordHash();
                 s.salt = user.getSalt();
@@ -147,6 +150,29 @@ public abstract class DatabaseResetUtil {
     }
 
     // ═══════════════════════════════════════════════════════════════
+    //  EVICT L2 CACHE — per-class eviction (safe for EclipseLink)
+    // ═══════════════════════════════════════════════════════════════
+
+    /**
+     * Evicts all entity classes from the L2 shared cache one at a time.
+     *
+     * IMPORTANT: Do NOT use {@code emf.getCache().evictAll()} — in EclipseLink 3.0.2
+     * it corrupts internal descriptor metadata, causing entity-to-table mapping errors
+     * (e.g., Person mapped to ASSIGNEE table instead of person table).
+     *
+     * Per-class eviction via the JPA Metamodel avoids this bug.
+     */
+    public static void evictEntityCaches(EntityManagerFactory emf) {
+        Cache cache = emf.getCache();
+        for (EntityType<?> entityType : emf.getMetamodel().getEntities()) {
+            Class<?> javaType = entityType.getJavaType();
+            if (javaType != null) {
+                cache.evict(javaType);
+            }
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════
     //  REINITIALIZE — set fields and call DatabaseInitializer
     // ═══════════════════════════════════════════════════════════════
 
@@ -172,7 +198,7 @@ public abstract class DatabaseResetUtil {
         DatabaseInitializer.setSmtpUsername(s.smtpUser);
         DatabaseInitializer.setSmtpPassword(s.smtpPassword);
 
-        // Run the core initialization
+        // Run the core initialization (caller should provide a fresh EM after truncation)
         DatabaseInitializer.performInitialization(em);
 
         log(out, "Database re-initialized.");
@@ -181,7 +207,7 @@ public abstract class DatabaseResetUtil {
         if (s.passwordHash != null && s.salt != null) {
             Person person = EntityLookup.getPersonById(em, 104L);
             if (person != null) {
-                User user = em.find(User.class, person);
+                User user = em.find(User.class, person.getId());
                 if (user != null) {
                     em.getTransaction().begin();
                     user.setPasswordHash(s.passwordHash);
