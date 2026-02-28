@@ -39,7 +39,8 @@ public class GoBillingHome extends HttpServlet {
         EntityManager em = emf.createEntityManager();
         try {
             BillingMonth bm = (BillingMonth) request.getSession().getAttribute("billingMonth");
-            int billingView = Integer.parseInt(request.getSession().getAttribute("billingView").toString());
+            Object bvObj = request.getSession().getAttribute("billingView");
+            int billingView = (bvObj != null) ? Integer.parseInt(bvObj.toString()) : 0;
             Employer er = (Employer) request.getSession().getAttribute("currentBillingEmployer");
             Employee ee = (Employee) request.getSession().getAttribute("currentBillingEmployee");
             List<BillingMonth> billingMonthList = BillingQueryDAO.getBillingMonths(em);

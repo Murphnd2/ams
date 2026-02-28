@@ -184,15 +184,9 @@
               <li><button class="dropdown-item" type="button" data-bs-toggle="modal" data-bs-target="#createUserModal"><i class="bi bi-person-plus me-2"></i>Create User</button></li>
               <li><a class="dropdown-item" href="UploadPspBranding"><i class="bi bi-palette me-2"></i>Branding</a></li>
               <li><button class="dropdown-item" type="button" data-bs-toggle="modal" data-bs-target="#smtpSettingsMod"><i class="bi bi-envelope-gear me-2"></i>Email Settings</button></li>
+              <li><a class="dropdown-item" href="BillingAction"><i class="bi bi-currency-dollar me-2"></i>Billing</a></li>
             </ul>
           </div>
-
-          <%-- Billing (conditional) --%>
-          <c:if test="${sessionScope.currentPerson.getId()==125}">
-            <a class="nav-ghost" href="BillingAction">
-              <i class="bi bi-currency-dollar"></i><span class="d-lg-none d-xl-inline ms-1">Billing</span>
-            </a>
-          </c:if>
         </c:if>
 
             <%-- ═══ AGENT / AGENCY MANAGER LINKS ═══ --%>

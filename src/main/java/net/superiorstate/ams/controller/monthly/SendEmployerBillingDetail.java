@@ -67,12 +67,15 @@ public class SendEmployerBillingDetail extends HttpServlet {
 
     private String getMessage(HttpServletRequest request) {
         Person currentUser = (Person) request.getSession().getAttribute("currentPerson");
-        String preText = request.getParameter("preLinkText");
-        String postText = request.getParameter("postLinkArea");
-        String bcLink = request.getSession().getAttribute("bcLink").toString();
-        String message = "<p>" + preText + "</p><p><a href = \"" + bcLink + "\" target=\"_blank\">BILLING DETAIL LINK</a></p><p>" + postText + "</p>";
-        message = message + "<p>" + currentUser.getFullName() + "</p>";
-        return message;
+        String body = request.getParameter("emailBody");
+        if (body == null || body.isBlank()) {
+            // Fallback for legacy pre/post form fields
+            String preText = request.getParameter("preLinkText");
+            String postText = request.getParameter("postLinkArea");
+            String bcLink = request.getSession().getAttribute("bcLink").toString();
+            body = "<p>" + preText + "</p><p><a href=\"" + bcLink + "\" target=\"_blank\">BILLING DETAIL LINK</a></p><p>" + postText + "</p>";
+        }
+        return body + "<p>" + currentUser.getFullName() + "</p>";
     }
 
     private Email createEmail(HttpServletRequest request, List<Person> dList, Ticket t, String message) {
@@ -219,6 +222,18 @@ public class SendEmployerBillingDetail extends HttpServlet {
                     if (value == null)
                         continue;
                     distributionList.add(availableList.get(i));
+                }
+            }
+            List<Person> remainingList = (List<Person>) request.getSession().getAttribute("remainingContacts");
+            if (remainingList != null && remainingList.size() > 0) {
+                for (int i = 0; i < remainingList.size(); i++) {
+                    int j = i + 1;
+                    String pName = "xCheck" + j;
+                    String value = request.getParameter(pName);
+                    if (value == null)
+                        continue;
+                    if (!distributionList.contains(remainingList.get(i)))
+                        distributionList.add(remainingList.get(i));
                 }
             }
             String additionalEmails = request.getParameter("additionalEmails");

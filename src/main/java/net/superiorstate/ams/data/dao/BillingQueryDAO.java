@@ -3,7 +3,6 @@ package net.superiorstate.ams.data.dao;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.NoResultException;
 import jakarta.persistence.Query;
-import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.model.billing.*;
 import net.superiorstate.ams.model.summit.archive.Employee;
 import net.superiorstate.ams.model.summit.archive.Employer;
@@ -16,14 +15,8 @@ public abstract class BillingQueryDAO {
 
     public static Employer getEmployerByBillingGuid(EntityManager em, String guid) {
         BillingLink b = getBillingLinkByGuid(em, guid);
-        Employer e;
-        try {
-            e = EntityLookup.getEmployerById(em, b.getsEmployer().getOrganizationId());
-        } catch (Exception e1) {
-            e1.printStackTrace();
-            return null;
-        }
-        return e;
+        if (b == null) return null;
+        return b.getEmployer();
     }
 
     public static List<BillingItem> getBillingItemForMonth(EntityManager em, Employer er, BillingMonth bm) {
@@ -55,9 +48,8 @@ public abstract class BillingQueryDAO {
     }
 
     public static BillingMonth getBillingMonthByBillingGuid(EntityManager em, String guid) {
-        if (getBillingLinkByGuid(em, guid) != null)
-            return getBillingLinkByGuid(em, guid).getBillingMonth();
-        return null;
+        BillingLink b = getBillingLinkByGuid(em, guid);
+        return b != null ? b.getBillingMonth() : null;
     }
 
     public static BillingLink getBillingLinkByGuid(EntityManager em, String guid) {

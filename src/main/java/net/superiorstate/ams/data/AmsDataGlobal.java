@@ -252,25 +252,26 @@ public class AmsDataGlobal {
         setWebPath(webPath);
 
         // Logo and favicon paths (PSP-customizable, with generic fallback)
+        // If the DB value points to /branding/ but the file doesn't exist locally, use default
         String lNav;
         try {
             lNav = getConstantValue(em, "LOGO_NAVBAR");
-            if (lNav == null || lNav.isBlank()) lNav = "/images/ssa-logo-default.png";
-        } catch (Exception e) { lNav = "/images/ssa-logo-default.png"; }
+            if (lNav == null || lNav.isBlank() || !brandingFileExists(lNav)) lNav = "/images/logoA.png";
+        } catch (Exception e) { lNav = "/images/logoA.png"; }
         setLogoNavbar(lNav);
 
         String lLogin;
         try {
             lLogin = getConstantValue(em, "LOGO_LOGIN");
-            if (lLogin == null || lLogin.isBlank()) lLogin = "/images/ssa-logo-login-default.png";
-        } catch (Exception e) { lLogin = "/images/ssa-logo-login-default.png"; }
+            if (lLogin == null || lLogin.isBlank() || !brandingFileExists(lLogin)) lLogin = "/images/logoA.png";
+        } catch (Exception e) { lLogin = "/images/logoA.png"; }
         setLogoLogin(lLogin);
 
         String fav;
         try {
             fav = getConstantValue(em, "FAVICON");
-            if (fav == null || fav.isBlank()) fav = "/images/favicon-default.ico";
-        } catch (Exception e) { fav = "/images/favicon-default.ico"; }
+            if (fav == null || fav.isBlank() || !brandingFileExists(fav)) fav = "/favicon.ico";
+        } catch (Exception e) { fav = "/favicon.ico"; }
         setFavicon(fav);
     }
 
@@ -416,6 +417,16 @@ public class AmsDataGlobal {
     public void setFavicon(String favicon) { this.favicon = favicon; }
     public String getBrandingPath() { return brandingPath; }
     public void setBrandingPath(String brandingPath) { this.brandingPath = brandingPath; }
+
+    /** Returns true if the path is NOT a /branding/ path, or if the branding file exists on disk. */
+    private boolean brandingFileExists(String path) {
+        if (path == null || !path.startsWith("/branding/")) return true;
+        String filename = path.substring("/branding/".length());
+        if (filename.contains("?")) filename = filename.substring(0, filename.indexOf("?"));
+        try {
+            return java.nio.file.Files.exists(java.nio.file.Paths.get(brandingPath, filename));
+        } catch (Exception e) { return false; }
+    }
 
     public boolean isChatbotEnabled() { return chatbotEnabled; }
     public PSP getPsp() {

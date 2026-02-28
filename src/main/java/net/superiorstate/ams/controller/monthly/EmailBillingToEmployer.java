@@ -7,7 +7,6 @@ import jakarta.persistence.Query;
 import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
-import net.superiorstate.ams.data.dao.AppConstantDAO;
 import net.superiorstate.ams.data.dao.BillingQueryDAO;
 import net.superiorstate.ams.data.dao.EmailDAO;
 import net.superiorstate.ams.model.activity.Activity;
@@ -46,7 +45,10 @@ public class EmailBillingToEmployer extends HttpServlet {
         try {
             Employer employer = (Employer) request.getSession().getAttribute("currentBillingEmployer");
             String guid = BillingQueryDAO.getLastGuid(em, employer);
-            String path = AppConstantDAO.getWebPath(em) + "EmployerBillingDetail?uid=" + guid;
+            String basePath = request.getScheme() + "://" + request.getServerName()
+                    + (request.getServerPort() != 80 && request.getServerPort() != 443 ? ":" + request.getServerPort() : "")
+                    + request.getContextPath() + "/";
+            String path = basePath + "EmployerBillingDetail?uid=" + guid;
             List<Person> employerContactList = getEmployerContactList(em, employer);
             request.getSession().setAttribute("employerContactList", employerContactList);
             List<Person> remainingEmployeesWithEmails = getRemainingContactsWithEmails(em, employer, employerContactList);
