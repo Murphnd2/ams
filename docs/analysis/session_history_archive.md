@@ -379,6 +379,13 @@ Major project consolidating the four divergent "activity item → task sequence"
 - Creates demo user accounts: Jennifer Martinez (PSP User), Alex Rivera (BPO Admin), Priya Sharma (BPO User) — all password `demo123`
 - Negative IDs for employers/employees/benefits to avoid collision with real data
 
+### Factory Reset Servlets (D-24 continued)
+- **New file:** `DatabaseResetUtil.java` — Static utility with `SavedState` inner class, captures PSP/Person/User/Address/Agency/Constants values, clears all tables (TRUNCATE with FK checks disabled), re-initializes via `DatabaseInitializer.performInitialization(em)`, restores admin password hash/salt
+- **New file:** `ReSeedDb.java` — Factory-reset servlet at `/ReSeedDb`. GET renders confirmation page with deployment key input. POST validates key against `AppConfig.get("DEPLOYMENT_KEY")`, then runs capture → clear → reinitialize → reload globals. PSP Admin session required.
+- **New file:** `ReSeedDemoData.java` — Extends `ReSeedDb`, overrides `executeReset()` to also call `SeedDemoData.seedAllDemoData(em, out)` after the base reset. Shows demo credentials table on success.
+- **Modified:** `DatabaseInitializer.java` — Extracted `performInitialization(em)` from `initializeDataBase(request, em)` so reset servlets can call init logic without an HttpServletRequest
+- **Modified:** `SeedDemoData.java` — Extracted `seedAllDemoData(EntityManager em, PrintWriter out)` public method so `ReSeedDemoData` can invoke it
+
 ### Git / Infrastructure
 - `.gitignore` updated: added `/out/` (IntelliJ artifact output) and `.claude/` (Claude Code metadata)
 - Removed stale `.claude/worktrees/` entries from git tracking

@@ -138,16 +138,23 @@ Determine if IONOS has a per-account limit on vCPU cores and whether additional 
 ### D-24: Create Demo Seeder Servlet ✅
 
 **Completed:** February 28, 2026
-**File:** `src/main/java/net/superiorstate/ams/controller/home/SeedDemoData.java`
+**Files:**
+- `src/main/java/net/superiorstate/ams/controller/home/SeedDemoData.java` — Demo data seeder
+- `src/main/java/net/superiorstate/ams/controller/home/ReSeedDb.java` — Factory-reset servlet
+- `src/main/java/net/superiorstate/ams/controller/home/ReSeedDemoData.java` — Factory-reset + demo data
+- `src/main/java/net/superiorstate/ams/data/service/DatabaseResetUtil.java` — Shared reset utility
+- `src/main/java/net/superiorstate/ams/data/service/DatabaseInitializer.java` — Refactored (extracted `performInitialization(em)`)
 
-PSP-Admin-only servlet (`/SeedDemoData`) that seeds comprehensive demo data onto a fresh initialized database. Idempotent via `DEMO_DATA_SEEDED` constant.
-
-**Data created:**
+**SeedDemoData** (`/SeedDemoData`) — PSP-Admin-only servlet that seeds comprehensive demo data onto a fresh initialized database. Idempotent via `DEMO_DATA_SEEDED` constant. Data created:
 - 5 employers (Acme Manufacturing, Bright Horizons Childcare, Cascade Financial, Delta Regional Medical, Evergreen Landscaping) with 16 employees
 - 12 benefits across FSA, HRA, HSA, COBRA, DCA, Dental, Vision
 - 3 renewals (upcoming, in-progress, overdue), 2 setups, 5 tickets — all with linked checklists
 - 2 BPO vendor users (Alex Rivera / BPO Admin, Priya Sharma / BPO User)
 - 1 PSP staff user (Jennifer Martinez / PSP User) — all with password `demo123`
+
+**ReSeedDb** (`/ReSeedDb`) — Factory-reset servlet. Requires PSP Admin session + deployment key from `ssa.properties`. Captures initialization values (PSP info, admin credentials, SMTP config), truncates all tables, re-initializes from saved state. Admin password hash/salt preserved across reset.
+
+**ReSeedDemoData** (`/ReSeedDemoData`) — Extends ReSeedDb. Performs full factory reset, then seeds demo data via `SeedDemoData.seedAllDemoData()`. Same security requirements.
 
 **Also in this session:** Fixed billing GUID 404 (`BillingQueryDAO`), redesigned `sendBillingForm.jsp` with CKEditor 5, context-aware billing link URL, branding fallback fix, Billing added to Admin navbar dropdown, `.gitignore` updated for `/out/` and `.claude/`.
 

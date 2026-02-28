@@ -88,23 +88,59 @@ public class SeedDemoData extends HttpServlet {
                 return;
             }
 
-            // Get references to existing foundation entities
-            PSP psp = EntityLookup.getPspById(em, 4L);
-            Person adminPerson = EntityLookup.getPersonById(em, 104L);
+            seedAllDemoData(em, out);
 
-            if (psp == null || adminPerson == null) {
-                out.println("<div class='alert alert-danger'>Database not initialized. "
-                        + "Run database initialization first.</div>");
-                out.println("</body></html>");
-                return;
-            }
+            out.println("<hr>");
+            out.println("<div class='alert alert-success'>"
+                    + "<strong>Demo data seeded successfully!</strong><br>"
+                    + "5 employers, 16 employees, 12 benefits, 3 renewals, 2 setups, 5 tickets, "
+                    + "2 BPO users, 1 staff user.</div>");
 
-            log(out, "<strong>Starting demo data seed...</strong>");
+            out.println("<h5 class='mt-3'>Demo Login Credentials</h5>");
+            out.println("<table class='table table-sm table-bordered' style='max-width:600px;'>"
+                    + "<thead class='table-light'><tr>"
+                    + "<th>Name</th><th>Email / Username</th><th>Password</th><th>Role</th></tr></thead><tbody>"
+                    + "<tr><td>Jennifer Martinez</td><td><code>jmartinez@superiorstate.net</code></td>"
+                    + "<td><code>demo123</code></td><td>PSP User</td></tr>"
+                    + "<tr><td>Alex Rivera</td><td><code>arivera@accelvantage.com</code></td>"
+                    + "<td><code>demo123</code></td><td>BPO Admin</td></tr>"
+                    + "<tr><td>Priya Sharma</td><td><code>psharma@accelvantage.com</code></td>"
+                    + "<td><code>demo123</code></td><td>BPO User</td></tr>"
+                    + "</tbody></table>");
 
-            // ═══════════════════════════════════════════
-            //  EMPLOYERS
-            // ═══════════════════════════════════════════
-            log(out, "<h5 class='mt-3' style='color:#0d5681;'>Employers</h5>");
+            out.println("<p class='mt-3'><strong>Tip:</strong> Run <code>/SeedBpoDemoData</code> next "
+                    + "to source some checklist tasks to BPO for the vendor delegation demo.</p>");
+            out.println("<p><a href='ViewHome25' class='btn btn-primary btn-sm'>Go to Home</a></p>");
+
+        } catch (Exception e) {
+            if (em.getTransaction().isActive()) em.getTransaction().rollback();
+            out.println("<div class='alert alert-danger'><strong>Error:</strong> " + escapeHtml(e.getMessage()) + "</div>");
+            e.printStackTrace();
+        } finally {
+            em.close();
+        }
+
+        out.println("</body></html>");
+    }
+
+    /**
+     * Core seeding logic — callable from both the doGet flow and ReSeedDemoData.
+     * Creates all demo employers, employees, benefits, activities, and users.
+     */
+    public void seedAllDemoData(EntityManager em, PrintWriter out) {
+        PSP psp = EntityLookup.getPspById(em, 4L);
+        Person adminPerson = EntityLookup.getPersonById(em, 104L);
+
+        if (psp == null || adminPerson == null) {
+            throw new IllegalStateException("Database not initialized — PSP or admin person not found.");
+        }
+
+        log(out, "<strong>Starting demo data seed...</strong>");
+
+        // ═══════════════════════════════════════════
+        //  EMPLOYERS
+        // ═══════════════════════════════════════════
+        log(out, "<h5 class='mt-3' style='color:#0d5681;'>Employers</h5>");
 
             Employer acme = seedEmployer(em, out, -100,
                     "Acme Manufacturing Corp", "hr@acmemfg.com", "Sarah Chen", -100, true);
@@ -353,38 +389,7 @@ public class SeedDemoData extends HttpServlet {
             //  MARK COMPLETE
             // ═══════════════════════════════════════════
             markSeeded(em);
-
-            out.println("<hr>");
-            out.println("<div class='alert alert-success'>"
-                    + "<strong>Demo data seeded successfully!</strong><br>"
-                    + "5 employers, 16 employees, 12 benefits, 3 renewals, 2 setups, 5 tickets, "
-                    + "2 BPO users, 1 staff user.</div>");
-
-            out.println("<h5 class='mt-3'>Demo Login Credentials</h5>");
-            out.println("<table class='table table-sm table-bordered' style='max-width:600px;'>"
-                    + "<thead class='table-light'><tr>"
-                    + "<th>Name</th><th>Email / Username</th><th>Password</th><th>Role</th></tr></thead><tbody>"
-                    + "<tr><td>Jennifer Martinez</td><td><code>jmartinez@superiorstate.net</code></td>"
-                    + "<td><code>demo123</code></td><td>PSP User</td></tr>"
-                    + "<tr><td>Alex Rivera</td><td><code>arivera@accelvantage.com</code></td>"
-                    + "<td><code>demo123</code></td><td>BPO Admin</td></tr>"
-                    + "<tr><td>Priya Sharma</td><td><code>psharma@accelvantage.com</code></td>"
-                    + "<td><code>demo123</code></td><td>BPO User</td></tr>"
-                    + "</tbody></table>");
-
-            out.println("<p class='mt-3'><strong>Tip:</strong> Run <code>/SeedBpoDemoData</code> next "
-                    + "to source some checklist tasks to BPO for the vendor delegation demo.</p>");
-            out.println("<p><a href='ViewHome25' class='btn btn-primary btn-sm'>Go to Home</a></p>");
-
-        } catch (Exception e) {
-            if (em.getTransaction().isActive()) em.getTransaction().rollback();
-            out.println("<div class='alert alert-danger'><strong>Error:</strong> " + escapeHtml(e.getMessage()) + "</div>");
-            e.printStackTrace();
-        } finally {
-            em.close();
-        }
-
-        out.println("</body></html>");
+            log(out, "<strong>Demo data seed complete.</strong>");
     }
 
     // ═══════════════════════════════════════════════════════════════

@@ -244,6 +244,15 @@ public abstract class DatabaseInitializer {
 
         //Retrieve Form Data
         retrieveFormData(request);
+        performInitialization(em);
+    }
+
+    /**
+     * Core initialization logic — creates all seed data using values already set
+     * in the static fields (via retrieveFormData or direct setter calls).
+     * Separated so ReSeedDb can call it after setting fields from saved state.
+     */
+    public static void performInitialization(EntityManager em) {
         System.out.println("Retrieved Data: PSP Name = " + getPspName());
         //Load Sequence Seed Number
         seedSequence(em);
