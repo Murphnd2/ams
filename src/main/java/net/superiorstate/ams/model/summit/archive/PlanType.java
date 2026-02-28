@@ -17,6 +17,15 @@ public class PlanType {
     @Column(name="PlanTypeName")
     private String planTypeName;
 
+    @Column(name="level")
+    private String level;
+
+    @Column(name="los")
+    private String los;
+
+    @Column(name="employer_name")
+    private String employerName;
+
     @ManyToOne
     @JoinColumn(name="billing_group_id")
     private BillingGroup billingGroup;
@@ -65,5 +74,29 @@ public class PlanType {
 
     public void setServiceItem(ServiceItem serviceItem) {
         this.serviceItem = serviceItem;
+    }
+
+    public String getLevel() {
+        return level;
+    }
+
+    public void setLevel(String level) {
+        this.level = level;
+    }
+
+    public String getLos() {
+        return los;
+    }
+
+    public void setLos(String los) {
+        this.los = los;
+    }
+
+    public String getEmployerName() {
+        return employerName;
+    }
+
+    public void setEmployerName(String employerName) {
+        this.employerName = employerName;
     }
 }

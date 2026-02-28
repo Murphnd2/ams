@@ -280,6 +280,7 @@ public abstract class DatabaseInitializer {
         p.setEmployee(ee);
         em.persist(p);
         em.getTransaction().commit();
+        //TODO: Remove billing from Seeding.
         //Create Billing Group
         BillingGroup bg0 = createBillingGroup(em,7,"Other");
         BillingGroup bg1 = createBillingGroup(em,1, "FSA");
@@ -290,11 +291,14 @@ public abstract class DatabaseInitializer {
         BillingGroup bg6 = createBillingGroup(em,6,"POP");
         BillingGroup bg7 = createBillingGroup(em,7,"MERP");
         BillingGroup bg8 = createBillingGroup(em,8,"LSA");
+        //TODO: Should we also create Opportunity Category?
         //Create Template Group
         ActivityCategory tg1 = createTemplateGroup(em,1,"Renewal");
         ActivityCategory tg2 = createTemplateGroup(em,2,"Setup");
         ActivityCategory tg3 = createTemplateGroup(em,3,"Ticket");
-        //Create Template Purposes
+
+        //TODO: Needs its own discussion (what are los, what are enhancements for setups, what benefit types for renewals)
+        //Create Service Items
         ServiceItem tp1 = createServiceItem(em,2,"Health FSA",2,tg1,psp);
         ServiceItem tp5 = createServiceItem(em,12,"Health FSA",12,tg2,psp);
 
@@ -322,6 +326,7 @@ public abstract class DatabaseInitializer {
         ServiceItem tpC = createServiceItem(em,27,"LSA",10,tg1,psp);
         ServiceItem tp12 = createServiceItem(em,17,"LSA",20,tg2,psp);
 
+        //ToDo Seed all Standard DataPath Plan Types and that only)
         //Create Plan Types
         PlanType pt1 = createPlanType(em,1,"DCA","Dependent Care Account",bg1,tp2);
         PlanType pt2 = createPlanType(em,2,"FSA","Health Flexible Spending Account",bg1,tp1);
@@ -340,6 +345,7 @@ public abstract class DatabaseInitializer {
         PlanType pt15 = createPlanType(em,15,"NEFSA","NEFSA",bg3,tp4);
         PlanType pt16 = createPlanType(em,16,"LSA","Lifestyle Spending Account",bg8,tp12);
 
+        //TODO: Does Seed Demo do this?  Do we need to make sure this table isn't null
         //Create Benefits
         LocalDate today = LocalDate.now();
         LocalDate firstOfMonth = LocalDate.of(today.getYear(),today.getMonthValue(),1);
@@ -348,11 +354,14 @@ public abstract class DatabaseInitializer {
         Benefit b1 = createBenefit(em,-3,"Demo HRA",er,pt3,Date.valueOf(firstOfMonth));
         Benefit b2 = createBenefit(em,-2,"Demo FSA",er,pt2,Date.valueOf(lastMonth));
         Benefit b3 = createBenefit(em,-1,"Demo COBRA",er,pt4,Date.valueOf(sixMonthsFromNow));
+
+        //TODO: Not necessary anymore? removed from log ticket
         //Create Contact Methods
         createContactMethod(em,1,"Phone");
         createContactMethod(em,2,"Email");
         createContactMethod(em,3,"Mail");
         createContactMethod(em,4,"Walk-in");
+
         //Create Days of Week
         createDayOfWeek(em,1,"Monday");
         createDayOfWeek(em,2,"Tuesday");
@@ -361,17 +370,24 @@ public abstract class DatabaseInitializer {
         createDayOfWeek(em,5,"Friday");
         createDayOfWeek(em,6,"Saturday");
         createDayOfWeek(em,7,"Sunday");
+
+        //TODO: Used? replaced by Library item logic?
         //Create Link Types
         createLinkType(em,1,"File Upload");
         createLinkType(em,2,"Hyperlink");
         createLinkType(em,3,"Insert Link");
+
         //Create Lines of Service
         LOS los0 = createLos(em,5L, "Premium Only Plan", "POP",psp);
         LOS los1 = createLos(em,6L,"Flexible Spending Accounts","FSA",psp);
-        LOS los2 = createLos(em,7L,"Health Reimbursement Arrangements","HRA/MERP",psp);
+        LOS los2 = createLos(em,7L,"Health Reimbursement Arrangements","HRA",psp);
         LOS los3 = createLos(em,8L,"COBRA Administration","COBRA",psp);
         LOS los4 = createLos(em,9L,"Health Savings Accounts","HSA",psp);
         LOS los5 = createLos(em,10L,"Transit/Commuter Plans","TRANSIT",psp);
+
+        //TODO: Create an enhancement item for Debit Cards
+
+        //TODO: Review naming conventions and base on LOS and Enhancement Creation
         //Create Service Modules
         ServiceModule sm0 = createServiceModule(em,15L,"Section 125 Premium Only Plans","POP",100,psp);
         ServiceModule sm1 = createServiceModule(em,16L,"Section 125 Full Flex Plan with FSAs","FSA",200,psp);
@@ -380,6 +396,8 @@ public abstract class DatabaseInitializer {
         ServiceModule sm4 = createServiceModule(em,21L,"Debit Card Services","Cards",600,psp);
         ServiceModule sm5 = createServiceModule(em,19L,"Health Savings Accounts (HSAs)","HSA",400,psp);
         ServiceModule sm6 = createServiceModule(em,25L,"Transit Plans","Transit",450,psp);
+
+        //TODO: This they way we want it?
         //Associate Service Modules
         associateModuleToLos(em,los0,sm0);
         associateModuleToLos(em,los1,sm1);
@@ -389,12 +407,15 @@ public abstract class DatabaseInitializer {
         associateModuleToLos(em,los3,sm3);
         associateModuleToLos(em,los4,sm5);
         associateModuleToLos(em,los5,sm6);
+
         //Create Price Items
         PriceItem pi1 = createPriceItem(em,31L,"Setup (One-time) Fee",100,psp);
         PriceItem pi2 = createPriceItem(em,32L,"Annual Administration Fee",200,psp);
         PriceItem pi3 = createPriceItem(em,33L,"Base Monthly Fee per Participant",300,psp);
+
         //Create Rate
         Rate rate = createRate(em,52L,"Standard Rate",psp);
+
         //Create Rate Table
         createPricing(em,199,sm0,pi1,rate);
         createPricing(em,350,sm1,pi1,rate);
@@ -408,6 +429,7 @@ public abstract class DatabaseInitializer {
         createPricing(em,1,sm3,pi3,rate);
         createPricing(em,5,sm5,pi3,rate);
         createPricing(em,200,sm6,pi2,rate);
+
         //Create Reasons Created List
         ReasonCreated rc = createReasonCreated(em,1,"Internal Note",false);
         createReasonCreated(em,2,"Received Call",false);
@@ -417,6 +439,8 @@ public abstract class DatabaseInitializer {
         createReasonCreated(em,6,"Left Voicemail",true);
         createReasonCreated(em,7,"Sent Email Message",true);
         createReasonCreated(em,8,"Quick Action",true);
+
+        //TODO: Remove?
         //Create Tasks Used in Monthly Imports
         createTask(em,10L,"Clear Import Tables","ClearImport",psp,p);
         createTask(em,11L,"Clear Monthly Billing","ClearMonthlyBilling",psp,p);
@@ -425,6 +449,7 @@ public abstract class DatabaseInitializer {
         createTask(em,14L,"Create Monthly Billing","CreateMonthlyBilling",psp,p);
         createTask(em,15L,"Refresh Employee List","RefreshTicketEmployees",psp,p);
         createTask(em,153L,"Default","",psp,p,false);
+
         //Create Task Frequencies
         createTaskFrequency(em,1,"Daily (Weekdays)");
         createTaskFrequency(em,2,"Weekly");
@@ -445,6 +470,8 @@ public abstract class DatabaseInitializer {
         createTaskFrequency(em,17,"Last Wednesday of Month");
         createTaskFrequency(em,18,"Last Thursday of Month");
         createTaskFrequency(em,19,"Last Friday of Month");
+
+        //TODO: Need to review full ticket category / service item logic and create improved but smaller default
         //Create Ticket Categories
         TicketCategory tc = createTicketCategory(em,18L,"How Do I?","HOW");
         ServiceItem tp800 = createServiceItem(em,25,"Get Online",100,tg3,psp);
@@ -494,6 +521,7 @@ public abstract class DatabaseInitializer {
         }
     }
 
+    //TODO: Update to match new import project in backlog?
     private static void createInitializationChecklist(EntityManager em) {
         Person person = EntityLookup.getPersonById(em, 104L);
         PSP psp = EntityLookup.getPspById(em, 4L);
@@ -515,6 +543,7 @@ public abstract class DatabaseInitializer {
         em.persist(checkList);
     }
 
+    //TODO: Link back to PSP Super User managed page on PSP site?
     private static final String EXPORT_INSTRUCTIONS_LINK =
             "https://docs.google.com/document/d/1Z8I_-5z53AiDNZu2B6wiMe8yRcOK1pZ6B53TBJl3pHg/edit?usp=sharing";
 

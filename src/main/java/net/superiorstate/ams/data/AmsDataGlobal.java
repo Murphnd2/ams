@@ -361,6 +361,12 @@ public class AmsDataGlobal {
         this.employees = employees;
     }
 
+    /** Reset the lazy-load flag so the next getEmployees() call reloads from DB. */
+    public void resetEmployeeCache() {
+        this.employeesLoaded = false;
+        this.employees = null;
+    }
+
     public void setPsp(PSP psp) {
         this.psp = psp;
     }

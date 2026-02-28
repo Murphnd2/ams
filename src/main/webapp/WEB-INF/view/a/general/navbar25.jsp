@@ -185,6 +185,7 @@
               <li><a class="dropdown-item" href="UploadPspBranding"><i class="bi bi-palette me-2"></i>Branding</a></li>
               <li><button class="dropdown-item" type="button" data-bs-toggle="modal" data-bs-target="#smtpSettingsMod"><i class="bi bi-envelope-gear me-2"></i>Email Settings</button></li>
               <li><a class="dropdown-item" href="BillingAction"><i class="bi bi-currency-dollar me-2"></i>Billing</a></li>
+              <li><a class="dropdown-item" href="SummitImport"><i class="bi bi-cloud-upload me-2"></i>Import Data</a></li>
             </ul>
           </div>
         </c:if>

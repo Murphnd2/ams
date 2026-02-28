@@ -13,7 +13,7 @@ Tracks database schema versions across environments.
 | Local (either) | 127.0.0.1:3306 | dev_ssa | Initialization testing (wiped regularly) |
 | Production | superiorstate.biz | beta_ssa | Live server |
 
-## Current Highest Version: V024
+## Current Highest Version: V025
 
 ## Dev Baseline
 
@@ -53,6 +53,7 @@ Individual migration scripts are no longer stored in the repo. The baseline dump
 | V022 | Orphaned ticket ServiceItem backfill | ✅ | ✅ | ✅ | ✅ |
 | V023 | Drop ticketsubcategory table and FK | ✅ | ✅ | ✅ | ✅ |
 | V024 | Fix views referencing dropped ticket_category column | ✅ | ✅ | ✅ | ✅ |
+| V025 | Add level, los, employer_name to plantype for Summit import | ⬜ | ⬜ | ⬜ | ⬜ |
 
 ## Notes
 
@@ -62,3 +63,4 @@ Individual migration scripts are no longer stored in the repo. The baseline dump
 - V023 drops the ticketsubcategory table and its FK column (ticket_category) from assignee. Requires updated WAR with TicketSubCategory.java deleted.
 - V024 rebuilds the a_base_01 through a_base_05 view chain to remove references to the dropped ticket_category column.
 - dev_ssa can be reset from the V024 baseline at any time.
+- V025 adds three nullable columns to the plantype table for Summit import metadata. No data migration needed — columns are populated by the new Summit Import wizard.

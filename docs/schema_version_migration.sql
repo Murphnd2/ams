@@ -44,4 +44,5 @@ INSERT IGNORE INTO schema_version (version, description, script_name) VALUES
 ('V021', 'ServiceItem linkage - LOS/Enhancement backfill, Payment Services rename, suppress duplicates', 'V021__service_item_linkage_backfill.sql'),
 ('V022', 'Orphaned ticket ServiceItem backfill', 'V022__orphaned_ticket_serviceitem_backfill.sql'),
 ('V023', 'Drop ticketsubcategory table and FK', 'V023__drop_ticketsubcategory.sql'),
-('V024', 'Fix views referencing dropped ticket_category column', 'V024__fix_views_drop_ticket_category.sql');
+('V024', 'Fix views referencing dropped ticket_category column', 'V024__fix_views_drop_ticket_category.sql'),
+('V025', 'Add level, los, employer_name to plantype for Summit import', 'V025__plantype_import_columns.sql');
