@@ -21,12 +21,19 @@ The design is **vendor-agnostic** at the CSV layer — while Summit/DataPath is 
 
 ### What We Import
 
-| Data Type | Summit Export | Target Table | Purpose |
-|-----------|-------------|-------------|---------|
-| **Plan Types** | Pre-defined export (Excel) | `plantype` | Reference data — categorizes benefits (FSA, HRA, COBRA, etc.) |
-| **Employers** | I1_Employer (CSV) | `employer` | Client companies the PSP manages |
-| **Employees** | I2_Employee (CSV) | `employee` | Participants under each employer |
-| **Benefits** | I4_Benefits (CSV) | `benefit` | Plans each employer offers — drives renewal pipeline |
+| Data Type | Summit Export | Report Type | Target Table | Purpose |
+|-----------|-------------|-------------|-------------|---------|
+| **Plan Types** | Pre-defined export (Excel) | — | `plantype` | Reference data — categorizes benefits (FSA, HRA, COBRA, etc.) |
+| **Employers** | J1_Employer (CSV) | Employer Listing | `employer` | Client companies the PSP manages |
+| **Employees (Contact)** | J2_Employee (CSV) | Participant Listing Simple | `employee` | Names, email, addresses, custom IDs |
+| **Employees (Status)** | J3_Employee_Alt (CSV) | Participant Listing Report with Division Option | `employee` | Status IDs, lifecycle dates (effective/term/hire) |
+| **Benefits** | J4_Benefits (CSV) | Employer Benefit Plans | `benefit` | Plans each employer offers — drives renewal pipeline |
+
+**Why two employee files?** Summit's pre-built exports are not configurable — all columns are sent for a given report type. Neither employee export contains all the fields needed for sync:
+- **J2 (Simple)** has contact info (email, address, city, state, zip, custom ID) but no status or dates
+- **J3 (Division)** has status IDs and lifecycle dates but no contact info
+
+The sync process joins both on `Participant_ID` to build the complete employee record. Banking/SSN/reimbursement fields in J3 are ignored (billing-only).
 
 ### What We Do NOT Import (billing-specific)
 
@@ -34,7 +41,7 @@ The design is **vendor-agnostic** at the CSV layer — while Summit/DataPath is 
 - Benefit Years (I5) — billing cycles
 - COBRA QB/terms/coverage (I7, I8, I9, IA, IB) — COBRA billing
 - HSA accounts — billing
-- Employee Alt (I3) — SSN, bank info (billing/reimbursement)
+- J3 billing-only columns: SSN, BankName, RoutingNo, AccountType, AccountNumber, UserBank_ID, ReimbursementMethod, ReimbursementMethod_ID, No_of_participants, DivisionName, ByDivision
 
 ---
 
@@ -62,7 +69,7 @@ The design is **vendor-agnostic** at the CSV layer — while Summit/DataPath is 
 
 ### 3b. Employers (CSV)
 
-**Source:** Summit → I1_Employer export
+**Source:** Summit → Data Exchange → Employer Listing (J1)
 
 | CSV Column | Maps To | Notes |
 |-----------|---------|-------|
@@ -81,37 +88,82 @@ The design is **vendor-agnostic** at the CSV layer — while Summit/DataPath is 
 
 **Active filter logic:** Import only rows where Status indicates active (exact values TBD — need to confirm Summit's status codes with Kevin).
 
-### 3c. Employees (CSV)
+### 3c. Employees — Two Files Required
 
-**Source:** Summit → I2_Employee export
+Both employee exports share `Participant_ID` as the join key. The sync process merges them into a single `employee` record.
+
+#### J2 — Participant Listing Simple (contact info)
+
+**Source:** Summit → Data Exchange → Participant Listing Simple
 
 | CSV Column | Maps To | Notes |
 |-----------|---------|-------|
 | Participant_ID | `employee.employee_id` (PK) | Summit's participant ID |
 | Organization_ID | `employee.employer_id` (FK) | Links to employer |
-| Employer_ID | — | Alternate employer ID |
-| EmployerName | — | Denormalized (skip) |
 | FirstName | `employee.first_name` | |
 | LastName | `employee.last_name` | |
-| Email | `employee.email` | |
-| Address1 | `employee.address1` | |
-| Address2 | `employee.address2` | |
-| City | `employee.city` | |
-| State | `employee.state` | |
-| ZipCode | `employee.zip` | |
+| Email | `employee.email` | **J2-only** |
+| Address1 | `employee.address1` | **J2-only** |
+| Address2 | `employee.address2` | **J2-only** |
+| City | `employee.city` | **J2-only** |
+| State | `employee.state` | **J2-only** |
+| ZipCode | `employee.zip` | **J2-only** |
+| ParticipantCustomID | `employee.custom_id` | **J2-only** — employer's custom ID |
 | User_ID | `employee.user_id` | Portal user ID |
-| ParticipantCustomID | `employee.custom_id` | Employer's custom ID |
-| UserStatus | `employee.is_active` | **Filter:** active only |
-| IsRegisteredToPortal | — | Informational |
+| UserStatus | — | Text status (use J3 numeric IDs instead) |
+| Employer_ID | — | Alternate employer ID (skip) |
+| EmployerName | — | Denormalized (skip) |
+| EmployerCustomID | — | Informational |
+| EmployerOrganizationID | — | Duplicate of Organization_ID |
+| SetupCompletionDate | — | Informational |
+| IsRegisterdToPortal | — | Informational |
 | FailedLoginCount | — | Informational |
 | LastLoginDate | — | Informational |
-| SetupCompletionDate | — | Informational |
 
-**Active filter logic:** Import only rows where UserStatus indicates active. Also skip employees whose Organization_ID doesn't match an imported (active) employer.
+#### J3 — Participant Listing Report with Division Option (status + dates)
+
+**Source:** Summit → Data Exchange → Participant Listing Report with Division Option
+
+| CSV Column | Maps To | Notes |
+|-----------|---------|-------|
+| Participant_ID | (join key) | Matches J2 PK |
+| Organization_ID | (FK validation) | Should match J2 |
+| Participant First name | — | Name available in J2 (prefer J2 for consistency) |
+| Participant Last Name | — | Name available in J2 |
+| ParticipantStatusId | `employee.ee_status_id` | **J3-only** — employment status code |
+| userStatusID | `employee.system_status_id` | **J3-only** — system active/inactive |
+| EmploymentStatusID | — | Alternate status ID |
+| EmploymentStatus | — | Text label for EmploymentStatusID |
+| EffectiveDate | (new column TBD) | **J3-only** — employee effective date |
+| TerminationDate | (new column TBD) | **J3-only** — employee termination date |
+| HireDate | (new column TBD) | **J3-only** — hire date |
+| ParticpantStatusDescription | — | Text label for ParticipantStatusId |
+| User Status Description | — | Text label for userStatusID |
+| DOB | — | Available but not currently mapped |
+| ERName | — | Denormalized employer name (skip) |
+| EmployerOrganizationID | — | Duplicate of Organization_ID |
+| ParticipantName | — | Concatenated name (skip — use J2 first/last) |
+| UserId | — | Duplicate of J2.User_ID |
+| CreatedDate | — | Informational |
+| SSN | — | **Billing-only** (ignored) |
+| ReimbursementMethod | — | **Billing-only** (ignored) |
+| ReimbursementMethod_ID | — | **Billing-only** (ignored) |
+| BankName | — | **Billing-only** (ignored) |
+| RoutingNo | — | **Billing-only** (ignored) |
+| AccountType | — | **Billing-only** (ignored) |
+| AccountNumber | — | **Billing-only** (ignored) |
+| UserBank_ID | — | **Billing-only** (ignored) |
+| No: of participants | — | **Billing-only** (ignored) |
+| DivisionName | — | **Billing-only** (ignored) |
+| ByDivision | — | **Billing-only** (ignored) |
+
+**Merge logic:** J2 is the primary source (contact info + names). J3 supplements with status IDs and dates. Records are matched on `Participant_ID`. A participant present in J3 but missing from J2 still gets created (using J3's name fields as fallback).
+
+**Active filter logic:** Use J3's `userStatusID` to determine active/inactive. Skip employees whose Organization_ID doesn't match an imported (active) employer.
 
 ### 3d. Benefits/Plans (CSV)
 
-**Source:** Summit → I4_Benefits (CDH) export. May also need I7 (PB benefits) for COBRA plans.
+**Source:** Summit → Data Exchange → Employer Benefit Plans (J4). May also need J7 (PB Employer Benefit Detail Report) for COBRA plans.
 
 | CSV Column | Maps To | Notes |
 |-----------|---------|-------|
@@ -180,8 +232,13 @@ Add `SUMMIT_LAST_IMPORT` constant to track when the last import ran (ISO datetim
 │  ┌─ Employers (CSV) ────────────────────────────────┐   │
 │  │  [Choose File]  I1_Employer_20260228.csv ✅ 139 rows│  │
 │  └──────────────────────────────────────────────────┘   │
-│  ┌─ Employees (CSV) ────────────────────────────────┐   │
-│  │  [Choose File]  I2_Employee_20260228.csv ✅ 4045 rows│ │
+│  ┌─ Employees — Contact (CSV) ─────────────────────┐   │
+│  │  [Choose File]  J2_Employee_20260228.csv ✅ 4045 rows│ │
+│  │  Participant Listing Simple                        │   │
+│  └──────────────────────────────────────────────────┘   │
+│  ┌─ Employees — Status (CSV) ─────────────────────┐    │
+│  │  [Choose File]  J3_Employee_20260228.csv ✅ 4045 rows│ │
+│  │  Participant Listing Report w/ Division Option     │   │
 │  └──────────────────────────────────────────────────┘   │
 │  ┌─ Benefits (CSV) ─────────────────────────────────┐   │
 │  │  [Choose File]  I4_Benefits_20260228.csv ✅ 312 rows│  │
@@ -420,6 +477,18 @@ This means after import, the Sequence Builder already shows Renewal entries for 
 
 ## 11. Open Items
 
-| # | Item | Notes |
-|---|------|-------|
-| 1 | **Two employee exports — investigate whether both are needed.** The current monthly billing process uses two separate employee import files (I2 and presumably I3 or similar). Some fields may only exist in one export. Need to determine which fields from each are relevant for sync vs. billing-only, and whether we need a single merged import or two distinct uploads. | Investigate existing `Importer.java` TABLE_MAPPINGS and staging table schemas to catalog which columns come from which file. |
+| # | Item | Status | Notes |
+|---|------|--------|-------|
+| 1 | ~~Two employee exports — investigate whether both are needed.~~ | ✅ Resolved | **Both required.** J2 (Participant Listing Simple) has contact info; J3 (Participant Listing Report w/ Division Option) has status IDs and dates. Summit exports are not configurable — all columns are sent. Banking/SSN fields in J3 are billing-only and ignored by sync. |
+| 2 | **Employee table schema — add lifecycle date columns.** J3 provides EffectiveDate, TerminationDate, HireDate which have no corresponding columns on the `employee` table today. Decide whether to add these (would require V025 or V026 migration). | Open | Useful for filtering active/terminated and for onboarding context. |
+| 3 | **Summit export naming convention.** Rename I1/I2/I3/I4 references throughout codebase to J1/J2/J3/J4 to match Summit report type naming. Or keep internal names separate. | Open | Low priority — cosmetic. |
+
+### Summit Export Report Types (reference)
+
+| Internal Name | Summit Report Type | Description |
+|---|---|---|
+| J1 (I1_Employer) | Employer Listing | All employer organizations |
+| J2 (I2_Employee) | Participant Listing Simple | Employee contact info |
+| J3 (I3_Employee_Alt) | Participant Listing Report with Division Option | Employee status + dates + banking |
+| J4 (I4_Benefits) | Employer Benefit Plans | CDH benefit plans |
+| J7 (I7_Cobra_Benefits) | PB Employer Benefit Detail Report | COBRA/PB benefit detail |
