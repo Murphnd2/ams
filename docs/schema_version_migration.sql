@@ -2,9 +2,6 @@
 -- schema_version_migration.sql
 -- =============================================================================
 --
--- The V017 baseline dump (beta_ssa_dev_baseline_thru_V017.sql) includes the
--- schema_version table structure but no data rows.
---
 -- Run this after importing the baseline to register all applied versions.
 -- =============================================================================
 
@@ -41,5 +38,7 @@ INSERT IGNORE INTO schema_version (version, description, script_name) VALUES
 ('V017', 'Move SYS_HEALTH constants to ssa.properties, add EMAIL_FOOTER_TEXT', 'V017__health_constants_to_properties.sql'),
 ('V018', 'Application section suppressed column', 'V018__application_section_suppressed.sql'),
 ('V019', 'Application field suppressed column', 'V019__application_field_suppressed.sql'),
-('V020', 'ServiceItem unification - schema additions and data backfill', 'V020__service_item_unification.sql');
+('V020', 'ServiceItem unification - schema additions and data backfill', 'V020__service_item_unification.sql'),
 ('V021', 'ServiceItem linkage - LOS/Enhancement backfill, Payment Services rename, suppress duplicates', 'V021__service_item_linkage_backfill.sql'),
+('V022', 'Orphaned ticket ServiceItem backfill', 'V022__orphaned_ticket_serviceitem_backfill.sql'),
+('V023', 'Drop ticketsubcategory table and FK', 'V023__drop_ticketsubcategory.sql');

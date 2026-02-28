@@ -13,20 +13,20 @@ Tracks database schema versions across environments.
 | Local (either) | 127.0.0.1:3306 | dev_ssa | Initialization testing (wiped regularly) |
 | Production | superiorstate.biz | beta_ssa | Live server |
 
-## Current Highest Version: V021
+## Current Highest Version: V023
 
 ## Dev Baseline
 
-The current baseline is `docs/importscript/beta_ssa_dev_baseline_thru_V017.sql` — a structure-only dump from production after V017 was applied. **Needs update to V021** — re-export from any database that is current.
+The current baseline is `docs/importscript/beta_ssa_dev_baseline_thru_V017.sql` — a structure-only dump from production after V017 was applied. **Needs update to V023** — re-export from any database that is current.
 
 **To reset a dev database:**
-1. Export new baseline: Workbench → Server → Data Export → `beta_ssa` → Structure Only → save as `beta_ssa_dev_baseline_thru_V021.sql`
+1. Export new baseline: Workbench → Server → Data Export → `beta_ssa` → Structure Only → save as `beta_ssa_dev_baseline_thru_V023.sql`
 2. Reset target: `DROP DATABASE IF EXISTS dev_ssa; CREATE DATABASE dev_ssa;`
 3. Import baseline: Workbench → Server → Data Import → select file → target `dev_ssa`
 4. Start app against `dev_ssa` → `DatabaseInitializer` seeds data
 5. For `beta_ssa`, also re-import Datapath exports after baseline import
 
-Future migrations (V022+) are applied incrementally on top of the baseline.
+Future migrations (V024+) are applied incrementally on top of the baseline.
 
 ## Schema Version Table
 
@@ -53,13 +53,18 @@ Individual migration scripts are no longer stored in the repo. The baseline dump
 | V015 | Constants to properties | ✅ | ✅ | ✅ | ✅ |
 | V016 | BPO registration tables | ✅ | ✅ | ✅ | ✅ |
 | V017 | Health constants to properties | ✅ | ✅ | ✅ | ✅ |
-| V018 | Application section suppressed | ✅ | ✅ | ✅ | ⬚ |
-| V019 | Application field suppressed | ✅ | ✅ | ✅ | ⬚ |
-| V020 | ServiceItem unification - schema + backfill | ✅ | ⬚ | ✅ | ⬚ |
-| V021 | ServiceItem linkage - LOS/Enhancement backfill | ✅ | ⬚ | ⬚ | ⬚ |
+| V018 | Application section suppressed | ✅ | ✅ | ✅ | ✅ |
+| V019 | Application field suppressed | ✅ | ✅ | ✅ | ✅ |
+| V020 | ServiceItem unification - schema + backfill | ✅ | ✅ | ✅ | ✅ |
+| V021 | ServiceItem linkage - LOS/Enhancement backfill | ✅ | ✅ | ⬚ | ✅ |
+| V022 | Orphaned ticket ServiceItem backfill | ✅ | ✅ | ⬚ | ✅ |
+| V023 | Drop ticketsubcategory table and FK | ✅ | ✅ | ⬚ | ✅ |
 
 ## Notes
 
 - V020 requires corresponding Java code changes (TemplatePurpose → ServiceItem, TemplateGroup → ActivityCategory class/field renames). The V020 schema is backward-compatible for column additions but the code branch with renames must be deployed alongside the schema change.
-- V020 does NOT drop the `ticketsubcategory` table — that will be a future migration after all Java references are removed.
 - V021 creates new group 2 ServiceItems (IDs 25-35), renames SI 17 to "Payment Services", suppresses SI 18 and SI 20, and links all LOS and Enhancement records to their ServiceItems.
+- V022 creates 6 catch-all ServiceItems (IDs 36-41) for ticket categories that had no ServiceItem, and backfills 730 orphaned tickets whose TicketSubCategory records had NULL temp_purpose_id.
+- V023 drops the ticketsubcategory table and its FK column (ticket_category) from assignee. Requires updated WAR with TicketSubCategory.java deleted and all TSC references removed.
+- beta_ssa (home) was loaded from a production dump and had V020-V023 applied during testing this session.
+- dev_ssa needs V021-V023 applied, or reset from a fresh baseline export.
