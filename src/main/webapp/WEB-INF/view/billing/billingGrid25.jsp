@@ -22,9 +22,6 @@
                 <th class="text-center" style="width: 62px;">Dual</th>
                 <th class="text-center" style="width: 62px;">Transit</th>
                 <th class="text-center" style="width: 62px;">HSA</th>
-                <th class="text-center" style="width: 62px;">Direct</th>
-                <th class="text-center" style="width: 62px;">Retiree</th>
-                <th class="text-center" style="width: 62px;">LSA</th>
             </tr>
         </thead>
         <tbody id="billingTableBody">
@@ -41,12 +38,11 @@
 
                 <%-- Detect any change across all 9 benefit types --%>
                 <c:set var="hasChange" value="${item.getCobraNet()!=0 || item.getFsaNet()!=0 || item.getHraNet()!=0
-                    || item.getDualNet()!=0 || item.getTransitNet()!=0 || item.getHsaNet()!=0
-                    || item.getDirectNet()!=0 || item.getRetireeNet()!=0 || item.getLsaNet()!=0}" />
+                    || item.getDualNet()!=0 || item.getTransitNet()!=0 || item.getHsaNet()!=0}" />
 
                 <tr data-name="${rowName}">
                     <%-- NAME COLUMN --%>
-                    <td class="ps-2 position-relative">
+                    <td class="ps-2">
                         <c:choose>
                             <c:when test="${billingGridMode == 'employer'}">
                                 <form method="post" action="BillingAction" class="d-inline mb-0">
@@ -57,11 +53,17 @@
                                         ${item.getEmployer().getEmployerName()}
                                     </button>
                                 </form>
+                                <c:if test="${hasChange}">
+                                    <span class="badge bg-danger ms-1" style="font-size: 0.6rem;">change</span>
+                                </c:if>
                             </c:when>
                             <c:when test="${billingGridMode == 'employee'}">
                                 <span class="text-uppercase fw-semibold">
                                     ${item.getEmployee().getLastName()}, ${item.getEmployee().getFirstName()}
                                 </span>
+                                <c:if test="${hasChange}">
+                                    <span class="badge bg-danger ms-1" style="font-size: 0.6rem;">change</span>
+                                </c:if>
                                 <c:if test="${item.getEmployee().getCobraStatusId()==2}">
                                     <span class="badge bg-warning text-dark ms-1" style="font-size: 0.65rem;">QB</span>
                                 </c:if>
@@ -73,6 +75,9 @@
                                 <span class="text-uppercase">
                                     ${item.getEmployee().getLastName()}, ${item.getEmployee().getFirstName()}
                                 </span>
+                                <c:if test="${hasChange}">
+                                    <span class="badge bg-danger ms-1" style="font-size: 0.6rem;">change</span>
+                                </c:if>
                                 <c:if test="${item.getEmployee().getCobraStatusId()==2}">
                                     <span class="badge bg-warning text-dark ms-1" style="font-size: 0.65rem;">QB</span>
                                 </c:if>
@@ -81,10 +86,6 @@
                                 </c:if>
                             </c:otherwise>
                         </c:choose>
-                        <c:if test="${hasChange}">
-                            <span class="position-absolute bg-danger rounded-circle"
-                                  style="width: 8px; height: 8px; top: 50%; right: 4px; transform: translateY(-50%);"></span>
-                        </c:if>
                     </td>
 
                     <%-- COBRA --%>
@@ -132,30 +133,6 @@
                         ${item.getHsaCurrent()}
                         <c:if test="${item.getHsaNet()!=0}">
                             <span class="badge rounded-pill bg-danger position-absolute" style="font-size: 0.6rem; top: 1px; right: 1px;">${item.getHsaNet()}</span>
-                        </c:if>
-                    </td>
-
-                    <%-- Direct --%>
-                    <td class="text-center position-relative">
-                        ${item.getDirectCurrent()}
-                        <c:if test="${item.getDirectNet()!=0}">
-                            <span class="badge rounded-pill bg-danger position-absolute" style="font-size: 0.6rem; top: 1px; right: 1px;">${item.getDirectNet()}</span>
-                        </c:if>
-                    </td>
-
-                    <%-- Retiree --%>
-                    <td class="text-center position-relative">
-                        ${item.getRetireeCurrent()}
-                        <c:if test="${item.getRetireeNet()!=0}">
-                            <span class="badge rounded-pill bg-danger position-absolute" style="font-size: 0.6rem; top: 1px; right: 1px;">${item.getRetireeNet()}</span>
-                        </c:if>
-                    </td>
-
-                    <%-- LSA --%>
-                    <td class="text-center position-relative">
-                        ${item.getLsaCurrent()}
-                        <c:if test="${item.getLsaNet()!=0}">
-                            <span class="badge rounded-pill bg-danger position-absolute" style="font-size: 0.6rem; top: 1px; right: 1px;">${item.getLsaNet()}</span>
                         </c:if>
                     </td>
                 </tr>
