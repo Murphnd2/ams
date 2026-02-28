@@ -183,8 +183,8 @@
                                     </c:forEach>
                                 </select>
                             </div>
-                            <div class="mb-2">
-                                <input type="text" class="form-control form-control-sm" name="seqName" placeholder="Sequence name" required>
+                            <div class="mb-2" id="seqNameRow">
+                                <input type="text" class="form-control form-control-sm" name="seqName" id="seqNameInput" placeholder="Sequence name">
                             </div>
                             <button type="submit" class="btn btn-sm btn-success w-100"><i class="bi bi-check-lg"></i> Create</button>
                         </form>
@@ -532,6 +532,10 @@
         document.getElementById('renewalPurposeRow').className = v === 'renewal' ? 'mb-2' : 'mb-2 d-none';
         document.getElementById('setupPurposeRow').className = v === 'setup' ? 'mb-2' : 'mb-2 d-none';
         if (v !== 'ticket') { document.getElementById('newCatRow').className = 'mb-2 d-none'; }
+        // Hide sequence name for renewal/setup (auto-derived from ServiceItem)
+        var showName = (v === 'ticket' || v === '');
+        document.getElementById('seqNameRow').className = showName ? 'mb-2' : 'mb-2 d-none';
+        document.getElementById('seqNameInput').required = (v === 'ticket');
     }
 
     function toggleNewCatFields() {

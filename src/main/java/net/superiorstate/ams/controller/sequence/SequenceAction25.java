@@ -177,7 +177,8 @@ public class SequenceAction25 extends HttpServlet {
     private long handleCreate(HttpServletRequest request, EntityManager em) {
         String type = request.getParameter("newSeqType");
         String name = request.getParameter("seqName");
-        if (type == null || name == null || name.trim().isEmpty()) return -1;
+        if (type == null) return -1;
+        if ("ticket".equals(type) && (name == null || name.trim().isEmpty())) return -1;
 
         PSP psp = EntityLookup.getPspById(em, 4L);
         AmsDataGlobal global = (AmsDataGlobal) getServletContext().getAttribute("global");
