@@ -51,7 +51,8 @@ Removed:
 
 Kept:
 - User roles 101-103 (Accelergent BPO/Admin/User) — still seeded, just no users assigned
-- Demo benefits (HRA, FSA, COBRA) and ticket categories — to be moved to demo seeder servlet (see D-24)
+
+Demo benefits and ticket categories were subsequently moved to `SeedDemoData` (D-24) and removed from `DatabaseInitializer` (Session 9).
 
 ---
 
@@ -271,6 +272,22 @@ Updated master VPS image from v4 (pre-V001 schema) to v5:
 - Verified all three cron jobs (backup, update, healthcheck)
 - No WAR on master — clones pull via update.sh
 - Updated `deployment_runbook.md` with v5 references, new Phase 2.5, corrected health check docs
+
+---
+
+### D-35: Summit Data Import Wizard ✅
+
+**Completed:** February 28, 2026
+**Files:**
+- `src/main/java/net/superiorstate/ams/controller/data/SummitImportWizard.java` — Multi-step wizard servlet
+- `src/main/java/net/superiorstate/ams/data/service/SummitImportService.java` — Import business logic
+- `src/main/webapp/WEB-INF/view/a/general/summitImport/` — Wizard step JSPs
+- `docs/migrations/V025__plantype_import_columns.sql` — PlanType import columns
+- `docs/migrations/V026__benefit_surrogate_pk.sql` — Benefit surrogate PK with source tracking
+
+Multi-step wizard at `/SummitImport` for importing Summit CSV exports into AMS. Handles Plan Types (J2), Employers (J1), Employees (J3a/J3b), and Benefits (J4 CDH). V026 restructures the Benefit table from Summit's `EmployerPlan_ID` as PK to a surrogate auto-increment PK with `summit_id`/`source_type` composite unique key, eliminating the negative-ID hack for COBRA benefits.
+
+**Also in this session:** DatabaseInitializer seed data overhaul (ServiceItem unification alignment, onboarding checklist rewrite, simplified LOS/Enhancement/PlanType seeding), form validation on `initialize.jsp`, ManageTask25 NPE fix, Agency `tax_id` column widened to `varchar(20)`.
 
 ---
 

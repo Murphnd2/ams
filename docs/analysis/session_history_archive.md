@@ -401,3 +401,58 @@ Major project consolidating the four divergent "activity item → task sequence"
 - **EclipseLink identity map corruption:** Reusing the same EntityManager after native SQL TRUNCATE confused EclipseLink's internal identity maps. Changed `executeReset()` to close the old EM and return a fresh one.
 - **Three-EM pattern for ReSeedDemoData:** Init EM had managed entities (Person 104, CheckList 29, Ticket 99) whose cross-references confused EclipseLink. `ReSeedDemoData.executeReset()` now closes the init EM and creates a third fresh EM for demo seeding.
 - **EclipseLink `evictAll()` descriptor corruption (critical):** `emf.getCache().evictAll()` in EclipseLink 3.0.2 corrupts internal descriptor metadata — Person entity was mapped to ASSIGNEE table (`RelationalDescriptor(Person --> [DatabaseTable(ASSIGNEE)])`). Replaced with per-class eviction via JPA Metamodel API: `DatabaseResetUtil.evictEntityCaches(emf)` iterates `emf.getMetamodel().getEntities()` and evicts each class individually.
+
+---
+
+## February 28, 2026 — Summit Import + DatabaseInitializer Overhaul (Session 9)
+
+### V025 + V026 Migrations
+- **V025:** Added `level`, `los`, `employer_name` columns to `plantype` table for Summit import metadata.
+- **V026:** Benefit table surrogate PK — added `summit_id`/`source_type` columns, renumbered negative PKs to positive, converted `benefit_id` to AUTO_INCREMENT, added unique index on `(source_type, summit_id)`. Decouples internal PKs from Summit's `EmployerPlan_ID`.
+
+### Summit Data Import Wizard (D-35)
+- **New file:** `SummitImportWizard.java` — Multi-step wizard servlet for importing Summit CSV exports (Plan Types, Employers, Employees, Benefits)
+- **New file:** `SummitImportService.java` — Business logic for parsing and importing each Summit export file
+- **Modified:** `EntityLookup.java` — Added `getBenefitBySummitKey(em, sourceType, summitId)` for source-discriminated lookups
+- **Modified:** `Benefit.java` — Added `@GeneratedValue(IDENTITY)`, `summitId`, `sourceType` fields
+- **Modified:** `Updater.java`, `SummitSync.java` — Updated JPQL joins from `b.id` to `b.summitId`, removed negation hack
+- **New JSPs:** `step1Upload.jsp` and supporting wizard step pages
+
+### DatabaseInitializer Seed Data Overhaul
+Systematic cleanup of all seed data to reflect a production-ready fresh deployment:
+
+- **ActivityCategory:** Added "Opportunity" (ID 4), renamed "User" to "Opportunity" in ReferenceDataSeeder
+- **ServiceItem unification alignment:** Restructured all ServiceItem seeding:
+  - Setup: 3 items — COBRA, Flexible Spending Accounts (FSA), Debit Cards — linked 1:1 to LOS/Enhancement entities
+  - Renewals: Auto-created via `createPlanTypeWithRenewal()` — each PlanType gets a 1:1 Renewal ServiceItem
+  - Tickets: 1 category (General) + 1 service item with `hasRequiredTasks=true`
+  - Opportunities: Nothing seeded (PSP creates as needed)
+- **PlanType expansion:** 16 plan types (DCA, FSA, HRA, HSA, COBRA, Transit, Parking, Adoption, Tuition, Lifestyle, Medical, Dental, Vision, Group Life, STD, LTD)
+- **LOS simplified:** 2 entries (COBRA, CDH) linked to Setup ServiceItems
+- **Enhancement added:** 1 entry (Debit Cards) linked to Setup ServiceItem
+- **ServiceModules simplified:** 3 modules matching LOS + Enhancement
+- **BillingGroup simplified:** Single "Standard" billing group (removed 3 unused groups)
+- **Demo benefits removed:** Benefits come from Summit import; `SeedDemoData` handles demo data
+- **Monthly import tasks removed:** 7 orphaned tasks with unreferenced shortcodes
+- **Initialization checklist rewritten:** "Summit Data Transfer" onboarding checklist with 4 steps:
+  1. Setup Exports in Summit (doc link placeholder)
+  2. Download Plan Types from Summit (doc link placeholder)
+  3. Import Summit Exports into AMS (links to `/SummitImport`)
+  4. Modify Benefit Renewal Frequencies
+
+### SeedDemoData Enhancement
+- Added `closeInitializationChecklist()` — marks the initialization checklist as complete with yesterday's date when demo data is seeded, so it doesn't appear in the task list.
+
+### Bug Fixes
+- **ManageTask25 cancel button NPE:** `taskManager25.jsp` called `getCurrentActivity().getActivity()` without null-checking `getCurrentActivity()`. Added null guard.
+- **Tax ID data truncation:** `Agency.taxId` was `varchar(10)`, too short for formatted inputs like `12-34567890` (11 chars). Widened to `varchar(20)`.
+- **Initialization form validation:** Added `maxlength` attributes to all `initialize.jsp` form fields. Added server-side `validateFormFields()` in `InitializeDataBase.java`. Wrapped initialization in try/catch to show errors on form instead of stack traces.
+
+### Files Changed
+- `DatabaseInitializer.java` — Major restructure of seed data
+- `ReferenceDataSeeder.java` — "User" → "Opportunity" category rename
+- `SeedDemoData.java` — Close initialization checklist on demo seed
+- `InitializeDataBase.java` — Form validation + error handling
+- `Agency.java` — `tax_id` column widened to `varchar(20)`
+- `taskManager25.jsp` — Null guard on cancel button
+- `initialize.jsp` — `maxlength` attributes on all fields

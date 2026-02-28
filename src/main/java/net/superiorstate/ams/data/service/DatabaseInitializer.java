@@ -28,6 +28,7 @@ import net.superiorstate.ams.model.sales.agency.Agency;
 import net.superiorstate.ams.model.sales.agency.PriceItem;
 import net.superiorstate.ams.model.sales.agency.Rate;
 import net.superiorstate.ams.model.sales.agency.RateTable;
+import net.superiorstate.ams.model.sales.offering.Enhancement;
 import net.superiorstate.ams.model.sales.offering.LOS;
 import net.superiorstate.ams.model.sales.offering.ServiceModule;
 import net.superiorstate.ams.model.summit.archive.Benefit;
@@ -280,83 +281,41 @@ public abstract class DatabaseInitializer {
         p.setEmployee(ee);
         em.persist(p);
         em.getTransaction().commit();
-        //TODO: Remove billing from Seeding.
-        //Create Billing Group
-        BillingGroup bg0 = createBillingGroup(em,7,"Other");
-        BillingGroup bg1 = createBillingGroup(em,1, "FSA");
-        BillingGroup bg2 = createBillingGroup(em,2,"HRA");
-        BillingGroup bg3 = createBillingGroup(em,3,"COBRA");
-        BillingGroup bg4 = createBillingGroup(em,4,"HSA");
-        BillingGroup bg5 = createBillingGroup(em,5,"Transit");
-        BillingGroup bg6 = createBillingGroup(em,6,"POP");
-        BillingGroup bg7 = createBillingGroup(em,7,"MERP");
-        BillingGroup bg8 = createBillingGroup(em,8,"LSA");
-        //TODO: Should we also create Opportunity Category?
-        //Create Template Group
+        //Create default Billing Group (PSP configures specific groups later)
+        BillingGroup bg = createBillingGroup(em,99,"Other");
+        //Create Activity Categories (IDs 1-3 hard-referenced for ServiceItem grouping;
+        //  4=Opportunity for sales channel activities tracked in activity view)
         ActivityCategory tg1 = createTemplateGroup(em,1,"Renewal");
         ActivityCategory tg2 = createTemplateGroup(em,2,"Setup");
         ActivityCategory tg3 = createTemplateGroup(em,3,"Ticket");
+        ActivityCategory tg4 = createTemplateGroup(em,4,"Opportunity");
 
-        //TODO: Needs its own discussion (what are los, what are enhancements for setups, what benefit types for renewals)
-        //Create Service Items
-        ServiceItem tp1 = createServiceItem(em,2,"Health FSA",2,tg1,psp);
-        ServiceItem tp5 = createServiceItem(em,12,"Health FSA",12,tg2,psp);
+        //Create Setup Service Items (1:1 with LOS/Enhancement; PSP creates additional as needed)
+        ServiceItem siCobra = createServiceItemWithCode(em,1,"COBRA","COBRA",1,tg2,psp);
+        ServiceItem siCdh   = createServiceItemWithCode(em,2,"Flexible Spending Accounts","FSA",2,tg2,psp);
+        ServiceItem siDebit = createServiceItemWithCode(em,3,"Debit Cards","CARDS",3,tg2,psp);
 
-        ServiceItem tp2 = createServiceItem(em,3,"Dependent Care",3,tg1,psp);
-        ServiceItem tp02 = createServiceItem(em,21,"Dep Care",12,tg2,psp);
+        //Create Plan Types — each auto-creates a 1:1 Renewal ServiceItem
+        PlanType pt1  = createPlanTypeWithRenewal(em,1,"DCA","Dependent Care Account",bg,tg1,psp);
+        PlanType pt2  = createPlanTypeWithRenewal(em,2,"FSA","Health Flexible Spending Account",bg,tg1,psp);
+        PlanType pt3  = createPlanTypeWithRenewal(em,3,"HRA","Health Reimbursement Arrangement",bg,tg1,psp);
+        PlanType pt4  = createPlanTypeWithRenewal(em,4,"HSA","HSA",bg,tg1,psp);
+        PlanType pt5  = createPlanTypeWithRenewal(em,5,"LFSA","Limited Purpose FSA",bg,tg1,psp);
+        PlanType pt6  = createPlanTypeWithRenewal(em,6,"MERP","Medical Expense Reimbursement Plan",bg,tg1,psp);
+        PlanType pt7  = createPlanTypeWithRenewal(em,7,"PRK","Parking Plan",bg,tg1,psp);
+        PlanType pt8  = createPlanTypeWithRenewal(em,8,"TRN","Transportation Plan",bg,tg1,psp);
+        PlanType pt9  = createPlanTypeWithRenewal(em,9,"Dental","Dental",bg,tg1,psp);
+        PlanType pt10 = createPlanTypeWithRenewal(em,10,"EAP","EAP",bg,tg1,psp);
+        PlanType pt11 = createPlanTypeWithRenewal(em,11,"Life","Life",bg,tg1,psp);
+        PlanType pt12 = createPlanTypeWithRenewal(em,12,"Medical","Medical",bg,tg1,psp);
+        PlanType pt13 = createPlanTypeWithRenewal(em,13,"Pharmacy","Pharmacy",bg,tg1,psp);
+        PlanType pt14 = createPlanTypeWithRenewal(em,14,"Vision","Vision",bg,tg1,psp);
+        PlanType pt15 = createPlanTypeWithRenewal(em,15,"NEFSA","NEFSA",bg,tg1,psp);
+        PlanType pt16 = createPlanTypeWithRenewal(em,16,"LSA","Lifestyle Spending Account",bg,tg1,psp);
 
-        ServiceItem tp3 = createServiceItem(em,5,"HRA",5,tg1,psp);
-        ServiceItem tp6 = createServiceItem(em,13,"HRA",13,tg2,psp);
+        //Benefits: not seeded — populated via Summit import. SeedDemoData creates demo benefits.
 
-        ServiceItem tp4 = createServiceItem(em,7,"COBRA Insurance",7,tg1,psp);
-        ServiceItem tp7 = createServiceItem(em,14,"COBRA",14,tg2,psp);
-
-        ServiceItem tp08 = createServiceItem(em,22,"MERP",6,tg1,psp);
-        ServiceItem tp8 = createServiceItem(em,12,"MERP",5,tg2,psp);
-
-        ServiceItem tp09 = createServiceItem(em,23,"HSA",6,tg1,psp);
-        ServiceItem tp9 = createServiceItem(em,16,"HSA",16,tg2,psp);
-
-        ServiceItem tpA = createServiceItem(em,24,"Transit",9,tg1,psp);
-        ServiceItem tp10 = createServiceItem(em,15,"Transit",15,tg2,psp);
-
-        ServiceItem tpB = createServiceItem(em,26,"POP",1,tg1,psp);
-        ServiceItem tp11 = createServiceItem(em,11,"POP",11,tg2,psp);
-
-        ServiceItem tpC = createServiceItem(em,27,"LSA",10,tg1,psp);
-        ServiceItem tp12 = createServiceItem(em,17,"LSA",20,tg2,psp);
-
-        //ToDo Seed all Standard DataPath Plan Types and that only)
-        //Create Plan Types
-        PlanType pt1 = createPlanType(em,1,"DCA","Dependent Care Account",bg1,tp2);
-        PlanType pt2 = createPlanType(em,2,"FSA","Health Flexible Spending Account",bg1,tp1);
-        PlanType pt3 = createPlanType(em,3,"HRA","Health Reimbursement Arrangement",bg2,tp3);
-        PlanType pt7 = createPlanType(em,4,"HSA","HSA",bg4,tp9);
-        PlanType pt05 = createPlanType(em,5,"LFSA","Limited Purpose FSA",bg1,tp1);
-        PlanType pt06 = createPlanType(em,6,"MERP","Medical Expense Reimbursement Plan",bg7,tp8);
-        PlanType pt07 = createPlanType(em,7,"PRK","Parking Plan",bg5,tp10);
-        PlanType pt8 = createPlanType(em,8,"TRN","Transportation Plan",bg5,tp10);
-        PlanType pt5 = createPlanType(em,9,"Dental","Dental",bg3,tp4);
-        PlanType pt10 = createPlanType(em,10,"EAP","EAP",bg3,tp4);
-        PlanType pt11 = createPlanType(em,11,"Life","Life",bg3,tp4);
-        PlanType pt4 = createPlanType(em,12,"Medical","Medical",bg3,tp4);
-        PlanType pt13 = createPlanType(em,13,"Pharmacy","Pharmacy",bg3,tp4);
-        PlanType pt6 = createPlanType(em,14,"Vision","Vision",bg3,tp4);
-        PlanType pt15 = createPlanType(em,15,"NEFSA","NEFSA",bg3,tp4);
-        PlanType pt16 = createPlanType(em,16,"LSA","Lifestyle Spending Account",bg8,tp12);
-
-        //TODO: Does Seed Demo do this?  Do we need to make sure this table isn't null
-        //Create Benefits
-        LocalDate today = LocalDate.now();
-        LocalDate firstOfMonth = LocalDate.of(today.getYear(),today.getMonthValue(),1);
-        LocalDate lastMonth = firstOfMonth.minusMonths(1L);
-        LocalDate sixMonthsFromNow = firstOfMonth.plusMonths(6L);
-        Benefit b1 = createBenefit(em,99901,"CDH","Demo HRA",er,pt3,Date.valueOf(firstOfMonth));
-        Benefit b2 = createBenefit(em,99902,"CDH","Demo FSA",er,pt2,Date.valueOf(lastMonth));
-        Benefit b3 = createBenefit(em,99903,"COBRA","Demo COBRA",er,pt4,Date.valueOf(sixMonthsFromNow));
-
-        //TODO: Not necessary anymore? removed from log ticket
-        //Create Contact Methods
+        //Create Contact Methods (FK on Ticket, used in CreateTicket25 and AmsDataGlobal)
         createContactMethod(em,1,"Phone");
         createContactMethod(em,2,"Email");
         createContactMethod(em,3,"Mail");
@@ -371,64 +330,35 @@ public abstract class DatabaseInitializer {
         createDayOfWeek(em,6,"Saturday");
         createDayOfWeek(em,7,"Sunday");
 
-        //TODO: Used? replaced by Library item logic?
-        //Create Link Types
+        //Create Link Types (IDs 1-3 hard-referenced by WebLink, attachment, and URL servlets)
         createLinkType(em,1,"File Upload");
         createLinkType(em,2,"Hyperlink");
         createLinkType(em,3,"Insert Link");
 
-        //Create Lines of Service
-        LOS los0 = createLos(em,5L, "Premium Only Plan", "POP",psp);
-        LOS los1 = createLos(em,6L,"Flexible Spending Accounts","FSA",psp);
-        LOS los2 = createLos(em,7L,"Health Reimbursement Arrangements","HRA",psp);
-        LOS los3 = createLos(em,8L,"COBRA Administration","COBRA",psp);
-        LOS los4 = createLos(em,9L,"Health Savings Accounts","HSA",psp);
-        LOS los5 = createLos(em,10L,"Transit/Commuter Plans","TRANSIT",psp);
+        //Create Lines of Service (1:1 with Setup ServiceItems; PSP adds more)
+        LOS losCobra = createLos(em,1L,"COBRA Administration","COBRA",psp,siCobra);
+        LOS losCdh   = createLos(em,2L,"Consumer Directed Healthcare","CDH",psp,siCdh);
 
-        //TODO: Create an enhancement item for Debit Cards
+        //Create Enhancement (1:1 with Setup ServiceItem)
+        Enhancement enhDebit = createEnhancement(em,1L,"Debit Cards","CARDS",psp,siDebit);
 
-        //TODO: Review naming conventions and base on LOS and Enhancement Creation
-        //Create Service Modules
-        ServiceModule sm0 = createServiceModule(em,15L,"Section 125 Premium Only Plans","POP",100,psp);
-        ServiceModule sm1 = createServiceModule(em,16L,"Section 125 Full Flex Plan with FSAs","FSA",200,psp);
-        ServiceModule sm2 = createServiceModule(em,18L,"Section 105 HRAs / MERPs","HRA",300,psp);
-        ServiceModule sm3 = createServiceModule(em,23L,"COBRA Administration","COBRA",800,psp);
-        ServiceModule sm4 = createServiceModule(em,21L,"Debit Card Services","Cards",600,psp);
-        ServiceModule sm5 = createServiceModule(em,19L,"Health Savings Accounts (HSAs)","HSA",400,psp);
-        ServiceModule sm6 = createServiceModule(em,25L,"Transit Plans","Transit",450,psp);
+        //Create Service Modules (matching LOS + enhancement; PSP configures pricing via sales channel)
+        ServiceModule smCobra = createServiceModule(em,1L,"COBRA Administration","COBRA",100,psp);
+        ServiceModule smCdh   = createServiceModule(em,2L,"Flexible Spending Accounts","FSA",200,psp);
+        ServiceModule smCards = createServiceModule(em,3L,"Debit Card Services","Cards",300,psp);
 
-        //TODO: This they way we want it?
-        //Associate Service Modules
-        associateModuleToLos(em,los0,sm0);
-        associateModuleToLos(em,los1,sm1);
-        associateModuleToLos(em,los1,sm4);
-        associateModuleToLos(em,los2,sm2);
-        associateModuleToLos(em,los2,sm4);
-        associateModuleToLos(em,los3,sm3);
-        associateModuleToLos(em,los4,sm5);
-        associateModuleToLos(em,los5,sm6);
+        //Associate Service Modules to LOS
+        associateModuleToLos(em,losCobra,smCobra);
+        associateModuleToLos(em,losCdh,smCdh);
+        associateModuleToLos(em,losCdh,smCards);
 
-        //Create Price Items
-        PriceItem pi1 = createPriceItem(em,31L,"Setup (One-time) Fee",100,psp);
-        PriceItem pi2 = createPriceItem(em,32L,"Annual Administration Fee",200,psp);
-        PriceItem pi3 = createPriceItem(em,33L,"Base Monthly Fee per Participant",300,psp);
+        //Create Price Items (standard fee structure)
+        PriceItem pi1 = createPriceItem(em,1L,"Setup (One-time) Fee",100,psp);
+        PriceItem pi2 = createPriceItem(em,2L,"Annual Administration Fee",200,psp);
+        PriceItem pi3 = createPriceItem(em,3L,"Base Monthly Fee per Participant",300,psp);
 
         //Create Rate
-        Rate rate = createRate(em,52L,"Standard Rate",psp);
-
-        //Create Rate Table
-        createPricing(em,199,sm0,pi1,rate);
-        createPricing(em,350,sm1,pi1,rate);
-        createPricing(em,350,sm1,pi2,rate);
-        createPricing(em,5,sm1,pi3,rate);
-        createPricing(em,350,sm2,pi1,rate);
-        createPricing(em,500,sm2,pi2,rate);
-        createPricing(em,4.5,sm2,pi3,rate);
-        createPricing(em,100,sm3,pi1,rate);
-        createPricing(em,120,sm3,pi2,rate);
-        createPricing(em,1,sm3,pi3,rate);
-        createPricing(em,5,sm5,pi3,rate);
-        createPricing(em,200,sm6,pi2,rate);
+        Rate rate = createRate(em,1L,"Standard Rate",psp);
 
         //Create Reasons Created List
         ReasonCreated rc = createReasonCreated(em,1,"Internal Note",false);
@@ -439,16 +369,6 @@ public abstract class DatabaseInitializer {
         createReasonCreated(em,6,"Left Voicemail",true);
         createReasonCreated(em,7,"Sent Email Message",true);
         createReasonCreated(em,8,"Quick Action",true);
-
-        //TODO: Remove?
-        //Create Tasks Used in Monthly Imports
-        createTask(em,10L,"Clear Import Tables","ClearImport",psp,p);
-        createTask(em,11L,"Clear Monthly Billing","ClearMonthlyBilling",psp,p);
-        createTask(em,12L,"Import Summit Export Files","",psp,p,false);
-        createTask(em,13L,"Update Tables From Imports","UpdateTables",psp,p);
-        createTask(em,14L,"Create Monthly Billing","CreateMonthlyBilling",psp,p);
-        createTask(em,15L,"Refresh Employee List","RefreshTicketEmployees",psp,p);
-        createTask(em,153L,"Default","",psp,p,false);
 
         //Create Task Frequencies
         createTaskFrequency(em,1,"Daily (Weekdays)");
@@ -471,17 +391,12 @@ public abstract class DatabaseInitializer {
         createTaskFrequency(em,18,"Last Thursday of Month");
         createTaskFrequency(em,19,"Last Friday of Month");
 
-        //TODO: Need to review full ticket category / service item logic and create improved but smaller default
-        //Create Ticket Categories
-        TicketCategory tc = createTicketCategory(em,18L,"How Do I?","HOW");
-        ServiceItem tp800 = createServiceItem(em,25,"Get Online",100,tg3,psp);
-        setTicketCategoryOnServiceItem(em, tp800, tc);
-        TicketCategory tc1 = createTicketCategory(em,19L,"Please Update My...","UPDATE");
-        ServiceItem tp101 = createServiceItem(em,30,"Banking Information",200,tg3,psp);
-        setTicketCategoryOnServiceItem(em, tp101, tc1);
-        TicketCategory tc2 = createTicketCategory(em,20L,"Something is Wrong","FIX");
-        createRequiredTaskList(em,tp8,psp);
-        createRequiredTaskList(em,tp101,psp);
+        //Create Ticket Category + Service Item (PSP defines additional categories)
+        TicketCategory tc = createTicketCategory(em,1L,"General","GEN");
+        ServiceItem siTicket = createServiceItem(em,10,"General Ticket",1,tg3,psp);
+        siTicket = setHasRequiredTasks(em, siTicket, true);
+        setTicketCategoryOnServiceItem(em, siTicket, tc);
+        createRequiredTaskList(em,siTicket,psp);
 
         //Create Initial Time Log Entry
         createTimeEntry(em,p);
@@ -507,7 +422,7 @@ public abstract class DatabaseInitializer {
         // Create Initialization Checklist
         createInitializationChecklist(em);
         // Set Note To Show Initialization Completed
-        setInitializationNote(em,p,rc,tp800,as);
+        setInitializationNote(em,p,rc,siTicket,as);
 
     }
 
@@ -521,63 +436,86 @@ public abstract class DatabaseInitializer {
         }
     }
 
-    //TODO: Update to match new import project in backlog?
+    /**
+     * Creates the onboarding checklist for Summit-to-AMS data transfer.
+     * Steps guide the PSP admin through the full initial data pipeline.
+     */
     private static void createInitializationChecklist(EntityManager em) {
         Person person = EntityLookup.getPersonById(em, 104L);
         PSP psp = EntityLookup.getPspById(em, 4L);
+        LinkType hyperlinkType = em.find(LinkType.class, 2);
+
+        em.getTransaction().begin();
 
         CheckList checkList = new CheckList();
         checkList.setId(29L);
-        checkList.setDueDate(Date.valueOf(LocalDate.now()));
+        checkList.setDueDate(Date.valueOf(LocalDate.now().plusDays(30)));
         checkList.setAssignedTo(person);
-        checkList.setFullName("Initialize Database");
+        checkList.setFullName("Summit Data Transfer");
         checkList.setLoggedBy(person);
 
         List<ToDo> toDoList = new ArrayList<>();
-        toDoList.add(createInitialToDo(em,checkList,psp,5));
-        toDoList.add(createToDoWithTask(em, checkList, psp, 30L, "UploadInitialData", "Upload Exports from Summit", 10));
-        toDoList.add(createToDoWithTask(em, checkList, psp, 32L, "ImportInitialData", "Import Data from Uploads", 20));
-        toDoList.add(createToDoWithTask(em, checkList, psp, 34L, "UpdateInitialTables", "Update Working Tables from Imports", 30));
+
+        // Step 1: Setup exports in Summit
+        toDoList.add(createOnboardingStep(em, checkList, psp, 28L,
+                "Setup Exports in Summit",
+                "Configure Summit to generate the required export files (J1–J4, J7, Plan Types).",
+                SUMMIT_EXPORT_SETUP_LINK, "Summit Export Setup Guide", hyperlinkType, 10));
+
+        // Step 2: Download plan types from Summit
+        toDoList.add(createOnboardingStep(em, checkList, psp, 30L,
+                "Download Plan Types from Summit",
+                "Export the Plan Type list from Summit and save locally for upload.",
+                SUMMIT_PLANTYPE_DOWNLOAD_LINK, "Plan Type Download Guide", hyperlinkType, 20));
+
+        // Step 3: Import Summit exports into AMS
+        toDoList.add(createOnboardingStep(em, checkList, psp, 32L,
+                createAnchor("SummitImport", "Import Summit Exports into AMS"),
+                "Upload J1–J4, J7, and Plan Type files via the Summit Import Wizard.",
+                null, null, null, 30));
+
+        // Step 4: Modify benefit renewal frequencies
+        toDoList.add(createOnboardingStep(em, checkList, psp, 34L,
+                "Modify Benefit Renewal Frequencies",
+                "Review imported benefits and adjust renewal month intervals as needed.",
+                null, null, null, 40));
 
         checkList.setToDoList(toDoList);
         em.persist(checkList);
+        em.getTransaction().commit();
     }
 
-    //TODO: Link back to PSP Super User managed page on PSP site?
-    private static final String EXPORT_INSTRUCTIONS_LINK =
+    //TODO: Update doc links when PSP-facing guides are published
+    private static final String SUMMIT_EXPORT_SETUP_LINK =
+            "https://docs.google.com/document/d/1Z8I_-5z53AiDNZu2B6wiMe8yRcOK1pZ6B53TBJl3pHg/edit?usp=sharing";
+    private static final String SUMMIT_PLANTYPE_DOWNLOAD_LINK =
             "https://docs.google.com/document/d/1Z8I_-5z53AiDNZu2B6wiMe8yRcOK1pZ6B53TBJl3pHg/edit?usp=sharing";
 
-    private static ToDo createInitialToDo(EntityManager em, CheckList checklist, PSP psp, int sortOrder) {
-        LinkType infoType = em.find(LinkType.class, 2);  // Direct JPA primary key lookup
-
-        WebLink infoLink = new WebLink();
-        infoLink.setActive(true);
-        infoLink.setLinkPath(EXPORT_INSTRUCTIONS_LINK);
-        infoLink.setPlainText("Export Instructions");
-        infoLink.setLinkType(infoType);
-        em.persist(infoLink);
-
-        ToDo todo = createToDoWithTask(em, checklist, psp, 28L, "", "", sortOrder);
-
-        Task task = todo.getTask();
-        task.setDescription("Get Summit Exports");
-        task.setHasInfo(true);
-        task.setInfoLink(infoLink);
-
-        return todo;
-    }
-
-    private static ToDo createToDoWithTask(EntityManager em, CheckList checklist, PSP psp, Long taskId, String servlet, String label, int sortOrder) {
+    private static ToDo createOnboardingStep(EntityManager em, CheckList checklist, PSP psp, Long taskId,
+                                              String description, String notes,
+                                              String linkUrl, String linkText, LinkType linkType, int sortOrder) {
         Task task = new Task();
         task.setId(taskId);
         task.setPsp(psp);
-        task.setDescription(createAnchor(servlet, label));
+        task.setDescription(description);
         task.setReUsable(false);
         task.setHasAutomation(false);
+
+        if (linkUrl != null && linkType != null) {
+            WebLink infoLink = new WebLink();
+            infoLink.setActive(true);
+            infoLink.setLinkPath(linkUrl);
+            infoLink.setPlainText(linkText);
+            infoLink.setLinkType(linkType);
+            em.persist(infoLink);
+            task.setHasInfo(true);
+            task.setInfoLink(infoLink);
+        }
+
         em.persist(task);
 
         ToDo toDo = new ToDo();
-        toDo.setId(taskId+1L);
+        toDo.setId(taskId + 1L);
         toDo.setTask(task);
         toDo.setCheckList(checklist);
         toDo.setSortOrder(sortOrder);
@@ -588,10 +526,6 @@ public abstract class DatabaseInitializer {
 
     private static String createAnchor(String servletName, String description) {
         return "<a href=\"" + servletName + "\">" + description + "</a>";
-    }
-
-    private static Long generateToDoId() {
-        return 33L;
     }
 
     private static void createRequiredTaskList(EntityManager em, ServiceItem tp, PSP psp){
@@ -980,7 +914,7 @@ public abstract class DatabaseInitializer {
         return s;
     }
 
-    public static LOS createLos(EntityManager em, long id, String name, String shortText, PSP psp){
+    public static LOS createLos(EntityManager em, long id, String name, String shortText, PSP psp, ServiceItem si){
         if(EntityLookup.getLosById(em,id)!=null)
             return EntityLookup.getLosById(em,id);
         em.getTransaction().begin();
@@ -989,9 +923,23 @@ public abstract class DatabaseInitializer {
         l.setDescription(name);
         l.setShortText(shortText);
         l.setPsp(psp);
+        l.setServiceItem(si);
         em.persist(l);
         em.getTransaction().commit();
         return l;
+    }
+
+    public static Enhancement createEnhancement(EntityManager em, long id, String name, String shortText, PSP psp, ServiceItem si){
+        em.getTransaction().begin();
+        Enhancement e = new Enhancement();
+        e.setId(id);
+        e.setDescription(name);
+        e.setShortText(shortText);
+        e.setPsp(psp);
+        e.setServiceItem(si);
+        em.persist(e);
+        em.getTransaction().commit();
+        return e;
     }
 
     public static LinkType createLinkType(EntityManager em, int id, String name){
@@ -1082,6 +1030,57 @@ public abstract class DatabaseInitializer {
         return pt;
     }
 
+    /**
+     * Creates a PlanType and its 1:1 Renewal ServiceItem in one step.
+     * Mirrors the auto-creation pattern used during Summit import.
+     */
+    public static PlanType createPlanTypeWithRenewal(EntityManager em, int id, String code, String name,
+                                                      BillingGroup bg, ActivityCategory renewalCategory, PSP psp){
+        if(EntityLookup.getPlanTypeById(em,id)!=null)
+            return EntityLookup.getPlanTypeById(em,id);
+        // Create the 1:1 Renewal ServiceItem first
+        ServiceItem si = new ServiceItem();
+        si.setActivityCategory(renewalCategory);
+        si.setSortOrder(id);
+        si.setDescription(name);
+        si.setCode(code);
+        si.setPsp(psp);
+        si.setSourceType("SYSTEM");
+        si.setProviderRef(String.valueOf(id));
+        si.setDefaultRenewalMonths(12);
+        em.getTransaction().begin();
+        em.persist(si);
+        em.getTransaction().commit();
+        // Create PlanType linked to that ServiceItem
+        em.getTransaction().begin();
+        PlanType pt = new PlanType();
+        pt.setPlanTypeId(id);
+        pt.setCode(code);
+        pt.setPlanTypeName(name);
+        pt.setBillingGroup(bg);
+        pt.setServiceItem(si);
+        em.persist(pt);
+        em.getTransaction().commit();
+        return pt;
+    }
+
+    public static ServiceItem createServiceItemWithCode(EntityManager em, int id, String name, String code, int sortOrder, ActivityCategory tg, PSP psp){
+        if(EntityLookup.getServiceItemById(em,id,true)!=null)
+            return EntityLookup.getServiceItemById(em,id,true);
+        em.getTransaction().begin();
+        ServiceItem tp = new ServiceItem();
+        tp.setActivityCategory(tg);
+        tp.setSortOrder(sortOrder);
+        tp.setDescription(name);
+        tp.setCode(code);
+        tp.setId(id);
+        tp.setPsp(psp);
+        tp.setSourceType("SYSTEM");
+        em.persist(tp);
+        em.getTransaction().commit();
+        return tp;
+    }
+
     public static ServiceItem createServiceItem(EntityManager em, int id, String name, int sortOrder, ActivityCategory tg, PSP psp){
         if(EntityLookup.getServiceItemById(em,id,true)!=null)
             return EntityLookup.getServiceItemById(em,id,true);
@@ -1093,10 +1092,17 @@ public abstract class DatabaseInitializer {
         tp.setId(id);
         tp.setPsp(psp);
         tp.setSourceType("SYSTEM");
-        if(tg.getId() == 1) tp.setDefaultRenewalMonths(12);
         em.persist(tp);
         em.getTransaction().commit();
         return tp;
+    }
+
+    private static ServiceItem setHasRequiredTasks(EntityManager em, ServiceItem si, boolean value){
+        em.getTransaction().begin();
+        si.setHasRequiredTasks(value);
+        em.merge(si);
+        em.getTransaction().commit();
+        return si;
     }
 
     public static ActivityCategory createTemplateGroup(EntityManager em, int id, String name){

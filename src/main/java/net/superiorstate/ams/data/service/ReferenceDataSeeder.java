@@ -570,11 +570,11 @@ public abstract class ReferenceDataSeeder {
         ActivityCategory renewal = createTemplateCategory(em, 1, "Renewal");
         ActivityCategory setup = createTemplateCategory(em, 2, "Setup");
         ActivityCategory ticket = createTemplateCategory(em, 3, "Ticket");
-        ActivityCategory user = createTemplateCategory(em, 4, "User");
+        ActivityCategory opportunity = createTemplateCategory(em, 4, "Opportunity");
         em.persist(renewal);
         em.persist(setup);
         em.persist(ticket);
-        em.persist(user);
+        em.persist(opportunity);
         createTemplateType(em, 1, "125 Insurance", renewal);
         createTemplateType(em, 2, "125 Health FSA", renewal);
         createTemplateType(em, 3, "125 DCAP", renewal);
@@ -596,7 +596,7 @@ public abstract class ReferenceDataSeeder {
         createTemplateType(em, 19, "Debit Cards", setup);
         createTemplateType(em, 20, "Card Co-pays", setup);
         createTemplateType(em, 21, "Ticket General", ticket);
-        createTemplateType(em, 22, "User General", user);
+        createTemplateType(em, 22, "Opportunity General", opportunity);
         createTemplateType(em,23,"Other",renewal);
     }
 

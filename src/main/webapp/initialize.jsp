@@ -176,27 +176,27 @@
                             <div class="section-label"><i class="bi bi-building me-1"></i>Company</div>
                             <div class="mb-2">
                                 <label class="form-label" for="pspName">Company Name</label>
-                                <input type="text" class="form-control" name="pspName" id="pspName" required>
+                                <input type="text" class="form-control" name="pspName" id="pspName" maxlength="200" required>
                             </div>
                             <div class="mb-2">
                                 <label class="form-label" for="phone">Phone</label>
-                                <input type="tel" class="form-control" name="phone" id="phone" placeholder="###-###-####" required>
+                                <input type="tel" class="form-control" name="phone" id="phone" maxlength="12" placeholder="###-###-####" required>
                             </div>
                             <div class="mb-2">
                                 <label class="form-label" for="taxId">Tax ID</label>
-                                <input type="text" class="form-control" name="taxId" id="taxId" placeholder="##-#######" required>
+                                <input type="text" class="form-control" name="taxId" id="taxId" maxlength="10" placeholder="##-#######" required>
                             </div>
 
                             <%-- ADDRESS --%>
                             <div class="section-label"><i class="bi bi-geo-alt me-1"></i>Address</div>
                             <div class="mb-2">
                                 <label class="form-label" for="address">Street Address</label>
-                                <input type="text" class="form-control" name="address" id="address" required>
+                                <input type="text" class="form-control" name="address" id="address" maxlength="100" required>
                             </div>
                             <div class="row mb-2">
                                 <div class="col-6">
                                     <label class="form-label" for="city">City</label>
-                                    <input type="text" class="form-control" name="city" id="city" required>
+                                    <input type="text" class="form-control" name="city" id="city" maxlength="50" required>
                                 </div>
                                 <div class="col-2">
                                     <label class="form-label" for="state">State</label>
@@ -213,16 +213,16 @@
                             <div class="row mb-2">
                                 <div class="col-6">
                                     <label class="form-label" for="firstName">First Name</label>
-                                    <input type="text" class="form-control" name="firstName" id="firstName" required>
+                                    <input type="text" class="form-control" name="firstName" id="firstName" maxlength="50" required>
                                 </div>
                                 <div class="col-6">
                                     <label class="form-label" for="lastName">Last Name</label>
-                                    <input type="text" class="form-control" name="lastName" id="lastName" required>
+                                    <input type="text" class="form-control" name="lastName" id="lastName" maxlength="80" required>
                                 </div>
                             </div>
                             <div class="mb-2">
                                 <label class="form-label" for="email">Email <span style="font-weight:400; color:#9ca3af;">(also your username)</span></label>
-                                <input type="email" class="form-control" name="email" id="email" required>
+                                <input type="email" class="form-control" name="email" id="email" maxlength="100" required>
                             </div>
                             <div class="mb-2">
                                 <label class="form-label" for="password">Password</label>

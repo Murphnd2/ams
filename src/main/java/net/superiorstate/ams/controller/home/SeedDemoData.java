@@ -386,6 +386,11 @@ public class SeedDemoData extends HttpServlet {
             seedFilterPresets(em, staffUser);
 
             // ═══════════════════════════════════════════
+            //  CLOSE INITIALIZATION CHECKLIST
+            // ═══════════════════════════════════════════
+            closeInitializationChecklist(em);
+
+            // ═══════════════════════════════════════════
             //  MARK COMPLETE
             // ═══════════════════════════════════════════
             markSeeded(em);
@@ -395,6 +400,18 @@ public class SeedDemoData extends HttpServlet {
     // ═══════════════════════════════════════════════════════════════
     //  SEED GUARD
     // ═══════════════════════════════════════════════════════════════
+
+    private void closeInitializationChecklist(EntityManager em) {
+        CheckList cl = em.find(CheckList.class, 29L);
+        if (cl != null) {
+            em.getTransaction().begin();
+            cl.setComplete(true);
+            cl.setDateCompleted(java.sql.Date.valueOf(java.time.LocalDate.now().minusDays(1)));
+            cl.setCompletedBy(cl.getLoggedBy());
+            em.merge(cl);
+            em.getTransaction().commit();
+        }
+    }
 
     private boolean isAlreadySeeded(EntityManager em) {
         try {

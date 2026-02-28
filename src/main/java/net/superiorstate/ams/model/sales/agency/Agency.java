@@ -16,7 +16,7 @@ public class Agency implements Comparable<Agency> {
 
     @Column(name="agency_name",columnDefinition = "varchar(200)")
     private String name;
-    @Column(name="tax_id",columnDefinition = "varchar(10)")
+    @Column(name="tax_id",columnDefinition = "varchar(20)")
     private String taxId;
     @Column(name="phone",columnDefinition = "varchar(12)")
     private String phone;

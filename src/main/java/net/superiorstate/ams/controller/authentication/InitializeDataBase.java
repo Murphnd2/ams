@@ -62,31 +62,68 @@ public class InitializeDataBase extends HttpServlet {
                 return;
             }
 
-            // Run standard initialization
-            System.out.println("🚀 InitializeDataBase — key validated, starting initialization...");
-            DatabaseInitializer.initializeDataBase(request, em);
-            System.out.println("✅ InitializeDataBase — initialization complete");
-
-            // Run optional demo seeder if tag was provided
-            if (demoTag != null && !demoTag.isBlank()) {
-                System.out.println("🎭 Demo tag detected: " + demoTag);
-                DatabaseInitializer.seedDemoData(em, demoTag);
+            // Validate form field lengths before initialization
+            String validationError = validateFormFields(request);
+            if (validationError != null) {
+                request.setAttribute("initError", validationError);
+                request.getRequestDispatcher("initialize.jsp").forward(request, response);
+                return;
             }
 
-            // Load global data so a server restart is not required
-            AmsDataGlobal global = new AmsDataGlobal();
-            global.initializeGlobalData(em);
-            getServletContext().setAttribute("global", global);
-            System.out.println("✅ Global data loaded after initialization");
+            // Run standard initialization
+            try {
+                System.out.println("🚀 InitializeDataBase — key validated, starting initialization...");
+                DatabaseInitializer.initializeDataBase(request, em);
+                System.out.println("✅ InitializeDataBase — initialization complete");
 
-            // Fix session so LoginFilter stops redirecting to initialize.jsp
-            request.getSession().setAttribute("uninitialized", 1);
+                // Run optional demo seeder if tag was provided
+                if (demoTag != null && !demoTag.isBlank()) {
+                    System.out.println("🎭 Demo tag detected: " + demoTag);
+                    DatabaseInitializer.seedDemoData(em, demoTag);
+                }
+
+                // Load global data so a server restart is not required
+                AmsDataGlobal global = new AmsDataGlobal();
+                global.initializeGlobalData(em);
+                getServletContext().setAttribute("global", global);
+                System.out.println("✅ Global data loaded after initialization");
+
+                // Fix session so LoginFilter stops redirecting to initialize.jsp
+                request.getSession().setAttribute("uninitialized", 1);
+            } catch (Exception e) {
+                System.out.println("⛔ InitializeDataBase failed: " + e.getMessage());
+                request.setAttribute("initError", "Initialization failed: " + e.getMessage());
+                request.getRequestDispatcher("initialize.jsp").forward(request, response);
+                return;
+            }
 
         } finally {
             if (em.isOpen()) em.close();
         }
 
         response.sendRedirect("index.jsp");
+    }
+
+    private String validateFormFields(HttpServletRequest request) {
+        String[][] checks = {
+            {"pspName",   "Company Name",    "200"},
+            {"phone",     "Phone",           "12"},
+            {"taxId",     "Tax ID",          "10"},
+            {"address",   "Street Address",  "100"},
+            {"city",      "City",            "50"},
+            {"state",     "State",           "2"},
+            {"zipCode",   "Zip",             "10"},
+            {"firstName", "First Name",      "50"},
+            {"lastName",  "Last Name",       "80"},
+            {"email",     "Email",           "100"},
+        };
+        for (String[] check : checks) {
+            String value = request.getParameter(check[0]);
+            if (value != null && value.length() > Integer.parseInt(check[2])) {
+                return check[1] + " exceeds maximum length of " + check[2] + " characters.";
+            }
+        }
+        return null;
     }
 
     private boolean isAlreadyInitialized(EntityManager em) {

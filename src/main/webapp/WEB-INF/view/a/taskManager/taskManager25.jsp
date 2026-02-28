@@ -242,7 +242,7 @@
                   <i class="bi bi-x-lg me-1"></i>Cancel
                 </a>
               </c:when>
-              <c:when test="${sessionScope.local.getCurrentActivity().getActivity().getClass().getSimpleName().equals(\"CheckList\")}">
+              <c:when test="${sessionScope.local.getCurrentActivity() != null && sessionScope.local.getCurrentActivity().getActivity().getClass().getSimpleName().equals(\"CheckList\")}">
                 <a href="goCheckListDetail" class="tm-action cancel" style="text-decoration:none;">
                   <i class="bi bi-x-lg me-1"></i>Cancel
                 </a>
