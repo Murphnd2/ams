@@ -67,7 +67,7 @@ public class EmployerBillingDetail extends HttpServlet {
     }
 
     private void goToPage(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-        RequestDispatcher dispatcher = request.getRequestDispatcher("/WEB-INF/view/erBilling.jsp");
+        RequestDispatcher dispatcher = request.getRequestDispatcher("/WEB-INF/view/billing/erBilling25.jsp");
         dispatcher.forward(request, response);
     }
 
@@ -82,6 +82,8 @@ public class EmployerBillingDetail extends HttpServlet {
             List<EmployeeVariance> employeeSummary = BillingQueryDAO.getEeMonthlyVariance(em, bm, er);
             request.getSession().setAttribute("erEmployeeSummary", employeeSummary);
             request.getSession().setAttribute("employerBillingDetail", billingGridList);
+            request.setAttribute("billingGridItems", employeeSummary);
+            request.setAttribute("billingGridMode", "external");
         } finally {
             em.close();
         }

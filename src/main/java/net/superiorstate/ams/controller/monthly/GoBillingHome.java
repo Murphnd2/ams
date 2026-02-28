@@ -30,7 +30,7 @@ public class GoBillingHome extends HttpServlet {
     }
 
     private void goToPage(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-        RequestDispatcher dispatcher = request.getRequestDispatcher("/WEB-INF/view/billing/billingHome.jsp");
+        RequestDispatcher dispatcher = request.getRequestDispatcher("/WEB-INF/view/billing/billingHome25.jsp");
         dispatcher.forward(request, response);
     }
 
@@ -56,6 +56,8 @@ public class GoBillingHome extends HttpServlet {
                 case 1:
                     List<EmployeeVariance> employeeSummary = BillingQueryDAO.getEeMonthlyVariance(em, bm, er);
                     request.getSession().setAttribute("employeeSummary", employeeSummary);
+                    request.setAttribute("billingGridItems", employeeSummary);
+                    request.setAttribute("billingGridMode", "employee");
                     break;
                 case 2:
                     break;
@@ -68,6 +70,8 @@ public class GoBillingHome extends HttpServlet {
                     } else
                         employerVarianceList = BillingQueryDAO.getMonthlyVariance(em, bm);
                     request.getSession().setAttribute("monthlySummary", employerVarianceList);
+                    request.setAttribute("billingGridItems", employerVarianceList);
+                    request.setAttribute("billingGridMode", "employer");
                     break;
             }
         } finally {

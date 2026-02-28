@@ -189,7 +189,7 @@
 
           <%-- Billing (conditional) --%>
           <c:if test="${sessionScope.currentPerson.getId()==125}">
-            <a class="nav-ghost" href="ResetBillingView">
+            <a class="nav-ghost" href="BillingAction">
               <i class="bi bi-currency-dollar"></i><span class="d-lg-none d-xl-inline ms-1">Billing</span>
             </a>
           </c:if>

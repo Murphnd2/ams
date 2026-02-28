@@ -46,7 +46,7 @@
             </a>
           </c:if>
           <c:if test="${sessionScope.currentPerson.getId()==125}">
-            <a class="btn btn-outline-secondary" href="ResetBillingView">
+            <a class="btn btn-outline-secondary" href="BillingAction">
               <i class="bi bi-currency-dollar"></i> Billing
             </a>
           </c:if>

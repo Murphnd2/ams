@@ -65,7 +65,7 @@
       <div class="btn btn-altSsa w-100 mt-2 pe-none text-uppercase fw-bold">
         <i class="bi bi-cash"></i>&nbsp;
         Billing</div>
-      <a class="btn btn-sm btn-outline-ssa w-100 mt-1" href="ResetBillingView">
+      <a class="btn btn-sm btn-outline-ssa w-100 mt-1" href="BillingAction">
         <i class="bi bi-currency-dollar"></i> Billing
       </a>
     </c:if>

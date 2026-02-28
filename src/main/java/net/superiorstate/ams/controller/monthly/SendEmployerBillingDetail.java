@@ -61,7 +61,7 @@ public class SendEmployerBillingDetail extends HttpServlet {
     }
 
     private void goToPage(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-        RequestDispatcher dispatcher = getServletContext().getNamedDispatcher("ResetBillingView");
+        RequestDispatcher dispatcher = getServletContext().getNamedDispatcher("BillingAction");
         dispatcher.forward(request, response);
     }
 

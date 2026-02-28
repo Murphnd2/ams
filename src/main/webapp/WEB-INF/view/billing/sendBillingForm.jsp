@@ -61,12 +61,14 @@
         <div class="row mt-1">
           <div class="col"></div>
           <div class="col-auto">
-            <a class="btn btn-outline-success" href="BillingEmployerDetail">Cancel</a>
+            <a class="btn btn-outline-success" href="BillingAction?action=drillDown">Cancel</a>
           </div>
 
           <div class="col-auto">
-            <button type="submit" class="btn btn-success">
+            <button type="submit" class="btn btn-success" id="sendBtn"
+                    onclick="this.querySelector('.spinner-border').classList.remove('d-none'); this.disabled=true; this.form.submit();">
               <i class="bi bi-send"></i> Send
+              <span class="spinner-border spinner-border-sm d-none ms-1" role="status"></span>
             </button>
           </div>
         </div>
