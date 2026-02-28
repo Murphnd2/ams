@@ -37,13 +37,15 @@ A "gold master" VPS image is maintained with the full stack pre-installed and re
 
 **Pre-installed on the master image:**
 
-- Empty `beta_ssa` database schema (all tables, views, stored procedures — no PSP data)
+- Empty beta_ssa database schema at V024 (all tables, views, stored procedures — no PSP data)
 - Latest WAR file deployed to `/var/lib/tomcat10/webapps/`
 - Config file template at `/var/lib/tomcat10/conf/ssa.properties` with `PSP_ID=UNINITIALIZED`
 - Backup script (cron job) — see §5
 - Update script (cron job) — see §6
 - Health check script (cron job) — see §7
 - Certbot installed (but not yet configured — requires DNS to be pointed first)
+
+**Current snapshot:** `SSA-Master-Base-v5-2026-02-27` (V024 schema, no WAR)
 
 ### 2.3 Standard Directory Layout (All PSP VPSes)
 

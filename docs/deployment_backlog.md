@@ -248,20 +248,20 @@ Add optional "Sign in with Microsoft" button on login page using Microsoft Entra
 - `BRANDING_PATH` in `ssa.properties`
 - Systemd override in place
 
-### D-33: Update Master VPS Blank Schema to V013
+### D-33: Update Master VPS Blank Schema and Snapshot ✅
 
-**Priority:** HIGH — Required before onboarding new PSPs
-**Status:** Not started
+**Completed:** February 27, 2026
+**Snapshot:** `SSA-Master-Base-v5-2026-02-27`
 
-The master VPS image (`SSA-Master-Base-v4-2026-02-23`) contains the original blank schema (pre-V001). New PSP instances cloned from this image would need to run the full V001–V013 migration chain before initialization.
-
-**Action:** Replace `/opt/ssa/schema/beta_ssa_blank.sql` on the master VPS with the validated V013 baseline (`docs/importscript/beta_ssa_dev_baseline_thru_V013.sql`). Then take a new snapshot (`SSA-Master-Base-v5-2026-02-XX`).
-
-This ensures new PSP clones start at V013 and only need incremental migrations going forward.
-
-**Also update:**
-- `deployment_runbook.md` — master snapshot version reference
-- `deployment_strategy.md` §2.2 — master VPS image version
+Updated master VPS image from v4 (pre-V001 schema) to v5:
+- Replaced `/opt/ssa/schema/beta_ssa_blank.sql` with V024 structure dump from production
+- Verified `ssa.properties` has all current keys (SYS_HEALTH_*, BRANDING_PATH, S3, chatbot, etc.)
+- Created `/var/lib/tomcat10/branding/` directory (tomcat:tomcat ownership)
+- Added systemd override for branding write access (`ReadWritePaths`)
+- Verified healthcheck.sh reads from ssa.properties (not DB)
+- Verified all three cron jobs (backup, update, healthcheck)
+- No WAR on master — clones pull via update.sh
+- Updated `deployment_runbook.md` with v5 references, new Phase 2.5, corrected health check docs
 
 ---
 
