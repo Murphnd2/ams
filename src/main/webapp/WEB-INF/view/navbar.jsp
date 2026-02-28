@@ -69,5 +69,5 @@
 <c:import url="/WEB-INF/view/a/checklistDetail/addReminderModal.jsp"></c:import>
 <c:import url="/WEB-INF/view/a/checklistDetail/addChecklistModal.jsp"></c:import>
 <c:import url="/WEB-INF/view/a/renew/upcomingRenewalsModal25.jsp"></c:import>
-<c:import url="/WEB-INF/view/a/navbar/createTicketForm.jsp"></c:import>
+<c:import url="/WEB-INF/view/a/navbar/createTicket25.jsp"></c:import>
 <c:import url="/WEB-INF/view/activity/checklist/sequences/recurringList/makeRecurringSequenceModal.jsp"></c:import><%----%>

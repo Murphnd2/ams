@@ -85,10 +85,6 @@ public abstract class TicketQueryDAO {
         }
         return list;
     }
-    public static List<TicketSubCategory> getTicketSubCats(EntityManager em){
-        Query q = em.createQuery("SELECT t FROM TicketSubCategory t WHERE t.isActive=true order by t.ticketCategory.shortText , t.description");
-        return (List<TicketSubCategory>) q.getResultList();
-    }
 
     public static List<TicketCategory> getTicketCategories(EntityManager em){
         Query q = em.createQuery("SELECT tc FROM TicketCategory tc where tc.active = true order by tc.shortText");
@@ -150,16 +146,6 @@ public abstract class TicketQueryDAO {
         return getTicketEmployeeList(em,employees);
     }
 
-    public static List<TicketSubCategory> getTicketSubCategoryList(EntityManager em){
-        Query q = em.createQuery("SELECT tsc FROM TicketSubCategory tsc WHERE tsc.isActive = true AND tsc.ticketCategory.active=true order by tsc.ticketCategory.description,tsc.description");
-        List<TicketSubCategory> tsc;
-        try{
-            tsc = (List<TicketSubCategory>) q.getResultList();
-        } catch (NoResultException e){
-            tsc = new ArrayList<>();
-        }
-        return tsc;
-    }
 
     public static List<ServiceItem> getActiveTicketServiceItems(EntityManager em){
         return em.createQuery(

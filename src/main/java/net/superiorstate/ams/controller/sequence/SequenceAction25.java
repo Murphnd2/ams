@@ -15,7 +15,6 @@ import net.superiorstate.ams.model.activity.checklist.sequences.support.Activity
 import net.superiorstate.ams.model.activity.checklist.sequences.support.ServiceItem;
 import net.superiorstate.ams.model.activity.checklist.tasks.Task;
 import net.superiorstate.ams.model.activity.ticket.TicketCategory;
-import net.superiorstate.ams.model.activity.ticket.TicketSubCategory;
 import net.superiorstate.ams.model.general.PSP;
 
 import java.io.IOException;
@@ -45,7 +44,7 @@ import java.util.List;
  *   sequenceId   = RequiredTaskList id to deactivate
  *
  * SUPPRESS params:
- *   sequenceId   = RequiredTaskList id whose TicketSubCategory.isActive to toggle
+ *   sequenceId   = RequiredTaskList id whose ServiceItem.isSuppressed to toggle
  */
 @WebServlet(name = "SequenceAction25", value = "/SequenceAction25")
 public class SequenceAction25 extends HttpServlet {
@@ -185,7 +184,7 @@ public class SequenceAction25 extends HttpServlet {
         ServiceItem tp;
 
         if ("ticket".equals(type)) {
-            // Tickets: create TicketSubCategory + ServiceItem + RequiredTaskList
+            // Tickets: create ServiceItem + RequiredTaskList
             long catId = Long.parseLong(request.getParameter("ticketCategoryId"));
             TicketCategory tc;
 
@@ -224,15 +223,6 @@ public class SequenceAction25 extends HttpServlet {
 
             ActivityCategory tg = EntityLookup.getTemplateGroupById(em, 3);
 
-            // Create TicketSubCategory
-            em.getTransaction().begin();
-            TicketSubCategory tsc = new TicketSubCategory();
-            tsc.setActive(true);
-            tsc.setDescription(name.trim());
-            tsc.setTicketCategory(tc);
-            em.persist(tsc);
-            em.getTransaction().commit();
-
             // Create ServiceItem with V020 fields
             em.getTransaction().begin();
             tp = new ServiceItem();
@@ -245,13 +235,7 @@ public class SequenceAction25 extends HttpServlet {
             em.persist(tp);
             em.getTransaction().commit();
 
-            // Link TSC to ServiceItem (backward compatibility)
-            em.getTransaction().begin();
-            tsc.setServiceItem(tp);
-            em.persist(tsc);
-            em.getTransaction().commit();
-
-            // Update global subcategory cache
+            // Update global ServiceItem cache
             if (global != null) {
                 List<ServiceItem> updated = new ArrayList<>(global.getTicketServiceItems());
                 updated.add(tp);
@@ -296,8 +280,8 @@ public class SequenceAction25 extends HttpServlet {
     }
 
     /**
-     * Toggles the isActive flag on the TicketSubCategory linked to a ticket sequence.
-     * When suppressed (isActive=false), the reason won't appear in the Create Ticket dropdown.
+     * Toggles the isSuppressed flag on the ServiceItem linked to a ticket sequence.
+     * When suppressed, the reason won't appear in the Create Ticket dropdown.
      * The sequence itself remains intact and editable.
      */
     private long handleSuppress(HttpServletRequest request, EntityManager em) {
@@ -334,23 +318,6 @@ public class SequenceAction25 extends HttpServlet {
         return seqId;
     }
 
-    private TicketSubCategory findSubCategoryByPurpose(EntityManager em, int purposeId) {
-        try {
-            return (TicketSubCategory) em.createQuery(
-                            "SELECT tsc FROM TicketSubCategory tsc WHERE tsc.serviceItem.id = :pid")
-                    .setParameter("pid", purposeId)
-                    .getSingleResult();
-        } catch (Exception e) {
-            return null;
-        }
-    }
-
-    private List<TicketSubCategory> getActiveTicketSubCategories(EntityManager em) {
-        return em.createQuery(
-                        "SELECT t FROM TicketSubCategory t WHERE t.isActive = true ORDER BY t.ticketCategory.shortText, t.description",
-                        TicketSubCategory.class)
-                .getResultList();
-    }
 
     // ── JSON parsing helper (no external library) ────────────────────────────────
 

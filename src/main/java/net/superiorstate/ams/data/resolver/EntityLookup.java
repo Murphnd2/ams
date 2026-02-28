@@ -21,7 +21,6 @@ import net.superiorstate.ams.model.activity.ticket.setup.Setup;
 import net.superiorstate.ams.model.activity.ticket.ContactMethod;
 import net.superiorstate.ams.model.activity.ticket.Ticket;
 import net.superiorstate.ams.model.activity.ticket.TicketCategory;
-import net.superiorstate.ams.model.activity.ticket.TicketSubCategory;
 import net.superiorstate.ams.model.billing.BillingGroup;
 import net.superiorstate.ams.model.general.*;
 import net.superiorstate.ams.model.sales.agency.*;
@@ -632,21 +631,6 @@ public abstract class EntityLookup {
         TicketCategory t;
         try{
             t=(TicketCategory) q.getSingleResult();
-        } catch (NoResultException e){
-            return null;
-        }
-        return t;
-    }
-    public static TicketSubCategory getSubCategoryById(EntityManager em, int id){
-        return getSubCategoryById(em, Long.parseLong(String.valueOf(id)));
-    }
-
-    public static TicketSubCategory getSubCategoryById(EntityManager em, long id){
-        Query q = em.createQuery("SELECT t FROM TicketSubCategory t WHERE t.id = :id");
-        q.setParameter("id",id);
-        TicketSubCategory t;
-        try{
-            t = (TicketSubCategory) q.getSingleResult();
         } catch (NoResultException e){
             return null;
         }

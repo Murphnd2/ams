@@ -19,7 +19,6 @@ import net.superiorstate.ams.model.activity.note.Note;
 import net.superiorstate.ams.model.activity.renewal.Renewal;
 import net.superiorstate.ams.model.activity.renewal.RenewalEmployer;
 import net.superiorstate.ams.model.activity.ticket.Ticket;
-import net.superiorstate.ams.model.activity.ticket.TicketSubCategory;
 import net.superiorstate.ams.model.activity.ticket.setup.Setup;
 import net.superiorstate.ams.model.general.Person;
 import net.superiorstate.ams.model.general.TimeStretch;
@@ -43,7 +42,6 @@ public class SessionVar {
     private List<ActivityOut> openActivityList;
     private List<RenewalEmployer> employerRenewalList;
     private List<Employer> pspEmployerList;
-    private List<TicketSubCategory> ticketReasonList;
     private List<ActivityOut> filteredActivityList;
     private List<ActivityShell> filteredShellList;
     private boolean filterTicket;
@@ -207,12 +205,6 @@ public class SessionVar {
         this.pspEmployerList = pspEmployerList;
     }
 
-    public List<TicketSubCategory> getTicketReasonList() {
-        return ticketReasonList;
-    }
-    public void setTicketReasonList(List<TicketSubCategory> ticketReasonList) {
-        this.ticketReasonList = ticketReasonList;
-    }
 
     public ToDo getCurrentToDo() {
         return currentToDo;
@@ -418,9 +410,6 @@ public class SessionVar {
         setEmployerRenewalList(RenewalQueryDAO.getEmployerRenewals(em));
     }
 
-    public void refreshTicketReasonList(EntityManager em){
-        setTicketReasonList(TicketQueryDAO.getTicketSubCats(em));
-    }
     public void refreshOpenActivityList(EntityManager em){
         Query q = em.createQuery("SELECT a FROM ActivityOut a");
         List<ActivityOut> activityOutList = new ArrayList<>();

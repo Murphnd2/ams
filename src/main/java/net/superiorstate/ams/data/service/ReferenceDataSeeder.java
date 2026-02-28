@@ -12,7 +12,6 @@ import net.superiorstate.ams.model.activity.note.ActivityStatus;
 import net.superiorstate.ams.model.activity.note.ReasonCreated;
 import net.superiorstate.ams.model.activity.ticket.ContactMethod;
 import net.superiorstate.ams.model.activity.ticket.TicketCategory;
-import net.superiorstate.ams.model.activity.ticket.TicketSubCategory;
 import net.superiorstate.ams.model.billing.BillingGroup;
 import net.superiorstate.ams.model.general.*;
 import net.superiorstate.ams.model.sales.agency.Agency;
@@ -480,40 +479,47 @@ public abstract class ReferenceDataSeeder {
        createTicketCategory(em, 18L, "Billing",           "Billing");
        createTicketCategory(em, 21L, "General",           "General");
 
-       // ── Starter SubCategories (no TemplatePurpose — just dropdown entries) ──
+       // ── Starter ServiceItems (group 3, no sequence — just dropdown entries) ──
        // These give a new PSP immediate ticket categorization options.
-       // Sequences can be built later through Sequence Builder, which creates its own SubCategories.
-       createStarterSubCategory(em, 101L, 11L, "Claim not paid");
-       createStarterSubCategory(em, 102L, 11L, "Claim paid incorrectly");
-       createStarterSubCategory(em, 103L, 12L, "Can't log in to portal");
-       createStarterSubCategory(em, 104L, 12L, "Need online access");
-       createStarterSubCategory(em, 105L, 13L, "Debit card not working");
-       createStarterSubCategory(em, 106L, 13L, "Debit card replacement");
-       createStarterSubCategory(em, 107L, 14L, "COBRA enrollment");
-       createStarterSubCategory(em, 108L, 14L, "COBRA payment issue");
-       createStarterSubCategory(em, 109L, 15L, "HSA contribution question");
-       createStarterSubCategory(em, 110L, 15L, "HSA eligible expense question");
-       createStarterSubCategory(em, 111L, 16L, "New hire enrollment");
-       createStarterSubCategory(em, 112L, 16L, "Open enrollment");
-       createStarterSubCategory(em, 113L, 16L, "Qualifying life event");
-       createStarterSubCategory(em, 114L, 17L, "FSA question");
-       createStarterSubCategory(em, 115L, 17L, "HRA question");
-       createStarterSubCategory(em, 116L, 17L, "Plan quote request");
-       createStarterSubCategory(em, 117L, 18L, "Billing discrepancy");
-       createStarterSubCategory(em, 118L, 18L, "Invoice request");
-       createStarterSubCategory(em, 119L, 21L, "General inquiry");
-       createStarterSubCategory(em, 120L, 21L, "Other");
+       // Sequences can be built later through Sequence Builder.
+       ActivityCategory ticketGroup = EntityLookup.getTemplateGroupById(em, 3);
+       createStarterServiceItem(em, ticketGroup, 11L, "Claim not paid");
+       createStarterServiceItem(em, ticketGroup, 11L, "Claim paid incorrectly");
+       createStarterServiceItem(em, ticketGroup, 12L, "Can't log in to portal");
+       createStarterServiceItem(em, ticketGroup, 12L, "Need online access");
+       createStarterServiceItem(em, ticketGroup, 13L, "Debit card not working");
+       createStarterServiceItem(em, ticketGroup, 13L, "Debit card replacement");
+       createStarterServiceItem(em, ticketGroup, 14L, "COBRA enrollment");
+       createStarterServiceItem(em, ticketGroup, 14L, "COBRA payment issue");
+       createStarterServiceItem(em, ticketGroup, 15L, "HSA contribution question");
+       createStarterServiceItem(em, ticketGroup, 15L, "HSA eligible expense question");
+       createStarterServiceItem(em, ticketGroup, 16L, "New hire enrollment");
+       createStarterServiceItem(em, ticketGroup, 16L, "Open enrollment");
+       createStarterServiceItem(em, ticketGroup, 16L, "Qualifying life event");
+       createStarterServiceItem(em, ticketGroup, 17L, "FSA question");
+       createStarterServiceItem(em, ticketGroup, 17L, "HRA question");
+       createStarterServiceItem(em, ticketGroup, 17L, "Plan quote request");
+       createStarterServiceItem(em, ticketGroup, 18L, "Billing discrepancy");
+       createStarterServiceItem(em, ticketGroup, 18L, "Invoice request");
+       createStarterServiceItem(em, ticketGroup, 21L, "General inquiry");
+       createStarterServiceItem(em, ticketGroup, 21L, "Other");
    }
 
-    public static void createTicketSubCategory(EntityManager em, Long catId, Long subCatId, String name){
-        if(EntityLookup.getTicketCategoryById(em,catId)==null)
-            return;
+    /**
+     * Creates a starter ServiceItem (group 3) for ticket dropdown options.
+     * These are just categorization entries — no sequence attached.
+     */
+    private static void createStarterServiceItem(EntityManager em, ActivityCategory ticketGroup, Long catId, String description){
+        TicketCategory tc = EntityLookup.getTicketCategoryById(em, catId);
+        if(tc == null) return;
         em.getTransaction().begin();
-        TicketSubCategory tsc = new TicketSubCategory();
-        tsc.setId(subCatId);
-        tsc.setTicketCategory(EntityLookup.getTicketCategoryById(em,catId));
-        tsc.setDescription(name);
-        em.persist(tsc);
+        ServiceItem si = new ServiceItem();
+        si.setDescription(description);
+        si.setActivityCategory(ticketGroup);
+        si.setTicketCategory(tc);
+        si.setSourceType("SYSTEM");
+        si.setSortOrder(100);
+        em.persist(si);
         em.getTransaction().commit();
     }
 
@@ -767,25 +773,6 @@ public abstract class ReferenceDataSeeder {
         sm.setSortOrder(sortOrder);
         em.persist(sm);
     }
-    /**
-     * Creates a starter TicketSubCategory with no TemplatePurpose (no sequence).
-     * These are just dropdown options for categorizing tickets.
-     * isActive=true so they appear in the Create Ticket dropdown.
-     */
-    private static void createStarterSubCategory(EntityManager em, Long subCatId, Long catId, String description){
-        TicketCategory tc = EntityLookup.getTicketCategoryById(em, catId);
-        if(tc == null) return;
-        em.getTransaction().begin();
-        TicketSubCategory tsc = new TicketSubCategory();
-        tsc.setId(subCatId);
-        tsc.setTicketCategory(tc);
-        tsc.setDescription(description);
-        tsc.setActive(true);
-        // No templatePurpose — these are standalone dropdown entries
-        em.persist(tsc);
-        em.getTransaction().commit();
-    }
-
     private static void fillServiceModules(EntityManager em,PSP psp){
         createServiceModule(em,"POP","Section 125 Premium Only Plans",100,psp);
         createServiceModule(em,"FSA","Section 125 Full Flex Plans with FSAs",200,psp);

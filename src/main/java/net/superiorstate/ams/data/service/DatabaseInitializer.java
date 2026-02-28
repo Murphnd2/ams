@@ -21,7 +21,7 @@ import net.superiorstate.ams.model.activity.note.ReasonCreated;
 import net.superiorstate.ams.model.activity.ticket.ContactMethod;
 import net.superiorstate.ams.model.activity.ticket.Ticket;
 import net.superiorstate.ams.model.activity.ticket.TicketCategory;
-import net.superiorstate.ams.model.activity.ticket.TicketSubCategory;
+
 import net.superiorstate.ams.model.billing.BillingGroup;
 import net.superiorstate.ams.model.general.*;
 import net.superiorstate.ams.model.sales.agency.Agency;
@@ -439,10 +439,10 @@ public abstract class DatabaseInitializer {
         //Create Ticket Categories
         TicketCategory tc = createTicketCategory(em,18L,"How Do I?","HOW");
         ServiceItem tp800 = createServiceItem(em,25,"Get Online",100,tg3,psp);
-        TicketSubCategory tsc = createTicketSubCategory(em,10L,tc,tp800);
+        setTicketCategoryOnServiceItem(em, tp800, tc);
         TicketCategory tc1 = createTicketCategory(em,19L,"Please Update My...","UPDATE");
         ServiceItem tp101 = createServiceItem(em,30,"Banking Information",200,tg3,psp);
-        TicketSubCategory tsc1 = createTicketSubCategory(em,11L,tc1,tp101);
+        setTicketCategoryOnServiceItem(em, tp101, tc1);
         TicketCategory tc2 = createTicketCategory(em,20L,"Something is Wrong","FIX");
         createRequiredTaskList(em,tp8,psp);
         createRequiredTaskList(em,tp101,psp);
@@ -471,7 +471,7 @@ public abstract class DatabaseInitializer {
         // Create Initialization Checklist
         createInitializationChecklist(em);
         // Set Note To Show Initialization Completed
-        setInitializationNote(em,p,rc,tsc,as);
+        setInitializationNote(em,p,rc,tp800,as);
 
     }
 
@@ -635,7 +635,7 @@ public abstract class DatabaseInitializer {
         em.getTransaction().commit();
     }
 
-    private static void setInitializationNote(EntityManager em, Person p, ReasonCreated reasonCreated, TicketSubCategory tsc, ActivityStatus as){
+    private static void setInitializationNote(EntityManager em, Person p, ReasonCreated reasonCreated, ServiceItem serviceItem, ActivityStatus as){
 
         em.getTransaction().begin();
         Ticket t = new Ticket();
@@ -647,7 +647,7 @@ public abstract class DatabaseInitializer {
         t.setLoggedBy(p);
         t.setDateCompleted(Date.valueOf(LocalDate.now()));
         t.setDueDate(t.getDateCompleted());
-        t.setTicketSubCategory(tsc);
+        t.setTicketServiceItem(serviceItem);
         t.setContact(p);
         t.setPrimaryContact(p);
         t.setCompletedBy(p);
@@ -755,19 +755,11 @@ public abstract class DatabaseInitializer {
         em.getTransaction().commit();
     }
 
-    public static TicketSubCategory createTicketSubCategory(EntityManager em, Long id,  TicketCategory tc, ServiceItem tp){
-        if(EntityLookup.getSubCategoryById(em,id)!=null)
-            return EntityLookup.getSubCategoryById(em,id);
+    private static void setTicketCategoryOnServiceItem(EntityManager em, ServiceItem si, TicketCategory tc){
         em.getTransaction().begin();
-        TicketSubCategory t = new TicketSubCategory();
-        t.setId(id);
-        t.setDescription(tp.getDescription());
-        t.setTicketCategory(tc);
-        t.setServiceItem(tp);
-        t.setActive(true);
-        em.persist(t);
+        si.setTicketCategory(tc);
+        em.persist(si);
         em.getTransaction().commit();
-        return t;
     }
 
     public static TicketCategory createTicketCategory(EntityManager em, Long id, String name, String shortText){

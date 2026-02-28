@@ -17,7 +17,7 @@ public abstract class TicketKnowledgeDAO {
     private static final Logger log = LogManager.getLogger(TicketKnowledgeDAO.class);
 
     /**
-     * Searches completed tickets whose subcategory description or resolution note
+     * Searches completed tickets whose ServiceItem description or resolution note
      * matches any of the given search terms. Returns formatted context strings
      * ready to be injected into the Claude prompt.
      *
@@ -31,17 +31,17 @@ public abstract class TicketKnowledgeDAO {
 
         try {
             // Build JPQL with OR conditions for each search term
-            // Searches across: subcategory description, category description, ticket description, resolution note detail
+            // Searches across: ServiceItem description, category description, ticket description, resolution note detail
             StringBuilder jpql = new StringBuilder();
             jpql.append("SELECT t.description, ");
-            jpql.append("tsc.description, ");
+            jpql.append("si.description, ");
             jpql.append("tc.description, ");
             jpql.append("n.detail, ");
             jpql.append("n.dateGenerated, ");
             jpql.append("t.dateCompleted ");
             jpql.append("FROM Ticket t ");
-            jpql.append("JOIN t.ticketSubCategory tsc ");
-            jpql.append("JOIN tsc.ticketCategory tc ");
+            jpql.append("JOIN t.ticketServiceItem si ");
+            jpql.append("JOIN si.ticketCategory tc ");
             jpql.append("JOIN t.noteList n ");
             jpql.append("WHERE t.isComplete = true ");
             jpql.append("AND n.isResolution = true ");
@@ -51,7 +51,7 @@ public abstract class TicketKnowledgeDAO {
             for (int i = 0; i < searchTerms.size(); i++) {
                 if (i > 0) jpql.append(" OR ");
                 String param = "term" + i;
-                jpql.append("LOWER(tsc.description) LIKE :").append(param).append(" ");
+                jpql.append("LOWER(si.description) LIKE :").append(param).append(" ");
                 jpql.append("OR LOWER(tc.description) LIKE :").append(param).append(" ");
                 jpql.append("OR LOWER(t.description) LIKE :").append(param).append(" ");
                 jpql.append("OR LOWER(n.detail) LIKE :").append(param);
@@ -72,7 +72,7 @@ public abstract class TicketKnowledgeDAO {
             List<String> results = new ArrayList<>();
             for (Object[] row : rows) {
                 String ticketDesc = str(row[0]);
-                String subCatDesc = str(row[1]);
+                String serviceItemDesc = str(row[1]);
                 String catDesc = str(row[2]);
                 String noteDetail = str(row[3]);
                 String noteDate = row[4] != null ? row[4].toString() : "";
@@ -80,7 +80,7 @@ public abstract class TicketKnowledgeDAO {
 
                 StringBuilder entry = new StringBuilder();
                 entry.append("--- Source: Resolved Tickets | ").append(catDesc);
-                entry.append(" > ").append(subCatDesc).append(" ---\n");
+                entry.append(" > ").append(serviceItemDesc).append(" ---\n");
                 entry.append("Issue: ").append(ticketDesc).append("\n");
                 entry.append("Resolution: ").append(stripHtml(noteDetail)).append("\n");
                 if (!completedDate.isEmpty()) {
