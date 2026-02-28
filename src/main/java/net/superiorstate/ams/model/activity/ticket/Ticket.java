@@ -17,10 +17,6 @@ public class Ticket extends Activity {
     private Person contact;
 
     @ManyToOne
-    @JoinColumn(name="ticket_category")
-    private TicketSubCategory ticketSubCategory;
-
-    @ManyToOne
     @JoinColumn(name="ticket_service_item_id")
     private ServiceItem ticketServiceItem;
 
@@ -48,14 +44,6 @@ public class Ticket extends Activity {
 
     public void setDescription(String description) {
         this.description = description;
-    }
-
-    public TicketSubCategory getTicketSubCategory() {
-        return ticketSubCategory;
-    }
-
-    public void setTicketSubCategory(TicketSubCategory ticketSubCategory) {
-        this.ticketSubCategory = ticketSubCategory;
     }
 
     public ServiceItem getTicketServiceItem() {

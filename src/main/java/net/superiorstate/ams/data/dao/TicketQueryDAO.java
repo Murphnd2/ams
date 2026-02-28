@@ -186,19 +186,10 @@ public abstract class TicketQueryDAO {
         return (List<ReasonCreated>) q.getResultList();
     }
     /**
-     * Resolves the ServiceItem for a ticket.
-     * Prefers the new direct ticketServiceItem FK; falls back to ticketSubCategory chain for legacy tickets.
+     * Returns the ServiceItem for a ticket.
      */
     private static ServiceItem resolveServiceItemForTicket(EntityManager em, Ticket t){
-        // New path: direct FK
-        if(t.getTicketServiceItem() != null)
-            return t.getTicketServiceItem();
-        // Legacy path: through TicketSubCategory
-        try {
-            if(t.getTicketSubCategory() != null && t.getTicketSubCategory().getServiceItem() != null)
-                return t.getTicketSubCategory().getServiceItem();
-        } catch (Exception ignored){}
-        return null;
+        return t.getTicketServiceItem();
     }
     public static List<SortedTask> getTasksRequiredForTheTicket(EntityManager em, Ticket t){
         List<SortedTask> sortedTaskList = new ArrayList<>();

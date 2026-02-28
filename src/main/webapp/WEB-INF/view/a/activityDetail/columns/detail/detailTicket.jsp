@@ -4,8 +4,7 @@
   <div class="col">
     <div class="row">
       <div class="col-auto">
-        <span class="text-info text-capitalize fw-bolder fs-5">Issue: ${sessionScope.sVar.getCurrentActivity().getTicketServiceItem() != null ? sessionScope.sVar.getCurrentActivity().getTicketServiceItem().getDescription().toLowerCase() : sessionScope.sVar.getCurrentActivity().getTicketSubCategory().getDescription().toLowerCase()}</span>
-      </div>
+        <span class="text-info text-capitalize fw-bolder fs-5">Issue: ${sessionScope.sVar.getCurrentActivity().getTicketServiceItem().getDescription().toLowerCase()}</span></div>
       <div class="col-auto"></div>
     </div>
     <div class="row mb-1">

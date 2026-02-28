@@ -77,10 +77,10 @@
 <%-- Driver/category subtitle --%>
 <div class="d-flex align-items-center px-2 py-1 bg-light border-start border-end" style="font-size: 0.82rem; border-color: #dee2e6 !important;">
   <c:choose>
-    <c:when test="${cName == 'Ticket' && (sessionScope.local.getCurrentActivity().getActivity().getTicketServiceItem() != null || sessionScope.local.getCurrentActivity().getActivity().getTicketSubCategory() != null)}">
+    <c:when test="${cName == 'Ticket' && sessionScope.local.getCurrentActivity().getActivity().getTicketServiceItem() != null}">
       <span class="text-muted me-1">Issue:</span>
       <span class="text-capitalize fw-semibold" style="color: var(--ssa);">
-          ${sessionScope.local.getCurrentActivity().getActivity().getTicketServiceItem() != null ? sessionScope.local.getCurrentActivity().getActivity().getTicketServiceItem().getDescription().toLowerCase() : sessionScope.local.getCurrentActivity().getActivity().getTicketSubCategory().getDescription().toLowerCase()}
+          ${sessionScope.local.getCurrentActivity().getActivity().getTicketServiceItem().getDescription().toLowerCase()}
       </span>
     </c:when>
     <c:when test="${cName == 'Renewal'}">

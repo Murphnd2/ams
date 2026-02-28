@@ -337,7 +337,7 @@ public class CreateTicket25 extends HttpServlet {
         }
         setContactNameField(contactName != null ? contactName.trim() : "");
 
-        String rid1 = request.getParameter("ticketSubCategoryList");
+        String rid1 = request.getParameter("serviceItemList");
         int rid1i = Integer.parseInt(rid1);
         setReasonId(rid1i);
         if(rid1i==0)

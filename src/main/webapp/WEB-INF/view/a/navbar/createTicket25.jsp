@@ -20,7 +20,7 @@
 
         <script type="text/javascript">
           function showHide(){
-            const reasonList = document.getElementById('ticketSubCategoryList');
+            const reasonList = document.getElementById('serviceItemList');
             const submitButton = document.getElementById('sb100');
             const reasonEntryArea = document.getElementById('enterReasonRow');
             const reasonInput = document.getElementById('rnT');
@@ -120,7 +120,7 @@
               dropdown.style.display = 'none';
               dropdown.innerHTML = '';
               selectedIndex = -1;
-              document.getElementById('ticketSubCategoryList').value = 'S';
+              document.getElementById('serviceItemList').value = 'S';
               document.getElementById('sb100').disabled = true;
               document.getElementById('enterReasonRow').style.display = 'none';
               const rnT = document.getElementById('rnT');
@@ -177,7 +177,7 @@
 
             /* ═══ BUILD GROUPED REASON DROPDOWN ═══ */
             (function buildReasonOptgroups(){
-              const select = document.getElementById('ticketSubCategoryList');
+              const select = document.getElementById('serviceItemList');
               /* Collect all the server-rendered options (skip the first two: placeholder + enter own) */
               const placeholder = select.querySelector('option[value="S"]');
               const enterOwn    = select.querySelector('option[value="0"]');
@@ -276,8 +276,8 @@
               </div>
             </div>
             <div class="col-12 col-md-7 col-lg-8 col-xl-9 mt-1 mt-md-0">
-              <select class="form-select" onchange="showHide()" name="ticketSubCategoryList"
-                      id="ticketSubCategoryList" tabindex="2">
+              <select class="form-select" onchange="showHide()" name="serviceItemList"
+                      id="serviceItemList" tabindex="2">
                 <option value="S" selected>Select a reason...</option>
                 <option value="0" class="text-secondary fst-italic">Enter my own reason</option>
                 <%-- Server renders flat options; JS regroups into <optgroup> on load --%>
