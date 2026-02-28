@@ -1,6 +1,6 @@
 # Deployment Backlog
 
-**Last Updated:** February 24, 2026 (BPO Feature Session)
+**Last Updated:** February 27, 2026
 **Reference:** See `docs/deployment_strategy.md` for full context on each item.
 
 Items are ordered by dependency (earlier items unblock later ones).

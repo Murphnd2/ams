@@ -1,13 +1,13 @@
--- MySQL dump 10.13  Distrib 8.0.43, for Linux (x86_64)
+-- MySQL dump 10.13  Distrib 8.0.45, for Win64 (x86_64)
 --
 -- Host: localhost    Database: beta_ssa
 -- ------------------------------------------------------
--- Server version	8.0.43-0ubuntu0.24.04.1
+-- Server version	8.0.45
 
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
 /*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
 /*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
-/*!50503 SET NAMES utf8mb4 */;
+/*!50503 SET NAMES utf8 */;
 /*!40103 SET @OLD_TIME_ZONE=@@TIME_ZONE */;
 /*!40103 SET TIME_ZONE='+00:00' */;
 /*!40014 SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0 */;
@@ -129,7 +129,6 @@ SET @saved_cs_client     = @@character_set_client;
  1 AS `person_id`,
  1 AS `description`,
  1 AS `method_id`,
- 1 AS `ticket_category`,
  1 AS `recurring_list_id`,
  1 AS `email_address`,
  1 AS `myRsc`,
@@ -173,7 +172,6 @@ SET @saved_cs_client     = @@character_set_client;
  1 AS `person_id`,
  1 AS `description`,
  1 AS `method_id`,
- 1 AS `ticket_category`,
  1 AS `recurring_list_id`,
  1 AS `email_address`,
  1 AS `myRsc`,
@@ -220,7 +218,6 @@ SET @saved_cs_client     = @@character_set_client;
  1 AS `person_id`,
  1 AS `description`,
  1 AS `method_id`,
- 1 AS `ticket_category`,
  1 AS `recurring_list_id`,
  1 AS `email_address`,
  1 AS `myRsc`,
@@ -269,7 +266,6 @@ SET @saved_cs_client     = @@character_set_client;
  1 AS `person_id`,
  1 AS `description`,
  1 AS `method_id`,
- 1 AS `ticket_category`,
  1 AS `recurring_list_id`,
  1 AS `email_address`,
  1 AS `myRsc`,
@@ -321,7 +317,6 @@ SET @saved_cs_client     = @@character_set_client;
  1 AS `person_id`,
  1 AS `description`,
  1 AS `method_id`,
- 1 AS `ticket_category`,
  1 AS `recurring_list_id`,
  1 AS `email_address`,
  1 AS `myRsc`,
@@ -736,6 +731,7 @@ CREATE TABLE `applicationfield` (
   `is_required` tinyint DEFAULT '0',
   `sort_order` int DEFAULT '0',
   `select_options` varchar(500) DEFAULT NULL,
+  `suppressed` tinyint(1) NOT NULL DEFAULT '0',
   `section_id` bigint DEFAULT NULL,
   `help_text` varchar(500) DEFAULT NULL,
   PRIMARY KEY (`field_key`),
@@ -796,6 +792,7 @@ CREATE TABLE `applicationsection` (
   `description` varchar(500) DEFAULT NULL,
   `scope` varchar(10) NOT NULL DEFAULT 'ALL',
   `sort_order` int NOT NULL DEFAULT '0',
+  `suppressed` tinyint(1) NOT NULL DEFAULT '0',
   `psp_id` bigint NOT NULL,
   PRIMARY KEY (`section_id`),
   KEY `psp_id` (`psp_id`),
@@ -873,7 +870,6 @@ CREATE TABLE `assignee` (
   `person_id` bigint DEFAULT NULL,
   `description` varchar(2000) DEFAULT NULL,
   `method_id` int DEFAULT NULL,
-  `ticket_category` bigint DEFAULT NULL,
   `recurring_list_id` bigint DEFAULT NULL,
   `email_address` varchar(255) DEFAULT NULL,
   `myRsc` varchar(255) DEFAULT NULL,
@@ -885,12 +881,12 @@ CREATE TABLE `assignee` (
   `estimated_value` double DEFAULT NULL,
   `expected_close_date` date DEFAULT NULL,
   `managed_by_id` bigint DEFAULT NULL,
+  `ticket_service_item_id` int DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `FK_ASSIGNEE_proposal_id` (`proposal_id`),
   KEY `FK_ASSIGNEE_completed_by_id` (`completed_by_id`),
   KEY `FK_ASSIGNEE_address_id` (`address_id`),
   KEY `FK_ASSIGNEE_created_by_id` (`created_by_id`),
-  KEY `FK_ASSIGNEE_ticket_category` (`ticket_category`),
   KEY `FK_ASSIGNEE_contact_id` (`contact_id`),
   KEY `FK_ASSIGNEE_employer_id` (`employer_id`),
   KEY `FK_ASSIGNEE_person_id` (`person_id`),
@@ -904,6 +900,7 @@ CREATE TABLE `assignee` (
   KEY `fk_opp_prospect` (`prospect_id`),
   KEY `fk_opp_agency` (`agency_id_opp`),
   KEY `fk_opp_managed_by` (`managed_by_id`),
+  KEY `FK_ASSIGNEE_ticket_service_item_id` (`ticket_service_item_id`),
   CONSTRAINT `FK_ASSIGNEE_address_id` FOREIGN KEY (`address_id`) REFERENCES `address` (`address_id`),
   CONSTRAINT `FK_ASSIGNEE_assigned_to_id` FOREIGN KEY (`assigned_to_id`) REFERENCES `assignee` (`id`),
   CONSTRAINT `FK_ASSIGNEE_checklist_id` FOREIGN KEY (`checklist_id`) REFERENCES `assignee` (`id`),
@@ -918,7 +915,7 @@ CREATE TABLE `assignee` (
   CONSTRAINT `FK_ASSIGNEE_psp_id` FOREIGN KEY (`psp_id`) REFERENCES `assignee` (`id`),
   CONSTRAINT `FK_ASSIGNEE_recurring_list_id` FOREIGN KEY (`recurring_list_id`) REFERENCES `tasksequence` (`sequence_id`),
   CONSTRAINT `FK_ASSIGNEE_setup_id` FOREIGN KEY (`setup_id`) REFERENCES `assignee` (`proposal_id`),
-  CONSTRAINT `FK_ASSIGNEE_ticket_category` FOREIGN KEY (`ticket_category`) REFERENCES `ticketsubcategory` (`subcategory_id`),
+  CONSTRAINT `FK_ASSIGNEE_ticket_service_item_id` FOREIGN KEY (`ticket_service_item_id`) REFERENCES `templatepurpose` (`purpose_id`),
   CONSTRAINT `fk_opp_agency` FOREIGN KEY (`agency_id_opp`) REFERENCES `agency` (`agency_id`),
   CONSTRAINT `fk_opp_managed_by` FOREIGN KEY (`managed_by_id`) REFERENCES `assignee` (`id`),
   CONSTRAINT `fk_opp_prospect` FOREIGN KEY (`prospect_id`) REFERENCES `prospect` (`prospect_id`)
@@ -991,6 +988,7 @@ CREATE TABLE `benefit` (
   `employer_id` int DEFAULT NULL,
   `plan_type_id` int DEFAULT NULL,
   `benid_pb` int DEFAULT '0',
+  `renewal_months` int NOT NULL DEFAULT '12',
   PRIMARY KEY (`benefit_id`),
   KEY `FK_BENEFIT_employer_id` (`employer_id`),
   KEY `FK_BENEFIT_plan_type_id` (`plan_type_id`),
@@ -1715,9 +1713,12 @@ CREATE TABLE `enhancement` (
   `sort_order` int NOT NULL DEFAULT '0',
   `suppressed` tinyint(1) NOT NULL DEFAULT '0',
   `psp_id` bigint NOT NULL,
+  `service_item_id` int DEFAULT NULL,
   PRIMARY KEY (`enhancement_id`),
   KEY `psp_id` (`psp_id`),
-  CONSTRAINT `enhancement_ibfk_1` FOREIGN KEY (`psp_id`) REFERENCES `assignee` (`id`)
+  KEY `FK_ENHANCEMENT_service_item_id` (`service_item_id`),
+  CONSTRAINT `enhancement_ibfk_1` FOREIGN KEY (`psp_id`) REFERENCES `assignee` (`id`),
+  CONSTRAINT `FK_ENHANCEMENT_service_item_id` FOREIGN KEY (`service_item_id`) REFERENCES `templatepurpose` (`purpose_id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -2454,9 +2455,12 @@ CREATE TABLE `los` (
   `psp_id` bigint DEFAULT NULL,
   `sort_order` int NOT NULL DEFAULT '0',
   `suppressed` tinyint(1) NOT NULL DEFAULT '0',
+  `service_item_id` int DEFAULT NULL,
   PRIMARY KEY (`los_id`),
   KEY `FK_LOS_psp_id` (`psp_id`),
-  CONSTRAINT `FK_LOS_psp_id` FOREIGN KEY (`psp_id`) REFERENCES `assignee` (`id`)
+  KEY `FK_LOS_service_item_id` (`service_item_id`),
+  CONSTRAINT `FK_LOS_psp_id` FOREIGN KEY (`psp_id`) REFERENCES `assignee` (`id`),
+  CONSTRAINT `FK_LOS_service_item_id` FOREIGN KEY (`service_item_id`) REFERENCES `templatepurpose` (`purpose_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -2710,12 +2714,12 @@ DROP TABLE IF EXISTS `plandocs_customer`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `plandocs_customer` (
-  `customer_id` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `employer_name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `customer_id` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `employer_name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `plan_year_start` date DEFAULT NULL,
   `plan_year_end` date DEFAULT NULL,
   `effective_date` date DEFAULT NULL,
-  `plan_type` varchar(32) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `plan_type` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `tokens_json` json DEFAULT NULL,
   PRIMARY KEY (`customer_id`)
@@ -2732,9 +2736,9 @@ DROP TABLE IF EXISTS `plandocs_entity`;
 CREATE TABLE `plandocs_entity` (
   `entity_id` bigint NOT NULL AUTO_INCREMENT,
   `organization_id` int DEFAULT NULL,
-  `ein` varchar(16) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `employer_name` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `created_from` varchar(32) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'unknown',
+  `ein` varchar(16) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `employer_name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `created_from` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'unknown',
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`entity_id`),
@@ -2751,16 +2755,16 @@ DROP TABLE IF EXISTS `plandocs_field`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `plandocs_field` (
-  `field_key` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `label` varchar(128) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `data_type` enum('string','date','number','bool','email','phone','ein','zip','state','json') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'string',
+  `field_key` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `label` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `data_type` enum('string','date','number','bool','email','phone','ein','zip','state','json') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'string',
   `is_required` tinyint(1) NOT NULL DEFAULT '0',
-  `default_value` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `validation_regex` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `notes` varchar(512) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `default_value` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `validation_regex` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `notes` varchar(512) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  `overwrite_mode` enum('ALWAYS','IF_BLANK','NEVER','ASK') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'ALWAYS',
-  `authoritative_source` varchar(32) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `overwrite_mode` enum('ALWAYS','IF_BLANK','NEVER','ASK') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'ALWAYS',
+  `authoritative_source` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   PRIMARY KEY (`field_key`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -2831,8 +2835,8 @@ DROP TABLE IF EXISTS `plandocs_import_header`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `plandocs_import_header` (
-  `import_type_id` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `header_name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `import_type_id` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `header_name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `seen_count` int NOT NULL DEFAULT '0',
   `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`import_type_id`,`header_name`)
@@ -2869,10 +2873,10 @@ DROP TABLE IF EXISTS `plandocs_import_mapping`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `plandocs_import_mapping` (
-  `import_type_id` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `source_column` varchar(128) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `field_key` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `transform` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `import_type_id` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `source_column` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `field_key` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `transform` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `is_customer_id` tinyint(1) NOT NULL DEFAULT '0',
   PRIMARY KEY (`import_type_id`,`source_column`),
   KEY `fk_plandocs_import_mapping_field` (`field_key`),
@@ -2889,9 +2893,9 @@ DROP TABLE IF EXISTS `plandocs_import_type`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `plandocs_import_type` (
-  `import_type_id` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `display_name` varchar(128) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `notes` varchar(512) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `import_type_id` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `display_name` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `notes` varchar(512) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`import_type_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -2905,9 +2909,9 @@ DROP TABLE IF EXISTS `plandocs_style`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `plandocs_style` (
-  `style_id` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `display_name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `description` varchar(1000) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `style_id` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `display_name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `description` varchar(1000) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `published_version_id` bigint DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -2924,11 +2928,11 @@ DROP TABLE IF EXISTS `plandocs_style_version`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `plandocs_style_version` (
   `style_version_id` bigint NOT NULL AUTO_INCREMENT,
-  `style_id` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `status` varchar(16) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `css` longtext COLLATE utf8mb4_unicode_ci NOT NULL,
-  `notes` varchar(1000) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `created_by` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `style_id` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `status` varchar(16) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `css` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `notes` varchar(1000) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `created_by` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`style_version_id`),
   KEY `idx_plandocs_style_version_style` (`style_id`,`created_at`),
@@ -2944,11 +2948,11 @@ DROP TABLE IF EXISTS `plandocs_template`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `plandocs_template` (
-  `template_id` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `display_name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `doc_type` varchar(32) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `plan_type` varchar(32) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `style_id` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `template_id` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `display_name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `doc_type` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `plan_type` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `style_id` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `is_active` tinyint(1) NOT NULL DEFAULT '1',
   `published_version_id` bigint DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -2969,11 +2973,11 @@ DROP TABLE IF EXISTS `plandocs_template_version`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `plandocs_template_version` (
   `template_version_id` bigint NOT NULL AUTO_INCREMENT,
-  `template_id` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `status` varchar(16) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `html` longtext COLLATE utf8mb4_unicode_ci NOT NULL,
-  `notes` varchar(1000) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `created_by` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `template_id` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `status` varchar(16) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `html` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `notes` varchar(1000) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `created_by` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`template_version_id`),
   KEY `idx_plandocs_template_version_template` (`template_id`,`created_at`),
@@ -2990,9 +2994,9 @@ DROP TABLE IF EXISTS `plandocs_value_current`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `plandocs_value_current` (
   `entity_id` bigint NOT NULL,
-  `field_key` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `value_text` mediumtext COLLATE utf8mb4_unicode_ci,
-  `last_source` varchar(32) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `field_key` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `value_text` mediumtext CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+  `last_source` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `last_batch_id` bigint DEFAULT NULL,
   `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`entity_id`,`field_key`),
@@ -3012,11 +3016,11 @@ DROP TABLE IF EXISTS `plandocs_value_history`;
 CREATE TABLE `plandocs_value_history` (
   `history_id` bigint NOT NULL AUTO_INCREMENT,
   `entity_id` bigint NOT NULL,
-  `field_key` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `old_value` mediumtext COLLATE utf8mb4_unicode_ci,
-  `new_value` mediumtext COLLATE utf8mb4_unicode_ci,
-  `changed_by` varchar(32) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `source_system` varchar(32) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `field_key` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `old_value` mediumtext CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+  `new_value` mediumtext CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+  `changed_by` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `source_system` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `batch_id` bigint DEFAULT NULL,
   `changed_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`history_id`),
@@ -4278,9 +4282,21 @@ CREATE TABLE `templatepurpose` (
   `description` varchar(200) DEFAULT NULL,
   `sort_order` int DEFAULT NULL,
   `group_id` int DEFAULT NULL,
+  `psp_id` bigint DEFAULT NULL,
+  `is_suppressed` tinyint(1) NOT NULL DEFAULT '0',
+  `provider_ref` varchar(100) DEFAULT NULL,
+  `code` varchar(20) DEFAULT NULL,
+  `source_type` varchar(20) DEFAULT NULL,
+  `default_renewal_months` int DEFAULT NULL,
+  `has_required_tasks` tinyint(1) NOT NULL DEFAULT '1',
+  `category_id` bigint DEFAULT NULL,
   PRIMARY KEY (`purpose_id`),
   KEY `FK_TEMPLATEPURPOSE_group_id` (`group_id`),
-  CONSTRAINT `FK_TEMPLATEPURPOSE_group_id` FOREIGN KEY (`group_id`) REFERENCES `templategroup` (`group_id`)
+  KEY `FK_TEMPLATEPURPOSE_psp_id` (`psp_id`),
+  KEY `FK_TEMPLATEPURPOSE_category_id` (`category_id`),
+  CONSTRAINT `FK_TEMPLATEPURPOSE_category_id` FOREIGN KEY (`category_id`) REFERENCES `ticketcategory` (`category_id`),
+  CONSTRAINT `FK_TEMPLATEPURPOSE_group_id` FOREIGN KEY (`group_id`) REFERENCES `templategroup` (`group_id`),
+  CONSTRAINT `FK_TEMPLATEPURPOSE_psp_id` FOREIGN KEY (`psp_id`) REFERENCES `assignee` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -4324,27 +4340,6 @@ CREATE TABLE `ticketcategory` (
   `short_text` varchar(255) DEFAULT NULL,
   `active` tinyint DEFAULT '0',
   PRIMARY KEY (`category_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Table structure for table `ticketsubcategory`
---
-
-DROP TABLE IF EXISTS `ticketsubcategory`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `ticketsubcategory` (
-  `subcategory_id` bigint NOT NULL,
-  `DESCRIPTION` varchar(200) DEFAULT NULL,
-  `category_id` bigint DEFAULT NULL,
-  `temp_purpose_id` int DEFAULT NULL,
-  `is_active` tinyint(1) DEFAULT '1',
-  PRIMARY KEY (`subcategory_id`),
-  KEY `FK_TICKETSUBCATEGORY_temp_purpose_id` (`temp_purpose_id`),
-  KEY `FK_TICKETSUBCATEGORY_category_id` (`category_id`),
-  CONSTRAINT `FK_TICKETSUBCATEGORY_category_id` FOREIGN KEY (`category_id`) REFERENCES `ticketcategory` (`category_id`),
-  CONSTRAINT `FK_TICKETSUBCATEGORY_temp_purpose_id` FOREIGN KEY (`temp_purpose_id`) REFERENCES `templatepurpose` (`purpose_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -4669,14 +4664,6 @@ CREATE TABLE `weblink` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
--- Dumping events for database 'beta_ssa'
---
-
---
--- Dumping routines for database 'beta_ssa'
---
-
---
 -- Final view structure for view `a25_activity_list_op`
 --
 
@@ -4761,7 +4748,7 @@ CREATE TABLE `weblink` (
 /*!50001 SET collation_connection      = utf8mb4_0900_ai_ci */;
 /*!50001 CREATE ALGORITHM=UNDEFINED */
 /*!50013 DEFINER=`root`@`localhost` SQL SECURITY DEFINER */
-/*!50001 VIEW `a_base_01` AS select `a`.`id` AS `id`,`a`.`DTYPE` AS `DTYPE`,`a`.`full_name` AS `full_name`,`a`.`TAXID` AS `TAXID`,`a`.`address_id` AS `address_id`,`a`.`contact_id` AS `contact_id`,`a`.`email` AS `email`,`a`.`first_name` AS `first_name`,`a`.`last_name` AS `last_name`,`a`.`middle_init` AS `middle_init`,`a`.`phone` AS `phone`,`a`.`title` AS `title`,`a`.`psp_id` AS `psp_id`,`a`.`setup_id` AS `setup_id`,`a`.`employee_id` AS `employee_id`,`a`.`date_completed` AS `date_completed`,`a`.`date_created` AS `date_created`,`a`.`due_date` AS `due_date`,`a`.`is_complete` AS `is_complete`,`a`.`assigned_to_id` AS `assigned_to_id`,`a`.`completed_by_id` AS `completed_by_id`,`a`.`created_by_id` AS `created_by_id`,`a`.`employer_id` AS `employer_id`,`a`.`checklist_id` AS `checklist_id`,`a`.`proposal_id` AS `proposal_id`,`a`.`person_id` AS `person_id`,`a`.`description` AS `description`,`a`.`method_id` AS `method_id`,`a`.`ticket_category` AS `ticket_category`,`a`.`recurring_list_id` AS `recurring_list_id`,`a`.`email_address` AS `email_address`,`a`.`myRsc` AS `myRsc`,`a`.`primary_contact` AS `primary_contact` from `assignee` `a` where (((`a`.`DTYPE` = 'Setup') or (`a`.`DTYPE` = 'Renewal') or (`a`.`DTYPE` = 'Ticket')) and (`a`.`is_complete` = false)) order by `a`.`full_name` */;
+/*!50001 VIEW `a_base_01` AS select `a`.`id` AS `id`,`a`.`DTYPE` AS `DTYPE`,`a`.`full_name` AS `full_name`,`a`.`TAXID` AS `TAXID`,`a`.`address_id` AS `address_id`,`a`.`contact_id` AS `contact_id`,`a`.`email` AS `email`,`a`.`first_name` AS `first_name`,`a`.`last_name` AS `last_name`,`a`.`middle_init` AS `middle_init`,`a`.`phone` AS `phone`,`a`.`title` AS `title`,`a`.`psp_id` AS `psp_id`,`a`.`setup_id` AS `setup_id`,`a`.`employee_id` AS `employee_id`,`a`.`date_completed` AS `date_completed`,`a`.`date_created` AS `date_created`,`a`.`due_date` AS `due_date`,`a`.`is_complete` AS `is_complete`,`a`.`assigned_to_id` AS `assigned_to_id`,`a`.`completed_by_id` AS `completed_by_id`,`a`.`created_by_id` AS `created_by_id`,`a`.`employer_id` AS `employer_id`,`a`.`checklist_id` AS `checklist_id`,`a`.`proposal_id` AS `proposal_id`,`a`.`person_id` AS `person_id`,`a`.`description` AS `description`,`a`.`method_id` AS `method_id`,`a`.`recurring_list_id` AS `recurring_list_id`,`a`.`email_address` AS `email_address`,`a`.`myRsc` AS `myRsc`,`a`.`primary_contact` AS `primary_contact` from `assignee` `a` where ((`a`.`DTYPE` in ('Setup','Renewal','Ticket')) and (`a`.`is_complete` = false)) order by `a`.`full_name` */;
 /*!50001 SET character_set_client      = @saved_cs_client */;
 /*!50001 SET character_set_results     = @saved_cs_results */;
 /*!50001 SET collation_connection      = @saved_col_connection */;
@@ -4779,7 +4766,7 @@ CREATE TABLE `weblink` (
 /*!50001 SET collation_connection      = utf8mb4_0900_ai_ci */;
 /*!50001 CREATE ALGORITHM=UNDEFINED */
 /*!50013 DEFINER=`root`@`localhost` SQL SECURITY DEFINER */
-/*!50001 VIEW `a_base_02` AS select `a`.`id` AS `id`,`a`.`DTYPE` AS `DTYPE`,`a`.`full_name` AS `full_name`,`a`.`TAXID` AS `TAXID`,`a`.`address_id` AS `address_id`,`a`.`contact_id` AS `contact_id`,`a`.`email` AS `email`,`a`.`first_name` AS `first_name`,`a`.`last_name` AS `last_name`,`a`.`middle_init` AS `middle_init`,`a`.`phone` AS `phone`,`a`.`title` AS `title`,`a`.`psp_id` AS `psp_id`,`a`.`setup_id` AS `setup_id`,`a`.`employee_id` AS `employee_id`,`a`.`date_completed` AS `date_completed`,`a`.`date_created` AS `date_created`,`a`.`due_date` AS `due_date`,`a`.`is_complete` AS `is_complete`,`a`.`assigned_to_id` AS `assigned_to_id`,`a`.`completed_by_id` AS `completed_by_id`,`a`.`created_by_id` AS `created_by_id`,`a`.`employer_id` AS `employer_id`,`a`.`checklist_id` AS `checklist_id`,`a`.`proposal_id` AS `proposal_id`,`a`.`person_id` AS `person_id`,`a`.`description` AS `description`,`a`.`method_id` AS `method_id`,`a`.`ticket_category` AS `ticket_category`,`a`.`recurring_list_id` AS `recurring_list_id`,`a`.`email_address` AS `email_address`,`a`.`myRsc` AS `myRsc`,`a`.`primary_contact` AS `primary_contact`,`c`.`date_generated` AS `last_contact`,(case when (`c`.`date_generated` is null) then 2 when ((curdate() - interval 7 day) < `c`.`date_generated`) then 0 when ((curdate() - interval 14 day) > `c`.`date_generated`) then 2 else 1 end) AS `contact_status`,(case when (`c`.`date_generated` is null) then 1 when ((curdate() - interval 7 day) < `c`.`date_generated`) then 0 else 1 end) AS `needs_contact` from (`a_base_01` `a` left join `n_contact_f` `c` on((`a`.`id` = `c`.`activity_id`))) */;
+/*!50001 VIEW `a_base_02` AS select `a`.`id` AS `id`,`a`.`DTYPE` AS `DTYPE`,`a`.`full_name` AS `full_name`,`a`.`TAXID` AS `TAXID`,`a`.`address_id` AS `address_id`,`a`.`contact_id` AS `contact_id`,`a`.`email` AS `email`,`a`.`first_name` AS `first_name`,`a`.`last_name` AS `last_name`,`a`.`middle_init` AS `middle_init`,`a`.`phone` AS `phone`,`a`.`title` AS `title`,`a`.`psp_id` AS `psp_id`,`a`.`setup_id` AS `setup_id`,`a`.`employee_id` AS `employee_id`,`a`.`date_completed` AS `date_completed`,`a`.`date_created` AS `date_created`,`a`.`due_date` AS `due_date`,`a`.`is_complete` AS `is_complete`,`a`.`assigned_to_id` AS `assigned_to_id`,`a`.`completed_by_id` AS `completed_by_id`,`a`.`created_by_id` AS `created_by_id`,`a`.`employer_id` AS `employer_id`,`a`.`checklist_id` AS `checklist_id`,`a`.`proposal_id` AS `proposal_id`,`a`.`person_id` AS `person_id`,`a`.`description` AS `description`,`a`.`method_id` AS `method_id`,`a`.`recurring_list_id` AS `recurring_list_id`,`a`.`email_address` AS `email_address`,`a`.`myRsc` AS `myRsc`,`a`.`primary_contact` AS `primary_contact`,`c`.`date_generated` AS `last_contact`,(case when (`c`.`date_generated` is null) then 2 when ((curdate() - interval 7 day) < `c`.`date_generated`) then 0 when ((curdate() - interval 14 day) > `c`.`date_generated`) then 2 else 1 end) AS `contact_status`,(case when (`c`.`date_generated` is null) then 1 when ((curdate() - interval 7 day) < `c`.`date_generated`) then 0 else 1 end) AS `needs_contact` from (`a_base_01` `a` left join `n_contact_f` `c` on((`a`.`id` = `c`.`activity_id`))) */;
 /*!50001 SET character_set_client      = @saved_cs_client */;
 /*!50001 SET character_set_results     = @saved_cs_results */;
 /*!50001 SET collation_connection      = @saved_col_connection */;
@@ -4797,7 +4784,7 @@ CREATE TABLE `weblink` (
 /*!50001 SET collation_connection      = utf8mb4_0900_ai_ci */;
 /*!50001 CREATE ALGORITHM=UNDEFINED */
 /*!50013 DEFINER=`root`@`localhost` SQL SECURITY DEFINER */
-/*!50001 VIEW `a_base_03` AS select `a_base_02`.`id` AS `id`,`a_base_02`.`DTYPE` AS `DTYPE`,`a_base_02`.`full_name` AS `full_name`,`a_base_02`.`TAXID` AS `TAXID`,`a_base_02`.`address_id` AS `address_id`,`a_base_02`.`contact_id` AS `contact_id`,`a_base_02`.`email` AS `email`,`a_base_02`.`first_name` AS `first_name`,`a_base_02`.`last_name` AS `last_name`,`a_base_02`.`middle_init` AS `middle_init`,`a_base_02`.`phone` AS `phone`,`a_base_02`.`title` AS `title`,`a_base_02`.`psp_id` AS `psp_id`,`a_base_02`.`setup_id` AS `setup_id`,`a_base_02`.`employee_id` AS `employee_id`,`a_base_02`.`date_completed` AS `date_completed`,`a_base_02`.`date_created` AS `date_created`,`a_base_02`.`due_date` AS `due_date`,`a_base_02`.`is_complete` AS `is_complete`,`a_base_02`.`assigned_to_id` AS `assigned_to_id`,`a_base_02`.`completed_by_id` AS `completed_by_id`,`a_base_02`.`created_by_id` AS `created_by_id`,`a_base_02`.`employer_id` AS `employer_id`,`a_base_02`.`checklist_id` AS `checklist_id`,`a_base_02`.`proposal_id` AS `proposal_id`,`a_base_02`.`person_id` AS `person_id`,`a_base_02`.`description` AS `description`,`a_base_02`.`method_id` AS `method_id`,`a_base_02`.`ticket_category` AS `ticket_category`,`a_base_02`.`recurring_list_id` AS `recurring_list_id`,`a_base_02`.`email_address` AS `email_address`,`a_base_02`.`myRsc` AS `myRsc`,`a_base_02`.`primary_contact` AS `primary_contact`,`a_base_02`.`last_contact` AS `last_contact`,`a_base_02`.`contact_status` AS `contact_status`,`a_base_02`.`needs_contact` AS `needs_contact`,`n`.`status_id` AS `c_status_id`,(case when (`n`.`status_id` is null) then 1 when (`n`.`status_id` = 1) then 0 else 1 end) AS `waiting_on_us` from (`a_base_02` left join `n_status_f1` `n` on((`a_base_02`.`id` = `n`.`activity_id`))) */;
+/*!50001 VIEW `a_base_03` AS select `a_base_02`.`id` AS `id`,`a_base_02`.`DTYPE` AS `DTYPE`,`a_base_02`.`full_name` AS `full_name`,`a_base_02`.`TAXID` AS `TAXID`,`a_base_02`.`address_id` AS `address_id`,`a_base_02`.`contact_id` AS `contact_id`,`a_base_02`.`email` AS `email`,`a_base_02`.`first_name` AS `first_name`,`a_base_02`.`last_name` AS `last_name`,`a_base_02`.`middle_init` AS `middle_init`,`a_base_02`.`phone` AS `phone`,`a_base_02`.`title` AS `title`,`a_base_02`.`psp_id` AS `psp_id`,`a_base_02`.`setup_id` AS `setup_id`,`a_base_02`.`employee_id` AS `employee_id`,`a_base_02`.`date_completed` AS `date_completed`,`a_base_02`.`date_created` AS `date_created`,`a_base_02`.`due_date` AS `due_date`,`a_base_02`.`is_complete` AS `is_complete`,`a_base_02`.`assigned_to_id` AS `assigned_to_id`,`a_base_02`.`completed_by_id` AS `completed_by_id`,`a_base_02`.`created_by_id` AS `created_by_id`,`a_base_02`.`employer_id` AS `employer_id`,`a_base_02`.`checklist_id` AS `checklist_id`,`a_base_02`.`proposal_id` AS `proposal_id`,`a_base_02`.`person_id` AS `person_id`,`a_base_02`.`description` AS `description`,`a_base_02`.`method_id` AS `method_id`,`a_base_02`.`recurring_list_id` AS `recurring_list_id`,`a_base_02`.`email_address` AS `email_address`,`a_base_02`.`myRsc` AS `myRsc`,`a_base_02`.`primary_contact` AS `primary_contact`,`a_base_02`.`last_contact` AS `last_contact`,`a_base_02`.`contact_status` AS `contact_status`,`a_base_02`.`needs_contact` AS `needs_contact`,`n`.`status_id` AS `c_status_id`,(case when (`n`.`status_id` is null) then 1 when (`n`.`status_id` = 1) then 0 else 1 end) AS `waiting_on_us` from (`a_base_02` left join `n_status_f1` `n` on((`a_base_02`.`id` = `n`.`activity_id`))) */;
 /*!50001 SET character_set_client      = @saved_cs_client */;
 /*!50001 SET character_set_results     = @saved_cs_results */;
 /*!50001 SET collation_connection      = @saved_col_connection */;
@@ -4815,7 +4802,7 @@ CREATE TABLE `weblink` (
 /*!50001 SET collation_connection      = utf8mb4_0900_ai_ci */;
 /*!50001 CREATE ALGORITHM=UNDEFINED */
 /*!50013 DEFINER=`root`@`localhost` SQL SECURITY DEFINER */
-/*!50001 VIEW `a_base_04` AS select `a`.`id` AS `id`,`a`.`DTYPE` AS `DTYPE`,`a`.`full_name` AS `full_name`,`a`.`TAXID` AS `TAXID`,`a`.`address_id` AS `address_id`,`a`.`contact_id` AS `contact_id`,`a`.`email` AS `email`,`a`.`first_name` AS `first_name`,`a`.`last_name` AS `last_name`,`a`.`middle_init` AS `middle_init`,`a`.`phone` AS `phone`,`a`.`title` AS `title`,`a`.`psp_id` AS `psp_id`,`a`.`setup_id` AS `setup_id`,`a`.`employee_id` AS `employee_id`,`a`.`date_completed` AS `date_completed`,`a`.`date_created` AS `date_created`,`a`.`due_date` AS `due_date`,`a`.`is_complete` AS `is_complete`,`a`.`assigned_to_id` AS `assigned_to_id`,`a`.`completed_by_id` AS `completed_by_id`,`a`.`created_by_id` AS `created_by_id`,`a`.`employer_id` AS `employer_id`,`a`.`checklist_id` AS `checklist_id`,`a`.`proposal_id` AS `proposal_id`,`a`.`person_id` AS `person_id`,`a`.`description` AS `description`,`a`.`method_id` AS `method_id`,`a`.`ticket_category` AS `ticket_category`,`a`.`recurring_list_id` AS `recurring_list_id`,`a`.`email_address` AS `email_address`,`a`.`myRsc` AS `myRsc`,`a`.`primary_contact` AS `primary_contact`,`a`.`last_contact` AS `last_contact`,`a`.`contact_status` AS `contact_status`,`a`.`needs_contact` AS `needs_contact`,`a`.`c_status_id` AS `c_status_id`,`a`.`waiting_on_us` AS `waiting_on_us`,`t`.`owner_id` AS `task_owner_id`,`t`.`source_owner` AS `source_owner_id`,(case when (`t`.`owner_id` is null) then concat(`a`.`id`,'-',`a`.`assigned_to_id`,'-N') when (`t`.`source_owner` is null) then concat(`a`.`id`,'-',`a`.`assigned_to_id`,'-',`t`.`owner_id`,'-N') else concat(`a`.`id`,'-',`a`.`assigned_to_id`,'-',`t`.`owner_id`,'-',`t`.`source_owner`) end) AS `UID` from (`a_base_03` `a` left join `ac_base_11` `t` on((`a`.`id` = `t`.`activity_id`))) order by `a`.`full_name` */;
+/*!50001 VIEW `a_base_04` AS select `a`.`id` AS `id`,`a`.`DTYPE` AS `DTYPE`,`a`.`full_name` AS `full_name`,`a`.`TAXID` AS `TAXID`,`a`.`address_id` AS `address_id`,`a`.`contact_id` AS `contact_id`,`a`.`email` AS `email`,`a`.`first_name` AS `first_name`,`a`.`last_name` AS `last_name`,`a`.`middle_init` AS `middle_init`,`a`.`phone` AS `phone`,`a`.`title` AS `title`,`a`.`psp_id` AS `psp_id`,`a`.`setup_id` AS `setup_id`,`a`.`employee_id` AS `employee_id`,`a`.`date_completed` AS `date_completed`,`a`.`date_created` AS `date_created`,`a`.`due_date` AS `due_date`,`a`.`is_complete` AS `is_complete`,`a`.`assigned_to_id` AS `assigned_to_id`,`a`.`completed_by_id` AS `completed_by_id`,`a`.`created_by_id` AS `created_by_id`,`a`.`employer_id` AS `employer_id`,`a`.`checklist_id` AS `checklist_id`,`a`.`proposal_id` AS `proposal_id`,`a`.`person_id` AS `person_id`,`a`.`description` AS `description`,`a`.`method_id` AS `method_id`,`a`.`recurring_list_id` AS `recurring_list_id`,`a`.`email_address` AS `email_address`,`a`.`myRsc` AS `myRsc`,`a`.`primary_contact` AS `primary_contact`,`a`.`last_contact` AS `last_contact`,`a`.`contact_status` AS `contact_status`,`a`.`needs_contact` AS `needs_contact`,`a`.`c_status_id` AS `c_status_id`,`a`.`waiting_on_us` AS `waiting_on_us`,`t`.`owner_id` AS `task_owner_id`,`t`.`source_owner` AS `source_owner_id`,(case when (`t`.`owner_id` is null) then concat(`a`.`id`,'-',`a`.`assigned_to_id`,'-N') when (`t`.`source_owner` is null) then concat(`a`.`id`,'-',`a`.`assigned_to_id`,'-',`t`.`owner_id`,'-N') else concat(`a`.`id`,'-',`a`.`assigned_to_id`,'-',`t`.`owner_id`,'-',`t`.`source_owner`) end) AS `UID` from (`a_base_03` `a` left join `ac_base_11` `t` on((`a`.`id` = `t`.`activity_id`))) order by `a`.`full_name` */;
 /*!50001 SET character_set_client      = @saved_cs_client */;
 /*!50001 SET character_set_results     = @saved_cs_results */;
 /*!50001 SET collation_connection      = @saved_col_connection */;
@@ -4833,7 +4820,7 @@ CREATE TABLE `weblink` (
 /*!50001 SET collation_connection      = utf8mb4_0900_ai_ci */;
 /*!50001 CREATE ALGORITHM=UNDEFINED */
 /*!50013 DEFINER=`root`@`localhost` SQL SECURITY DEFINER */
-/*!50001 VIEW `a_base_05` AS select `a`.`id` AS `id`,`a`.`DTYPE` AS `DTYPE`,`a`.`full_name` AS `full_name`,`a`.`TAXID` AS `TAXID`,`a`.`address_id` AS `address_id`,`a`.`contact_id` AS `contact_id`,`a`.`email` AS `email`,`a`.`first_name` AS `first_name`,`a`.`last_name` AS `last_name`,`a`.`middle_init` AS `middle_init`,`a`.`phone` AS `phone`,`a`.`title` AS `title`,`a`.`psp_id` AS `psp_id`,`a`.`setup_id` AS `setup_id`,`a`.`employee_id` AS `employee_id`,`a`.`date_completed` AS `date_completed`,`a`.`date_created` AS `date_created`,`a`.`due_date` AS `due_date`,`a`.`is_complete` AS `is_complete`,`a`.`assigned_to_id` AS `assigned_to_id`,`a`.`completed_by_id` AS `completed_by_id`,`a`.`created_by_id` AS `created_by_id`,`a`.`employer_id` AS `employer_id`,`a`.`checklist_id` AS `checklist_id`,`a`.`proposal_id` AS `proposal_id`,`a`.`person_id` AS `person_id`,`a`.`description` AS `description`,`a`.`method_id` AS `method_id`,`a`.`ticket_category` AS `ticket_category`,`a`.`recurring_list_id` AS `recurring_list_id`,`a`.`email_address` AS `email_address`,`a`.`myRsc` AS `myRsc`,`a`.`primary_contact` AS `primary_contact`,`a`.`last_contact` AS `last_contact`,`a`.`contact_status` AS `contact_status`,`a`.`needs_contact` AS `needs_contact`,`a`.`c_status_id` AS `c_status_id`,`a`.`waiting_on_us` AS `waiting_on_us`,`a`.`task_owner_id` AS `task_owner_id`,`a`.`source_owner_id` AS `source_owner_id`,`a`.`UID` AS `UID`,(case when (`a`.`DTYPE` = 'Ticket') then concat(`t`.`first_name`,' ',`t`.`last_name`) else `a`.`full_name` end) AS `full_name_alt` from (`a_base_04` `a` left join `assignee` `t` on((`a`.`person_id` = `t`.`id`))) order by `a`.`full_name` */;
+/*!50001 VIEW `a_base_05` AS select `a`.`id` AS `id`,`a`.`DTYPE` AS `DTYPE`,`a`.`full_name` AS `full_name`,`a`.`TAXID` AS `TAXID`,`a`.`address_id` AS `address_id`,`a`.`contact_id` AS `contact_id`,`a`.`email` AS `email`,`a`.`first_name` AS `first_name`,`a`.`last_name` AS `last_name`,`a`.`middle_init` AS `middle_init`,`a`.`phone` AS `phone`,`a`.`title` AS `title`,`a`.`psp_id` AS `psp_id`,`a`.`setup_id` AS `setup_id`,`a`.`employee_id` AS `employee_id`,`a`.`date_completed` AS `date_completed`,`a`.`date_created` AS `date_created`,`a`.`due_date` AS `due_date`,`a`.`is_complete` AS `is_complete`,`a`.`assigned_to_id` AS `assigned_to_id`,`a`.`completed_by_id` AS `completed_by_id`,`a`.`created_by_id` AS `created_by_id`,`a`.`employer_id` AS `employer_id`,`a`.`checklist_id` AS `checklist_id`,`a`.`proposal_id` AS `proposal_id`,`a`.`person_id` AS `person_id`,`a`.`description` AS `description`,`a`.`method_id` AS `method_id`,`a`.`recurring_list_id` AS `recurring_list_id`,`a`.`email_address` AS `email_address`,`a`.`myRsc` AS `myRsc`,`a`.`primary_contact` AS `primary_contact`,`a`.`last_contact` AS `last_contact`,`a`.`contact_status` AS `contact_status`,`a`.`needs_contact` AS `needs_contact`,`a`.`c_status_id` AS `c_status_id`,`a`.`waiting_on_us` AS `waiting_on_us`,`a`.`task_owner_id` AS `task_owner_id`,`a`.`source_owner_id` AS `source_owner_id`,`a`.`UID` AS `UID`,(case when (`a`.`DTYPE` = 'Ticket') then concat(`t`.`first_name`,' ',`t`.`last_name`) else `a`.`full_name` end) AS `full_name_alt` from (`a_base_04` `a` left join `assignee` `t` on((`a`.`person_id` = `t`.`id`))) order by `a`.`full_name` */;
 /*!50001 SET character_set_client      = @saved_cs_client */;
 /*!50001 SET character_set_results     = @saved_cs_results */;
 /*!50001 SET collation_connection      = @saved_col_connection */;
@@ -5729,4 +5716,4 @@ CREATE TABLE `weblink` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-02-26 20:20:24
+-- Dump completed on 2026-02-27 20:47:28

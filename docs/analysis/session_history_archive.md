@@ -2,7 +2,7 @@
 
 > **Purpose:** Consolidated historical record of all build sessions. For current project state, see `project_backlog.md`. For current architecture, see `application_flow.md` and `entity_reference.md`.
 >
-> **Last Updated:** February 25, 2026
+> **Last Updated:** February 27, 2026
 
 ---
 
@@ -65,16 +65,9 @@ Built the AI Knowledge Assistant chatbot:
 - 5 JSON knowledge bases: Summit Guide (502 chunks), Summit Videos (30), Wave Help (449), Business Continuity, Backup/Recovery
 - Role-based access: standard users see Summit KBs only, admins see all 5
 - Added `isResolution` boolean to Note entity
-- **Pending production deploy** — see chatbot deployment checklist in `project_backlog.md`
+- V014 migration applied to all environments
 
 Key decisions: live ticket KB over static export, legacy cutoff date (2026-02-19), resolution flag on Note, Gson for JSON, KnowledgeSearchService in application scope.
-
-**Schema changes (not yet a numbered migration):**
-```sql
-ALTER TABLE note ADD COLUMN is_resolution TINYINT(1) NOT NULL DEFAULT 0;
-INSERT INTO constant (name, value, note) VALUES ('ANTHROPIC_API_KEY', '<key>', 'Claude API key for chatbot');
--- Ticket category updates: 9 expired, 9 updated, 7 new service-oriented categories
-```
 
 ---
 
@@ -96,167 +89,36 @@ Key decisions: Application uses Proposal as PK (not generated Long), `LEFT JOIN 
 
 ---
 
-## February 20, 2026 — Service Manager (Session 1)
+## February 20–21, 2026 — Service Manager + Rate Manager + Agency Manager
 
-Built the Service Manager for configuring Lines of Service, Enhancements, and Application Sections:
+Built the full admin toolset for managing sales offerings:
 
-- Created `Enhancement` entity with M:N to LOS
-- Added `sortOrder` and `suppressed` columns to LOS
-- Added nullable `los` and `enhancement` direct FKs to ServiceModule
-- Created `ServiceManagerHome` (GET) + `ServiceManagerAction` (POST, 14 actions) + `ServiceManagerSort` (AJAX reorder)
-- Created `serviceManager25.jsp` — tabbed Services/Enhancements with detail panel
-- `V004__service_manager.sql` created
-
----
-
-## February 20, 2026 — Rate Manager (Session 1)
-
-Built the Rate Manager UI for rate configuration:
-
-- Created `PspAdminHome` servlet — Rate Manager home (rates, fee types, modules, agencies, locked rate detection)
-- Created `RateTableAction` servlet — Rate CRUD (createRate, editRate, addRateTableRow, deleteRow, assignAgency, removeAgency, createPriceItem, cloneRate)
-- Created `PriceItemAction` / `ServiceModuleAction` — AJAX reorder and suppress toggle
-- Created `rateManager25.jsp` — 4-tab left panel (Rates, Fee Types, Modules, Agencies), right panel pricing grid
-- Rate locking: rates with active proposals cannot have pricing modified (only cloned)
+- **Service Manager:** LOS/Enhancement/ServiceModule CRUD with drag-and-drop ordering (SortableJS), feature management with inline markdown links, application section management with LOS scoping
+- **Rate Manager:** Rate/FeeType/RateTable/PriceItem CRUD, rate-LOS matrix editing, discount management
+- **Agency Manager:** Agency CRUD, agent assignment, rate assignment per agency, manager FK
+- **Invitation System:** `SendInvitation` → `AcceptInvite` → auto-create Person + User + Agency link. GUID-based public registration page.
+- Migrations: V004 (service manager), V005 (rate manager), V006 (invitation system)
 
 ---
 
-## February 20, 2026 — Agency Manager + Rate Manager Session 2
+## February 21, 2026 — Resource Library + Opportunity System + Layout Consolidation
 
-Built Agency Manager and enhanced Rate Manager:
-
-- Created `PspAgencyHome` servlet + `agencyManager25.jsp` — Agency list, agent management, rate assignment
-- Created `AgencyAction` servlet — Agency CRUD (createAgency, editAgency, addAgent, removeAgent, removeRate)
-- **Rate Manager enhancements:** Add-pricing-row reworked to use LOS/Enhancement selection (hides ServiceModule abstraction), per-rate sort ordering (`ratetable.sort_order`), inline AJAX price editing, rate copying ("Make New From"), Grid Sort tab for per-rate drag reorder
-- **Proposal rendering updates:** `SalesDAO.getPricing()` rewritten as two-query approach (LOS-linked + Enhancement-linked, merged), ViewProposal renders Enhancement feature cards, pricing headers show LOS/Enhancement names
-- `V005__rate_manager.sql` created
-
-Key decisions: LOS/Enhancement selection in add-row modal hides ServiceModule abstraction from user. Per-rate sort order column on `ratetable` (not just ServiceModule sort). Two-query approach for getPricing() because single JPQL with OR/subquery failed in EclipseLink. `cloneRate` vs `copyRate`: clone moves agencies + suppresses original (for locked rates), copy just duplicates pricing (for convenience).
+- **Resource Library:** `LibraryHome` servlet, `library25.jsp` with category management, Wasabi file upload/download, feature linking to proposals. V007 migration.
+- **Opportunity System:** `CreateOpportunity` servlet, stage management (NEW→CONTACTED→QUALIFIED→PROPOSAL_SENT→NEGOTIATION→ON_HOLD→WON/LOST), agent pipeline view in `AgentHome`. V008 migration.
+- **Activity List Redesign:** `activityList25.jsp` rewritten — compact type badge pills (R/S/T/O), urgency icons, opportunity stage badge, due date color-coding, empty state message
+- **PSP Opportunity Integration:** PSP Sales role (ID 9), `managed_by_id` FK on assignee, ActivityListDAO/ActivityFilter updates. V010 migration.
+- **Layout consolidation:** Unified navbar, CSS, admin pages. Create Ticket modal rebuilt. Email screen modernized.
 
 ---
 
-## February 20, 2026 — Service Manager Session 2
+## February 22, 2026 — Time Tracking
 
-Enhanced Service Manager with suppress fix and SortableJS improvements:
+UI redesign for the timeclock system:
 
-- Fixed suppress buttons not rendering (cached JSP issue resolved)
-- Added SortableJS drag-and-drop reordering for LOS list, Enhancement list, and Application Sections
-- `ServiceManagerSort` servlet handles all three sort types via AJAX
-
----
-
-## February 21, 2026 — Resource Library + Feature Rendering
-
-Built the Resource Library and connected features to proposals:
-
-- Created `ResourceCategory` entity for organizing library resources
-- Added `category` FK to `MarketingMaterial`, widened `storageGuid` to VARCHAR(50)
-- Created `LibraryHome` (GET) + `LibraryAction` (POST, multipart CRUD with Wasabi upload)
-- Created `library25.jsp` — category filter pills, scrollable resource list, detail panel
-- Added `libraryResource` FK to Feature entity
-- Feature CRUD in ServiceManagerAction (createFeature, editFeature, deleteFeature) + drag-sort
-- Feature description supports inline `[text](resourceId)` markdown-style links
-- ViewProposal renders features with inline links + end-icons by file type
-- Rate suppress-when-locked fix in RateTableAction
-- `V007__resource_library.sql` created
-
----
-
-## February 21, 2026 — Invitation System
-
-Built the complete invitation workflow from PSP to agent registration:
-
-- Agency Manager enhancements: rate pricing popover, rate assignment state tracking, expanded edit modal
-- Created `Invitation` entity (guid, email, role, 30-day expiry)
-- Created `SendInvitation` servlet — creates Agency (if new) + Person + Invitation, sends email, pre-assigns rates
-- Created `AcceptInvite` servlet + `acceptInvite.jsp` — validates GUID, registration form
-- Existing user handling: auto-grant role if no conflicts, block if agent in different agency
-- Added `manager_id` FK to Agency
-- `V006__invitation_system.sql` created
-
----
-
-## February 21, 2026 — Opportunity System + Agent Landing Page
-
-Built the Opportunity system and Agent Landing Page:
-
-- Created `Opportunity` entity extending Activity (DTYPE='Opportunity', tied to Prospect + Agency)
-- Created `CreateOpportunity` servlet — creates Opportunity + CheckList + optional new Prospect
-- Created `AgentHome` servlet + `agentHome25.jsp` — pipeline view with stage grouping, detail panel, new opp modal
-- Created `UpdateOpportunityStage` — AJAX stage dropdown
-- Created `detailOpportunity25.jsp` — Opportunity detail in ViewActivity25
-- Role-based login routing: agents → AgentHome, PSP → ViewHome25
-- ProposalBuilder scoped for agents (own prospects, agency rates, auto-select single rate)
-- Navigation made role-aware (back buttons, navbar links)
-- Stages: NEW → CONTACTED → QUALIFIED → PROPOSAL_SENT → NEGOTIATION → WON/LOST/ON_HOLD
-- Sales task seed data: TemplateGroup 5, TemplatePurpose 30, Tasks 900001–900005
-- `V008__opportunity_system.sql` created
-
-Remaining items (tracked in backlog): PspAgencyHome scoping (T10), layout/appearance consolidation (T11).
-
----
-
-## February 21, 2026 — Layout & Navigation Consolidation
-
-Unified the navbar, layout, and CSS across all main authenticated pages:
-
-- Rewrote `navbar25.jsp` as single navigation component for all roles (PSP User, PSP Admin, Agent, Agency Manager)
-- Dark branded bar (`#0d5681`) with role-aware menu items, collapses to hamburger on mobile
-- Eliminated standalone `adminNav.jsp` dropdown — absorbed into navbar's Admin dropdown
-- All admin pages (Service Manager, Rate Manager, Agency Manager, Library, Sequence Builder) converted to use unified navbar
-- Agent pages (AgentHome) converted to use unified navbar
-- Consistent `pageTitle`/`pageIcon` request attributes across all pages
-- Chatbot gated to PSP users only
-
----
-
-## February 21, 2026 — Create Ticket Form Overhaul
-
-Rebuilt the Create Ticket modal from a basic datalist form into a modern typeahead system:
-
-- **Person typeahead:** Replaced `<datalist>` with custom JS dropdown — filters on name/employer/email, shows styled badge on selection, comma-tolerant search (`murphy, k` works), hidden `employeeId` field for direct lookup
-- **Person resolution chain in servlet:** employeeId → direct lookup; else freeform text → email path (employee by email → person by email → create from email) → name path (employee by name → person by name → create from name). Handles single-word names, email-to-name parsing.
-- **Grouped reason dropdown:** Client-side JS regroups flat `<option>` list into `<optgroup>` by TicketCategory. No backend change.
-- **Removed dead UI:** Contact method dropdown (hardcoded, never read), empty `getName()` function
-- **Servlet stale state fix:** All instance variables nulled at top of each request (servlets are singletons)
-- **Immutable list fix:** `AmsDataLocal.respondToActivityUpdate()` ADD_TICKET case — switched from direct `.add()` to mutable copy pattern (pre-existing bug)
-- **Sequence suppress toggle:** Added "Hide from Dropdown" / "Restore to Dropdown" button in Sequence Manager for ticket sequences. Toggles `TicketSubCategory.isActive`, refreshes global cache.
-- No database changes required.
-
----
-
-## February 22, 2026 — Timeclock Redesign + Correction Workflow
-
-Redesigned the ViewHome25 timeclock column and built a time correction request workflow:
-
-- **UI Redesign:** Replaced flat date/in/out rows with two-tab layout: Today (day selector, stretch timeline with progress bars, per-stretch durations, pulsing active dot) and Week (horizontal bar chart per day with 8h marker, overtime coloring, avg/day + remaining stats)
-- **DaySummary DTO** (`model/general/`) — aggregates stretches per day with computed totals, overtime flag, progress percentage
-- **TimeStretch enhanced** with `inLogId`/`outLogId`, fixed `getMinutesWorked()` bug (uses `Duration.between()` instead of broken `compareTo`), added `getMinutesFormatted()` and `isComplete()`
-- **TimeCorrectionRequest entity** (`model/general/`) — PENDING/APPROVED/DENIED workflow. References TimeLog records via FK. Snapshots original values. Nullable requested times.
-- **SubmitTimeCorrection servlet** (`controller/user/`) — employee modal form submission
-- **timeCorrectionModal.jsp** — Bootstrap modal with time input validation (in < out, no overlap with adjacent stretches), boundary hints
-- **ReviewTimeCorrections servlet + JSP** (`controller/user/`) — admin review page with filter tabs, approve/deny with comment, auto-updates TimeLog on approve
-- **Correction status badges** on stretch timeline (Pending=orange, Approved=green, Denied=red) via `correctionMap` loaded in ViewHome25
-- **Navbar:** Added "Time Corrections" link to Admin dropdown
-- **Bug fixes:** TimeClock25 forward→redirect, AuthenticateUser time init on login + forward→redirect, clock state correct on relogin
-- **Migration:** `V009__timeclock_correction.sql` (#9) — `time_correction_request` table with FKs to assignee and timelog
-
----
-
-## February 22, 2026 — Activity List Modernization + PSP Opportunity Integration
-
-Modernized the ViewHome25 activity list (center column) with SSA branding and integrated Opportunity tracking for PSP users:
-
-### Activity Column Modernization
-- **activityHeader25.jsp:** Replaced old styled block with `.hdr-bar` pattern. Quick-view buttons (ALL/MY/REN) on left, filter toggle on right. Filter panel: TYPE toggles (R/S/T/O), ATTENTION toggles (On Us / Needs Contact), OWNER radios, SORT radios, branded Apply button
-- **activityList25.jsp:** Replaced `input-group` strips with `.act-card` flex rows. Left border colored by due bucket (red=overdue, orange=warning). Compact type badge pills (R/S/T/O). Urgency icons (waiting-on-us, needs-contact). Opportunity stage badge. Due date with color-coded urgency. Empty state message.
-
-### PSP Opportunity Integration
-- **New Role: PSP Sales** (UserRole ID 9) — gates opportunity visibility for PSP users
-- **managed_by_id** FK on assignee — tracks which PSP user manages an opportunity
-- **ActivityListDAO updates:** `loadActivities()` includes Opportunities for PSP Sales/Admin users. Opportunities managed by current user flagged as "mine". Quick-view ALL/MY includes managed opportunities.
-- **ActivityFilter updates:** New `filterOpportunity` toggle, Opportunity stage badge in list rows
-- **Migration:** `V010__psp_opportunity_integration.sql` — PSP Sales role seed + managed_by_id column
+- Daily and weekly views with modern card-based layout
+- Correction request workflow (employee submits → admin approves/denies)
+- `TimeCorrectionRequest` entity and `V009__timeclock_correction.sql` migration
+- Payroll export TBD (future work)
 
 ---
 
@@ -323,6 +185,14 @@ No database changes.
 
 ---
 
+## February 24, 2026 — BPO Feature Implementation
+
+**Living reference:** `bpo_feature_session_history.md` (kept separately)
+
+Built the complete BPO (Business Process Outsourcing) delegation feature across three sessions. BPO users log in, see delegated tasks, add notes, mark complete. V011 migration (todo BPO columns, todo_note table). V012 migration (role cleanup, PSP branding constants). See `bpo_feature_session_history.md` for full details.
+
+---
+
 ## February 24–25, 2026 — Checklist Panel Layout + Task Manager Modernization
 
 Completed checklist panel restructuring (A8–A10) and task manager page modernization:
@@ -343,54 +213,146 @@ Completed checklist panel restructuring (A8–A10) and task manager page moderni
 A1–A12 complete. Remaining: A13 (closed activity banner), A14 (auto-save UX), S4 (pe-none standardization), S5 (mobile polish).
 
 ---
-## February 25, 2026 — Track A Polish + Navbar Restyle + Email Screens
 
-Completed Track A polish items A13, A14, S4 and restyled the navbar and email viewing screens.
+## February 25, 2026 — Track A Polish + Navbar Restyle + Email Screens (Session 1)
 
-### Track A Polish (A13, A14, S4)
+Completed Track A polish items A13, A14, S4 and restyled the navbar and email viewing screens:
+
 - **A13 — Closed Activity Banner:** Restyled from yellow warning to muted gray archived feel. Background `#f0f0f0`, border `#ccc`, text `#6c757d`, lighter lock icon. Added "by [FirstName]" when completedBy is available.
-- **A14 — Auto-Save UX Indicator:** Added amber "Unsaved" dot next to Save button in Quill note editor. Appears on `text-change` when content exists, clears when editor empty or on form submit (page reload). Purely visual — no server-side auto-save.
-- **S4 — pe-none Audit:** Full audit of all activity detail panels confirmed all interactive elements are already gated for closed activities. Mix of `pe-none` class (`isPast`/`penone` variables) and `c:if isComplete()==false` (hidden entirely). No changes needed.
+- **A14 — Auto-Save UX Indicator:** Added amber "Unsaved" dot next to Save button in Quill note editor. Appears on `text-change` when content exists, clears when editor empty or on form submit.
+- **S4 — pe-none Audit:** All interactive elements already gated for closed activities. No changes needed.
+- **Navbar Restyle:** Ghost buttons replacing dropdown items, bottom radius, unauthenticated transparent bar.
+- **Email View Screens:** New `emailView25.jsp`, `emailHistoryList25.jsp`, `ViewEmailHistory.java` servlet. SSA card styling. Old JSPs no longer referenced.
 
-### Navbar Restyle (`navbar25.jsp`)
-- **Ghost-style nav links** replacing `btn btn-sm btn-outline-light` — new `.nav-ghost` class with no borders, subtle hover highlight (`rgba(255,255,255,0.13)`), modern clean feel
-- **Taller padding** (`0.35rem` → `0.55rem`)
-- **Bottom radius** (`border-radius: 0 0 8px 8px`) — connects visually with rounded `.hdr-bar` headers below
-- **Dropped full-bleed hack** — removed `margin-left: calc(-50vw + 50%); width: 100vw;` so navbar respects container padding
-- **Admin warm tone** — `.nav-ghost-warn` (amber tint) distinguishes admin from regular nav
-- **Logout dimmed** — `.nav-ghost-logout` at lower opacity
-- **Thin dividers** — `.nav-divider` (1px vertical line) between groups on desktop
-- **Dropdown menus** — smaller font (0.82rem) consistent with nav items
-- **Unauthenticated state** — transparent background (no dark bar) for login/initialize pages, SSA-blue ghost button
-- Hamburger border removed for cleaner mobile toggle
-
-### Email Screens Modernization
-- **ViewEmail servlet** — Rewritten with fetch-join query (recipients + weblinks in one JPQL), force-init of lazy fields while EM open, request attributes instead of session pollution, input validation, forwards to new JSP
-- **emailView25.jsp** (new) — SSA card with `hdr-bar` header showing subject + timestamp. Clean metadata rows (From, To with chip-style recipients, Files with chip-style download links). Email body in padded area. No jQuery, no old sub-JSPs.
-- **ViewEmailHistory servlet** (new/replace) — Uses `EmailDAO.getEmailsToRecipient()`, force-inits lazy fields, request attributes (`emailHistoryList`, `emailHistoryAddress`, `emailHistoryCount`)
-- **emailHistoryList25.jsp** (new) — SSA card with `hdr-bar` showing email address + count. Compact column headers (Date/From/Subject). Clickable rows open `ViewEmail?id=` in new tab. Hover highlight, truncating text, scroll at 600px.
-
-Both email screens use `navbar25.jsp` with page titles. Old JSPs (`emailView.jsp`, `emailList.jsp`) and old sub-JSPs (`toWhoList2.jsp`, `attachmentList2.jsp`) no longer referenced by the new servlets.
-
-### Track A Final Status
-A1–A14 and S4 complete. Remaining: S3 (questionnaire placeholder — Track B dependency), S5 (mobile stacking polish).
-
-New files: `emailView25.jsp`, `emailHistoryList25.jsp`, `ViewEmailHistory.java`
-Modified files: `ViewEmail.java`, `navbar25.jsp`, `detailHeader25.jsp`, `detailAddNote25.jsp`
-No database changes.
+Track A effectively complete except S5 (mobile stacking polish).
 
 ---
 
-## February 26, 2026 — Email System + Health Config + Admin Cleanup (Session 2)
+## February 25, 2026 — PSP Branding + Activity List Display (Session 2)
 
-Redesigned email template, built SMTP settings UI, migrated health config, started admin page cleanup:
+- **PSP Branding System:** `UploadPspBranding` servlet, `ServeBrandingFile` servlet (serves from external path), `pspBranding25.jsp`. Dimension validation (navbar: max 300×80px PNG, login: max 800×400px PNG, favicon: 32×32px ICO/PNG). `BRANDING_PATH` via `ssa.properties`. Dynamic JSP references in navbar, login, favicon.
+- **User Filter Presets:** 3 configurable filter slots per user. V013 migration.
+- **Activity List Display:** Bootstrap icons replacing letter badges. Compact due date display.
+- **Login System Fixes:** `HelpUserLogin` rewrite (branded emails, 7-day/10-min GUIDs), `OneTimeUserLogin` fix, `CreateUser25` sales-only fix.
+- **LoginFilter:** Three-tier logic (static → uninitialized → auth), removed console logging.
 
-- **SendAutoEmail recovery:** Created redirect wrapper servlet for legacy `task.servletName` DB records pointing to `SendAutoEmail?aeId=123` — forwards to `SendAuto25`
-- **SMTP Settings Modal:** `UpdateSmtpSettings` servlet (GET=JSON, POST=update) + `smtpSettingsMod25.jsp` Bootstrap modal — PSP Admin can configure SMTP_SERVER, SMTP_PORT, SMTP_USER, SMTP_PASSWORD, SMTP_FROM, EMAIL_FOOTER_TEXT
-- **Email Template redesign:** Complete rewrite of `EmailTemplate.java` — system font stack, clean white card layout, attachments moved after signature/above footer, Capital Case signature name normalization, configurable footer text via `EMAIL_FOOTER_TEXT` constant
-- **V017 migration:** Moves 7 `SYS_HEALTH_*` constants from DB to `ssa.properties` (same pattern as V015 S3 keys), seeds `EMAIL_FOOTER_TEXT`
-- **healthcheck.sh update:** Reads SYS_HEALTH_* from `ssa.properties` via `prop()` helper, validates required keys. Updated on master VPS, tested, ready for snapshot
-- **Admin page header cleanup (started):** Identified redundant `adminNav.jsp` toolbar + duplicate h4 headers on serviceManager25.jsp, rateManager25.jsp, library25.jsp. serviceManager edit confirmed, others pending. agencyManager25.jsp already clean
-- `V017__health_constants_to_properties.sql` created
+---
 
-Key decisions: Health monitoring config belongs in infrastructure (ssa.properties) not PSP-specific DB constants. EMAIL_FOOTER_TEXT seeded with PSP name for per-deployment customization. Admin toolbar fully redundant now that unified navbar has Admin dropdown.
+## February 25, 2026 — Migration Validation & Dev Workflow (Session 3)
+
+Validated the full V001–V013 migration chain against a fresh production dump. Found and corrected 13 bugs across 7 scripts. Produced validated combined upgrade script and V013 dev baseline. Established new dev workflow: `git pull` → import baseline → run DatabaseInitializer → import Datapath exports.
+
+---
+
+## February 26, 2026 — Production Upgrade Validation & Entity-Schema Alignment (Session 1)
+
+- **Production dump import/test:** Imported fresh production dump locally, ran upgrade script, tested backward/forward compatibility across branches
+- **Immutable list bug fix:** `CloseActivity25.java` `.toList()` → `.collect(Collectors.toList())` (Java 16+ immutable list caused `UnsupportedOperationException`)
+- **Entity-schema mismatch discovery:** Found 8 tables where JPA entities were refactored after migration scripts were written. Fixed all in the combined upgrade script.
+- **Extended upgrade script** from V013 to V016 (V014: chatbot, V015: constants-to-properties, V016: BPO registration)
+- **Key learnings:** PowerShell `>` corrupts SQL dumps (UTF-16 BOM), `SET sql_log_bin = 0` required for `DEFAULT (UUID())`, entity refactoring creates silent schema drift
+
+---
+
+## February 26, 2026 — Email Template + SMTP Settings + Health Config (Session 2)
+
+- **SendAutoEmail recovery:** Created redirect wrapper servlet for legacy `task.servletName` DB records
+- **SMTP Settings Modal:** `UpdateSmtpSettings` servlet + `smtpSettingsMod25.jsp` — PSP Admin can configure all SMTP settings and footer text
+- **Email Template redesign:** Complete rewrite of `EmailTemplate.java` — system font stack, clean white card layout, attachments after signature, Capital Case name normalization, configurable footer text via `EMAIL_FOOTER_TEXT` constant
+- **V017 migration:** Moved 7 `SYS_HEALTH_*` constants from DB to `ssa.properties`, seeded `EMAIL_FOOTER_TEXT`
+- **healthcheck.sh update:** Reads config from `ssa.properties` via `prop()` helper
+
+---
+
+## February 26, 2026 — Application Section & Field Editor (Session 3)
+
+Added full Application Section and Field management GUI to the Service Manager:
+
+- **Third "Sections" tab** on `serviceManager25.jsp` alongside Services and Enhancements
+- Left panel: scrollable section list with drag-sort (SortableJS), suppress toggle, field count badge
+- Right panel: section info card, linked Services/Enhancements (read-only), interactive Fields table with drag-sort, edit, suppress per field
+- **Section CRUD:** Create/edit modals (name, description, scope ALL/LOS), suppress toggle
+- **Field CRUD:** Create modal (label, auto-generated fieldKey, fieldType dropdown with 9 types, selectOptions pipe-delimited, helpText, isRequired). Edit modal (label, selectOptions, helpText, isRequired — fieldKey/fieldType locked). Per-row suppress toggle.
+- **V018 migration:** `applicationsection.suppressed` column
+- **V019 migration:** `applicationfield.suppressed` column
+
+---
+
+## February 26, 2026 — ALL-Scope Auto-Linking + Admin GUI Polish (Session 4)
+
+### Application Section "ALL" Scope Auto-Linking
+Automatic join table population so ALL-scoped sections are always linked to every active LOS and Enhancement:
+
+- `ServiceManagerAction.java` — 4 cases updated: `createAppSection` (auto-link on ALL), `editAppSection` (additive link on scope change to ALL), `createLos` (auto-link ALL sections), `createEnhancement` (same)
+- `serviceManager25.jsp` — Hide X remove button for ALL-scoped sections, ALL badge, exclude from assign dropdowns
+- Bug fix: removed misplaced `<c:if>` wrapper inside Fields table
+
+### Admin Page GUI Polish
+- **Rate Manager (`rateManager25.jsp`):** Removed subtitle row, moved rate name/controls into Pricing Grid hdr-bar, added `mt-3` spacing
+- **Resource Library (`library25.jsp`):** Removed subtitle row, moved resource title into Details hdr-bar, added `mt-3` spacing
+
+No database changes — all servlet logic and JSP presentation only.
+
+---
+
+## February 27, 2026 — Production V019 + PSP Dashboard + Renewal Modal (Session 1)
+
+- **V018 + V019 applied to production** (application section/field suppressed columns)
+- **Migration script bug fixes:** Corrected `script` → `script_name` and `installed_on` → `applied_on` in V018/V019 self-registration INSERTs
+- **Add Benefit to Renewal modal modernization:** SSA-colored header, modern form layout
+- **PSP Admin Dashboard:** New `PspDashboardHome` servlet + `pspDashboard25.jsp`. Summary stat cards, filter bar (owner pills + stage pills), activity list grouped by due bucket, team workload panel. All filtering client-side in JavaScript. Dashboard link in Admin navbar dropdown.
+
+---
+
+## February 27, 2026 — ServiceItem Unification (Sessions 2–5)
+
+**Living reference:** `serviceitem_unification_design_v2.md` (design doc, now complete)
+
+Major project consolidating the four divergent "activity item → task sequence" paths into a unified ServiceItem model. Completed across four sessions:
+
+### Phase 1: Schema (V020)
+- Added columns to `templatepurpose` (renamed to ServiceItem in Java): `code`, `psp_id`, `is_suppressed`, `provider_ref`, `source_type`, `default_renewal_months`, `has_required_tasks`, `category_id`
+- Added `renewal_months` to `benefit`, `service_item_id` to `los` and `enhancement`, `ticket_service_item_id` to `assignee`
+- Backfilled ticket → ServiceItem links through existing TicketSubCategory → TemplatePurpose chain
+
+### Phase 2: Java Entity Updates
+- TemplatePurpose → ServiceItem, TemplateGroup → ActivityCategory class renames (tables unchanged)
+- Added fields: `Benefit.renewalMonths`, `Ticket.ticketServiceItem`, `LOS.serviceItem`, `Enhancement.serviceItem`
+- Updated `DatabaseInitializer`, `Importer`, `RenewalService` for new fields
+
+### Phase 3: Backfill & Linkage (V021)
+- Created 10 new group 2 ServiceItems (IDs 25-35) for expanded LOSs
+- Linked all 14 LOS and 4 Enhancement records to ServiceItems
+- Renamed SI 17 to "Payment Services", suppressed SI 18 and SI 20
+- Wired auto-ServiceItem creation into `ServiceManagerAction` for new LOS/Enhancement
+
+### Phase 4: TicketSubCategory Elimination
+- Converted Create Ticket flow and global cache from TSC to ServiceItem
+- `AmsDataGlobal.ticketSubCategories` → `ticketServiceItems`
+- `CreateTicket25` writes `ticketServiceItem` directly
+- `SequenceBuilder25` / `SequenceAction25` read suppression from ServiceItem
+- JSP dropdowns iterate ServiceItems instead of TSCs
+
+### Phase 5: Code Cleanup
+- Removed all TSC creation from `DatabaseInitializer`, `ReferenceDataSeeder`, `EntityLookup`
+- Removed `SessionVar.ticketReasonList`, `TicketQueryDAO.getTicketSubCats()`
+- Deleted `createTicketForm.jsp`, `createTicketFormNew.jsp`, `ddTicketTypes.jsp`
+- `TicketKnowledgeDAO` JPQL updated from `ticketSubCategory` to `ticketServiceItem`
+
+### Phase 6: Production Upgrade + Table Drop (V022, V023, V024)
+- **V022:** Discovered 730 orphaned tickets (TSC records with NULL `temp_purpose_id`). Created 6 catch-all ServiceItems (IDs 36-41) and backfilled all orphaned tickets.
+- **V023:** Dropped `ticketsubcategory` table and FK column from `assignee`. Deleted `TicketSubCategory.java`, removed `ticketSubCategory` field from `Ticket.java`, simplified all JSP ternary fallbacks.
+- **V024:** Fixed `a_base_01` through `a_base_05` view chain that still referenced the dropped `ticket_category` column.
+- Final grep for `TicketSubCategory` across all `.java` and `.jsp`: zero results.
+
+**Remaining optional items:** JSP file renames (cosmetic: `ddTemplatePurposes.jsp` → `ddServiceItems.jsp`), future Benefit → ServiceItem direct FK shortcut.
+
+---
+
+## February 27, 2026 — Docs Cleanup & Consolidation (Session 6)
+
+- Deleted 4 obsolete importscript files (V013 and V017 baselines, V013 and V016 upgrade scripts)
+- Exported new `beta_ssa_dev_baseline_thru_V024.sql` baseline
+- Consolidated 10 individual session summary files into this archive
+- Updated `migration_tracker.md` (V024, all environments ✅)
+- Updated `schema_version_migration.sql` (V024 entry added)

@@ -357,21 +357,14 @@ Mirrors `GenerateProp25.createSetup()` / `createChecklist()` / `fillToDoList()`:
 
 ## Database Migration Scripts
 
-All sales pipeline scripts are now tracked in the centralized `docs/analysis/migration_tracker.md` (V001–V003). The individual per-version `.sql` files in `docs/` contain column name bugs that were found and corrected during validation on February 25, 2026.
-
-**For production deployment**, use the validated combined upgrade script at `docs/importscript/production_upgrade_V001_to_V013.sql` — do NOT run the individual scripts.
-
-**For dev baseline reset**, import `docs/importscript/beta_ssa_dev_baseline_thru_V013.sql` which includes all V001–V013 schema changes pre-applied.
-
-See `migration_tracker.md` for full environment status and bug details.
+All sales pipeline scripts (V001–V003) are tracked in the centralized `docs/analysis/migration_tracker.md`. All environments are at V024. The dev baseline dump is `docs/importscript/beta_ssa_dev_baseline_thru_V024.sql`.
 
 ---
 
 ## Remaining Work
 
 1. **Refactor manual setup to dynamic LOS** — `GenerateProp25` uses hardcoded `q1`–`q8` flags mapped to old LOS IDs. Needs refactor to accept dynamic LOS list from DB. See backlog T9. (CONF priority)
-2. **Production migration** — Validated upgrade script ready. See `migration_tracker.md`.
-3. **Empty checklist handling** — Remove task-153 dummy workaround. See backlog T8. (LOW priority)
+2. **Empty checklist handling** — Remove task-153 dummy workaround. See backlog T8. (LOW priority)
 
 ---
 

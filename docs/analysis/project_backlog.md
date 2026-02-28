@@ -49,7 +49,7 @@
 | 12 | Employee Onboarding Portal | MED | 💡 Backlog | `ams_to_be_vision.md` §12 | Self-service portal for new hires. |
 | 13 | Invoicing System | MED | 💡 Backlog | `ams_to_be_vision.md` §13 | Replace Wave invoicing. Auto-generate from rate data. |
 | 14 | Payroll-to-Accounting Automation | LOW | 💡 Backlog | `ams_to_be_vision.md` §14 | Patriot → Wave journal entries via API. |
-| 15 | **AI Employee Knowledge Assistant** | **MED** | **✅ Done** | **`session_history_archive.md` (Feb 19)** | **Built. Pending production deploy (needs V014 migration — see below).** |
+| 15 | AI Employee Knowledge Assistant | MED | ✅ Done | `session_history_archive.md` (Feb 19) | Built and deployed. V014 migration applied to all environments. |
 
 ---
 
@@ -62,17 +62,18 @@
 | T3 | Data layer rename | HIGH | ✅ Done | `session_history_archive.md` (Feb 15–17) | All cryptic names replaced. |
 | T4 | Modal servlet analysis | MED | ✅ Done | — | All modals mapped to servlets. All in modern `controller` package. |
 | T5 | Sequence builder old page cleanup | LOW | 📋 Planned | `session_history_archive.md` (Feb 19) | Delete old builder JSPs/servlets after new builder proven. |
-| T6 | Database migration tracking | HIGH | ✅ Done | `migration_tracker.md` | 19 versions tracked (V001–V019). All applied to production. |
-| T7 | Docs cleanup & consolidation | MED | 🔨 Active | — | Session summaries consolidated. Migration docs corrected Feb 25. Ongoing. |
+| T6 | Database migration tracking | HIGH | ✅ Done | `migration_tracker.md` | 24 versions tracked (V001–V024). All applied to all environments. |
+| T7 | Docs cleanup & consolidation | MED | ✅ Done | — | Session summaries consolidated into archive. Obsolete importscripts deleted. Migration docs current at V024. |
 | T8 | Empty checklist / todo list handling | LOW | 💡 Backlog | `ams_to_be_vision.md` §17 | Remove task-153 dummy workaround. Audit display chain for empty todo list safety. |
 | T9 | Refactor manual setup to dynamic LOS | CONF | 📋 Planned | — | `GenerateProp25` uses hardcoded `q1`–`q8` flags mapped to old LOS IDs (5–10) and hardcoded TP IDs (11–19). Needs refactor to dynamic LOS from DB. Stopgap form (`manualSetup.jsp`) works for original 8 modules. |
 | T10 | PspAgencyHome scoping | HIGH | 📋 Planned | `session_history_archive.md` (Feb 21) | Agency Manager should only see their own agency in PspAgencyHome. Hide rate management for non-PSP users. |
 | T11 | Layout/appearance consolidation | MED | ✅ Done | `session_history_archive.md` (Feb 21) | Unified navbar, CSS, admin pages. Create Ticket modal rebuilt. Email screen modernized. |
 | T12 | GUI modernization Track A | HIGH | ✅ Done | `activity_detail_transition_plan.md` | Activity Detail page fully modernized (A1–A14, S4). Email view/history modernized. |
 | T13 | GUI modernization Track B | MED | 📋 Planned | `activity_detail_transition_plan.md` | Mobile responsiveness, remaining pages. |
-| T14 | PSP branding system | MED | ✅ Done | `session_history_2026-02-25.md` | Logo/favicon upload, external storage, dynamic JSP references. D-32 (BRANDING_PATH) still needed on production. |
-| T15 | User filter presets | MED | ✅ Done | `session_summary_2026-02-25_s2.md` | 3 configurable filter slots per user. V013 migration. |
-| T16 | Client-side activity list filtering | MED | 💡 Backlog | — | Convert ViewHome25 center column from server-side form submit filtering to client-side JS filtering (same pattern as PspDashboard). Hydrate all activities into JS array on page load, filter/sort instantly in browser. Eliminates server round-trip on every filter change. |
+| T14 | PSP branding system | MED | ✅ Done | `session_history_archive.md` (Feb 25) | Logo/favicon upload, external storage, dynamic JSP references. D-32 (BRANDING_PATH) still needed on production. |
+| T15 | User filter presets | MED | ✅ Done | `session_history_archive.md` (Feb 25) | 3 configurable filter slots per user. V013 migration. |
+| T16 | Client-side activity list filtering | MED | 💡 Backlog | — | Convert ViewHome25 center column from server-side form submit to client-side JS filtering (same pattern as PspDashboard). |
+| T17 | ServiceItem Unification | HIGH | ✅ Done | `serviceitem_unification_design_v2.md` | TemplatePurpose → ServiceItem rename, TicketSubCategory eliminated, all tickets backfilled. V020–V024. |
 
 ---
 
@@ -101,6 +102,7 @@
 | Send Proposal (email) | ✅ |
 | Proposal Landing Page (public) | ✅ |
 | Application Form (dynamic sections, conditional logic, IRS limits) | ✅ |
+| Application Section & Field Editor (admin GUI) | ✅ |
 | Save/Restore Progress | ✅ |
 | Rate Sheet Upload (Wasabi) | ✅ |
 | Submit Application | ✅ |
@@ -110,19 +112,19 @@
 | Agent Landing Page (pipeline view, stage management) | ✅ |
 | Agent-scoped ProposalBuilder | ✅ |
 | Full Pipeline Test | ✅ |
-| Production DB Migration | ✅ All environments at V019 |
+| Production DB Migration | ✅ All environments at V024 |
 
 ---
 
-## AI Chatbot — Deployment Checklist
+## AI Chatbot — Status
 
-Code is complete. V014 migration applied to all environments. Production deploy ready.
+Code complete. V014 migration applied to all environments. Production deploy ready.
 
 ---
 
-## PSP Dashboard — New (Feb 27, 2026)
+## PSP Dashboard — Status
 
-Built and functional. See `session_summary_2026-02-27.md` for full details.
+Built and functional. See `session_history_archive.md` (Feb 27) for details.
 - Servlet: `PspDashboardHome.java`
 - JSP: `pspDashboard25.jsp`
 - Client-side JS filtering (instant, no server round-trips)

@@ -1,8 +1,10 @@
 -- =============================================================================
 -- schema_version_migration.sql
--- =============================================================================
---
--- Run this after importing the baseline to register all applied versions.
+-- Creates the schema_version table and registers all known migrations.
+-- Run this on any database that needs the version history populated
+-- (e.g., dev_ssa after DatabaseInitializer, or a manually created schema).
+-- The baseline dump already includes this table with data; this script
+-- is for cases where the table is empty or missing.
 -- =============================================================================
 
 CREATE TABLE IF NOT EXISTS schema_version (
@@ -41,4 +43,5 @@ INSERT IGNORE INTO schema_version (version, description, script_name) VALUES
 ('V020', 'ServiceItem unification - schema additions and data backfill', 'V020__service_item_unification.sql'),
 ('V021', 'ServiceItem linkage - LOS/Enhancement backfill, Payment Services rename, suppress duplicates', 'V021__service_item_linkage_backfill.sql'),
 ('V022', 'Orphaned ticket ServiceItem backfill', 'V022__orphaned_ticket_serviceitem_backfill.sql'),
-('V023', 'Drop ticketsubcategory table and FK', 'V023__drop_ticketsubcategory.sql');
+('V023', 'Drop ticketsubcategory table and FK', 'V023__drop_ticketsubcategory.sql'),
+('V024', 'Fix views referencing dropped ticket_category column', 'V024__fix_views_drop_ticket_category.sql');

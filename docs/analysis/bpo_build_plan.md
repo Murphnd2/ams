@@ -8,17 +8,17 @@
 
 ## Build Order Summary
 
-| Step | Description | Dependencies |
-|------|-------------|--------------|
-| 1 | Data model changes (migration script) | None |
-| 2 | Auth & role routing (BPO login flow) | Step 1 |
-| 3 | BPO Home servlet + landing page JSP | Step 2 |
-| 4 | Revised delegation logic in Task Manager | Step 1 |
-| 5 | BPO ToDo workflow (complete / verify / revert) | Steps 3, 4 |
-| 6 | ToDo notes/communication layer | Step 5 |
-| 7 | BPO initialization path (deployment key) | Steps 1, 2 |
-| 8 | Vendor Management admin page (D-26) | Step 1 |
-| 9 | Demo data & walkthrough script | All above |
+| Step | Description | Dependencies | Status |
+|------|-------------|--------------|--------|
+| 1 | Data model changes (migration script) | None | ✅ Done (V011, V016) |
+| 2 | Auth & role routing (BPO login flow) | Step 1 | ✅ Done |
+| 3 | BPO Home servlet + landing page JSP | Step 2 | ✅ Done |
+| 4 | Revised delegation logic in Task Manager | Step 1 | ✅ Done |
+| 5 | BPO ToDo workflow (complete / verify / revert) | Steps 3, 4 | ✅ Done |
+| 6 | ToDo notes/communication layer | Step 5 | ✅ Done |
+| 7 | BPO initialization path (deployment key) | Steps 1, 2 | 📋 Planned |
+| 8 | Vendor Management admin page (D-26) | Step 1 | 📋 Planned |
+| 9 | Demo data & walkthrough script | All above | 📋 Planned |
 
 ---
 

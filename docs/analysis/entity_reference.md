@@ -265,14 +265,6 @@ All `Assignee` subtypes share the same database table with a discriminator colum
 | **Key Fields** | `id` (Long), `description`, `shortCode` |
 | **Notes** | Service-oriented categories: Claims, Debit Card, COBRA, HSA, etc. (Updated Feb 2026 from intent-based HOW/WHY/NEED categories.) |
 
-### TicketSubCategory
-| | |
-|---|---|
-| **Class** | `TicketSubCategory` |
-| **ID** | `id` (Long, column `subcategory_id`) |
-| **Key Fields** | `description`, `isActive` |
-| **Relationships** | `ticketCategory` → M:1 TicketCategory (`category_id`), `serviceItem` → 1:1 TemplatePurpose (`temp_purpose_id`) |
-
 ### ContactMethod
 | | |
 |---|---|
