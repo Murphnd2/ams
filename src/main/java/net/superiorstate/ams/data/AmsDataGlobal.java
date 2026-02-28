@@ -19,7 +19,6 @@ import net.superiorstate.ams.model.activity.note.ActivityStatus;
 import net.superiorstate.ams.model.activity.note.ReasonCreated;
 import net.superiorstate.ams.model.activity.ticket.ContactMethod;
 import net.superiorstate.ams.model.activity.ticket.TicketCategory;
-import net.superiorstate.ams.model.activity.ticket.TicketSubCategory;
 import net.superiorstate.ams.model.activity.ticket.tEmployee;
 import net.superiorstate.ams.model.general.PSP;
 import net.superiorstate.ams.model.general.Person;
@@ -44,7 +43,7 @@ public class AmsDataGlobal {
 
     private volatile boolean delegationDirty = false;
     private List<TicketCategory> ticketCategories;
-    private List<TicketSubCategory> ticketSubCategories;
+    private List<ServiceItem> ticketServiceItems;
     private List<TaskFrequency> taskFrequencies;
     private List<ActivityStatus> activityStatuses;
     private List<WebLink> insertLinks;
@@ -96,7 +95,7 @@ public class AmsDataGlobal {
             setReasonsCreated(TicketQueryDAO.getReasons(em));
             setContactMethods(TicketQueryDAO.getContactMethods(em));
             setTicketCategories(TicketQueryDAO.getTicketCategories(em));
-            setTicketSubCategories(TicketQueryDAO.getTicketSubCategoryList(em));
+            setTicketServiceItems(TicketQueryDAO.getActiveTicketServiceItems(em));
             setTaskFrequencies(ChecklistDAO.getTaskFrequencies(em));
             setActivityStatuses(TicketQueryDAO.getActivityStatuses(em));
             setInsertLinks(TicketQueryDAO.getInsertLinkList(em));
@@ -325,8 +324,8 @@ public class AmsDataGlobal {
         this.contactMethods = contactMethods;
     }
 
-    public void setTicketSubCategories(List<TicketSubCategory> ticketSubCategories) {
-        this.ticketSubCategories = ticketSubCategories;
+    public void setTicketServiceItems(List<ServiceItem> ticketServiceItems) {
+        this.ticketServiceItems = ticketServiceItems;
     }
     private List<UserRole> loadAssignableRoles(EntityManager em) {
         Query q = em.createQuery(
@@ -447,8 +446,8 @@ public class AmsDataGlobal {
         return contactMethods;
     }
 
-    public List<TicketSubCategory> getTicketSubCategories() {
-        return ticketSubCategories;
+    public List<ServiceItem> getTicketServiceItems() {
+        return ticketServiceItems;
     }
 
     public List<TaskFrequency> getTaskFrequencies() {

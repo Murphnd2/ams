@@ -97,7 +97,7 @@
                         <c:set var="suppressedClass" value="" />
                         <c:set var="suppressedBadge" value="" />
                         <c:set var="suppressedAttr" value="false" />
-                        <c:if test="${tix.getTicketSubCategory() != null && !tix.getTicketSubCategory().isActive()}">
+                        <c:if test="${tix.getServiceItem() != null && tix.getServiceItem().isSuppressed()}">
                             <c:set var="suppressedClass" value="seq-suppressed" />
                             <c:set var="suppressedBadge"><span class="badge bg-warning text-dark ms-1" style="font-size:0.65rem;">hidden</span></c:set>
                             <c:set var="suppressedAttr" value="true" />

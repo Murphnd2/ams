@@ -42,3 +42,4 @@ INSERT IGNORE INTO schema_version (version, description, script_name) VALUES
 ('V018', 'Application section suppressed column', 'V018__application_section_suppressed.sql'),
 ('V019', 'Application field suppressed column', 'V019__application_field_suppressed.sql'),
 ('V020', 'ServiceItem unification - schema additions and data backfill', 'V020__service_item_unification.sql');
+('V021', 'ServiceItem linkage - LOS/Enhancement backfill, Payment Services rename, suppress duplicates', 'V021__service_item_linkage_backfill.sql'),

@@ -281,9 +281,10 @@
                 <option value="S" selected>Select a reason...</option>
                 <option value="0" class="text-secondary fst-italic">Enter my own reason</option>
                 <%-- Server renders flat options; JS regroups into <optgroup> on load --%>
-                <c:forEach var="cat" items="${applicationScope.global.getTicketSubCategories()}">
-                  <option value="${cat.getId()}">
-                      ${cat.getNoteCategory().getShortText()} - ${cat.getDescription()}
+
+                <c:forEach var="si" items="${applicationScope.global.getTicketServiceItems()}">
+                  <option value="${si.getId()}">
+                      ${si.getTicketCategory().getShortText()} - ${si.getDescription()}
                   </option>
                 </c:forEach>
               </select>

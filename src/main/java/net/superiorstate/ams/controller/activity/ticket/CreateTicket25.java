@@ -11,12 +11,13 @@ import net.superiorstate.ams.data.dao.TicketQueryDAO;
 import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.data.resolver.PersonResolver;
 import net.superiorstate.ams.model.activity.checklist.CheckList;
+import net.superiorstate.ams.model.activity.checklist.sequences.support.ActivityCategory;
+import net.superiorstate.ams.model.activity.checklist.sequences.support.ServiceItem;
 import net.superiorstate.ams.model.activity.checklist.tasks.SortedTask;
 import net.superiorstate.ams.model.activity.checklist.tasks.ToDo;
 import net.superiorstate.ams.model.activity.ticket.ContactMethod;
 import net.superiorstate.ams.model.activity.ticket.Ticket;
 import net.superiorstate.ams.model.activity.ticket.TicketCategory;
-import net.superiorstate.ams.model.activity.ticket.TicketSubCategory;
 import net.superiorstate.ams.model.general.PSP;
 import net.superiorstate.ams.model.general.Person;
 import net.superiorstate.ams.model.summit.archive.Employee;
@@ -35,7 +36,7 @@ public class CreateTicket25 extends HttpServlet {
         private String contactNameField;
         private String reasonField;
         private int reasonId;
-        private TicketSubCategory category;
+        private ServiceItem serviceItem;
         private Person contact;
         private String issue;
         private String firstName;
@@ -172,10 +173,7 @@ public class CreateTicket25 extends HttpServlet {
             t.setAssignedTo(getCurrentUser());
             t.setDueDate(Date.valueOf(LocalDate.now().plusDays(7)));
             t.setDescription(getIssue());
-            t.setTicketSubCategory(getCategory());
-            // Dual-write: also set direct ServiceItem FK for new tickets
-            if(getCategory() != null && getCategory().getServiceItem() != null)
-                t.setTicketServiceItem(getCategory().getServiceItem());
+            t.setTicketServiceItem(getServiceItem());
             t.setContact(getContact());
             t.setPrimaryContact(getContact());
             t.setComplete(false);
@@ -268,6 +266,7 @@ public class CreateTicket25 extends HttpServlet {
 
         private void processTicketType(EntityManager em){
             if(reasonId==0){
+                // "Enter my own reason" — create a new ServiceItem for this custom reason
                 String reason = getReasonField();
                 int lp = reason.indexOf("[-");
                 int sp = reason.indexOf("-]",lp);
@@ -276,7 +275,7 @@ public class CreateTicket25 extends HttpServlet {
                     try{
                         int rId = Integer.parseInt(reason.substring(lp+2,sp));
                         setReasonId(rId);
-                        setCategory(EntityLookup.getSubCategoryById(em,getReasonId()));
+                        setServiceItem(EntityLookup.getServiceItemById(em, getReasonId()));
                         createOne = false;
                     } catch (Exception e){
                         e.printStackTrace();
@@ -284,18 +283,24 @@ public class CreateTicket25 extends HttpServlet {
                 }
                 if(createOne){
                     TicketCategory tc = getTicketCategory(em);
-                    TicketSubCategory tsc;
+                    ActivityCategory tg = em.find(ActivityCategory.class, 3); // group 3 = Ticket
                     em.getTransaction().begin();
-                    tsc = new TicketSubCategory();
-                    tsc.setActive(false);
-                    tsc.setTicketCategory(tc);
-                    tsc.setDescription(getReasonField());
-                    em.persist(tsc);
+                    ServiceItem si = new ServiceItem();
+                    si.setDescription(getReasonField());
+                    si.setActivityCategory(tg);
+                    si.setPsp(EntityLookup.getPspById(em, 4L));
+                    si.setSourceType("MANUAL");
+                    si.setTicketCategory(tc);
+                    si.setSuppressed(true); // Custom one-off reasons start suppressed
+                    si.setSortOrder(100);
+                    em.persist(si);
                     em.getTransaction().commit();
-                    setCategory(tsc);
+                    setServiceItem(si);
                 }
-            } else setCategory(EntityLookup.getSubCategoryById(em,getReasonId()));
-
+            } else {
+                // Selected from dropdown — reasonId is a ServiceItem ID
+                setServiceItem(EntityLookup.getServiceItemById(em, getReasonId()));
+            }
         }
 
 
@@ -312,7 +317,7 @@ public class CreateTicket25 extends HttpServlet {
         setContactNameField(null);
         setReasonField(null);
         setReasonId(0);
-        setCategory(null);
+        setServiceItem(null);
         setIssue(null);
         setFirstName(null);
         setLastName(null);
@@ -337,8 +342,11 @@ public class CreateTicket25 extends HttpServlet {
         setReasonId(rid1i);
         if(rid1i==0)
             setReasonField(request.getParameter("reasonNameTicket"));
-        else
-            setReasonField(EntityLookup.getSubCategoryById(em,rid1i).getDescription());
+        else {
+            // Dropdown now sends ServiceItem IDs
+            ServiceItem si = EntityLookup.getServiceItemById(em, rid1i);
+            setReasonField(si != null ? si.getDescription() : "Unknown");
+        }
         String text=null;
         try{
             text = request.getParameter("ticketDescription");
@@ -393,12 +401,12 @@ public class CreateTicket25 extends HttpServlet {
             this.reasonId = reasonId;
         }
 
-        public TicketSubCategory getCategory() {
-            return category;
+        public ServiceItem getServiceItem() {
+            return serviceItem;
         }
 
-        public void setCategory(TicketSubCategory category) {
-            this.category = category;
+        public void setServiceItem(ServiceItem serviceItem) {
+            this.serviceItem = serviceItem;
         }
 
         public Person getContact() {

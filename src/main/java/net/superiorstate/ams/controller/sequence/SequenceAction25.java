@@ -7,6 +7,7 @@ import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.AmsDataGlobal;
+import net.superiorstate.ams.data.dao.TicketQueryDAO;
 import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.model.activity.checklist.sequences.RequiredTaskList;
 import net.superiorstate.ams.model.activity.checklist.sequences.support.TaskSequenceTable;
@@ -252,9 +253,9 @@ public class SequenceAction25 extends HttpServlet {
 
             // Update global subcategory cache
             if (global != null) {
-                List<TicketSubCategory> updated = new ArrayList<>(global.getTicketSubCategories());
-                updated.add(tsc);
-                global.setTicketSubCategories(updated);
+                List<ServiceItem> updated = new ArrayList<>(global.getTicketServiceItems());
+                updated.add(tp);
+                global.setTicketServiceItems(updated);
                 getServletContext().setAttribute("global", global);
             }
         } else {
@@ -318,20 +319,12 @@ public class SequenceAction25 extends HttpServlet {
         // Flag whether the item is now suppressed (for redirect logic)
         request.setAttribute("justSuppressed", si.isSuppressed());
 
-        // Also keep the legacy TicketSubCategory in sync if one exists
-        TicketSubCategory tsc = findSubCategoryByPurpose(em, si.getId());
-        if (tsc != null) {
-            em.getTransaction().begin();
-            tsc.setActive(!si.isSuppressed());
-            em.persist(tsc);
-            em.getTransaction().commit();
-        }
 
         // Refresh the global ticket subcategory cache
         AmsDataGlobal global = (AmsDataGlobal) getServletContext().getAttribute("global");
         if (global != null) {
-            List<TicketSubCategory> refreshed = getActiveTicketSubCategories(em);
-            global.setTicketSubCategories(refreshed);
+            List<ServiceItem> refreshed = TicketQueryDAO.getActiveTicketServiceItems(em);
+            global.setTicketServiceItems(refreshed);
             getServletContext().setAttribute("global", global);
         }
 

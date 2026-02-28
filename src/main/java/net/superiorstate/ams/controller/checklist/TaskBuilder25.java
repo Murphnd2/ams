@@ -17,7 +17,6 @@ import net.superiorstate.ams.model.activity.checklist.sequences.support.TaskSequ
 import net.superiorstate.ams.model.activity.checklist.sequences.support.ServiceItem;
 import net.superiorstate.ams.model.activity.checklist.tasks.Task;
 import net.superiorstate.ams.model.activity.ticket.TicketCategory;
-import net.superiorstate.ams.model.activity.ticket.TicketSubCategory;
 import net.superiorstate.ams.model.general.PSP;
 
 import java.io.IOException;
@@ -173,33 +172,22 @@ public class TaskBuilder25 extends HttpServlet {
         ServiceItem tp;
         if(isNewList){
             if(radioTikRenSet.equals("0")){
-                TicketSubCategory tsc = new TicketSubCategory();
                 TicketCategory tc = EntityLookup.getTicketCategoryById(em,categoryId);
                 ActivityCategory tg = EntityLookup.getTemplateGroupById(em,3);
                 em.getTransaction().begin();
-                tsc.setActive(true);
-                tsc.setDescription(textTikNew);
-                tsc.setTicketCategory(tc);
-                em.persist(tsc);
-                em.getTransaction().commit();
-
-                em.getTransaction().begin();
                 tp = new ServiceItem();
                 tp.setSortOrder(100);
-                assert tc != null;
                 tp.setDescription(textTikNew);
                 tp.setActivityCategory(tg);
+                tp.setPsp(psp);
+                tp.setSourceType("MANUAL");
+                tp.setTicketCategory(tc);
                 em.persist(tp);
                 em.getTransaction().commit();
 
-                em.getTransaction().begin();
-                tsc.setServiceItem(tp);
-                em.persist(tsc);
-                em.getTransaction().commit();
-
-                List<TicketSubCategory> newList = new ArrayList<>(global.getTicketSubCategories());
-                newList.add(tsc);
-                global.setTicketSubCategories(newList);
+                List<ServiceItem> newList = new ArrayList<>(global.getTicketServiceItems());
+                newList.add(tp);
+                global.setTicketServiceItems(newList);
                 request.getServletContext().setAttribute("global",global);
 
 

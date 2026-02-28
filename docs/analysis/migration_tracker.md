@@ -13,20 +13,20 @@ Tracks database schema versions across environments.
 | Local (either) | 127.0.0.1:3306 | dev_ssa | Initialization testing (wiped regularly) |
 | Production | superiorstate.biz | beta_ssa | Live server |
 
-## Current Highest Version: V020
+## Current Highest Version: V021
 
 ## Dev Baseline
 
-The current baseline is `docs/importscript/beta_ssa_dev_baseline_thru_V017.sql` — a structure-only dump from production after V017 was applied. **Needs update to V020** — re-export from any database that is current.
+The current baseline is `docs/importscript/beta_ssa_dev_baseline_thru_V017.sql` — a structure-only dump from production after V017 was applied. **Needs update to V021** — re-export from any database that is current.
 
 **To reset a dev database:**
-1. Export new baseline: Workbench → Server → Data Export → `beta_ssa` → Structure Only → save as `beta_ssa_dev_baseline_thru_V020.sql`
+1. Export new baseline: Workbench → Server → Data Export → `beta_ssa` → Structure Only → save as `beta_ssa_dev_baseline_thru_V021.sql`
 2. Reset target: `DROP DATABASE IF EXISTS dev_ssa; CREATE DATABASE dev_ssa;`
 3. Import baseline: Workbench → Server → Data Import → select file → target `dev_ssa`
 4. Start app against `dev_ssa` → `DatabaseInitializer` seeds data
 5. For `beta_ssa`, also re-import Datapath exports after baseline import
 
-Future migrations (V021+) are applied incrementally on top of the baseline.
+Future migrations (V022+) are applied incrementally on top of the baseline.
 
 ## Schema Version Table
 
@@ -44,49 +44,22 @@ All new schema changes must follow these rules:
 
 Individual migration scripts are no longer stored in the repo. The baseline dump + `schema_version_migration.sql` are the source of truth. Session summaries document what each version changed.
 
-## Migration Log
+## Version History
 
-| # | Version | Description | Applied |
-|---|---------|-------------|---------|
-| 1 | V001 | Sales pipeline — tables, columns, entity renames | ✅ All |
-| 2 | V002 | Proposal source_activity_id FK | ✅ All |
-| 3 | V003 | LOS expansion, app sections, IRS limits, S3 constants | ✅ All |
-| 4 | V004 | Service manager — enhancement, join tables, SM FKs | ✅ All |
-| 5 | V005 | Rate manager — ratetable sort_order | ✅ All |
-| 6 | V006 | Invitation system — invitation table, agency manager_id | ✅ All |
-| 7 | V007 | Resource library — category, material FK, feature FK | ✅ All |
-| 8 | V008 | Opportunity system — assignee columns, sales tasks | ✅ All |
-| 9 | V009 | Timeclock correction — request table | ✅ All |
-| 10 | V010 | PSP opportunity integration — sales role, managed_by | ✅ All |
-| 11 | V011 | BPO delegation — todo BPO columns, todo_guid, task_guid, todo_note | ✅ All |
-| 12 | V012 | Role cleanup and PSP branding constants | ✅ All |
-| 13 | V013 | User filter presets — 3 slots per user | ✅ All |
-| 14 | V014 | Chatbot deployment — note.is_resolution, ticket categories | ✅ All |
-| 15 | V015 | Move S3 and API key constants to ssa.properties | ✅ All |
-| 16 | V016 | BPO registration and PSP assignment tables | ✅ All |
-| 17 | V017 | Move SYS_HEALTH constants to ssa.properties, seed EMAIL_FOOTER_TEXT | ✅ All |
-| 18 | V018 | Application section suppressed column | ✅ All |
-| 19 | V019 | Application field suppressed column | ✅ All |
-| 20 | V020 | ServiceItem unification — schema additions and data backfill | ✅ dev_ssa |
-
-## Production Upgrade History
-
-**February 26, 2026:** Full V001–V017 upgrade applied to production.
-- Backup taken via `mysqldump` before upgrade
-- `production_upgrade_V001_to_V016.sql` run first (combined script handling partial V001 state)
-- Two `DEFAULT (UUID())` columns required manual workaround (MySQL replication mode blocked non-deterministic defaults — split into ALTER + UPDATE + MODIFY)
-- `V017__health_constants_to_properties.sql` run separately
-- `ssa.properties` updated with `SYS_HEALTH_*` keys
-- Backward compatibility confirmed: `main` branch (old code) runs cleanly against V017 schema
-- Old upgrade scripts and per-version migration files deleted from repo after successful upgrade
-
-**February 27, 2026:** V018 + V019 applied to production.
-- V018: `applicationsection.suppressed` column already existed from earlier manual run; only `schema_version` registration was needed
-- V019: Full ALTER + registration applied cleanly
-- Both scripts had incorrect column names in self-registration INSERTs (`script`→`script_name`, `installed_on`→`applied_on`); corrected in repo
-- All environments now at V019
+| Version | Description | beta_ssa (work) | beta_ssa (home) | dev_ssa | Production |
+|---------|-------------|-----------------|-----------------|---------|------------|
+| V001–V013 | Sales pipeline through user filter presets | ✅ | ✅ | ✅ | ✅ |
+| V014 | Chatbot deployment | ✅ | ✅ | ✅ | ✅ |
+| V015 | Constants to properties | ✅ | ✅ | ✅ | ✅ |
+| V016 | BPO registration tables | ✅ | ✅ | ✅ | ✅ |
+| V017 | Health constants to properties | ✅ | ✅ | ✅ | ✅ |
+| V018 | Application section suppressed | ✅ | ✅ | ✅ | ⬚ |
+| V019 | Application field suppressed | ✅ | ✅ | ✅ | ⬚ |
+| V020 | ServiceItem unification - schema + backfill | ✅ | ⬚ | ✅ | ⬚ |
+| V021 | ServiceItem linkage - LOS/Enhancement backfill | ✅ | ⬚ | ⬚ | ⬚ |
 
 ## Notes
 
 - V020 requires corresponding Java code changes (TemplatePurpose → ServiceItem, TemplateGroup → ActivityCategory class/field renames). The V020 schema is backward-compatible for column additions but the code branch with renames must be deployed alongside the schema change.
 - V020 does NOT drop the `ticketsubcategory` table — that will be a future migration after all Java references are removed.
+- V021 creates new group 2 ServiceItems (IDs 25-35), renames SI 17 to "Payment Services", suppresses SI 18 and SI 20, and links all LOS and Enhancement records to their ServiceItems.

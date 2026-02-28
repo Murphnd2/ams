@@ -7,6 +7,8 @@ import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.AmsDataLocal;
 import net.superiorstate.ams.data.resolver.EntityLookup;
+import net.superiorstate.ams.model.activity.checklist.sequences.support.ActivityCategory;
+import net.superiorstate.ams.model.activity.checklist.sequences.support.ServiceItem;
 import net.superiorstate.ams.model.general.PSP;
 import net.superiorstate.ams.model.sales.application.ApplicationField;
 import net.superiorstate.ams.model.sales.application.ApplicationSection;
@@ -46,6 +48,22 @@ public class ServiceManagerAction extends HttpServlet {
                     los.setPsp(psp);
                     em.getTransaction().begin();
                     em.persist(los);
+                    em.getTransaction().commit();
+
+                    // Auto-create linked ServiceItem (group 2 = Setup)
+                    ActivityCategory setupCategory = em.find(ActivityCategory.class, 2);
+                    ServiceItem si = new ServiceItem();
+                    si.setDescription(shortText.trim());
+                    si.setActivityCategory(setupCategory);
+                    si.setPsp(psp);
+                    si.setSourceType("MANUAL");
+                    si.setSuppressed(false);
+                    si.setHasRequiredTasks(true);
+                    si.setSortOrder(los.getSortOrder());
+                    em.getTransaction().begin();
+                    em.persist(si);
+                    los.setServiceItem(si);
+                    em.merge(los);
                     em.getTransaction().commit();
 
                     // Auto-link all ALL-scoped sections to this new LOS
@@ -100,6 +118,22 @@ public class ServiceManagerAction extends HttpServlet {
                     enh.setPsp(psp);
                     em.getTransaction().begin();
                     em.persist(enh);
+                    em.getTransaction().commit();
+
+                    // Auto-create linked ServiceItem (group 2 = Setup)
+                    ActivityCategory setupCategory = em.find(ActivityCategory.class, 2);
+                    ServiceItem si = new ServiceItem();
+                    si.setDescription(shortText.trim());
+                    si.setActivityCategory(setupCategory);
+                    si.setPsp(psp);
+                    si.setSourceType("MANUAL");
+                    si.setSuppressed(false);
+                    si.setHasRequiredTasks(true);
+                    si.setSortOrder(enh.getSortOrder());
+                    em.getTransaction().begin();
+                    em.persist(si);
+                    enh.setServiceItem(si);
+                    em.merge(enh);
                     em.getTransaction().commit();
 
                     // Auto-link all ALL-scoped sections to this new Enhancement
@@ -250,7 +284,7 @@ public class ServiceManagerAction extends HttpServlet {
                     ApplicationSection section = new ApplicationSection();
                     section.setName(name.trim());
                     section.setDescription(desc != null ? desc.trim() : "");
-                    section.setScope(scope != null ? scope.trim() : "ALL");
+                    section.setScope(scope != null ? scope.trim() : "LOS");
                     section.setSortOrder(9999);
                     section.setSuppressed(false);
                     section.setPsp(psp);
@@ -258,7 +292,7 @@ public class ServiceManagerAction extends HttpServlet {
                     em.persist(section);
                     em.getTransaction().commit();
 
-                    // Auto-link ALL-scoped sections to every active LOS and Enhancement
+                    // If ALL-scoped, auto-link to all active LOSs and Enhancements
                     if ("ALL".equals(section.getScope())) {
                         List<LOS> allLos = em.createQuery(
                                         "SELECT l FROM LOS l WHERE l.psp.id = :pspId AND l.suppressed = false", LOS.class)
@@ -269,8 +303,16 @@ public class ServiceManagerAction extends HttpServlet {
                                 .setParameter("pspId", psp.getId().longValue())
                                 .getResultList();
                         em.getTransaction().begin();
-                        section.setLosList(new java.util.ArrayList<>(allLos));
-                        section.setEnhancementList(new java.util.ArrayList<>(allEnh));
+                        for (LOS l : allLos) {
+                            if (!section.getLosList().contains(l)) {
+                                section.getLosList().add(l);
+                            }
+                        }
+                        for (Enhancement e : allEnh) {
+                            if (!section.getEnhancementList().contains(e)) {
+                                section.getEnhancementList().add(e);
+                            }
+                        }
                         em.merge(section);
                         em.getTransaction().commit();
                     }
@@ -281,18 +323,17 @@ public class ServiceManagerAction extends HttpServlet {
                 case "editAppSection" -> {
                     long sId = Long.parseLong(sectionIdParam);
                     ApplicationSection section = em.find(ApplicationSection.class, sId);
-                    String oldScope = section.getScope();
+                    String newScope = request.getParameter("scope");
                     em.getTransaction().begin();
                     section.setName(request.getParameter("name").trim());
                     String desc = request.getParameter("description");
                     section.setDescription(desc != null ? desc.trim() : "");
-                    String scope = request.getParameter("scope");
-                    section.setScope(scope != null ? scope.trim() : section.getScope());
+                    section.setScope(newScope != null ? newScope.trim() : section.getScope());
                     em.merge(section);
                     em.getTransaction().commit();
 
-                    // If scope changed TO "ALL", auto-link to all active LOSs and Enhancements
-                    if ("ALL".equals(section.getScope()) && !"ALL".equals(oldScope)) {
+                    // If scope changed TO "ALL", additively link missing LOSs and Enhancements
+                    if ("ALL".equals(section.getScope())) {
                         List<LOS> allLos = em.createQuery(
                                         "SELECT l FROM LOS l WHERE l.psp.id = :pspId AND l.suppressed = false", LOS.class)
                                 .setParameter("pspId", psp.getId().longValue())
@@ -326,64 +367,61 @@ public class ServiceManagerAction extends HttpServlet {
                     em.getTransaction().commit();
                 }
 
-                // ── ApplicationField CRUD ───────────────────────────────
+                // ── ApplicationField CRUD ────────────────────────────────
 
                 case "createAppField" -> {
                     long sId = Long.parseLong(sectionIdParam);
                     ApplicationSection section = em.find(ApplicationSection.class, sId);
-                    String fieldKey = request.getParameter("fieldKey").trim();
                     ApplicationField field = new ApplicationField();
-                    field.setFieldKey(fieldKey);
                     field.setLabel(request.getParameter("label").trim());
-                    field.setFieldType(request.getParameter("fieldType"));
-                    field.setApplicationSection(section);
-                    field.setSortOrder(9999);
-                    field.setSuppressed(false);
-                    String helpText = request.getParameter("helpText");
-                    field.setHelpText(helpText != null ? helpText.trim() : "");
-                    field.setRequired("on".equals(request.getParameter("isRequired")));
+                    field.setFieldKey(request.getParameter("fieldKey").trim());
+                    field.setFieldType(request.getParameter("fieldType").trim());
                     String opts = request.getParameter("selectOptions");
                     field.setSelectOptions(opts != null ? opts.trim() : "");
+                    String help = request.getParameter("helpText");
+                    field.setHelpText(help != null ? help.trim() : "");
+                    field.setRequired("on".equals(request.getParameter("isRequired")));
+                    field.setSuppressed(false);
+                    field.setSortOrder(9999);
+                    field.setApplicationSection(section);
                     em.getTransaction().begin();
                     em.persist(field);
                     em.getTransaction().commit();
                 }
 
                 case "editAppField" -> {
-                    String fieldKey = request.getParameter("fieldKey");
-                    ApplicationField field = em.find(ApplicationField.class, fieldKey);
+                    long fieldId = Long.parseLong(request.getParameter("fieldId"));
+                    ApplicationField field = em.find(ApplicationField.class, fieldId);
                     em.getTransaction().begin();
                     field.setLabel(request.getParameter("label").trim());
-                    String helpText = request.getParameter("helpText");
-                    field.setHelpText(helpText != null ? helpText.trim() : "");
-                    field.setRequired("on".equals(request.getParameter("isRequired")));
                     String opts = request.getParameter("selectOptions");
                     field.setSelectOptions(opts != null ? opts.trim() : "");
+                    String help = request.getParameter("helpText");
+                    field.setHelpText(help != null ? help.trim() : "");
+                    field.setRequired("on".equals(request.getParameter("isRequired")));
                     em.merge(field);
                     em.getTransaction().commit();
                 }
 
                 case "suppressAppField" -> {
-                    String fieldKey = request.getParameter("fieldKey");
-                    ApplicationField field = em.find(ApplicationField.class, fieldKey);
+                    long fieldId = Long.parseLong(request.getParameter("fieldId"));
+                    ApplicationField field = em.find(ApplicationField.class, fieldId);
                     em.getTransaction().begin();
                     field.setSuppressed(!field.isSuppressed());
                     em.merge(field);
                     em.getTransaction().commit();
                 }
 
-                // ── Feature CRUD ────────────────────────────────────────
+                // ── Feature CRUD (under ServiceModule) ──────────────────
 
                 case "createFeature" -> {
                     long moduleId = Long.parseLong(request.getParameter("moduleId"));
                     ServiceModule module = em.find(ServiceModule.class, moduleId);
                     Feature feature = new Feature();
                     feature.setDescription(request.getParameter("description").trim());
-                    feature.setServiceModule(module);
                     feature.setSortOrder(9999);
-                    feature.setPsp(psp);
+                    feature.setServiceModule(module);
 
-                    // Optional library resource link
                     String resIdParam = request.getParameter("libraryResourceId");
                     if (resIdParam != null && !resIdParam.isEmpty()) {
                         MarketingMaterial resource = em.find(MarketingMaterial.class, Long.parseLong(resIdParam));

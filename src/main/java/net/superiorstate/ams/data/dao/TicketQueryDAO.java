@@ -160,6 +160,13 @@ public abstract class TicketQueryDAO {
         }
         return tsc;
     }
+
+    public static List<ServiceItem> getActiveTicketServiceItems(EntityManager em){
+        return em.createQuery(
+                        "SELECT si FROM ServiceItem si WHERE si.activityCategory.id = 3 AND si.suppressed = false AND si.ticketCategory IS NOT NULL AND si.ticketCategory.active = true ORDER BY si.ticketCategory.shortText, si.description",
+                        ServiceItem.class)
+                .getResultList();
+    }
     public static Person getPersonByEmployee(EntityManager em, Employee e) {
         try {
             List<Person> results = em.createQuery(
