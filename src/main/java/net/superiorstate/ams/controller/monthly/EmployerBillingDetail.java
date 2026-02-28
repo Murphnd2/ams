@@ -21,8 +21,10 @@ public class EmployerBillingDetail extends HttpServlet {
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         String guid = request.getParameter("uid");
-        if (guid == null || guid.equals(""))
+        if (guid == null || guid.isBlank()) {
+            response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Missing uid parameter");
             return;
+        }
         EntityManagerFactory emf = (EntityManagerFactory) getServletContext().getAttribute("emf");
         EntityManager em = emf.createEntityManager();
         BillingMonth bm;
@@ -31,17 +33,20 @@ public class EmployerBillingDetail extends HttpServlet {
             bm = BillingQueryDAO.getBillingMonthByBillingGuid(em, guid);
             er = BillingQueryDAO.getEmployerByBillingGuid(em, guid);
         } catch (Exception e) {
+            e.printStackTrace();
             bm = null;
             er = null;
         } finally {
             em.close();
         }
-        if (bm != null && er != null) {
-            request.getSession().setAttribute("validEmployer", er);
-            request.getSession().setAttribute("erBillingMonth", bm);
-            getBillingDetail(request, bm);
-            goToPage(request, response);
+        if (bm == null || er == null) {
+            response.sendError(HttpServletResponse.SC_NOT_FOUND, "Billing link not found for uid: " + guid);
+            return;
         }
+        request.getSession().setAttribute("validEmployer", er);
+        request.getSession().setAttribute("erBillingMonth", bm);
+        getBillingDetail(request, bm);
+        goToPage(request, response);
     }
 
     @Override
