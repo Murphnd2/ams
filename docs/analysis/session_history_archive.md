@@ -511,3 +511,56 @@ Systematic cleanup of all seed data to reflect a production-ready fresh deployme
 - **Quick ticket card margin:** `.tc-panel` had conflicting margin-top; fixed by zeroing inline and using `mt-2` on parent column div
 - **Opportunity detail horizontal scrollbar:** Changed Bootstrap `gx-3` to `g-0` on row elements to eliminate negative-margin overflow
 - **SeedDemoData todo creation:** Fixed demo data seeder creating todos for seeded activities
+
+---
+
+## February 28, 2026 — V028 Benefit Plan Year + Renewal Audit (Session 11)
+
+### Problem: Short Plan Years Breaking Renewal Dates
+Summit import calculates `nextRenewalDue` as `effectiveDate + renewalMonths`, but benefits with short plan years (e.g., FSA starting 6/1 but renewing 1/1 annually) get wrong renewal dates. The real renewal anchor is `planYearEnd + 1 day`.
+
+### V028 Migration
+- **New file:** `docs/migrations/V028__benefit_plan_year_columns.sql`
+- Added `plan_year_start DATE NULL` and `plan_year_end DATE NULL` to `benefit` table
+
+### Benefit.java Entity Changes
+- Added `planYearStart`, `planYearEnd` fields with JPA `@Column` mapping
+- Added `getDetectedRenewalDate()` helper: returns `planYearEnd + 1 day` as LocalDate
+
+### J7 (COBRA) Import Fix — Use `enddate` as Renewal Anchor
+- **Modified:** `SummitImportService.importBenefitsCobra()`
+- Pre-computes latest plan year end/start across J7 multi-rows per benefit
+- **New benefits:** Use `enddate + 1` as renewal anchor (instead of `effectiveDate`)
+- **Existing benefits:** Only update `planYearStart`/`planYearEnd` (never overwrite `nextRenewalDue`)
+
+### J5 (CDH Benefit Plan Years) Import — New Method
+- **New method:** `SummitImportService.importBenefitYears()`
+- Parses J5 CSV, groups by `EmployerPlan_ID`, finds latest plan year per benefit
+- Stores `planYearStart`/`planYearEnd` on CDH benefits (matched via `summitId` + `sourceType='CDH'`)
+- **First-time seeding only:** Seeds `nextRenewalDue = planYearEnd + 1` only when `planYearEnd` was previously null
+- **Short plan year detection:** Compares end date month/day across plan year rows; flags warnings when inconsistent
+
+### Summit Import Wizard — J5 Integration
+- **Modified:** `SummitImportWizard.java` — added J5 session attribute, upload handling, validation (J5 requires J4)
+- **Import order:** Plan Types → Employers → Employees → Benefits CDH → Benefits COBRA → Benefit Plan Years (J5)
+- **Modified:** `step1Upload.jsp` — added 7th upload card for "Benefit Plan Years (J5)"
+- `step2Configure.jsp` and `step4Results.jsp` handle J5 dynamically (no changes needed)
+
+### Benefit Renewal Audit Page
+- **New servlet:** `BenefitAudit25.java` at `/BenefitAudit` — PSP Admin only
+- **New JSP:** `benefitAudit25.jsp` — full-height flex layout with sticky headers
+- **Columns:** Employer, Plan Name, Type, Source (CDH/COBRA), Effective Date, Plan Year End, Detected Renewal, Next Renewal Due (editable), Renewal Months (editable), Status
+- **Features:**
+  - Employer name search with live typing match (scrolls to first alphabetic match)
+  - "Flagged Only" filter — shows benefits with inconsistent year-to-year end dates
+  - "No Renewal" filter — shows benefits with null `nextRenewalDue`
+  - Inline save per row (date + months)
+  - "Accept All Detected" bulk action — sets `nextRenewalDue` from plan year data for all benefits
+  - Ghost-style action buttons in toolbar
+- **Modified:** `navbar25.jsp` — added "Benefit Audit" link in admin dropdown
+
+### Key Design Decisions
+- **J5 does NOT auto-modify `nextRenewalDue`** — only stores plan year data. The audit page drives renewal corrections.
+- **J7 re-import does NOT modify `nextRenewalDue`** on existing benefits — only updates plan year dates.
+- **New benefit seeding rules:** J7 new COBRA → `enddate + 1`; J4/J5 new CDH with J5 → `planYearEnd + 1`; J4 without J5 → `effectiveDate + 12 months`
+- **Flagging = short plan year detection** — only triggers when end dates change year-to-year across multiple plan year rows (not effective vs renewal mismatch)

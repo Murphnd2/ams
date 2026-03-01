@@ -188,6 +188,7 @@
               <li><button class="dropdown-item" type="button" data-bs-toggle="modal" data-bs-target="#pspSettingsMod"><i class="bi bi-gear me-2"></i>Settings</button></li>
               <li><a class="dropdown-item" href="BillingAction"><i class="bi bi-currency-dollar me-2"></i>Billing</a></li>
               <li><a class="dropdown-item" href="SummitImport"><i class="bi bi-cloud-upload me-2"></i>Import Data</a></li>
+              <li><a class="dropdown-item" href="BenefitAudit"><i class="bi bi-calendar-check me-2"></i>Benefit Audit</a></li>
             </ul>
           </div>
         </c:if>

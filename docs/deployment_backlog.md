@@ -285,7 +285,11 @@ Updated master VPS image from v4 (pre-V001 schema) to v5:
 - `docs/migrations/V025__plantype_import_columns.sql` — PlanType import columns
 - `docs/migrations/V026__benefit_surrogate_pk.sql` — Benefit surrogate PK with source tracking
 
-Multi-step wizard at `/SummitImport` for importing Summit CSV exports into AMS. Handles Plan Types (J2), Employers (J1), Employees (J3a/J3b), and Benefits (J4 CDH). V026 restructures the Benefit table from Summit's `EmployerPlan_ID` as PK to a surrogate auto-increment PK with `summit_id`/`source_type` composite unique key, eliminating the negative-ID hack for COBRA benefits.
+Multi-step wizard at `/SummitImport` for importing Summit CSV exports into AMS. Handles Plan Types (J2), Employers (J1), Employees (J3a/J3b), Benefits CDH (J4), Benefits COBRA (J7), and Benefit Plan Years (J5). V026 restructures the Benefit table from Summit's `EmployerPlan_ID` as PK to a surrogate auto-increment PK with `summit_id`/`source_type` composite unique key, eliminating the negative-ID hack for COBRA benefits. V028 adds `plan_year_start`/`plan_year_end` columns to benefit for renewal date correction.
+
+**J5/J7 Plan Year Integration (Session 11):** J7 COBRA import now uses `enddate + 1` as renewal anchor for new benefits and stores plan year dates. J5 CDH import parses plan year CSV, stores plan year boundaries, and seeds renewal dates on first import only. Short plan year detection flags year-to-year end date changes.
+
+**Benefit Renewal Audit:** New page at `/BenefitAudit` (PSP Admin only) — lists all active benefits with plan year data, detected renewal dates, inline editing of `nextRenewalDue` and `renewalMonths`, employer search, flagged/no-renewal filters, "Accept All Detected" bulk action.
 
 **Also in this session:** DatabaseInitializer seed data overhaul (ServiceItem unification alignment, onboarding checklist rewrite, simplified LOS/Enhancement/PlanType seeding), form validation on `initialize.jsp`, ManageTask25 NPE fix, Agency `tax_id` column widened to `varchar(20)`.
 

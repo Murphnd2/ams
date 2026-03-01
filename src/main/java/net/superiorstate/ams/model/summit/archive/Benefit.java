@@ -57,6 +57,12 @@ public class Benefit {
     @Column(name="renewal_months")
     private int renewalMonths = 12;
 
+    @Column(name="plan_year_start")
+    private Date planYearStart;
+
+    @Column(name="plan_year_end")
+    private Date planYearEnd;
+
     @Column(name="benid_pb")
     private int pbBenId;
 
@@ -183,6 +189,27 @@ public class Benefit {
 
     public void setRenewalItemList(List<RenewalItem> renewalItemList) {
         this.renewalItemList = renewalItemList;
+    }
+
+    public Date getPlanYearStart() {
+        return planYearStart;
+    }
+
+    public void setPlanYearStart(Date planYearStart) {
+        this.planYearStart = planYearStart;
+    }
+
+    public Date getPlanYearEnd() {
+        return planYearEnd;
+    }
+
+    public void setPlanYearEnd(Date planYearEnd) {
+        this.planYearEnd = planYearEnd;
+    }
+
+    public LocalDate getDetectedRenewalDate() {
+        if (planYearEnd == null) return null;
+        return planYearEnd.toLocalDate().plusDays(1);
     }
 
     private Date rightNow(){

@@ -46,6 +46,7 @@ public class SummitImportWizard extends HttpServlet {
     private static final String SI_EMPLOYEE_J3_FILE = "si_employeeJ3File";
     private static final String SI_BENEFIT_FILE = "si_benefitFile";
     private static final String SI_BENEFIT_COBRA_FILE = "si_benefitCobraFile";
+    private static final String SI_BENEFIT_YEAR_FILE = "si_benefitYearFile";
     private static final String SI_RESULTS = "si_results";
 
     // ═══════════════════════════════════════════════════════════════
@@ -121,6 +122,7 @@ public class SummitImportWizard extends HttpServlet {
         processUpload(request, "employeeJ3File", tempDir, SI_EMPLOYEE_J3_FILE, "Employees (Status)", uploadSummary, errors, false);
         processUpload(request, "benefitFile", tempDir, SI_BENEFIT_FILE, "Benefits (CDH)", uploadSummary, errors, false);
         processUpload(request, "benefitCobraFile", tempDir, SI_BENEFIT_COBRA_FILE, "Benefits (COBRA)", uploadSummary, errors, false);
+        processUpload(request, "benefitYearFile", tempDir, SI_BENEFIT_YEAR_FILE, "Benefit Plan Years (J5)", uploadSummary, errors, false);
 
         // At least one file should be uploaded
         if (request.getSession().getAttribute(SI_PLAN_TYPE_FILE) == null
@@ -128,6 +130,26 @@ public class SummitImportWizard extends HttpServlet {
                 && request.getSession().getAttribute(SI_EMPLOYEE_J2_FILE) == null
                 && request.getSession().getAttribute(SI_BENEFIT_FILE) == null) {
             errors.add("No files were uploaded. Please select at least one file.");
+        }
+
+        // Validate: J5 (benefit plan years) requires J4 (CDH benefits) or existing CDH benefits
+        boolean hasBenefitYearFile = request.getSession().getAttribute(SI_BENEFIT_YEAR_FILE) != null;
+        boolean hasCdhBenefitFile = request.getSession().getAttribute(SI_BENEFIT_FILE) != null;
+        if (hasBenefitYearFile && !hasCdhBenefitFile) {
+            // Check if CDH benefits already exist in the database
+            EntityManagerFactory emfCheck = (EntityManagerFactory) getServletContext().getAttribute("emf");
+            EntityManager emCheck = emfCheck.createEntityManager();
+            try {
+                Long cdhCount = emCheck.createQuery(
+                        "SELECT COUNT(b) FROM Benefit b WHERE b.sourceType = 'CDH'", Long.class).getSingleResult();
+                if (cdhCount == 0) {
+                    errors.add("Benefit Plan Years (J5) requires CDH benefit data. Upload a Benefits (CDH) file or import CDH benefits first.");
+                    request.getSession().removeAttribute(SI_BENEFIT_YEAR_FILE);
+                    uploadSummary.remove("Benefit Plan Years (J5)");
+                }
+            } finally {
+                emCheck.close();
+            }
         }
 
         // Validate: employee and benefit files require employer data
@@ -274,6 +296,13 @@ public class SummitImportWizard extends HttpServlet {
                 results.put("Benefits (COBRA)", bCobraResult);
             }
 
+            // 6. Benefit Plan Years — J5 (need CDH benefits to exist)
+            String benefitYearFile = (String) request.getSession().getAttribute(SI_BENEFIT_YEAR_FILE);
+            if (benefitYearFile != null) {
+                ImportResult byResult = SummitImportService.importBenefitYears(em, new File(benefitYearFile));
+                results.put("Benefit Plan Years", byResult);
+            }
+
             // Reload global state (employers, service items, etc.)
             AmsDataGlobal global = (AmsDataGlobal) getServletContext().getAttribute("global");
             if (global != null) {
@@ -389,6 +418,7 @@ public class SummitImportWizard extends HttpServlet {
         request.getSession().removeAttribute(SI_EMPLOYEE_J3_FILE);
         request.getSession().removeAttribute(SI_BENEFIT_FILE);
         request.getSession().removeAttribute(SI_BENEFIT_COBRA_FILE);
+        request.getSession().removeAttribute(SI_BENEFIT_YEAR_FILE);
         request.getSession().removeAttribute(SI_RESULTS);
     }
 }

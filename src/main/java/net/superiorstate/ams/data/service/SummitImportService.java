@@ -661,6 +661,24 @@ public class SummitImportService {
         // We only need to create/update the benefit once — track which we've processed.
         Set<Integer> processedSummitIds = new HashSet<>();
 
+        // Pre-compute latest plan year dates per benefit (J7 has multiple rows per benefit).
+        // The latest plan year end date + 1 day = the assumed renewal anchor.
+        Map<Integer, Date> latestPlanYearEnd = new HashMap<>();
+        Map<Integer, Date> latestPlanYearStart = new HashMap<>();
+        for (Map<String, String> row : rows) {
+            int bid = parseIntSafe(row.getOrDefault("benefitid", "0"));
+            if (bid == 0) continue;
+            Date endDate = parseDate(row.getOrDefault("enddate", "").trim());
+            Date startDate = parseDate(row.getOrDefault("startdate", "").trim());
+            if (endDate != null) {
+                Date current = latestPlanYearEnd.get(bid);
+                if (current == null || endDate.after(current)) {
+                    latestPlanYearEnd.put(bid, endDate);
+                    if (startDate != null) latestPlanYearStart.put(bid, startDate);
+                }
+            }
+        }
+
         for (Map<String, String> row : rows) {
             int summitBenefitId = parseIntSafe(row.getOrDefault("benefitid", "0"));
             if (summitBenefitId == 0) {
@@ -709,6 +727,13 @@ public class SummitImportService {
                 if (!benefitName.isEmpty() && !benefitName.equals(existing.getPlanName())) { existing.setPlanName(benefitName); changed = true; }
                 if (pbBenefitId != 0 && pbBenefitId != existing.getPbBenId()) { existing.setPbBenId(pbBenefitId); changed = true; }
 
+                // Update plan year dates from latest J7 row data — renewal date
+                // changes are driven by the user via the Benefit Audit page
+                Date pyStart = latestPlanYearStart.get(summitBenefitId);
+                Date pyEnd = latestPlanYearEnd.get(summitBenefitId);
+                if (pyStart != null && !pyStart.equals(existing.getPlanYearStart())) { existing.setPlanYearStart(pyStart); changed = true; }
+                if (pyEnd != null && !pyEnd.equals(existing.getPlanYearEnd())) { existing.setPlanYearEnd(pyEnd); changed = true; }
+
                 if (changed) {
                     em.getTransaction().begin();
                     em.merge(existing);
@@ -731,9 +756,22 @@ public class SummitImportService {
                 b.setRenewalMonths(renewalMonths);
                 b.setActive(true);
 
-                if (effectiveDate != null) {
-                    LocalDate eff = effectiveDate.toLocalDate();
-                    LocalDate nextDue = eff.plusMonths(renewalMonths);
+                // Store latest plan year dates from J7 multi-row data
+                Date pyStart = latestPlanYearStart.get(summitBenefitId);
+                Date pyEnd = latestPlanYearEnd.get(summitBenefitId);
+                if (pyStart != null) b.setPlanYearStart(pyStart);
+                if (pyEnd != null) b.setPlanYearEnd(pyEnd);
+
+                // Use plan year end + 1 day as renewal anchor; fall back to effective date
+                LocalDate renewalAnchor = null;
+                if (pyEnd != null) {
+                    renewalAnchor = pyEnd.toLocalDate().plusDays(1);
+                } else if (effectiveDate != null) {
+                    renewalAnchor = effectiveDate.toLocalDate();
+                }
+
+                if (renewalAnchor != null) {
+                    LocalDate nextDue = renewalAnchor;
                     while (nextDue.isBefore(LocalDate.now())) {
                         nextDue = nextDue.plusMonths(renewalMonths);
                     }
@@ -751,6 +789,132 @@ public class SummitImportService {
         }
 
         return result;
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    //  BENEFIT PLAN YEARS (J5) — CDH plan year data for renewal correction
+    // ═══════════════════════════════════════════════════════════════
+
+    /**
+     * Imports J5 (Benefit Plan Years) CSV to correct renewal dates on CDH benefits.
+     * Each J5 row is a plan year entry for a CDH benefit (EmployerPlan_ID).
+     * Multiple rows per benefit represent different plan years.
+     *
+     * Logic:
+     * - Groups rows by EmployerPlan_ID
+     * - For each benefit, finds the latest plan year end date
+     * - Sets planYearStart/planYearEnd on the Benefit
+     * - Recalculates nextRenewalDue using planYearEnd + 1 day as anchor
+     * - Flags benefits where end date month/day changes year-to-year (short plan year)
+     */
+    public static ImportResult importBenefitYears(EntityManager em, File csvFile) throws Exception {
+        ImportResult result = new ImportResult();
+
+        List<Map<String, String>> rows = parseCsv(csvFile);
+        if (rows.isEmpty()) {
+            result.addWarning("Benefit Plan Years CSV is empty or has no data rows.");
+            return result;
+        }
+
+        // Validate required columns
+        Map<String, String> sample = rows.get(0);
+        for (String req : List.of("employerplan_id", "planyear")) {
+            if (!sample.containsKey(req)) {
+                result.addWarning("Missing required column: " + req);
+                result.addError();
+                return result;
+            }
+        }
+
+        // Group plan year rows by EmployerPlan_ID
+        Map<Integer, List<LocalDate[]>> planYearsByBenefit = new LinkedHashMap<>();
+        for (Map<String, String> row : rows) {
+            int employerPlanId = parseIntSafe(row.getOrDefault("employerplan_id", "0"));
+            if (employerPlanId == 0) continue;
+
+            String planYearStr = row.getOrDefault("planyear", "").trim();
+            if (planYearStr.length() < 21) continue;
+
+            try {
+                // PlanYear format: "MM/DD/YYYY-MM/DD/YYYY"
+                LocalDate start = parsePlanYearDate(planYearStr.substring(0, 10));
+                LocalDate end = parsePlanYearDate(planYearStr.substring(11, 21));
+                planYearsByBenefit.computeIfAbsent(employerPlanId, k -> new ArrayList<>())
+                        .add(new LocalDate[]{start, end});
+            } catch (Exception e) {
+                result.addWarning("Benefit " + employerPlanId + ": could not parse PlanYear '" + planYearStr + "'");
+            }
+        }
+
+        // Process each benefit
+        for (Map.Entry<Integer, List<LocalDate[]>> entry : planYearsByBenefit.entrySet()) {
+            int employerPlanId = entry.getKey();
+            List<LocalDate[]> planYears = entry.getValue();
+
+            // Find the latest plan year (by end date)
+            LocalDate latestStart = null;
+            LocalDate latestEnd = null;
+            for (LocalDate[] py : planYears) {
+                if (latestEnd == null || py[1].isAfter(latestEnd)) {
+                    latestStart = py[0];
+                    latestEnd = py[1];
+                }
+            }
+
+            // Look up the CDH benefit
+            Benefit benefit = findBenefitBySummitKey(em, "CDH", employerPlanId);
+            if (benefit == null) {
+                result.addWarning("Benefit Plan Year: no CDH benefit found for EmployerPlan_ID " + employerPlanId + ", skipping.");
+                result.addSkipped();
+                continue;
+            }
+
+            // Check for year-to-year end date changes (short plan year detection)
+            if (planYears.size() > 1) {
+                Set<String> endMonthDays = new HashSet<>();
+                for (LocalDate[] py : planYears) {
+                    endMonthDays.add(String.format("%02d/%02d", py[1].getMonthValue(), py[1].getDayOfMonth()));
+                }
+                if (endMonthDays.size() > 1) {
+                    result.addWarning("Benefit " + employerPlanId + " (" + benefit.getPlanName()
+                            + "): short plan year detected — end dates vary across years: " + endMonthDays);
+                }
+            }
+
+            // Update benefit with latest plan year data
+            em.getTransaction().begin();
+            boolean isFirstPlanYear = benefit.getPlanYearEnd() == null;
+            benefit.setPlanYearStart(Date.valueOf(latestStart));
+            benefit.setPlanYearEnd(Date.valueOf(latestEnd));
+
+            // Seed nextRenewalDue from planYearEnd + 1 only on first import
+            // (when benefit had no plan year data yet). On re-import, the audit
+            // page drives renewal date changes.
+            if (isFirstPlanYear) {
+                LocalDate renewalAnchor = latestEnd.plusDays(1);
+                int rm = benefit.getRenewalMonths();
+                LocalDate nextDue = renewalAnchor;
+                while (nextDue.isBefore(LocalDate.now())) {
+                    nextDue = nextDue.plusMonths(rm);
+                }
+                benefit.setNextRenewalDue(Date.valueOf(nextDue));
+            }
+
+            em.merge(benefit);
+            em.getTransaction().commit();
+            result.addUpdated();
+        }
+
+        return result;
+    }
+
+    /** Parse a plan year date in MM/DD/YYYY format. */
+    private static LocalDate parsePlanYearDate(String dateStr) {
+        String trimmed = dateStr.trim();
+        int month = Integer.parseInt(trimmed.substring(0, 2));
+        int day = Integer.parseInt(trimmed.substring(3, 5));
+        int year = Integer.parseInt(trimmed.substring(6, 10));
+        return LocalDate.of(year, month, day);
     }
 
     // ═══════════════════════════════════════════════════════════════

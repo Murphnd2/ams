@@ -94,6 +94,17 @@
                    accept=".csv,.txt" style="max-width: 450px;">
         </div>
 
+        <%-- Benefit Plan Years (J5) --%>
+        <div class="upload-card">
+            <div class="upload-label">
+                <i class="bi bi-calendar-range"></i> Benefit Plan Years
+                <span class="badge bg-secondary">CSV</span>
+            </div>
+            <div class="upload-hint">J5 — CDH plan year start/end dates (corrects renewal dates for short plan years)</div>
+            <input type="file" class="form-control form-control-sm" name="benefitYearFile"
+                   accept=".csv,.txt" style="max-width: 450px;">
+        </div>
+
         <hr>
         <div class="d-flex gap-2">
             <button type="submit" class="btn btn-primary"><i class="bi bi-arrow-right"></i> Next: Review & Configure</button>

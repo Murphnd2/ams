@@ -13,7 +13,7 @@ Tracks database schema versions across environments.
 | Local (either) | 127.0.0.1:3306 | dev_ssa | Initialization testing (wiped regularly) |
 | Production | superiorstate.biz | beta_ssa | Live server |
 
-## Current Highest Version: V027
+## Current Highest Version: V028
 
 ## Dev Baseline
 
@@ -56,6 +56,7 @@ Individual migration scripts are no longer stored in the repo. The baseline dump
 | V025 | Add level, los, employer_name to plantype for Summit import | ⬜ | ⬜ | ⬜ | ⬜ |
 | V026 | Benefit table: surrogate auto-increment PK with source tracking | ⬜ | ⬜ | ⬜ | ⬜ |
 | V027 | BPO Registration: task source refactor from Person to BpoRegistration | ⬜ | ⬜ | ⬜ | ⬜ |
+| V028 | Benefit plan year start/end columns for renewal date correction | ⬜ | ⬜ | ⬜ | ⬜ |
 
 ## Notes
 
@@ -68,3 +69,4 @@ Individual migration scripts are no longer stored in the repo. The baseline dump
 - V025 adds three nullable columns to the plantype table for Summit import metadata. No data migration needed — columns are populated by the new Summit Import wizard.
 - V026 adds summit_id and source_type columns to benefit, renumbers negative PKs to positive, converts benefit_id to AUTO_INCREMENT, and adds a unique index on (source_type, summit_id). Requires updated WAR with Benefit.java entity changes and all summit-key lookups.
 - V027 adds is_approved, is_requested, is_accepted status columns to bpo_registration. Changes task vendor sourcing from Person FK (source_owner) to BpoRegistration FK (bpo_registration_id). Requires updated WAR with Task.java, ToDoOut25.java, UpdateTask25.java, and all DAO/view entity changes.
+- V028 adds plan_year_start and plan_year_end nullable DATE columns to benefit table. Used by J5 (CDH) and J7 (COBRA) imports to store plan year boundaries for renewal date correction.
