@@ -223,10 +223,7 @@ base AS (
           ON tsk.task_id = td.task_id
         WHERE td.checklist_id = oa.checklist_id
           AND td.is_complete = 0
-          AND (
-            (tsk.has_owner = 1 AND tsk.owner_id = p.me)
-            OR (tsk.is_sourced = 1 AND tsk.source_owner = p.me)
-          )
+          AND (tsk.has_owner = 1 AND tsk.owner_id = p.me)
         LIMIT 1
       ) THEN 1
       ELSE 0

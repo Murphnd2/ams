@@ -4,6 +4,7 @@ import net.superiorstate.ams.model.activity.checklist.CheckList;
 import net.superiorstate.ams.model.activity.checklist.tasks.Task;
 import net.superiorstate.ams.model.activity.checklist.tasks.ToDo;
 import net.superiorstate.ams.model.general.Automation;
+import net.superiorstate.ams.model.general.BpoRegistration;
 import net.superiorstate.ams.model.general.Person;
 import net.superiorstate.ams.model.general.WebLink;
 
@@ -27,7 +28,7 @@ public class ToDoOut25 {
     private boolean hasOwner;
     private Person taskOwner;
     private boolean isSourced;
-    private Person sourceOwner;
+    private BpoRegistration bpoRegistration;
     private boolean hasGoto;
     private WebLink gotoLink;
     private boolean hasInfo;
@@ -65,7 +66,7 @@ public class ToDoOut25 {
         setHasOwner(t.getTask().hasOwner());
         setTaskOwner(t.getTask().getOwner());
         setSourced(t.getTask().isSourced());
-        setSourceOwner(t.getTask().getSourceOwner());
+        setBpoRegistration(t.getTask().getBpoRegistration());
         setHasGoto(t.getTask().hasGoTo());
         setGotoLink(t.getTask().getGoToLink());
         setHasInfo(t.getTask().hasInfo());
@@ -83,9 +84,8 @@ public class ToDoOut25 {
     public String getRowCssClass() { return rowCssClass; }
     public String getPointerEvents() { return pointerEvents; }
     public void computeDisplayState(long myPersonId, boolean isAdmin, boolean blockFuture, int openIndex, boolean isMyActivity) {
-        this.isMyTask = (hasOwner && taskOwner != null && taskOwner.getId() == myPersonId)
-                || (isSourced && sourceOwner != null && sourceOwner.getId() == myPersonId);
-        this.isDelegated = (hasOwner && !this.isMyTask) || (isSourced && sourceOwner != null && sourceOwner.getId() != myPersonId);
+        this.isMyTask = (hasOwner && taskOwner != null && taskOwner.getId() == myPersonId);
+        this.isDelegated = (hasOwner && !this.isMyTask) || (isSourced && bpoRegistration != null);
 
         this.isTimeBlocked = (openIndex > 0) && (!allowEarly || blockFuture);
         this.isWhoBlocked = !this.isMyTask && !allowNonOwner && (hasOwner || isSourced);
@@ -272,12 +272,12 @@ public class ToDoOut25 {
         isSourced = sourced;
     }
 
-    public Person getSourceOwner() {
-        return sourceOwner;
+    public BpoRegistration getBpoRegistration() {
+        return bpoRegistration;
     }
 
-    public void setSourceOwner(Person sourceOwner) {
-        this.sourceOwner = sourceOwner;
+    public void setBpoRegistration(BpoRegistration bpoRegistration) {
+        this.bpoRegistration = bpoRegistration;
     }
 
     public boolean hasGoto() {

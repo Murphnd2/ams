@@ -1,6 +1,7 @@
 package net.superiorstate.ams.model.activity.checklist;
 
 import jakarta.persistence.*;
+import net.superiorstate.ams.model.general.BpoRegistration;
 import net.superiorstate.ams.model.general.Person;
 
 import java.sql.Date;
@@ -39,8 +40,8 @@ public class CheckListOut {
     private Person delegatedEmployee;
 
     @ManyToOne
-    @JoinColumn(name="source_owner")
-    private Person bpoEmployee;
+    @JoinColumn(name="bpo_registration_id")
+    private BpoRegistration bpoRegistration;
 
     @Column(name="show_date")
     private Date showDate;
@@ -78,8 +79,8 @@ public class CheckListOut {
         return delegatedEmployee;
     }
 
-    public Person getBpoEmployee() {
-        return bpoEmployee;
+    public BpoRegistration getBpoRegistration() {
+        return bpoRegistration;
     }
 
     public Date getShowDate(){

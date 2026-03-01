@@ -78,7 +78,6 @@ public abstract class ActivityListDAO {
         Query q = em.createNativeQuery(
                 "SELECT td.task_id, td.sort_order, " +
                         "       tsk.has_owner, tsk.owner_id, " +
-                        "       tsk.is_sourced, tsk.source_owner, " +
                         "       tsk.allow_early, tsk.allow_future " +
                         "FROM todo td " +
                         "JOIN task tsk ON tsk.task_id = td.task_id " +
@@ -96,13 +95,10 @@ public abstract class ActivityListDAO {
             int sortOrder       = ((Number) row[1]).intValue();
             boolean hasOwner    = toBool(row[2]);
             Long ownerId        = row[3] == null ? null : ((Number) row[3]).longValue();
-            boolean isSourced   = toBool(row[4]);
-            Long sourceOwnerId  = row[5] == null ? null : ((Number) row[5]).longValue();
-            boolean allowEarly  = toBool(row[6]);
-            boolean allowFuture = toBool(row[7]);
+            boolean allowEarly  = toBool(row[4]);
+            boolean allowFuture = toBool(row[5]);
 
-            boolean isMyTask = (hasOwner && ownerId != null && ownerId == personId)
-                    || (isSourced && sourceOwnerId != null && sourceOwnerId == personId);
+            boolean isMyTask = (hasOwner && ownerId != null && ownerId == personId);
 
             if (isMyTask) {
                 if (sortOrder <= topSort || allowEarly) {
@@ -178,8 +174,8 @@ public abstract class ActivityListDAO {
             cs.setDueDate(c.getDueDate());
             cs.setShowDate(c.getShowDate());
             cs.setOwner(c.getAssignedTo());
-            if(c.getBpoEmployee()!=null)
-                cs.setBpoUser(c.getBpoEmployee());
+            if(c.getBpoRegistration()!=null)
+                cs.setBpoRegistration(c.getBpoRegistration());
             cs.setToDoCount(c.getToDoCount());
             cs.setHasDelegate(false);
             if(!Objects.equals(c.getAssignedTo().getId(), p.getId()))
@@ -294,8 +290,6 @@ public abstract class ActivityListDAO {
                         as.setOwnershipLevel(1);
                     else if(a.getTaskOwner()!=null && a.getTaskOwner().getId()!=null && p.getId()!=null && Objects.equals(a.getTaskOwner().getId(), p.getId()))
                         as.setOwnershipLevel(2);
-                    else if(a.getSourceOwner()!=null && a.getSourceOwner().getId()!=null && p.getId()!=null && Objects.equals(a.getSourceOwner().getId(), p.getId()))
-                        as.setOwnershipLevel(2);
                     else
                         as.setOwnershipLevel(3);
                     asList.add(as);
@@ -328,13 +322,13 @@ public abstract class ActivityListDAO {
     private static List<ActivityOut> getActivitiesWhereTasked(EntityManager em, Person p, boolean sort, boolean alpha){
         Query q;
         if(sort && alpha)
-            q = em.createQuery("SELECT a FROM ActivityOut a WHERE a.taskOwner.id = :id OR a.sourceOwner.id = :id ORDER BY a.fullName");
+            q = em.createQuery("SELECT a FROM ActivityOut a WHERE a.taskOwner.id = :id ORDER BY a.fullName");
         else if(alpha)
-            q = em.createQuery("SELECT a FROM ActivityOut a WHERE a.taskOwner.id = :id OR a.sourceOwner.id = :id ORDER BY a.fullName DESC");
+            q = em.createQuery("SELECT a FROM ActivityOut a WHERE a.taskOwner.id = :id ORDER BY a.fullName DESC");
         else if(sort)
-            q = em.createQuery("SELECT a FROM ActivityOut a WHERE a.taskOwner.id = :id OR a.sourceOwner.id = :id ORDER BY a.dueDate");
+            q = em.createQuery("SELECT a FROM ActivityOut a WHERE a.taskOwner.id = :id ORDER BY a.dueDate");
         else
-            q = em.createQuery("SELECT a FROM ActivityOut a WHERE a.taskOwner.id = :id OR a.sourceOwner.id = :id ORDER BY a.dueDate DESC");
+            q = em.createQuery("SELECT a FROM ActivityOut a WHERE a.taskOwner.id = :id ORDER BY a.dueDate DESC");
         q.setParameter("id",p.getId());
         List<ActivityOut> activityOutList;
         try{
@@ -368,13 +362,13 @@ public abstract class ActivityListDAO {
     private static List<ActivityOut> getAllMyActivities(EntityManager em, Person p, boolean sort, boolean alpha){
         Query q;
         if(sort && alpha)
-            q = em.createQuery("SELECT a FROM ActivityOut a WHERE a.assignedTo.id = :id OR a.taskOwner.id = :id OR a.sourceOwner.id = :id ORDER BY a.fullName");
+            q = em.createQuery("SELECT a FROM ActivityOut a WHERE a.assignedTo.id = :id OR a.taskOwner.id = :id ORDER BY a.fullName");
         else if(alpha)
-            q = em.createQuery("SELECT a FROM ActivityOut a WHERE a.assignedTo.id = :id OR a.taskOwner.id = :id OR a.sourceOwner.id = :id ORDER BY a.fullName DESC");
+            q = em.createQuery("SELECT a FROM ActivityOut a WHERE a.assignedTo.id = :id OR a.taskOwner.id = :id ORDER BY a.fullName DESC");
         else if(sort)
-            q = em.createQuery("SELECT a FROM ActivityOut a WHERE a.assignedTo.id = :id OR a.taskOwner.id = :id OR a.sourceOwner.id = :id ORDER BY a.dueDate");
+            q = em.createQuery("SELECT a FROM ActivityOut a WHERE a.assignedTo.id = :id OR a.taskOwner.id = :id ORDER BY a.dueDate");
         else
-            q = em.createQuery("SELECT a FROM ActivityOut a WHERE a.assignedTo.id = :id OR a.taskOwner.id = :id OR a.sourceOwner.id = :id ORDER BY a.dueDate DESC");
+            q = em.createQuery("SELECT a FROM ActivityOut a WHERE a.assignedTo.id = :id OR a.taskOwner.id = :id ORDER BY a.dueDate DESC");
         q.setParameter("id",p.getId());
         List<ActivityOut> activityOutList;
         try{
@@ -402,9 +396,7 @@ public abstract class ActivityListDAO {
             if(t.getTask().hasOwner() && t.getTask().getOwner()!=null && Objects.equals(t.getTask().getOwner().getId(), p.getId())){
                 if(t.getTask().allowEarly() || t.getSortOrder() <= topSort)
                     return true;
-            } else if(t.getTask().isSourced() && t.getTask().getSourceOwner()!=null && Objects.equals(t.getTask().getSourceOwner().getId(), p.getId()))
-                if(t.getTask().allowEarly() || t.getSortOrder() <= topSort)
-                    return true;
+            }
             if(!t.getTask().allowFuture())
                 break;
         }
@@ -455,8 +447,6 @@ public abstract class ActivityListDAO {
             } else if(t.isComplete())
                 continue;
             else if(t.getTask().hasOwner() && t.getTask().getOwner()!=null && Objects.equals(t.getTask().getOwner().getId(), p.getId()))
-                isDelegate = true;
-            else if (t.getTask().isSourced() && t.getTask().getSourceOwner()!=null && Objects.equals(t.getTask().getSourceOwner().getId(), p.getId()))
                 isDelegate = true;
         }
         if(toDoList.size()>0){
@@ -626,14 +616,13 @@ public abstract class ActivityListDAO {
         // WHERE Statement Builder
         String wIsOwner = "a.assignedTo.id = :id";
         String wIsDelegate = "(t.isComplete=false AND (t.task.hasOwner=true AND t.task.owner is not null AND t.task.owner.id = :id))";
-        String wIsSourceOwner = "(t.isComplete=false AND (t.task.isSourced=true AND t.task.sourceOwner is not null AND t.task.sourceOwner.id = :id))";
         String where = "WHERE a.isComplete = false";
         if(whoFilter == 1)
-            where += " AND (("+wIsOwner+") OR ("+wIsDelegate+") OR ("+wIsSourceOwner+"))";
+            where += " AND (("+wIsOwner+") OR ("+wIsDelegate+"))";
         else if(whoFilter ==2)
             where += " AND ("+wIsOwner+")";
         else if(whoFilter==3)
-            where += " AND (("+wIsDelegate+") OR ("+wIsSourceOwner+"))";
+            where += " AND ("+wIsDelegate+")";
 
         // ORDER BY Statement Builder
         String orderBy = " ORDER BY ";

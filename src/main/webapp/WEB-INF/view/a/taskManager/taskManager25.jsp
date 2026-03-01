@@ -171,8 +171,8 @@
             </div>
           </div>
 
-            <%-- VENDOR SOURCING (PSP only) --%>
-            <c:if test="${!sessionScope.isBpo && !sessionScope.isBpoAdmin && !sessionScope.isBpoUser}">
+            <%-- VENDOR SOURCING (PSP only, hidden when no approved vendors) --%>
+            <c:if test="${!sessionScope.isBpo && !sessionScope.isBpoAdmin && !sessionScope.isBpoUser && !empty applicationScope.global.getActiveBpoRegistrations()}">
               <div class="tm-section">
                 <div class="tm-label"><i class="bi bi-building me-1"></i>Vendor Sourcing</div>
                 <div class="tm-toggle-row mb-2">
@@ -185,12 +185,12 @@
                 </div>
                 <div id="bpoDropDown" class="${showBPO}">
                   <select class="form-select form-select-sm tm-select" name="sourceId" id="sourceId">
-                    <c:forEach var="bpo" items="${applicationScope.global.getBpoUsers()}">
+                    <c:forEach var="bpo" items="${applicationScope.global.getActiveBpoRegistrations()}">
                       <c:set var="bSelect" value=""/>
-                      <c:if test="${toDo.getTask().isSourced() && toDo.getTask().getSourceOwner()!=null && toDo.getTask().getSourceOwner().getId()==bpo.getId()}">
+                      <c:if test="${toDo.getTask().isSourced() && toDo.getTask().getBpoRegistration()!=null && toDo.getTask().getBpoRegistration().getId()==bpo.getId()}">
                         <c:set var="bSelect" value="selected"/>
                       </c:if>
-                      <option value="${bpo.getId()}" ${bSelect}>${bpo.getLastName()}, ${bpo.getFirstName()}</option>
+                      <option value="${bpo.getId()}" ${bSelect}>${bpo.getBpoName()}</option>
                     </c:forEach>
                   </select>
                 </div>

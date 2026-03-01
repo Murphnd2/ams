@@ -20,11 +20,13 @@ import net.superiorstate.ams.model.activity.note.ReasonCreated;
 import net.superiorstate.ams.model.activity.ticket.ContactMethod;
 import net.superiorstate.ams.model.activity.ticket.TicketCategory;
 import net.superiorstate.ams.model.activity.ticket.tEmployee;
+import net.superiorstate.ams.model.general.BpoRegistration;
 import net.superiorstate.ams.model.general.PSP;
 import net.superiorstate.ams.model.general.Person;
 import net.superiorstate.ams.model.general.UserRole;
 import net.superiorstate.ams.model.general.WebLink;
 import net.superiorstate.ams.model.sales.agency.Agency;
+import net.superiorstate.ams.model.sales.agency.Prospect;
 import net.superiorstate.ams.model.summit.archive.Employer;
 
 import java.util.ArrayList;
@@ -36,6 +38,8 @@ public class AmsDataGlobal {
 
     private List<Person> users;
     private List<Person> bpoUsers;
+    private List<Person> opportunityManagers;
+    private List<BpoRegistration> activeBpoRegistrations;
     private List<ActivityCategory> activityCategories;
     private List<ServiceItem> serviceItems;
     private List<ReasonCreated> reasonsCreated;
@@ -70,9 +74,11 @@ public class AmsDataGlobal {
     private String favicon;
 
     private boolean chatbotEnabled;
+    private boolean useTimeclock = true;
     private String brandingPath;
     private List<Activity25u> activitiesAllOpen;
     private List<Agency> agencies;
+    private List<Prospect> prospects;
     private List<Activity25p> activitiesWithDelegation;
 
     public AmsDataGlobal(){};
@@ -83,6 +89,7 @@ public class AmsDataGlobal {
             this.emf = em.getEntityManagerFactory();
             setPsp(EntityLookup.getPspById(em,4L));
             setUsers(RecurringChecklistDAO.getPspUserList(em,getPsp()));
+            setOpportunityManagers(loadOpportunityManagers(em));
             List<Person> allBpo = new ArrayList<>();
             allBpo.addAll(AuthenticateUser.getUsersByRole(em, 102));
             for (Person p : AuthenticateUser.getUsersByRole(em, 103)) {
@@ -90,6 +97,7 @@ public class AmsDataGlobal {
             }
             Collections.sort(allBpo);
             setBpoUsers(allBpo);
+            setActiveBpoRegistrations(loadActiveBpoRegistrations(em));
             setTemplateGroups(SequenceDAO.getTemplateGroups(em));
             setServiceItems(SequenceDAO.getServiceItems(em));
             setReasonsCreated(TicketQueryDAO.getReasons(em));
@@ -103,6 +111,7 @@ public class AmsDataGlobal {
             setActivitiesAllOpen(retrieveActivitiesAllOpen(em));
             setActivitiesWithDelegation(retrieveActivitiesWithDependencies(em));
             setAgencies(SalesDAO.getAgencyList(em, getPsp().getId().intValue()));
+            setProspects(SalesDAO.getProspectsByPsp(em, getPsp().getId().intValue()));
             setAssignableRoles(loadAssignableRoles(em));
             setConstants(em);
         } catch (Exception e) {
@@ -208,6 +217,11 @@ public class AmsDataGlobal {
         setSavePath(AppConfig.get("SAVE_PATH", "/var/lib/tomcat10/data/"));
         setBrandingPath(AppConfig.get("BRANDING_PATH", System.getProperty("catalina.base") + "/branding/"));
         this.chatbotEnabled = "true".equalsIgnoreCase(AppConfig.get("CHATBOT_ENABLED", "false"));
+
+        try {
+            String utc = getConstantValue(em, "USE_TIMECLOCK");
+            this.useTimeclock = !"false".equalsIgnoreCase(utc);
+        } catch (Exception e) { this.useTimeclock = true; }
 
         String smtpPassword;
         try{
@@ -435,6 +449,7 @@ public class AmsDataGlobal {
     }
 
     public boolean isChatbotEnabled() { return chatbotEnabled; }
+    public boolean isUseTimeclock() { return useTimeclock; }
     public PSP getPsp() {
         return psp;
     }
@@ -445,6 +460,38 @@ public class AmsDataGlobal {
 
     public List<Person> getBpoUsers() {
         return bpoUsers;
+    }
+
+    public List<Person> getOpportunityManagers() { return opportunityManagers; }
+    public void setOpportunityManagers(List<Person> opportunityManagers) { this.opportunityManagers = opportunityManagers; }
+
+    /** Load persons with role 5 (PSP Admin) or 9 (PSP Sales), deduplicated and sorted */
+    private List<Person> loadOpportunityManagers(EntityManager em) {
+        List<Person> managers = new ArrayList<>(AuthenticateUser.getUsersByRole(em, 5));
+        for (Person p : AuthenticateUser.getUsersByRole(em, 9)) {
+            if (!managers.contains(p)) managers.add(p);
+        }
+        Collections.sort(managers);
+        return managers;
+    }
+
+    public List<BpoRegistration> getActiveBpoRegistrations() {
+        return activeBpoRegistrations;
+    }
+
+    public void setActiveBpoRegistrations(List<BpoRegistration> activeBpoRegistrations) {
+        this.activeBpoRegistrations = activeBpoRegistrations;
+    }
+
+    private List<BpoRegistration> loadActiveBpoRegistrations(EntityManager em) {
+        try {
+            return em.createQuery(
+                    "SELECT b FROM BpoRegistration b WHERE b.isActive = true AND b.isApproved = true " +
+                    "AND b.isRequested = true AND b.isAccepted = true ORDER BY b.bpoName", BpoRegistration.class)
+                    .getResultList();
+        } catch (Exception e) {
+            return new ArrayList<>();
+        }
     }
 
     public List<ActivityCategory> getTemplateGroups() {
@@ -484,6 +531,12 @@ public class AmsDataGlobal {
 
     public void setAgencies(List<Agency> agencies) {
         this.agencies = agencies;
+    }
+    public List<Prospect> getProspects() {
+        return prospects;
+    }
+    public void setProspects(List<Prospect> prospects) {
+        this.prospects = prospects;
     }
     public List<tEmployee> getEmployees() {
         if (!employeesLoaded && emf != null) {

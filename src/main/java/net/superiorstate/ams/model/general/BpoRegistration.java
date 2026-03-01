@@ -23,8 +23,17 @@ public class BpoRegistration {
     @Column(name="bpo_url", length=255)
     private String bpoUrl;
 
-    @Column(name="is_active", nullable=false)
+    @Column(name="is_active", nullable=false, columnDefinition = "boolean default true")
     private boolean isActive;
+
+    @Column(name="is_approved", nullable=false, columnDefinition = "boolean default false")
+    private boolean isApproved;
+
+    @Column(name="is_requested", nullable=false, columnDefinition = "boolean default false")
+    private boolean isRequested;
+
+    @Column(name="is_accepted", nullable=false, columnDefinition = "boolean default false")
+    private boolean isAccepted;
 
     @Column(name="date_registered", nullable=false)
     private Date dateRegistered;
@@ -37,6 +46,11 @@ public class BpoRegistration {
             this.dateRegistered = Date.valueOf(java.time.LocalDate.now());
         }
         this.isActive = true;
+    }
+
+    /** A BPO is available for task sourcing when all four flags are true */
+    public boolean isAvailable() {
+        return isActive && isApproved && isRequested && isAccepted;
     }
 
     // --- Getters/Setters ---
@@ -79,6 +93,30 @@ public class BpoRegistration {
 
     public void setActive(boolean active) {
         isActive = active;
+    }
+
+    public boolean isApproved() {
+        return isApproved;
+    }
+
+    public void setApproved(boolean approved) {
+        isApproved = approved;
+    }
+
+    public boolean isRequested() {
+        return isRequested;
+    }
+
+    public void setRequested(boolean requested) {
+        isRequested = requested;
+    }
+
+    public boolean isAccepted() {
+        return isAccepted;
+    }
+
+    public void setAccepted(boolean accepted) {
+        isAccepted = accepted;
     }
 
     public Date getDateRegistered() {

@@ -2,7 +2,7 @@
 
 Tracks database schema versions across environments.
 
-**Last Updated:** February 27, 2026
+**Last Updated:** February 28, 2026
 
 ## Environments
 
@@ -13,7 +13,7 @@ Tracks database schema versions across environments.
 | Local (either) | 127.0.0.1:3306 | dev_ssa | Initialization testing (wiped regularly) |
 | Production | superiorstate.biz | beta_ssa | Live server |
 
-## Current Highest Version: V026
+## Current Highest Version: V027
 
 ## Dev Baseline
 
@@ -55,6 +55,7 @@ Individual migration scripts are no longer stored in the repo. The baseline dump
 | V024 | Fix views referencing dropped ticket_category column | ✅ | ✅ | ✅ | ✅ |
 | V025 | Add level, los, employer_name to plantype for Summit import | ⬜ | ⬜ | ⬜ | ⬜ |
 | V026 | Benefit table: surrogate auto-increment PK with source tracking | ⬜ | ⬜ | ⬜ | ⬜ |
+| V027 | BPO Registration: task source refactor from Person to BpoRegistration | ⬜ | ⬜ | ⬜ | ⬜ |
 
 ## Notes
 
@@ -66,3 +67,4 @@ Individual migration scripts are no longer stored in the repo. The baseline dump
 - dev_ssa can be reset from the V024 baseline at any time.
 - V025 adds three nullable columns to the plantype table for Summit import metadata. No data migration needed — columns are populated by the new Summit Import wizard.
 - V026 adds summit_id and source_type columns to benefit, renumbers negative PKs to positive, converts benefit_id to AUTO_INCREMENT, and adds a unique index on (source_type, summit_id). Requires updated WAR with Benefit.java entity changes and all summit-key lookups.
+- V027 adds is_approved, is_requested, is_accepted status columns to bpo_registration. Changes task vendor sourcing from Person FK (source_owner) to BpoRegistration FK (bpo_registration_id). Requires updated WAR with Task.java, ToDoOut25.java, UpdateTask25.java, and all DAO/view entity changes.

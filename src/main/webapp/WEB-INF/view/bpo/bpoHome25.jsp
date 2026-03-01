@@ -115,11 +115,11 @@
                                     </c:choose>
 
                                     <div class="bpo-todo-row row g-0 px-3 align-items-center"
-                                         data-sort0="${todo.getTask().getDescription()}"
+                                         data-sort0="${todo.getTask().getPlainDescription()}"
                                          data-sort1="${pspName}"
                                          data-sort2="${dueDate}"
                                          data-todo-id="${todo.getId()}"
-                                         data-task-name="${todo.getTask().getDescription()}"
+                                         data-task-name="${todo.getTask().getPlainDescription()}"
                                          data-psp-name="${pspName}"
                                          data-activity-name="${todo.getCheckList().getRenewal() != null ? todo.getCheckList().getRenewal().getFullName().concat(' Renewal') : todo.getCheckList().getSetup() != null ? todo.getCheckList().getSetup().getFullName().concat(' Setup') : todo.getCheckList().getTicket() != null ? todo.getCheckList().getTicket().getFullName().concat(' Ticket') : activityName}"
                                          data-due-date="<fmt:formatDate value='${dueDate}' pattern='MM/dd/yyyy'/>"
@@ -130,7 +130,7 @@
                                          style="cursor:pointer;">
                                         <div class="col-5">
                                             <div style="font-size:0.85rem; font-weight:500;">
-                                                    ${todo.getTask().getDescription()}
+                                                    ${todo.getTask().getPlainDescription()}
                                             </div>
                                             <c:choose>
                                                 <c:when test="${todo.getCheckList().getRenewal() != null}">

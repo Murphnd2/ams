@@ -456,3 +456,58 @@ Systematic cleanup of all seed data to reflect a production-ready fresh deployme
 - `Agency.java` — `tax_id` column widened to `varchar(20)`
 - `taskManager25.jsp` — Null guard on cancel button
 - `initialize.jsp` — `maxlength` attributes on all fields
+
+---
+
+## February 28, 2026 — V027 BPO Refactor + PSP Settings + Opportunity Enhancements + Sales Fixes (Session 10)
+
+### V027 Migration: BPO Registration Task Source Refactor
+- **New file:** `docs/migrations/V027__bpo_registration_task_source.sql`
+- Added `is_approved`, `is_requested`, `is_accepted` status columns to `bpo_registration`
+- Changed task vendor sourcing from Person FK (`source_owner`) to BpoRegistration FK (`bpo_registration_id`)
+- Updated entities: `Task.java`, `ToDoOut.java`, `ToDoOut25.java`, `BpoRegistration.java`
+- Updated DAOs: `TaskDAO.java`, `ActivityListDAO.java`, `ActivityLandingDao.java`
+- Updated servlets: `UpdateTask25.java`, `AddToDo25.java`
+- Updated JSPs: `taskManager25.jsp`, `bpoHome25.jsp`
+
+### PSP Settings Modal + Use Timeclock Toggle
+- **Renamed:** `UpdateSmtpSettings.java` → `UpdatePspSettings.java` — handles both SMTP and feature settings
+- **Redesigned:** `smtpSettingsMod25.jsp` — tabbed modal with Email Settings and Features tabs
+- **New constant:** `USE_TIMECLOCK` in `DatabaseInitializer` — toggles timeclock vs quick ticket card
+- **New file:** `quickTicket25.jsp` — inline ticket creation card replacing timeclock when disabled
+- **Modified:** `navbar25.jsp` — "Email Settings" → "Settings" with `#pspSettingsMod` target, conditional "Time Corrections" link
+- **Modified:** `pspHome25.jsp` — conditional rendering of timeclock vs quick ticket column
+- **Modified:** `AmsDataGlobal.java` — `useTimeclock` flag loaded from constants
+
+### Add Activity Button on Home Page
+- **New file:** `addActivityModal25.jsp` — modal with Renewal/Opportunity type toggle
+  - Renewal: employer select → posts to `CreateBlankRenewal25`
+  - Opportunity: existing/new prospect toggle, agency select → posts to `CreateOpportunity` with `returnTo=home`
+- **Modified:** `activityHeader25.jsp` — added "+" button in toolbar
+- **Modified:** `CreateOpportunity.java` — returns Opportunity from `createOpportunity()`, supports `returnTo=home` parameter
+- **Modified:** `AmsDataGlobal.java` — added `prospects` list cache, `opportunityManagers` list (roles 5+9)
+- **Modified:** `AmsDataLocal.java` — added overloaded `getActivity25u(em, Opportunity)` method
+
+### Opportunity Detail Card Enhancements
+- **Stage dropdown:** Replaced static badge with editable `<select>` for authorized users (owner, agent, PSP admin)
+- **Two-column layout:** Row A (Prospect | Stage), Row B (Agent | Agency), Row C (Managed By) — responsive, single-column on mobile
+- **Managed By editing:** PSP admins get editable dropdown populated from `opportunityManagers` (roles 5+9 only); other users see static text
+- **Modified:** `UpdateOpportunityStage.java` — AJAX support (`ajax=true` returns JSON), `managedById` parameter handling
+- **Modified:** `detailOpportunity25.jsp` — two-column layout, AJAX functions for stage and managedBy updates
+- **Modified:** `AmsDataGlobal.java` — `loadOpportunityManagers()` method combining PSP Admin (5) and PSP Sales (9) roles
+
+### Sales Pipeline Fixes
+- **JPQL field name mismatch:** `SalesDAO.getLosFull()` and `getModuleFull()` referenced `sm.serviceItemList` but the JPA field on `ServiceModule` is `moduleDetailList` (getter is `getServiceItemList()`). Fixed both queries.
+- **Proposal Detail page cleanup:**
+  - Removed duplicate header rows (two "Proposal #..." blocks)
+  - Page title now shows `Proposal #123` in navbar
+  - Added `proposal-content` CSS wrapper: `width: fit-content; min-width: 700px; max-width: 100%; margin: 0 auto` on desktop (992px+) — content-driven width that centers and shrinks on wide monitors
+  - Added `mt-2` gap between navbar and content
+  - Added `size="70"` on GUID link input to prevent text truncation under `fit-content`
+
+### Bug Fixes
+- **NPE in UpdateTask25:** Fixed null pointer when `getSourceOwner()` was null
+- **HTML corruption on BPO dashboard:** Fixed malformed JSP in `bpoHome25.jsp`
+- **Quick ticket card margin:** `.tc-panel` had conflicting margin-top; fixed by zeroing inline and using `mt-2` on parent column div
+- **Opportunity detail horizontal scrollbar:** Changed Bootstrap `gx-3` to `g-0` on row elements to eliminate negative-margin overflow
+- **SeedDemoData todo creation:** Fixed demo data seeder creating todos for seeded activities

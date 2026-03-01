@@ -1,60 +1,98 @@
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
-<%-- SMTP Settings Modal — included in navbar25.jsp, triggered from Admin dropdown --%>
-<div class="modal fade" id="smtpSettingsMod" role="dialog" tabindex="-1" aria-labelledby="smtpSettingsLabel" aria-hidden="true">
+<%-- PSP Settings Modal — tabbed: Email | Features. Included in navbar25.jsp --%>
+<div class="modal fade" id="pspSettingsMod" role="dialog" tabindex="-1" aria-labelledby="pspSettingsLabel" aria-hidden="true">
   <div class="modal-dialog modal-md modal-fullscreen-sm-down" role="document">
     <div class="modal-content">
-      <form method="post" action="UpdateSmtpSettings">
+      <form method="post" action="UpdatePspSettings">
         <div class="modal-header py-2" style="background: linear-gradient(135deg, #0d5681, #0a4468); color: white;">
-          <h6 class="modal-title m-0" id="smtpSettingsLabel">
-            <i class="bi bi-envelope-gear me-1"></i>Email Settings
+          <h6 class="modal-title m-0" id="pspSettingsLabel">
+            <i class="bi bi-gear me-1"></i>Settings
           </h6>
           <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
-          <div id="smtpLoading" class="text-center py-3">
+          <div id="settingsLoading" class="text-center py-3">
             <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
             <span class="ms-2 text-muted" style="font-size:0.82rem;">Loading settings...</span>
           </div>
-          <div id="smtpFields" style="display:none;">
-            <div class="mb-3">
-              <label class="form-label fw-semibold" style="font-size:0.82rem;">SMTP Server</label>
-              <input type="text" name="smtpServer" id="smtpServer" class="form-control form-control-sm" required placeholder="mail.smtp2go.com">
-            </div>
-            <div class="mb-3">
-              <label class="form-label fw-semibold" style="font-size:0.82rem;">SMTP Port</label>
-              <input type="text" name="smtpPort" id="smtpPort" class="form-control form-control-sm" required placeholder="2525">
-            </div>
-            <div class="mb-3">
-              <label class="form-label fw-semibold" style="font-size:0.82rem;">SMTP User</label>
-              <input type="text" name="smtpUser" id="smtpUser" class="form-control form-control-sm" required>
-            </div>
-            <div class="mb-3">
-              <label class="form-label fw-semibold" style="font-size:0.82rem;">SMTP Password</label>
-              <div class="input-group input-group-sm">
-                <input type="password" name="smtpPassword" id="smtpPassword" class="form-control form-control-sm" required>
-                <button class="btn btn-outline-secondary" type="button" onclick="toggleSmtpPw()">
-                  <i class="bi bi-eye" id="smtpPwIcon"></i>
+          <div id="settingsError" class="alert alert-danger py-2 mb-0" style="display:none; font-size:0.82rem;">
+            <i class="bi bi-exclamation-triangle me-1"></i>Failed to load settings.
+          </div>
+
+          <div id="settingsFields" style="display:none;">
+            <%-- ═══ TABS ═══ --%>
+            <ul class="nav nav-tabs nav-fill mb-3" role="tablist" style="font-size:0.82rem;">
+              <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="tab-email" data-bs-toggle="tab" data-bs-target="#pane-email"
+                        type="button" role="tab" aria-controls="pane-email" aria-selected="true">
+                  <i class="bi bi-envelope-gear me-1"></i>Email
                 </button>
+              </li>
+              <li class="nav-item" role="presentation">
+                <button class="nav-link" id="tab-features" data-bs-toggle="tab" data-bs-target="#pane-features"
+                        type="button" role="tab" aria-controls="pane-features" aria-selected="false">
+                  <i class="bi bi-toggles me-1"></i>Features
+                </button>
+              </li>
+            </ul>
+
+            <div class="tab-content">
+              <%-- ═══ EMAIL TAB ═══ --%>
+              <div class="tab-pane fade show active" id="pane-email" role="tabpanel" aria-labelledby="tab-email">
+                <div class="mb-3">
+                  <label class="form-label fw-semibold" style="font-size:0.82rem;">SMTP Server</label>
+                  <input type="text" name="smtpServer" id="smtpServer" class="form-control form-control-sm" required placeholder="mail.smtp2go.com">
+                </div>
+                <div class="mb-3">
+                  <label class="form-label fw-semibold" style="font-size:0.82rem;">SMTP Port</label>
+                  <input type="text" name="smtpPort" id="smtpPort" class="form-control form-control-sm" required placeholder="2525">
+                </div>
+                <div class="mb-3">
+                  <label class="form-label fw-semibold" style="font-size:0.82rem;">SMTP User</label>
+                  <input type="text" name="smtpUser" id="smtpUser" class="form-control form-control-sm" required>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label fw-semibold" style="font-size:0.82rem;">SMTP Password</label>
+                  <div class="input-group input-group-sm">
+                    <input type="password" name="smtpPassword" id="smtpPassword" class="form-control form-control-sm" required>
+                    <button class="btn btn-outline-secondary" type="button" onclick="toggleSettingsPw()">
+                      <i class="bi bi-eye" id="settingsPwIcon"></i>
+                    </button>
+                  </div>
+                </div>
+                <div class="mb-2">
+                  <label class="form-label fw-semibold" style="font-size:0.82rem;">From Address <span class="text-muted fw-normal">(optional)</span></label>
+                  <input type="email" name="smtpFrom" id="smtpFrom" class="form-control form-control-sm" placeholder="noreply@yourdomain.com">
+                </div>
+                <hr class="my-3">
+                <div class="mb-2">
+                  <label class="form-label fw-semibold" style="font-size:0.82rem;">Email Footer Text</label>
+                  <input type="text" name="emailFooterText" id="emailFooterText" class="form-control form-control-sm" placeholder="Your Company · Benefits Administration Services">
+                  <div class="form-text" style="font-size:0.75rem;">Appears at the bottom of all outbound emails.</div>
+                </div>
+              </div>
+
+              <%-- ═══ FEATURES TAB ═══ --%>
+              <div class="tab-pane fade" id="pane-features" role="tabpanel" aria-labelledby="tab-features">
+                <div class="mb-3">
+                  <div class="d-flex align-items-center justify-content-between p-3 rounded" style="background:#f8f9fb; border:1px solid #dee2e6;">
+                    <div>
+                      <div class="fw-semibold" style="font-size:0.85rem;"><i class="bi bi-clock me-1"></i>Use Timeclock</div>
+                      <div class="text-muted" style="font-size:0.75rem;">Show timeclock on home page. When off, a quick Log Ticket form replaces it.</div>
+                    </div>
+                    <div class="form-check form-switch ms-3">
+                      <input class="form-check-input" type="checkbox" role="switch" name="useTimeclock" id="useTimeclock" style="width:2.5em; height:1.25em;">
+                    </div>
+                  </div>
+                </div>
+                <p class="text-muted text-center" style="font-size:0.75rem;">Additional feature toggles will appear here as they become available.</p>
               </div>
             </div>
-            <div class="mb-2">
-              <label class="form-label fw-semibold" style="font-size:0.82rem;">From Address <span class="text-muted fw-normal">(optional)</span></label>
-              <input type="email" name="smtpFrom" id="smtpFrom" class="form-control form-control-sm" placeholder="noreply@yourdomain.com">
-            </div>
-            <hr class="my-3">
-            <div class="mb-2">
-              <label class="form-label fw-semibold" style="font-size:0.82rem;">Email Footer Text</label>
-              <input type="text" name="emailFooterText" id="emailFooterText" class="form-control form-control-sm" placeholder="Your Company · Benefits Administration Services">
-              <div class="form-text" style="font-size:0.75rem;">Appears at the bottom of all outbound emails.</div>
-            </div>
-          </div>
-          <div id="smtpError" class="alert alert-danger py-2 mb-0" style="display:none; font-size:0.82rem;">
-            <i class="bi bi-exclamation-triangle me-1"></i>Failed to load settings.
           </div>
         </div>
         <div class="modal-footer py-2">
           <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancel</button>
-          <button type="submit" class="btn btn-sm btn-ssa" id="smtpSaveBtn" disabled>
+          <button type="submit" class="btn btn-sm btn-ssa" id="settingsSaveBtn" disabled>
             <i class="bi bi-save me-1"></i>Save
           </button>
         </div>
@@ -63,14 +101,14 @@
   </div>
 </div>
 <script>
-  // Load SMTP values when modal opens
-  document.getElementById('smtpSettingsMod').addEventListener('show.bs.modal', function () {
-    document.getElementById('smtpLoading').style.display = '';
-    document.getElementById('smtpFields').style.display = 'none';
-    document.getElementById('smtpError').style.display = 'none';
-    document.getElementById('smtpSaveBtn').disabled = true;
+  // Load settings when modal opens
+  document.getElementById('pspSettingsMod').addEventListener('show.bs.modal', function () {
+    document.getElementById('settingsLoading').style.display = '';
+    document.getElementById('settingsFields').style.display = 'none';
+    document.getElementById('settingsError').style.display = 'none';
+    document.getElementById('settingsSaveBtn').disabled = true;
 
-    fetch('UpdateSmtpSettings')
+    fetch('UpdatePspSettings')
       .then(function(r) { return r.json(); })
       .then(function(data) {
         document.getElementById('smtpServer').value = data.SMTP_SERVER || '';
@@ -79,20 +117,21 @@
         document.getElementById('smtpPassword').value = data.SMTP_PASSWORD || '';
         document.getElementById('smtpFrom').value = data.SMTP_FROM || '';
         document.getElementById('emailFooterText').value = data.EMAIL_FOOTER_TEXT || '';
-        document.getElementById('smtpLoading').style.display = 'none';
-        document.getElementById('smtpFields').style.display = '';
-        document.getElementById('smtpSaveBtn').disabled = false;
+        document.getElementById('useTimeclock').checked = (data.USE_TIMECLOCK !== 'false');
+        document.getElementById('settingsLoading').style.display = 'none';
+        document.getElementById('settingsFields').style.display = '';
+        document.getElementById('settingsSaveBtn').disabled = false;
       })
       .catch(function() {
-        document.getElementById('smtpLoading').style.display = 'none';
-        document.getElementById('smtpError').style.display = '';
+        document.getElementById('settingsLoading').style.display = 'none';
+        document.getElementById('settingsError').style.display = '';
       });
   });
 
   // Toggle password visibility
-  function toggleSmtpPw() {
+  function toggleSettingsPw() {
     var pw = document.getElementById('smtpPassword');
-    var icon = document.getElementById('smtpPwIcon');
+    var icon = document.getElementById('settingsPwIcon');
     if (pw.type === 'password') {
       pw.type = 'text';
       icon.className = 'bi bi-eye-slash';

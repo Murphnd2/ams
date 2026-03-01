@@ -8,6 +8,7 @@ import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.model.activity.checklist.tasks.Task;
 import net.superiorstate.ams.model.activity.checklist.tasks.ToDo;
+import net.superiorstate.ams.model.general.BpoRegistration;
 import net.superiorstate.ams.model.general.Person;
 
 import java.io.IOException;
@@ -17,10 +18,10 @@ import java.util.List;
 /**
  * One-time demo seeder: finds open, incomplete ToDos and marks their Tasks as sourced.
  * Hit /SeedBpoDemoData to run. Add to LoginFilter whitelist temporarily, or run while logged in as admin.
- * 
+ *
  * Optional params:
  *   count - number of tasks to source (default 8)
- *   bpoPersonId - Person ID of the BPO user to assign as sourceOwner (optional, leaves unassigned if omitted)
+ *   bpoRegId - BpoRegistration ID to assign as the vendor entity (optional, uses first available if omitted)
  */
 @WebServlet(name = "SeedBpoDemoData", value = "/SeedBpoDemoData")
 public class SeedBpoDemoData extends HttpServlet {
@@ -38,20 +39,27 @@ public class SeedBpoDemoData extends HttpServlet {
             if (countStr != null) count = Integer.parseInt(countStr);
         } catch (Exception ignored) {}
 
-        Long bpoPersonId = null;
+        Long bpoRegId = null;
         try {
-            String pidStr = request.getParameter("bpoPersonId");
-            if (pidStr != null) bpoPersonId = Long.parseLong(pidStr);
+            String pidStr = request.getParameter("bpoRegId");
+            if (pidStr != null) bpoRegId = Long.parseLong(pidStr);
         } catch (Exception ignored) {}
 
         EntityManagerFactory emf = (EntityManagerFactory) getServletContext().getAttribute("emf");
         EntityManager em = emf.createEntityManager();
 
         try {
-            // Find the BPO person if specified
-            Person bpoPerson = null;
-            if (bpoPersonId != null) {
-                bpoPerson = em.find(Person.class, bpoPersonId);
+            // Find the BpoRegistration — use param or first available
+            BpoRegistration bpoReg = null;
+            if (bpoRegId != null) {
+                bpoReg = em.find(BpoRegistration.class, bpoRegId);
+            } else {
+                try {
+                    bpoReg = em.createQuery(
+                            "SELECT b FROM BpoRegistration b WHERE b.isActive = true AND b.isApproved = true " +
+                            "AND b.isRequested = true AND b.isAccepted = true ORDER BY b.id", BpoRegistration.class)
+                            .setMaxResults(1).getSingleResult();
+                } catch (Exception ignored) {}
             }
 
             // Find open, incomplete ToDos whose Tasks are NOT already sourced
@@ -81,8 +89,8 @@ public class SeedBpoDemoData extends HttpServlet {
                 // Mark the Task as sourced
                 task.setSourced(true);
                 task.setAllowNonOwner(false); // Vendor-only
-                if (bpoPerson != null) {
-                    task.setSourceOwner(bpoPerson);
+                if (bpoReg != null) {
+                    task.setBpoRegistration(bpoReg);
                 }
 
                 em.persist(task);
@@ -90,7 +98,7 @@ public class SeedBpoDemoData extends HttpServlet {
 
                 out.println("<p>✅ Sourced: <b>" + task.getDescription() + "</b> (Task ID " + task.getId() +
                         ", ToDo ID " + todo.getId() + ")" +
-                        (bpoPerson != null ? " → assigned to " + bpoPerson.getFullNameFirstLast() : " → unassigned") +
+                        (bpoReg != null ? " → assigned to " + bpoReg.getBpoName() : " → unassigned") +
                         "</p>");
             }
 

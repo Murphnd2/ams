@@ -258,8 +258,13 @@
       </button>
     </div>
 
-    <%-- Right: count + toggle --%>
+    <%-- Right: add + count + toggle --%>
     <div class="af-hdr-right">
+      <button class="btn btn-sm btn-outline-light" type="button"
+              data-bs-toggle="modal" data-bs-target="#addActivityModal"
+              title="New Activity" style="font-size:0.7rem; padding:0.15rem 0.45rem;">
+        <i class="bi bi-plus-lg"></i>
+      </button>
       <span class="af-hdr-count">${rowCount} showing</span>
       <button class="af-hdr-toggle" id="afToggle" type="button" onclick="afTogglePanel()">
         <i class="bi bi-sliders2-vertical"></i>

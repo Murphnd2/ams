@@ -179,11 +179,13 @@
               <li><a class="dropdown-item" href="LibraryHome"><i class="bi bi-collection me-2"></i>Resource Library</a></li>
               <li><hr class="dropdown-divider"></li>
               <li><a class="dropdown-item" href="SequenceBuilder25"><i class="bi bi-list-check me-2"></i>Sequence Builder</a></li>
+              <c:if test="${applicationScope.global.useTimeclock}">
               <li><a class="dropdown-item" href="ReviewTimeCorrections"><i class="bi bi-clock-history me-2"></i>Time Corrections</a></li>
+              </c:if>
               <li><hr class="dropdown-divider"></li>
               <li><button class="dropdown-item" type="button" data-bs-toggle="modal" data-bs-target="#createUserModal"><i class="bi bi-person-plus me-2"></i>Create User</button></li>
               <li><a class="dropdown-item" href="UploadPspBranding"><i class="bi bi-palette me-2"></i>Branding</a></li>
-              <li><button class="dropdown-item" type="button" data-bs-toggle="modal" data-bs-target="#smtpSettingsMod"><i class="bi bi-envelope-gear me-2"></i>Email Settings</button></li>
+              <li><button class="dropdown-item" type="button" data-bs-toggle="modal" data-bs-target="#pspSettingsMod"><i class="bi bi-gear me-2"></i>Settings</button></li>
               <li><a class="dropdown-item" href="BillingAction"><i class="bi bi-currency-dollar me-2"></i>Billing</a></li>
               <li><a class="dropdown-item" href="SummitImport"><i class="bi bi-cloud-upload me-2"></i>Import Data</a></li>
             </ul>
@@ -286,6 +288,7 @@
 <c:import url="/WEB-INF/view/a/todo/addChecklist25.jsp"/>
 <c:import url="/WEB-INF/view/a/renew/upcomingRenewalsModal25.jsp"/>
 <c:import url="/WEB-INF/view/a/navbar/createTicket25.jsp"/>
+<c:import url="/WEB-INF/view/a/pspHome/columns/activities/addActivityModal25.jsp"/>
 <c:import url="/WEB-INF/view/a/checklistDetail/makeRecurringModal25.jsp"/>
 <c:if test="${sessionScope.isPspAdmin}">
   <c:import url="/WEB-INF/view/a/general/smtpSettingsMod25.jsp"/>

@@ -826,6 +826,12 @@ public class AmsDataLocal implements AutoCloseable {
         Activity25 ap = (Activity25) q.getSingleResult();
         return new Activity25u(ap);
     }
+    public Activity25u getActivity25u(EntityManager em, net.superiorstate.ams.model.activity.Opportunity o){
+        Query q = em.createQuery("SELECT a FROM Activity25 a WHERE a.activity.id = :id");
+        q.setParameter("id",o.getId());
+        Activity25 ap = (Activity25) q.getSingleResult();
+        return new Activity25u(ap);
+    }
     private int getIndexOfInsertLocation(List<ToDoOut25> toDoOuts, ToDoOut25 t){
         List<ToDoOut25> openList = toDoOuts.stream().filter(obj -> !obj.isComplete()).toList();
         OptionalInt location = IntStream.range(0,openList.size()).filter(i-> openList.get(i).getSortOrder()>t.getSortOrder()).findFirst();
@@ -1114,7 +1120,7 @@ public class AmsDataLocal implements AutoCloseable {
             }
 
             List<ServiceItem> allMods = em.createQuery(
-                    "SELECT t FROM ServiceItem t WHERE t.templateGroup.id = 2 ORDER BY t.sortOrder",
+                    "SELECT t FROM ServiceItem t WHERE t.activityCategory.id = 2 ORDER BY t.sortOrder",
                     ServiceItem.class
             ).getResultList();
 

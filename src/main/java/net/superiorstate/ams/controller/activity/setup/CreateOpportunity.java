@@ -5,7 +5,9 @@ import jakarta.persistence.EntityManagerFactory;
 import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
+import net.superiorstate.ams.data.AmsDataGlobal;
 import net.superiorstate.ams.data.AmsDataLocal;
+import net.superiorstate.ams.model.Activity25u;
 import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.model.activity.Opportunity;
 import net.superiorstate.ams.model.activity.checklist.CheckList;
@@ -17,6 +19,8 @@ import net.superiorstate.ams.model.sales.agency.Prospect;
 import java.io.IOException;
 import java.sql.Date;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 
 @WebServlet(name = "CreateOpportunity", value = "/CreateOpportunity")
 public class CreateOpportunity extends HttpServlet {
@@ -28,11 +32,19 @@ public class CreateOpportunity extends HttpServlet {
 
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-        createOpportunity(request);
-        response.sendRedirect("AgentHome");
+        Opportunity opp = createOpportunity(request);
+
+        String returnTo = request.getParameter("returnTo");
+        if ("home".equals(returnTo) && opp != null) {
+            updateGlobalState(request, opp);
+            RequestDispatcher dispatcher = getServletContext().getNamedDispatcher("ViewHome25");
+            dispatcher.forward(request, response);
+        } else {
+            response.sendRedirect("AgentHome");
+        }
     }
 
-    private void createOpportunity(HttpServletRequest request) {
+    private Opportunity createOpportunity(HttpServletRequest request) {
         EntityManagerFactory emf = (EntityManagerFactory) getServletContext().getAttribute("emf");
         EntityManager em = emf.createEntityManager();
 
@@ -42,7 +54,7 @@ public class CreateOpportunity extends HttpServlet {
 
             long agencyId = Long.parseLong(request.getParameter("agencyId"));
             Agency agency = EntityLookup.getAgencyById(em, agencyId);
-            if (agency == null) return;
+            if (agency == null) return null;
 
             // Determine prospect — existing or new
             Prospect prospect;
@@ -55,7 +67,7 @@ public class CreateOpportunity extends HttpServlet {
                 prospect = EntityLookup.getProspectById(em, prospectId);
             }
 
-            if (prospect == null) return;
+            if (prospect == null) return null;
 
             // Create Opportunity
             em.getTransaction().begin();
@@ -105,8 +117,40 @@ public class CreateOpportunity extends HttpServlet {
             local.respondToActivityUpdate(em, "ADD_TICKET", opp);
             request.getSession().setAttribute("local", local);
 
+            return opp;
+
         } catch (Exception e) {
             e.printStackTrace();
+            return null;
+        } finally {
+            em.close();
+        }
+    }
+
+    /** Update global activity list and prospect cache when creating from PSP home */
+    private void updateGlobalState(HttpServletRequest request, Opportunity opp) {
+        EntityManagerFactory emf = (EntityManagerFactory) getServletContext().getAttribute("emf");
+        EntityManager em = emf.createEntityManager();
+        try {
+            AmsDataLocal local = (AmsDataLocal) request.getSession().getAttribute("local");
+            AmsDataGlobal global = (AmsDataGlobal) getServletContext().getAttribute("global");
+
+            Activity25u newActivity = local.getActivity25u(em, opp);
+            List<Activity25u> allActivities = new ArrayList<>(global.getActivitiesAllOpen());
+            allActivities.add(newActivity);
+
+            global.setActivitiesAllOpen(allActivities);
+            local.setActivitiesAllOpen(allActivities);
+
+            // Refresh prospect cache so new prospects appear in dropdown immediately
+            global.setProspects(net.superiorstate.ams.data.dao.SalesDAO.getProspectsByPsp(
+                    em, global.getPsp().getId().intValue()));
+
+            local.getCurrentActivity().setActivity(opp);
+            local.getCurrentActivity().setReFilterOnExit(true);
+
+            request.getSession().setAttribute("local", local);
+            request.getServletContext().setAttribute("global", global);
         } finally {
             em.close();
         }

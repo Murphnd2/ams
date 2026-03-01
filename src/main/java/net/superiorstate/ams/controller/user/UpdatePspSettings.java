@@ -7,6 +7,7 @@ import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import net.superiorstate.ams.data.AmsDataGlobal;
 import net.superiorstate.ams.data.dao.AppConstantDAO;
 import net.superiorstate.ams.model.Constant;
 
@@ -14,16 +15,20 @@ import java.io.IOException;
 import java.io.PrintWriter;
 
 /**
- * SMTP Settings — PSP Admin modal for viewing/updating SMTP configuration.
+ * PSP Settings — Admin modal for viewing/updating SMTP and feature configuration.
  *
- * GET  → Returns current SMTP values as JSON (AJAX, called when modal opens)
- * POST → Updates SMTP constants in DB, redirects back to referring page
+ * GET  → Returns current settings as JSON (AJAX, called when modal opens)
+ * POST → Updates constants in DB, reloads global cache, redirects home
  */
-@WebServlet(name = "UpdateSmtpSettings", value = "/UpdateSmtpSettings")
-public class UpdateSmtpSettings extends HttpServlet {
+@WebServlet(name = "UpdatePspSettings", value = "/UpdatePspSettings")
+public class UpdatePspSettings extends HttpServlet {
 
     private static final String[] SMTP_KEYS = {
             "SMTP_SERVER", "SMTP_PORT", "SMTP_USER", "SMTP_PASSWORD", "SMTP_FROM", "EMAIL_FOOTER_TEXT"
+    };
+
+    private static final String[] FEATURE_KEYS = {
+            "USE_TIMECLOCK"
     };
 
     @Override
@@ -44,13 +49,25 @@ public class UpdateSmtpSettings extends HttpServlet {
             PrintWriter out = response.getWriter();
 
             StringBuilder json = new StringBuilder("{");
+
+            // SMTP settings
             for (int i = 0; i < SMTP_KEYS.length; i++) {
                 String val = AppConstantDAO.getConstantValue(em, SMTP_KEYS[i]);
                 if (val == null) val = "";
                 json.append("\"").append(SMTP_KEYS[i]).append("\":\"")
                     .append(escapeJson(val)).append("\"");
-                if (i < SMTP_KEYS.length - 1) json.append(",");
+                json.append(",");
             }
+
+            // Feature settings
+            for (int i = 0; i < FEATURE_KEYS.length; i++) {
+                String val = AppConstantDAO.getConstantValue(em, FEATURE_KEYS[i]);
+                if (val == null) val = "true";
+                json.append("\"").append(FEATURE_KEYS[i]).append("\":\"")
+                    .append(escapeJson(val)).append("\"");
+                if (i < FEATURE_KEYS.length - 1) json.append(",");
+            }
+
             json.append("}");
             out.print(json);
             out.flush();
@@ -74,39 +91,54 @@ public class UpdateSmtpSettings extends HttpServlet {
         try {
             em.getTransaction().begin();
 
-            updateConstant(em, "SMTP_SERVER", request.getParameter("smtpServer"));
-            updateConstant(em, "SMTP_PORT", request.getParameter("smtpPort"));
-            updateConstant(em, "SMTP_USER", request.getParameter("smtpUser"));
-            updateConstant(em, "SMTP_PASSWORD", request.getParameter("smtpPassword"));
-
-            // SMTP_FROM is optional — save blank if not provided
+            // SMTP settings
+            upsertConstant(em, "SMTP_SERVER", request.getParameter("smtpServer"));
+            upsertConstant(em, "SMTP_PORT", request.getParameter("smtpPort"));
+            upsertConstant(em, "SMTP_USER", request.getParameter("smtpUser"));
+            upsertConstant(em, "SMTP_PASSWORD", request.getParameter("smtpPassword"));
             String from = request.getParameter("smtpFrom");
-            updateConstant(em, "SMTP_FROM", from != null ? from.trim() : "");
-
-            // EMAIL_FOOTER_TEXT — custom footer for outbound emails
+            upsertConstant(em, "SMTP_FROM", from != null ? from.trim() : "");
             String footer = request.getParameter("emailFooterText");
-            updateConstant(em, "EMAIL_FOOTER_TEXT", footer != null ? footer.trim() : "");
+            upsertConstant(em, "EMAIL_FOOTER_TEXT", footer != null ? footer.trim() : "");
+
+            // Feature settings
+            String useTimeclock = request.getParameter("useTimeclock");
+            upsertConstant(em, "USE_TIMECLOCK", "on".equals(useTimeclock) ? "true" : "false");
 
             em.getTransaction().commit();
+
+            // Reload global data so cached flags update immediately
+            AmsDataGlobal global = (AmsDataGlobal) getServletContext().getAttribute("global");
+            if (global != null) {
+                global.initializeGlobalData(em);
+            }
+
         } catch (Exception e) {
             if (em.getTransaction().isActive()) em.getTransaction().rollback();
             e.printStackTrace();
-            response.sendRedirect("ViewHome25?error=smtp");
+            response.sendRedirect("ViewHome25?error=settings");
             return;
         } finally {
             em.close();
         }
 
-        // Always redirect to home — referer is unreliable (may point to action servlets
-        // like CloseActivity25 that use server-side forward, leaving stale URLs in the address bar)
         response.sendRedirect("ViewHome25");
     }
 
-    private void updateConstant(EntityManager em, String name, String value) {
+    /**
+     * Create-or-update a Constant row. Handles constants that don't exist yet
+     * (e.g., USE_TIMECLOCK on first save for existing installations).
+     */
+    private void upsertConstant(EntityManager em, String name, String value) {
         Constant c = AppConstantDAO.getConstant(em, name);
         if (c != null) {
             c.setValue(value != null ? value.trim() : "");
             em.merge(c);
+        } else {
+            c = new Constant();
+            c.setName(name);
+            c.setValue(value != null ? value.trim() : "");
+            em.persist(c);
         }
     }
 

@@ -8,12 +8,15 @@ import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import net.superiorstate.ams.data.AmsDataGlobal;
 import net.superiorstate.ams.data.dao.AuthDAO;
 import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.model.Constant;
 import net.superiorstate.ams.model.activity.Activity;
 import net.superiorstate.ams.model.activity.checklist.CheckList;
 import net.superiorstate.ams.model.activity.checklist.sequences.support.ServiceItem;
+import net.superiorstate.ams.model.activity.checklist.tasks.Task;
+import net.superiorstate.ams.model.activity.checklist.tasks.ToDo;
 import net.superiorstate.ams.model.activity.renewal.Renewal;
 import net.superiorstate.ams.model.activity.renewal.RenewalItem;
 import net.superiorstate.ams.model.activity.ticket.ContactMethod;
@@ -89,6 +92,10 @@ public class SeedDemoData extends HttpServlet {
             }
 
             seedAllDemoData(em, out);
+
+            // Reload global data so new users/service items appear in dropdowns
+            AmsDataGlobal global = (AmsDataGlobal) getServletContext().getAttribute("global");
+            global.initializeGlobalData(em);
 
             out.println("<hr>");
             out.println("<div class='alert alert-success'>"
@@ -375,6 +382,20 @@ public class SeedDemoData extends HttpServlet {
             if (urBpoAdmin != null) assignRole(em, bpoAdminUser, urBpoAdmin);
             if (urBpoUser != null) assignRole(em, bpoUserUser, urBpoUser);
 
+            // Seed BPO Registration entity (AccelVantage — all flags true for demo)
+            em.getTransaction().begin();
+            BpoRegistration bpoReg = new BpoRegistration();
+            bpoReg.setPsp(psp);
+            bpoReg.setBpoName("AccelVantage");
+            bpoReg.setBpoUrl("https://accelvantage.com");
+            bpoReg.setActive(true);
+            bpoReg.setApproved(true);
+            bpoReg.setRequested(true);
+            bpoReg.setAccepted(true);
+            em.persist(bpoReg);
+            em.getTransaction().commit();
+            log(out, "✅ BPO Registration: <b>AccelVantage</b> (all flags true)");
+
             // ═══════════════════════════════════════════
             //  STAFF USER
             // ═══════════════════════════════════════════
@@ -587,8 +608,15 @@ public class SeedDemoData extends HttpServlet {
         em.persist(r);
         em.getTransaction().commit();
 
-        // Every activity needs a CheckList for the detail page
-        CheckList cl = createChecklistForActivity(em, r);
+        PSP psp = loggedBy.getPsp();
+        String[] steps = {
+            "Review current plan design and census",
+            "Request renewal rates from carrier",
+            "Prepare renewal comparison report",
+            "Schedule renewal meeting with client",
+            "Finalize plan elections and confirm enrollment"
+        };
+        CheckList cl = createChecklistForActivity(em, r, psp, steps);
         em.getTransaction().begin();
         r.setCheckList(cl);
         em.merge(r);
@@ -625,7 +653,15 @@ public class SeedDemoData extends HttpServlet {
         em.persist(s);
         em.getTransaction().commit();
 
-        CheckList cl = createChecklistForActivity(em, s);
+        PSP psp = loggedBy.getPsp();
+        String[] steps = {
+            "Collect employer information and plan documents",
+            "Configure benefit plans in system",
+            "Import employee census data",
+            "Verify employer banking and billing setup",
+            "Send welcome packet to employer contact"
+        };
+        CheckList cl = createChecklistForActivity(em, s, psp, steps);
         em.getTransaction().begin();
         s.setCheckList(cl);
         em.merge(s);
@@ -661,7 +697,14 @@ public class SeedDemoData extends HttpServlet {
         em.persist(t);
         em.getTransaction().commit();
 
-        CheckList cl = createChecklistForActivity(em, t);
+        PSP psp = loggedBy.getPsp();
+        String[] steps = {
+            "Review request details and verify contact",
+            "Research issue and gather documentation",
+            "Resolve issue or escalate as needed",
+            "Confirm resolution with contact"
+        };
+        CheckList cl = createChecklistForActivity(em, t, psp, steps);
         em.getTransaction().begin();
         t.setCheckList(cl);
         em.merge(t);
@@ -675,7 +718,8 @@ public class SeedDemoData extends HttpServlet {
     //  CHECKLIST (required by activity detail page)
     // ═══════════════════════════════════════════════════════════════
 
-    private CheckList createChecklistForActivity(EntityManager em, Activity activity) {
+    private CheckList createChecklistForActivity(EntityManager em, Activity activity,
+                                                   PSP psp, String[] taskDescriptions) {
         em.getTransaction().begin();
         CheckList cl = new CheckList();
         cl.setAssignedTo(activity);
@@ -685,6 +729,37 @@ public class SeedDemoData extends HttpServlet {
         cl.setComplete(activity.isComplete());
         em.persist(cl);
         em.getTransaction().commit();
+
+        int sortOrder = 10;
+        for (String desc : taskDescriptions) {
+            em.getTransaction().begin();
+            Task task = new Task();
+            task.setReUsable(false);
+            task.setDescription(desc);
+            task.setHasOwner(false);
+            task.setSourced(false);
+            task.setAllowNonOwner(true);
+            task.setHasAutomation(false);
+            task.setHasGoTo(false);
+            task.setHasInfo(false);
+            task.setAllowEarly(true);
+            task.setAllowFuture(true);
+            task.setPsp(psp);
+            em.persist(task);
+            em.getTransaction().commit();
+
+            em.getTransaction().begin();
+            ToDo toDo = new ToDo();
+            toDo.setComplete(false);
+            toDo.setCheckList(cl);
+            toDo.setTask(task);
+            toDo.setSortOrder(sortOrder);
+            em.persist(toDo);
+            em.getTransaction().commit();
+
+            sortOrder += 10;
+        }
+
         return cl;
     }
 

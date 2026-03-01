@@ -3,6 +3,7 @@ package net.superiorstate.ams.controller.home;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
 import jakarta.servlet.annotation.WebServlet;
+import net.superiorstate.ams.data.AmsDataGlobal;
 
 import java.io.PrintWriter;
 
@@ -56,6 +57,10 @@ public class ReSeedDemoData extends ReSeedDb {
         out.println("<h5 class='mt-3' style='color:#0d5681;'>Seeding Demo Data</h5>");
         SeedDemoData seeder = new SeedDemoData();
         seeder.seedAllDemoData(seedEm, out);
+
+        // Reload global data so new BPO users/service items appear in dropdowns
+        AmsDataGlobal global = (AmsDataGlobal) getServletContext().getAttribute("global");
+        global.initializeGlobalData(seedEm);
 
         return seedEm;
     }

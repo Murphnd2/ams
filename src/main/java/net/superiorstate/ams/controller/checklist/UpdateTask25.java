@@ -14,6 +14,7 @@ import net.superiorstate.ams.data.util.Validator;
 import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.model.activity.checklist.tasks.Task;
 import net.superiorstate.ams.model.general.Automation;
+import net.superiorstate.ams.model.general.BpoRegistration;
 import net.superiorstate.ams.model.general.LinkType;
 import net.superiorstate.ams.model.general.Person;
 import net.superiorstate.ams.model.general.WebLink;
@@ -70,7 +71,7 @@ public class UpdateTask25 extends HttpServlet {
                     tdo.setHasOwner(t.hasOwner());
                     tdo.setTaskOwner(t.getOwner());
                     tdo.setSourced(t.isSourced());
-                    tdo.setSourceOwner(t.getSourceOwner());
+                    tdo.setBpoRegistration(t.getBpoRegistration());
                     tdo.setHasGoto(t.hasGoTo());
                     tdo.setGotoLink(t.getGoToLink());
                     tdo.setHasInfo(t.hasInfo());
@@ -192,14 +193,14 @@ public class UpdateTask25 extends HttpServlet {
             isSourced = Integer.parseInt(request.getParameter("isSourced").toString());
         } catch (Exception ignored){      }
 
-        Person bpo=null;
+        BpoRegistration bpoReg=null;
         try{
             if(isSourced>0)
-                bpo = EntityLookup.getPersonById(em,Long.parseLong(request.getParameter("sourceId").toString()));
+                bpoReg = em.find(BpoRegistration.class, Long.parseLong(request.getParameter("sourceId").toString()));
         } catch (Exception ignored){}
 
         boolean hasOwner = owner != null && whoOwns != 0;
-        boolean hasSource = bpo != null && isSourced != 0;
+        boolean hasSource = bpoReg != null && isSourced != 0;
         boolean allowNonOwner = whoOwns != 2 && isSourced != 2;
 
 
@@ -246,7 +247,7 @@ public class UpdateTask25 extends HttpServlet {
         t.setHasOwner(hasOwner);
         t.setOwner(owner);
         t.setSourced(hasSource);
-        t.setSourceOwner(bpo);
+        t.setBpoRegistration(bpoReg);
         t.setAllowNonOwner(allowNonOwner);
         t.setHasGoTo(hasGoTo);
         t.setGoToLink(goToPathLink);

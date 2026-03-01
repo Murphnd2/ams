@@ -10,44 +10,22 @@
         .status-badge { font-size: 0.85rem; }
         .guid-link { font-family: monospace; font-size: 0.9rem; }
         .pricing-header { background-color: #f8f9fa; }
+        @media (min-width: 992px) {
+            .proposal-content {
+                width: fit-content;
+                min-width: 700px;
+                max-width: 100%;
+                margin: 0 auto;
+            }
+        }
     </style>
 </head>
 <body>
 <div class="container-fluid">
-    <c:set var="pageTitle" value="Proposal Detail" scope="request"/>
+    <c:set var="pageTitle" value="Proposal #${proposal.getId()}" scope="request"/>
     <c:set var="pageIcon" value="bi-file-earmark-text" scope="request"/>
     <c:import url="/WEB-INF/view/a/general/navbar25.jsp"/>
-    <div class="row align-items-center py-2">
-        <div class="col">
-            <h5 class="mb-0 d-inline">Proposal #${proposal.getId()}</h5>
-            <span class="badge bg-secondary status-badge ms-2">${proposal.getStatus()}</span>
-        </div>
-    </div>
-
-    <%-- Header --%>
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h4 class="mb-1">Proposal #${proposal.getId()}</h4>
-            <span class="badge bg-secondary status-badge">${proposal.getStatus()}</span>
-        </div>
-        <div>
-            <a href="ProposalBuilder" class="btn btn-outline-secondary btn-sm me-2">
-                <i class="bi bi-plus-lg me-1"></i>New Proposal
-            </a>
-            <c:choose>
-                <c:when test="${sessionScope.isAgent || sessionScope.isAgencyAdmin}">
-                    <a href="AgentHome" class="btn btn-outline-primary btn-sm">
-                        <i class="bi bi-kanban me-1"></i>Pipeline
-                    </a>
-                </c:when>
-                <c:otherwise>
-                    <a href="ViewHome25" class="btn btn-outline-primary btn-sm">
-                        <i class="bi bi-house me-1"></i>Home
-                    </a>
-                </c:otherwise>
-            </c:choose>
-        </div>
-    </div>
+    <div class="proposal-content mt-2">
 
     <%-- Prospect & Rate Info --%>
     <div class="card mb-3">
@@ -85,7 +63,7 @@
         <div class="card-body">
             <h6 class="text-muted mb-1">Proposal Link</h6>
             <div class="input-group">
-                <input type="text" class="form-control guid-link" id="guidLink"
+                <input type="text" class="form-control guid-link" id="guidLink" size="70"
                        value="https://superiorstate.biz/proposal/${proposal.getApplicationGUID()}" readonly>
                 <button class="btn btn-outline-secondary" type="button" onclick="copyLink()">
                     <i class="bi bi-clipboard me-1"></i>Copy
@@ -189,6 +167,7 @@
             </div>
         </div>
 
+    </div><%-- /proposal-content --%>
 </div>
 
 <script>

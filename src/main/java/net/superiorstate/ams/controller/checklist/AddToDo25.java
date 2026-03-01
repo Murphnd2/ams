@@ -82,7 +82,7 @@ public class AddToDo25 extends HttpServlet {
         if (!toDoList.isEmpty()) {
             return toDoList.get(0).getCheckList();
         } else {
-            return local.getCurrentChecklist().getCheckList();
+            return local.getCurrentActivity().getCheckList();
         }
     }
 

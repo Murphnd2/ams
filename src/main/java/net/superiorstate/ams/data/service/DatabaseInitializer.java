@@ -28,6 +28,8 @@ import net.superiorstate.ams.model.sales.agency.Agency;
 import net.superiorstate.ams.model.sales.agency.PriceItem;
 import net.superiorstate.ams.model.sales.agency.Rate;
 import net.superiorstate.ams.model.sales.agency.RateTable;
+import net.superiorstate.ams.model.sales.application.ApplicationField;
+import net.superiorstate.ams.model.sales.application.ApplicationSection;
 import net.superiorstate.ams.model.sales.offering.Enhancement;
 import net.superiorstate.ams.model.sales.offering.LOS;
 import net.superiorstate.ams.model.sales.offering.ServiceModule;
@@ -391,6 +393,10 @@ public abstract class DatabaseInitializer {
         createTaskFrequency(em,18,"Last Thursday of Month");
         createTaskFrequency(em,19,"Last Friday of Month");
 
+        //Create Sentinel Tasks — required by activity creation servlets as fallback/close tasks
+        createTask(em,129L,"System Close","",psp,p,false);
+        createTask(em,153L,"System Close","",psp,p,false);
+
         //Create Ticket Category + Service Item (PSP defines additional categories)
         TicketCategory tc = createTicketCategory(em,1L,"General","GEN");
         ServiceItem siTicket = createServiceItem(em,10,"General Ticket",1,tg3,psp);
@@ -419,6 +425,8 @@ public abstract class DatabaseInitializer {
         // Vendor users removed — configure via admin UI (future backlog item)
         // Add PSP Constants
         addPspConstants(em);
+        // Seed baseline Application Sections (Company, Contact, Address)
+        createApplicationSections(em, psp);
         // Create Initialization Checklist
         createInitializationChecklist(em);
         // Set Note To Show Initialization Completed
@@ -567,6 +575,8 @@ public abstract class DatabaseInitializer {
             createConstant(em,"FAVICON","/favicon.ico");
         if(getConstantByName(em,"EMAIL_FOOTER_TEXT")==null)
             createConstant(em,"EMAIL_FOOTER_TEXT",getPspName());
+        if(getConstantByName(em,"USE_TIMECLOCK")==null)
+            createConstant(em,"USE_TIMECLOCK","true");
     }
 
     private static void createConstant(EntityManager em, String name, String value){
@@ -1257,6 +1267,74 @@ public abstract class DatabaseInitializer {
         em.persist(activityStatus);
         em.getTransaction().commit();
         return  activityStatus;
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    //  APPLICATION SECTIONS (baseline form template for proposals)
+    // ═══════════════════════════════════════════════════════════════
+
+    private static void createApplicationSections(EntityManager em, PSP psp) {
+        // Section 1 — Company Information
+        ApplicationSection s1 = createAppSection(em, 1L, "Company Information",
+                "Legal business name, EIN, and basic company details.", "ALL", 100, psp);
+        createAppField(em, "company_legal_name", "Legal Company Name",    "TEXT",  true,  100, null, s1);
+        createAppField(em, "company_dba",        "DBA (Doing Business As)","TEXT", false, 200, null, s1);
+        createAppField(em, "company_ein",        "Employer Identification Number (EIN)","TEXT",true,300,null,s1);
+        createAppField(em, "company_employees",  "Number of Employees",   "NUMBER",true, 400, null, s1);
+        createAppField(em, "company_eligible",   "Number of Eligible Employees","NUMBER",false,500,null,s1);
+        createAppField(em, "company_phone",      "Company Phone Number",  "TEXT",  true,  600, null, s1);
+        createAppField(em, "company_website",    "Company Website",       "TEXT",  false, 700, null, s1);
+
+        // Section 2 — Primary Contact
+        ApplicationSection s2 = createAppSection(em, 2L, "Primary Contact",
+                "Main point of contact for benefits administration.", "ALL", 200, psp);
+        createAppField(em, "contact_name",  "Contact Name",   "TEXT",  true,  100, null, s2);
+        createAppField(em, "contact_title", "Title",          "TEXT",  false, 200, null, s2);
+        createAppField(em, "contact_email", "Email Address",  "EMAIL", true,  300, null, s2);
+        createAppField(em, "contact_phone", "Phone Number",   "TEXT",  true,  400, null, s2);
+        createAppField(em, "contact_fax",   "Fax Number",     "TEXT",  false, 500, null, s2);
+
+        // Section 3 — Mailing Address
+        ApplicationSection s3 = createAppSection(em, 3L, "Mailing Address",
+                "Company mailing address for correspondence.", "ALL", 300, psp);
+        createAppField(em, "address_street1", "Street Address Line 1", "TEXT", true,  100, null, s3);
+        createAppField(em, "address_street2", "Street Address Line 2", "TEXT", false, 200, null, s3);
+        createAppField(em, "address_city",    "City",                  "TEXT", true,  300, null, s3);
+        createAppField(em, "address_state",   "State",                 "TEXT", true,  400, null, s3);
+        createAppField(em, "address_zip",     "ZIP Code",              "TEXT", true,  500, null, s3);
+    }
+
+    private static ApplicationSection createAppSection(EntityManager em, Long id, String name,
+                                                        String description, String scope, int sortOrder, PSP psp) {
+        em.getTransaction().begin();
+        ApplicationSection s = new ApplicationSection();
+        s.setId(id);
+        s.setName(name);
+        s.setDescription(description);
+        s.setScope(scope);
+        s.setSortOrder(sortOrder);
+        s.setSuppressed(false);
+        s.setPsp(psp);
+        em.persist(s);
+        em.getTransaction().commit();
+        return s;
+    }
+
+    private static void createAppField(EntityManager em, String fieldKey, String label,
+                                        String fieldType, boolean required, int sortOrder,
+                                        String selectOptions, ApplicationSection section) {
+        em.getTransaction().begin();
+        ApplicationField f = new ApplicationField();
+        f.setFieldKey(fieldKey);
+        f.setLabel(label);
+        f.setFieldType(fieldType);
+        f.setRequired(required);
+        f.setSortOrder(sortOrder);
+        f.setSelectOptions(selectOptions);
+        f.setSuppressed(false);
+        f.setApplicationSection(section);
+        em.persist(f);
+        em.getTransaction().commit();
     }
 
 }

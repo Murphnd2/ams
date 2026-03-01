@@ -3,6 +3,7 @@ package net.superiorstate.ams.model.activity.checklist.tasks;
 import jakarta.persistence.*;
 import net.superiorstate.ams.model.activity.checklist.sequences.support.TaskSequenceTable;
 import net.superiorstate.ams.model.general.Automation;
+import net.superiorstate.ams.model.general.BpoRegistration;
 import net.superiorstate.ams.model.general.PSP;
 import net.superiorstate.ams.model.general.Person;
 import net.superiorstate.ams.model.general.WebLink;
@@ -45,8 +46,8 @@ public class Task {
     private WebLink infoLink;
 
     @ManyToOne
-    @JoinColumn(name="source_owner")
-    private Person sourceOwner;
+    @JoinColumn(name="bpo_registration_id")
+    private BpoRegistration bpoRegistration;
 
 
     @ManyToOne
@@ -109,6 +110,12 @@ public class Task {
 
     public String getDescription() {
         return description;
+    }
+
+    /** Returns description with HTML tags stripped — safe for data attributes and plain-text contexts. */
+    public String getPlainDescription() {
+        if (description == null) return "";
+        return description.replaceAll("<[^>]*>", "").trim();
     }
 
     public void setDescription(String description) {
@@ -214,11 +221,11 @@ public class Task {
     public void setInfoLink(WebLink infoLink) {
         this.infoLink = infoLink;
     }
-    public Person getSourceOwner() {
-        return sourceOwner;
+    public BpoRegistration getBpoRegistration() {
+        return bpoRegistration;
     }
-    public void setSourceOwner(Person sourceOwner) {
-        this.sourceOwner = sourceOwner;
+    public void setBpoRegistration(BpoRegistration bpoRegistration) {
+        this.bpoRegistration = bpoRegistration;
     }
 
     public Person getOwner() {

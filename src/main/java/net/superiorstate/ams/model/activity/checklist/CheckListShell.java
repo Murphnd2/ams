@@ -1,5 +1,6 @@
 package net.superiorstate.ams.model.activity.checklist;
 
+import net.superiorstate.ams.model.general.BpoRegistration;
 import net.superiorstate.ams.model.general.Person;
 
 import java.sql.Date;
@@ -11,7 +12,7 @@ public class CheckListShell {
     private Date dueDate;
     private Date showDate;
     private Person delegate;
-    private Person bpoUser;
+    private BpoRegistration bpoRegistration;
     private int toDoCount;
     private boolean hasDelegate;
 
@@ -65,12 +66,12 @@ public class CheckListShell {
         this.delegate = delegate;
     }
 
-    public Person getBpoUser() {
-        return bpoUser;
+    public BpoRegistration getBpoRegistration() {
+        return bpoRegistration;
     }
 
-    public void setBpoUser(Person bpoUser) {
-        this.bpoUser = bpoUser;
+    public void setBpoRegistration(BpoRegistration bpoRegistration) {
+        this.bpoRegistration = bpoRegistration;
     }
 
     public int getToDoCount() {

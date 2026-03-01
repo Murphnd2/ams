@@ -3,6 +3,7 @@ package net.superiorstate.ams.model.activity.checklist.tasks;
 import jakarta.persistence.*;
 import net.superiorstate.ams.model.activity.checklist.CheckList;
 import net.superiorstate.ams.model.general.Automation;
+import net.superiorstate.ams.model.general.BpoRegistration;
 import net.superiorstate.ams.model.general.Person;
 import net.superiorstate.ams.model.general.WebLink;
 
@@ -69,8 +70,8 @@ public class ToDoOut {
     private boolean isSourced;
 
     @ManyToOne
-    @JoinColumn(name="source_owner")
-    private Person sourceOwner;
+    @JoinColumn(name="bpo_registration_id")
+    private BpoRegistration bpoRegistration;
 
     @Column(name="has_goto")
     private boolean hasGoto;
@@ -165,8 +166,8 @@ public class ToDoOut {
         return isSourced;
     }
 
-    public Person getSourceOwner() {
-        return sourceOwner;
+    public BpoRegistration getBpoRegistration() {
+        return bpoRegistration;
     }
 
     public boolean hasGoto() {
@@ -253,8 +254,8 @@ public class ToDoOut {
         isSourced = sourced;
     }
 
-    public void setSourceOwner(Person sourceOwner) {
-        this.sourceOwner = sourceOwner;
+    public void setBpoRegistration(BpoRegistration bpoRegistration) {
+        this.bpoRegistration = bpoRegistration;
     }
 
     public void setHasGoto(boolean hasGoto) {
@@ -282,10 +283,12 @@ public class ToDoOut {
     }
 
     public boolean isWhoBlocked(Person currentUser){
-        if(allowsNonOwner() || (!hasOwner() && !isSourced()) || (hasOwner() && getTaskOwner()==null) || (isSourced() && getSourceOwner()==null))
+        if(allowsNonOwner() || (!hasOwner() && !isSourced()) || (hasOwner() && getTaskOwner()==null))
             return false;
-        else if((getTaskOwner()!=null && currentUser.getId().equals(getTaskOwner().getId())) || (getSourceOwner()!=null && currentUser.getId().equals(getSourceOwner().getId())))
+        else if(getTaskOwner()!=null && currentUser.getId().equals(getTaskOwner().getId()))
             return false;
+        else if(isSourced() && bpoRegistration != null)
+            return true; // sourced to BPO org — PSP user is blocked unless allowNonOwner
         else return !allowsNonOwner();
     }
 
@@ -312,15 +315,13 @@ public class ToDoOut {
     private boolean isMyTask(Person u){
         if(hasOwner()&& getTaskOwner()!=null && getTaskOwner().getId().equals(u.getId()))
             return true;
-        if(isSourced() && getSourceOwner()!=null && getSourceOwner().getId().equals(u.getId()))
-            return true;
         return false;
     }
     private boolean isDelegated(Person u){
         if(hasOwner() && getTaskOwner()!=null && !getTaskOwner().getId().equals(u.getId()))
             return true;
-        if(isSourced() && getSourceOwner() != null && !getSourceOwner().getId().equals(u.getId()))
-            return true;
+        if(isSourced() && bpoRegistration != null)
+            return true; // sourced to BPO org is always delegated
         return false;
     }
 
@@ -343,16 +344,9 @@ public class ToDoOut {
             } else {
                 return getButtonString("circle","");
             }
-        } else if(isSourced() && getSourceOwner()!=null){
-            if(getSourceOwner().equals(currentUser) && !activityOwner.equals(currentUser)){
-                return getButtonString("diamond","");
-            } else if(getSourceOwner().equals(currentUser)){
-                return getButtonString("square","");
-            } else if(!getSourceOwner().equals(currentUser) && activityOwner.equals(currentUser)) {
-                return getButtonString("box-arrow-up-left","");
-            } else {
-                return getButtonString("circle","");
-            }
+        } else if(isSourced() && bpoRegistration!=null){
+            // Sourced to BPO org — always show delegation arrow for PSP users
+            return getButtonString("box-arrow-up-left","");
         } else {
             return getButtonString("square","");
         }
@@ -381,7 +375,7 @@ public class ToDoOut {
             return "";
         if(!allowsNonOwner() && hasOwner() && getTaskOwner()!=null && !getTaskOwner().getId().equals(currentUser.getId()))
             return "";
-        if(!allowsNonOwner() && isSourced() && getSourceOwner()!=null)
+        if(!allowsNonOwner() && isSourced() && bpoRegistration!=null)
             return "";
         if(isComplete())
             return "";

@@ -29,12 +29,20 @@
 <div class="container-fluid">
   <c:import url="/WEB-INF/view/a/general/navbar25.jsp"></c:import>
   <div class="row" >
+    <c:if test="${applicationScope.global.useTimeclock}">
     <%-- ************************ T I M E C L O C K   C O L U M N ********************************************************* --%>
     <div class="col-12 col-lg-7 col-xl-3 order-last">
       <c:import url="/WEB-INF/view/a/pspHome/columns/timeClock/timeClockHeader.jsp"></c:import>
       <c:import url="/WEB-INF/view/a/pspHome/columns/timeClock/timeClockDetail25.jsp"></c:import>
       <c:import url="/WEB-INF/view/a/pspHome/columns/timeClock/timeCorrectionModal.jsp"/>
     </div>
+    </c:if>
+    <c:if test="${!applicationScope.global.useTimeclock}">
+    <%-- ************************ Q U I C K   T I C K E T   C O L U M N ************************************************* --%>
+    <div class="col-12 col-lg-7 col-xl-3 order-last mt-2">
+      <c:import url="/WEB-INF/view/a/pspHome/columns/quickTicket25.jsp"/>
+    </div>
+    </c:if>
       <%-- ************************ A C T I V I T Y   C O L U M N ********************************************************* --%>
       <div class="col-12 col-lg-7 col-xl-6 order-first order-xl-2 d-flex flex-column" style="height: calc(100vh - 70px); min-height: 400px;">
         <c:import url="/WEB-INF/view/a/pspHome/columns/activities/activityHeader25.jsp"></c:import>

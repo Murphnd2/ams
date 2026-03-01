@@ -2,6 +2,7 @@ package net.superiorstate.ams.model.activity;
 
 import jakarta.persistence.*;
 import net.superiorstate.ams.model.activity.checklist.CheckList;
+import net.superiorstate.ams.model.general.BpoRegistration;
 import net.superiorstate.ams.model.general.Person;
 import net.superiorstate.ams.model.summit.archive.Employer;
 
@@ -60,8 +61,8 @@ public class ActivityOut {
     private Person taskOwner;
 
     @ManyToOne
-    @JoinColumn(name="source_owner_id")
-    private Person sourceOwner;
+    @JoinColumn(name="bpo_registration_id")
+    private BpoRegistration bpoRegistration;
 
     public ActivityOut(){}
 
@@ -121,8 +122,8 @@ public class ActivityOut {
         return taskOwner;
     }
 
-    public Person getSourceOwner() {
-        return sourceOwner;
+    public BpoRegistration getBpoRegistration() {
+        return bpoRegistration;
     }
 
     public int getOwnershipLevel(Long userId) {
