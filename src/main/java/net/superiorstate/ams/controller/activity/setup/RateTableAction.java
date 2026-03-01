@@ -6,6 +6,7 @@ import jakarta.persistence.NoResultException;
 import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
+import net.superiorstate.ams.data.AmsDataGlobal;
 import net.superiorstate.ams.data.AmsDataLocal;
 import net.superiorstate.ams.data.dao.SalesDAO;
 import net.superiorstate.ams.data.resolver.EntityLookup;
@@ -355,6 +356,10 @@ public class RateTableAction extends HttpServlet {
                     rateIdParam = newRate.getId().toString();
                 }
             }
+
+            // Refresh cached rate/LOS data so setup modal picks up changes
+            AmsDataGlobal global = (AmsDataGlobal) getServletContext().getAttribute("global");
+            global.refreshSalesData(em);
 
         } finally {
             em.close();

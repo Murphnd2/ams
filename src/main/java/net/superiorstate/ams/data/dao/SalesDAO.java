@@ -14,6 +14,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -98,7 +99,7 @@ public abstract class SalesDAO {
         return (LOS) q.getSingleResult();
     }
     public static List<Rate> getRateList(EntityManager em, int pspID){
-        Query q = em.createQuery("SELECT r FROM Rate r WHERE r.psp.id = :psp_id AND r.isSuppressed = false");
+        Query q = em.createQuery("SELECT r FROM Rate r WHERE r.psp.id = :psp_id AND r.isSuppressed = false ORDER BY r.description");
         q.setParameter("psp_id",pspID);
         return (List<Rate>) q.getResultList();
     }
@@ -353,5 +354,72 @@ public abstract class SalesDAO {
         Query q = em.createQuery("SELECT COUNT(p) FROM Proposal p WHERE p.rate.id = :rate_id");
         q.setParameter("rate_id", rateId);
         return (long) q.getSingleResult();
+    }
+
+    /** Returns [agencyId, personId, fullName] for every agency→agent pair. */
+    public static List<Object[]> getAgencyAgentData(EntityManager em) {
+        Query q = em.createQuery(
+                "SELECT a.id, p.id, p.fullName FROM Agency a JOIN a.agentList p ORDER BY p.fullName");
+        return (List<Object[]>) q.getResultList();
+    }
+
+    /** Returns [prospectId, agencyId] for every prospect through its agent's agency memberships. */
+    public static List<Object[]> getProspectAgencyData(EntityManager em) {
+        Query q = em.createQuery(
+                "SELECT DISTINCT p.id, a.id FROM Prospect p " +
+                "JOIN p.agent ag JOIN ag.listOfAgenciesWithThisAgent a");
+        return (List<Object[]>) q.getResultList();
+    }
+
+    /** Returns map of agencyId → personId for the agency manager (role 8) in each agency. */
+    public static Map<Long, Long> getAgencyManagerMap(EntityManager em) {
+        Query q = em.createQuery(
+                "SELECT a.id, p.id FROM Agency a JOIN a.agentList p " +
+                "WHERE p.id IN (SELECT u.person.id FROM User u JOIN u.userRoleList ur WHERE ur.id = 8)");
+        List<Object[]> results = (List<Object[]>) q.getResultList();
+        Map<Long, Long> map = new HashMap<>();
+        for (Object[] row : results) {
+            map.put((Long) row[0], (Long) row[1]);
+        }
+        return map;
+    }
+
+    /** Returns a map of agencyId → list of rateIds assigned to that agency (non-suppressed only). */
+    public static Map<Long, List<Long>> getAgencyRateMap(EntityManager em) {
+        Query q = em.createQuery(
+                "SELECT a.id, r.id FROM Agency a JOIN a.agencyRateList r WHERE r.isSuppressed = false");
+        List<Object[]> results = (List<Object[]>) q.getResultList();
+        Map<Long, List<Long>> map = new HashMap<>();
+        for (Object[] row : results) {
+            map.computeIfAbsent((Long) row[0], k -> new ArrayList<>()).add((Long) row[1]);
+        }
+        return map;
+    }
+
+    /** Returns a map of rateId → list of LOS IDs that have pricing in that rate. */
+    public static Map<Long, List<Long>> getRateLosMap(EntityManager em) {
+        Query q = em.createQuery(
+                "SELECT DISTINCT rt.rate.id, sm.los.id FROM RateTable rt " +
+                "JOIN rt.module sm WHERE sm.los IS NOT NULL");
+        List<Object[]> results = (List<Object[]>) q.getResultList();
+        Map<Long, List<Long>> map = new HashMap<>();
+        for (Object[] row : results) {
+            map.computeIfAbsent((Long) row[0], k -> new ArrayList<>()).add((Long) row[1]);
+        }
+        return map;
+    }
+
+    /** Returns a map of rateId → list of Enhancement ServiceItem IDs that have pricing in that rate. */
+    public static Map<Long, List<Integer>> getRateExtraMap(EntityManager em) {
+        Query q = em.createQuery(
+                "SELECT DISTINCT rt.rate.id, sm.enhancement.serviceItem.id " +
+                "FROM RateTable rt JOIN rt.module sm " +
+                "WHERE sm.enhancement IS NOT NULL AND sm.enhancement.serviceItem IS NOT NULL");
+        List<Object[]> results = (List<Object[]>) q.getResultList();
+        Map<Long, List<Integer>> map = new HashMap<>();
+        for (Object[] row : results) {
+            map.computeIfAbsent((Long) row[0], k -> new ArrayList<>()).add((Integer) row[1]);
+        }
+        return map;
     }
 }

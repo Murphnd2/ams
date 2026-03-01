@@ -27,13 +27,36 @@ import net.superiorstate.ams.model.general.UserRole;
 import net.superiorstate.ams.model.general.WebLink;
 import net.superiorstate.ams.model.sales.agency.Agency;
 import net.superiorstate.ams.model.sales.agency.Prospect;
+import net.superiorstate.ams.model.sales.agency.Rate;
+import net.superiorstate.ams.model.sales.offering.Enhancement;
+import net.superiorstate.ams.model.sales.offering.LOS;
 import net.superiorstate.ams.model.summit.archive.Employer;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
 
 public class AmsDataGlobal {
+
+    /** Lightweight agent info for the Setup modal agent dropdown. */
+    public static class AgentInfo {
+        private final long id;
+        private final String name;
+        private final String agencyIds;
+
+        public AgentInfo(long id, String name, String agencyIds) {
+            this.id = id;
+            this.name = name;
+            this.agencyIds = agencyIds;
+        }
+
+        public long getId() { return id; }
+        public String getName() { return name; }
+        public String getAgencyIds() { return agencyIds; }
+    }
 
 
     private List<Person> users;
@@ -80,6 +103,15 @@ public class AmsDataGlobal {
     private List<Agency> agencies;
     private List<Prospect> prospects;
     private List<Activity25p> activitiesWithDelegation;
+    private List<LOS> losList;
+    private List<Enhancement> enhancementList;
+    private List<Rate> rateList;
+    private Map<Long, List<Long>> rateLosMap;
+    private Map<Long, List<Integer>> rateExtraMap;
+    private Map<Long, List<Long>> agencyRateMap;
+    private List<AgentInfo> setupAgents;
+    private Map<Long, String> prospectAgencyMap;
+    private Map<Long, Long> agencyManagerMap;
 
     public AmsDataGlobal(){};
 
@@ -112,6 +144,15 @@ public class AmsDataGlobal {
             setActivitiesWithDelegation(retrieveActivitiesWithDependencies(em));
             setAgencies(SalesDAO.getAgencyList(em, getPsp().getId().intValue()));
             setProspects(SalesDAO.getProspectsByPsp(em, getPsp().getId().intValue()));
+            setLosList(loadLosList(em));
+            setEnhancementList(loadEnhancementList(em));
+            setRateList(SalesDAO.getRateList(em, getPsp().getId().intValue()));
+            setRateLosMap(SalesDAO.getRateLosMap(em));
+            setRateExtraMap(SalesDAO.getRateExtraMap(em));
+            setAgencyRateMap(SalesDAO.getAgencyRateMap(em));
+            setSetupAgents(buildAgentList(em));
+            setProspectAgencyMap(buildProspectAgencyMap(em));
+            setAgencyManagerMap(SalesDAO.getAgencyManagerMap(em));
             setAssignableRoles(loadAssignableRoles(em));
             setConstants(em);
         } catch (Exception e) {
@@ -636,5 +677,224 @@ public class AmsDataGlobal {
 
     public void setActivitiesWithDelegation(List<Activity25p> activitiesWithDelegation) {
         this.activitiesWithDelegation = activitiesWithDelegation;
+    }
+
+    private List<LOS> loadLosList(EntityManager em) {
+        try {
+            List<LOS> list = em.createNamedQuery("LOS.getByPsp", LOS.class)
+                    .setParameter("psp_id", getPsp().getId())
+                    .getResultList();
+            list.removeIf(LOS::isSuppressed);
+            return list;
+        } catch (Exception e) {
+            return new ArrayList<>();
+        }
+    }
+
+    public List<LOS> getLosList() {
+        return losList;
+    }
+
+    public void setLosList(List<LOS> losList) {
+        this.losList = losList;
+    }
+
+    private List<Enhancement> loadEnhancementList(EntityManager em) {
+        try {
+            return em.createQuery(
+                    "SELECT e FROM Enhancement e WHERE e.psp.id = :pspId " +
+                    "AND e.suppressed = false AND e.serviceItem IS NOT NULL " +
+                    "ORDER BY e.sortOrder", Enhancement.class)
+                    .setParameter("pspId", getPsp().getId())
+                    .getResultList();
+        } catch (Exception e) {
+            return new ArrayList<>();
+        }
+    }
+
+    public List<Enhancement> getEnhancementList() {
+        return enhancementList;
+    }
+
+    public void setEnhancementList(List<Enhancement> enhancementList) {
+        this.enhancementList = enhancementList;
+    }
+
+    public List<Rate> getRateList() {
+        return rateList;
+    }
+
+    public void setRateList(List<Rate> rateList) {
+        this.rateList = rateList;
+    }
+
+    public Map<Long, List<Long>> getRateLosMap() {
+        return rateLosMap;
+    }
+
+    public void setRateLosMap(Map<Long, List<Long>> rateLosMap) {
+        this.rateLosMap = rateLosMap;
+    }
+
+    public Map<Long, List<Integer>> getRateExtraMap() {
+        return rateExtraMap;
+    }
+
+    public void setRateExtraMap(Map<Long, List<Integer>> rateExtraMap) {
+        this.rateExtraMap = rateExtraMap;
+    }
+
+    public Map<Long, List<Long>> getAgencyRateMap() {
+        return agencyRateMap;
+    }
+
+    public void setAgencyRateMap(Map<Long, List<Long>> agencyRateMap) {
+        this.agencyRateMap = agencyRateMap;
+    }
+
+    /** Comma-separated rate IDs assigned to the given agency (for JSP data attributes). */
+    public String getAgencyRateIds(Long agencyId) {
+        if (agencyRateMap == null || !agencyRateMap.containsKey(agencyId)) return "";
+        StringBuilder sb = new StringBuilder();
+        for (Long id : agencyRateMap.get(agencyId)) {
+            if (sb.length() > 0) sb.append(",");
+            sb.append(id);
+        }
+        return sb.toString();
+    }
+
+    /** Reload rate/LOS/enhancement/agency/agent caches after sales data changes. */
+    public void refreshSalesData(EntityManager em) {
+        setLosList(loadLosList(em));
+        setEnhancementList(loadEnhancementList(em));
+        setRateList(SalesDAO.getRateList(em, getPsp().getId().intValue()));
+        setRateLosMap(SalesDAO.getRateLosMap(em));
+        setRateExtraMap(SalesDAO.getRateExtraMap(em));
+        setAgencyRateMap(SalesDAO.getAgencyRateMap(em));
+        setAgencies(SalesDAO.getAgencyList(em, getPsp().getId().intValue()));
+        setProspects(SalesDAO.getProspectsByPsp(em, getPsp().getId().intValue()));
+        setSetupAgents(buildAgentList(em));
+        setProspectAgencyMap(buildProspectAgencyMap(em));
+        setAgencyManagerMap(SalesDAO.getAgencyManagerMap(em));
+    }
+
+    /** Comma-separated LOS IDs available in the given rate (for JSP data attributes). */
+    public String getRateLosIds(Long rateId) {
+        if (rateLosMap == null || !rateLosMap.containsKey(rateId)) return "";
+        StringBuilder sb = new StringBuilder();
+        for (Long id : rateLosMap.get(rateId)) {
+            if (sb.length() > 0) sb.append(",");
+            sb.append(id);
+        }
+        return sb.toString();
+    }
+
+    /** Comma-separated Enhancement ServiceItem IDs available in the given rate (for JSP data attributes). */
+    public String getRateExtraIds(Long rateId) {
+        if (rateExtraMap == null || !rateExtraMap.containsKey(rateId)) return "";
+        StringBuilder sb = new StringBuilder();
+        for (Integer id : rateExtraMap.get(rateId)) {
+            if (sb.length() > 0) sb.append(",");
+            sb.append(id);
+        }
+        return sb.toString();
+    }
+
+    // ═══ Agent / Prospect → Agency mappings for Setup modal ═══
+
+    /** Build unique agent list with their agency memberships from DB data. */
+    private List<AgentInfo> buildAgentList(EntityManager em) {
+        try {
+            List<Object[]> rows = SalesDAO.getAgencyAgentData(em);
+            Map<Long, String> nameMap = new LinkedHashMap<>();
+            Map<Long, List<Long>> agMap = new HashMap<>();
+            for (Object[] row : rows) {
+                Long agencyId = (Long) row[0];
+                Long personId = (Long) row[1];
+                String name = (String) row[2];
+                nameMap.put(personId, name);
+                agMap.computeIfAbsent(personId, k -> new ArrayList<>()).add(agencyId);
+            }
+            List<AgentInfo> list = new ArrayList<>();
+            for (Map.Entry<Long, String> entry : nameMap.entrySet()) {
+                Long personId = entry.getKey();
+                String name = entry.getValue();
+                StringBuilder sb = new StringBuilder();
+                for (Long aid : agMap.get(personId)) {
+                    if (sb.length() > 0) sb.append(",");
+                    sb.append(aid);
+                }
+                list.add(new AgentInfo(personId, name, sb.toString()));
+            }
+            return list;
+        } catch (Exception e) {
+            return new ArrayList<>();
+        }
+    }
+
+    /** Build prospect → comma-separated agency IDs map (through prospect.agent's agency memberships). */
+    private Map<Long, String> buildProspectAgencyMap(EntityManager em) {
+        Map<Long, String> result = new HashMap<>();
+        try {
+            List<Object[]> rows = SalesDAO.getProspectAgencyData(em);
+            Map<Long, List<Long>> temp = new HashMap<>();
+            for (Object[] row : rows) {
+                Long prospectId = (Long) row[0];
+                Long agencyId = (Long) row[1];
+                temp.computeIfAbsent(prospectId, k -> new ArrayList<>()).add(agencyId);
+            }
+            for (Map.Entry<Long, List<Long>> entry : temp.entrySet()) {
+                StringBuilder sb = new StringBuilder();
+                for (Long aid : entry.getValue()) {
+                    if (sb.length() > 0) sb.append(",");
+                    sb.append(aid);
+                }
+                result.put(entry.getKey(), sb.toString());
+            }
+        } catch (Exception e) {
+            // return empty map
+        }
+        return result;
+    }
+
+    public List<AgentInfo> getSetupAgents() { return setupAgents; }
+    public void setSetupAgents(List<AgentInfo> setupAgents) { this.setupAgents = setupAgents; }
+
+    public Map<Long, String> getProspectAgencyMap() { return prospectAgencyMap; }
+    public void setProspectAgencyMap(Map<Long, String> prospectAgencyMap) { this.prospectAgencyMap = prospectAgencyMap; }
+
+    /** Comma-separated agency IDs for the given prospect (for JSP data attributes). */
+    public String getProspectAgencyIds(Long prospectId) {
+        if (prospectAgencyMap == null || !prospectAgencyMap.containsKey(prospectId)) return "";
+        return prospectAgencyMap.get(prospectId);
+    }
+
+    /** True if the given agency has at least one agent. */
+    public boolean hasAgents(Long agencyId) {
+        if (setupAgents == null) return false;
+        for (AgentInfo ai : setupAgents) {
+            for (String id : ai.getAgencyIds().split(",")) {
+                if (id.equals(String.valueOf(agencyId))) return true;
+            }
+        }
+        return false;
+    }
+
+    public Map<Long, Long> getAgencyManagerMap() { return agencyManagerMap; }
+    public void setAgencyManagerMap(Map<Long, Long> agencyManagerMap) { this.agencyManagerMap = agencyManagerMap; }
+
+    /** Returns the agency manager (role 8) personId for the given agency, or 0 if none. */
+    public long getAgencyManagerId(Long agencyId) {
+        if (agencyManagerMap == null || !agencyManagerMap.containsKey(agencyId)) return 0;
+        return agencyManagerMap.get(agencyId);
+    }
+
+    /** Returns comma-separated agency IDs that the given person belongs to as an agent. */
+    public String getPersonAgencyIds(Long personId) {
+        if (setupAgents == null) return "";
+        for (AgentInfo ai : setupAgents) {
+            if (ai.getId() == personId) return ai.getAgencyIds();
+        }
+        return "";
     }
 }
