@@ -870,6 +870,13 @@ public class AmsDataLocal implements AutoCloseable {
         af.setOwnershipFilter(preset.getOwnershipFilter());
         af.setAttentionFilter(preset.getAttentionFilter());
         af.setSortAlphabetically(preset.isSortAlphabetically());
+
+        // When contact tracking is disabled (99), remap contact-dependent filters
+        if (getDaysSinceContactWarning() >= 99) {
+            int attn = af.getAttentionFilter();
+            if (attn == 1) af.setAttentionFilter(2);      // Needs Attention → Waiting on Us
+            else if (attn == 3) af.setAttentionFilter(0);  // Needs Contact → Show All
+        }
     }
 
     @Override

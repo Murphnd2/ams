@@ -577,6 +577,8 @@ public abstract class DatabaseInitializer {
             createConstant(em,"EMAIL_FOOTER_TEXT",getPspName());
         if(getConstantByName(em,"USE_TIMECLOCK")==null)
             createConstant(em,"USE_TIMECLOCK","true");
+        if(getConstantByName(em,"DAYS_SINCE_WARNING")==null)
+            createConstant(em,"DAYS_SINCE_WARNING","7");
     }
 
     private static void createConstant(EntityManager em, String name, String value){

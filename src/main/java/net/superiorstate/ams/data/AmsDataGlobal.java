@@ -579,6 +579,10 @@ public class AmsDataGlobal {
         return daysSinceWarning;
     }
 
+    public boolean isContactTrackingDisabled() {
+        return daysSinceWarning >= 99;
+    }
+
     public String getSmtpPassword() {
         return smtpPassword;
     }
@@ -603,6 +607,19 @@ public class AmsDataGlobal {
         List<Person> newList = new ArrayList<>(getUsers());
         newList.add(newUser);
         setUsers(newList);
+    }
+
+    /** Reload all user-related caches after activation/deactivation/role changes. */
+    public void refreshUserCaches(EntityManager em) {
+        setUsers(RecurringChecklistDAO.getPspUserList(em, getPsp()));
+        setOpportunityManagers(loadOpportunityManagers(em));
+        List<Person> allBpo = new ArrayList<>();
+        allBpo.addAll(AuthenticateUser.getUsersByRole(em, 102));
+        for (Person p : AuthenticateUser.getUsersByRole(em, 103)) {
+            if (!allBpo.contains(p)) allBpo.add(p);
+        }
+        Collections.sort(allBpo);
+        setBpoUsers(allBpo);
     }
 
     public List<Activity25u> getActivitiesAllOpen() {

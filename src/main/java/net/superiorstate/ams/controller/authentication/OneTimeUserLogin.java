@@ -60,6 +60,12 @@ public class OneTimeUserLogin extends HttpServlet {
                 return;
             }
 
+            // Check if user is deactivated
+            if (!user.isActive()) {
+                forwardToError(request, response, "This account has been deactivated. Please contact your administrator.");
+                return;
+            }
+
             // Mark GUID as used
             markGuidUsed(em, guid);
 

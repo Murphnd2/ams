@@ -280,7 +280,7 @@ public abstract class RecurringChecklistDAO {
         }
         if(userList!=null)
             for(User u:userList){
-                if(u != null && u.getUserRoleList()!=null && u.getUserRoleList().size()>0){
+                if(u != null && u.isActive() && u.getUserRoleList()!=null && u.getUserRoleList().size()>0){
                     for(UserRole ur:u.getUserRoleList()){
                         if(ur.getId()==1 || ur.getId()==5 || ur.getId()==9){
                             personList.add(u.getPerson());

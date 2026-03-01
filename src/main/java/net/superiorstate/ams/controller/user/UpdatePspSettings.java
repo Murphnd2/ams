@@ -65,8 +65,13 @@ public class UpdatePspSettings extends HttpServlet {
                 if (val == null) val = "true";
                 json.append("\"").append(FEATURE_KEYS[i]).append("\":\"")
                     .append(escapeJson(val)).append("\"");
-                if (i < FEATURE_KEYS.length - 1) json.append(",");
+                json.append(",");
             }
+
+            // Numeric settings
+            String dsw = AppConstantDAO.getConstantValue(em, "DAYS_SINCE_WARNING");
+            if (dsw == null) dsw = "7";
+            json.append("\"DAYS_SINCE_WARNING\":\"").append(escapeJson(dsw)).append("\"");
 
             json.append("}");
             out.print(json);
@@ -104,6 +109,14 @@ public class UpdatePspSettings extends HttpServlet {
             // Feature settings
             String useTimeclock = request.getParameter("useTimeclock");
             upsertConstant(em, "USE_TIMECLOCK", "on".equals(useTimeclock) ? "true" : "false");
+
+            // Numeric settings
+            String dswParam = request.getParameter("daysSinceWarning");
+            int dsw = 7;
+            try { dsw = Integer.parseInt(dswParam); } catch (Exception ignored) {}
+            if (dsw < 0) dsw = 0;
+            if (dsw > 99) dsw = 99;
+            upsertConstant(em, "DAYS_SINCE_WARNING", String.valueOf(dsw));
 
             em.getTransaction().commit();
 

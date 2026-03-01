@@ -193,6 +193,14 @@ public class ViewHome25 extends HttpServlet {
 
         int daysWarn = (global != null) ? global.getDaysSinceWarning() : 7;
 
+        // When contact tracking is disabled (99), reset contact-dependent filters
+        if (global != null && global.isContactTrackingDisabled()) {
+            int attn = local.getActivityFilter().getAttentionFilter();
+            if (attn == 1 || attn == 3) {
+                local.getActivityFilter().setAttentionFilter(attn == 1 ? 2 : 0);
+            }
+        }
+
         ActivityLandingFilter f = new ActivityLandingFilter();
 
         f.ownershipFilter = local.getActivityFilter().getOwnershipFilter();

@@ -2,7 +2,7 @@
 
 > **Purpose:** Consolidated historical record of all build sessions. For current project state, see `project_backlog.md`. For current architecture, see `application_flow.md` and `entity_reference.md`.
 >
-> **Last Updated:** February 28, 2026
+> **Last Updated:** March 1, 2026
 
 ---
 
@@ -564,3 +564,66 @@ Summit import calculates `nextRenewalDue` as `effectiveDate + renewalMonths`, bu
 - **J7 re-import does NOT modify `nextRenewalDue`** on existing benefits — only updates plan year dates.
 - **New benefit seeding rules:** J7 new COBRA → `enddate + 1`; J4/J5 new CDH with J5 → `planYearEnd + 1`; J4 without J5 → `effectiveDate + 12 months`
 - **Flagging = short plan year detection** — only triggers when end dates change year-to-year across multiple plan year rows (not effective vs renewal mismatch)
+
+---
+
+## March 1, 2026 — Session 12/13: User Manager + Days Since Contact
+
+Two sessions covering configurable activity alert settings and the new User Manager feature.
+
+### Days Since Contact — Configurable Setting (Session 12)
+- **Modified:** `smtpSettingsMod25.jsp` — Added "Days Until Contact Alert" number input in Features tab
+- **Modified:** `UpdatePspSettings.java` — Reads/writes `DAYS_SINCE_WARNING` constant
+- **Modified:** `AmsDataGlobal.java` — Added `daysSinceWarning` field, loaded from constants
+- **Modified:** Activity view JSPs — Use configurable threshold instead of hardcoded 7 days
+
+### V029 Migration — User Deactivation
+- **New file:** `docs/migrations/V029__user_is_active.sql`
+- Adds `is_active BOOLEAN NOT NULL DEFAULT TRUE` to user table
+- All existing users default to active
+
+### User Entity — isActive Field
+- **Modified:** `User.java` — Added `isActive` boolean field, getter/setter
+
+### Login Security — Block Deactivated Users
+- **Modified:** `AuthenticateUser.java` — `validatedLogin()` rejects inactive users after credential validation
+- **Modified:** `OneTimeUserLogin.java` — GUID-based login rejects deactivated accounts
+- **Modified:** `AuthenticateUser.getUsersByRole()` — Filters inactive users from role lookups
+
+### Global Cache Filtering
+- **Modified:** `RecurringChecklistDAO.getPspUserList()` — Added `u.isActive()` check
+- **Modified:** `AuthDAO.getPspStaff()` — Added `u.isActive()` check
+- **Modified:** `AmsDataGlobal.java` — Added `refreshUserCaches(EntityManager em)` method to reload all user-related caches (users, opportunityManagers, bpoUsers) after activation/role changes
+
+### UserManager Servlet
+- **New file:** `UserManager.java` at `/UserManager`
+- **GET:** Returns JSON user list (personId, name, email, roles, active, homeAgent) for the Manage Users tab. Also routes `action=getCounts` for reassignment count lookups. Filters out BPO-only users (roles 102/103).
+- **POST:** AJAX JSON handler for 6 actions:
+  - `getCounts` — returns open activities, managed opportunities, delegated todos, owned tasks for a person
+  - `deactivate` — validates (not self, not last admin), bulk reassigns activities/opportunities/todos/tasks, clears agency manager, sets `isActive=false`, refreshes caches
+  - `reactivate` — sets `isActive=true`, refreshes caches
+  - `addAgentRole` — adds role 2, adds person to PSP home agency's agentList (auto-resolved, no agency selection)
+  - `removeAgentRole` — reassigns open opportunities, removes role 2 (and role 8 if present), removes from home agency
+  - `addPspUserRole` — adds role 1 to expand agent-only to PSP User
+
+### User Manager Modal
+- **New file:** `userManager25.jsp` — Modal component (not full page), following Settings modal (`smtpSettingsMod25.jsp`) pattern
+- **Tab 1: Create User** — Server-rendered form with role checkboxes, sales capability toggle, agency selection. All IDs prefixed `um` to avoid conflicts with `createUserModal25.jsp`.
+- **Tab 2: Manage Users** — AJAX-loaded table built via JavaScript when modal opens. Columns: Name, Email, Roles (badges), Status (Active/Inactive), Actions.
+- **Action buttons per user:** Deactivate (opens stacked sub-modal with counts and reassignment dropdown), +Agent (confirm dialog, auto home agency), -Agent (stacked sub-modal with opportunity reassignment, home agency agents only), +PSP User (confirm dialog, home agency agents only), Reactivate (for inactive users)
+- **Sub-modals:** Deactivate confirmation and Remove Agent confirmation stack on top of the main modal with z-index fix for Bootstrap 5
+- **Reassignment dropdowns:** Built dynamically from AJAX user data, excluding the target user
+
+### Navbar Integration
+- **Modified:** `navbar25.jsp` — PSP Admin dropdown: changed "Create User" page link to "User Manager" modal trigger button (`data-bs-target="#userManagerModal"`). Added `<c:import>` for `userManager25.jsp` in PSP Admin modal imports block.
+- Agency Admin "Add Agent" and BPO Admin "Create User" buttons unchanged — still use `createUserModal25.jsp`
+
+### CreateUser25 Cleanup
+- **Modified:** `CreateUser25.java` — Removed `returnTo=UserManager` redirect handling (no longer needed since UserManager GET returns JSON, not a page)
+
+### Key Design Decisions
+- **Modal, not full page** — User Manager is a modal (like Settings) to keep the admin workflow lightweight and accessible from any page
+- **BPO users excluded** from the manage view — production systems won't have both PSP and BPO users (BPO users are demo data only)
+- **addAgentRole auto-assigns to PSP home agency** — no agency selection needed; internal staff agents always belong to the home agency
+- **removeAgentRole scoped to home agency agents only** — external agency agent deactivation requires prospect reassignment and "turn off agency" logic (deferred)
+- **Deferred to future plan:** External agency agent deactivation, "turn off agency" feature when last agent in external agency is deactivated

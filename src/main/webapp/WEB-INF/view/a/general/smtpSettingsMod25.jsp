@@ -85,7 +85,16 @@
                     </div>
                   </div>
                 </div>
-                <p class="text-muted text-center" style="font-size:0.75rem;">Additional feature toggles will appear here as they become available.</p>
+                <div class="mb-3">
+                  <div class="d-flex align-items-center justify-content-between p-3 rounded" style="background:#f8f9fb; border:1px solid #dee2e6;">
+                    <div>
+                      <div class="fw-semibold" style="font-size:0.85rem;"><i class="bi bi-telephone me-1"></i>Days Until Contact Alert</div>
+                      <div class="text-muted" style="font-size:0.75rem;">Activities with no outbound note for this many days are flagged. Set to 99 to disable.</div>
+                    </div>
+                    <input type="number" name="daysSinceWarning" id="daysSinceWarning" class="form-control form-control-sm ms-3"
+                           min="0" max="99" style="width:60px; text-align:center;">
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -118,6 +127,7 @@
         document.getElementById('smtpFrom').value = data.SMTP_FROM || '';
         document.getElementById('emailFooterText').value = data.EMAIL_FOOTER_TEXT || '';
         document.getElementById('useTimeclock').checked = (data.USE_TIMECLOCK !== 'false');
+        document.getElementById('daysSinceWarning').value = data.DAYS_SINCE_WARNING || '7';
         document.getElementById('settingsLoading').style.display = 'none';
         document.getElementById('settingsFields').style.display = '';
         document.getElementById('settingsSaveBtn').disabled = false;

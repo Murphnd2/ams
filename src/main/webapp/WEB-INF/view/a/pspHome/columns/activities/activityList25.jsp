@@ -134,8 +134,8 @@
         <c:set var="extra" value="${activity.ticketEmployerNameLc}"/>
       </c:if>
 
-      <%-- Needs-contact flag (derived from days since contact vs warning threshold) --%>
-      <c:set var="needsContact" value="${daysS > daysW}"/>
+      <%-- Needs-contact flag (derived from days since contact vs warning threshold; disabled when daysW >= 99) --%>
+      <c:set var="needsContact" value="${daysW < 99 && daysS > daysW}"/>
 
       <%-- Attention icon + name weight based on combined status --%>
       <c:choose>

@@ -40,6 +40,9 @@ public class User {
     @Column(name="allow_set_password")
     private boolean allowSetPassword;
 
+    @Column(name="is_active")
+    private boolean isActive = true;
+
     @ManyToMany
     @JoinTable(name="userinroles",
             joinColumns = @JoinColumn(name="person_id"),inverseJoinColumns = @JoinColumn(name="role_id"))
@@ -125,6 +128,14 @@ public class User {
 
     public void setAllowSetPassword(boolean allowSetPassword) {
         this.allowSetPassword = allowSetPassword;
+    }
+
+    public boolean isActive() {
+        return isActive;
+    }
+
+    public void setActive(boolean active) {
+        isActive = active;
     }
 
     public List<UserRole> getUserRoleList() {

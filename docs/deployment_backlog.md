@@ -1,6 +1,6 @@
 # Deployment Backlog
 
-**Last Updated:** February 28, 2026
+**Last Updated:** March 1, 2026
 **Reference:** See `docs/deployment_strategy.md` for full context on each item.
 
 Items are ordered by dependency (earlier items unblock later ones).
@@ -292,6 +292,27 @@ Multi-step wizard at `/SummitImport` for importing Summit CSV exports into AMS. 
 **Benefit Renewal Audit:** New page at `/BenefitAudit` (PSP Admin only) — lists all active benefits with plan year data, detected renewal dates, inline editing of `nextRenewalDue` and `renewalMonths`, employer search, flagged/no-renewal filters, "Accept All Detected" bulk action.
 
 **Also in this session:** DatabaseInitializer seed data overhaul (ServiceItem unification alignment, onboarding checklist rewrite, simplified LOS/Enhancement/PlanType seeding), form validation on `initialize.jsp`, ManageTask25 NPE fix, Agency `tax_id` column widened to `varchar(20)`.
+
+---
+
+### D-36: User Manager — User Deactivation & Role Management ✅
+
+**Completed:** March 1, 2026
+**Migration:** V029 (`is_active BOOLEAN NOT NULL DEFAULT TRUE` on user table)
+**Files:**
+- `docs/migrations/V029__user_is_active.sql` — Migration script
+- `src/main/java/net/superiorstate/ams/model/general/User.java` — Added `isActive` field
+- `src/main/java/net/superiorstate/ams/controller/user/UserManager.java` — New servlet (GET=JSON, POST=AJAX actions)
+- `src/main/webapp/WEB-INF/view/a/general/userManager25.jsp` — Modal with Create User + Manage Users tabs
+- `src/main/java/net/superiorstate/ams/controller/authentication/AuthenticateUser.java` — Block deactivated users at login
+- `src/main/java/net/superiorstate/ams/controller/authentication/OneTimeUserLogin.java` — Block deactivated users from GUID login
+- `src/main/java/net/superiorstate/ams/data/dao/RecurringChecklistDAO.java` — Filter inactive from getPspUserList
+- `src/main/java/net/superiorstate/ams/data/dao/AuthDAO.java` — Filter inactive from getPspStaff
+- `src/main/java/net/superiorstate/ams/data/AmsDataGlobal.java` — Added refreshUserCaches()
+- `src/main/webapp/WEB-INF/view/a/general/navbar25.jsp` — Modal trigger + import
+- `src/main/java/net/superiorstate/ams/controller/user/CreateUser25.java` — Removed returnTo handling
+
+PSP Admin modal for user lifecycle management: deactivate with bulk reassignment, reactivate, add/remove agent role (home agency scoped), expand agent to PSP User. BPO users excluded. External agency agent deactivation deferred.
 
 ---
 

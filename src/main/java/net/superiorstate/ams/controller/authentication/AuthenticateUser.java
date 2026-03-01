@@ -74,7 +74,11 @@ public class AuthenticateUser extends HttpServlet {
         boolean validated = AuthDAO.validateLogin(em,userName,password);
         if(validated){
             User currentUser = AuthDAO.getUserByUserName(em,userName);
-            loadSessionData25(request,em,currentUser);
+            if (!currentUser.isActive()) {
+                validated = false;
+            } else {
+                loadSessionData25(request, em, currentUser);
+            }
         }
         em.close();
         return validated;
@@ -113,7 +117,7 @@ public class AuthenticateUser extends HttpServlet {
         if(users==null || users.size()==0)
             return personList;
         for(User u:users){
-            if(!personList.contains(u.getPerson()))
+            if(u.isActive() && !personList.contains(u.getPerson()))
                 personList.add(u.getPerson());
         }
         Collections.sort(personList);

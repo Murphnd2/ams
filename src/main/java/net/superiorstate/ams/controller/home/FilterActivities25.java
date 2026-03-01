@@ -4,6 +4,7 @@ import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.ActivityFilter;
+import net.superiorstate.ams.data.AmsDataGlobal;
 import net.superiorstate.ams.data.AmsDataLocal;
 import net.superiorstate.ams.model.general.UserFilterPreset;
 
@@ -84,6 +85,15 @@ public class FilterActivities25 extends HttpServlet {
 
             String fAlpha = request.getParameter("fAlpha");
             af.setSortAlphabetically(fAlpha != null && fAlpha.equals("1"));
+        }
+
+        // When contact tracking is disabled (99), remap contact-dependent filters
+        // (applies to both preset and manual filter paths)
+        AmsDataGlobal global = (AmsDataGlobal) getServletContext().getAttribute("global");
+        if (global != null && global.isContactTrackingDisabled()) {
+            int a = af.getAttentionFilter();
+            if (a == 1) af.setAttentionFilter(2);      // Needs Attention → Waiting on Us
+            else if (a == 3) af.setAttentionFilter(0);  // Needs Contact → Show All
         }
 
         local.setActivityFilter(af);

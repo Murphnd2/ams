@@ -59,6 +59,7 @@ public abstract class AuthDAO {
         }
         List<User> staffList = new ArrayList<>();
         for(User u: fullUserList){
+            if(!u.isActive()) continue;
             List<UserRole> usersRoles = u.getUserRoleList();
             if(usersRoles.contains(getUserRoleById(em,1))||usersRoles.contains(getUserRoleById(em,5))){
                 if(!staffList.contains(u))

@@ -48,4 +48,5 @@ INSERT IGNORE INTO schema_version (version, description, script_name) VALUES
 ('V025', 'Add level, los, employer_name to plantype for Summit import', 'V025__plantype_import_columns.sql'),
 ('V026', 'Benefit table: surrogate auto-increment PK with source tracking', 'V026__benefit_surrogate_pk.sql'),
 ('V027', 'BPO Registration: task source refactor from Person to BpoRegistration', 'V027__bpo_registration_task_source.sql'),
-('V028', 'Benefit plan year start/end columns for renewal date correction', 'V028__benefit_plan_year_columns.sql');
+('V028', 'Benefit plan year start/end columns for renewal date correction', 'V028__benefit_plan_year_columns.sql'),
+('V029', 'Add is_active column to user table', 'V029__user_is_active.sql');

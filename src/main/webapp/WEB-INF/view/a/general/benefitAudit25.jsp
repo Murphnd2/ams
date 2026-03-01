@@ -65,22 +65,26 @@
         <input type="text" id="employerSearch" class="employer-search" placeholder="Search employer..."
                autocomplete="off">
         <div class="d-flex align-items-center gap-1">
-            <a href="BenefitAudit${filter eq 'flagged' ? '' : '?filter=flagged'}" class="ghost-action">
-                <i class="bi bi-funnel"></i> ${filter eq 'flagged' ? 'Show All' : 'Flagged Only'}
-            </a>
-            <a href="BenefitAudit${filter eq 'noRenewal' ? '' : '?filter=noRenewal'}" class="ghost-action">
-                <i class="bi bi-calendar-x"></i> ${filter eq 'noRenewal' ? 'Show All' : 'No Renewal'}
-            </a>
-            <form method="POST" action="BenefitAudit" class="ghost-action-form">
-                <input type="hidden" name="action" value="acceptAll">
-                <c:if test="${filter ne 'all'}">
-                    <input type="hidden" name="filter" value="${filter}">
-                </c:if>
-                <button type="submit" class="ghost-action"
-                        onclick="return confirm('Accept all detected renewal dates? This will update nextRenewalDue for all benefits with plan year data.');">
-                    <i class="bi bi-check-all"></i> Accept All Detected
-                </button>
-            </form>
+            <c:if test="${filter eq 'all' or filter eq 'flagged'}">
+                <a href="BenefitAudit${filter eq 'flagged' ? '' : '?filter=flagged'}" class="ghost-action">
+                    <i class="bi bi-funnel"></i> ${filter eq 'flagged' ? 'Show All' : 'Flagged Only'}
+                </a>
+            </c:if>
+            <c:if test="${filter eq 'all' or filter eq 'noRenewal'}">
+                <a href="BenefitAudit${filter eq 'noRenewal' ? '' : '?filter=noRenewal'}" class="ghost-action">
+                    <i class="bi bi-calendar-x"></i> ${filter eq 'noRenewal' ? 'Show All' : 'No Renewal'}
+                </a>
+            </c:if>
+            <c:if test="${filter eq 'noRenewal'}">
+                <form method="POST" action="BenefitAudit" class="ghost-action-form">
+                    <input type="hidden" name="action" value="acceptAll">
+                    <input type="hidden" name="filter" value="noRenewal">
+                    <button type="submit" class="ghost-action"
+                            onclick="return confirm('Accept all detected renewal dates? This will update nextRenewalDue for all benefits with plan year data.');">
+                        <i class="bi bi-check-all"></i> Accept All Detected
+                    </button>
+                </form>
+            </c:if>
         </div>
     </div>
 

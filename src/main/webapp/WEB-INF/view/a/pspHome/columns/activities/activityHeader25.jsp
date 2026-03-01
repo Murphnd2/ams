@@ -343,18 +343,22 @@
             <span class="af-radio-dot"></span>
             <i class="bi bi-app af-radio-icon"></i> Show All
           </div>
+          <c:if test="${!applicationScope.global.isContactTrackingDisabled()}">
           <div class="af-radio ${af.getAttentionFilter()==1 ? 'selected' : ''}" data-attn="1" onclick="afSelectAttn(this)">
             <span class="af-radio-dot"></span>
             <i class="bi bi-exclamation-triangle af-radio-icon" style="color:#c0392b;"></i> Needs Attention
           </div>
+          </c:if>
           <div class="af-radio ${af.getAttentionFilter()==2 ? 'selected' : ''}" data-attn="2" onclick="afSelectAttn(this)">
             <span class="af-radio-dot"></span>
             <i class="bi bi-hourglass-split af-radio-icon" style="color:#e67e22;"></i> Waiting on Us
           </div>
+          <c:if test="${!applicationScope.global.isContactTrackingDisabled()}">
           <div class="af-radio ${af.getAttentionFilter()==3 ? 'selected' : ''}" data-attn="3" onclick="afSelectAttn(this)">
             <span class="af-radio-dot"></span>
             <i class="bi bi-telephone af-radio-icon" style="color:#c0392b;"></i> Needs Contact
           </div>
+          </c:if>
         </div>
 
         <%-- ── COL 4: Sort ── --%>

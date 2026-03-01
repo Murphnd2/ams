@@ -56,7 +56,7 @@ src/main/java/net/superiorstate/ams/
 All schema changes MUST follow versioned migration conventions:
 
 1. **Every schema change gets a versioned script:** `V{NNN}__{description}.sql`
-2. Check `docs/analysis/migration_tracker.md` for the current highest version (currently **V024**)
+2. Check `docs/analysis/migration_tracker.md` for the current highest version (currently **V029**)
 3. **Scripts self-register:** Every migration must include:
    ```sql
    INSERT IGNORE INTO schema_version (version, description, script_name, applied_on)

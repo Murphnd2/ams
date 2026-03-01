@@ -183,7 +183,7 @@
               <li><a class="dropdown-item" href="ReviewTimeCorrections"><i class="bi bi-clock-history me-2"></i>Time Corrections</a></li>
               </c:if>
               <li><hr class="dropdown-divider"></li>
-              <li><button class="dropdown-item" type="button" data-bs-toggle="modal" data-bs-target="#createUserModal"><i class="bi bi-person-plus me-2"></i>Create User</button></li>
+              <li><button class="dropdown-item" type="button" data-bs-toggle="modal" data-bs-target="#userManagerModal"><i class="bi bi-people-fill me-2"></i>User Manager</button></li>
               <li><a class="dropdown-item" href="UploadPspBranding"><i class="bi bi-palette me-2"></i>Branding</a></li>
               <li><button class="dropdown-item" type="button" data-bs-toggle="modal" data-bs-target="#pspSettingsMod"><i class="bi bi-gear me-2"></i>Settings</button></li>
               <li><a class="dropdown-item" href="BillingAction"><i class="bi bi-currency-dollar me-2"></i>Billing</a></li>
@@ -293,6 +293,7 @@
 <c:import url="/WEB-INF/view/a/checklistDetail/makeRecurringModal25.jsp"/>
 <c:if test="${sessionScope.isPspAdmin}">
   <c:import url="/WEB-INF/view/a/general/smtpSettingsMod25.jsp"/>
+  <c:import url="/WEB-INF/view/a/general/userManager25.jsp"/>
 </c:if>
 
 <%-- Chatbot — PSP users only --%>
