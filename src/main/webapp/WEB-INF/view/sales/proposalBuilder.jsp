@@ -53,6 +53,7 @@
 
     <form method="post" action="ProposalBuilder" id="proposalForm">
         <input type="hidden" name="action" value="createProposal">
+        <input type="hidden" name="sourceActivityId" value="${param.sourceActivityId}">
 
         <%-- STEP 1: Select Prospect --%>
         <div class="card mb-3">

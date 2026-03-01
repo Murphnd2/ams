@@ -315,7 +315,7 @@
         document.getElementById('btnViewActivity').href = 'ViewById?id=' + oppId;
 
         if (opp.prospectId) {
-            document.getElementById('btnCreateProposal').href = 'ProposalBuilder?prospectId=' + opp.prospectId;
+            document.getElementById('btnCreateProposal').href = 'ProposalBuilder?prospectId=' + opp.prospectId + '&sourceActivityId=' + oppId;
         }
     }
 

@@ -2,6 +2,8 @@
 <%@ taglib prefix="fmt" uri="http://java.sun.com/jsp/jstl/fmt" %>
 <%@ taglib prefix="fn" uri="http://java.sun.com/jsp/jstl/functions" %>
 <c:set var="opp" value="${sessionScope.local.getCurrentActivity().getActivity()}"/>
+<c:set var="opportunityProposals" value="${sessionScope.local.getCurrentActivity().getOpportunityProposals()}"/>
+<c:set var="allProspectProposals" value="${sessionScope.local.getCurrentActivity().getAllProspectProposals()}"/>
 <c:set var="canEditStage" value="${sessionScope.isPspAdmin
     || sessionScope.isAgent || sessionScope.isAgencyAdmin
     || (opp.getAssignedTo() != null && opp.getAssignedTo().getId() == sessionScope.local.getCurrentPerson().getId())}"/>
@@ -24,13 +26,7 @@
               <div class="col-12 col-md-6 d-flex align-items-center">
                 <span class="text-muted fw-semibold" style="min-width:80px;">Prospect</span>
                 <c:if test="${opp.getProspect() != null}">
-                  <span class="flex-grow-1">${fn:escapeXml(opp.getProspect().getName())}</span>
-                  <c:if test="${!opp.isComplete()}">
-                    <a href="ProposalBuilder?prospectId=${opp.getProspect().getId()}"
-                       class="btn btn-sm btn-outline-ssa border-0 p-0 px-1 ms-1" title="Create Proposal">
-                      <i class="bi bi-file-earmark-plus" style="font-size:0.85rem;"></i>
-                    </a>
-                  </c:if>
+                  <span>${fn:escapeXml(opp.getProspect().getName())}</span>
                 </c:if>
               </div>
               <div class="col-12 col-md-6 d-flex align-items-center">
@@ -110,48 +106,126 @@
     </div>
 </div>
 
-<%-- Proposals Card --%>
-<c:if test="${not empty opportunityProposals}">
-    <div class="card border-0 border-start border-3 mt-2 mb-2" style="border-color: #0d6efd !important;">
-        <div class="card-body py-2 px-3">
-            <div class="d-flex align-items-center justify-content-between mb-1">
-        <span class="fw-semibold" style="color: var(--ssa); font-size: 0.85rem;">
-          <i class="bi bi-file-earmark-text me-1"></i>Proposals for ${fn:escapeXml(opp.getProspect().getName())}
-        </span>
+<%-- Proposals Card with Toggle --%>
+<div class="card border-0 border-start border-3 mt-2 mb-2" style="border-color: #0d6efd !important;">
+    <div class="card-body py-2 px-3">
+        <div class="d-flex align-items-center justify-content-between mb-1">
+            <span class="fw-semibold" style="color: var(--ssa); font-size: 0.85rem;">
+                <i class="bi bi-file-earmark-text me-1"></i>Proposals
+            </span>
+            <div class="d-flex align-items-center">
+                <div class="btn-group btn-group-sm me-1" role="group">
+                    <button type="button" class="btn btn-outline-secondary active py-0 px-2"
+                            id="btnThisOpp" onclick="toggleProposalView('opp')"
+                            style="font-size: 0.7rem; line-height: 1.4;">This Opp</button>
+                    <button type="button" class="btn btn-outline-secondary py-0 px-2"
+                            id="btnAllProposals" onclick="toggleProposalView('all')"
+                            style="font-size: 0.7rem; line-height: 1.4;">All</button>
+                </div>
+                <c:if test="${opp.getProspect() != null && !opp.isComplete()}">
+                    <a href="ProposalBuilder?prospectId=${opp.getProspect().getId()}&sourceActivityId=${opp.getId()}"
+                       class="btn btn-sm btn-outline-ssa border-0 p-0 px-1 me-1" title="Create Proposal">
+                        <i class="bi bi-file-earmark-plus" style="font-size: 0.85rem;"></i>
+                    </a>
+                </c:if>
                 <button class="btn btn-sm btn-outline-ssa border-0 p-0 px-1 d-none" id="btnExpandProposals"
                         type="button" data-bs-toggle="modal" data-bs-target="#proposalsFullModal" title="View all proposals">
                     <i class="bi bi-arrows-fullscreen" style="font-size: 0.75rem;"></i>
                 </button>
             </div>
-            <div id="proposalsContent" class="overflow-auto" style="max-height: 120px;">
-                <c:forEach var="prop" items="${opportunityProposals}">
-                    <div class="d-flex align-items-center py-1 border-bottom" style="font-size: 0.82rem;">
-                        <a href="ProposalDetail?id=${prop.getId()}" class="text-decoration-none me-2 fw-semibold" style="color: var(--ssa);">#${prop.getId()}</a>
-                        <c:choose>
-                            <c:when test="${prop.getStatus() == 'CREATED'}"><span class="badge bg-secondary me-2">Created</span></c:when>
-                            <c:when test="${prop.getStatus() == 'SENT'}"><span class="badge bg-info me-2">Sent</span></c:when>
-                            <c:when test="${prop.getStatus() == 'VIEWED'}"><span class="badge bg-warning text-dark me-2">Viewed</span></c:when>
-                            <c:when test="${prop.getStatus() == 'APPLIED'}"><span class="badge bg-primary me-2">Applied</span></c:when>
-                            <c:when test="${prop.getStatus() == 'APPROVED'}"><span class="badge bg-success me-2">Approved</span></c:when>
-                            <c:when test="${prop.getStatus() == 'DENIED'}"><span class="badge bg-danger me-2">Denied</span></c:when>
-                            <c:otherwise><span class="badge bg-secondary me-2">${prop.getStatus()}</span></c:otherwise>
-                        </c:choose>
-                        <span class="flex-grow-1">
-              <c:forEach var="los" items="${prop.getLosList()}">
-                  <span class="badge bg-light text-dark border" style="font-size: 0.68rem;">${los.getShortText()}</span>
-              </c:forEach>
-            </span>
-                        <c:if test="${prop.getDateCreated() != null}">
-              <span class="text-muted" style="font-size: 0.75rem;">
-                <fmt:formatDate value="${prop.getDateCreated()}" pattern="M/d/yy"/>
-              </span>
-                        </c:if>
-                    </div>
-                </c:forEach>
-            </div>
         </div>
+
+        <%-- Proposals linked to THIS opportunity --%>
+        <div id="proposalsOpp" class="overflow-auto" style="max-height: 120px;">
+                <c:choose>
+                    <c:when test="${not empty opportunityProposals}">
+                        <c:forEach var="prop" items="${opportunityProposals}">
+                            <div class="d-flex align-items-center py-1 border-bottom" style="font-size: 0.82rem;">
+                                <a href="ProposalDetail?id=${prop.getId()}" class="text-decoration-none me-2 fw-semibold" style="color: var(--ssa);">#${prop.getId()}</a>
+                                <c:choose>
+                                    <c:when test="${prop.getStatus() == 'CREATED'}"><span class="badge bg-secondary me-1">Created</span></c:when>
+                                    <c:when test="${prop.getStatus() == 'SENT'}"><span class="badge bg-info me-1">Sent</span></c:when>
+                                    <c:when test="${prop.getStatus() == 'VIEWED'}"><span class="badge bg-warning text-dark me-1">Viewed</span></c:when>
+                                    <c:when test="${prop.getStatus() == 'APPLIED'}"><span class="badge bg-primary me-1">Applied</span></c:when>
+                                    <c:when test="${prop.getStatus() == 'APPROVED'}"><span class="badge bg-success me-1">Approved</span></c:when>
+                                    <c:when test="${prop.getStatus() == 'DENIED'}"><span class="badge bg-danger me-1">Denied</span></c:when>
+                                    <c:otherwise><span class="badge bg-secondary me-1">${prop.getStatus()}</span></c:otherwise>
+                                </c:choose>
+                                <c:if test="${prop.getApplication() != null}">
+                                    <span class="badge bg-light text-primary border me-1" style="font-size: 0.65rem;"
+                                          title="Application: ${prop.getApplication().getStatus()}"><i class="bi bi-file-earmark-check"></i> App</span>
+                                </c:if>
+                                <c:if test="${prop.getApplication() != null && prop.getApplication().getSetup() != null}">
+                                    <span class="badge bg-light text-success border me-1" style="font-size: 0.65rem;"
+                                          title="Setup created"><i class="bi bi-gear-fill"></i> Setup</span>
+                                </c:if>
+                                <span class="flex-grow-1">
+                                    <c:forEach var="los" items="${prop.getLosList()}">
+                                        <span class="badge bg-light text-dark border" style="font-size: 0.68rem;">${los.getShortText()}</span>
+                                    </c:forEach>
+                                </span>
+                                <c:if test="${prop.getDateCreated() != null}">
+                                    <span class="text-muted" style="font-size: 0.75rem;">
+                                        <fmt:formatDate value="${prop.getDateCreated()}" pattern="M/d/yy"/>
+                                    </span>
+                                </c:if>
+                            </div>
+                        </c:forEach>
+                    </c:when>
+                    <c:otherwise>
+                        <p class="text-muted mb-0 py-1" style="font-size: 0.8rem;">
+                            <i class="bi bi-info-circle me-1"></i>No proposals linked to this opportunity yet.
+                        </p>
+                    </c:otherwise>
+                </c:choose>
+            </div>
+
+            <%-- ALL proposals for this prospect --%>
+            <div id="proposalsAll" class="overflow-auto" style="max-height: 120px; display: none;">
+                <c:choose>
+                    <c:when test="${not empty allProspectProposals}">
+                        <c:forEach var="prop" items="${allProspectProposals}">
+                            <div class="d-flex align-items-center py-1 border-bottom" style="font-size: 0.82rem;">
+                                <a href="ProposalDetail?id=${prop.getId()}" class="text-decoration-none me-2 fw-semibold" style="color: var(--ssa);">#${prop.getId()}</a>
+                                <c:choose>
+                                    <c:when test="${prop.getStatus() == 'CREATED'}"><span class="badge bg-secondary me-1">Created</span></c:when>
+                                    <c:when test="${prop.getStatus() == 'SENT'}"><span class="badge bg-info me-1">Sent</span></c:when>
+                                    <c:when test="${prop.getStatus() == 'VIEWED'}"><span class="badge bg-warning text-dark me-1">Viewed</span></c:when>
+                                    <c:when test="${prop.getStatus() == 'APPLIED'}"><span class="badge bg-primary me-1">Applied</span></c:when>
+                                    <c:when test="${prop.getStatus() == 'APPROVED'}"><span class="badge bg-success me-1">Approved</span></c:when>
+                                    <c:when test="${prop.getStatus() == 'DENIED'}"><span class="badge bg-danger me-1">Denied</span></c:when>
+                                    <c:otherwise><span class="badge bg-secondary me-1">${prop.getStatus()}</span></c:otherwise>
+                                </c:choose>
+                                <c:if test="${prop.getApplication() != null}">
+                                    <span class="badge bg-light text-primary border me-1" style="font-size: 0.65rem;"
+                                          title="Application: ${prop.getApplication().getStatus()}"><i class="bi bi-file-earmark-check"></i> App</span>
+                                </c:if>
+                                <c:if test="${prop.getApplication() != null && prop.getApplication().getSetup() != null}">
+                                    <span class="badge bg-light text-success border me-1" style="font-size: 0.65rem;"
+                                          title="Setup created"><i class="bi bi-gear-fill"></i> Setup</span>
+                                </c:if>
+                                <span class="flex-grow-1">
+                                    <c:forEach var="los" items="${prop.getLosList()}">
+                                        <span class="badge bg-light text-dark border" style="font-size: 0.68rem;">${los.getShortText()}</span>
+                                    </c:forEach>
+                                </span>
+                                <c:if test="${prop.getDateCreated() != null}">
+                                    <span class="text-muted" style="font-size: 0.75rem;">
+                                        <fmt:formatDate value="${prop.getDateCreated()}" pattern="M/d/yy"/>
+                                    </span>
+                                </c:if>
+                            </div>
+                        </c:forEach>
+                    </c:when>
+                    <c:otherwise>
+                        <p class="text-muted mb-0 py-1" style="font-size: 0.8rem;">
+                            <i class="bi bi-info-circle me-1"></i>No proposals for this prospect.
+                        </p>
+                    </c:otherwise>
+                </c:choose>
+            </div>
     </div>
-</c:if>
+</div>
 
 <%-- Full details modal --%>
 <div class="modal fade" id="oppFullModal" tabindex="-1" aria-hidden="true">
@@ -199,33 +273,41 @@
     </div>
 </div>
 
-<%-- Full proposals modal --%>
-<c:if test="${not empty opportunityProposals}">
+<%-- Full proposals modal (shows all prospect proposals) --%>
+<c:if test="${not empty allProspectProposals}">
     <div class="modal fade" id="proposalsFullModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-lg modal-fullscreen-sm-down">
             <div class="modal-content">
                 <div class="modal-header py-2" style="background-color: var(--ssa); color: white;">
-                    <h6 class="modal-title fw-semibold"><i class="bi bi-file-earmark-text me-2"></i>Proposals for ${fn:escapeXml(opp.getProspect().getName())}</h6>
+                    <h6 class="modal-title fw-semibold"><i class="bi bi-file-earmark-text me-2"></i>All Proposals for ${fn:escapeXml(opp.getProspect().getName())}</h6>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="close"></button>
                 </div>
                 <div class="modal-body">
-                    <c:forEach var="prop" items="${opportunityProposals}">
+                    <c:forEach var="prop" items="${allProspectProposals}">
                         <div class="d-flex align-items-center py-1 border-bottom" style="font-size: 0.82rem;">
                             <a href="ProposalDetail?id=${prop.getId()}" class="text-decoration-none me-2 fw-semibold" style="color: var(--ssa);">#${prop.getId()}</a>
                             <c:choose>
-                                <c:when test="${prop.getStatus() == 'CREATED'}"><span class="badge bg-secondary me-2">Created</span></c:when>
-                                <c:when test="${prop.getStatus() == 'SENT'}"><span class="badge bg-info me-2">Sent</span></c:when>
-                                <c:when test="${prop.getStatus() == 'VIEWED'}"><span class="badge bg-warning text-dark me-2">Viewed</span></c:when>
-                                <c:when test="${prop.getStatus() == 'APPLIED'}"><span class="badge bg-primary me-2">Applied</span></c:when>
-                                <c:when test="${prop.getStatus() == 'APPROVED'}"><span class="badge bg-success me-2">Approved</span></c:when>
-                                <c:when test="${prop.getStatus() == 'DENIED'}"><span class="badge bg-danger me-2">Denied</span></c:when>
-                                <c:otherwise><span class="badge bg-secondary me-2">${prop.getStatus()}</span></c:otherwise>
+                                <c:when test="${prop.getStatus() == 'CREATED'}"><span class="badge bg-secondary me-1">Created</span></c:when>
+                                <c:when test="${prop.getStatus() == 'SENT'}"><span class="badge bg-info me-1">Sent</span></c:when>
+                                <c:when test="${prop.getStatus() == 'VIEWED'}"><span class="badge bg-warning text-dark me-1">Viewed</span></c:when>
+                                <c:when test="${prop.getStatus() == 'APPLIED'}"><span class="badge bg-primary me-1">Applied</span></c:when>
+                                <c:when test="${prop.getStatus() == 'APPROVED'}"><span class="badge bg-success me-1">Approved</span></c:when>
+                                <c:when test="${prop.getStatus() == 'DENIED'}"><span class="badge bg-danger me-1">Denied</span></c:when>
+                                <c:otherwise><span class="badge bg-secondary me-1">${prop.getStatus()}</span></c:otherwise>
                             </c:choose>
+                            <c:if test="${prop.getApplication() != null}">
+                                <span class="badge bg-light text-primary border me-1" style="font-size: 0.65rem;"
+                                      title="Application: ${prop.getApplication().getStatus()}"><i class="bi bi-file-earmark-check"></i> App</span>
+                            </c:if>
+                            <c:if test="${prop.getApplication() != null && prop.getApplication().getSetup() != null}">
+                                <span class="badge bg-light text-success border me-1" style="font-size: 0.65rem;"
+                                      title="Setup created"><i class="bi bi-gear-fill"></i> Setup</span>
+                            </c:if>
                             <span class="flex-grow-1">
-                <c:forEach var="los" items="${prop.getLosList()}">
-                    <span class="badge bg-light text-dark border" style="font-size: 0.68rem;">${los.getShortText()}</span>
-                </c:forEach>
-              </span>
+                                <c:forEach var="los" items="${prop.getLosList()}">
+                                    <span class="badge bg-light text-dark border" style="font-size: 0.68rem;">${los.getShortText()}</span>
+                                </c:forEach>
+                            </span>
                             <c:if test="${prop.getDateCreated() != null}">
                                 <span class="text-muted" style="font-size: 0.75rem;"><fmt:formatDate value="${prop.getDateCreated()}" pattern="M/d/yy"/></span>
                             </c:if>
@@ -243,11 +325,32 @@
         if (el1 && el1.scrollHeight > el1.clientHeight) {
             document.getElementById('btnExpandOpp').classList.remove('d-none');
         }
-        var el2 = document.getElementById('proposalsContent');
-        if (el2 && el2.scrollHeight > el2.clientHeight) {
-            document.getElementById('btnExpandProposals').classList.remove('d-none');
+        var el2 = document.getElementById('proposalsOpp');
+        var el3 = document.getElementById('proposalsAll');
+        if ((el2 && el2.scrollHeight > el2.clientHeight) || (el3 && el3.scrollHeight > el3.clientHeight)) {
+            var btn = document.getElementById('btnExpandProposals');
+            if (btn) btn.classList.remove('d-none');
         }
     });
+
+    /* ═══ Proposal view toggle ═══ */
+    function toggleProposalView(mode) {
+        var oppDiv = document.getElementById('proposalsOpp');
+        var allDiv = document.getElementById('proposalsAll');
+        var btnOpp = document.getElementById('btnThisOpp');
+        var btnAll = document.getElementById('btnAllProposals');
+        if (mode === 'all') {
+            oppDiv.style.display = 'none';
+            allDiv.style.display = '';
+            btnOpp.classList.remove('active');
+            btnAll.classList.add('active');
+        } else {
+            oppDiv.style.display = '';
+            allDiv.style.display = 'none';
+            btnOpp.classList.add('active');
+            btnAll.classList.remove('active');
+        }
+    }
 
     /* ═══ AJAX stage update ═══ */
     function updateOppStage(newStage) {

@@ -8,6 +8,7 @@ import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.AmsDataLocal;
 import net.superiorstate.ams.data.dao.SalesDAO;
 import net.superiorstate.ams.data.resolver.EntityLookup;
+import net.superiorstate.ams.model.activity.Activity;
 import net.superiorstate.ams.model.general.Person;
 import net.superiorstate.ams.model.sales.agency.*;
 import net.superiorstate.ams.model.sales.offering.LOS;
@@ -283,6 +284,19 @@ public class ProposalBuilder extends HttpServlet {
         proposal.setCreatedBy(createdBy);
         proposal.setInactive(false);
         proposal.setLosList(new ArrayList<>());
+
+        // Link to source opportunity if creating from an opportunity context
+        String sourceActivityIdStr = request.getParameter("sourceActivityId");
+        if (sourceActivityIdStr != null && !sourceActivityIdStr.isEmpty()) {
+            try {
+                long sourceActivityId = Long.parseLong(sourceActivityIdStr);
+                Activity sourceActivity = em.find(Activity.class, sourceActivityId);
+                if (sourceActivity != null) {
+                    proposal.setSourceActivity(sourceActivity);
+                }
+            } catch (NumberFormatException ignored) {}
+        }
+
         em.persist(proposal);
         em.getTransaction().commit();
 

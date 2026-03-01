@@ -27,7 +27,9 @@ import net.superiorstate.ams.model.activity.renewal.RenewalItem;
 import net.superiorstate.ams.model.activity.ticket.Ticket;
 import net.superiorstate.ams.model.activity.ticket.setup.Setup;
 import net.superiorstate.ams.model.general.*;
+import net.superiorstate.ams.model.sales.agency.Proposal;
 import net.superiorstate.ams.model.sales.application.ApplicationModule;
+import net.superiorstate.ams.data.dao.SalesDAO;
 import net.superiorstate.ams.model.summit.archive.Benefit;
 import net.superiorstate.ams.model.summit.archive.Employee;
 import net.superiorstate.ams.model.summit.archive.Employer;
@@ -973,6 +975,8 @@ public class AmsDataLocal implements AutoCloseable {
 
         private List<ServiceItem> modsNotInSetup;
         private List<ServiceItem> modsInSetup;
+        private List<Proposal> opportunityProposals;
+        private List<Proposal> allProspectProposals;
 
         public CurrentActivity(){};
 
@@ -1072,6 +1076,22 @@ public class AmsDataLocal implements AutoCloseable {
             this.modsInSetup = modsInSetup;
         }
 
+        public List<Proposal> getOpportunityProposals() {
+            return opportunityProposals;
+        }
+
+        public void setOpportunityProposals(List<Proposal> opportunityProposals) {
+            this.opportunityProposals = opportunityProposals;
+        }
+
+        public List<Proposal> getAllProspectProposals() {
+            return allProspectProposals;
+        }
+
+        public void setAllProspectProposals(List<Proposal> allProspectProposals) {
+            this.allProspectProposals = allProspectProposals;
+        }
+
         public void intializeActivity(EntityManager em, Long activityId){
             long start = System.currentTimeMillis();
             System.out.println("** INITIALIZATION OF ACTIVITY **");
@@ -1099,6 +1119,15 @@ public class AmsDataLocal implements AutoCloseable {
                 fillModsNotInSetup(em);
                 Setup s = (Setup) getActivity();
                 setModsInSetup(getModsInSetup(s));
+            }
+            else if(getActivity().getClass().getSimpleName().equalsIgnoreCase("Opportunity")) {
+                Opportunity opp = (Opportunity) getActivity();
+                setOpportunityProposals(SalesDAO.getProposalsBySourceActivity(em, opp.getId()));
+                if (opp.getProspect() != null) {
+                    setAllProspectProposals(SalesDAO.getProposalListFull(em, opp.getProspect()));
+                } else {
+                    setAllProspectProposals(new ArrayList<>());
+                }
             }
             setPastActivities(fillPastActivities(em));
             System.out.println("⏱️ intializeActivity took " + (System.currentTimeMillis() - start) + "ms");

@@ -209,7 +209,7 @@ public abstract class SalesDAO {
 
 
     public static List<Proposal> getProposalListFull(EntityManager em, Prospect prospect){
-        Query q = em.createQuery("SELECT p FROM Proposal p INNER JOIN FETCH p.losList los WHERE p.prospect.id = :prospect_id");
+        Query q = em.createQuery("SELECT DISTINCT p FROM Proposal p LEFT JOIN FETCH p.losList LEFT JOIN FETCH p.application WHERE p.prospect.id = :prospect_id");
         q.setParameter("prospect_id",prospect.getId());
         return (List<Proposal>) q.getResultList();
     }
@@ -339,6 +339,14 @@ public abstract class SalesDAO {
         request.getSession().setAttribute("pFourA",pFourA);
         request.getSession().setAttribute("pFourB",pFourB);
 
+    }
+
+    public static List<Proposal> getProposalsBySourceActivity(EntityManager em, long sourceActivityId) {
+        Query q = em.createQuery(
+                "SELECT DISTINCT p FROM Proposal p LEFT JOIN FETCH p.losList LEFT JOIN FETCH p.application " +
+                        "WHERE p.sourceActivity.id = :activityId AND p.isInactive = false");
+        q.setParameter("activityId", sourceActivityId);
+        return (List<Proposal>) q.getResultList();
     }
 
     public static long getProposalCountByRate(EntityManager em, long rateId){

@@ -189,9 +189,13 @@ public abstract class ActivityViewHelper {
                 request.getSession().setAttribute("currentRenewal", new Renewal());
                 request.getSession().setAttribute("currentSetup", new Setup());
                 request.getSession().setAttribute("currentTicket", new Ticket());
-                if (opp != null && opp.getProspect() != null) {
-                    List<Proposal> proposals = SalesDAO.getProposalListFull(em, opp.getProspect());
-                    request.setAttribute("opportunityProposals", proposals);
+                if (opp != null) {
+                    List<Proposal> oppProposals = SalesDAO.getProposalsBySourceActivity(em, opp.getId());
+                    request.setAttribute("opportunityProposals", oppProposals);
+                    if (opp.getProspect() != null) {
+                        List<Proposal> allProposals = SalesDAO.getProposalListFull(em, opp.getProspect());
+                        request.setAttribute("allProspectProposals", allProposals);
+                    }
                 }
                 break;
             default:
@@ -445,9 +449,13 @@ public abstract class ActivityViewHelper {
         Opportunity opp = (Opportunity) getCurrentActivity();
         request.getSession().setAttribute("adminView", 4);
         request.getSession().setAttribute("currentOpportunity", opp);
-        if (opp != null && opp.getProspect() != null) {
-            List<Proposal> proposals = SalesDAO.getProposalListFull(em, opp.getProspect());
-            request.setAttribute("opportunityProposals", proposals);
+        if (opp != null) {
+            List<Proposal> oppProposals = SalesDAO.getProposalsBySourceActivity(em, opp.getId());
+            request.setAttribute("opportunityProposals", oppProposals);
+            if (opp.getProspect() != null) {
+                List<Proposal> allProposals = SalesDAO.getProposalListFull(em, opp.getProspect());
+                request.setAttribute("allProspectProposals", allProposals);
+            }
         }
     }
 
