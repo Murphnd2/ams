@@ -86,6 +86,7 @@
               <c:choose>
                 <c:when test="${sessionScope.isPspAdmin}">
                   <select class="form-select form-select-sm py-0" id="oppManagedBySelect"
+                          data-previous-value="${opp.getManagedBy() != null ? opp.getManagedBy().getId() : 0}"
                           style="font-size:0.8rem; width:auto; min-width:130px; height:26px;"
                           onchange="updateOppManagedBy(this.value)">
                     <option value="0" ${opp.getManagedBy() == null ? 'selected' : ''}>None</option>
@@ -387,6 +388,29 @@
     function updateOppManagedBy(managedById) {
         var sel = document.getElementById('oppManagedBySelect');
         var saved = document.getElementById('oppManagedBySaved');
+
+        // Warn if removing managed-by on an outside-agency opportunity
+        if (managedById === '0' || managedById === '') {
+            var assigneeId = '${opp.getAssignedTo() != null ? opp.getAssignedTo().getId() : 0}';
+            var currentUserId = '${sessionScope.local.getCurrentPerson().getId()}';
+            if (assigneeId !== currentUserId) {
+                var ok = confirm(
+                    'Warning: Removing Managed By will remove this opportunity from your activity list.\n\n' +
+                    'This opportunity is assigned to an outside agent. Without a Managed By value, ' +
+                    'it will only be visible in the agent\'s pipeline.\n\n' +
+                    'Are you sure you want to proceed?'
+                );
+                if (!ok) {
+                    // Revert to previous value
+                    sel.value = sel.dataset.previousValue || '${opp.getManagedBy() != null ? opp.getManagedBy().getId() : 0}';
+                    return;
+                }
+            }
+        }
+
+        // Track current value for potential revert
+        sel.dataset.previousValue = managedById;
+
         sel.disabled = true;
 
         var params = new URLSearchParams();

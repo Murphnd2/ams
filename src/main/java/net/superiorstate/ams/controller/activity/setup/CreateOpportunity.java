@@ -35,8 +35,10 @@ public class CreateOpportunity extends HttpServlet {
         Opportunity opp = createOpportunity(request);
 
         String returnTo = request.getParameter("returnTo");
-        if ("home".equals(returnTo) && opp != null) {
-            updateGlobalState(request, opp);
+        if ("home".equals(returnTo)) {
+            if (opp != null) {
+                updateGlobalState(request, opp);
+            }
             RequestDispatcher dispatcher = getServletContext().getNamedDispatcher("ViewHome25");
             dispatcher.forward(request, response);
         } else {
@@ -45,6 +47,11 @@ public class CreateOpportunity extends HttpServlet {
     }
 
     private Opportunity createOpportunity(HttpServletRequest request) {
+        System.out.println("CreateOpportunity: returnTo=" + request.getParameter("returnTo")
+            + " prospectMode=" + request.getParameter("prospectMode")
+            + " agencyId=" + request.getParameter("agencyId")
+            + " agentId=" + request.getParameter("agentId"));
+
         EntityManagerFactory emf = (EntityManagerFactory) getServletContext().getAttribute("emf");
         EntityManager em = emf.createEntityManager();
 
@@ -135,6 +142,7 @@ public class CreateOpportunity extends HttpServlet {
             return opp;
 
         } catch (Exception e) {
+            System.out.println("CreateOpportunity FAILED: " + e.getMessage());
             e.printStackTrace();
             return null;
         } finally {
