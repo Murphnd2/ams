@@ -6,6 +6,7 @@ import jakarta.persistence.Query;
 import jakarta.servlet.http.HttpServletRequest;
 import net.superiorstate.ams.model.Constant;
 import net.superiorstate.ams.data.dao.AuthDAO;
+import net.superiorstate.ams.data.dao.SalesDAO;
 import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.model.activity.checklist.CheckList;
 import net.superiorstate.ams.model.activity.checklist.sequences.RequiredTaskList;
@@ -28,6 +29,7 @@ import net.superiorstate.ams.model.sales.agency.Agency;
 import net.superiorstate.ams.model.sales.agency.PriceItem;
 import net.superiorstate.ams.model.sales.agency.Rate;
 import net.superiorstate.ams.model.sales.agency.RateTable;
+import net.superiorstate.ams.model.sales.agency.RateTableID;
 import net.superiorstate.ams.model.sales.application.ApplicationField;
 import net.superiorstate.ams.model.sales.application.ApplicationSection;
 import net.superiorstate.ams.model.sales.offering.Enhancement;
@@ -295,10 +297,9 @@ public abstract class DatabaseInitializer {
         ActivityCategory tg3 = createTemplateGroup(em,3,"Ticket");
         ActivityCategory tg4 = createTemplateGroup(em,4,"Opportunity");
 
-        //Create Setup Service Items (1:1 with LOS/Enhancement; PSP creates additional as needed)
-        ServiceItem siCobra = createServiceItemWithCode(em,1,"COBRA","COBRA",1,tg2,psp);
-        ServiceItem siCdh   = createServiceItemWithCode(em,2,"Flexible Spending Accounts","FSA",2,tg2,psp);
-        ServiceItem siDebit = createServiceItemWithCode(em,3,"Debit Cards","CARDS",3,tg2,psp);
+        //Create Setup Service Items — generic baseline (PSP customizes names in Service Manager)
+        ServiceItem siLos = createServiceItemWithCode(em,1,"Line of Service","LOS",1,tg2,psp);
+        ServiceItem siEnh = createServiceItemWithCode(em,2,"Service Enhancement","ENH",2,tg2,psp);
 
         //Create Plan Types — each auto-creates a 1:1 Renewal ServiceItem
         PlanType pt1  = createPlanTypeWithRenewal(em,1,"DCA","Dependent Care Account",bg,tg1,psp);
@@ -340,22 +341,33 @@ public abstract class DatabaseInitializer {
         createLinkType(em,2,"Hyperlink");
         createLinkType(em,3,"Insert Link");
 
-        //Create Lines of Service (1:1 with Setup ServiceItems; PSP adds more)
-        LOS losCobra = createLos(em,1L,"COBRA Administration","COBRA",psp,siCobra);
-        LOS losCdh   = createLos(em,2L,"Consumer Directed Healthcare","CDH",psp,siCdh);
+        //Create Lines of Service — generic baseline
+        LOS losMain = createLos(em,1L,"Line of Service","LOS",psp,siLos);
 
-        //Create Enhancement (1:1 with Setup ServiceItem)
-        Enhancement enhDebit = createEnhancement(em,1L,"Debit Cards","CARDS",psp,siDebit);
+        //Create Enhancement — generic baseline
+        Enhancement enhMain = createEnhancement(em,1L,"Service Enhancement","ENH",psp,siEnh);
 
-        //Create Service Modules (matching LOS + enhancement; PSP configures pricing via sales channel)
-        ServiceModule smCobra = createServiceModule(em,1L,"COBRA Administration","COBRA",100,psp);
-        ServiceModule smCdh   = createServiceModule(em,2L,"Flexible Spending Accounts","FSA",200,psp);
-        ServiceModule smCards = createServiceModule(em,3L,"Debit Card Services","Cards",300,psp);
+        //Associate Enhancement to LOS (enhancement_los join table)
+        em.getTransaction().begin();
+        enhMain.setLosList(new java.util.ArrayList<>());
+        enhMain.getLosList().add(losMain);
+        em.merge(enhMain);
+        em.getTransaction().commit();
 
-        //Associate Service Modules to LOS
-        associateModuleToLos(em,losCobra,smCobra);
-        associateModuleToLos(em,losCdh,smCdh);
-        associateModuleToLos(em,losCdh,smCards);
+        //Create Service Modules — one per LOS + one per Enhancement
+        ServiceModule smLos = createServiceModule(em,1L,"Line of Service","LOS",100,psp);
+        ServiceModule smEnh = createServiceModule(em,2L,"Service Enhancement","ENH",200,psp);
+
+        //Associate Service Modules to LOS via M:N join table
+        associateModuleToLos(em,losMain,smLos);
+
+        //Set direct FK links on ServiceModule (for Service Manager lookups)
+        em.getTransaction().begin();
+        smLos.setLos(losMain);
+        smEnh.setEnhancement(enhMain);
+        em.merge(smLos);
+        em.merge(smEnh);
+        em.getTransaction().commit();
 
         //Create Price Items (standard fee structure)
         PriceItem pi1 = createPriceItem(em,1L,"Setup (One-time) Fee",100,psp);
@@ -364,6 +376,21 @@ public abstract class DatabaseInitializer {
 
         //Create Rate
         Rate rate = createRate(em,1L,"Standard Rate",psp);
+
+        //Populate Standard Rate pricing grid
+        //  Line of Service: setup $350, annual $200, monthly $5.25
+        assignRateTable(em, rate, smLos, pi1, 350.00, 100);  // setup
+        assignRateTable(em, rate, smLos, pi2, 200.00, 100);  // annual
+        assignRateTable(em, rate, smLos, pi3, 5.25, 100);    // monthly
+        //  Service Enhancement: setup $200 only
+        assignRateTable(em, rate, smEnh, pi1, 200.00, 200);  // setup
+
+        //Assign Standard Rate to PSP home agency
+        Agency homeAgency = SalesDAO.getAgencyFull(em, agency.getId());
+        homeAgency.addRate(rate);
+        em.getTransaction().begin();
+        em.merge(homeAgency);
+        em.getTransaction().commit();
 
         //Create Reasons Created List
         ReasonCreated rc = createReasonCreated(em,1,"Internal Note",false);
@@ -427,11 +454,72 @@ public abstract class DatabaseInitializer {
         assignRoles(em,user,ur8);
         // Seed default filter presets for the new user
         seedFilterPresets(em, user);
+
+        // ── Demo Users ──────────────────────────────────────────────────
+        // Agency Manager + Outside Agency
+        Person agencyManagerPerson = createDemoPerson(em, "Agency", "Manager", "agency@pspdemo.com", psp, a);
+        Agency outsideAgency = createAgency(em, 15L, "Outside Agency", "", "", a, agencyManagerPerson, psp);
+        User agencyManagerUser = createUser(em, agencyManagerPerson, "agency@pspdemo.com", "demo123");
+        assignRoles(em, agencyManagerUser, ur8);  // Agency Admin
+        assignRoles(em, agencyManagerUser, ur2);  // Agent
+        seedFilterPresets(em, agencyManagerUser);
+
+        // Assign Standard Rate to Outside Agency
+        Agency outsideAgencyFull = SalesDAO.getAgencyFull(em, outsideAgency.getId());
+        outsideAgencyFull.addRate(rate);
+        em.getTransaction().begin();
+        em.merge(outsideAgencyFull);
+        em.getTransaction().commit();
+
+        // Sales Agent (assigned to Outside Agency)
+        Person salesAgentPerson = createDemoPerson(em, "Sales", "Agent", "agent@pspdemo.com", psp, a);
+        User salesAgentUser = createUser(em, salesAgentPerson, "agent@pspdemo.com", "demo123");
+        assignRoles(em, salesAgentUser, ur2);  // Agent
+        seedFilterPresets(em, salesAgentUser);
+        em.getTransaction().begin();
+        outsideAgency.getAgentList().add(salesAgentPerson);
+        em.merge(outsideAgency);
+        em.getTransaction().commit();
+
+        // PSP User
+        Person pspUserPerson = createDemoPerson(em, "PSP", "User", "user@pspdemo.com", psp, a);
+        User pspUserUser = createUser(em, pspUserPerson, "user@pspdemo.com", "demo123");
+        assignRoles(em, pspUserUser, ur1);  // PSP User
+        seedFilterPresets(em, pspUserUser);
+
+        // PSP Agent (PSP User + Agent, assigned to home agency)
+        Person pspAgentPerson = createDemoPerson(em, "PSP", "Agent", "pspagent@pspdemo.com", psp, a);
+        User pspAgentUser = createUser(em, pspAgentPerson, "pspagent@pspdemo.com", "demo123");
+        assignRoles(em, pspAgentUser, ur1);  // PSP User
+        assignRoles(em, pspAgentUser, ur2);  // Agent
+        seedFilterPresets(em, pspAgentUser);
+        Agency homeAgencyRefresh = SalesDAO.getAgencyFull(em, agency.getId());
+        em.getTransaction().begin();
+        homeAgencyRefresh.getAgentList().add(pspAgentPerson);
+        em.merge(homeAgencyRefresh);
+        em.getTransaction().commit();
+
+        // BPO Admin
+        Person bpoAdminPerson = createDemoPerson(em, "BPO", "Admin", "bpoadmin@pspdemo.com", psp, a);
+        User bpoAdminUser = createUser(em, bpoAdminPerson, "bpoadmin@pspdemo.com", "demo123");
+        assignRoles(em, bpoAdminUser, ur12);  // BPO Admin (102)
+        seedFilterPresets(em, bpoAdminUser);
+
+        // BPO User
+        Person bpoUserPerson = createDemoPerson(em, "BPO", "User", "bpouser@pspdemo.com", psp, a);
+        User bpoUserUser = createUser(em, bpoUserPerson, "bpouser@pspdemo.com", "demo123");
+        assignRoles(em, bpoUserUser, ur13);  // BPO User (103)
+        seedFilterPresets(em, bpoUserUser);
+
         // Vendor users removed — configure via admin UI (future backlog item)
         // Add PSP Constants
         addPspConstants(em);
         // Seed baseline Application Sections (Company, Contact, Address)
         createApplicationSections(em, psp);
+        //Assign ALL-scoped ApplicationSections to LOS and Enhancement
+        //  (The app does this automatically on LOS/Enhancement creation via Service Manager,
+        //   but during initialization we must do it explicitly)
+        assignAllSectionsToLosAndEnhancement(em, psp, losMain, enhMain);
         // Create Initialization Checklist
         createInitializationChecklist(em);
         // Set Note To Show Initialization Completed
@@ -877,6 +965,55 @@ public abstract class DatabaseInitializer {
         r.getRateTable().add(rt);
         em.persist(r);
         em.getTransaction().commit();
+    }
+
+    private static void assignRateTable(EntityManager em, Rate rate, ServiceModule sm, PriceItem pi, double price, int sortOrder) {
+        em.getTransaction().begin();
+        RateTable rt = new RateTable();
+        RateTableID rtId = new RateTableID();
+        rtId.setRateId(rate.getId());
+        rtId.setModuleId(sm.getId());
+        rtId.setPriceItemId(pi.getId());
+        rt.setRateTableID(rtId);
+        rt.setRate(rate);
+        rt.setModule(sm);
+        rt.setPriceItem(pi);
+        rt.setPrice(price);
+        rt.setSortOrder(sortOrder);
+        em.persist(rt);
+        em.getTransaction().commit();
+    }
+
+    private static void assignAllSectionsToLosAndEnhancement(EntityManager em, PSP psp, LOS los, Enhancement enh) {
+        List<ApplicationSection> sections = em.createQuery(
+                "SELECT s FROM ApplicationSection s WHERE s.psp.id = :pspId AND s.scope = 'ALL' AND s.suppressed = false",
+                ApplicationSection.class)
+            .setParameter("pspId", psp.getId().longValue())
+            .getResultList();
+
+        for (ApplicationSection section : sections) {
+            em.getTransaction().begin();
+            if (section.getLosList() == null) section.setLosList(new java.util.ArrayList<>());
+            if (section.getEnhancementList() == null) section.setEnhancementList(new java.util.ArrayList<>());
+            section.getLosList().add(los);
+            section.getEnhancementList().add(enh);
+            em.merge(section);
+            em.getTransaction().commit();
+        }
+    }
+
+    private static Person createDemoPerson(EntityManager em, String firstName, String lastName, String email, PSP psp, Address address) {
+        em.getTransaction().begin();
+        Person p = new Person();
+        p.setFirstName(firstName);
+        p.setLastName(lastName);
+        p.setFullName(firstName + " " + lastName);
+        p.setEmail(email);
+        p.setPsp(psp);
+        p.setAddress(address);
+        em.persist(p);
+        em.getTransaction().commit();
+        return p;
     }
 
     public static Rate createRate(EntityManager em, Long id, String name, PSP psp){

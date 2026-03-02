@@ -107,6 +107,11 @@
             <img src="${pageContext.request.contextPath}${not empty applicationScope.global.logoNavbar ? applicationScope.global.logoNavbar : '/images/logoA.png'}" alt="Home" style="height:36px;">
           </a>
         </c:when>
+        <c:when test="${sessionScope.isPspUser || sessionScope.isPspAdmin}">
+          <a href="ViewHome25" class="me-2">
+            <img src="${pageContext.request.contextPath}${not empty applicationScope.global.logoNavbar ? applicationScope.global.logoNavbar : '/images/logoA.png'}" alt="Home" style="height:36px;">
+          </a>
+        </c:when>
         <c:when test="${sessionScope.isAgent || sessionScope.isAgencyAdmin}">
           <a href="AgentHome" class="me-2">
             <img src="${pageContext.request.contextPath}${not empty applicationScope.global.logoNavbar ? applicationScope.global.logoNavbar : '/images/logoA.png'}" alt="Home" style="height:36px;">
@@ -151,14 +156,29 @@
             <i class="bi bi-send-fill"></i><span class="d-lg-none d-xl-inline ms-1">Email</span>
           </a>
 
-          <%-- Sales Dropdown --%>
+        </c:if>
+
+        <%-- ═══ SALES DROPDOWN (Agent / Agency Admin / PSP Admin) ═══ --%>
+        <c:if test="${sessionScope.isAgent || sessionScope.isAgencyAdmin || sessionScope.isPspAdmin}">
           <div class="dropdown">
             <button class="nav-ghost dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
               <i class="bi bi-briefcase"></i><span class="d-lg-none d-xl-inline ms-1">Sales</span>
             </button>
             <ul class="dropdown-menu dropdown-menu-end">
-              <li><a class="dropdown-item" href="ProposalBuilder"><i class="bi bi-file-earmark-plus me-2"></i>Proposal Builder</a></li>
-              <li><a class="dropdown-item" href="ReviewApplications"><i class="bi bi-clipboard-check me-2"></i>Application Review</a></li>
+              <c:if test="${sessionScope.isAgent}">
+                <li><a class="dropdown-item" href="AgentHome"><i class="bi bi-kanban me-2"></i>Pipeline</a></li>
+                <li><a class="dropdown-item" href="ProposalBuilder"><i class="bi bi-file-earmark-plus me-2"></i>New Proposal</a></li>
+              </c:if>
+              <c:if test="${sessionScope.isPspAdmin}">
+                <c:if test="${sessionScope.isAgent}">
+                  <li><hr class="dropdown-divider"></li>
+                </c:if>
+                <li><a class="dropdown-item" href="ReviewApplications"><i class="bi bi-clipboard-check me-2"></i>Application Review</a></li>
+              </c:if>
+              <c:if test="${sessionScope.isAgencyAdmin}">
+                <li><hr class="dropdown-divider"></li>
+                <li><button class="dropdown-item" type="button" data-bs-toggle="modal" data-bs-target="#createUserModal"><i class="bi bi-person-plus me-2"></i>Add Agent</button></li>
+              </c:if>
             </ul>
           </div>
         </c:if>
@@ -192,21 +212,6 @@
             </ul>
           </div>
         </c:if>
-
-            <%-- ═══ AGENT / AGENCY MANAGER LINKS ═══ --%>
-          <c:if test="${sessionScope.isAgent || sessionScope.isAgencyAdmin}">
-            <a class="nav-ghost" href="AgentHome">
-              <i class="bi bi-kanban"></i><span class="d-lg-none d-xl-inline ms-1">Pipeline</span>
-            </a>
-            <a class="nav-ghost" href="ProposalBuilder">
-              <i class="bi bi-file-earmark-plus"></i><span class="d-lg-none d-xl-inline ms-1">New Proposal</span>
-            </a>
-            <c:if test="${sessionScope.isAgencyAdmin}">
-              <button class="nav-ghost" type="button" data-bs-toggle="modal" data-bs-target="#createUserModal">
-                <i class="bi bi-person-plus"></i><span class="d-lg-none d-xl-inline ms-1">Add Agent</span>
-              </button>
-            </c:if>
-          </c:if>
 
             <%-- ═══ BPO USER LINKS ═══ --%>
           <c:if test="${sessionScope.isBpo || sessionScope.isBpoAdmin || sessionScope.isBpoUser}">
