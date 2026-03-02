@@ -144,8 +144,8 @@
             <input type="hidden" name="returnTo" value="home">
             <input type="hidden" name="losIds" id="aa_sLosInput" value="">
             <input type="hidden" name="enhancementIds" id="aa_sEnhInput" value="">
-            <input type="hidden" id="aa_currentPersonId" value="${sessionScope.local.getCurrentPerson().getId()}">
-            <input type="hidden" id="aa_pspHomeAgencyId" value="${applicationScope.global.getPspHomeAgencyId()}">
+            <input type="hidden" id="aa_currentPersonId" value="">
+            <input type="hidden" id="aa_pspHomeAgencyId" value="">
 
             <%-- 1. Agency selector (drives all cascades) --%>
             <label class="form-label fw-semibold mb-1" style="font-size:0.85rem;">
@@ -153,12 +153,7 @@
             </label>
             <select class="form-select form-select-sm mb-3" name="agencyId" id="aa_sAgencyId" required>
               <option value="" disabled>Select agency...</option>
-              <c:forEach var="a" items="${applicationScope.global.getAgencies()}">
-                <option value="${a.getId()}"
-                        data-rates="${applicationScope.global.getAgencyRateIds(a.getId())}">
-                  ${fn:escapeXml(a.getName())}
-                </option>
-              </c:forEach>
+              <%-- Options populated by JavaScript via SetupModalData --%>
             </select>
 
             <%-- 2. Prospect mode toggle --%>
@@ -182,12 +177,7 @@
               </label>
               <select class="form-select form-select-sm mb-3" name="prospectId" id="aa_sProspectId">
                 <option value="" selected disabled>Select a prospect...</option>
-                <c:forEach var="p" items="${applicationScope.global.getProspects()}">
-                  <option value="${p.getId()}" class="aa-prospect-option" hidden
-                          data-agencies="${applicationScope.global.getProspectAgencyIds(p.getId())}">
-                    ${fn:escapeXml(p.getName())}
-                  </option>
-                </c:forEach>
+                <%-- Options populated by JavaScript via SetupModalData --%>
               </select>
             </div>
 
@@ -200,12 +190,7 @@
                 </label>
                 <select class="form-select form-select-sm mb-2" name="agentId" id="aa_sAgentId">
                   <option value="" selected disabled>Select agent...</option>
-                  <c:forEach var="ag" items="${applicationScope.global.getSetupAgents()}">
-                    <option value="${ag.getId()}" class="aa-agent-option" hidden
-                            data-agencies="${ag.getAgencyIds()}">
-                      ${fn:escapeXml(ag.getName())}
-                    </option>
-                  </c:forEach>
+                  <%-- Options populated by JavaScript via SetupModalData --%>
                 </select>
               </div>
               <div class="mb-2">
@@ -237,13 +222,7 @@
             </label>
             <select class="form-select form-select-sm mb-3" name="rateId" id="aa_sRateId" required>
               <option value="" selected disabled>Select rate...</option>
-              <c:forEach var="r" items="${applicationScope.global.getRateList()}">
-                <option value="${r.getId()}" class="aa-rate-option" hidden
-                        data-los="${applicationScope.global.getRateLosIds(r.getId())}"
-                        data-extras="${applicationScope.global.getRateExtraIds(r.getId())}">
-                  ${fn:escapeXml(r.getDescription())}
-                </option>
-              </c:forEach>
+              <%-- Options populated by JavaScript via SetupModalData --%>
             </select>
 
             <%-- 4. LOS checkboxes (filtered by rate) --%>
@@ -251,16 +230,8 @@
               <i class="bi bi-list-check me-1 text-ssa"></i>Lines of Service
             </label>
             <div class="border rounded p-2 mb-3" id="aa_sLosContainer" style="max-height:180px; overflow-y:auto;">
-              <div id="aa_sLosHint" class="text-muted small fst-italic">Select a rate package first</div>
-              <c:forEach var="los" items="${applicationScope.global.getLosList()}">
-                <div class="form-check form-switch mb-1 aa-los-item" data-los-id="${los.getId()}" style="display:none;">
-                  <input class="form-check-input aa-los-switch" type="checkbox"
-                         id="aa_sLos_${los.getId()}" value="${los.getId()}" onchange="aa_validateSetup()">
-                  <label class="form-check-label" for="aa_sLos_${los.getId()}" style="font-size:0.85rem;">
-                    ${fn:escapeXml(los.getDescription())}
-                  </label>
-                </div>
-              </c:forEach>
+              <div id="aa_sLosHint" class="text-muted small fst-italic">Loading...</div>
+              <%-- LOS switches populated by JavaScript via SetupModalData --%>
             </div>
 
             <%-- 5. Enhancement checkboxes (filtered by rate) --%>
@@ -268,16 +239,8 @@
               <i class="bi bi-puzzle me-1 text-ssa"></i>Additional Services
             </label>
             <div class="border rounded p-2 mb-3" id="aa_sExtraContainer" style="max-height:180px; overflow-y:auto;">
-              <c:forEach var="enh" items="${applicationScope.global.getEnhancementList()}">
-                <div class="form-check form-switch mb-1 aa-extra-item" data-extra-id="${enh.getServiceItem().getId()}" style="display:none;">
-                  <input class="form-check-input aa-extra-switch" type="checkbox"
-                         id="aa_sExtra_${enh.getId()}" value="${enh.getId()}" onchange="aa_validateSetup()">
-                  <label class="form-check-label" for="aa_sExtra_${enh.getId()}" style="font-size:0.85rem;">
-                    ${fn:escapeXml(enh.getDescription())}
-                  </label>
-                </div>
-              </c:forEach>
-              <div id="aa_sExtraHint" class="text-muted small fst-italic">Select a rate package first</div>
+              <%-- Enhancement switches populated by JavaScript via SetupModalData --%>
+              <div id="aa_sExtraHint" class="text-muted small fst-italic">Loading...</div>
             </div>
 
             <%-- 6. Submit --%>
@@ -297,6 +260,7 @@
 (function(){
   var modal = document.getElementById('addActivityModal');
   var dialog = document.getElementById('aa_dialog');
+  var aa_setupData = null; // holds the fetched setup data
 
   /* ═══ Activity type toggle ═══ */
   window.aa_showType = function(type) {
@@ -305,6 +269,7 @@
     document.getElementById('aa_setupSection').style.display = (type === 'setup') ? '' : 'none';
     if (type === 'setup') {
       dialog.classList.add('modal-lg');
+      aa_loadSetupData();
     } else {
       dialog.classList.remove('modal-lg');
     }
@@ -354,6 +319,152 @@
   document.getElementById('aa_prospectId').addEventListener('change', aa_validateOpp);
   document.getElementById('aa_agencyId').addEventListener('change', aa_validateOpp);
   document.getElementById('aa_companyName').addEventListener('input', aa_validateOpp);
+
+  /* ═══════════════════════════════════════════════════════════════════
+     SETUP — AJAX DATA LOADING
+     Fetches fresh data from SetupModalData and rebuilds all dropdowns
+     ═══════════════════════════════════════════════════════════════════ */
+
+  window.aa_loadSetupData = function() {
+    document.getElementById('aa_setupBtn').disabled = true;
+
+    fetch('SetupModalData')
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        aa_setupData = data;
+        document.getElementById('aa_currentPersonId').value = data.currentPersonId;
+        document.getElementById('aa_pspHomeAgencyId').value = data.homeAgencyId || '';
+        aa_rebuildSetupOptions();
+      })
+      .catch(function(err) {
+        console.error('Failed to load setup data:', err);
+      });
+  };
+
+  function aa_rebuildSetupOptions() {
+    var data = aa_setupData;
+    if (!data) return;
+
+    // ── Build agency options ──
+    var agSel = document.getElementById('aa_sAgencyId');
+    agSel.length = 1; // keep placeholder
+    for (var i = 0; i < data.agencies.length; i++) {
+      var a = data.agencies[i];
+      var opt = document.createElement('option');
+      opt.value = a.id;
+      opt.textContent = a.name;
+      opt.dataset.rates = a.rateIds; // comma-separated string from server
+      agSel.appendChild(opt);
+    }
+
+    // ── Build prospect options ──
+    var prospSel = document.getElementById('aa_sProspectId');
+    prospSel.length = 1;
+    for (var i = 0; i < data.prospects.length; i++) {
+      var p = data.prospects[i];
+      var opt = document.createElement('option');
+      opt.value = p.id;
+      opt.textContent = p.name;
+      opt.className = 'aa-prospect-option';
+      opt.dataset.agencies = p.agencyIds;
+      opt.hidden = true;
+      prospSel.appendChild(opt);
+    }
+
+    // ── Build agent options ──
+    var agentSel = document.getElementById('aa_sAgentId');
+    agentSel.length = 1;
+    for (var i = 0; i < data.agents.length; i++) {
+      var ag = data.agents[i];
+      var opt = document.createElement('option');
+      opt.value = ag.id;
+      opt.textContent = ag.name;
+      opt.className = 'aa-agent-option';
+      opt.dataset.agencies = ag.agencyIds;
+      opt.hidden = true;
+      agentSel.appendChild(opt);
+    }
+
+    // ── Build rate options ──
+    var rateSel = document.getElementById('aa_sRateId');
+    rateSel.length = 1;
+    for (var i = 0; i < data.rates.length; i++) {
+      var r = data.rates[i];
+      var opt = document.createElement('option');
+      opt.value = r.id;
+      opt.textContent = r.description;
+      opt.className = 'aa-rate-option';
+      opt.hidden = true;
+      rateSel.appendChild(opt);
+    }
+
+    // ── Build LOS switches ──
+    var losContainer = document.getElementById('aa_sLosContainer');
+    var losHint = document.getElementById('aa_sLosHint');
+    // Remove old dynamic switches (keep hint)
+    var oldLos = losContainer.querySelectorAll('.aa-los-item');
+    for (var i = 0; i < oldLos.length; i++) oldLos[i].remove();
+    losHint.textContent = 'Select a rate package first';
+    losHint.style.display = '';
+
+    for (var i = 0; i < data.losList.length; i++) {
+      var los = data.losList[i];
+      var div = document.createElement('div');
+      div.className = 'form-check form-switch mb-1 aa-los-item';
+      div.dataset.losId = los.id;
+      div.style.display = 'none';
+      div.innerHTML =
+        '<input class="form-check-input aa-los-switch" type="checkbox" ' +
+        'id="aa_sLos_' + los.id + '" value="' + los.id + '" onchange="aa_validateSetup()">' +
+        '<label class="form-check-label" for="aa_sLos_' + los.id + '" style="font-size:0.85rem;">' +
+        aa_escapeHtml(los.description) + '</label>';
+      losContainer.insertBefore(div, losHint);
+    }
+
+    // ── Build enhancement switches ──
+    var extraContainer = document.getElementById('aa_sExtraContainer');
+    var extraHint = document.getElementById('aa_sExtraHint');
+    var oldExtra = extraContainer.querySelectorAll('.aa-extra-item');
+    for (var i = 0; i < oldExtra.length; i++) oldExtra[i].remove();
+    extraHint.textContent = 'Select a rate package first';
+    extraHint.style.display = '';
+
+    for (var i = 0; i < data.enhancements.length; i++) {
+      var enh = data.enhancements[i];
+      var div = document.createElement('div');
+      div.className = 'form-check form-switch mb-1 aa-extra-item';
+      div.dataset.extraId = enh.serviceItemId;
+      div.style.display = 'none';
+      div.innerHTML =
+        '<input class="form-check-input aa-extra-switch" type="checkbox" ' +
+        'id="aa_sExtra_' + enh.id + '" value="' + enh.id + '" onchange="aa_validateSetup()">' +
+        '<label class="form-check-label" for="aa_sExtra_' + enh.id + '" style="font-size:0.85rem;">' +
+        aa_escapeHtml(enh.description) + '</label>';
+      extraContainer.insertBefore(div, extraHint);
+    }
+
+    // ── Set default agency to home agency and trigger cascade ──
+    var homeId = String(data.homeAgencyId || '');
+    var found = false;
+    if (homeId) {
+      for (var i = 0; i < agSel.options.length; i++) {
+        if (agSel.options[i].value === homeId) { agSel.selectedIndex = i; found = true; break; }
+      }
+    }
+    if (!found) {
+      for (var i = 0; i < agSel.options.length; i++) {
+        if (!agSel.options[i].disabled && agSel.options[i].value) { agSel.selectedIndex = i; break; }
+      }
+    }
+    if (agSel.value) aa_onAgencyChange();
+  }
+
+  /** Simple HTML escaper for dynamic content */
+  function aa_escapeHtml(s) {
+    if (!s) return '';
+    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
 
   /* ═══════════════════════════════════════════════════════════════════
      SETUP CASCADE LOGIC
@@ -455,11 +566,17 @@
   /* ═══ Rate change → filter LOS & extras ═══ */
   window.aa_onRateChange = function() {
     var sel = document.getElementById('aa_sRateId');
-    var opt = sel.options[sel.selectedIndex];
-    var losStr = (opt && opt.dataset && opt.dataset.los) || '';
-    var extraStr = (opt && opt.dataset && opt.dataset.extras) || '';
-    var losIds = losStr ? losStr.split(',').map(Number) : [];
-    var extraIds = extraStr ? extraStr.split(',').map(Number) : [];
+    var rateId = sel.value;
+
+    // Look up LOS and extra IDs from the fetched data maps
+    var losIds = [];
+    var extraIds = [];
+    if (rateId && aa_setupData) {
+      var losArr = aa_setupData.rateLosMap[rateId];
+      if (losArr) losIds = losArr;
+      var extraArr = aa_setupData.rateExtraMap[rateId];
+      if (extraArr) extraIds = extraArr;
+    }
 
     // Show/hide LOS switches
     var anyLos = false;
@@ -471,9 +588,9 @@
       if (show) anyLos = true;
     });
     var losHint = document.getElementById('aa_sLosHint');
-    losHint.style.display = (sel.value && !anyLos) ? '' : 'none';
-    if (sel.value && !anyLos) losHint.textContent = 'No lines of service configured for this rate';
-    if (!sel.value) { losHint.style.display = ''; losHint.textContent = 'Select a rate package first'; }
+    losHint.style.display = (rateId && !anyLos) ? '' : 'none';
+    if (rateId && !anyLos) losHint.textContent = 'No lines of service configured for this rate';
+    if (!rateId) { losHint.style.display = ''; losHint.textContent = 'Select a rate package first'; }
 
     // Show/hide extra switches
     var anyExtra = false;
@@ -486,7 +603,7 @@
     });
     var extraHint = document.getElementById('aa_sExtraHint');
     extraHint.style.display = anyExtra ? 'none' : '';
-    if (!sel.value) { extraHint.textContent = 'Select a rate package first'; }
+    if (!rateId) { extraHint.textContent = 'Select a rate package first'; }
     else if (!anyExtra) { extraHint.textContent = 'No additional services for this rate'; }
 
     aa_validateSetup();
@@ -520,34 +637,6 @@
   document.getElementById('aa_sAgentId').addEventListener('change', aa_validateSetup);
   document.getElementById('aa_sRateId').addEventListener('change', function() { aa_onRateChange(); });
   document.getElementById('aa_sCompanyName').addEventListener('input', aa_validateSetup);
-
-  /* ═══ Default agency to PSP home agency ═══ */
-  (function() {
-    var agSel = document.getElementById('aa_sAgencyId');
-    var homeAgencyId = document.getElementById('aa_pspHomeAgencyId').value || '';
-
-    var found = false;
-    if (homeAgencyId) {
-      for (var i = 0; i < agSel.options.length; i++) {
-        if (agSel.options[i].value === homeAgencyId) {
-          agSel.selectedIndex = i;
-          found = true;
-          break;
-        }
-      }
-    }
-    // Fallback: select first non-disabled option
-    if (!found) {
-      for (var i = 0; i < agSel.options.length; i++) {
-        if (!agSel.options[i].disabled && agSel.options[i].value) {
-          agSel.selectedIndex = i;
-          found = true;
-          break;
-        }
-      }
-    }
-    if (agSel.value) aa_onAgencyChange();
-  })();
 
   /* ═══ Prepare hidden inputs before submit ═══ */
   window.aa_prepareSetupSubmit = function() {
@@ -606,24 +695,8 @@
     document.getElementById('aa_sLosInput').value = '';
     document.getElementById('aa_sEnhInput').value = '';
     document.querySelectorAll('.aa-los-switch, .aa-extra-switch').forEach(function(cb) { cb.checked = false; });
-
-    // Re-default agency to PSP home agency
-    var sAgencySel = document.getElementById('aa_sAgencyId');
-    var homeId = document.getElementById('aa_pspHomeAgencyId').value || '';
-    var homeFound = false;
-    if (homeId) {
-      for (var k = 0; k < sAgencySel.options.length; k++) {
-        if (sAgencySel.options[k].value === homeId) { sAgencySel.selectedIndex = k; homeFound = true; break; }
-      }
-    }
-    if (!homeFound) {
-      for (var k = 0; k < sAgencySel.options.length; k++) {
-        if (!sAgencySel.options[k].disabled && sAgencySel.options[k].value) { sAgencySel.selectedIndex = k; break; }
-      }
-    }
     document.getElementById('aa_sAgentId').selectedIndex = 0;
     document.getElementById('aa_sAgentRow').style.display = 'none';
-    aa_onAgencyChange();
 
     var setupBtn = document.getElementById('aa_setupBtn');
     setupBtn.disabled = true;

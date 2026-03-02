@@ -5,6 +5,7 @@ import jakarta.persistence.EntityManagerFactory;
 import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
+import net.superiorstate.ams.data.AmsDataGlobal;
 import net.superiorstate.ams.data.AmsDataLocal;
 import net.superiorstate.ams.data.dao.SalesDAO;
 import net.superiorstate.ams.data.resolver.EntityLookup;
@@ -207,6 +208,18 @@ public class AgencyAction extends HttpServlet {
 
         } finally {
             em.close();
+        }
+
+        // Refresh global sales data cache
+        AmsDataGlobal global = (AmsDataGlobal) getServletContext().getAttribute("global");
+        if (global != null) {
+            EntityManager em2 = emf.createEntityManager();
+            try {
+                global.refreshSalesData(em2);
+                getServletContext().setAttribute("global", global);
+            } finally {
+                em2.close();
+            }
         }
 
         String redirectUrl = "PspAgencyHome";

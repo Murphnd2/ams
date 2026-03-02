@@ -171,6 +171,16 @@ public class SendInvitation extends HttpServlet {
             em.close();
         }
 
+        // Refresh global sales data cache (new agency/agent/rate assignments)
+        EntityManagerFactory emf2 = (EntityManagerFactory) getServletContext().getAttribute("emf");
+        EntityManager em2 = emf2.createEntityManager();
+        try {
+            global.refreshSalesData(em2);
+            getServletContext().setAttribute("global", global);
+        } finally {
+            em2.close();
+        }
+
         String redirectUrl = "PspAgencyHome";
         if (agencyIdParam != null) redirectUrl += "?agencyId=" + agencyIdParam;
         response.sendRedirect(redirectUrl);

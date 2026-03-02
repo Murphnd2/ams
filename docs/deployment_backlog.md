@@ -359,6 +359,24 @@ No migration required — initialization-only changes. Existing `ReSeedDb`/`ReSe
 
 ---
 
+### D-39: AJAX-Powered Setup Modal Data Loading
+
+**Completed:** March 1, 2026
+**Files:**
+- `src/main/java/net/superiorstate/ams/controller/activity/setup/SetupModalData.java` (new)
+- `src/main/webapp/WEB-INF/view/a/pspHome/columns/activities/addActivityModal25.jsp` (modified)
+- `ServiceManagerAction.java`, `AgencyAction.java`, `SendInvitation.java`, `CreateProspect.java`, `CreateOpportunity.java` (modified)
+
+The Setup tab in the Add Activity modal previously rendered dropdown data via server-side JSTL at page load. Cascade relationships were baked into `data-*` attributes on `<option>` elements. When admin tools modified rates/agencies/LOS, the modal HTML remained stale until full page refresh.
+
+**New endpoint:** `SetupModalData` servlet (GET, JSON) reads from `AmsDataGlobal` cache — returns agencies (with rateIds), prospects (with agencyIds), agents (with agencyIds), rates, LOS list, enhancements (with serviceItemId), rateLosMap, rateExtraMap, homeAgencyId, and currentPersonId.
+
+**JSP changes:** Replaced 6 JSTL `<c:forEach>` loops with empty containers. Added `aa_loadSetupData()` (fetches fresh data every time Setup tab is shown), `aa_rebuildSetupOptions()` (dynamically builds all options from JSON), and `aa_escapeHtml()` helper. Modified `aa_onRateChange()` to look up LOS/extra IDs from the JS data object instead of `data-*` attributes.
+
+**Admin servlet cache refresh:** Added `refreshSalesData()` calls to 5 servlets that were missing them: ServiceManagerAction, AgencyAction, SendInvitation, CreateProspect, and replaced targeted `setProspects()` in CreateOpportunity with full `refreshSalesData(em)`.
+
+---
+
 ## Remaining TODOs
 
 - Run `schema_version_migration.sql` on production database (holding until further testing)

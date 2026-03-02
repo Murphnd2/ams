@@ -5,6 +5,7 @@ import jakarta.persistence.EntityManagerFactory;
 import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
+import net.superiorstate.ams.data.AmsDataGlobal;
 import net.superiorstate.ams.data.AmsDataLocal;
 import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.model.general.Person;
@@ -76,6 +77,18 @@ public class CreateProspect extends HttpServlet {
 
         } finally {
             em.close();
+        }
+
+        // Refresh global sales data cache (new prospect appears in dropdowns)
+        AmsDataGlobal global = (AmsDataGlobal) getServletContext().getAttribute("global");
+        if (global != null) {
+            EntityManager em2 = emf.createEntityManager();
+            try {
+                global.refreshSalesData(em2);
+                getServletContext().setAttribute("global", global);
+            } finally {
+                em2.close();
+            }
         }
 
         response.sendRedirect("ProposalBuilder" + (prospect != null ? "?selectedProspect=" + prospect.getId() : ""));

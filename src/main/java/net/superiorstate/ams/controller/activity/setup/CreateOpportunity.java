@@ -142,9 +142,8 @@ public class CreateOpportunity extends HttpServlet {
             global.setActivitiesAllOpen(allActivities);
             local.setActivitiesAllOpen(allActivities);
 
-            // Refresh prospect cache so new prospects appear in dropdown immediately
-            global.setProspects(net.superiorstate.ams.data.dao.SalesDAO.getProspectsByPsp(
-                    em, global.getPsp().getId().intValue()));
+            // Refresh full sales data cache (prospect + agent/agency data)
+            global.refreshSalesData(em);
 
             local.getCurrentActivity().setActivity(opp);
             local.getCurrentActivity().setReFilterOnExit(true);
