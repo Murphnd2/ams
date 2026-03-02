@@ -8,6 +8,7 @@ import jakarta.mail.internet.MimeMultipart;
 import jakarta.persistence.*;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.Part;
+import net.superiorstate.ams.AppConfig;
 import net.superiorstate.ams.model.*;
 import net.superiorstate.ams.data.util.Validator;
 import net.superiorstate.ams.data.dao.RecurringChecklistDAO;
@@ -116,11 +117,17 @@ public class AmsDataLocal implements AutoCloseable {
         }
         setCurrentEmail(new CurrentEmail());
         getCurrentEmail().initializeEmail();
-        setActivitiesAllOpen(global.getActivitiesAllOpen());
-        setActivitiesWithDependencies(global.getActivitiesWithDelegation());
-        setFilteredActivityList(filterActivityListing());
+        if (AppConfig.isPsp()) {
+            setActivitiesAllOpen(global.getActivitiesAllOpen());
+            setActivitiesWithDependencies(global.getActivitiesWithDelegation());
+            setFilteredActivityList(filterActivityListing());
+            setRenewalEmployers(fillRenewalEmployers(em));
+        } else {
+            setActivitiesAllOpen(new ArrayList<>());
+            setActivitiesWithDependencies(new ArrayList<>());
+            setFilteredActivityList(new ArrayList<>());
+        }
         setChecklistsAll(retrieveMyChecklists(em));
-        setRenewalEmployers(fillRenewalEmployers(em));
         splitChecklists();
         global.setWebPath(global.getConstantValue(em,"WEB_PATH"));
     }
