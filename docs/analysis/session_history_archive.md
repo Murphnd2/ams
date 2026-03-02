@@ -691,3 +691,20 @@ Fixed login redirect chain, navbar logo, and activity filter behavior so PSP rol
 - `AuthenticateUser.java`, `OneTimeUserLogin.java`, `CreateUser25.java`, `FilterActivities25.java`, `AmsDataLocal.java`, `activityHeader25.jsp`
 
 No database changes.
+
+## March 1, 2026 — AJAX Opportunity Section + Agency → Prospect Cascade (Session 16)
+
+Converted the Opportunity section of the Add Activity modal from JSTL to AJAX, adding agency → prospect cascading. Reuses the existing `SetupModalData` endpoint — no servlet changes needed.
+
+### Changes
+- **Agency dropdown:** Replaced JSTL `<c:choose>`/`<c:forEach>` with empty `<select>` populated by JS from `SetupModalData`
+- **Prospect dropdown:** Replaced JSTL `<c:forEach>` with empty `<select>` filtered by selected agency's `agencyIds`
+- **UI reorder:** Agency moved above prospect toggle (agency drives cascade)
+- **Shared data loader:** `aa_loadSetupData()` → `aa_loadModalData(type)` — single fetch serves both Opportunity and Setup tabs with caching
+- **New functions:** `aa_rebuildOppOptions()` (agency population + auto-select), `aa_onOppAgencyChange()` (prospect filtering)
+- **Cache reset:** `aa_setupData = null` on modal close for fresh data on next open
+
+### Files Changed
+- `src/main/webapp/WEB-INF/view/a/pspHome/columns/activities/addActivityModal25.jsp` — Only file modified
+
+No database changes.

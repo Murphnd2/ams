@@ -59,6 +59,16 @@
             <input type="hidden" name="returnTo" value="home">
             <input type="hidden" name="prospectMode" id="aa_prospectMode" value="existing">
 
+            <%-- Agency (first — drives prospect cascade) --%>
+            <label class="form-label fw-semibold mb-1" style="font-size:0.85rem;">
+              <i class="bi bi-people me-1 text-ssa"></i>Agency
+            </label>
+            <select class="form-select form-select-sm mb-3" name="agencyId" id="aa_agencyId" required
+                    onchange="aa_onOppAgencyChange()">
+              <option value="" selected disabled>Select agency...</option>
+              <%-- Options populated by JavaScript via SetupModalData --%>
+            </select>
+
             <%-- Prospect mode toggle --%>
             <div class="btn-group w-100 mb-3" role="group">
               <input type="radio" class="btn-check" name="aa_prospectToggle" id="aa_togExisting" autocomplete="off" checked
@@ -73,16 +83,14 @@
               </label>
             </div>
 
-            <%-- Existing prospect dropdown --%>
+            <%-- Existing prospect dropdown (filtered by agency) --%>
             <div id="aa_existingProspectFields">
               <label class="form-label fw-semibold mb-1" style="font-size:0.85rem;">
                 <i class="bi bi-briefcase me-1 text-ssa"></i>Prospect
               </label>
               <select class="form-select form-select-sm mb-3" name="prospectId" id="aa_prospectId">
                 <option value="" selected disabled>Select a prospect...</option>
-                <c:forEach var="p" items="${applicationScope.global.getProspects()}">
-                  <option value="${p.getId()}">${fn:escapeXml(p.getName())}</option>
-                </c:forEach>
+                <%-- Options populated by JavaScript via SetupModalData, filtered by agency --%>
               </select>
             </div>
 
@@ -110,26 +118,6 @@
                 <input type="email" name="contactEmail" class="form-control form-control-sm" placeholder="email@example.com">
               </div>
             </div>
-
-            <%-- Agency (always needed for opportunity) --%>
-            <label class="form-label fw-semibold mb-1" style="font-size:0.85rem;">
-              <i class="bi bi-people me-1 text-ssa"></i>Agency
-            </label>
-            <select class="form-select form-select-sm mb-3" name="agencyId" id="aa_agencyId" required>
-              <c:choose>
-                <c:when test="${applicationScope.global.getAgencies().size() == 1}">
-                  <option value="${applicationScope.global.getAgencies().get(0).getId()}" selected>
-                    ${fn:escapeXml(applicationScope.global.getAgencies().get(0).getName())}
-                  </option>
-                </c:when>
-                <c:otherwise>
-                  <option value="" selected disabled>Select agency...</option>
-                  <c:forEach var="a" items="${applicationScope.global.getAgencies()}">
-                    <option value="${a.getId()}">${fn:escapeXml(a.getName())}</option>
-                  </c:forEach>
-                </c:otherwise>
-              </c:choose>
-            </select>
 
             <button type="submit" class="btn btn-ssa btn-sm w-100" id="aa_oppBtn" disabled>
               <i class="bi bi-graph-up-arrow me-1"></i>Create Opportunity
@@ -269,9 +257,11 @@
     document.getElementById('aa_setupSection').style.display = (type === 'setup') ? '' : 'none';
     if (type === 'setup') {
       dialog.classList.add('modal-lg');
-      aa_loadSetupData();
     } else {
       dialog.classList.remove('modal-lg');
+    }
+    if (type === 'opportunity' || type === 'setup') {
+      aa_loadModalData(type);
     }
   };
 
@@ -325,7 +315,16 @@
      Fetches fresh data from SetupModalData and rebuilds all dropdowns
      ═══════════════════════════════════════════════════════════════════ */
 
-  window.aa_loadSetupData = function() {
+  window.aa_loadModalData = function(type) {
+    // If we already fetched this modal open, just rebuild from cache
+    if (aa_setupData) {
+      if (type === 'setup') aa_rebuildSetupOptions();
+      if (type === 'opportunity') aa_rebuildOppOptions();
+      return;
+    }
+
+    // Disable submit buttons while loading
+    document.getElementById('aa_oppBtn').disabled = true;
     document.getElementById('aa_setupBtn').disabled = true;
 
     fetch('SetupModalData')
@@ -335,9 +334,10 @@
         document.getElementById('aa_currentPersonId').value = data.currentPersonId;
         document.getElementById('aa_pspHomeAgencyId').value = data.homeAgencyId || '';
         aa_rebuildSetupOptions();
+        aa_rebuildOppOptions();
       })
       .catch(function(err) {
-        console.error('Failed to load setup data:', err);
+        console.error('Failed to load modal data:', err);
       });
   };
 
@@ -465,6 +465,71 @@
     return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   }
+
+  /* ═══════════════════════════════════════════════════════════════════
+     OPPORTUNITY — AJAX POPULATION
+     Builds agency dropdown, cascades to prospect list
+     ═══════════════════════════════════════════════════════════════════ */
+
+  function aa_rebuildOppOptions() {
+    var data = aa_setupData;
+    if (!data) return;
+
+    // Build agency options
+    var agSel = document.getElementById('aa_agencyId');
+    agSel.length = 1; // keep "Select agency..." placeholder
+
+    for (var i = 0; i < data.agencies.length; i++) {
+      var a = data.agencies[i];
+      var opt = document.createElement('option');
+      opt.value = a.id;
+      opt.textContent = a.name;
+      agSel.appendChild(opt);
+    }
+
+    // Auto-select if only one agency
+    if (data.agencies.length === 1) {
+      agSel.selectedIndex = 1;
+      aa_onOppAgencyChange();
+    }
+    // Or auto-select homeAgencyId if present
+    else if (data.homeAgencyId) {
+      for (var i = 0; i < agSel.options.length; i++) {
+        if (agSel.options[i].value == data.homeAgencyId) {
+          agSel.selectedIndex = i;
+          aa_onOppAgencyChange();
+          break;
+        }
+      }
+    }
+
+    aa_validateOpp();
+  }
+
+  window.aa_onOppAgencyChange = function() {
+    var agVal = document.getElementById('aa_agencyId').value;
+    var data = aa_setupData;
+    if (!data) return;
+
+    // Rebuild prospect dropdown with only matching prospects
+    var prospSel = document.getElementById('aa_prospectId');
+    prospSel.length = 1; // keep "Select a prospect..." placeholder
+
+    if (agVal && data.prospects) {
+      for (var i = 0; i < data.prospects.length; i++) {
+        var p = data.prospects[i];
+        var pAgencies = (p.agencyIds || '').split(',');
+        if (pAgencies.indexOf(String(agVal)) >= 0) {
+          var opt = document.createElement('option');
+          opt.value = p.id;
+          opt.textContent = p.name;
+          prospSel.appendChild(opt);
+        }
+      }
+    }
+
+    aa_validateOpp();
+  };
 
   /* ═══════════════════════════════════════════════════════════════════
      SETUP CASCADE LOGIC
@@ -677,11 +742,10 @@
     // Reset opportunity form
     document.getElementById('aa_togExisting').checked = true;
     aa_showProspectMode('existing');
-    document.getElementById('aa_prospectId').selectedIndex = 0;
+    document.getElementById('aa_agencyId').length = 1; // clear AJAX options, keep placeholder
+    document.getElementById('aa_prospectId').length = 1; // clear AJAX options, keep placeholder
     document.getElementById('aa_companyName').value = '';
     document.querySelectorAll('#aa_newProspectFields input').forEach(function(el) { el.value = ''; });
-    var agencySel = document.getElementById('aa_agencyId');
-    if (agencySel.options.length > 1) agencySel.selectedIndex = 0;
     document.getElementById('aa_oppBtn').disabled = true;
 
     // Reset setup form
@@ -704,6 +768,9 @@
   }
 
   modal.addEventListener('show.bs.modal', resetModal);
-  modal.addEventListener('hidden.bs.modal', resetModal);
+  modal.addEventListener('hidden.bs.modal', function() {
+    resetModal();
+    aa_setupData = null; // clear cache so next open fetches fresh data
+  });
 })();
 </script>

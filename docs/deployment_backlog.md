@@ -394,6 +394,27 @@ The Setup tab in the Add Activity modal previously rendered dropdown data via se
 
 ---
 
+### D-41: AJAX Opportunity Section + Agency → Prospect Cascade
+
+**Completed:** March 1, 2026
+**File:** `src/main/webapp/WEB-INF/view/a/pspHome/columns/activities/addActivityModal25.jsp`
+
+Converted the Opportunity section of the Add Activity modal from server-rendered JSTL to AJAX-populated JavaScript, reusing the existing `SetupModalData` endpoint. No servlet changes needed.
+
+**HTML changes:**
+- Replaced JSTL `<c:choose>`/`<c:forEach>` on agency `<select>` with empty container populated by JS
+- Replaced JSTL `<c:forEach>` on prospect `<select>` with empty container filtered by agency
+- Moved agency dropdown above prospect toggle (agency drives cascade)
+
+**JavaScript changes:**
+- `aa_showType()` now calls `aa_loadModalData(type)` for both `opportunity` and `setup` (was `aa_loadSetupData()` for setup only)
+- New `aa_loadModalData(type)` replaces `aa_loadSetupData` — shared fetch with caching, rebuilds both tabs from single `SetupModalData` call
+- New `aa_rebuildOppOptions()` — populates agency dropdown, auto-selects single agency or homeAgencyId
+- New `aa_onOppAgencyChange()` — filters prospect dropdown by `agencyIds` from SetupModalData response
+- Modal close now sets `aa_setupData = null` for fresh fetch on next open
+
+---
+
 ## Remaining TODOs
 
 - Run `schema_version_migration.sql` on production database (holding until further testing)
