@@ -23,6 +23,7 @@ public final class AppConfig {
     private static final Properties props = new Properties();
     private static boolean loaded = false;
     private static String resolvedPath = null;
+    private static volatile String cachedSystemType = null;
 
     private AppConfig() {}
 
@@ -82,7 +83,18 @@ public final class AppConfig {
     }
 
     public static String getSystemType() {
+        if (cachedSystemType != null) return cachedSystemType;
         return get("SYSTEM_TYPE", "PSP");
+    }
+
+    /**
+     * Cache the authoritative system type read from the DB constants table.
+     * Called by AmsDataGlobal during global data initialization.
+     */
+    public static void setSystemType(String type) {
+        if (type != null && !type.isBlank()) {
+            cachedSystemType = type.strip().toUpperCase();
+        }
     }
 
     public static boolean isPsp() {

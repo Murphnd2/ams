@@ -170,6 +170,7 @@
                             <div class="mb-2">
                                 <label class="form-label" for="deploymentKey">Deployment Key</label>
                                 <input type="password" class="form-control" name="deploymentKey" id="deploymentKey" required>
+                                <small class="text-muted">Format: PSP-yourkey or BPO-yourkey (optional demo tag: PSP-yourkey-DEMO)</small>
                             </div>
 
                             <%-- COMPANY --%>

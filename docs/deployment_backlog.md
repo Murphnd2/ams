@@ -480,6 +480,23 @@ Full cross-system BPO architecture enabling PSP and BPO deployments to exchange 
 
 ---
 
+### D-45: BPO Initialization Path ✅
+
+**Completed:** March 2, 2026
+**Files (modified):**
+- `src/main/java/net/superiorstate/ams/AppConfig.java` — Added `cachedSystemType` with `setSystemType()`, `getSystemType()` checks cache first
+- `src/main/java/net/superiorstate/ams/data/service/DatabaseInitializer.java` — Added `SYSTEM_TYPE=PSP` to `addPspConstants()`, new `addBpoConstants()`, new `createBpoWelcomeChecklist()`, new `initializeBpoDataBase()`
+- `src/main/java/net/superiorstate/ams/controller/authentication/InitializeDataBase.java` — New key format `{TYPE}-{KEY}` or `{TYPE}-{KEY}-{DEMOTAG}`, branches to PSP or BPO initializer, refreshes system type attributes post-init
+- `src/main/java/net/superiorstate/ams/data/AmsDataGlobal.java` — Reads `SYSTEM_TYPE` from DB constants and caches via `AppConfig.setSystemType()` during global init
+- `src/main/java/net/superiorstate/ams/EmfListener.java` — Refreshes system type servlet context attributes after `initializeGlobalData()` completes
+- `src/main/webapp/initialize.jsp` — Hint text below deployment key field about PSP-/BPO- prefix format
+
+When a fresh deployment is initialized via `initialize.jsp`, the deployment key prefix determines whether the system becomes a PSP or BPO deployment. BPO initialization seeds the minimum reference data needed (sequence, statuses, roles, contact methods, activity categories, ticket category, sentinel tasks) while skipping PSP-specific structures (plan types, billing groups, LOS/Enhancement, service modules, application sections, Summit onboarding checklist, demo users). BPO admin user gets role 102 (BPO Admin) instead of PSP Admin. The BPO welcome checklist guides partnership setup instead of Summit data transfer.
+
+No database migration required — initialization-only changes. Existing `ReSeedDb`/`ReSeedDemoData` inherit PSP path automatically.
+
+---
+
 ## Remaining TODOs
 
 - Run `schema_version_migration.sql` on production database (holding until further testing)

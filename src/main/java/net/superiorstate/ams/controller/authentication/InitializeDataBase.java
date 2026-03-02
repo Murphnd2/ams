@@ -34,7 +34,8 @@ public class InitializeDataBase extends HttpServlet {
                 return;
             }
 
-            // D-05: Validate deployment key (with optional demo tag support)
+            // D-05: Validate deployment key — format: {TYPE}-{KEY} or {TYPE}-{KEY}-{DEMOTAG}
+            //   Examples: PSP-mykey123, BPO-mykey123, PSP-mykey123-DEMO
             String submittedKey = request.getParameter("deploymentKey");
             String expectedKey = AppConfig.get("DEPLOYMENT_KEY");
 
@@ -44,16 +45,25 @@ public class InitializeDataBase extends HttpServlet {
                 return;
             }
 
-            // Parse optional demo tag: key contains no hyphens by convention.
-            // If a hyphen is present, everything before it is the key, everything after is the tag.
-            String baseKey = submittedKey;
+            // Parse: first segment = system type, second = key, optional third = demo tag
+            String systemType = null;
+            String baseKey = null;
             String demoTag = null;
-            if (submittedKey != null) {
-                int hyphen = submittedKey.indexOf('-');
-                if (hyphen > 0) {
-                    baseKey = submittedKey.substring(0, hyphen);
-                    demoTag = submittedKey.substring(hyphen + 1);
+            if (submittedKey != null && !submittedKey.isBlank()) {
+                String[] parts = submittedKey.split("-", 3);
+                if (parts.length >= 2) {
+                    systemType = parts[0].toUpperCase();
+                    baseKey = parts[1];
+                    if (parts.length == 3 && !parts[2].isBlank()) {
+                        demoTag = parts[2];
+                    }
                 }
+            }
+
+            if (systemType == null || (!"PSP".equals(systemType) && !"BPO".equals(systemType))) {
+                System.out.println("⛔ InitializeDataBase blocked — missing or invalid system type prefix (expected PSP- or BPO-)");
+                response.sendRedirect("GoInitialize25");
+                return;
             }
 
             if (!expectedKey.equals(baseKey)) {
@@ -70,23 +80,34 @@ public class InitializeDataBase extends HttpServlet {
                 return;
             }
 
-            // Run standard initialization
+            // Run initialization based on system type
             try {
-                System.out.println("🚀 InitializeDataBase — key validated, starting initialization...");
-                DatabaseInitializer.initializeDataBase(request, em);
-                System.out.println("✅ InitializeDataBase — initialization complete");
+                System.out.println("🚀 InitializeDataBase — key validated, type=" + systemType + ", starting initialization...");
 
-                // Run optional demo seeder if tag was provided
-                if (demoTag != null && !demoTag.isBlank()) {
-                    System.out.println("🎭 Demo tag detected: " + demoTag);
-                    DatabaseInitializer.seedDemoData(em, demoTag);
+                if ("BPO".equals(systemType)) {
+                    DatabaseInitializer.initializeBpoDataBase(request, em);
+                    System.out.println("✅ InitializeDataBase — BPO initialization complete");
+                } else {
+                    DatabaseInitializer.initializeDataBase(request, em);
+                    System.out.println("✅ InitializeDataBase — PSP initialization complete");
+
+                    // Run optional demo seeder if tag was provided (PSP only)
+                    if (demoTag != null && !demoTag.isBlank()) {
+                        System.out.println("🎭 Demo tag detected: " + demoTag);
+                        DatabaseInitializer.seedDemoData(em, demoTag);
+                    }
                 }
 
                 // Load global data so a server restart is not required
                 AmsDataGlobal global = new AmsDataGlobal();
                 global.initializeGlobalData(em);
                 getServletContext().setAttribute("global", global);
-                System.out.println("✅ Global data loaded after initialization");
+
+                // Refresh system type attributes from DB constant
+                getServletContext().setAttribute("systemType", AppConfig.getSystemType());
+                getServletContext().setAttribute("isBpoSystem", AppConfig.isBpo());
+                getServletContext().setAttribute("isPspSystem", AppConfig.isPsp());
+                System.out.println("✅ Global data loaded after initialization (systemType=" + AppConfig.getSystemType() + ")");
 
                 // Fix session so LoginFilter stops redirecting to initialize.jsp
                 request.getSession().setAttribute("uninitialized", 1);

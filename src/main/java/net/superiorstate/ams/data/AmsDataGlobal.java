@@ -136,6 +136,13 @@ public class AmsDataGlobal {
             setAssignableRoles(loadAssignableRoles(em));
             setConstants(em);
 
+            // Cache authoritative system type from DB constant into AppConfig
+            String dbSystemType = getConstantValue(em, "SYSTEM_TYPE");
+            if (dbSystemType != null && !dbSystemType.isBlank()) {
+                AppConfig.setSystemType(dbSystemType);
+                System.out.println("🔧 System type cached from DB: " + dbSystemType);
+            }
+
             if (AppConfig.isPsp()) {
                 setTemplateGroups(SequenceDAO.getTemplateGroups(em));
                 setServiceItems(SequenceDAO.getServiceItems(em));

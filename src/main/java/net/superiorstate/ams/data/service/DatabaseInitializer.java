@@ -253,6 +253,131 @@ public abstract class DatabaseInitializer {
     }
 
     /**
+     * BPO initialization — seeds the minimum reference data needed for a BPO deployment.
+     * Skips PSP-specific structures (plan types, billing groups, LOS/Enhancement,
+     * service modules, application sections, Summit onboarding checklist).
+     */
+    public static void initializeBpoDataBase(HttpServletRequest request, EntityManager em) {
+        retrieveFormData(request);
+        System.out.println("Retrieved Data (BPO): Company Name = " + getPspName());
+
+        // ── Shared foundation ──
+        seedSequence(em);
+        ActivityStatus as = createActivityStatus(em, 1, "Waiting on Them");
+        createActivityStatus(em, 2, "No Change");
+        createActivityStatus(em, 3, "Waiting on Us");
+
+        Address a = createAddress(em, 3, address, "", getCity(), getState(), getZip());
+        PSP psp = createPSP(em, 4L, getPspName(), a);
+        Person p = createMainContact(em, 104L, getFirstName(), getLastName(), a, psp, getEmail());
+        updatePspWithContact(em, psp, p);
+
+        Agency agency = createAgency(em, 14L, getPspName(), getPhone(), getTaxId(), a, p, psp);
+        if (getConstantByName(em, "PSP_HOME_AGENCY_ID") == null)
+            createConstant(em, "PSP_HOME_AGENCY_ID", String.valueOf(agency.getId()));
+
+        String fullName = getFirstName().trim() + " " + getLastName().trim();
+        Employer er = createEmployer(em, -1, getPspName(), getEmail(), fullName, -1);
+        Employee ee = createEmployee(em, -1, p, er);
+        em.getTransaction().begin();
+        p.setEmployee(ee);
+        em.persist(p);
+        em.getTransaction().commit();
+
+        // Activity categories (same IDs — hard-referenced throughout app)
+        createTemplateGroup(em, 1, "Renewal");
+        createTemplateGroup(em, 2, "Setup");
+        ActivityCategory tg3 = createTemplateGroup(em, 3, "Ticket");
+        createTemplateGroup(em, 4, "Opportunity");
+
+        // Contact methods, days of week, link types
+        createContactMethod(em, 1, "Phone");
+        createContactMethod(em, 2, "Email");
+        createContactMethod(em, 3, "Mail");
+        createContactMethod(em, 4, "Walk-in");
+
+        createDayOfWeek(em, 1, "Monday");
+        createDayOfWeek(em, 2, "Tuesday");
+        createDayOfWeek(em, 3, "Wednesday");
+        createDayOfWeek(em, 4, "Thursday");
+        createDayOfWeek(em, 5, "Friday");
+        createDayOfWeek(em, 6, "Saturday");
+        createDayOfWeek(em, 7, "Sunday");
+
+        createLinkType(em, 1, "File Upload");
+        createLinkType(em, 2, "Hyperlink");
+        createLinkType(em, 3, "Insert Link");
+
+        // Reasons created
+        ReasonCreated rc = createReasonCreated(em, 1, "Internal Note", false);
+        createReasonCreated(em, 2, "Received Call", false);
+        createReasonCreated(em, 3, "Received Voicemail", false);
+        createReasonCreated(em, 4, "Received Email", false);
+        createReasonCreated(em, 5, "Made Call", true);
+        createReasonCreated(em, 6, "Left Voicemail", true);
+        createReasonCreated(em, 7, "Sent Email Message", true);
+        createReasonCreated(em, 8, "Quick Action", true);
+
+        // Task frequencies
+        createTaskFrequency(em, 1, "Daily (Weekdays)");
+        createTaskFrequency(em, 2, "Weekly");
+        createTaskFrequency(em, 3, "Bi-Weekly");
+        createTaskFrequency(em, 4, "1st and 15th");
+        createTaskFrequency(em, 5, "15th and Last");
+        createTaskFrequency(em, 6, "Monthly");
+        createTaskFrequency(em, 7, "Quarterly");
+        createTaskFrequency(em, 8, "Semi-Annually");
+        createTaskFrequency(em, 9, "Annually");
+        createTaskFrequency(em, 10, "First Monday of Month");
+        createTaskFrequency(em, 11, "First Tuesday of Month");
+        createTaskFrequency(em, 12, "First Wednesday of Month");
+        createTaskFrequency(em, 13, "First Thursday of Month");
+        createTaskFrequency(em, 14, "First Friday of Month");
+        createTaskFrequency(em, 15, "Last Monday of Month");
+        createTaskFrequency(em, 16, "Last Tuesday of Month");
+        createTaskFrequency(em, 17, "Last Wednesday of Month");
+        createTaskFrequency(em, 18, "Last Thursday of Month");
+        createTaskFrequency(em, 19, "Last Friday of Month");
+
+        // Sentinel tasks
+        createTask(em, 129L, "System Close", "", psp, p, false);
+        createTask(em, 153L, "System Close", "", psp, p, false);
+
+        // Ticket category + service item
+        TicketCategory tc = createTicketCategory(em, 1L, "General", "GEN");
+        ServiceItem siTicket = createServiceItem(em, 10, "General Ticket", 1, tg3, psp);
+        siTicket = setHasRequiredTasks(em, siTicket, true);
+        setTicketCategoryOnServiceItem(em, siTicket, tc);
+        createRequiredTaskList(em, siTicket, psp);
+
+        // Time entry
+        createTimeEntry(em, p);
+
+        // User + roles — BPO Admin (102) instead of PSP Admin (5)
+        User user = createUser(em, p, getEmail(), getPassword());
+        UserRole ur1  = createUserRole(em, 1, "PSP User");
+        UserRole ur2  = createUserRole(em, 2, "Agent");
+        UserRole ur3  = createUserRole(em, 3, "Client");
+        UserRole ur4  = createUserRole(em, 4, "Applicant");
+        UserRole ur5  = createUserRole(em, 5, "PSP Admin");
+        UserRole ur8  = createUserRole(em, 8, "Agency Admin");
+        UserRole ur9  = createUserRole(em, 9, "PSP Super User");
+        UserRole ur12 = createUserRole(em, 102, "BPO Admin");
+        UserRole ur13 = createUserRole(em, 103, "BPO User");
+        assignRoles(em, user, ur12, ur13);  // BPO Admin + BPO User
+        seedFilterPresets(em, user);
+
+        // BPO constants (SYSTEM_TYPE=BPO, shared SMTP/web/branding)
+        addBpoConstants(em);
+
+        // BPO welcome checklist (replaces Summit onboarding)
+        createBpoWelcomeChecklist(em);
+
+        // Initialization note
+        setInitializationNote(em, p, rc, siTicket, as);
+    }
+
+    /**
      * Core initialization logic — creates all seed data using values already set
      * in the static fields (via retrieveFormData or direct setter calls).
      * Separated so ReSeedDb can call it after setting fields from saved state.
@@ -586,6 +711,81 @@ public abstract class DatabaseInitializer {
         em.getTransaction().commit();
     }
 
+    /**
+     * Creates the BPO onboarding checklist — guides the BPO admin through
+     * initial partnership setup steps (connect to PSP, configure services).
+     */
+    private static void createBpoWelcomeChecklist(EntityManager em) {
+        Person person = EntityLookup.getPersonById(em, 104L);
+        PSP psp = EntityLookup.getPspById(em, 4L);
+
+        em.getTransaction().begin();
+
+        CheckList checkList = new CheckList();
+        checkList.setId(29L);
+        checkList.setDueDate(Date.valueOf(LocalDate.now().plusDays(30)));
+        checkList.setAssignedTo(person);
+        checkList.setFullName("BPO Onboarding");
+        checkList.setLoggedBy(person);
+
+        List<ToDo> toDoList = new ArrayList<>();
+
+        // Step 1: Register with a PSP partner
+        Task t1 = new Task();
+        t1.setId(28L);
+        t1.setPsp(psp);
+        t1.setDescription(createAnchor("BpoPartnership", "Register with a PSP Partner"));
+        t1.setReUsable(false);
+        t1.setHasAutomation(false);
+        em.persist(t1);
+
+        ToDo td1 = new ToDo();
+        td1.setId(29L);
+        td1.setTask(t1);
+        td1.setCheckList(checkList);
+        td1.setSortOrder(10);
+        em.persist(td1);
+        toDoList.add(td1);
+
+        // Step 2: Wait for PSP approval
+        Task t2 = new Task();
+        t2.setId(30L);
+        t2.setPsp(psp);
+        t2.setDescription("Wait for PSP Approval");
+        t2.setReUsable(false);
+        t2.setHasAutomation(false);
+        em.persist(t2);
+
+        ToDo td2 = new ToDo();
+        td2.setId(31L);
+        td2.setTask(t2);
+        td2.setCheckList(checkList);
+        td2.setSortOrder(20);
+        em.persist(td2);
+        toDoList.add(td2);
+
+        // Step 3: Review delegated tasks
+        Task t3 = new Task();
+        t3.setId(32L);
+        t3.setPsp(psp);
+        t3.setDescription(createAnchor("BpoTasks", "Review Delegated Tasks"));
+        t3.setReUsable(false);
+        t3.setHasAutomation(false);
+        em.persist(t3);
+
+        ToDo td3 = new ToDo();
+        td3.setId(33L);
+        td3.setTask(t3);
+        td3.setCheckList(checkList);
+        td3.setSortOrder(30);
+        em.persist(td3);
+        toDoList.add(td3);
+
+        checkList.setToDoList(toDoList);
+        em.persist(checkList);
+        em.getTransaction().commit();
+    }
+
     //TODO: Update doc links when PSP-facing guides are published
     private static final String SUMMIT_EXPORT_SETUP_LINK =
             "https://docs.google.com/document/d/1Z8I_-5z53AiDNZu2B6wiMe8yRcOK1pZ6B53TBJl3pHg/edit?usp=sharing";
@@ -641,6 +841,8 @@ public abstract class DatabaseInitializer {
     }
 
     private static void addPspConstants(EntityManager em){
+        if(getConstantByName(em,"SYSTEM_TYPE")==null)
+            createConstant(em,"SYSTEM_TYPE","PSP");
         if(getConstantByName(em,"FALSE_CLOSE")==null)
             createConstant(em,"FALSE_CLOSE",Date.valueOf(LocalDate.of(2000,1,1)).toString());
 
@@ -670,6 +872,37 @@ public abstract class DatabaseInitializer {
             createConstant(em,"EMAIL_FOOTER_TEXT",getPspName());
         if(getConstantByName(em,"USE_TIMECLOCK")==null)
             createConstant(em,"USE_TIMECLOCK","true");
+        if(getConstantByName(em,"DAYS_SINCE_WARNING")==null)
+            createConstant(em,"DAYS_SINCE_WARNING","7");
+    }
+
+    private static void addBpoConstants(EntityManager em) {
+        if(getConstantByName(em,"SYSTEM_TYPE")==null)
+            createConstant(em,"SYSTEM_TYPE","BPO");
+        if(getConstantByName(em,"FALSE_CLOSE")==null)
+            createConstant(em,"FALSE_CLOSE",Date.valueOf(LocalDate.of(2000,1,1)).toString());
+
+        if(getConstantByName(em,"SMTP_PASSWORD")==null)
+            createConstant(em,"SMTP_PASSWORD",getSmtpPassword());
+        if(getConstantByName(em,"SMTP_PORT")==null)
+            createConstant(em,"SMTP_PORT",getSmtpPort());
+        if(getConstantByName(em,"SMTP_SERVER")==null)
+            createConstant(em,"SMTP_SERVER",getSmtpServer());
+        if(getConstantByName(em,"SMTP_USER")==null)
+            createConstant(em,"SMTP_USER",getSmtpUsername());
+        if(getConstantByName(em,"WEB_PATH")==null)
+            createConstant(em,"WEB_PATH",getDomain());
+        if(getConstantByName(em,"SSL_PORT")==null)
+            createConstant(em,"SSL_PORT","443");
+
+        if(getConstantByName(em,"LOGO_NAVBAR")==null)
+            createConstant(em,"LOGO_NAVBAR","/images/logoA.png");
+        if(getConstantByName(em,"LOGO_LOGIN")==null)
+            createConstant(em,"LOGO_LOGIN","/images/logoA.png");
+        if(getConstantByName(em,"FAVICON")==null)
+            createConstant(em,"FAVICON","/favicon.ico");
+        if(getConstantByName(em,"EMAIL_FOOTER_TEXT")==null)
+            createConstant(em,"EMAIL_FOOTER_TEXT",getPspName());
         if(getConstantByName(em,"DAYS_SINCE_WARNING")==null)
             createConstant(em,"DAYS_SINCE_WARNING","7");
     }

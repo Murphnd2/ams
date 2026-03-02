@@ -814,3 +814,27 @@ No database changes.
 - **Modified (12):** AppConfig.java, EmfListener.java, AmsDataGlobal.java, BpoRegistration.java, navbar25.jsp, BpoHome.java, bpoHome25.jsp, BpoCompleteTask.java, BpoGetNotes.java, ToDoNote.java, AddRenewal25.java, CreateChecklist25.java
 
 Database changes: V030 (cross-system foundation), V031 (nullable notes columns + author_name).
+
+---
+
+## March 2, 2026 — Session 21: BPO Initialization Path (D-45)
+
+Added BPO deployment initialization support. When `initialize.jsp` submits a deployment key, the prefix determines system type:
+
+- **PSP-key** → existing `DatabaseInitializer.initializeDataBase()` (unchanged behavior)
+- **BPO-key** → new `DatabaseInitializer.initializeBpoDataBase()` (lightweight init)
+- **PSP-key-DEMO** → PSP init + demo data seeder (existing behavior, preserved)
+
+### Key Changes
+
+- **InitializeDataBase.java** — New key parsing: `{TYPE}-{KEY}` or `{TYPE}-{KEY}-{DEMOTAG}` format. Validates PSP/BPO prefix, branches to correct initializer. Refreshes servlet context system type attributes post-init.
+- **DatabaseInitializer.java** — New `initializeBpoDataBase()` method seeds shared foundation (sequence, statuses, roles, contact methods, days of week, link types, activity categories, reasons created, task frequencies, sentinel tasks, ticket category + service item, time entry, user with BPO Admin role, filter presets) while skipping PSP-specific structures (plan types, billing groups, LOS/Enhancement, service modules, application sections, demo users, Summit onboarding checklist). Added `addBpoConstants()` (SYSTEM_TYPE=BPO + shared SMTP/web/branding). Added `createBpoWelcomeChecklist()` (3-step BPO onboarding). Added `SYSTEM_TYPE=PSP` to existing `addPspConstants()`.
+- **AppConfig.java** — Added `cachedSystemType` volatile field with `setSystemType()`. `getSystemType()` checks cache first, then falls back to `ssa.properties`, then defaults to "PSP".
+- **AmsDataGlobal.java** — After `setConstants(em)`, reads `SYSTEM_TYPE` from DB and calls `AppConfig.setSystemType()` to cache the authoritative value.
+- **EmfListener.java** — Refreshes `systemType`/`isBpoSystem`/`isPspSystem` servlet context attributes after `initializeGlobalData()` completes (DB constant overrides ssa.properties fallback).
+- **initialize.jsp** — Added hint text below deployment key field: "Format: PSP-yourkey or BPO-yourkey"
+
+### Files Changed
+- **Modified (6):** AppConfig.java, DatabaseInitializer.java, InitializeDataBase.java, AmsDataGlobal.java, EmfListener.java, initialize.jsp
+
+No database migration required — initialization-only changes.

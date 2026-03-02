@@ -57,7 +57,13 @@ public class EmfListener implements ServletContextListener, HttpSessionListener,
                     AmsDataGlobal global = new AmsDataGlobal();
                     global.initializeGlobalData(em);
                     sce.getServletContext().setAttribute("global", global);
-                    System.out.println("✅ Global data loaded");
+
+                    // Refresh system type attributes — initializeGlobalData may have
+                    // cached the authoritative SYSTEM_TYPE from the DB constant
+                    sce.getServletContext().setAttribute("systemType", AppConfig.getSystemType());
+                    sce.getServletContext().setAttribute("isBpoSystem", AppConfig.isBpo());
+                    sce.getServletContext().setAttribute("isPspSystem", AppConfig.isPsp());
+                    System.out.println("✅ Global data loaded (systemType=" + AppConfig.getSystemType() + ")");
                 }
             } finally {
                 if (em != null && em.isOpen()) {
