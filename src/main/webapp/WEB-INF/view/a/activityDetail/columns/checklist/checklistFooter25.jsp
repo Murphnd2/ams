@@ -10,22 +10,22 @@
   <div class="mt-2 mb-1">
     <c:choose>
       <c:when test="${sessionScope.local.getCurrentActivity().getActivity().getClass().getSimpleName().equals(\"Setup\")}">
-        <button type="button" class="btn btn-sm btn-outline-secondary w-100" ${allDone} data-bs-target="#closeActivity" data-bs-toggle="modal">
+        <button type="button" class="ssa-action secondary w-100" ${allDone} data-bs-target="#closeActivity" data-bs-toggle="modal">
           <i class="bi bi-door-open me-1"></i>Close Setup
         </button>
       </c:when>
       <c:when test="${sessionScope.local.getCurrentActivity().getActivity().getClass().getSimpleName().equals(\"Renewal\")}">
-        <button type="button" class="btn btn-sm btn-outline-secondary w-100" ${allDone} data-bs-target="#closeActivity" data-bs-toggle="modal">
+        <button type="button" class="ssa-action secondary w-100" ${allDone} data-bs-target="#closeActivity" data-bs-toggle="modal">
           <i class="bi bi-door-open me-1"></i>Close Renewal
         </button>
       </c:when>
       <c:when test="${sessionScope.local.getCurrentActivity().getActivity().getClass().getSimpleName().equals(\"Ticket\")}">
-        <button type="button" class="btn btn-sm btn-outline-secondary w-100" ${allDone} data-bs-target="#closeActivity" data-bs-toggle="modal">
+        <button type="button" class="ssa-action secondary w-100" ${allDone} data-bs-target="#closeActivity" data-bs-toggle="modal">
           <i class="bi bi-door-open me-1"></i>Close Ticket
         </button>
       </c:when>
       <c:otherwise>
-        <button type="button" class="btn btn-sm btn-outline-secondary w-100" ${allDone} data-bs-target="#closeActivity" data-bs-toggle="modal">
+        <button type="button" class="ssa-action secondary w-100" ${allDone} data-bs-target="#closeActivity" data-bs-toggle="modal">
           <i class="bi bi-door-open me-1"></i>Close Checklist
         </button>
       </c:otherwise>

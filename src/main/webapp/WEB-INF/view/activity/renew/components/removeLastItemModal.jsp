@@ -15,7 +15,9 @@
         </div>
         <div class="row">
           <div class="col">
-            <a href="DeleteSingleItemRenewal" class="btn btn-danger w-100">Remove Final Renewal Item</a>
+            <a href="DeleteSingleItemRenewal" class="ssa-action danger w-100" style="text-decoration:none;">
+              <i class="bi bi-trash me-1"></i>Remove Final Renewal Item
+            </a>
           </div>
         </div>
       </div>

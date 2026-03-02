@@ -107,7 +107,7 @@
 
     </div>
     <div class="col-12 col-md-7">
-      <button class="btn btn-success w-100" id="btnStandardRec" value="1" type="submit">Generate</button>
+      <button class="ssa-action save w-100" id="btnStandardRec" value="1" type="submit"><i class="bi bi-arrow-repeat me-1"></i>Generate</button>
     </div>
 
   </div>

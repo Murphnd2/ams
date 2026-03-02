@@ -107,8 +107,8 @@
     <div class="col-auto">
         <input type="hidden" value="AGENCY" name="agency" id="agency">
         <input type="hidden" value="${app_key}" name="app_key" id="app_key">
-        <button type="submit" class="btn btn-primary">
-          <i class="bi bi-building"></i> Add New Customer
+        <button type="submit" class="ssa-action save">
+          <i class="bi bi-building me-1"></i>Add New Customer
         </button>
     </div>
   </div>

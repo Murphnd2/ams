@@ -371,9 +371,10 @@
                 <p class="text-muted small">The uploaded file will also be removed from storage.</p>
             </c:if>
         </div>
-        <div class="modal-footer">
-            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
-            <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+        <div class="modal-footer justify-content-center border-0">
+            <button type="submit" class="ssa-action danger"><i class="bi bi-trash me-1"></i>Delete</button>
+            <span class="ssa-action-sep">|</span>
+            <button type="button" class="ssa-action cancel" data-bs-dismiss="modal">Cancel</button>
         </div>
     </form>
 </div></div></div>

@@ -379,7 +379,7 @@
                 </c:if>
             </c:forEach>
         </select></div>
-        <div class="modal-footer py-1"><button type="submit" class="btn btn-primary btn-sm">Assign</button></div>
+        <div class="modal-footer justify-content-center border-0 py-1"><button type="submit" class="ssa-action save"><i class="bi bi-check-lg me-1"></i>Assign</button></div>
     </form>
 </div></div></div>
 </c:if>

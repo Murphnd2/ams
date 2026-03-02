@@ -7,6 +7,8 @@
   </div>
   <div class="row">
     <div class="col">
-      <button type="submit" class="btn btn-danger w-100" name="btnCheckList" value="${sessionScope.currentToDoList.get(0).getCheckList().getId()}">Close ${sessionScope.currentActivity.getClass().getSimpleName()}</button>
+      <button type="submit" class="ssa-action danger w-100" name="btnCheckList" value="${sessionScope.currentToDoList.get(0).getCheckList().getId()}">
+        <i class="bi bi-door-open me-1"></i>Close ${sessionScope.currentActivity.getClass().getSimpleName()}
+      </button>
     </div>
   </div>

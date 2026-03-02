@@ -103,7 +103,7 @@
   </div>
 
   <%-- Submit --%>
-  <button class="btn btn-ssa w-100" id="btnStandardRec" value="1" type="submit">
+  <button class="ssa-action save w-100" id="btnStandardRec" value="1" type="submit">
     <i class="bi bi-arrow-repeat me-1"></i>Generate Recurring Checklist
   </button>
 </form>

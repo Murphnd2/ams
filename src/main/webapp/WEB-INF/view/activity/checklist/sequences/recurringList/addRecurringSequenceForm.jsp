@@ -62,9 +62,10 @@
     </div>
   </div>
   <div class="row mb-3">
-    <div class="input-group">
-      <button class="btn btn-primary w-50" id="btnStandardRec" value="1" type="submit">Create</button>
-      <button class="btn btn-secondary w-50" id="btnOneTaskList" value="2" type="submit">Create One Task List</button>
+    <div class="text-center">
+      <button class="ssa-action save" id="btnStandardRec" value="1" type="submit"><i class="bi bi-check-lg me-1"></i>Create</button>
+      <span class="ssa-action-sep">|</span>
+      <button class="ssa-action secondary" id="btnOneTaskList" value="2" type="submit"><i class="bi bi-list-task me-1"></i>Create One Task List</button>
     </div>
   </div>
 </form>

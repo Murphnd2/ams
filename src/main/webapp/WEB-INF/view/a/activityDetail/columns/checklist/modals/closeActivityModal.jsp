@@ -14,7 +14,9 @@
         </div>
         <div class="row">
           <div class="col">
-            <button type="submit" class="btn btn-danger w-100" name="btnCheckList" value="${sessionScope.sVar.getCurrentActivity().getId()}">Close ${sessionScope.sVar.getClassName()}</button>
+            <button type="submit" class="ssa-action danger w-100" name="btnCheckList" value="${sessionScope.sVar.getCurrentActivity().getId()}">
+              <i class="bi bi-door-open me-1"></i>Close ${sessionScope.sVar.getClassName()}
+            </button>
           </div>
         </div>
       </div>

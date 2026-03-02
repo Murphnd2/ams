@@ -265,30 +265,30 @@
 <form method="post" action="CloseSingleItemChecklist">
   <div class="row mt-1">
     <div class="col-6">
-      <button class="btn btn-sm btn-success w-100" type="button" data-bs-toggle="modal" data-bs-target="#addToDoModal">
-        <i class="bi bi-card-checklist"></i> Add Task
+      <button class="ssa-action primary w-100" type="button" data-bs-toggle="modal" data-bs-target="#addToDoModal">
+        <i class="bi bi-card-checklist me-1"></i>Add Task
       </button>
     </div>
     <div class="col-6">
       <c:choose>
         <c:when test="${sessionScope.adminView==1}">
-          <button type="button" class="btn btn-sm btn-secondary w-100" name="btnCheckList" data-bs-target="#closeActivity" data-bs-toggle="modal" ${allDone}>
-            <i class="bi bi-door-open"></i> Close Setup
+          <button type="button" class="ssa-action secondary w-100" name="btnCheckList" data-bs-target="#closeActivity" data-bs-toggle="modal" ${allDone}>
+            <i class="bi bi-door-open me-1"></i>Close Setup
           </button>
         </c:when>
         <c:when test="${sessionScope.adminView==2}">
-          <button type="button" class="btn btn-sm btn-primary w-100" data-bs-target="#closeActivity" data-bs-toggle="modal" name="btnCheckList" ${allDone}>
-            <i class="bi bi-door-open"></i> Close Renewal
+          <button type="button" class="ssa-action secondary w-100" data-bs-target="#closeActivity" data-bs-toggle="modal" name="btnCheckList" ${allDone}>
+            <i class="bi bi-door-open me-1"></i>Close Renewal
           </button>
         </c:when>
         <c:when test="${sessionScope.adminView==3}">
-          <button type="button" class="btn btn-sm btn-info w-100" data-bs-target="#closeActivity" data-bs-toggle="modal" ${allDone} value="${sessionScope.currentToDoList.get(0).getCheckList().getId()}">
-            <i class="bi bi-door-open"></i> Close Ticket
+          <button type="button" class="ssa-action secondary w-100" data-bs-target="#closeActivity" data-bs-toggle="modal" ${allDone} value="${sessionScope.currentToDoList.get(0).getCheckList().getId()}">
+            <i class="bi bi-door-open me-1"></i>Close Ticket
           </button>
         </c:when>
         <c:otherwise>
-          <button type="button" class="btn btn-sm btn-warning w-100" data-bs-target="#closeActivity" data-bs-toggle="modal"  ${allDone} value="${sessionScope.currentToDoList.get(0).getCheckList().getId()}">
-            <i class="bi bi-door-open"></i> Close Checklist
+          <button type="button" class="ssa-action secondary w-100" data-bs-target="#closeActivity" data-bs-toggle="modal"  ${allDone} value="${sessionScope.currentToDoList.get(0).getCheckList().getId()}">
+            <i class="bi bi-door-open me-1"></i>Close Checklist
           </button>
         </c:otherwise>
       </c:choose>

@@ -749,8 +749,8 @@
 
                   }
                 </script>
-                <button type="submit" class="btn btn-dark w-100" name="btnTb" value="CH-" onmouseover="releaseTextBox()">
-                  <i class="bi bi-ui-checks"></i>&nbsp;Add/Modify Sequence
+                <button type="submit" class="ssa-action save w-100" name="btnTb" value="CH-" onmouseover="releaseTextBox()">
+                  <i class="bi bi-ui-checks me-1"></i>Add/Modify Sequence
                 </button>
               </div>
             </div>
