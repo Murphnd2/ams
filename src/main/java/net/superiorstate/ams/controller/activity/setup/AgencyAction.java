@@ -39,6 +39,11 @@ public class AgencyAction extends HttpServlet {
                     String phone = request.getParameter("phone");
                     String taxId = request.getParameter("taxId");
 
+                    String contactFirst = request.getParameter("contactFirst");
+                    String contactLast = request.getParameter("contactLast");
+                    String contactEmail = request.getParameter("contactEmail");
+                    String contactPhone = request.getParameter("contactPhone");
+
                     em.getTransaction().begin();
 
                     Address address = new Address();
@@ -52,6 +57,22 @@ public class AgencyAction extends HttpServlet {
                     agency.setAddress(address);
                     agency.setAgencyRateList(new ArrayList<>());
                     agency.setAgentList(new ArrayList<>());
+
+                    // Create primary contact / agency manager
+                    if (contactFirst != null && !contactFirst.trim().isEmpty()) {
+                        Person contact = new Person();
+                        contact.setFirstName(contactFirst.trim());
+                        contact.setLastName(contactLast != null ? contactLast.trim() : null);
+                        contact.setEmail(contactEmail != null ? contactEmail.trim() : null);
+                        contact.setPhone(contactPhone != null ? contactPhone.trim() : null);
+                        contact.setFullName(contactFirst.trim() + " " + (contactLast != null ? contactLast.trim() : ""));
+                        contact.setPsp(psp);
+                        contact.setAddress(address);
+                        em.persist(contact);
+                        agency.setPrimaryContact(contact);
+                        agency.setManager(contact);
+                    }
+
                     em.persist(agency);
 
                     em.getTransaction().commit();

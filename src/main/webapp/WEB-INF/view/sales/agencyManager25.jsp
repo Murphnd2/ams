@@ -374,7 +374,7 @@
 
 <%-- Add New Agency Modal --%>
 <div class="modal fade" id="addAgencyModal" tabindex="-1">
-  <div class="modal-dialog">
+  <div class="modal-dialog modal-lg">
     <div class="modal-content">
       <form method="post" action="AgencyAction">
         <input type="hidden" name="action" value="createAgency"/>
@@ -383,17 +383,45 @@
           <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="close"></button>
         </div>
         <div class="modal-body">
-          <div class="mb-3">
-            <label class="form-label fw-semibold">Agency Name</label>
-            <input type="text" name="agencyName" class="form-control" required placeholder="e.g. Midwest Benefits Group">
-          </div>
-          <div class="mb-3">
-            <label class="form-label fw-semibold">Phone</label>
-            <input type="text" name="phone" class="form-control" placeholder="555-555-5555">
-          </div>
-          <div class="mb-3">
-            <label class="form-label fw-semibold">Tax ID</label>
-            <input type="text" name="taxId" class="form-control" placeholder="XX-XXXXXXX">
+          <div class="row">
+            <%-- Left column: Agency Info --%>
+            <div class="col-md-6">
+              <h6 class="text-muted mb-2"><i class="bi bi-briefcase me-1"></i>Agency Info</h6>
+              <div class="mb-2">
+                <label class="form-label fw-semibold mb-0" style="font-size: 0.85rem;">Agency Name</label>
+                <input type="text" name="agencyName" class="form-control form-control-sm" required placeholder="e.g. Midwest Benefits Group">
+              </div>
+              <div class="mb-2">
+                <label class="form-label fw-semibold mb-0" style="font-size: 0.85rem;">Phone</label>
+                <input type="text" name="phone" class="form-control form-control-sm" placeholder="555-555-5555">
+              </div>
+              <div class="mb-2">
+                <label class="form-label fw-semibold mb-0" style="font-size: 0.85rem;">Tax ID</label>
+                <input type="text" name="taxId" class="form-control form-control-sm" placeholder="XX-XXXXXXX">
+              </div>
+            </div>
+            <%-- Right column: Primary Contact / Agency Manager --%>
+            <div class="col-md-6">
+              <h6 class="text-muted mb-2"><i class="bi bi-person me-1"></i>Primary Contact / Agency Manager</h6>
+              <div class="row mb-2">
+                <div class="col-6">
+                  <label class="form-label fw-semibold mb-0" style="font-size: 0.85rem;">First Name</label>
+                  <input type="text" name="contactFirst" class="form-control form-control-sm">
+                </div>
+                <div class="col-6">
+                  <label class="form-label fw-semibold mb-0" style="font-size: 0.85rem;">Last Name</label>
+                  <input type="text" name="contactLast" class="form-control form-control-sm">
+                </div>
+              </div>
+              <div class="mb-2">
+                <label class="form-label fw-semibold mb-0" style="font-size: 0.85rem;">Email</label>
+                <input type="email" name="contactEmail" class="form-control form-control-sm">
+              </div>
+              <div class="mb-2">
+                <label class="form-label fw-semibold mb-0" style="font-size: 0.85rem;">Contact Phone</label>
+                <input type="text" name="contactPhone" class="form-control form-control-sm">
+              </div>
+            </div>
           </div>
         </div>
         <div class="modal-footer justify-content-center border-0">
