@@ -200,9 +200,9 @@
             <form method="post" action="CreateOpportunity" id="newOppForm">
                 <input type="hidden" name="agencyId" value="${agency != null ? agency.getId() : ''}" />
                 <input type="hidden" name="prospectMode" id="prospectMode" value="new" />
-                <div class="modal-header">
-                    <h5 class="modal-title"><i class="bi bi-plus-circle me-2"></i>New Opportunity</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <div class="modal-header py-2" style="background-color: var(--ssa); color: white;">
+                    <h6 class="modal-title fw-semibold"><i class="bi bi-plus-circle me-2"></i>New Opportunity</h6>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="close"></button>
                 </div>
                 <div class="modal-body">
                     <%-- Prospect Mode Toggle --%>

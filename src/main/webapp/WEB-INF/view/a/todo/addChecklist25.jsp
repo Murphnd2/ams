@@ -2,11 +2,11 @@
 <div class="modal fade" id="addSimpleChecklistModal" tabindex="-1" aria-labelledby="addChecklistLabel" aria-hidden="true">
   <div class="modal-dialog modal-lg modal-fullscreen-sm-down">
     <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title text-ssa fw-bold" id="addChecklistLabel">
-          <i class="bi bi-journal-plus me-1"></i>New Checklist
-        </h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      <div class="modal-header py-2" style="background-color: var(--ssa); color: white;">
+        <h6 class="modal-title fw-semibold" id="addChecklistLabel">
+          <i class="bi bi-journal-plus me-2"></i>New Checklist
+        </h6>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body">
         <form method="post" action="CreateChecklist25">

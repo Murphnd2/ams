@@ -769,9 +769,9 @@
     <div class="modal-dialog">
         <div class="modal-content">
             <form method="post" action="ServiceManagerAction"><input type="hidden" name="action" value="createLos"/>
-                <div class="modal-header"><h5 class="modal-title"><i class="bi bi-plus-circle me-2"></i>New Line of
-                    Service</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <div class="modal-header py-2" style="background-color: var(--ssa); color: white;"><h6 class="modal-title fw-semibold"><i class="bi bi-plus-circle me-2"></i>New Line of
+                    Service</h6>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="close"></button>
                 </div>
                 <div class="modal-body">
                     <div class="mb-3"><label class="form-label fw-semibold">Description</label><input type="text"
@@ -804,9 +804,9 @@
         <div class="modal-content">
             <form method="post" action="ServiceManagerAction"><input type="hidden" name="action"
                                                                      value="createEnhancement"/>
-                <div class="modal-header"><h5 class="modal-title"><i class="bi bi-plus-circle me-2"></i>New Enhancement
-                </h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <div class="modal-header py-2" style="background-color: var(--ssa); color: white;"><h6 class="modal-title fw-semibold"><i class="bi bi-plus-circle me-2"></i>New Enhancement
+                </h6>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="close"></button>
                 </div>
                 <div class="modal-body">
                     <div class="mb-3"><label class="form-label fw-semibold">Description</label><input type="text"
@@ -842,9 +842,9 @@
     <div class="modal fade" id="editLosModal" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
-                <div class="modal-header"><h5 class="modal-title"><i class="bi bi-pencil me-2"></i>Edit Line of Service
-                </h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <div class="modal-header py-2" style="background-color: var(--ssa); color: white;"><h6 class="modal-title fw-semibold"><i class="bi bi-pencil me-2"></i>Edit Line of Service
+                </h6>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="close"></button>
                 </div>
                 <form method="post" action="ServiceManagerAction">
                     <input type="hidden" name="action" value="editLos"/><input type="hidden" name="losId"
@@ -890,8 +890,8 @@
     <div class="modal fade" id="editEnhModal" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
-                <div class="modal-header"><h5 class="modal-title"><i class="bi bi-pencil me-2"></i>Edit Enhancement</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <div class="modal-header py-2" style="background-color: var(--ssa); color: white;"><h6 class="modal-title fw-semibold"><i class="bi bi-pencil me-2"></i>Edit Enhancement</h6>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="close"></button>
                 </div>
                 <form method="post" action="ServiceManagerAction">
                     <input type="hidden" name="action" value="editEnhancement"/><input type="hidden" name="enhId"
@@ -936,9 +936,9 @@
                 <form method="post" action="ServiceManagerAction"><input type="hidden" name="action"
                                                                          value="assignEnhancementToLos"/><input
                         type="hidden" name="losId" value="${selectedLos.getId()}"/>
-                    <div class="modal-header py-2"><h6 class="modal-title"><i class="bi bi-puzzle me-1"></i>Assign
+                    <div class="modal-header py-2" style="background-color: var(--ssa); color: white;"><h6 class="modal-title fw-semibold"><i class="bi bi-puzzle me-1"></i>Assign
                         Enhancement</h6>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="close"></button>
                     </div>
                     <div class="modal-body py-2"><select name="enhId" class="form-select form-select-sm" required>
                         <option value="">-- Select --</option>
@@ -953,8 +953,8 @@
                             </c:if>
                         </c:forEach>
                     </select></div>
-                    <div class="modal-footer py-1">
-                        <button type="submit" class="btn btn-primary btn-sm">Assign</button>
+                    <div class="modal-footer justify-content-center border-0 py-1">
+                        <button type="submit" class="btn btn-sm btn-ssa">Assign</button>
                     </div>
                 </form>
             </div>
@@ -970,9 +970,9 @@
                 <form method="post" action="ServiceManagerAction"><input type="hidden" name="action"
                                                                          value="assignLosToEnhancement"/><input
                         type="hidden" name="enhId" value="${selectedEnhancement.getId()}"/>
-                    <div class="modal-header py-2"><h6 class="modal-title"><i class="bi bi-briefcase me-1"></i>Assign to
+                    <div class="modal-header py-2" style="background-color: var(--ssa); color: white;"><h6 class="modal-title fw-semibold"><i class="bi bi-briefcase me-1"></i>Assign to
                         Line of Service</h6>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="close"></button>
                     </div>
                     <div class="modal-body py-2"><select name="losId" class="form-select form-select-sm" required>
                         <option value="">-- Select --</option>
@@ -987,8 +987,8 @@
                             </c:if>
                         </c:forEach>
                     </select></div>
-                    <div class="modal-footer py-1">
-                        <button type="submit" class="btn btn-primary btn-sm">Assign</button>
+                    <div class="modal-footer justify-content-center border-0 py-1">
+                        <button type="submit" class="btn btn-sm btn-ssa">Assign</button>
                     </div>
                 </form>
             </div>
@@ -1004,9 +1004,9 @@
                 <form method="post" action="ServiceManagerAction"><input type="hidden" name="action"
                                                                          value="assignAppSectionToLos"/><input
                         type="hidden" name="losId" value="${selectedLos.getId()}"/>
-                    <div class="modal-header py-2"><h6 class="modal-title"><i class="bi bi-file-earmark-text me-1"></i>Assign
+                    <div class="modal-header py-2" style="background-color: var(--ssa); color: white;"><h6 class="modal-title fw-semibold"><i class="bi bi-file-earmark-text me-1"></i>Assign
                         Section</h6>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="close"></button>
                     </div>
                     <div class="modal-body py-2"><select name="sectionId" class="form-select form-select-sm" required>
                         <option value="">-- Select --</option>
@@ -1021,8 +1021,8 @@
                             </c:if>
                         </c:forEach>
                     </select></div>
-                    <div class="modal-footer py-1">
-                        <button type="submit" class="btn btn-primary btn-sm">Assign</button>
+                    <div class="modal-footer justify-content-center border-0 py-1">
+                        <button type="submit" class="btn btn-sm btn-ssa">Assign</button>
                     </div>
                 </form>
             </div>
@@ -1038,9 +1038,9 @@
                 <form method="post" action="ServiceManagerAction"><input type="hidden" name="action"
                                                                          value="assignAppSectionToEnhancement"/><input
                         type="hidden" name="enhId" value="${selectedEnhancement.getId()}"/>
-                    <div class="modal-header py-2"><h6 class="modal-title"><i class="bi bi-file-earmark-text me-1"></i>Assign
+                    <div class="modal-header py-2" style="background-color: var(--ssa); color: white;"><h6 class="modal-title fw-semibold"><i class="bi bi-file-earmark-text me-1"></i>Assign
                         Section</h6>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="close"></button>
                     </div>
                     <div class="modal-body py-2"><select name="sectionId" class="form-select form-select-sm" required>
                         <option value="">-- Select --</option>
@@ -1055,8 +1055,8 @@
                             </c:if>
                         </c:forEach>
                     </select></div>
-                    <div class="modal-footer py-1">
-                        <button type="submit" class="btn btn-primary btn-sm">Assign</button>
+                    <div class="modal-footer justify-content-center border-0 py-1">
+                        <button type="submit" class="btn btn-sm btn-ssa">Assign</button>
                     </div>
                 </form>
             </div>
@@ -1076,9 +1076,9 @@
                                                                  value="${selectedLos.getId()}"/></c:if>
                     <c:if test="${not empty selectedEnhancement}"><input type="hidden" name="enhId"
                                                                          value="${selectedEnhancement.getId()}"/></c:if>
-                    <div class="modal-header"><h5 class="modal-title"><i class="bi bi-plus-circle me-2"></i>Add Feature
-                    </h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    <div class="modal-header py-2" style="background-color: var(--ssa); color: white;"><h6 class="modal-title fw-semibold"><i class="bi bi-plus-circle me-2"></i>Add Feature
+                    </h6>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="close"></button>
                     </div>
                     <div class="modal-body">
                         <div class="mb-3">
@@ -1137,8 +1137,8 @@
                                                                  value="${selectedLos.getId()}"/></c:if>
                     <c:if test="${not empty selectedEnhancement}"><input type="hidden" name="enhId"
                                                                          value="${selectedEnhancement.getId()}"/></c:if>
-                    <div class="modal-header"><h5 class="modal-title"><i class="bi bi-pencil me-2"></i>Edit Feature</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    <div class="modal-header py-2" style="background-color: var(--ssa); color: white;"><h6 class="modal-title fw-semibold"><i class="bi bi-pencil me-2"></i>Edit Feature</h6>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="close"></button>
                     </div>
                     <div class="modal-body">
                         <div class="mb-3">
@@ -1191,9 +1191,9 @@
         <div class="modal-content">
             <form method="post" action="ServiceManagerAction"><input type="hidden" name="action"
                                                                      value="createAppSection"/>
-                <div class="modal-header"><h5 class="modal-title"><i class="bi bi-plus-circle me-2"></i>New Application
-                    Section</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <div class="modal-header py-2" style="background-color: var(--ssa); color: white;"><h6 class="modal-title fw-semibold"><i class="bi bi-plus-circle me-2"></i>New Application
+                    Section</h6>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="close"></button>
                 </div>
                 <div class="modal-body">
                     <div class="mb-3"><label class="form-label fw-semibold">Name</label><input type="text" name="name"
@@ -1234,9 +1234,9 @@
     <div class="modal fade" id="editSectionModal" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
-                <div class="modal-header"><h5 class="modal-title"><i class="bi bi-pencil me-2"></i>Edit Application
-                    Section</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <div class="modal-header py-2" style="background-color: var(--ssa); color: white;"><h6 class="modal-title fw-semibold"><i class="bi bi-pencil me-2"></i>Edit Application
+                    Section</h6>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="close"></button>
                 </div>
                 <form method="post" action="ServiceManagerAction">
                     <input type="hidden" name="action" value="editAppSection"/><input type="hidden" name="sectionId"
@@ -1288,7 +1288,7 @@
 <c:if test="${not empty selectedSection}">
     <div class="modal fade" id="addFieldModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
         <form method="post" action="ServiceManagerAction"><input type="hidden" name="action" value="createAppField"/><input type="hidden" name="sectionId" value="${selectedSection.getId()}"/>
-            <div class="modal-header"><h5 class="modal-title"><i class="bi bi-plus-circle me-2"></i>New Field</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-header py-2" style="background-color: var(--ssa); color: white;"><h6 class="modal-title fw-semibold"><i class="bi bi-plus-circle me-2"></i>New Field</h6><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="close"></button></div>
             <div class="modal-body">
                 <div class="mb-3"><label class="form-label fw-semibold">Label <small class="text-muted fw-normal">(displayed to user)</small></label><input type="text" name="label" class="form-control" required maxlength="200" placeholder="e.g. Company Legal Name"></div>
                 <div class="mb-3"><label class="form-label fw-semibold">Field Key <small class="text-muted fw-normal">(internal, unique, cannot change later)</small></label><input type="text" name="fieldKey" id="newFieldKey" class="form-control" required maxlength="100" placeholder="e.g. company_legal_name" pattern="[a-z0-9_]+" title="Lowercase letters, numbers, underscores only"></div>
@@ -1317,7 +1317,7 @@
     <%-- Edit Field Modal --%>
     <div class="modal fade" id="editFieldModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
         <form method="post" action="ServiceManagerAction"><input type="hidden" name="action" value="editAppField"/><input type="hidden" name="sectionId" value="${selectedSection.getId()}"/><input type="hidden" name="fieldKey" id="editFieldKey"/>
-            <div class="modal-header"><h5 class="modal-title"><i class="bi bi-pencil me-2"></i>Edit Field</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-header py-2" style="background-color: var(--ssa); color: white;"><h6 class="modal-title fw-semibold"><i class="bi bi-pencil me-2"></i>Edit Field</h6><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="close"></button></div>
             <div class="modal-body">
                 <div class="mb-3">
                     <label class="form-label fw-semibold">Field Key</label>

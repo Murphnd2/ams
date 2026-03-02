@@ -12,9 +12,9 @@
 
 <style>
   .tc-correction-modal .modal-header {
-    background: #0d5681; color: #fff; padding: 0.85rem 1.15rem;
+    background-color: var(--ssa); color: #fff; padding: 0.5rem 1rem;
   }
-  .tc-correction-modal .modal-title { font-size: 1rem; font-weight: 600; }
+  .tc-correction-modal .modal-title { font-weight: 600; }
   .tc-correction-modal .btn-close { filter: brightness(0) invert(1); }
   .tc-correction-modal .form-label { font-size: 0.82rem; font-weight: 600; color: #495057; }
   .tc-correction-modal .tc-original-badge {
@@ -54,8 +54,8 @@
     <div class="modal-content">
 
       <div class="modal-header">
-        <h5 class="modal-title"><i class="bi bi-pencil-square me-2"></i>Request Time Correction</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        <h6 class="modal-title fw-semibold"><i class="bi bi-pencil-square me-2"></i>Request Time Correction</h6>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
 
       <form method="post" action="SubmitTimeCorrection" id="tcCorrectionForm">

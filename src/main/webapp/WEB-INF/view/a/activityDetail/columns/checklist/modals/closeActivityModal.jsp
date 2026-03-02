@@ -2,9 +2,9 @@
 <div class="modal fade" id="closeActivity" role="dialog" tabindex="-1" aria-labelledby="closeActivity" aria-hidden="true">
   <div class="modal-dialog modal-sm modal-fullscreen-sm-down" role="document">
     <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="loginLabel">Close Activity?</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="close"></button>
+      <div class="modal-header py-2" style="background-color: var(--ssa); color: white;">
+        <h6 class="modal-title fw-semibold" id="loginLabel"><i class="bi bi-door-open me-2"></i>Close Activity?</h6>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="close"></button>
       </div>
       <div class="modal-body">
         <div class="row mb-2">

@@ -227,9 +227,9 @@
     <form method="post" action="LibraryAction" enctype="multipart/form-data">
         <input type="hidden" name="action" value="createResource"/>
         <c:if test="${not empty activeCatId}"><input type="hidden" name="catId" value="${activeCatId}"/></c:if>
-        <div class="modal-header">
-            <h5 class="modal-title"><i class="bi bi-plus-circle me-2"></i>Add Resource</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        <div class="modal-header py-2" style="background-color: var(--ssa); color: white;">
+            <h6 class="modal-title fw-semibold"><i class="bi bi-plus-circle me-2"></i>Add Resource</h6>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="close"></button>
         </div>
         <div class="modal-body">
             <div class="mb-3">
@@ -292,9 +292,9 @@
         <input type="hidden" name="action" value="editResource"/>
         <input type="hidden" name="resId" value="${selectedResource.getId()}"/>
         <c:if test="${not empty activeCatId}"><input type="hidden" name="catId" value="${activeCatId}"/></c:if>
-        <div class="modal-header">
-            <h5 class="modal-title"><i class="bi bi-pencil me-2"></i>Edit Resource</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        <div class="modal-header py-2" style="background-color: var(--ssa); color: white;">
+            <h6 class="modal-title fw-semibold"><i class="bi bi-pencil me-2"></i>Edit Resource</h6>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="close"></button>
         </div>
         <div class="modal-body">
             <div class="mb-3">
@@ -361,9 +361,9 @@
         <input type="hidden" name="action" value="deleteResource"/>
         <input type="hidden" name="resId" value="${selectedResource.getId()}"/>
         <c:if test="${not empty activeCatId}"><input type="hidden" name="catId" value="${activeCatId}"/></c:if>
-        <div class="modal-header">
-            <h5 class="modal-title text-danger"><i class="bi bi-exclamation-triangle me-2"></i>Delete</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        <div class="modal-header py-2" style="background-color: #dc3545; color: white;">
+            <h6 class="modal-title fw-semibold"><i class="bi bi-exclamation-triangle me-2"></i>Delete</h6>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="close"></button>
         </div>
         <div class="modal-body">
             <p>Delete <strong>${selectedResource.getTitle()}</strong>?</p>
@@ -382,9 +382,9 @@
 
 <%-- Manage Categories Modal --%>
 <div class="modal fade" id="manageCategoriesModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
-    <div class="modal-header">
-        <h5 class="modal-title"><i class="bi bi-tags me-2"></i>Manage Categories</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+    <div class="modal-header py-2" style="background-color: var(--ssa); color: white;">
+        <h6 class="modal-title fw-semibold"><i class="bi bi-tags me-2"></i>Manage Categories</h6>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="close"></button>
     </div>
     <div class="modal-body">
         <table class="table table-sm table-hover mb-3">
@@ -439,9 +439,9 @@
     <form method="post" action="LibraryAction">
         <input type="hidden" name="action" value="editCategory"/>
         <input type="hidden" name="catId" id="editCatId"/>
-        <div class="modal-header py-2">
-            <h6 class="modal-title"><i class="bi bi-pencil me-1"></i>Edit Category</h6>
-            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        <div class="modal-header py-2" style="background-color: var(--ssa); color: white;">
+            <h6 class="modal-title fw-semibold"><i class="bi bi-pencil me-1"></i>Edit Category</h6>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="close"></button>
         </div>
         <div class="modal-body py-2">
             <div class="mb-2">

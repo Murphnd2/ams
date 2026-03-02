@@ -176,9 +176,9 @@
 <div class="modal fade" id="newProspectModal" tabindex="-1" aria-labelledby="newProspectLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="newProspectLabel"><i class="bi bi-plus-circle me-2"></i>New Prospect</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            <div class="modal-header py-2" style="background-color: var(--ssa); color: white;">
+                <h6 class="modal-title fw-semibold" id="newProspectLabel"><i class="bi bi-plus-circle me-2"></i>New Prospect</h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <form method="post" action="CreateProspect">
                 <div class="modal-body">

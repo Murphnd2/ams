@@ -378,9 +378,9 @@
     <div class="modal-content">
       <form method="post" action="AgencyAction">
         <input type="hidden" name="action" value="createAgency"/>
-        <div class="modal-header">
-          <h5 class="modal-title"><i class="bi bi-plus-circle me-2"></i>New Agency</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        <div class="modal-header py-2" style="background-color: var(--ssa); color: white;">
+          <h6 class="modal-title fw-semibold"><i class="bi bi-plus-circle me-2"></i>New Agency</h6>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="close"></button>
         </div>
         <div class="modal-body">
           <div class="mb-3">
@@ -411,9 +411,9 @@
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
       <form method="post" action="SendInvitation">
-        <div class="modal-header" style="background: var(--ssa); color: white;">
-          <h5 class="modal-title"><i class="bi bi-envelope-plus me-2"></i>Send Invitation</h5>
-          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        <div class="modal-header py-2" style="background-color: var(--ssa); color: white;">
+          <h6 class="modal-title fw-semibold"><i class="bi bi-envelope-plus me-2"></i>Send Invitation</h6>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="close"></button>
         </div>
         <div class="modal-body">
           <div class="row">
@@ -523,9 +523,9 @@
         <form method="post" action="AgencyAction">
           <input type="hidden" name="action" value="editAgency"/>
           <input type="hidden" name="agencyId" value="${selectedAgency.getId()}"/>
-          <div class="modal-header">
-            <h5 class="modal-title"><i class="bi bi-pencil me-2"></i>Edit Agency</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          <div class="modal-header py-2" style="background-color: var(--ssa); color: white;">
+            <h6 class="modal-title fw-semibold"><i class="bi bi-pencil me-2"></i>Edit Agency</h6>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="close"></button>
           </div>
           <div class="modal-body">
             <div class="row">
@@ -619,9 +619,9 @@
         <form method="post" action="AgencyAction">
           <input type="hidden" name="action" value="assignAgent"/>
           <input type="hidden" name="agencyId" value="${selectedAgency.getId()}"/>
-          <div class="modal-header">
-            <h5 class="modal-title"><i class="bi bi-person-plus me-2"></i>Assign Agent</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          <div class="modal-header py-2" style="background-color: var(--ssa); color: white;">
+            <h6 class="modal-title fw-semibold"><i class="bi bi-person-plus me-2"></i>Assign Agent</h6>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="close"></button>
           </div>
           <div class="modal-body">
             <c:choose>

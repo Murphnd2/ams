@@ -252,9 +252,9 @@
             <div class="modal fade" id="addRecipientModal" role="dialog" tabindex="-1" aria-labelledby="addRecipientLabel" aria-hidden="true">
               <div class="modal-dialog modal-lg modal-fullscreen-sm-down" role="document">
                 <div class="modal-content">
-                  <div class="modal-header">
-                    <h5 class="modal-title text-ssa fw-bold" id="addRecipientLabel"><i class="bi bi-person-plus me-2"></i>Add Recipient</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="close"></button>
+                  <div class="modal-header py-2" style="background-color: var(--ssa); color: white;">
+                    <h6 class="modal-title fw-semibold" id="addRecipientLabel"><i class="bi bi-person-plus me-2"></i>Add Recipient</h6>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="close"></button>
                   </div>
                   <div class="modal-body">
                     <div class="mb-3">
@@ -283,9 +283,9 @@
             <div class="modal fade" id="addAttachmentModal" role="dialog" tabindex="-1" aria-labelledby="addAttachmentLabel" aria-hidden="true">
               <div class="modal-dialog modal-lg modal-fullscreen-sm-down" role="document">
                 <div class="modal-content">
-                  <div class="modal-header">
-                    <h5 class="modal-title text-ssa fw-bold" id="addAttachmentLabel"><i class="bi bi-file-earmark-plus me-2"></i>Add Attachment</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="close"></button>
+                  <div class="modal-header py-2" style="background-color: var(--ssa); color: white;">
+                    <h6 class="modal-title fw-semibold" id="addAttachmentLabel"><i class="bi bi-file-earmark-plus me-2"></i>Add Attachment</h6>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="close"></button>
                   </div>
                   <div class="modal-body">
                     <div class="mb-3">

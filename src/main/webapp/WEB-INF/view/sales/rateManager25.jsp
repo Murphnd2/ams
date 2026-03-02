@@ -305,7 +305,7 @@
 <%-- Add Rate --%>
 <div class="modal fade" id="addRateModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
     <form method="post" action="RateTableAction"><input type="hidden" name="action" value="createRate"/>
-        <div class="modal-header"><h5 class="modal-title"><i class="bi bi-plus-circle me-2"></i>New Rate</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+        <div class="modal-header py-2" style="background-color: var(--ssa); color: white;"><h6 class="modal-title fw-semibold"><i class="bi bi-plus-circle me-2"></i>New Rate</h6><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="close"></button></div>
         <div class="modal-body"><div class="mb-3"><label class="form-label fw-semibold">Rate Name</label><input type="text" name="description" class="form-control" required placeholder="e.g. Standard Rate"></div></div>
         <div class="modal-footer justify-content-center border-0"><button type="submit" class="ssa-action save"><i class="bi bi-plus-circle me-1"></i>Create</button><span class="ssa-action-sep">|</span><button type="button" class="ssa-action cancel" data-bs-dismiss="modal"><i class="bi bi-x-lg me-1"></i>Cancel</button></div>
     </form>
@@ -315,7 +315,7 @@
 <c:if test="${not empty selectedRate && !isLocked}">
 <div class="modal fade" id="editRateModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
     <form method="post" action="RateTableAction"><input type="hidden" name="action" value="editRate"/><input type="hidden" name="rateId" value="${selectedRate.getId()}"/>
-        <div class="modal-header"><h5 class="modal-title"><i class="bi bi-pencil me-2"></i>Edit Rate</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+        <div class="modal-header py-2" style="background-color: var(--ssa); color: white;"><h6 class="modal-title fw-semibold"><i class="bi bi-pencil me-2"></i>Edit Rate</h6><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="close"></button></div>
         <div class="modal-body">
             <div class="mb-3"><label class="form-label fw-semibold">Rate Name</label><input type="text" name="description" class="form-control" required value="${selectedRate.getDescription()}"></div>
             <div class="form-check"><input type="checkbox" class="form-check-input" name="suppressed" id="editSuppressed" <c:if test="${selectedRate.isSuppressed()}">checked</c:if>><label class="form-check-label" for="editSuppressed">Suppressed</label></div>
@@ -329,7 +329,7 @@
 <c:if test="${not empty selectedRate && !isLocked}">
 <div class="modal fade" id="addRateTableRowModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
     <form method="post" action="RateTableAction" id="addRowForm"><input type="hidden" name="action" value="addRateTableRow"/><input type="hidden" name="rateId" value="${selectedRate.getId()}"/>
-        <div class="modal-header"><h5 class="modal-title"><i class="bi bi-plus-circle me-2"></i>Add Pricing Row</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+        <div class="modal-header py-2" style="background-color: var(--ssa); color: white;"><h6 class="modal-title fw-semibold"><i class="bi bi-plus-circle me-2"></i>Add Pricing Row</h6><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="close"></button></div>
         <div class="modal-body">
             <div class="mb-3">
                 <label class="form-label fw-semibold">Line of Service or Enhancement</label>
@@ -367,7 +367,7 @@
 <c:if test="${not empty selectedRate}">
 <div class="modal fade" id="assignAgencyModal" tabindex="-1"><div class="modal-dialog modal-sm"><div class="modal-content">
     <form method="post" action="RateTableAction"><input type="hidden" name="action" value="assignAgencyToRate"/><input type="hidden" name="rateId" value="${selectedRate.getId()}"/>
-        <div class="modal-header py-2"><h6 class="modal-title"><i class="bi bi-briefcase me-1"></i>Assign Agency</h6><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+        <div class="modal-header py-2" style="background-color: var(--ssa); color: white;"><h6 class="modal-title fw-semibold"><i class="bi bi-briefcase me-1"></i>Assign Agency</h6><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="close"></button></div>
         <div class="modal-body py-2"><select name="agencyId" class="form-select form-select-sm" required><option value="">-- Select --</option>
             <c:forEach var="agency" items="${agencyList}">
                 <c:set var="alreadyAssigned" value="false"/>
@@ -387,7 +387,7 @@
 <%-- Add Fee Type --%>
 <div class="modal fade" id="addPriceItemModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
     <form method="post" action="RateTableAction"><input type="hidden" name="action" value="createPriceItem"/>
-        <div class="modal-header"><h5 class="modal-title"><i class="bi bi-receipt me-2"></i>New Fee Type</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+        <div class="modal-header py-2" style="background-color: var(--ssa); color: white;"><h6 class="modal-title fw-semibold"><i class="bi bi-receipt me-2"></i>New Fee Type</h6><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="close"></button></div>
         <div class="modal-body"><div class="mb-3"><label class="form-label fw-semibold">Description</label><input type="text" name="description" class="form-control" required placeholder="e.g. Monthly Administration Fee"></div><small class="text-muted"><i class="bi bi-info-circle me-1"></i>Added at end. Drag to reorder.</small></div>
         <div class="modal-footer justify-content-center border-0"><button type="submit" class="ssa-action save"><i class="bi bi-plus-circle me-1"></i>Create</button><span class="ssa-action-sep">|</span><button type="button" class="ssa-action cancel" data-bs-dismiss="modal"><i class="bi bi-x-lg me-1"></i>Cancel</button></div>
     </form>
@@ -397,7 +397,7 @@
 <c:if test="${not empty selectedRate}">
 <div class="modal fade" id="copyRateModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
     <form method="post" action="RateTableAction" id="copyRateForm"><input type="hidden" name="action" value="copyRate"/><input type="hidden" name="rateId" value="${selectedRate.getId()}"/>
-        <div class="modal-header"><h5 class="modal-title"><i class="bi bi-copy me-2"></i>Make New Rate From: ${selectedRate.getDescription()}</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+        <div class="modal-header py-2" style="background-color: var(--ssa); color: white;"><h6 class="modal-title fw-semibold"><i class="bi bi-copy me-2"></i>Make New Rate From: ${selectedRate.getDescription()}</h6><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="close"></button></div>
         <div class="modal-body">
             <p class="text-muted small">Creates a new editable rate with the same pricing grid. The original rate is not affected.</p>
             <div class="mb-3">
