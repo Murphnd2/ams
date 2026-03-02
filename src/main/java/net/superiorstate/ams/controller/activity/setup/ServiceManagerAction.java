@@ -454,6 +454,7 @@ public class ServiceManagerAction extends HttpServlet {
                     feature.setDescription(request.getParameter("description").trim());
                     feature.setSortOrder(9999);
                     feature.setServiceModule(module);
+                    feature.setPsp(psp);
 
                     String resIdParam = request.getParameter("libraryResourceId");
                     if (resIdParam != null && !resIdParam.isEmpty()) {
