@@ -174,12 +174,38 @@ public class CreateOpportunity extends HttpServlet {
         em.persist(contact);
         em.getTransaction().commit();
 
+        // Determine agent: explicit agentId param > current user if in agency > first agent in agency > fallback
+        Person agent = null;
+        String agentIdParam = request.getParameter("agentId");
+        if (agentIdParam != null && !agentIdParam.isEmpty()) {
+            try {
+                agent = EntityLookup.getPersonById(em, Long.parseLong(agentIdParam));
+            } catch (NumberFormatException ignored) {}
+        }
+        if (agent == null && agency.getAgentList() != null && !agency.getAgentList().isEmpty()) {
+            // Check if current user is an agent of this agency
+            for (Person p : agency.getAgentList()) {
+                if (p.getId().equals(currentUser.getId())) {
+                    agent = currentUser;
+                    break;
+                }
+            }
+            // Fallback: first agent in the agency
+            if (agent == null) {
+                agent = agency.getAgentList().get(0);
+            }
+        }
+        // Last resort fallback
+        if (agent == null) {
+            agent = currentUser;
+        }
+
         // Create Prospect
         em.getTransaction().begin();
         Prospect prospect = new Prospect();
         prospect.setName(companyName.trim());
         prospect.setContact(contact);
-        prospect.setAgent(currentUser);
+        prospect.setAgent(agent);
         em.persist(prospect);
         em.getTransaction().commit();
 

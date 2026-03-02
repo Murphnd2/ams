@@ -96,6 +96,16 @@
 
             <%-- New prospect fields --%>
             <div id="aa_newProspectFields" style="display:none;">
+              <%-- Agent selector (visible only when user is NOT an agent of the selected agency) --%>
+              <div id="aa_oppAgentRow" style="display:none;">
+                <label class="form-label fw-semibold mb-1" style="font-size:0.85rem;">
+                  <i class="bi bi-person-badge me-1 text-ssa"></i>Agent
+                </label>
+                <select class="form-select form-select-sm mb-2" name="agentId" id="aa_oppAgentId">
+                  <option value="" selected disabled>Select agent...</option>
+                  <%-- Options populated by JavaScript from SetupModalData agents array --%>
+                </select>
+              </div>
               <div class="mb-2">
                 <label class="form-label fw-semibold mb-1" style="font-size:0.85rem;">
                   Company Name <span class="text-danger">*</span>
@@ -249,6 +259,8 @@
   var modal = document.getElementById('addActivityModal');
   var dialog = document.getElementById('aa_dialog');
   var aa_setupData = null; // holds the fetched setup data
+  window.aa_oppUserIsAgent = false;
+  window.aa_oppSingleAgent = false;
 
   /* ═══ Activity type toggle ═══ */
   window.aa_showType = function(type) {
@@ -273,6 +285,7 @@
     document.getElementById('aa_newProspectFields').style.display = isNew ? '' : 'none';
     document.getElementById('aa_prospectId').required = !isNew;
     document.getElementById('aa_companyName').required = isNew;
+    aa_updateOppAgentVisibility();
     aa_validateOpp();
   };
 
@@ -303,12 +316,16 @@
     } else {
       prospectOk = document.getElementById('aa_companyName').value.trim().length > 0;
     }
-    document.getElementById('aa_oppBtn').disabled = !(agencyOk && prospectOk);
+    // Agent must be selected if agent row is visible
+    var agentRow = document.getElementById('aa_oppAgentRow');
+    var agentOk = (agentRow.style.display === 'none') || !!document.getElementById('aa_oppAgentId').value;
+    document.getElementById('aa_oppBtn').disabled = !(agencyOk && prospectOk && agentOk);
   }
   window.aa_validateOpp = aa_validateOpp;
   document.getElementById('aa_prospectId').addEventListener('change', aa_validateOpp);
   document.getElementById('aa_agencyId').addEventListener('change', aa_validateOpp);
   document.getElementById('aa_companyName').addEventListener('input', aa_validateOpp);
+  document.getElementById('aa_oppAgentId').addEventListener('change', aa_validateOpp);
 
   /* ═══════════════════════════════════════════════════════════════════
      SETUP — AJAX DATA LOADING
@@ -511,7 +528,7 @@
     var data = aa_setupData;
     if (!data) return;
 
-    // Rebuild prospect dropdown with only matching prospects
+    // ── Rebuild prospect dropdown with only matching prospects ──
     var prospSel = document.getElementById('aa_prospectId');
     prospSel.length = 1; // keep "Select a prospect..." placeholder
 
@@ -528,7 +545,58 @@
       }
     }
 
+    // ── Rebuild agent dropdown for new-prospect mode ──
+    var agentSel = document.getElementById('aa_oppAgentId');
+    agentSel.length = 1; // keep placeholder
+    var agentCount = 0;
+    var lastAgentIdx = -1;
+    var currentPersonIdx = -1;
+    var currentPersonId = data.currentPersonId;
+
+    if (agVal && data.agents) {
+      for (var i = 0; i < data.agents.length; i++) {
+        var ag = data.agents[i];
+        var agAgencies = (ag.agencyIds || '').split(',');
+        if (agAgencies.indexOf(String(agVal)) >= 0) {
+          var opt = document.createElement('option');
+          opt.value = ag.id;
+          opt.textContent = ag.name;
+          agentSel.appendChild(opt);
+          agentCount++;
+          lastAgentIdx = agentSel.options.length - 1;
+          if (ag.id == currentPersonId) {
+            currentPersonIdx = agentSel.options.length - 1;
+          }
+        }
+      }
+    }
+
+    // Track state for visibility logic
+    window.aa_oppUserIsAgent = (currentPersonIdx >= 0);
+    window.aa_oppSingleAgent = (agentCount === 1);
+
+    // Auto-select agent: current user > single agent > placeholder
+    agentSel.selectedIndex = 0;
+    if (currentPersonIdx >= 0) {
+      agentSel.selectedIndex = currentPersonIdx;
+    } else if (agentCount === 1) {
+      agentSel.selectedIndex = lastAgentIdx;
+    }
+
+    aa_updateOppAgentVisibility();
     aa_validateOpp();
+  };
+
+  /* ═══ Show/hide agent dropdown (Opportunity) ═══ */
+  window.aa_updateOppAgentVisibility = function() {
+    var mode = document.getElementById('aa_prospectMode').value;
+    var agentRow = document.getElementById('aa_oppAgentRow');
+    if (mode === 'existing') {
+      agentRow.style.display = 'none';
+    } else {
+      var showAgent = !window.aa_oppUserIsAgent && !window.aa_oppSingleAgent;
+      agentRow.style.display = showAgent ? '' : 'none';
+    }
   };
 
   /* ═══════════════════════════════════════════════════════════════════
@@ -744,8 +812,12 @@
     aa_showProspectMode('existing');
     document.getElementById('aa_agencyId').length = 1; // clear AJAX options, keep placeholder
     document.getElementById('aa_prospectId').length = 1; // clear AJAX options, keep placeholder
+    document.getElementById('aa_oppAgentId').length = 1; // clear AJAX agent options, keep placeholder
+    document.getElementById('aa_oppAgentRow').style.display = 'none';
+    window.aa_oppUserIsAgent = false;
+    window.aa_oppSingleAgent = false;
     document.getElementById('aa_companyName').value = '';
-    document.querySelectorAll('#aa_newProspectFields input').forEach(function(el) { el.value = ''; });
+    document.querySelectorAll('#aa_newProspectFields input').forEach(function(el) { if (el.type !== 'hidden') el.value = ''; });
     document.getElementById('aa_oppBtn').disabled = true;
 
     // Reset setup form
