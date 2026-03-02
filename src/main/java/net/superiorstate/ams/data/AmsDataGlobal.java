@@ -112,6 +112,7 @@ public class AmsDataGlobal {
     private List<AgentInfo> setupAgents;
     private Map<Long, String> prospectAgencyMap;
     private Map<Long, Long> agencyManagerMap;
+    private Long pspHomeAgencyId;
 
     public AmsDataGlobal(){};
 
@@ -328,6 +329,12 @@ public class AmsDataGlobal {
             if (fav == null || fav.isBlank() || !brandingFileExists(fav)) fav = "/favicon.ico";
         } catch (Exception e) { fav = "/favicon.ico"; }
         setFavicon(fav);
+
+        // PSP Home Agency ID
+        String homeAgencyIdStr = getConstantValue(em, "PSP_HOME_AGENCY_ID");
+        if (homeAgencyIdStr != null && !homeAgencyIdStr.isEmpty()) {
+            this.pspHomeAgencyId = Long.parseLong(homeAgencyIdStr);
+        }
     }
 
     public String getConstantValue(EntityManager em, String constantName){
@@ -879,6 +886,8 @@ public class AmsDataGlobal {
         }
         return false;
     }
+
+    public Long getPspHomeAgencyId() { return pspHomeAgencyId; }
 
     public Map<Long, Long> getAgencyManagerMap() { return agencyManagerMap; }
     public void setAgencyManagerMap(Map<Long, Long> agencyManagerMap) { this.agencyManagerMap = agencyManagerMap; }

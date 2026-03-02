@@ -22,43 +22,85 @@ import net.superiorstate.ams.model.activity.checklist.tasks.ToDo;
 import net.superiorstate.ams.model.activity.ticket.setup.Setup;
 import net.superiorstate.ams.model.general.Person;
 import net.superiorstate.ams.model.general.PersonV;
-import net.superiorstate.ams.model.sales.agency.Agency;
 import net.superiorstate.ams.model.sales.agency.Proposal;
 import net.superiorstate.ams.model.sales.agency.Prospect;
 import net.superiorstate.ams.model.sales.agency.Rate;
 import net.superiorstate.ams.model.sales.application.Application;
+import net.superiorstate.ams.model.sales.offering.Enhancement;
 import net.superiorstate.ams.model.sales.offering.LOS;
 
 import java.io.IOException;
 import java.sql.Date;
+import java.sql.Timestamp;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+/**
+ * Creates a Setup activity directly from the Add Activity modal,
+ * bypassing the full sales pipeline (Proposal → Application Review → Setup).
+ * Behind the scenes a shell Proposal and Application are still created
+ * for commission tracking and data-chain integrity.
+ *
+ * Setup/CheckList/ToDo creation follows the same pattern as {@link ReviewApplication}.
+ */
 @WebServlet(name = "CreateSetup25", value = "/CreateSetup25")
 public class CreateSetup25 extends HttpServlet {
+
+    @Override
+    protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        response.sendRedirect("ViewHome25");
+    }
 
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         AmsDataLocal local = (AmsDataLocal) request.getSession().getAttribute("local");
         AmsDataGlobal global = (AmsDataGlobal) request.getServletContext().getAttribute("global");
-        Person currentPerson = (Person) request.getSession().getAttribute("currentPerson");
+        Person currentPerson = local.getCurrentPerson();
 
         EntityManagerFactory emf = (EntityManagerFactory) getServletContext().getAttribute("emf");
         EntityManager em = emf.createEntityManager();
 
         try {
-            // 1. Resolve or create prospect
-            Prospect prospect = resolveProspect(request, em, local, global, currentPerson);
+            // 1. Resolve prospect (existing or new)
+            Prospect prospect = resolveProspect(request, em, currentPerson);
+            if (prospect == null) {
+                response.sendRedirect("ViewHome25");
+                return;
+            }
 
-            // 2. Create proposal with selected rate and LOS items
-            Proposal proposal = createProposal(request, em, prospect, currentPerson);
-            fillProposalLos(request, em, proposal);
+            // 2. Create shell Proposal with rate
+            long rateId = Long.parseLong(request.getParameter("rateId"));
+            Rate rate = EntityLookup.getRateById(em, rateId);
 
-            // Clear L1 cache — LOS relationships loaded during fillProposalLos leave
-            // ServiceItem objects in the persistence context that cause cascade PERSIST
-            // errors when ActivityDAO.addModule commits later
+            em.getTransaction().begin();
+            Proposal proposal = new Proposal();
+            proposal.setProspect(prospect);
+            proposal.setRate(rate);
+            proposal.setApplicationGUID(UUID.randomUUID().toString());
+            proposal.setStatus("CREATED");
+            proposal.setCreatedBy(currentPerson);
+            proposal.setLosList(new ArrayList<>());
+            em.persist(proposal);
+            em.getTransaction().commit();
+
+            // Add LOS items to proposal (bidirectional join table)
+            long[] losIds = parseLongCsv(request.getParameter("losIds"));
+            for (long losId : losIds) {
+                em.getTransaction().begin();
+                Proposal p = EntityLookup.getProposalById(em, proposal.getId());
+                LOS los = EntityLookup.getLosById(em, losId);
+                p.getLosList().add(los);
+                los.getListOfProposalsThatIncludeThisLOS().add(p);
+                em.persist(p);
+                em.persist(los);
+                em.getTransaction().commit();
+            }
+
+            // Clear L1 cache — LOS relationships loaded above leave objects in the
+            // persistence context that cause cascade PERSIST errors when addModule commits
             long proposalId = proposal.getId();
             long prospectId = prospect.getId();
             long currentPersonId = currentPerson.getId();
@@ -67,35 +109,81 @@ public class CreateSetup25 extends HttpServlet {
             prospect = EntityLookup.getProspectById(em, prospectId);
             currentPerson = EntityLookup.getPersonById(em, currentPersonId);
 
-            // 3. Create application and add modules from LOS serviceItems + extras
-            Application application = createApplication(em, proposal);
-            fillApplicationModules(request, em, application);
+            // 3. Create shell Application (auto-approved)
+            Timestamp now = Timestamp.from(Instant.now());
+            em.getTransaction().begin();
+            Application app = new Application();
+            app.setProposal(proposal);
+            app.setStatus("APPROVED");
+            app.setDateStarted(now);
+            app.setDateSubmitted(now);
+            em.persist(app);
+            em.getTransaction().commit();
 
-            // 4. Create checklist with seed task
+            // 4. Create ApplicationModule records for each LOS's ServiceItem
+            for (long losId : losIds) {
+                LOS los = EntityLookup.getLosById(em, losId);
+                if (los != null && los.getServiceItem() != null) {
+                    ServiceItem si = EntityLookup.getServiceItemById(em, los.getServiceItem().getId());
+                    ActivityDAO.addModule(em, app, si);
+                }
+            }
+
+            // Create ApplicationModule records for each Enhancement's ServiceItem
+            long[] enhIds = parseLongCsv(request.getParameter("enhancementIds"));
+            for (long enhId : enhIds) {
+                Enhancement enh = em.find(Enhancement.class, enhId);
+                if (enh != null && enh.getServiceItem() != null) {
+                    ServiceItem si = EntityLookup.getServiceItemById(em, enh.getServiceItem().getId());
+                    ActivityDAO.addModule(em, app, si);
+                }
+            }
+
+            // 5. Create CheckList (follows ReviewApplication.createChecklist)
             CheckList checkList = createChecklist(em, prospect.getName(), currentPerson);
 
-            // 5. Create setup
-            Setup setup = createSetup(em, prospect, application, checkList, currentPerson);
+            // 6. Create Setup (follows ReviewApplication.createSetup)
+            Setup setup = createSetup(em, prospect, app, checkList, currentPerson);
 
-            // 6. Fill todo list from task sequences
-            fillToDoList(em, setup);
+            // 7. Fill ToDo list from task sequences
+            fillToDoList(em, setup, currentPerson);
 
-            // 7. Update activity cache
-            updateActivityCache(em, setup, local, global);
-
+            // 8. Update caches
+            em.refresh(setup);
+            local.respondToActivityUpdate(em, "ADD_TICKET", setup);
             request.getSession().setAttribute("local", local);
+
+            // Update global activity list
+            try {
+                Query q = em.createQuery("SELECT a FROM Activity25 a WHERE a.activity.id = :id");
+                q.setParameter("id", setup.getId());
+                Activity25 a25 = (Activity25) q.getSingleResult();
+                Activity25u au = new Activity25u(a25);
+                List<Activity25u> allActivities = new ArrayList<>(global.getActivitiesAllOpen());
+                allActivities.add(au);
+                global.setActivitiesAllOpen(allActivities);
+                local.setActivitiesAllOpen(allActivities);
+            } catch (Exception e) {
+                System.out.println("[CreateSetup25] Global activity cache update skipped: " + e.getMessage());
+            }
+
+            // Refresh sales data (new prospects appear immediately in dropdowns)
+            global.refreshSalesData(em);
             request.getServletContext().setAttribute("global", global);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            System.out.println("[CreateSetup25] Error: " + e.getMessage());
         } finally {
             em.close();
         }
 
-        // Forward to home
-        RequestDispatcher dispatcher = getServletContext().getNamedDispatcher("ViewHome25");
-        dispatcher.forward(request, response);
+        response.sendRedirect("ViewHome25");
     }
 
-    private Prospect resolveProspect(HttpServletRequest request, EntityManager em, AmsDataLocal local,
-                                     AmsDataGlobal global, Person currentPerson) {
+    // ======================== Prospect Resolution ========================
+
+    private Prospect resolveProspect(HttpServletRequest request, EntityManager em, Person currentPerson) {
         String prospectMode = request.getParameter("prospectMode");
 
         if ("existing".equals(prospectMode)) {
@@ -103,12 +191,13 @@ public class CreateSetup25 extends HttpServlet {
             return EntityLookup.getProspectById(em, prospectId);
         }
 
-        // New prospect — create person + prospect
+        // New prospect — create contact Person + Prospect
         String companyName = request.getParameter("companyName");
+        if (companyName == null || companyName.trim().isEmpty()) return null;
+
         String contactFirst = request.getParameter("contactFirst");
         String contactLast = request.getParameter("contactLast");
         String contactEmail = request.getParameter("contactEmail");
-        long agencyId = Long.parseLong(request.getParameter("agencyId"));
 
         // Resolve agent: use selected agentId if provided, otherwise default to current user
         Person agent;
@@ -119,128 +208,46 @@ public class CreateSetup25 extends HttpServlet {
             agent = currentPerson;
         }
 
-        Agency agency = EntityLookup.getAgencyById(em, agencyId);
-        Person contact = findOrCreatePerson(em, contactFirst, contactLast, contactEmail, agency, local);
-        Prospect prospect = createNewProspect(em, companyName, contact, agent);
+        // Check if person already exists by email
+        Person contact = findPersonByEmail(em, contactEmail);
+        if (contact == null) {
+            em.getTransaction().begin();
+            contact = new Person();
+            contact.setFirstName(contactFirst != null ? contactFirst.trim() : "");
+            contact.setLastName(contactLast != null ? contactLast.trim() : "");
+            contact.setFullName((contact.getFirstName() + " " + contact.getLastName()).trim());
+            contact.setEmail(contactEmail != null ? contactEmail.trim() : "");
+            contact.setPsp(currentPerson.getPsp());
+            em.persist(contact);
+            em.getTransaction().commit();
+        }
 
-        // Add new prospect to global list immediately
-        List<Prospect> updatedProspects = new ArrayList<>(global.getProspects());
-        updatedProspects.add(prospect);
-        global.setProspects(updatedProspects);
+        // Create Prospect
+        em.getTransaction().begin();
+        Prospect prospect = new Prospect();
+        prospect.setName(companyName.trim());
+        prospect.setContact(contact);
+        prospect.setAgent(agent);
+        em.persist(prospect);
+        em.getTransaction().commit();
 
         return prospect;
     }
 
-    private Person findOrCreatePerson(EntityManager em, String firstName, String lastName, String email, Agency agency, AmsDataLocal local) {
-        if (email != null && !email.isBlank()) {
+    private Person findPersonByEmail(EntityManager em, String email) {
+        if (email == null || email.isBlank()) return null;
+        try {
             Query q = em.createQuery("SELECT p FROM PersonV p WHERE p.email = :email");
             q.setParameter("email", email.toLowerCase().trim());
-            try {
-                List<PersonV> results = (List<PersonV>) q.getResultList();
-                if (results != null && !results.isEmpty()) {
-                    return EntityLookup.getPersonById(em, results.get(0).getId());
-                }
-            } catch (NoResultException ignored) {}
-        }
-
-        em.getTransaction().begin();
-        Person p = new Person();
-        p.setFirstName(firstName != null ? firstName.trim() : "");
-        p.setLastName(lastName != null ? lastName.trim() : "");
-        p.setFullName(((firstName != null ? firstName.trim() : "") + " " + (lastName != null ? lastName.trim() : "")).trim());
-        if (email != null && !email.isBlank()) {
-            p.setEmail(email.trim());
-        }
-        p.setPsp(local.getCurrentPerson().getPsp());
-        if (agency != null && agency.getAddress() != null) {
-            p.setAddress(agency.getAddress());
-        }
-        em.persist(p);
-        em.getTransaction().commit();
-        return p;
-    }
-
-    private Prospect createNewProspect(EntityManager em, String companyName, Person contact, Person agent) {
-        em.getTransaction().begin();
-        Prospect p = new Prospect();
-        p.setName(companyName);
-        p.setContact(contact);
-        p.setAddress(contact.getAddress());
-        p.setAgent(agent);
-        em.persist(p);
-        em.getTransaction().commit();
-        return p;
-    }
-
-    private Proposal createProposal(HttpServletRequest request, EntityManager em, Prospect prospect, Person createdBy) {
-        long rateId = Long.parseLong(request.getParameter("rateId"));
-        Rate rate = EntityLookup.getRateById(em, rateId);
-        String appKey = UUID.randomUUID().toString();
-
-        em.getTransaction().begin();
-        Proposal proposal = new Proposal();
-        proposal.setRate(rate);
-        proposal.setApplicationGUID(appKey);
-        proposal.setProspect(prospect);
-        proposal.setCreatedBy(createdBy);
-        em.persist(proposal);
-        em.getTransaction().commit();
-        return proposal;
-    }
-
-    private void fillProposalLos(HttpServletRequest request, EntityManager em, Proposal proposal) {
-        String[] losIds = request.getParameterValues("losIds");
-        if (losIds == null) return;
-        for (String losIdStr : losIds) {
-            long losId = Long.parseLong(losIdStr);
-            em.getTransaction().begin();
-            Proposal p = EntityLookup.getProposalById(em, proposal.getId());
-            // Use getLosById (simple query) instead of getLosFull (eager-fetches serviceModuleList
-            // graph which causes cascade PERSIST errors when addModule commits later)
-            LOS los = EntityLookup.getLosById(em, losId);
-            p.getLosList().add(los);
-            los.getListOfProposalsThatIncludeThisLOS().add(p);
-            em.persist(p);
-            em.persist(los);
-            em.getTransaction().commit();
-        }
-    }
-
-    private Application createApplication(EntityManager em, Proposal proposal) {
-        em.getTransaction().begin();
-        Application a = new Application();
-        a.setProposal(proposal);
-        em.persist(a);
-        em.getTransaction().commit();
-        return a;
-    }
-
-    private void fillApplicationModules(HttpServletRequest request, EntityManager em, Application application) {
-        // Add modules from selected LOS items (each LOS has a serviceItem)
-        // Use getLosById (simple query) instead of getLosFull (eager-fetches serviceModuleList
-        // graph which causes cascade PERSIST errors when addModule commits)
-        String[] losIds = request.getParameterValues("losIds");
-        if (losIds != null) {
-            for (String losIdStr : losIds) {
-                long losId = Long.parseLong(losIdStr);
-                LOS los = EntityLookup.getLosById(em, losId);
-                if (los != null && los.getServiceItem() != null) {
-                    ServiceItem si = EntityLookup.getServiceItemById(em, los.getServiceItem().getId());
-                    ActivityDAO.addModule(em, application, si);
-                }
+            List<PersonV> results = (List<PersonV>) q.getResultList();
+            if (results != null && !results.isEmpty()) {
+                return EntityLookup.getPersonById(em, results.get(0).getId());
             }
-        }
-
-        // Add extra modules (e.g., Payments=17, Cards=19)
-        String[] extraModuleIds = request.getParameterValues("extraModuleIds");
-        if (extraModuleIds != null) {
-            for (String extraIdStr : extraModuleIds) {
-                int serviceItemId = Integer.parseInt(extraIdStr);
-                ServiceItem si = EntityLookup.getServiceItemById(em, serviceItemId);
-                ActivityDAO.addModule(em, application, si);
-            }
-        }
+        } catch (NoResultException ignored) {}
+        return null;
     }
+
+    // ======================== CheckList Creation (mirrors ReviewApplication) ========================
 
     private CheckList createChecklist(EntityManager em, String prospectName, Person currentPerson) {
         em.getTransaction().begin();
@@ -252,7 +259,7 @@ public class CreateSetup25 extends HttpServlet {
         em.persist(c);
         em.getTransaction().commit();
 
-        // Seed with Task 153 (system placeholder, marked complete)
+        // Add task 153 as the first (completed) todo — same as ReviewApplication
         Task t = EntityLookup.getTaskById(em, 153L);
         em.getTransaction().begin();
         ToDo toDo = new ToDo();
@@ -268,7 +275,10 @@ public class CreateSetup25 extends HttpServlet {
         return c;
     }
 
-    private Setup createSetup(EntityManager em, Prospect prospect, Application application, CheckList checkList, Person currentPerson) {
+    // ======================== Setup Creation (mirrors ReviewApplication) ========================
+
+    private Setup createSetup(EntityManager em, Prospect prospect, Application application,
+                              CheckList checkList, Person currentPerson) {
         em.getTransaction().begin();
         Setup setup = new Setup();
         setup.setApplication(application);
@@ -293,7 +303,9 @@ public class CreateSetup25 extends HttpServlet {
         return setup;
     }
 
-    private void fillToDoList(EntityManager em, Setup setup) {
+    // ======================== ToDo List (mirrors ReviewApplication) ========================
+
+    private void fillToDoList(EntityManager em, Setup setup, Person currentPerson) {
         Application a = setup.getApplication();
         CheckList c = setup.getCheckList();
         List<SortedTask> sortedTaskList = ApplicationTaskDAO.getTasksRequiredForApplication(em, a);
@@ -320,16 +332,16 @@ public class CreateSetup25 extends HttpServlet {
         }
     }
 
-    private void updateActivityCache(EntityManager em, Setup setup, AmsDataLocal local, AmsDataGlobal global) {
-        Query q = em.createQuery("SELECT a FROM Activity25 a WHERE a.activity.id = :id");
-        q.setParameter("id", setup.getId());
-        Activity25 a25 = (Activity25) q.getSingleResult();
-        Activity25u au = new Activity25u(a25);
+    // ======================== Helpers ========================
 
-        List<Activity25u> listToModify = new ArrayList<>(global.getActivitiesAllOpen());
-        listToModify.add(au);
-        global.setActivitiesAllOpen(listToModify);
-        local.setActivitiesAllOpen(global.getActivitiesAllOpen());
-        local.getCurrentActivity().setReFilterOnExit(true);
+    /** Parse a comma-separated string of longs. Returns empty array for null/blank input. */
+    private long[] parseLongCsv(String csv) {
+        if (csv == null || csv.isBlank()) return new long[0];
+        String[] parts = csv.split(",");
+        long[] result = new long[parts.length];
+        for (int i = 0; i < parts.length; i++) {
+            result[i] = Long.parseLong(parts[i].trim());
+        }
+        return result;
     }
 }

@@ -273,6 +273,9 @@ public abstract class DatabaseInitializer {
         updatePspWithContact(em,psp,p);
         //Create Agency
         Agency agency = createAgency(em,14L,getPspName(),getPhone(),getTaxId(),a,p,psp);
+        //Store PSP Home Agency ID
+        if(getConstantByName(em,"PSP_HOME_AGENCY_ID")==null)
+            createConstant(em,"PSP_HOME_AGENCY_ID",String.valueOf(agency.getId()));
         //Create Employer
         String fullName = getFirstName().trim() + " " + getLastName().trim();
         Employer er = createEmployer(em,-1,getPspName(),getEmail(),fullName,-1);
@@ -420,6 +423,8 @@ public abstract class DatabaseInitializer {
         UserRole ur13 = createUserRole(em,103, "BPO User");
         //Assign User To PSP Roles
         assignRoles(em,user,ur5,ur1);
+        assignRoles(em,user,ur2);
+        assignRoles(em,user,ur8);
         // Seed default filter presets for the new user
         seedFilterPresets(em, user);
         // Vendor users removed — configure via admin UI (future backlog item)
@@ -1238,6 +1243,7 @@ public abstract class DatabaseInitializer {
         em.getTransaction().commit();
         em.getTransaction().begin();
         a.getAgentList().add(contact);
+        a.setManager(contact);
         em.persist(a);
         em.getTransaction().commit();
         return a;

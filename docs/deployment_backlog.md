@@ -316,6 +316,20 @@ PSP Admin modal for user lifecycle management: deactivate with bulk reassignment
 
 ---
 
+### D-37: Backfill PSP Home Agency Config
+
+**Priority:** HIGH
+**Status:** Not started
+
+On existing installations, run one-time SQL to:
+1. Add Agent (2) and Agency Admin (8) roles to the PSP admin user
+2. Set `manager_id` on the home agency to the PSP admin's person ID
+3. Insert `PSP_HOME_AGENCY_ID` constant with the home agency's ID
+
+This aligns existing databases with the updated DatabaseInitializer behavior.
+
+---
+
 ## Remaining TODOs
 
 - Run `schema_version_migration.sql` on production database (holding until further testing)

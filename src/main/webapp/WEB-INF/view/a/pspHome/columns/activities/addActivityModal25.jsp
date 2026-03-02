@@ -141,44 +141,27 @@
         <div id="aa_setupSection" style="display:none;">
           <form method="post" action="CreateSetup25" id="aa_setupForm">
             <input type="hidden" name="prospectMode" id="aa_sProspectMode" value="existing">
-            <input type="hidden" id="aa_currentPersonId" value="${sessionScope.currentPerson.getId()}">
-            <input type="hidden" id="aa_currentPersonAgencies"
-                   value="${applicationScope.global.getPersonAgencyIds(sessionScope.currentPerson.getId())}">
+            <input type="hidden" name="returnTo" value="home">
+            <input type="hidden" name="losIds" id="aa_sLosInput" value="">
+            <input type="hidden" name="enhancementIds" id="aa_sEnhInput" value="">
+            <input type="hidden" id="aa_currentPersonId" value="${sessionScope.local.getCurrentPerson().getId()}">
+            <input type="hidden" id="aa_pspHomeAgencyId" value="${applicationScope.global.getPspHomeAgencyId()}">
 
-            <%-- Agency (first — drives agent, prospect, rate cascades) --%>
+            <%-- 1. Agency selector (drives all cascades) --%>
             <label class="form-label fw-semibold mb-1" style="font-size:0.85rem;">
               <i class="bi bi-people me-1 text-ssa"></i>Agency
             </label>
             <select class="form-select form-select-sm mb-3" name="agencyId" id="aa_sAgencyId" required>
               <option value="" disabled>Select agency...</option>
               <c:forEach var="a" items="${applicationScope.global.getAgencies()}">
-                <c:if test="${applicationScope.global.hasAgents(a.getId())}">
-                  <option value="${a.getId()}"
-                          data-rates="${applicationScope.global.getAgencyRateIds(a.getId())}"
-                          data-manager="${applicationScope.global.getAgencyManagerId(a.getId())}">
-                    ${fn:escapeXml(a.getName())}
-                  </option>
-                </c:if>
+                <option value="${a.getId()}"
+                        data-rates="${applicationScope.global.getAgencyRateIds(a.getId())}">
+                  ${fn:escapeXml(a.getName())}
+                </option>
               </c:forEach>
             </select>
 
-            <%-- Agent (filtered by agency, shown for new prospect or when multiple agents) --%>
-            <div id="aa_sAgentRow" style="display:none;">
-              <label class="form-label fw-semibold mb-1" style="font-size:0.85rem;">
-                <i class="bi bi-person-badge me-1 text-ssa"></i>Agent
-              </label>
-              <select class="form-select form-select-sm mb-3" name="agentId" id="aa_sAgentId">
-                <option value="" selected disabled>Select agent...</option>
-                <c:forEach var="ag" items="${applicationScope.global.getSetupAgents()}">
-                  <option value="${ag.getId()}" class="aa-agent-option" hidden
-                          data-agencies="${ag.getAgencyIds()}">
-                    ${fn:escapeXml(ag.getName())}
-                  </option>
-                </c:forEach>
-              </select>
-            </div>
-
-            <%-- Prospect mode toggle --%>
+            <%-- 2. Prospect mode toggle --%>
             <div class="btn-group w-100 mb-3" role="group">
               <input type="radio" class="btn-check" name="aa_sProspectToggle" id="aa_sTogExisting" autocomplete="off" checked
                      onclick="aa_showSetupProspectMode('existing')">
@@ -201,16 +184,30 @@
                 <option value="" selected disabled>Select a prospect...</option>
                 <c:forEach var="p" items="${applicationScope.global.getProspects()}">
                   <option value="${p.getId()}" class="aa-prospect-option" hidden
-                          data-agencies="${applicationScope.global.getProspectAgencyIds(p.getId())}"
-                          data-agent-id="${p.getAgent().getId()}">
+                          data-agencies="${applicationScope.global.getProspectAgencyIds(p.getId())}">
                     ${fn:escapeXml(p.getName())}
                   </option>
                 </c:forEach>
               </select>
             </div>
 
-            <%-- New prospect fields --%>
+            <%-- New prospect fields + agent selector --%>
             <div id="aa_sNewProspectFields" style="display:none;">
+              <%-- Agent selector (visible only when user is NOT an agent of the selected agency) --%>
+              <div id="aa_sAgentRow" style="display:none;">
+                <label class="form-label fw-semibold mb-1" style="font-size:0.85rem;">
+                  <i class="bi bi-person-badge me-1 text-ssa"></i>Agent
+                </label>
+                <select class="form-select form-select-sm mb-2" name="agentId" id="aa_sAgentId">
+                  <option value="" selected disabled>Select agent...</option>
+                  <c:forEach var="ag" items="${applicationScope.global.getSetupAgents()}">
+                    <option value="${ag.getId()}" class="aa-agent-option" hidden
+                            data-agencies="${ag.getAgencyIds()}">
+                      ${fn:escapeXml(ag.getName())}
+                    </option>
+                  </c:forEach>
+                </select>
+              </div>
               <div class="mb-2">
                 <label class="form-label fw-semibold mb-1" style="font-size:0.85rem;">
                   Company Name <span class="text-danger">*</span>
@@ -234,7 +231,7 @@
               </div>
             </div>
 
-            <%-- Rate (filtered by agency selection) --%>
+            <%-- 3. Rate selector (filtered by agency) --%>
             <label class="form-label fw-semibold mb-1" style="font-size:0.85rem;">
               <i class="bi bi-cash-coin me-1 text-ssa"></i>Rate Package
             </label>
@@ -249,7 +246,7 @@
               </c:forEach>
             </select>
 
-            <%-- Lines of Service --%>
+            <%-- 4. LOS checkboxes (filtered by rate) --%>
             <label class="form-label fw-semibold mb-1" style="font-size:0.85rem;">
               <i class="bi bi-list-check me-1 text-ssa"></i>Lines of Service
             </label>
@@ -266,7 +263,7 @@
               </c:forEach>
             </div>
 
-            <%-- Additional Services (enhancements) --%>
+            <%-- 5. Enhancement checkboxes (filtered by rate) --%>
             <label class="form-label fw-semibold mb-1" style="font-size:0.85rem;">
               <i class="bi bi-puzzle me-1 text-ssa"></i>Additional Services
             </label>
@@ -274,8 +271,8 @@
               <c:forEach var="enh" items="${applicationScope.global.getEnhancementList()}">
                 <div class="form-check form-switch mb-1 aa-extra-item" data-extra-id="${enh.getServiceItem().getId()}" style="display:none;">
                   <input class="form-check-input aa-extra-switch" type="checkbox"
-                         id="aa_sExtra_${enh.getServiceItem().getId()}" value="${enh.getServiceItem().getId()}" onchange="aa_validateSetup()">
-                  <label class="form-check-label" for="aa_sExtra_${enh.getServiceItem().getId()}" style="font-size:0.85rem;">
+                         id="aa_sExtra_${enh.getId()}" value="${enh.getId()}" onchange="aa_validateSetup()">
+                  <label class="form-check-label" for="aa_sExtra_${enh.getId()}" style="font-size:0.85rem;">
                     ${fn:escapeXml(enh.getDescription())}
                   </label>
                 </div>
@@ -283,12 +280,9 @@
               <div id="aa_sExtraHint" class="text-muted small fst-italic">Select a rate package first</div>
             </div>
 
-            <%-- Hidden inputs populated by JS --%>
-            <div id="aa_sLosInputs"></div>
-            <div id="aa_sExtraInputs"></div>
-
+            <%-- 6. Submit --%>
             <button type="submit" class="btn btn-ssa btn-sm w-100" id="aa_setupBtn" disabled
-                    onclick="aa_prepareSetupSubmit()">
+                    onclick="return aa_prepareSetupSubmit()">
               <i class="bi bi-building-add me-1"></i>Create Setup
             </button>
           </form>
@@ -309,7 +303,6 @@
     document.getElementById('aa_renewalSection').style.display = (type === 'renewal') ? '' : 'none';
     document.getElementById('aa_opportunitySection').style.display = (type === 'opportunity') ? '' : 'none';
     document.getElementById('aa_setupSection').style.display = (type === 'setup') ? '' : 'none';
-    // Widen dialog for setup (more fields)
     if (type === 'setup') {
       dialog.classList.add('modal-lg');
     } else {
@@ -323,11 +316,8 @@
     var isNew = (mode === 'new');
     document.getElementById('aa_existingProspectFields').style.display = isNew ? 'none' : '';
     document.getElementById('aa_newProspectFields').style.display = isNew ? '' : 'none';
-
-    // Toggle required fields
     document.getElementById('aa_prospectId').required = !isNew;
     document.getElementById('aa_companyName').required = isNew;
-
     aa_validateOpp();
   };
 
@@ -337,12 +327,11 @@
     var isNew = (mode === 'new');
     document.getElementById('aa_sExistingProspectFields').style.display = isNew ? 'none' : '';
     document.getElementById('aa_sNewProspectFields').style.display = isNew ? '' : 'none';
-    // Show agent dropdown for new prospect mode (agent must be assigned)
     aa_updateAgentVisibility();
     aa_validateSetup();
   };
 
-  /* ═══ Enable/disable submit buttons based on selection ═══ */
+  /* ═══ Renewal validation ═══ */
   var employerSelect = document.getElementById('aa_employerId');
   var renewalBtn = document.getElementById('aa_renewalBtn');
   employerSelect.addEventListener('change', function() {
@@ -362,12 +351,15 @@
     document.getElementById('aa_oppBtn').disabled = !(agencyOk && prospectOk);
   }
   window.aa_validateOpp = aa_validateOpp;
-
   document.getElementById('aa_prospectId').addEventListener('change', aa_validateOpp);
   document.getElementById('aa_agencyId').addEventListener('change', aa_validateOpp);
   document.getElementById('aa_companyName').addEventListener('input', aa_validateOpp);
 
-  /* ═══ Agency change → filter agents, prospects, and rates ═══ */
+  /* ═══════════════════════════════════════════════════════════════════
+     SETUP CASCADE LOGIC
+     Agency → prospects, agents, rates → LOS, enhancements → validate
+     ═══════════════════════════════════════════════════════════════════ */
+
   window.aa_onAgencyChange = function() {
     var agSel = document.getElementById('aa_sAgencyId');
     var agVal = agSel.value;
@@ -375,14 +367,12 @@
     var ratesStr = (agOpt && agOpt.dataset && agOpt.dataset.rates) || '';
     var rateIds = ratesStr ? ratesStr.split(',').map(Number) : [];
     var currentPersonId = document.getElementById('aa_currentPersonId').value;
-    var managerId = (agOpt && agOpt.dataset && agOpt.dataset.manager) || '';
 
     // ── Filter agent options by selected agency ──
     var agentSel = document.getElementById('aa_sAgentId');
     var agentCount = 0;
     var lastAgentIdx = -1;
     var currentPersonIdx = -1;
-    var managerIdx = -1;
     for (var i = 0; i < agentSel.options.length; i++) {
       var aOpt = agentSel.options[i];
       if (!aOpt.classList.contains('aa-agent-option')) continue;
@@ -394,19 +384,18 @@
         agentCount++;
         lastAgentIdx = i;
         if (aOpt.value === currentPersonId) currentPersonIdx = i;
-        if (aOpt.value === managerId) managerIdx = i;
       }
     }
 
-    // Determine if current user is an agent of the selected agency
+    // Is current user an agent of this agency?
     window.aa_userIsAgent = (currentPersonIdx >= 0);
+    // Is there only one agent? If so auto-select and hide
+    window.aa_singleAgent = (agentCount === 1);
 
-    // Auto-select agent: current user > agency manager > single agent
+    // Auto-select agent: current user > single agent > first placeholder
     agentSel.selectedIndex = 0;
     if (currentPersonIdx >= 0) {
       agentSel.selectedIndex = currentPersonIdx;
-    } else if (managerIdx >= 0) {
-      agentSel.selectedIndex = managerIdx;
     } else if (agentCount === 1) {
       agentSel.selectedIndex = lastAgentIdx;
     }
@@ -446,22 +435,19 @@
     aa_onRateChange();
   };
 
-  /* ═══ Show/hide agent dropdown based on context ═══ */
-  /*  Logic tree:
-   *  - Existing prospect: agent already assigned, no dropdown needed
-   *  - New prospect + user IS agent of agency: auto-assign user, no dropdown
-   *  - New prospect + user NOT agent: show dropdown (defaulted to agency manager)
+  /* ═══ Show/hide agent dropdown ═══
+   *  Existing prospect: agent already assigned → hide
+   *  New prospect + user IS agent: auto-assign user → hide
+   *  New prospect + only one agent in agency: auto-selected → hide
+   *  New prospect + multiple agents + user NOT agent: show dropdown
    */
   window.aa_updateAgentVisibility = function() {
     var mode = document.getElementById('aa_sProspectMode').value;
     var agentRow = document.getElementById('aa_sAgentRow');
-
     if (mode === 'existing') {
-      // Existing prospect — agent is already on the prospect, no dropdown
       agentRow.style.display = 'none';
     } else {
-      // New prospect — show dropdown only if current user is NOT an agent of selected agency
-      var showAgent = !window.aa_userIsAgent;
+      var showAgent = !window.aa_userIsAgent && !window.aa_singleAgent;
       agentRow.style.display = showAgent ? '' : 'none';
     }
   };
@@ -525,23 +511,21 @@
     document.querySelectorAll('.aa-los-item').forEach(function(div) {
       if (div.style.display !== 'none' && div.querySelector('input').checked) losOk = true;
     });
-
     document.getElementById('aa_setupBtn').disabled = !(agencyOk && rateOk && prospectOk && losOk && agentOk);
   };
 
+  /* ═══ Wire up change/input listeners ═══ */
   document.getElementById('aa_sProspectId').addEventListener('change', aa_validateSetup);
   document.getElementById('aa_sAgencyId').addEventListener('change', function() { aa_onAgencyChange(); });
   document.getElementById('aa_sAgentId').addEventListener('change', aa_validateSetup);
   document.getElementById('aa_sRateId').addEventListener('change', function() { aa_onRateChange(); });
   document.getElementById('aa_sCompanyName').addEventListener('input', aa_validateSetup);
 
-  // Default agency to the user's home agency (first agency they belong to)
+  /* ═══ Default agency to PSP home agency ═══ */
   (function() {
     var agSel = document.getElementById('aa_sAgencyId');
-    var personAgencies = (document.getElementById('aa_currentPersonAgencies').value || '').split(',');
-    var homeAgencyId = personAgencies.length > 0 ? personAgencies[0] : '';
+    var homeAgencyId = document.getElementById('aa_pspHomeAgencyId').value || '';
 
-    // Try to select the user's home agency
     var found = false;
     if (homeAgencyId) {
       for (var i = 0; i < agSel.options.length; i++) {
@@ -552,37 +536,34 @@
         }
       }
     }
-    // Fallback: if only one agency option (besides placeholder), select it
+    // Fallback: select first non-disabled option
     if (!found) {
-      var realOpts = 0; var lastReal = -1;
       for (var i = 0; i < agSel.options.length; i++) {
-        if (!agSel.options[i].disabled) { realOpts++; lastReal = i; }
+        if (!agSel.options[i].disabled && agSel.options[i].value) {
+          agSel.selectedIndex = i;
+          found = true;
+          break;
+        }
       }
-      if (realOpts === 1) { agSel.selectedIndex = lastReal; found = true; }
     }
-
     if (agSel.value) aa_onAgencyChange();
   })();
 
   /* ═══ Prepare hidden inputs before submit ═══ */
   window.aa_prepareSetupSubmit = function() {
-    // Build losIds hidden inputs
-    var losContainer = document.getElementById('aa_sLosInputs');
-    losContainer.innerHTML = '';
+    // Build comma-separated losIds
+    var losVals = [];
     document.querySelectorAll('.aa-los-switch:checked').forEach(function(cb) {
-      var inp = document.createElement('input');
-      inp.type = 'hidden'; inp.name = 'losIds'; inp.value = cb.value;
-      losContainer.appendChild(inp);
+      losVals.push(cb.value);
     });
+    document.getElementById('aa_sLosInput').value = losVals.join(',');
 
-    // Build extraModuleIds hidden inputs
-    var extraContainer = document.getElementById('aa_sExtraInputs');
-    extraContainer.innerHTML = '';
+    // Build comma-separated enhancementIds
+    var enhVals = [];
     document.querySelectorAll('.aa-extra-switch:checked').forEach(function(cb) {
-      var inp = document.createElement('input');
-      inp.type = 'hidden'; inp.name = 'extraModuleIds'; inp.value = cb.value;
-      extraContainer.appendChild(inp);
+      enhVals.push(cb.value);
     });
+    document.getElementById('aa_sEnhInput').value = enhVals.join(',');
 
     // Disable button to prevent double-submit
     setTimeout(function() {
@@ -590,6 +571,8 @@
       btn.disabled = true;
       btn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Creating...';
     }, 50);
+
+    return true; // allow form submission
   };
 
   /* ═══ Reset on modal open/close ═══ */
@@ -620,24 +603,28 @@
     document.getElementById('aa_sProspectId').selectedIndex = 0;
     document.getElementById('aa_sCompanyName').value = '';
     document.querySelectorAll('#aa_sNewProspectFields input').forEach(function(el) { el.value = ''; });
-    // Re-default to user's home agency
+    document.getElementById('aa_sLosInput').value = '';
+    document.getElementById('aa_sEnhInput').value = '';
+    document.querySelectorAll('.aa-los-switch, .aa-extra-switch').forEach(function(cb) { cb.checked = false; });
+
+    // Re-default agency to PSP home agency
     var sAgencySel = document.getElementById('aa_sAgencyId');
-    var personAgencies = (document.getElementById('aa_currentPersonAgencies').value || '').split(',');
-    var homeId = personAgencies.length > 0 ? personAgencies[0] : '';
+    var homeId = document.getElementById('aa_pspHomeAgencyId').value || '';
     var homeFound = false;
     if (homeId) {
       for (var k = 0; k < sAgencySel.options.length; k++) {
         if (sAgencySel.options[k].value === homeId) { sAgencySel.selectedIndex = k; homeFound = true; break; }
       }
     }
-    if (!homeFound && sAgencySel.options.length > 1) sAgencySel.selectedIndex = 0;
+    if (!homeFound) {
+      for (var k = 0; k < sAgencySel.options.length; k++) {
+        if (!sAgencySel.options[k].disabled && sAgencySel.options[k].value) { sAgencySel.selectedIndex = k; break; }
+      }
+    }
     document.getElementById('aa_sAgentId').selectedIndex = 0;
     document.getElementById('aa_sAgentRow').style.display = 'none';
-    document.querySelectorAll('.aa-los-switch, .aa-extra-switch').forEach(function(cb) { cb.checked = false; });
-    document.getElementById('aa_sLosInputs').innerHTML = '';
-    document.getElementById('aa_sExtraInputs').innerHTML = '';
-    // Re-apply agency→rate→LOS cascade
     aa_onAgencyChange();
+
     var setupBtn = document.getElementById('aa_setupBtn');
     setupBtn.disabled = true;
     setupBtn.innerHTML = '<i class="bi bi-building-add me-1"></i>Create Setup';
