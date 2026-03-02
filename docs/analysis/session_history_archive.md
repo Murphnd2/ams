@@ -627,3 +627,38 @@ Two sessions covering configurable activity alert settings and the new User Mana
 - **addAgentRole auto-assigns to PSP home agency** — no agency selection needed; internal staff agents always belong to the home agency
 - **removeAgentRole scoped to home agency agents only** — external agency agent deactivation requires prospect reassignment and "turn off agency" logic (deferred)
 - **Deferred to future plan:** External agency agent deactivation, "turn off agency" feature when last agent in external agency is deactivated
+
+---
+
+## March 1, 2026 — Navbar Menu Consolidation (Session 14)
+
+Consolidated navbar menu items to eliminate duplication for multi-role users (especially PSP Admin + Agent + Agency Admin).
+
+### Logo Link Priority Fix
+- **Modified:** `navbar25.jsp` logo `<c:choose>` block — added `isPspUser || isPspAdmin → ViewHome25` check before `isAgent || isAgencyAdmin → AgentHome`
+- Previously, a PSP Admin who was also an agent was incorrectly sent to AgentHome when clicking the logo
+
+### Sales Dropdown Consolidation
+- **Moved Sales dropdown** outside the PSP User/Admin `<c:if>` block into its own standalone section
+- **New visibility condition:** `isAgent || isAgencyAdmin || isPspAdmin` (was only visible to PSP Users/Admins)
+- **Role-filtered contents:**
+  - Pipeline (AgentHome) + New Proposal (ProposalBuilder) — `isAgent` only
+  - Application Review — `isPspAdmin` only (with conditional divider when agent items present)
+  - Add Agent (createUserModal) — `isAgencyAdmin` only (with divider)
+
+### Standalone Agent Buttons Removed
+- **Deleted** the entire `AGENT / AGENCY MANAGER LINKS` section (Pipeline, New Proposal, Add Agent as top-level navbar buttons)
+- All items now consolidated inside the Sales dropdown
+
+### Resulting Navbar Per Role
+- **PSP Admin + Agent + Agency Admin:** Home, Log, Email, Sales (5 items), Admin, Logout
+- **PSP User + Agent:** Home, Log, Email, Sales (Pipeline + New Proposal), Logout
+- **PSP User only:** Home, Log, Email, Logout (no Sales dropdown)
+- **Agent only:** Sales (Pipeline + New Proposal), Logout
+- **Agent + Agency Admin:** Sales (Pipeline + New Proposal + Add Agent), Logout
+- **BPO:** Unchanged
+
+### Files Changed
+- `src/main/webapp/WEB-INF/view/a/general/navbar25.jsp` — Only file modified
+
+No database changes.
