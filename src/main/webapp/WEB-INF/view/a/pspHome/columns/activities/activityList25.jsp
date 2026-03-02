@@ -81,156 +81,259 @@
   .act-urg-onus    { color: #dc3545; }
 </style>
 
-<c:set var="cp" value="${sessionScope.local.getCurrentPerson().getId()}"/>
-<c:set var="daysD" value="${applicationScope.global.getDaysSinceDanger()}"/>
-<c:set var="daysW" value="${applicationScope.global.getDaysSinceWarning()}"/>
-
-<div class="overflow-auto flex-grow-1" style="min-height: 0;">
-  <form method="post" action="GoActivityDetail25">
-    <input type="hidden" name="formSender" value="viewActivity">
-
-    <c:forEach var="activity" items="${requestScope.activityRows}">
-      <c:set var="daysS" value="${activity.daysSinceContact}"/>
-
-      <%-- Owner icon --%>
-      <c:choose>
-        <c:when test="${activity.assignedToId != null && activity.assignedToId == cp}">
-          <c:set var="ownerIcon" value="person-fill"/>
-          <c:set var="ownerColor" value="color:#0d5681;"/>
-        </c:when>
-        <c:when test="${activity.delegatedToMe}">
-          <c:set var="ownerIcon" value="check-lg"/>
-          <c:set var="ownerColor" value="color:#6c757d;"/>
-        </c:when>
-        <c:otherwise>
-          <c:set var="ownerIcon" value="collection"/>
-          <c:set var="ownerColor" value="color:#adb5bd;"/>
-        </c:otherwise>
-      </c:choose>
-
-      <%-- Type badge --%>
-      <c:choose>
-        <c:when test="${activity.dtype == 'Renewal'}">
-          <c:set var="typeIcon" value="repeat"/>
-          <c:set var="typeCls" value="act-type-R"/>
-        </c:when>
-        <c:when test="${activity.dtype == 'Setup'}">
-          <c:set var="typeIcon" value="buildings"/>
-          <c:set var="typeCls" value="act-type-S"/>
-        </c:when>
-        <c:when test="${activity.dtype == 'Opportunity'}">
-          <c:set var="typeIcon" value="graph-up-arrow"/>
-          <c:set var="typeCls" value="act-type-O"/>
-        </c:when>
-        <c:otherwise>
-          <c:set var="typeIcon" value="ticket-detailed"/>
-          <c:set var="typeCls" value="act-type-T"/>
-        </c:otherwise>
-      </c:choose>
-
-      <%-- Employer extra for tickets --%>
-      <c:set var="extra" value=""/>
-      <c:if test="${activity.dtype == 'Ticket' && activity.ticketEmployerNameLc != null}">
-        <c:set var="extra" value="${activity.ticketEmployerNameLc}"/>
-      </c:if>
-
-      <%-- Needs-contact flag (derived from days since contact vs warning threshold; disabled when daysW >= 99) --%>
-      <c:set var="needsContact" value="${daysW < 99 && daysS > daysW}"/>
-
-      <%-- Attention icon + name weight based on combined status --%>
-      <c:choose>
-        <c:when test="${activity.waitingOnUs && needsContact}">
-          <c:set var="attentionIcon" value="exclamation-triangle"/>
-          <c:set var="attentionCls" value="act-urg-danger"/>
-          <c:set var="nameWeight" value="fw-bold"/>
-        </c:when>
-        <c:when test="${activity.waitingOnUs}">
-          <c:set var="attentionIcon" value="hourglass-split"/>
-          <c:set var="attentionCls" value="act-urg-onus"/>
-          <c:set var="nameWeight" value=""/>
-        </c:when>
-        <c:when test="${needsContact}">
-          <c:set var="attentionIcon" value="telephone"/>
-          <c:set var="attentionCls" value="act-urg-warning"/>
-          <c:set var="nameWeight" value=""/>
-        </c:when>
-        <c:otherwise>
-          <c:set var="attentionIcon" value=""/>
-          <c:set var="attentionCls" value=""/>
-          <c:set var="nameWeight" value="text-muted"/>
-        </c:otherwise>
-      </c:choose>
-
-      <%-- Due bucket → card left border + date class --%>
-      <c:choose>
-        <c:when test="${activity.dueBucket >= 3}">
-          <c:set var="borderCls" value="border-danger-left"/>
-          <c:set var="dueCls" value="act-due-over"/>
-        </c:when>
-        <c:when test="${activity.dueBucket == 2}">
-          <c:set var="borderCls" value="border-warning-left"/>
-          <c:set var="dueCls" value="act-due-warn"/>
-        </c:when>
-        <c:when test="${activity.dueBucket == 1}">
-          <c:set var="borderCls" value="border-normal"/>
-          <c:set var="dueCls" value="act-due-soon"/>
-        </c:when>
-        <c:otherwise>
-          <c:set var="borderCls" value="border-normal"/>
-          <c:set var="dueCls" value="act-due-ok"/>
-        </c:otherwise>
-      </c:choose>
-
-      <%-- Card row --%>
-      <div class="act-card ${borderCls}" onclick="this.querySelector('button').click();">
-        <%-- Owner icon --%>
-        <span class="act-owner-icon" style="${ownerColor}">
-          <i class="bi bi-${ownerIcon}"></i>
-        </span>
-
-        <%-- Type badge --%>
-          <span class="act-type-badge ${typeCls}"><i class="bi bi-${typeIcon}"></i></span>
-
-            <%-- Attention icon --%>
-          <span class="act-urgency">
-          <c:if test="${not empty attentionIcon}"><i class="bi bi-${attentionIcon} ${attentionCls}"></i></c:if>
-        </span>
-
-        <%-- Name + extra --%>
-        <div class="act-name">
-          <span class="act-name-text ${nameWeight}" style="text-transform: capitalize;">
-            ${fn:toLowerCase(activity.fullName)}<c:if test="${not empty extra}"> <span class="act-extra">(${extra})</span></c:if>
-          </span>
-        </div>
-
-        <%-- Opportunity stage badge --%>
-        <c:if test="${activity.dtype == 'Opportunity' && not empty activity.opportunityStage}">
-          <span class="act-stage act-stage-${activity.opportunityStage}">
-            ${fn:replace(activity.opportunityStage, '_', ' ')}
-          </span>
-        </c:if>
-
-        <%-- Due date --%>
-        <span class="act-due ${dueCls}">
-          <c:choose>
-            <c:when test="${activity.dueDate != null}">
-              <fmt:formatDate value="${activity.dueDate}" pattern="MMM dd"/>
-            </c:when>
-            <c:otherwise>—</c:otherwise>
-          </c:choose>
-        </span>
-
-        <%-- Hidden submit button --%>
-        <button type="submit" name="btnViewActivity" value="${activity.activityId}"
-                class="d-none" id="act${activity.activityId}"></button>
-      </div>
-
+<%-- ══════════════════════════════════════════════════════════════════════ --%>
+<%-- DATA SERIALIZATION                                                    --%>
+<%-- ══════════════════════════════════════════════════════════════════════ --%>
+<script>
+  const ALL_ACTIVITIES = [
+    <c:forEach var="row" items="${requestScope.activityRows}" varStatus="s">
+    {
+      id: ${row.activityId},
+      dtype: '${row.dtype}',
+      fullName: '${fn:replace(fn:replace(row.fullName, "\\", "\\\\"), "'", "\\'")}',
+      assignedToId: <c:choose><c:when test="${row.assignedToId != null}">${row.assignedToId}</c:when><c:otherwise>null</c:otherwise></c:choose>,
+      dueDate: <c:choose><c:when test="${row.dueDate != null}">'<fmt:formatDate value="${row.dueDate}" pattern="yyyy-MM-dd"/>'</c:when><c:otherwise>null</c:otherwise></c:choose>,
+      waitingOnUs: ${row.waitingOnUs},
+      daysSince: ${row.daysSinceContact},
+      delegatedToMe: ${row.delegatedToMe},
+      dueBucket: ${row.dueBucket},
+      ticketEmployer: <c:choose><c:when test="${not empty row.ticketEmployerNameLc}">'${fn:replace(row.ticketEmployerNameLc, "'", "\\'")}'</c:when><c:otherwise>null</c:otherwise></c:choose>,
+      oppStage: <c:choose><c:when test="${not empty row.opportunityStage}">'${row.opportunityStage}'</c:when><c:otherwise>null</c:otherwise></c:choose>
+    }<c:if test="${!s.last}">,</c:if>
     </c:forEach>
+  ];
+  const ME_PERSON_ID = ${requestScope.mePersonId};
+  const DAYS_WARN = ${requestScope.daysSinceWarning};
+  const CAN_SEE_OPPS = ${requestScope.canSeeOpportunities};
+</script>
 
-    <c:if test="${empty requestScope.activityRows}">
-      <div class="text-center text-muted fst-italic py-4" style="font-size:0.88rem;">
-        No matching activities
-      </div>
-    </c:if>
-  </form>
+<%-- ══════════════════════════════════════════════════════════════════════ --%>
+<%-- SCROLL CONTAINER (JS will render into this)                           --%>
+<%-- ══════════════════════════════════════════════════════════════════════ --%>
+<div class="overflow-auto flex-grow-1" style="min-height: 0;" id="actListContainer">
 </div>
+
+<%-- ══════════════════════════════════════════════════════════════════════ --%>
+<%-- CLIENT-SIDE FILTER + RENDER                                           --%>
+<%-- ══════════════════════════════════════════════════════════════════════ --%>
+<script>
+  const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+  function formatDueDate(isoStr) {
+    if (!isoStr) return '\u2014';
+    const parts = isoStr.split('-');
+    const m = parseInt(parts[1], 10) - 1;
+    const d = parts[2];
+    return MONTHS[m] + ' ' + d;
+  }
+
+  function escHtml(s) {
+    if (!s) return '';
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function readFilterState() {
+    // Type chips
+    const vRenewal = !!document.querySelector('.af-chip[data-type="renewal"].on');
+    const vSetup   = !!document.querySelector('.af-chip[data-type="setup"].on');
+    const vTicket  = !!document.querySelector('.af-chip[data-type="ticket"].on');
+    const oppChip  = document.querySelector('.af-chip[data-type="opportunity"]');
+    const vOpp     = oppChip ? oppChip.classList.contains('on') : false;
+
+    // Ownership
+    const ownerEl = document.querySelector('.af-col:nth-child(2) .af-radio.selected');
+    const ownership = ownerEl ? parseInt(ownerEl.dataset.val) : 0;
+
+    // Attention
+    const attnEl = document.querySelector('.af-col:nth-child(3) .af-radio.selected');
+    const attention = attnEl ? parseInt(attnEl.dataset.attn) : 0;
+
+    // Sort
+    const sortEl = document.querySelector('.af-sort-btn.active');
+    const sortAlpha = sortEl ? sortEl.dataset.sort === '1' : false;
+
+    return { vRenewal, vSetup, vTicket, vOpp, ownership, attention, sortAlpha };
+  }
+
+  function filterAndRender() {
+    const f = readFilterState();
+    const daysW = CONTACT_TRACKING_DISABLED ? 99999 : DAYS_WARN;
+
+    // Filter
+    let filtered = ALL_ACTIVITIES.filter(row => {
+      // Type filter
+      const typeOk =
+        (row.dtype === 'Renewal' && f.vRenewal) ||
+        (row.dtype === 'Setup' && f.vSetup) ||
+        (row.dtype === 'Ticket' && f.vTicket) ||
+        (row.dtype === 'Opportunity' && f.vOpp && CAN_SEE_OPPS);
+      if (!typeOk) return false;
+
+      // Ownership filter
+      if (f.ownership === 1) {
+        if (!(row.assignedToId === ME_PERSON_ID || row.delegatedToMe)) return false;
+      } else if (f.ownership === 2) {
+        if (row.assignedToId !== ME_PERSON_ID) return false;
+      } else if (f.ownership === 3) {
+        if (!(row.delegatedToMe && row.assignedToId !== ME_PERSON_ID)) return false;
+      }
+
+      // Attention filter
+      const needsContact = daysW < 99 && row.daysSince > daysW;
+      if (f.attention === 1) {
+        if (!(row.waitingOnUs || needsContact)) return false;
+      } else if (f.attention === 2) {
+        if (!row.waitingOnUs) return false;
+      } else if (f.attention === 3) {
+        if (!needsContact) return false;
+      }
+
+      return true;
+    });
+
+    // Sort
+    if (f.sortAlpha) {
+      filtered.sort((a, b) => {
+        const cmp = a.fullName.localeCompare(b.fullName, undefined, {sensitivity: 'base'});
+        return cmp !== 0 ? cmp : b.id - a.id;
+      });
+    } else {
+      filtered.sort((a, b) => {
+        // Nulls last
+        if (!a.dueDate && !b.dueDate) {
+          const cmp = a.fullName.localeCompare(b.fullName, undefined, {sensitivity: 'base'});
+          return cmp !== 0 ? cmp : b.id - a.id;
+        }
+        if (!a.dueDate) return 1;
+        if (!b.dueDate) return -1;
+        const cmp = a.dueDate.localeCompare(b.dueDate);
+        if (cmp !== 0) return cmp;
+        const nameCmp = a.fullName.localeCompare(b.fullName, undefined, {sensitivity: 'base'});
+        return nameCmp !== 0 ? nameCmp : b.id - a.id;
+      });
+    }
+
+    // Render
+    const container = document.getElementById('actListContainer');
+    if (filtered.length === 0) {
+      container.innerHTML = '<div class="text-center text-muted fst-italic py-4" style="font-size:0.88rem;">No matching activities</div>';
+    } else {
+      let html = '';
+      for (const row of filtered) {
+        html += renderRow(row, daysW);
+      }
+      container.innerHTML = html;
+    }
+
+    // Update counts
+    updateRowCount(filtered.length);
+    if (typeof buildSummary === 'function') buildSummary();
+  }
+
+  function renderRow(row, daysW) {
+    // Owner icon
+    let ownerIcon, ownerColor;
+    if (row.assignedToId !== null && row.assignedToId === ME_PERSON_ID) {
+      ownerIcon = 'person-fill'; ownerColor = 'color:#0d5681;';
+    } else if (row.delegatedToMe) {
+      ownerIcon = 'check-lg'; ownerColor = 'color:#6c757d;';
+    } else {
+      ownerIcon = 'collection'; ownerColor = 'color:#adb5bd;';
+    }
+
+    // Type badge
+    let typeIcon, typeCls;
+    switch (row.dtype) {
+      case 'Renewal':     typeIcon = 'repeat';         typeCls = 'act-type-R'; break;
+      case 'Setup':       typeIcon = 'buildings';      typeCls = 'act-type-S'; break;
+      case 'Opportunity': typeIcon = 'graph-up-arrow'; typeCls = 'act-type-O'; break;
+      default:            typeIcon = 'ticket-detailed'; typeCls = 'act-type-T'; break;
+    }
+
+    // Needs contact
+    const needsContact = daysW < 99 && row.daysSince > daysW;
+
+    // Attention icon + name weight
+    let attentionHtml = '', nameWeight;
+    if (row.waitingOnUs && needsContact) {
+      attentionHtml = '<i class="bi bi-exclamation-triangle act-urg-danger"></i>';
+      nameWeight = 'fw-bold';
+    } else if (row.waitingOnUs) {
+      attentionHtml = '<i class="bi bi-hourglass-split act-urg-onus"></i>';
+      nameWeight = '';
+    } else if (needsContact) {
+      attentionHtml = '<i class="bi bi-telephone act-urg-warning"></i>';
+      nameWeight = '';
+    } else {
+      nameWeight = 'text-muted';
+    }
+
+    // Due bucket
+    let borderCls, dueCls;
+    if (row.dueBucket >= 3) {
+      borderCls = 'border-danger-left'; dueCls = 'act-due-over';
+    } else if (row.dueBucket === 2) {
+      borderCls = 'border-warning-left'; dueCls = 'act-due-warn';
+    } else if (row.dueBucket === 1) {
+      borderCls = 'border-normal'; dueCls = 'act-due-soon';
+    } else {
+      borderCls = 'border-normal'; dueCls = 'act-due-ok';
+    }
+
+    // Ticket employer extra
+    const extra = (row.dtype === 'Ticket' && row.ticketEmployer)
+      ? ' <span class="act-extra">(' + escHtml(row.ticketEmployer) + ')</span>'
+      : '';
+
+    // Opportunity stage badge
+    let stageHtml = '';
+    if (row.dtype === 'Opportunity' && row.oppStage) {
+      stageHtml = '<span class="act-stage act-stage-' + escHtml(row.oppStage) + '">'
+        + escHtml(row.oppStage.replace(/_/g, ' '))
+        + '</span>';
+    }
+
+    // Due date formatted
+    const dueDateText = formatDueDate(row.dueDate);
+
+    // Full name lowercase + capitalize via CSS
+    const nameText = escHtml(row.fullName.toLowerCase());
+
+    return '<div class="act-card ' + borderCls + '" onclick="goActivity(' + row.id + ')">'
+      + '<span class="act-owner-icon" style="' + ownerColor + '"><i class="bi bi-' + ownerIcon + '"></i></span>'
+      + '<span class="act-type-badge ' + typeCls + '"><i class="bi bi-' + typeIcon + '"></i></span>'
+      + '<span class="act-urgency">' + attentionHtml + '</span>'
+      + '<div class="act-name"><span class="act-name-text ' + nameWeight + '" style="text-transform: capitalize;">'
+      + nameText + extra
+      + '</span></div>'
+      + stageHtml
+      + '<span class="act-due ' + dueCls + '">' + dueDateText + '</span>'
+      + '</div>';
+  }
+
+  function goActivity(activityId) {
+    // Use a form POST to match existing GoActivityDetail25 behavior
+    const form = document.createElement('form');
+    form.method = 'post';
+    form.action = 'GoActivityDetail25';
+    form.style.display = 'none';
+
+    const sender = document.createElement('input');
+    sender.type = 'hidden';
+    sender.name = 'formSender';
+    sender.value = 'viewActivity';
+    form.appendChild(sender);
+
+    const btn = document.createElement('input');
+    btn.type = 'hidden';
+    btn.name = 'btnViewActivity';
+    btn.value = activityId;
+    form.appendChild(btn);
+
+    document.body.appendChild(form);
+    form.submit();
+  }
+
+  // Initial render on page load using current filter state from UI controls
+  filterAndRender();
+</script>

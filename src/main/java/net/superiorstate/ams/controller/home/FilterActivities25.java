@@ -26,6 +26,11 @@ public class FilterActivities25 extends HttpServlet {
     }
 
     private void goToPage(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        // AJAX sync from client-side filtering — just save, don't redirect
+        if ("XMLHttpRequest".equals(request.getHeader("X-Requested-With"))) {
+            response.setStatus(HttpServletResponse.SC_NO_CONTENT);
+            return;
+        }
         RequestDispatcher dispatcher = getServletContext().getNamedDispatcher("ViewHome25");
         dispatcher.forward(request, response);
     }

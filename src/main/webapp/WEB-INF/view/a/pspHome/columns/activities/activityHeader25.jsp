@@ -242,7 +242,7 @@
     <%-- Preset buttons --%>
     <div class="af-presets">
       <c:forEach var="preset" items="${presets}">
-        <a href="FilterActivities25?preset=${preset.getSlotNumber()}"
+        <a href="#" onclick="applyPreset(${preset.getSlotNumber()}); return false;"
            class="af-preset-btn"
            data-slot="${preset.getSlotNumber()}">
           <c:choose>
@@ -420,6 +420,38 @@
 <%-- ══════════════════════════════════════════════════════════════════════ --%>
 <%-- JAVASCRIPT                                                            --%>
 <%-- ══════════════════════════════════════════════════════════════════════ --%>
+<%-- ══════════════════════════════════════════════════════════════════════ --%>
+<%-- PRESET + FILTER STATE SERIALIZATION                                  --%>
+<%-- ══════════════════════════════════════════════════════════════════════ --%>
+<script>
+  const filterPresets = [
+    <c:forEach var="preset" items="${presets}" varStatus="s">
+    {
+      slot: ${preset.getSlotNumber()},
+      viewRenewal: ${preset.isViewRenewal()},
+      viewSetup: ${preset.isViewSetup()},
+      viewTicket: ${preset.isViewTicket()},
+      viewOpportunity: ${preset.isViewOpportunity()},
+      ownershipFilter: ${preset.getOwnershipFilter()},
+      attentionFilter: ${preset.getAttentionFilter()},
+      sortAlphabetically: ${preset.isSortAlphabetically()}
+    }<c:if test="${!s.last}">,</c:if>
+    </c:forEach>
+  ];
+
+  const INITIAL_FILTER = {
+    viewRenewal: ${af.isViewRenewal()},
+    viewSetup: ${af.isViewSetup()},
+    viewTicket: ${af.isViewTicket()},
+    viewOpportunity: ${af.isViewOpportunity()},
+    ownershipFilter: ${af.getOwnershipFilter()},
+    attentionFilter: ${af.getAttentionFilter()},
+    sortAlphabetically: ${af.isSortAlphabetically()}
+  };
+
+  const CONTACT_TRACKING_DISABLED = ${applicationScope.global.isContactTrackingDisabled()};
+</script>
+
 <script>
   // ─── Collapse / Expand with localStorage ───
   const afSurface = document.getElementById('afSurface');
@@ -451,7 +483,7 @@
   var savedAf = localStorage.getItem('ssa-af-open');
   if (savedAf === '1') afSetPanel(true);
 
-  // ─── Type chip toggle → auto-submit ───
+  // ─── Type chip toggle → client-side filter ───
   function afToggleType(el) {
     const cb = el.querySelector('input[type=checkbox]');
     cb.checked = !cb.checked;
@@ -460,7 +492,7 @@
     afSubmit();
   }
 
-  // ─── Owner radio → auto-submit ───
+  // ─── Owner radio → client-side filter ───
   function afSelectOwner(el) {
     el.closest('.af-col').querySelectorAll('.af-radio').forEach(r => r.classList.remove('selected'));
     el.classList.add('selected');
@@ -468,7 +500,7 @@
     afSubmit();
   }
 
-  // ─── Attention radio → auto-submit ───
+  // ─── Attention radio → client-side filter ───
   function afSelectAttn(el) {
     el.closest('.af-col').querySelectorAll('.af-radio').forEach(r => r.classList.remove('selected'));
     el.classList.add('selected');
@@ -476,7 +508,7 @@
     afSubmit();
   }
 
-  // ─── Sort toggle → auto-submit ───
+  // ─── Sort toggle → client-side filter ───
   function afSelectSort(el) {
     el.closest('.af-sort-col').querySelectorAll('.af-sort-btn').forEach(s => s.classList.remove('active'));
     el.classList.add('active');
@@ -484,13 +516,80 @@
     afSubmit();
   }
 
-  // ─── Form submit ───
+  // ─── Client-side submit (replaces form POST) ───
   function afSubmit() {
-    document.getElementById('afForm').submit();
+    filterAndRender();       // Client-side — defined in activityList25.jsp
+    syncFilterToServer();    // Background save — debounced, no page reload
+  }
+
+  // ─── Background sync to keep session filter state in sync ───
+  let syncTimer = null;
+  function syncFilterToServer() {
+    clearTimeout(syncTimer);
+    syncTimer = setTimeout(() => {
+      const form = document.getElementById('afForm');
+      const data = new URLSearchParams(new FormData(form));
+      fetch('FilterActivities25', { method: 'POST', body: data, headers: {'X-Requested-With': 'XMLHttpRequest'} })
+        .catch(() => {}); // Fire and forget
+    }, 1000);
+  }
+
+  // ─── Row count update ───
+  function updateRowCount(count) {
+    document.querySelector('.af-hdr-count').textContent = count + ' showing';
+  }
+
+  // ─── Apply preset ───
+  function applyPreset(slot) {
+    const p = filterPresets.find(x => x.slot === slot);
+    if (!p) return;
+
+    // Update type chips
+    document.querySelectorAll('.af-chip[data-type="renewal"]').forEach(el => {
+      el.classList.toggle('on', p.viewRenewal);
+      el.classList.toggle('off', !p.viewRenewal);
+      el.querySelector('input').checked = p.viewRenewal;
+    });
+    document.querySelectorAll('.af-chip[data-type="setup"]').forEach(el => {
+      el.classList.toggle('on', p.viewSetup);
+      el.classList.toggle('off', !p.viewSetup);
+      el.querySelector('input').checked = p.viewSetup;
+    });
+    document.querySelectorAll('.af-chip[data-type="ticket"]').forEach(el => {
+      el.classList.toggle('on', p.viewTicket);
+      el.classList.toggle('off', !p.viewTicket);
+      el.querySelector('input').checked = p.viewTicket;
+    });
+    document.querySelectorAll('.af-chip[data-type="opportunity"]').forEach(el => {
+      el.classList.toggle('on', p.viewOpportunity);
+      el.classList.toggle('off', !p.viewOpportunity);
+      el.querySelector('input').checked = p.viewOpportunity;
+    });
+
+    // Update ownership radio
+    document.querySelectorAll('.af-col:nth-child(2) .af-radio').forEach(r => {
+      r.classList.toggle('selected', parseInt(r.dataset.val) === p.ownershipFilter);
+    });
+    document.getElementById('afWho').value = p.ownershipFilter;
+
+    // Update attention radio
+    document.querySelectorAll('.af-col:nth-child(3) .af-radio').forEach(r => {
+      r.classList.toggle('selected', parseInt(r.dataset.attn) === p.attentionFilter);
+    });
+    document.getElementById('afAttn').value = p.attentionFilter;
+
+    // Update sort
+    document.querySelectorAll('.af-sort-btn').forEach(s => {
+      s.classList.toggle('active', parseInt(s.dataset.sort) === (p.sortAlphabetically ? 1 : 0));
+    });
+    document.getElementById('afAlpha').value = p.sortAlphabetically ? '1' : '0';
+
+    filterAndRender();
+    syncFilterToServer();
   }
 
   // ─── Summary text ───
-  (function buildSummary() {
+  function buildSummary() {
     const types = [];
     document.querySelectorAll('.af-chip.on').forEach(c => types.push(c.dataset.type));
     const typeText = types.length >= 4 ? 'All types' : types.length === 0 ? 'No types' :
@@ -507,5 +606,9 @@
 
     const el = document.getElementById('afSummaryText');
     if (el) el.textContent = ownerText + ' \u00b7 ' + typeText + ' \u00b7 ' + attnText + ' \u00b7 ' + sortText;
-  })();
+
+    const countEl = document.querySelector('.af-summary .af-count');
+    if (countEl) countEl.textContent = document.querySelector('.af-hdr-count').textContent.replace(' showing', '');
+  }
+  buildSummary();
 </script>

@@ -11,7 +11,6 @@ import jakarta.servlet.http.HttpServletResponse;
 import net.superiorstate.ams.data.dao.ActivityLandingDao;
 import net.superiorstate.ams.data.AmsDataGlobal;
 import net.superiorstate.ams.data.AmsDataLocal;
-import net.superiorstate.ams.data.dao.ActivityListDAO;
 import net.superiorstate.ams.data.dao.TimeTrackingDAO;
 import net.superiorstate.ams.model.ActivityLandingFilter;
 import net.superiorstate.ams.model.ActivityLandingRow;
@@ -177,11 +176,8 @@ public class ViewHome25 extends HttpServlet {
 
 
     /**
-     * SQL-first landing dataset with ownership-aware filtering.
-     * For "My World" (1) and "Helping On" (3), the SQL returns candidate
-     * delegated rows, then a Java post-filter applies the blocking check
-     * (task sort order, allow_early, allow_future) to ensure only
-     * actionable delegated items appear.
+     * SQL-first landing dataset — loads ALL open activities for client-side filtering.
+     * JS handles ownership, type, attention, and sort filtering in the browser.
      */
     private void loadLandingRows(HttpServletRequest request) {
         AmsDataLocal local = (AmsDataLocal) request.getSession().getAttribute("local");
@@ -193,29 +189,16 @@ public class ViewHome25 extends HttpServlet {
 
         int daysWarn = (global != null) ? global.getDaysSinceWarning() : 7;
 
-        // When contact tracking is disabled (99), reset contact-dependent filters
-        if (global != null && global.isContactTrackingDisabled()) {
-            int attn = local.getActivityFilter().getAttentionFilter();
-            if (attn == 1 || attn == 3) {
-                local.getActivityFilter().setAttentionFilter(attn == 1 ? 2 : 0);
-            }
-        }
-
+        // Load ALL open activities — JS will filter client-side
         ActivityLandingFilter f = new ActivityLandingFilter();
-
-        f.ownershipFilter = local.getActivityFilter().getOwnershipFilter();
-
-        f.includeRenewal = local.getActivityFilter().isViewRenewal();
-        f.includeSetup   = local.getActivityFilter().isViewSetup();
-        f.includeTicket  = local.getActivityFilter().isViewTicket();
-        boolean isPspSales = Boolean.TRUE.equals(request.getSession().getAttribute("isPspSales"));
-        boolean isPspAdmin = Boolean.TRUE.equals(request.getSession().getAttribute("isPspAdmin"));
-        f.includeOpportunity = (isPspSales || isPspAdmin) && local.getActivityFilter().isViewOpportunity();
-        f.viewNeedsContact = local.getActivityFilter().isViewNeedsContact();
-        f.viewWaitingOnUs  = local.getActivityFilter().isViewWaitingOnUs();
-
-        f.sortAlphabetically = local.getActivityFilter().isSortAlphabetically();
-
+        f.ownershipFilter = 0;          // All open — JS will filter
+        f.includeRenewal = true;
+        f.includeSetup = true;
+        f.includeTicket = true;
+        f.includeOpportunity = true;    // Always load, JS will hide if user lacks role
+        f.viewNeedsContact = false;
+        f.viewWaitingOnUs = false;
+        f.sortAlphabetically = false;
         f.pageSize = 500;
         f.offset = 0;
 
@@ -226,28 +209,16 @@ public class ViewHome25 extends HttpServlet {
 
         List<ActivityLandingRow> rows = dao.fetchLandingRows(me, daysWarn, f);
 
-        // Post-filter: for ownership 1 or 3, remove delegated rows that are blocked
-        if (f.ownershipFilter == 1 || f.ownershipFilter == 3) {
-            EntityManager em = emf.createEntityManager();
-            try {
-                rows = rows.stream().filter(row -> {
-                    // Rows I own are always kept (only applies to filter 1)
-                    if (row.getAssignedToId() != null && row.getAssignedToId() == me) {
-                        return true;
-                    }
-                    // Delegated row: check if my task is actionable (not blocked)
-                    if (row.isDelegatedToMe()) {
-                        return ActivityListDAO.isActionableForPerson(em, row.getActivityId(), me);
-                    }
-                    // Managed opportunity — keep
-                    return true;
-                }).toList();
-            } finally {
-                em.close();
-            }
-        }
-
         request.setAttribute("activityRows", rows);
+
+        // Expose data for client-side filtering JS
+        request.setAttribute("mePersonId", me);
+        request.setAttribute("daysSinceWarning", daysWarn);
+
+        boolean isPspSales = Boolean.TRUE.equals(request.getSession().getAttribute("isPspSales"));
+        boolean isPspAdmin = Boolean.TRUE.equals(request.getSession().getAttribute("isPspAdmin"));
+        boolean isAgent = Boolean.TRUE.equals(request.getSession().getAttribute("isAgent"));
+        request.setAttribute("canSeeOpportunities", isPspSales || isPspAdmin || isAgent);
     }
 
 
