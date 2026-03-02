@@ -94,85 +94,153 @@
 
                     <%-- ToDo rows --%>
                     <div id="bpoToDoList">
-                        <c:choose>
-                            <c:when test="${not empty bpoToDos}">
-                                <c:forEach var="row" items="${bpoToDos}">
-                                    <c:set var="todo" value="${row[0]}"/>
-                                    <c:set var="activityName" value="${row[1]}"/>
-                                    <c:set var="dueDate" value="${row[2]}"/>
-                                    <c:set var="pspName" value="${row[3]}"/>
-                                    <%-- Due date styling --%>
-                                    <c:choose>
-                                        <c:when test="${dueDate < Date.valueOf(LocalDate.now())}">
-                                            <c:set var="dueClass" value="due-overdue"/>
-                                        </c:when>
-                                        <c:when test="${dueDate == Date.valueOf(LocalDate.now())}">
-                                            <c:set var="dueClass" value="due-today"/>
-                                        </c:when>
-                                        <c:otherwise>
-                                            <c:set var="dueClass" value="due-future"/>
-                                        </c:otherwise>
-                                    </c:choose>
+                      <c:choose>
 
-                                    <div class="bpo-todo-row row g-0 px-3 align-items-center"
-                                         data-sort0="${todo.getTask().getPlainDescription()}"
-                                         data-sort1="${pspName}"
-                                         data-sort2="${dueDate}"
-                                         data-todo-id="${todo.getId()}"
-                                         data-task-name="${todo.getTask().getPlainDescription()}"
-                                         data-psp-name="${pspName}"
-                                         data-activity-name="${todo.getCheckList().getRenewal() != null ? todo.getCheckList().getRenewal().getFullName().concat(' Renewal') : todo.getCheckList().getSetup() != null ? todo.getCheckList().getSetup().getFullName().concat(' Setup') : todo.getCheckList().getTicket() != null ? todo.getCheckList().getTicket().getFullName().concat(' Ticket') : activityName}"
-                                         data-due-date="<fmt:formatDate value='${dueDate}' pattern='MM/dd/yyyy'/>"
-                                         data-goto="${todo.getTask().hasGoTo() && todo.getTask().getGoToLink() != null ? todo.getTask().getGoToLink().getLinkPath() : ''}"
-                                         data-info="${todo.getTask().hasInfo() && todo.getTask().getInfoLink() != null ? todo.getTask().getInfoLink().getLinkPath() : ''}"
-                                         data-assigned-to="${todo.getBpoAssignedTo() != null ? todo.getBpoAssignedTo().getId() : '0'}"
-                                         onclick="openBpoModal(this)"
-                                         style="cursor:pointer;">
-                                        <div class="col-5">
-                                            <div style="font-size:0.85rem; font-weight:500;">
-                                                    ${todo.getTask().getPlainDescription()}
+                        <%-- ═══ CROSS-SYSTEM MODE: DelegatedToDo ═══ --%>
+                        <c:when test="${crossSystemMode}">
+                            <c:choose>
+                                <c:when test="${not empty delegatedToDos}">
+                                    <c:forEach var="dt" items="${delegatedToDos}">
+                                        <c:choose>
+                                            <c:when test="${dt.getDueDate() != null && dt.getDueDate() < Date.valueOf(LocalDate.now())}">
+                                                <c:set var="dueClass" value="due-overdue"/>
+                                            </c:when>
+                                            <c:when test="${dt.getDueDate() != null && dt.getDueDate() == Date.valueOf(LocalDate.now())}">
+                                                <c:set var="dueClass" value="due-today"/>
+                                            </c:when>
+                                            <c:otherwise>
+                                                <c:set var="dueClass" value="due-future"/>
+                                            </c:otherwise>
+                                        </c:choose>
+                                        <div class="bpo-todo-row row g-0 px-3 align-items-center"
+                                             data-sort0="${dt.getTaskName()}"
+                                             data-sort1="${dt.getPspClient().getPspName()}"
+                                             data-sort2="${dt.getDueDate()}"
+                                             data-todo-id="${dt.getId()}"
+                                             data-todo-guid="${dt.getTodoGuid()}"
+                                             data-cross-system="true"
+                                             data-task-name="${dt.getTaskName()}"
+                                             data-psp-name="${dt.getPspClient().getPspName()}"
+                                             data-activity-name="${dt.getActivityName()}"
+                                             data-due-date="<fmt:formatDate value='${dt.getDueDate()}' pattern='MM/dd/yyyy'/>"
+                                             data-goto="${dt.getGotoLink() != null ? dt.getGotoLink() : ''}"
+                                             data-info="${dt.getInfoLink() != null ? dt.getInfoLink() : ''}"
+                                             data-assigned-to="${dt.getAssignedTo() != null ? dt.getAssignedTo().getId() : '0'}"
+                                             onclick="openBpoModal(this)"
+                                             style="cursor:pointer;">
+                                            <div class="col-5">
+                                                <div style="font-size:0.85rem; font-weight:500;">${dt.getTaskName()}</div>
+                                                <span style="font-size:0.7rem; color:#6c757d;">${dt.getActivityName()}</span>
                                             </div>
-                                            <c:choose>
-                                                <c:when test="${todo.getCheckList().getRenewal() != null}">
-                                                    <span style="font-size:0.7rem; color:#6c757d;">${todo.getCheckList().getRenewal().getFullName()} Renewal</span>
-                                                </c:when>
-                                                <c:when test="${todo.getCheckList().getSetup() != null}">
-                                                    <span style="font-size:0.7rem; color:#6c757d;">${todo.getCheckList().getSetup().getFullName()} Setup</span>
-                                                </c:when>
-                                                <c:when test="${todo.getCheckList().getTicket() != null}">
-                                                    <span style="font-size:0.7rem; color:#6c757d;">${todo.getCheckList().getTicket().getFullName()} Ticket</span>
-                                                </c:when>
-                                                <c:otherwise>
-                                                    <span style="font-size:0.7rem; color:#6c757d;">${activityName}</span>
-                                                </c:otherwise>
-                                            </c:choose>
+                                            <div class="col-3">
+                                                <span class="bpo-badge-psp">${dt.getPspClient().getPspName()}</span>
+                                            </div>
+                                            <div class="col-2 ${dueClass}" style="font-size:0.85rem;">
+                                                <fmt:formatDate value="${dt.getDueDate()}" pattern="MM/dd/yyyy"/>
+                                            </div>
+                                            <div class="col-2 text-end">
+                                                <c:choose>
+                                                    <c:when test="${dt.getAssignedTo() == null}">
+                                                        <span class="bpo-badge-status bpo-badge-unassigned">Unassigned</span>
+                                                    </c:when>
+                                                    <c:otherwise>
+                                                        <span class="bpo-badge-status bpo-badge-assigned">Assigned</span>
+                                                    </c:otherwise>
+                                                </c:choose>
+                                            </div>
                                         </div>
-                                        <div class="col-3">
-                                            <span class="bpo-badge-psp">${pspName}</span>
-                                        </div>
-                                        <div class="col-2 ${dueClass}" style="font-size:0.85rem;">
-                                            <fmt:formatDate value="${dueDate}" pattern="MM/dd/yyyy"/>
-                                        </div>
-                                        <div class="col-2 text-end">
-                                            <c:choose>
-                                                <c:when test="${todo.getBpoAssignedTo() == null}">
-                                                    <span class="bpo-badge-status bpo-badge-unassigned">Unassigned</span>
-                                                </c:when>
-                                                <c:otherwise>
-                                                    <span class="bpo-badge-status bpo-badge-assigned">Assigned</span>
-                                                </c:otherwise>
-                                            </c:choose>
-                                        </div>
+                                    </c:forEach>
+                                </c:when>
+                                <c:otherwise>
+                                    <div class="text-center text-muted fst-italic py-4" style="font-size:0.85rem;">
+                                        <i class="bi bi-inbox" style="font-size:1.5rem; display:block; margin-bottom:0.3rem; color:#c8c8c8;"></i>
+                                        No delegated tasks
                                     </div>
-                                </c:forEach>
-                            </c:when>
-                            <c:otherwise>
-                                <div class="text-center text-muted fst-italic py-4" style="font-size:0.85rem;">
-                                    <i class="bi bi-inbox" style="font-size:1.5rem; display:block; margin-bottom:0.3rem; color:#c8c8c8;"></i>
-                                    No delegated tasks
-                                </div>
-                            </c:otherwise>
-                        </c:choose>
+                                </c:otherwise>
+                            </c:choose>
+                        </c:when>
+
+                        <%-- ═══ CO-LOCATED MODE: local ToDo ═══ --%>
+                        <c:otherwise>
+                            <c:choose>
+                                <c:when test="${not empty bpoToDos}">
+                                    <c:forEach var="row" items="${bpoToDos}">
+                                        <c:set var="todo" value="${row[0]}"/>
+                                        <c:set var="activityName" value="${row[1]}"/>
+                                        <c:set var="dueDate" value="${row[2]}"/>
+                                        <c:set var="pspName" value="${row[3]}"/>
+                                        <c:choose>
+                                            <c:when test="${dueDate < Date.valueOf(LocalDate.now())}">
+                                                <c:set var="dueClass" value="due-overdue"/>
+                                            </c:when>
+                                            <c:when test="${dueDate == Date.valueOf(LocalDate.now())}">
+                                                <c:set var="dueClass" value="due-today"/>
+                                            </c:when>
+                                            <c:otherwise>
+                                                <c:set var="dueClass" value="due-future"/>
+                                            </c:otherwise>
+                                        </c:choose>
+                                        <div class="bpo-todo-row row g-0 px-3 align-items-center"
+                                             data-sort0="${todo.getTask().getPlainDescription()}"
+                                             data-sort1="${pspName}"
+                                             data-sort2="${dueDate}"
+                                             data-todo-id="${todo.getId()}"
+                                             data-cross-system="false"
+                                             data-task-name="${todo.getTask().getPlainDescription()}"
+                                             data-psp-name="${pspName}"
+                                             data-activity-name="${todo.getCheckList().getRenewal() != null ? todo.getCheckList().getRenewal().getFullName().concat(' Renewal') : todo.getCheckList().getSetup() != null ? todo.getCheckList().getSetup().getFullName().concat(' Setup') : todo.getCheckList().getTicket() != null ? todo.getCheckList().getTicket().getFullName().concat(' Ticket') : activityName}"
+                                             data-due-date="<fmt:formatDate value='${dueDate}' pattern='MM/dd/yyyy'/>"
+                                             data-goto="${todo.getTask().hasGoTo() && todo.getTask().getGoToLink() != null ? todo.getTask().getGoToLink().getLinkPath() : ''}"
+                                             data-info="${todo.getTask().hasInfo() && todo.getTask().getInfoLink() != null ? todo.getTask().getInfoLink().getLinkPath() : ''}"
+                                             data-assigned-to="${todo.getBpoAssignedTo() != null ? todo.getBpoAssignedTo().getId() : '0'}"
+                                             onclick="openBpoModal(this)"
+                                             style="cursor:pointer;">
+                                            <div class="col-5">
+                                                <div style="font-size:0.85rem; font-weight:500;">${todo.getTask().getPlainDescription()}</div>
+                                                <c:choose>
+                                                    <c:when test="${todo.getCheckList().getRenewal() != null}">
+                                                        <span style="font-size:0.7rem; color:#6c757d;">${todo.getCheckList().getRenewal().getFullName()} Renewal</span>
+                                                    </c:when>
+                                                    <c:when test="${todo.getCheckList().getSetup() != null}">
+                                                        <span style="font-size:0.7rem; color:#6c757d;">${todo.getCheckList().getSetup().getFullName()} Setup</span>
+                                                    </c:when>
+                                                    <c:when test="${todo.getCheckList().getTicket() != null}">
+                                                        <span style="font-size:0.7rem; color:#6c757d;">${todo.getCheckList().getTicket().getFullName()} Ticket</span>
+                                                    </c:when>
+                                                    <c:otherwise>
+                                                        <span style="font-size:0.7rem; color:#6c757d;">${activityName}</span>
+                                                    </c:otherwise>
+                                                </c:choose>
+                                            </div>
+                                            <div class="col-3">
+                                                <span class="bpo-badge-psp">${pspName}</span>
+                                            </div>
+                                            <div class="col-2 ${dueClass}" style="font-size:0.85rem;">
+                                                <fmt:formatDate value="${dueDate}" pattern="MM/dd/yyyy"/>
+                                            </div>
+                                            <div class="col-2 text-end">
+                                                <c:choose>
+                                                    <c:when test="${todo.getBpoAssignedTo() == null}">
+                                                        <span class="bpo-badge-status bpo-badge-unassigned">Unassigned</span>
+                                                    </c:when>
+                                                    <c:otherwise>
+                                                        <span class="bpo-badge-status bpo-badge-assigned">Assigned</span>
+                                                    </c:otherwise>
+                                                </c:choose>
+                                            </div>
+                                        </div>
+                                    </c:forEach>
+                                </c:when>
+                                <c:otherwise>
+                                    <div class="text-center text-muted fst-italic py-4" style="font-size:0.85rem;">
+                                        <i class="bi bi-inbox" style="font-size:1.5rem; display:block; margin-bottom:0.3rem; color:#c8c8c8;"></i>
+                                        No delegated tasks
+                                    </div>
+                                </c:otherwise>
+                            </c:choose>
+                        </c:otherwise>
+
+                      </c:choose>
                     </div>
 
                         <%-- ===== COMPLETED TASKS (collapsed) ===== --%>
@@ -282,6 +350,8 @@
                 <form method="post" action="BpoCompleteTask" class="d-inline">
                     <input type="hidden" name="action" value="complete">
                     <input type="hidden" name="todoId" id="modalCompleteToDoId" value="">
+                    <input type="hidden" name="todoGuid" id="modalCompleteTodoGuid" value="">
+                    <input type="hidden" name="crossSystem" id="modalCrossSystem" value="false">
                     <button type="submit" class="ssa-action save">
                         <i class="bi bi-check-circle me-1"></i>Mark Complete
                     </button>
@@ -293,6 +363,9 @@
     </div>
 </div>
 <script>
+    var currentCrossSystem = false;
+    var currentTodoGuid = '';
+
     function openBpoModal(row) {
         const todoId = row.dataset.todoId;
         const taskName = row.dataset.taskName;
@@ -302,6 +375,8 @@
         const gotoUrl = row.dataset.goto;
         const infoUrl = row.dataset.info;
         const assignedTo = row.dataset.assignedTo || '0';
+        currentCrossSystem = row.dataset.crossSystem === 'true';
+        currentTodoGuid = row.dataset.todoGuid || '';
 
         // Populate fields
         document.getElementById('modalTaskName').textContent = taskName;
@@ -309,6 +384,8 @@
         document.getElementById('modalActivityName').textContent = activityName;
         document.getElementById('modalDueDate').textContent = dueDate;
         document.getElementById('modalCompleteToDoId').value = todoId;
+        document.getElementById('modalCompleteTodoGuid').value = currentTodoGuid;
+        document.getElementById('modalCrossSystem').value = currentCrossSystem ? 'true' : 'false';
 
         // Pre-select Assign To dropdown (if present)
         const assignSelect = document.getElementById('modalAssignTo');
@@ -344,7 +421,11 @@
         const notesDiv = document.getElementById('modalNotes');
         notesDiv.innerHTML = '<div class="text-center text-muted fst-italic py-2" style="font-size:0.8rem;">Loading...</div>';
 
-        fetch('BpoGetNotes?todoId=' + todoId)
+        const notesUrl = currentCrossSystem
+            ? 'BpoGetNotes?todoGuid=' + encodeURIComponent(currentTodoGuid)
+            : 'BpoGetNotes?todoId=' + todoId;
+
+        fetch(notesUrl)
             .then(r => r.json())
             .then(notes => {
                 renderNotes(notes);
@@ -364,14 +445,16 @@
 
         assignSelect.disabled = true;
 
+        let body = 'action=assign&todoId=' + todoId + '&assigneeId=' + assigneeId;
+        if (currentCrossSystem) body += '&crossSystem=true';
+
         fetch('BpoCompleteTask', {
             method: 'POST',
             headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-            body: 'action=assign&todoId=' + todoId + '&assigneeId=' + assigneeId
+            body: body
         })
             .then(r => {
                 if (r.ok) {
-                    // Update the row's data attribute and status badge
                     const row = document.querySelector('.bpo-todo-row[data-todo-id="' + todoId + '"]');
                     if (row) {
                         row.dataset.assignedTo = assigneeId;
@@ -402,17 +485,22 @@
         const todoId = document.getElementById('modalCompleteToDoId').value;
         input.disabled = true;
 
+        let body = 'action=addNote&todoId=' + todoId + '&noteText=' + encodeURIComponent(noteText);
+        if (currentCrossSystem) body += '&crossSystem=true&todoGuid=' + encodeURIComponent(currentTodoGuid);
+
         fetch('BpoCompleteTask', {
             method: 'POST',
             headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-            body: 'action=addNote&todoId=' + todoId + '&noteText=' + encodeURIComponent(noteText)
+            body: body
         })
             .then(() => {
                 input.value = '';
                 input.disabled = false;
                 input.focus();
-                // Reload notes
-                return fetch('BpoGetNotes?todoId=' + todoId);
+                const notesUrl = currentCrossSystem
+                    ? 'BpoGetNotes?todoGuid=' + encodeURIComponent(currentTodoGuid)
+                    : 'BpoGetNotes?todoId=' + todoId;
+                return fetch(notesUrl);
             })
             .then(r => r.json())
             .then(notes => {

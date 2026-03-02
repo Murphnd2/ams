@@ -23,7 +23,9 @@ public class BpoGetNotes extends HttpServlet {
         PrintWriter out = response.getWriter();
 
         String todoIdParam = request.getParameter("todoId");
-        if (todoIdParam == null) {
+        String todoGuidParam = request.getParameter("todoGuid");
+
+        if (todoIdParam == null && todoGuidParam == null) {
             out.print("[]");
             return;
         }
@@ -32,11 +34,22 @@ public class BpoGetNotes extends HttpServlet {
         EntityManager em = emf.createEntityManager();
 
         try {
-            long todoId = Long.parseLong(todoIdParam);
-            Query q = em.createQuery(
-                    "SELECT n FROM ToDoNote n WHERE n.toDo.id = :todoId ORDER BY n.createdDate DESC");
-            q.setParameter("todoId", todoId);
-            List<ToDoNote> notes = q.getResultList();
+            List<ToDoNote> notes;
+
+            if (todoGuidParam != null && !todoGuidParam.isBlank()) {
+                // Cross-system mode: query by todoGuid
+                Query q = em.createQuery(
+                        "SELECT n FROM ToDoNote n WHERE n.todoGuid = :guid ORDER BY n.createdDate DESC");
+                q.setParameter("guid", todoGuidParam);
+                notes = q.getResultList();
+            } else {
+                // Co-located mode: query by toDo.id
+                long todoId = Long.parseLong(todoIdParam);
+                Query q = em.createQuery(
+                        "SELECT n FROM ToDoNote n WHERE n.toDo.id = :todoId ORDER BY n.createdDate DESC");
+                q.setParameter("todoId", todoId);
+                notes = q.getResultList();
+            }
 
             SimpleDateFormat sdf = new SimpleDateFormat("MM/dd/yyyy hh:mm a");
             StringBuilder json = new StringBuilder("[");
@@ -45,7 +58,7 @@ public class BpoGetNotes extends HttpServlet {
                 if (i > 0) json.append(",");
                 json.append("{");
                 json.append("\"source\":\"").append(escapeJson(n.getSourceType())).append("\",");
-                json.append("\"author\":\"").append(escapeJson(n.getCreatedBy().getFullName())).append("\",");
+                json.append("\"author\":\"").append(escapeJson(n.getDisplayAuthor())).append("\",");
                 json.append("\"date\":\"").append(sdf.format(n.getCreatedDate())).append("\",");
                 json.append("\"text\":\"").append(escapeJson(n.getNoteText())).append("\"");
                 json.append("}");

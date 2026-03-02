@@ -117,6 +117,8 @@ public class AmsDataGlobal {
     public AmsDataGlobal(){};
 
     public void initializeGlobalData(EntityManager em){
+        String systemType = AppConfig.getSystemType();
+        System.out.println("🔧 System type: " + systemType);
         System.out.println("[DEBUG] initializeGlobalData called");
         try {
             this.emf = em.getEntityManagerFactory();
@@ -131,31 +133,34 @@ public class AmsDataGlobal {
             Collections.sort(allBpo);
             setBpoUsers(allBpo);
             setActiveBpoRegistrations(loadActiveBpoRegistrations(em));
-            setTemplateGroups(SequenceDAO.getTemplateGroups(em));
-            setServiceItems(SequenceDAO.getServiceItems(em));
-            setReasonsCreated(TicketQueryDAO.getReasons(em));
-            setContactMethods(TicketQueryDAO.getContactMethods(em));
-            setTicketCategories(TicketQueryDAO.getTicketCategories(em));
-            setTicketServiceItems(TicketQueryDAO.getActiveTicketServiceItems(em));
-            setTaskFrequencies(ChecklistDAO.getTaskFrequencies(em));
-            setActivityStatuses(TicketQueryDAO.getActivityStatuses(em));
-            setInsertLinks(TicketQueryDAO.getInsertLinkList(em));
-            setEmployers(generateEmployerList(em));
-            setActivitiesAllOpen(retrieveActivitiesAllOpen(em));
-            setActivitiesWithDelegation(retrieveActivitiesWithDependencies(em));
-            setAgencies(SalesDAO.getAgencyList(em, getPsp().getId().intValue()));
-            setProspects(SalesDAO.getProspectsByPsp(em, getPsp().getId().intValue()));
-            setLosList(loadLosList(em));
-            setEnhancementList(loadEnhancementList(em));
-            setRateList(SalesDAO.getRateList(em, getPsp().getId().intValue()));
-            setRateLosMap(SalesDAO.getRateLosMap(em));
-            setRateExtraMap(SalesDAO.getRateExtraMap(em));
-            setAgencyRateMap(SalesDAO.getAgencyRateMap(em));
-            setSetupAgents(buildAgentList(em));
-            setProspectAgencyMap(buildProspectAgencyMap(em));
-            setAgencyManagerMap(SalesDAO.getAgencyManagerMap(em));
             setAssignableRoles(loadAssignableRoles(em));
             setConstants(em);
+
+            if (AppConfig.isPsp()) {
+                setTemplateGroups(SequenceDAO.getTemplateGroups(em));
+                setServiceItems(SequenceDAO.getServiceItems(em));
+                setReasonsCreated(TicketQueryDAO.getReasons(em));
+                setContactMethods(TicketQueryDAO.getContactMethods(em));
+                setTicketCategories(TicketQueryDAO.getTicketCategories(em));
+                setTicketServiceItems(TicketQueryDAO.getActiveTicketServiceItems(em));
+                setTaskFrequencies(ChecklistDAO.getTaskFrequencies(em));
+                setActivityStatuses(TicketQueryDAO.getActivityStatuses(em));
+                setInsertLinks(TicketQueryDAO.getInsertLinkList(em));
+                setEmployers(generateEmployerList(em));
+                setActivitiesAllOpen(retrieveActivitiesAllOpen(em));
+                setActivitiesWithDelegation(retrieveActivitiesWithDependencies(em));
+                setAgencies(SalesDAO.getAgencyList(em, getPsp().getId().intValue()));
+                setProspects(SalesDAO.getProspectsByPsp(em, getPsp().getId().intValue()));
+                setLosList(loadLosList(em));
+                setEnhancementList(loadEnhancementList(em));
+                setRateList(SalesDAO.getRateList(em, getPsp().getId().intValue()));
+                setRateLosMap(SalesDAO.getRateLosMap(em));
+                setRateExtraMap(SalesDAO.getRateExtraMap(em));
+                setAgencyRateMap(SalesDAO.getAgencyRateMap(em));
+                setSetupAgents(buildAgentList(em));
+                setProspectAgencyMap(buildProspectAgencyMap(em));
+                setAgencyManagerMap(SalesDAO.getAgencyManagerMap(em));
+            }
         } catch (Exception e) {
             System.err.println("❌ initializeGlobalData FAILED: " + e.getMessage());
             e.printStackTrace();

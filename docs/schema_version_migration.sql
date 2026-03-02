@@ -49,4 +49,6 @@ INSERT IGNORE INTO schema_version (version, description, script_name) VALUES
 ('V026', 'Benefit table: surrogate auto-increment PK with source tracking', 'V026__benefit_surrogate_pk.sql'),
 ('V027', 'BPO Registration: task source refactor from Person to BpoRegistration', 'V027__bpo_registration_task_source.sql'),
 ('V028', 'Benefit plan year start/end columns for renewal date correction', 'V028__benefit_plan_year_columns.sql'),
-('V029', 'Add is_active column to user table', 'V029__user_is_active.sql');
+('V029', 'Add is_active column to user table', 'V029__user_is_active.sql'),
+('V030', 'BPO cross-system foundation: psp_clients, delegated_todo, API columns, todo_note GUID', 'V030__bpo_cross_system_foundation.sql'),
+('V031', 'ToDoNote cross-system: nullable todo_id/created_by_id, author_name column', 'V031__todo_note_cross_system_nullable.sql');

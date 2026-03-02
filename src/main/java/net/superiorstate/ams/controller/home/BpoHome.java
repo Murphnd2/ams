@@ -6,7 +6,9 @@ import jakarta.persistence.Query;
 import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
+import net.superiorstate.ams.AppConfig;
 import net.superiorstate.ams.data.AmsDataLocal;
+import net.superiorstate.ams.model.activity.checklist.tasks.DelegatedToDo;
 import net.superiorstate.ams.model.activity.checklist.tasks.ToDo;
 import net.superiorstate.ams.model.general.Person;
 
@@ -44,19 +46,32 @@ public class BpoHome extends HttpServlet {
             AmsDataLocal local = (AmsDataLocal) request.getSession().getAttribute("local");
             Person currentUser = local.getCurrentPerson();
 
-            // Determine filter mode: "mine" (default) or "all"
             String viewMode = request.getParameter("viewMode");
             if (viewMode == null) viewMode = "mine";
 
-            // Load delegated ToDos for BPO
-            List<Object[]> bpoToDos;
-            if ("all".equals(viewMode)) {
-                bpoToDos = getAllOpenBpoToDos(em);
+            boolean crossSystemMode = AppConfig.isBpo();
+            request.setAttribute("crossSystemMode", crossSystemMode);
+
+            if (crossSystemMode) {
+                // Cross-system BPO: query DelegatedToDo from remote PSPs
+                List<DelegatedToDo> delegatedToDos;
+                if ("all".equals(viewMode)) {
+                    delegatedToDos = getAllDelegatedToDos(em);
+                } else {
+                    delegatedToDos = getMyDelegatedToDos(em, currentUser.getId());
+                }
+                request.setAttribute("delegatedToDos", delegatedToDos);
             } else {
-                bpoToDos = getMyBpoToDos(em, currentUser.getId());
+                // Co-located BPO: query local ToDo with sourced tasks
+                List<Object[]> bpoToDos;
+                if ("all".equals(viewMode)) {
+                    bpoToDos = getAllOpenBpoToDos(em);
+                } else {
+                    bpoToDos = getMyBpoToDos(em, currentUser.getId());
+                }
+                request.setAttribute("bpoToDos", bpoToDos);
             }
 
-            request.setAttribute("bpoToDos", bpoToDos);
             request.setAttribute("viewMode", viewMode);
 
         } finally {
@@ -64,11 +79,40 @@ public class BpoHome extends HttpServlet {
         }
     }
 
-    /**
-     * Get all open sourced ToDos assigned to a specific BPO user.
-     * Also includes unassigned ToDos (backlog pool).
-     * Returns Object[] rows: [ToDo, checklistName, dueDate, pspName]
-     */
+    // --- Cross-system DelegatedToDo queries ---
+
+    private List<DelegatedToDo> getMyDelegatedToDos(EntityManager em, Long bpoUserId) {
+        String jpql = "SELECT d FROM DelegatedToDo d " +
+                "WHERE d.status = 'ACTIVE' " +
+                "AND d.isCompleted = false " +
+                "AND (d.assignedTo.id = :userId OR d.assignedTo IS NULL) " +
+                "ORDER BY d.dueDate, d.taskName";
+        Query q = em.createQuery(jpql, DelegatedToDo.class);
+        q.setParameter("userId", bpoUserId);
+        try {
+            return q.getResultList();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return new ArrayList<>();
+        }
+    }
+
+    private List<DelegatedToDo> getAllDelegatedToDos(EntityManager em) {
+        String jpql = "SELECT d FROM DelegatedToDo d " +
+                "WHERE d.status = 'ACTIVE' " +
+                "AND d.isCompleted = false " +
+                "ORDER BY d.dueDate, d.taskName";
+        Query q = em.createQuery(jpql, DelegatedToDo.class);
+        try {
+            return q.getResultList();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return new ArrayList<>();
+        }
+    }
+
+    // --- Co-located BPO local ToDo queries ---
+
     private List<Object[]> getMyBpoToDos(EntityManager em, Long bpoUserId) {
         String jpql = "SELECT t, cl.fullName, cl.dueDate, task.psp.fullName " +
                 "FROM ToDo t " +

@@ -743,3 +743,74 @@ Converted the home page activity filter from server-side round-trips to instant 
 - `ServiceManagerAction.java` — Enhancement assignment fix + ServiceModule auto-creation
 
 No database changes.
+
+---
+
+## March 2, 2026 — Upcoming Renewals Page + MonthlyBiller Fix (Session 19)
+
+### Upcoming Renewals Full Page
+Replaced the modal-based renewal employer picker with a standalone page at `/UpcomingRenewals`:
+
+- **UpcomingRenewals25.java** (new) — Servlet with GET (load grouped renewals) and POST (selectEmployer expands card inline, startRenewal delegates to AddRenewal25). Groups `RenewalEmployer` DTOs by month using bulk `MIN(nextRenewalDue)` query. OVERDUE bucket first, then chronological `TreeMap<YearMonth>`.
+- **upcomingRenewals25.jsp** (new) — Full standalone page. Month group headers (red=overdue, blue gradient=future) with employer count badges. Collapsed employer cards with color-coded left border by stage. Expanded state shows benefit checkboxes with urgent items (due within 30 days) pre-checked in red. Auto-scrolls to expanded employer.
+- **navbar25.jsp** — Added "Renewals" link with `bi-calendar-check` icon after Email, visible to PSP Users and PSP Admins.
+
+### MonthlyBiller Null Guard
+- **MonthlyBiller.java** — Added `if (b == null || ee == null) continue;` in `logCoverageStatusForThisMonthCDH()` after the EntityLookup calls, matching the existing pattern in `logCoverageStatusForThisMonthPB()`.
+
+### Files Changed
+- `UpcomingRenewals25.java` (new), `upcomingRenewals25.jsp` (new) — Renewals page
+- `navbar25.jsp` — Renewals nav link
+- `MonthlyBiller.java` — Null guard
+
+No database changes.
+
+---
+
+## March 2, 2026 — BPO Cross-System Architecture (Session 20)
+
+### WS1: Role Detection + Foundation (V030)
+- **AppConfig.java** — Added `isPsp()`, `isBpo()`, `getSystemType()` methods reading `system.type` from `ssa.properties`
+- **EmfListener.java** — Added `DelegatedToDo.class` and `PspClient.class` to managed entity list
+- **AmsDataGlobal.java** — Conditional loading: BPO skips employer/benefit/renewal data; PSP skips BPO client lists
+- **BpoRegistration.java** — Added API token (outbound/inbound), partner_url, date columns, and `isAvailable()` helper
+- **DelegatedToDo.java** (new) — BPO-side entity for tasks delegated from PSP. Fields: todoGuid, pspClient, taskName, dueDate, status, assignedTo, completed flags
+- **PspClient.java** (new) — BPO-side entity tracking PSP partnerships. Fields: pspName, pspUrl, API tokens, status (PENDING/APPROVED/REJECTED/DISCONNECTED)
+- **V030 migration** — Creates psp_clients and delegated_todo tables, adds API columns to bpo_registration, adds todo_guid to todo_note
+- **navbar25.jsp** — System-type-aware links: Vendor Manager (PSP), PSP Clients (BPO)
+
+### WS2: Partnership Flow
+- **ApiTokenFilter.java** (new) — Filter on `/api/*` validating `Authorization: Bearer {token}` against BpoRegistration (PSP) or PspClient (BPO) inbound tokens
+- **PartnershipRequestApi.java** (new) — PSP receives BPO partnership requests (POST /api/v1/partnership/request)
+- **PartnershipApproveApi.java** (new) — PSP approves/rejects partnerships (POST /api/v1/partnership/approve), generates API tokens
+- **VendorManager25.java** (new) — PSP admin page for managing BPO vendors
+- **BpoPspClients.java** (new) — BPO admin page for managing PSP client partnerships
+- **ApiClient.java** (new) — HTTP utility for cross-system JSON calls with Bearer auth
+- **vendorManager25.jsp** (new), **pspClients25.jsp** (new) — Admin UIs
+
+### WS3: Task Delegation API
+- **TaskReceiveApi.java** (new) — BPO endpoint receiving tasks from PSP (POST /api/v1/tasks), creates DelegatedToDo records, deduplicates by todoGuid
+- **TaskUpdateApi.java** (new) — BPO endpoint for REVERT/RECALL/UPDATE commands (POST /api/v1/tasks/update)
+- **TaskNotesApi.java** (new) — BPO serves/receives notes by todoGuid (GET/POST /api/v1/tasks/notes)
+- **V031 migration** — Makes todo_note.todo_id and created_by_id nullable, adds author_name column for cross-system display
+
+### WS4: PSP Integration Hooks
+- **BpoTaskPushService.java** (new) — PSP-side service pushes sourced tasks to BPO vendors after checklist creation. Groups by BpoRegistration, builds activity context, POSTs to each vendor. All failures non-fatal.
+- **TaskCompletedCallbackApi.java** (new) — PSP receives task completion callbacks (POST /api/v1/callback/task-completed), marks local ToDo.bpoCompleted=true
+- **NoteAddedCallbackApi.java** (new) — PSP receives note callbacks (POST /api/v1/callback/note-added), creates cross-system ToDoNote
+- **AddRenewal25.java** — Added BpoTaskPushService.pushDelegatedTasks() hook after renewal checklist creation
+- **CreateChecklist25.java** — Added BpoTaskPushService.pushDelegatedTasks() hook after checklist creation
+
+### WS5: BPO Task Management
+- **BpoHome.java** — Dual-mode loading: cross-system queries DelegatedToDo, co-located queries local ToDo
+- **bpoHome25.jsp** — Dual rendering with `<c:choose>` on `${crossSystemMode}`, JS tracks `currentCrossSystem`/`currentTodoGuid` for AJAX
+- **BpoCompleteTask.java** — Dual-mode dispatch on `crossSystem` param. Cross-system modes operate on DelegatedToDo with PSP callbacks (non-fatal, after commit). Co-located modes unchanged.
+- **BpoGetNotes.java** — Added todoGuid query support. Uses `getDisplayAuthor()` for null-safe author rendering
+- **ToDoNote.java** — Made toDo/createdBy nullable, added authorName field, `getDisplayAuthor()` method
+- **ApiClient.java** — Added `postJsonObject()` overload for complex payloads, refactored to shared `postJsonString()`
+
+### Files Changed
+- **New (18):** V030 migration, V031 migration, DelegatedToDo.java, PspClient.java, ApiTokenFilter.java, PartnershipRequestApi.java, PartnershipApproveApi.java, VendorManager25.java, BpoPspClients.java, ApiClient.java, vendorManager25.jsp, pspClients25.jsp, TaskReceiveApi.java, TaskUpdateApi.java, TaskNotesApi.java, TaskCompletedCallbackApi.java, NoteAddedCallbackApi.java, BpoTaskPushService.java
+- **Modified (12):** AppConfig.java, EmfListener.java, AmsDataGlobal.java, BpoRegistration.java, navbar25.jsp, BpoHome.java, bpoHome25.jsp, BpoCompleteTask.java, BpoGetNotes.java, ToDoNote.java, AddRenewal25.java, CreateChecklist25.java
+
+Database changes: V030 (cross-system foundation), V031 (nullable notes columns + author_name).

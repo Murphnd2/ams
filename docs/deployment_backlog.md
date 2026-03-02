@@ -170,27 +170,27 @@ Build an admin page to manually create Benefit records without requiring a Summi
 
 ---
 
-### D-26: Vendor Management Admin Page
+### D-26: Vendor Management Admin Page ✅
 
-**Priority:** MEDIUM
-**Status:** Not started
+**Completed:** March 2, 2026
+**Files:**
+- `src/main/java/net/superiorstate/ams/controller/user/VendorManager25.java` (new) — PSP admin page
+- `src/main/webapp/WEB-INF/view/a/admin/vendorManager25.jsp` (new) — Admin UI
+- `src/main/java/net/superiorstate/ams/controller/home/BpoPspClients.java` (new) — BPO admin page
+- `src/main/webapp/WEB-INF/view/bpo/pspClients25.jsp` (new) — BPO admin UI
 
-Build an admin page to register third-party vendor contacts (persons + users with BPO roles). Replaces the hardcoded Accelergent persons previously in `DatabaseInitializer`. Should allow PSP admins to:
-
-- Create vendor person records
-- Create vendor user accounts with appropriate roles (101/102/103)
-- View/edit/deactivate existing vendors
-
-The BPO source dropdown in task manager will populate from these registered vendors.
+PSP-side Vendor Manager for managing BPO vendor partnerships (approve/reject requests, view API tokens, manage registrations). BPO-side PSP Clients page for managing PSP partnerships (request partnerships, view status, manage connections). Both accessible from navbar with system-type-aware visibility.
 
 ---
 
-### D-29: BPO Task Assignment from BPO Dashboard
+### D-29: BPO Task Assignment from BPO Dashboard ✅
 
-**Priority:** MEDIUM
-**Status:** Not started (design completed, code ready to implement)
+**Completed:** March 2, 2026
+**Files:**
+- `src/main/java/net/superiorstate/ams/controller/home/BpoCompleteTask.java` — Dual-mode assign (co-located + cross-system)
+- `src/main/webapp/WEB-INF/view/bpo/bpoHome25.jsp` — Assign dropdown in task detail modal
 
-Add an "Assign To" dropdown inside the BPO task detail modal so BPO admins can assign unassigned delegated tasks to specific BPO users. Uses the `bpo_assigned_to_id` column on the `todo` table. The modal dropdown pre-selects the current assignee and updates via AJAX through the existing `BpoCompleteTask` servlet.
+BPO task assignment implemented as part of the cross-system BPO architecture. Both co-located mode (local ToDo.bpoAssignedTo) and cross-system mode (DelegatedToDo.assignedTo) supported. AJAX-powered via BpoCompleteTask servlet with `action=assign` parameter.
 
 ---
 
@@ -425,6 +425,58 @@ Converted the Opportunity section of the Add Activity modal from server-rendered
 **Feature creation fix:** `createLos` and `createEnhancement` auto-created ServiceItem but never created ServiceModule. Without a ServiceModule, the Add Feature UI never rendered. Added ServiceModule auto-creation to both.
 
 **Note:** Existing LOS/Enhancement records created before this fix lack ServiceModules. A one-time backfill INSERT is needed for existing installations.
+
+---
+
+### D-43: Upcoming Renewals Page + MonthlyBiller Null Guard ✅
+
+**Completed:** March 2, 2026
+**Files:**
+- `src/main/java/net/superiorstate/ams/controller/activity/renewal/UpcomingRenewals25.java` (new) — Standalone servlet
+- `src/main/webapp/WEB-INF/view/a/renew/upcomingRenewals25.jsp` (new) — Full-page JSP
+- `src/main/webapp/WEB-INF/view/a/general/navbar25.jsp` — Added Renewals nav link (PSP Users/Admins)
+- `src/main/java/net/superiorstate/ams/data/service/MonthlyBiller.java` — Null guard in `logCoverageStatusForThisMonthCDH()`
+
+New standalone page at `/UpcomingRenewals` replacing the existing modal-based renewal picker. Groups employer renewals by month (OVERDUE first, then chronological). Employer cards expand inline to show available benefits with pre-checked urgency flags. "Start Renewal" delegates to existing `AddRenewal25` servlet. Uses `RenewalQueryDAO.getEmployerRenewals()` with a bulk `MIN(nextRenewalDue)` query for accurate month grouping.
+
+MonthlyBiller fix: Added `if (b == null || ee == null) continue;` null guard in `logCoverageStatusForThisMonthCDH()` matching the existing pattern in `logCoverageStatusForThisMonthPB()`.
+
+No database changes.
+
+---
+
+### D-44: BPO Cross-System Architecture ✅
+
+**Completed:** March 2, 2026
+**Migrations:** V030 (`bpo_cross_system_foundation`), V031 (`todo_note_cross_system_nullable`)
+**Files (new):**
+- `src/main/java/net/superiorstate/ams/filter/ApiTokenFilter.java` — Bearer token auth on `/api/*`
+- `src/main/java/net/superiorstate/ams/controller/api/PartnershipRequestApi.java` — BPO→PSP partnership requests
+- `src/main/java/net/superiorstate/ams/controller/api/PartnershipApproveApi.java` — PSP approves/rejects partnerships
+- `src/main/java/net/superiorstate/ams/controller/api/TaskReceiveApi.java` — BPO receives tasks from PSP
+- `src/main/java/net/superiorstate/ams/controller/api/TaskUpdateApi.java` — BPO receives REVERT/RECALL/UPDATE
+- `src/main/java/net/superiorstate/ams/controller/api/TaskNotesApi.java` — Cross-system note exchange
+- `src/main/java/net/superiorstate/ams/controller/api/TaskCompletedCallbackApi.java` — PSP receives completion callbacks
+- `src/main/java/net/superiorstate/ams/controller/api/NoteAddedCallbackApi.java` — PSP receives note callbacks
+- `src/main/java/net/superiorstate/ams/data/service/BpoTaskPushService.java` — PSP pushes sourced tasks to BPO vendors
+- `src/main/java/net/superiorstate/ams/data/util/ApiClient.java` — HTTP utility for cross-system calls
+- `src/main/java/net/superiorstate/ams/model/activity/checklist/tasks/DelegatedToDo.java` — BPO-side task entity
+- `src/main/java/net/superiorstate/ams/model/general/PspClient.java` — BPO-side PSP partnership entity
+
+**Files (modified):**
+- `AppConfig.java` — `isPsp()`, `isBpo()`, `getSystemType()` from `ssa.properties`
+- `EmfListener.java` — Added DelegatedToDo, PspClient to managed entities
+- `AmsDataGlobal.java` — Conditional loading by system type
+- `BpoRegistration.java` — API tokens, partner_url, `isAvailable()` helper
+- `ToDoNote.java` — Nullable toDo/createdBy, authorName, `getDisplayAuthor()`
+- `BpoHome.java` — Dual-mode: cross-system DelegatedToDo vs co-located ToDo
+- `bpoHome25.jsp` — Dual rendering with JS cross-system awareness
+- `BpoCompleteTask.java` — Dual-mode complete/note/assign with PSP callbacks
+- `BpoGetNotes.java` — todoGuid query support, null-safe author display
+- `AddRenewal25.java`, `CreateChecklist25.java` — BpoTaskPushService push hooks
+- `navbar25.jsp` — System-type-aware admin links
+
+Full cross-system BPO architecture enabling PSP and BPO deployments to exchange tasks, notes, and completion status via authenticated REST APIs. Same WAR detects role from `ssa.properties` `system.type` property. All cross-system API failures are non-fatal (logged, never propagate).
 
 ---
 

@@ -261,6 +261,7 @@ public class MonthlyBiller extends Biller {
         for (Enrollment2 e : list) {
             Benefit b = EntityLookup.getBenefitBySummitKey(em, "CDH", e.getImportBenefitCdh().getBenefitId());
             Employee ee = EntityLookup.getEmployeeById(em, e.getImportEmployee().getId());
+            if (b == null || ee == null) continue;
 
             CoverageStatus cs = new CoverageStatus();
             cs.setId(e.getCurrentMonth() + "-" + b.getId() + "-" + ee.getId());

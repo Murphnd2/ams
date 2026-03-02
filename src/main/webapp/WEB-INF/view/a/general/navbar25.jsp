@@ -145,6 +145,7 @@
       <div class="d-flex flex-column flex-lg-row gap-1 gap-lg-1 mt-2 mt-lg-0 align-items-lg-center">
 
         <%-- ═══ PSP USER / ADMIN LINKS ═══ --%>
+        <c:if test="${applicationScope.isPspSystem}">
         <c:if test="${sessionScope.isPspUser || sessionScope.isPspAdmin}">
           <a class="nav-ghost" href="ViewHome25">
             <i class="bi bi-house"></i><span class="d-lg-none d-xl-inline ms-1">Home</span>
@@ -154,6 +155,9 @@
           </button>
           <a class="nav-ghost" href="CreateEmail25">
             <i class="bi bi-send-fill"></i><span class="d-lg-none d-xl-inline ms-1">Email</span>
+          </a>
+          <a class="nav-ghost" href="UpcomingRenewals">
+            <i class="bi bi-calendar-check"></i><span class="d-lg-none d-xl-inline ms-1">Renewals</span>
           </a>
 
         </c:if>
@@ -209,8 +213,23 @@
               <li><a class="dropdown-item" href="BillingAction"><i class="bi bi-currency-dollar me-2"></i>Billing</a></li>
               <li><a class="dropdown-item" href="SummitImport"><i class="bi bi-cloud-upload me-2"></i>Import Data</a></li>
               <li><a class="dropdown-item" href="BenefitAudit"><i class="bi bi-calendar-check me-2"></i>Benefit Audit</a></li>
+              <li><hr class="dropdown-divider"></li>
+              <li><a class="dropdown-item" href="VendorManager"><i class="bi bi-diagram-3 me-2"></i>Vendor Management</a></li>
             </ul>
           </div>
+        </c:if>
+        </c:if><%-- /isPspSystem --%>
+
+        <%-- ═══ BPO SYSTEM DASHBOARD ═══ --%>
+        <c:if test="${applicationScope.isBpoSystem}">
+          <a class="nav-ghost" href="BpoHome">
+            <i class="bi bi-house"></i><span class="d-lg-none d-xl-inline ms-1">Dashboard</span>
+          </a>
+          <c:if test="${sessionScope.isBpoAdmin}">
+            <a class="nav-ghost" href="BpoPspClients">
+              <i class="bi bi-building"></i><span class="d-lg-none d-xl-inline ms-1">PSP Clients</span>
+            </a>
+          </c:if>
         </c:if>
 
             <%-- ═══ BPO USER LINKS ═══ --%>

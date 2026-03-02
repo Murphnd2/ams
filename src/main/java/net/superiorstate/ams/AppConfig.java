@@ -81,6 +81,18 @@ public final class AppConfig {
         return loaded && !props.isEmpty();
     }
 
+    public static String getSystemType() {
+        return get("SYSTEM_TYPE", "PSP");
+    }
+
+    public static boolean isPsp() {
+        return "PSP".equalsIgnoreCase(getSystemType());
+    }
+
+    public static boolean isBpo() {
+        return "BPO".equalsIgnoreCase(getSystemType());
+    }
+
     // --- Internal ---
 
     private static Path resolvePath() {

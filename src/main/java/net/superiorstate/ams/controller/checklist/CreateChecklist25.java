@@ -7,6 +7,7 @@ import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.AmsDataLocal;
 import net.superiorstate.ams.data.resolver.EntityFactory;
+import net.superiorstate.ams.data.service.BpoTaskPushService;
 import net.superiorstate.ams.model.activity.checklist.CheckList;
 
 import java.io.IOException;
@@ -54,6 +55,9 @@ public class CreateChecklist25 extends HttpServlet {
                 taskList.add(request.getParameter(pName));
         }
         CheckList c = EntityFactory.createChecklist(em,reminderName,taskList,dateDue,local.getCurrentUser());
+
+        // Push sourced tasks to BPO vendors (non-fatal, after checklist creation)
+        BpoTaskPushService.pushDelegatedTasks(em, c);
 
         local.respondToActivityUpdate(em,"CHECK_REMINDER",c);
 

@@ -27,6 +27,11 @@ public class EmfListener implements ServletContextListener, HttpSessionListener,
         // D-01: Load infrastructure config before anything else
         AppConfig.load();
 
+        // Set system type attributes for JSP access via ${applicationScope.xxx}
+        sce.getServletContext().setAttribute("systemType", AppConfig.getSystemType());
+        sce.getServletContext().setAttribute("isBpoSystem", AppConfig.isBpo());
+        sce.getServletContext().setAttribute("isPspSystem", AppConfig.isPsp());
+
         try {
             EntityManagerFactory emf = Persistence.createEntityManagerFactory("ssaPU");
             sce.getServletContext().setAttribute("emf", emf);

@@ -13,7 +13,7 @@ Tracks database schema versions across environments.
 | Local (either) | 127.0.0.1:3306 | dev_ssa | Initialization testing (wiped regularly) |
 | Production | superiorstate.biz | beta_ssa | Live server |
 
-## Current Highest Version: V029
+## Current Highest Version: V031
 
 ## Dev Baseline
 
@@ -58,6 +58,8 @@ Individual migration scripts are no longer stored in the repo. The baseline dump
 | V027 | BPO Registration: task source refactor from Person to BpoRegistration | ⬜ | ⬜ | ⬜ | ⬜ |
 | V028 | Benefit plan year start/end columns for renewal date correction | ⬜ | ⬜ | ⬜ | ⬜ |
 | V029 | Add is_active column to user table for user deactivation | ⬜ | ⬜ | ⬜ | ⬜ |
+| V030 | BPO cross-system foundation: psp_clients, delegated_todo, API columns, todo_note GUID | ⬜ | ⬜ | ⬜ | ⬜ |
+| V031 | ToDoNote cross-system: nullable todo_id/created_by_id, author_name column | ⬜ | ⬜ | ⬜ | ⬜ |
 
 ## Notes
 
@@ -72,3 +74,5 @@ Individual migration scripts are no longer stored in the repo. The baseline dump
 - V027 adds is_approved, is_requested, is_accepted status columns to bpo_registration. Changes task vendor sourcing from Person FK (source_owner) to BpoRegistration FK (bpo_registration_id). Requires updated WAR with Task.java, ToDoOut25.java, UpdateTask25.java, and all DAO/view entity changes.
 - V028 adds plan_year_start and plan_year_end nullable DATE columns to benefit table. Used by J5 (CDH) and J7 (COBRA) imports to store plan year boundaries for renewal date correction.
 - V029 adds is_active BOOLEAN NOT NULL DEFAULT TRUE to user table. Enables user deactivation in the new User Manager page. All existing users default to active.
+- V030 adds BPO cross-system foundation: adds API token (outbound/inbound), partner_url, and date columns to bpo_registration; creates psp_clients table (BPO side, tracks PSP clients with status PENDING/APPROVED/REJECTED/DISCONNECTED); creates delegated_todo table (BPO side, local copy of tasks from PSPs); adds todo_guid column to todo_note for cross-system note sync.
+- V031 makes todo_note.todo_id and todo_note.created_by_id nullable for cross-system notes where the originating entity doesn't exist locally. Adds author_name column for display when created_by is null.

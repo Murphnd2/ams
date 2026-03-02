@@ -38,6 +38,24 @@ public class BpoRegistration {
     @Column(name="date_registered", nullable=false)
     private Date dateRegistered;
 
+    @Column(name="api_token_outbound", length=64)
+    private String apiTokenOutbound;
+
+    @Column(name="api_token_inbound", length=64)
+    private String apiTokenInbound;
+
+    @Column(name="partner_url", length=255)
+    private String partnerUrl;
+
+    @Column(name="date_requested")
+    private Date dateRequested;
+
+    @Column(name="date_approved")
+    private Date dateApproved;
+
+    @Column(name="date_disconnected")
+    private Date dateDisconnected;
+
     public BpoRegistration() {}
 
     @PrePersist
@@ -125,5 +143,53 @@ public class BpoRegistration {
 
     public void setDateRegistered(Date dateRegistered) {
         this.dateRegistered = dateRegistered;
+    }
+
+    public String getApiTokenOutbound() {
+        return apiTokenOutbound;
+    }
+
+    public void setApiTokenOutbound(String apiTokenOutbound) {
+        this.apiTokenOutbound = apiTokenOutbound;
+    }
+
+    public String getApiTokenInbound() {
+        return apiTokenInbound;
+    }
+
+    public void setApiTokenInbound(String apiTokenInbound) {
+        this.apiTokenInbound = apiTokenInbound;
+    }
+
+    public String getPartnerUrl() {
+        return partnerUrl;
+    }
+
+    public void setPartnerUrl(String partnerUrl) {
+        this.partnerUrl = partnerUrl;
+    }
+
+    public Date getDateRequested() {
+        return dateRequested;
+    }
+
+    public void setDateRequested(Date dateRequested) {
+        this.dateRequested = dateRequested;
+    }
+
+    public Date getDateApproved() {
+        return dateApproved;
+    }
+
+    public void setDateApproved(Date dateApproved) {
+        this.dateApproved = dateApproved;
+    }
+
+    public Date getDateDisconnected() {
+        return dateDisconnected;
+    }
+
+    public void setDateDisconnected(Date dateDisconnected) {
+        this.dateDisconnected = dateDisconnected;
     }
 }

@@ -15,11 +15,11 @@ public class ToDoNote {
     private Long id;
 
     @ManyToOne
-    @JoinColumn(name="todo_id", nullable=false)
+    @JoinColumn(name="todo_id")
     private ToDo toDo;
 
     @ManyToOne
-    @JoinColumn(name="created_by_id", nullable=false)
+    @JoinColumn(name="created_by_id")
     private Person createdBy;
 
     @Column(name="created_date", nullable=false)
@@ -30,6 +30,12 @@ public class ToDoNote {
 
     @Column(name="source_type", nullable=false, length=10)
     private String sourceType;
+
+    @Column(name="todo_guid", length=36)
+    private String todoGuid;
+
+    @Column(name="author_name", length=100)
+    private String authorName;
 
     public ToDoNote() {}
 
@@ -91,5 +97,28 @@ public class ToDoNote {
 
     public void setSourceType(String sourceType) {
         this.sourceType = sourceType;
+    }
+
+    public String getTodoGuid() {
+        return todoGuid;
+    }
+
+    public void setTodoGuid(String todoGuid) {
+        this.todoGuid = todoGuid;
+    }
+
+    public String getAuthorName() {
+        return authorName;
+    }
+
+    public void setAuthorName(String authorName) {
+        this.authorName = authorName;
+    }
+
+    /** Returns the display name: createdBy.fullName if available, else authorName, else sourceType. */
+    public String getDisplayAuthor() {
+        if (createdBy != null) return createdBy.getFullName();
+        if (authorName != null && !authorName.isBlank()) return authorName;
+        return sourceType != null ? sourceType + " User" : "Unknown";
     }
 }
