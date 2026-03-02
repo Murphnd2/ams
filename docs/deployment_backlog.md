@@ -330,6 +330,35 @@ This aligns existing databases with the updated DatabaseInitializer behavior.
 
 ---
 
+### D-38: Simplified Sales Pipeline Seeding + Demo Users
+
+**Completed:** March 1, 2026
+**File:** `src/main/java/net/superiorstate/ams/data/service/DatabaseInitializer.java`
+
+Replaced DataPath-specific sales pipeline seeding with generic baseline:
+- **ServiceItems:** 3 specific (COBRA/FSA/Debit Cards) → 2 generic ("Line of Service"/"Service Enhancement")
+- **LOS:** 2 specific (COBRA Administration/CDH) → 1 generic ("Line of Service")
+- **Enhancement:** 1 specific (Debit Cards) → 1 generic ("Service Enhancement")
+- **ServiceModules:** 3 specific → 2 generic (one per LOS, one per Enhancement), with direct FK links
+- **Enhancement↔LOS M:N:** Populated so enhancement appears when LOS is selected
+- **Pricing grid:** 4 RateTable rows (LOS × 3 fee types + Enhancement × 1 setup fee) on Standard Rate
+- **Agency rate assignment:** Standard Rate assigned to PSP home agency
+- **ApplicationSection join tables:** All 3 baseline sections linked to both LOS and Enhancement
+
+Added 6 demo user accounts (all password `demo123`):
+- `agency@pspdemo.com` — Agency Admin + Agent, manages Outside Agency (ID 15)
+- `agent@pspdemo.com` — Sales Agent on Outside Agency
+- `user@pspdemo.com` — PSP User
+- `pspagent@pspdemo.com` — PSP User + Agent on home agency
+- `bpoadmin@pspdemo.com` — BPO Admin
+- `bpouser@pspdemo.com` — BPO User
+
+New helper methods: `assignRateTable()`, `assignAllSectionsToLosAndEnhancement()`, `createDemoPerson()`
+
+No migration required — initialization-only changes. Existing `ReSeedDb`/`ReSeedDemoData` inherit automatically.
+
+---
+
 ## Remaining TODOs
 
 - Run `schema_version_migration.sql` on production database (holding until further testing)
