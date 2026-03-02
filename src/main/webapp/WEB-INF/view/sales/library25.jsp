@@ -277,9 +277,10 @@
                 <input type="url" name="url" class="form-control" placeholder="https://...">
             </div>
         </div>
-        <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-            <button type="submit" class="btn btn-primary">Add Resource</button>
+        <div class="modal-footer justify-content-center border-0">
+            <button type="submit" class="ssa-action save"><i class="bi bi-plus-circle me-1"></i>Add Resource</button>
+            <span class="ssa-action-sep">|</span>
+            <button type="button" class="ssa-action cancel" data-bs-dismiss="modal"><i class="bi bi-x-lg me-1"></i>Cancel</button>
         </div>
     </form>
 </div></div></div>
@@ -346,9 +347,10 @@
                 <input type="url" name="url" class="form-control" placeholder="https://..." value="${selectedResource.getUrl()}">
             </div>
         </div>
-        <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-            <button type="submit" class="btn btn-primary">Save Changes</button>
+        <div class="modal-footer justify-content-center border-0">
+            <button type="submit" class="ssa-action save"><i class="bi bi-check-lg me-1"></i>Save Changes</button>
+            <span class="ssa-action-sep">|</span>
+            <button type="button" class="ssa-action cancel" data-bs-dismiss="modal"><i class="bi bi-x-lg me-1"></i>Cancel</button>
         </div>
     </form>
 </div></div></div>
@@ -426,8 +428,8 @@
             </div>
         </form>
     </div>
-    <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+    <div class="modal-footer justify-content-center border-0">
+        <button type="button" class="ssa-action cancel" data-bs-dismiss="modal"><i class="bi bi-x-lg me-1"></i>Close</button>
     </div>
 </div></div></div>
 

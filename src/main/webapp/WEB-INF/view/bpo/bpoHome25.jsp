@@ -278,15 +278,16 @@
                     </div>
 
             </div>
-            <div class="modal-footer" style="padding:0.5rem 1rem;">
-                <form method="post" action="BpoCompleteTask">
+            <div class="modal-footer justify-content-center border-0" style="padding:0.5rem 1rem;">
+                <form method="post" action="BpoCompleteTask" class="d-inline">
                     <input type="hidden" name="action" value="complete">
                     <input type="hidden" name="todoId" id="modalCompleteToDoId" value="">
-                    <button type="submit" class="btn btn-ssa">
+                    <button type="submit" class="ssa-action save">
                         <i class="bi bi-check-circle me-1"></i>Mark Complete
                     </button>
                 </form>
-                <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+                <span class="ssa-action-sep">|</span>
+                <button type="button" class="ssa-action cancel" data-bs-dismiss="modal"><i class="bi bi-x-lg me-1"></i>Close</button>
             </div>
         </div>
     </div>

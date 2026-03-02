@@ -99,11 +99,12 @@
             </div>
           </div>
         </div>
-        <div class="modal-footer py-2">
-          <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancel</button>
-          <button type="submit" class="btn btn-sm btn-ssa" id="settingsSaveBtn" disabled>
-            <i class="bi bi-save me-1"></i>Save
+        <div class="modal-footer justify-content-center border-0 py-2">
+          <button type="submit" class="ssa-action save" id="settingsSaveBtn" disabled>
+            <i class="bi bi-check-lg me-1"></i>Save
           </button>
+          <span class="ssa-action-sep">|</span>
+          <button type="button" class="ssa-action cancel" data-bs-dismiss="modal"><i class="bi bi-x-lg me-1"></i>Cancel</button>
         </div>
       </form>
     </div>

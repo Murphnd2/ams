@@ -246,9 +246,10 @@
                         </div>
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-ssa"><i class="bi bi-check-lg me-1"></i>Create Prospect</button>
+                <div class="modal-footer justify-content-center border-0">
+                    <button type="submit" class="ssa-action save"><i class="bi bi-plus-circle me-1"></i>Create Prospect</button>
+                    <span class="ssa-action-sep">|</span>
+                    <button type="button" class="ssa-action cancel" data-bs-dismiss="modal"><i class="bi bi-x-lg me-1"></i>Cancel</button>
                 </div>
             </form>
         </div>

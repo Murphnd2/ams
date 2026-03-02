@@ -176,9 +176,10 @@
           </div>
         </form>
       </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-        <button type="button" class="btn btn-primary">Save changes</button>
+      <div class="modal-footer justify-content-center border-0">
+        <button type="button" class="ssa-action save"><i class="bi bi-check-lg me-1"></i>Save changes</button>
+        <span class="ssa-action-sep">|</span>
+        <button type="button" class="ssa-action cancel" data-bs-dismiss="modal"><i class="bi bi-x-lg me-1"></i>Close</button>
       </div>
     </div>
   </div>

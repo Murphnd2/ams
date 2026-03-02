@@ -399,14 +399,13 @@
                                                     </div>
                                                 </div>
                                             </div>
-                                            <div class="modal-footer">
-                                                <button type="button" class="btn btn-outline-altSsa" data-bs-dismiss="modal">
-                                                    <i class="bi bi-x"></i>
-                                                    Close
+                                            <div class="modal-footer justify-content-center border-0">
+                                                <button type="submit" name="btnAuto1" value="${toDo.getId()}" class="ssa-action save">
+                                                    <i class="bi bi-check-lg me-1"></i>Save Changes
                                                 </button>
-                                                <button type="submit" name="btnAuto1" value="${toDo.getId()}" class="btn btn-ssa">
-                                                    <i class="bi bi-save"></i>
-                                                    Save Changes
+                                                <span class="ssa-action-sep">|</span>
+                                                <button type="button" class="ssa-action cancel" data-bs-dismiss="modal">
+                                                    <i class="bi bi-x-lg me-1"></i>Close
                                                 </button>
                                             </div>
                                         </form>
@@ -441,9 +440,10 @@
                                                 </div>
                                             </div>
                                         </div>
-                                        <div class="modal-footer">
-                                            <button type="button" class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#${modId}">Back</button>
-                                            <button type="button" class="btn btn-primary">Save/Update</button>
+                                        <div class="modal-footer justify-content-center border-0">
+                                            <button type="button" class="ssa-action save"><i class="bi bi-check-lg me-1"></i>Save/Update</button>
+                                            <span class="ssa-action-sep">|</span>
+                                            <button type="button" class="ssa-action cancel" data-bs-toggle="modal" data-bs-target="#${modId}"><i class="bi bi-arrow-left me-1"></i>Back</button>
                                         </div>
                                     </div>
                                 </div>

@@ -129,11 +129,12 @@
 
         </div>
 
-        <div class="modal-footer">
-          <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-          <button type="submit" class="btn btn-sm btn-primary" id="tcSubmitBtn" disabled>
+        <div class="modal-footer justify-content-center border-0">
+          <button type="submit" class="ssa-action save" id="tcSubmitBtn" disabled>
             <i class="bi bi-send me-1"></i>Submit Request
           </button>
+          <span class="ssa-action-sep">|</span>
+          <button type="button" class="ssa-action cancel" data-bs-dismiss="modal"><i class="bi bi-x-lg me-1"></i>Cancel</button>
         </div>
       </form>
 

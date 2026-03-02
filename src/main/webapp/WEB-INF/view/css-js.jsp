@@ -101,6 +101,47 @@
         color: gold;
     }
 
+    /* SSA Ghost Action Buttons — modal footers and form actions */
+    .ssa-action {
+        border: none;
+        border-top: 2px solid transparent;
+        border-bottom: 2px solid transparent;
+        background: none;
+        padding: 0.4rem 1.5rem;
+        font-size: 0.85rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.15s;
+        text-decoration: none;
+    }
+    .ssa-action.save, .ssa-action.primary {
+        color: var(--ssa, #0d5681);
+        border-bottom-color: var(--ssa, #0d5681);
+    }
+    .ssa-action.save:hover, .ssa-action.primary:hover {
+        background: rgba(13,86,129,0.06);
+    }
+    .ssa-action.cancel, .ssa-action.secondary {
+        color: #6c757d;
+        border-bottom-color: #6c757d;
+    }
+    .ssa-action.cancel:hover, .ssa-action.secondary:hover {
+        background: rgba(108,117,125,0.06);
+        color: #495057;
+    }
+    .ssa-action.danger {
+        color: #dc3545;
+        border-bottom-color: #dc3545;
+    }
+    .ssa-action.danger:hover {
+        background: rgba(220,53,69,0.06);
+    }
+    .ssa-action-sep {
+        color: #dee2e6;
+        margin: 0 0.25rem;
+        user-select: none;
+    }
+
 </style>
 
 

@@ -307,7 +307,7 @@
     <form method="post" action="RateTableAction"><input type="hidden" name="action" value="createRate"/>
         <div class="modal-header"><h5 class="modal-title"><i class="bi bi-plus-circle me-2"></i>New Rate</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
         <div class="modal-body"><div class="mb-3"><label class="form-label fw-semibold">Rate Name</label><input type="text" name="description" class="form-control" required placeholder="e.g. Standard Rate"></div></div>
-        <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button><button type="submit" class="btn btn-primary">Create</button></div>
+        <div class="modal-footer justify-content-center border-0"><button type="submit" class="ssa-action save"><i class="bi bi-plus-circle me-1"></i>Create</button><span class="ssa-action-sep">|</span><button type="button" class="ssa-action cancel" data-bs-dismiss="modal"><i class="bi bi-x-lg me-1"></i>Cancel</button></div>
     </form>
 </div></div></div>
 
@@ -320,7 +320,7 @@
             <div class="mb-3"><label class="form-label fw-semibold">Rate Name</label><input type="text" name="description" class="form-control" required value="${selectedRate.getDescription()}"></div>
             <div class="form-check"><input type="checkbox" class="form-check-input" name="suppressed" id="editSuppressed" <c:if test="${selectedRate.isSuppressed()}">checked</c:if>><label class="form-check-label" for="editSuppressed">Suppressed</label></div>
         </div>
-        <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button><button type="submit" class="btn btn-primary">Save</button></div>
+        <div class="modal-footer justify-content-center border-0"><button type="submit" class="ssa-action save"><i class="bi bi-check-lg me-1"></i>Save</button><span class="ssa-action-sep">|</span><button type="button" class="ssa-action cancel" data-bs-dismiss="modal"><i class="bi bi-x-lg me-1"></i>Cancel</button></div>
     </form>
 </div></div></div>
 </c:if>
@@ -358,7 +358,7 @@
             </div>
             <div class="mb-3"><label class="form-label fw-semibold">Price ($)</label><input type="number" name="price" class="form-control" step="0.01" min="0" required placeholder="0.00"></div>
         </div>
-        <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button><button type="submit" class="btn btn-primary">Add Row</button></div>
+        <div class="modal-footer justify-content-center border-0"><button type="submit" class="ssa-action save"><i class="bi bi-plus-circle me-1"></i>Add Row</button><span class="ssa-action-sep">|</span><button type="button" class="ssa-action cancel" data-bs-dismiss="modal"><i class="bi bi-x-lg me-1"></i>Cancel</button></div>
     </form>
 </div></div></div>
 </c:if>
@@ -389,7 +389,7 @@
     <form method="post" action="RateTableAction"><input type="hidden" name="action" value="createPriceItem"/>
         <div class="modal-header"><h5 class="modal-title"><i class="bi bi-receipt me-2"></i>New Fee Type</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
         <div class="modal-body"><div class="mb-3"><label class="form-label fw-semibold">Description</label><input type="text" name="description" class="form-control" required placeholder="e.g. Monthly Administration Fee"></div><small class="text-muted"><i class="bi bi-info-circle me-1"></i>Added at end. Drag to reorder.</small></div>
-        <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button><button type="submit" class="btn btn-primary">Create</button></div>
+        <div class="modal-footer justify-content-center border-0"><button type="submit" class="ssa-action save"><i class="bi bi-plus-circle me-1"></i>Create</button><span class="ssa-action-sep">|</span><button type="button" class="ssa-action cancel" data-bs-dismiss="modal"><i class="bi bi-x-lg me-1"></i>Cancel</button></div>
     </form>
 </div></div></div>
 
@@ -406,7 +406,7 @@
                 <div class="invalid-feedback" id="copyRateError">This name is already in use.</div>
             </div>
         </div>
-        <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button><button type="submit" class="btn btn-primary" id="copyRateSubmit">Create Copy</button></div>
+        <div class="modal-footer justify-content-center border-0"><button type="submit" class="ssa-action save" id="copyRateSubmit"><i class="bi bi-copy me-1"></i>Create Copy</button><span class="ssa-action-sep">|</span><button type="button" class="ssa-action cancel" data-bs-dismiss="modal"><i class="bi bi-x-lg me-1"></i>Cancel</button></div>
     </form>
 </div></div></div>
 </c:if>

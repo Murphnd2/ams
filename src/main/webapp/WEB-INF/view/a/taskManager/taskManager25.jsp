@@ -41,12 +41,7 @@
       .tm-tag-overlay { top: 60px; left: 0.5rem; right: 0.5rem; bottom: 0.5rem; border-radius: 6px; }
     }
 
-    /* Ghost footer buttons */
-    .tm-action { border: none; border-top: 2px solid transparent; border-bottom: 2px solid transparent; background: none; padding: 0.4rem 1.5rem; font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: all 0.15s; }
-    .tm-action.save { color: var(--ssa, #0d5681); border-bottom-color: var(--ssa, #0d5681); }
-    .tm-action.save:hover { background: rgba(13,86,129,0.06); }
-    .tm-action.cancel { color: #6c757d; border-bottom-color: #6c757d; }
-    .tm-action.cancel:hover { background: rgba(108,117,125,0.06); color: #495057; }
+    /* Ghost footer buttons — now using global .ssa-action from css-js.jsp */
   </style>
 </head>
 <body>
@@ -232,23 +227,23 @@
 
           <%-- Buttons at bottom of left card --%>
           <div class="text-center mt-auto pt-2 border-top">
-            <button type="submit" ${ownerLock1} name="btnAuto1" value="${toDo.getId()}" class="tm-action save">
+            <button type="submit" ${ownerLock1} name="btnAuto1" value="${toDo.getId()}" class="ssa-action save">
               <i class="bi bi-check-lg me-1"></i>Save
             </button>
-            <span class="mx-1" style="color:#dee2e6;">|</span>
+            <span class="ssa-action-sep">|</span>
             <c:choose>
               <c:when test="${sessionScope.isBpo || sessionScope.isBpoAdmin || sessionScope.isBpoUser}">
-                <a href="BpoHome" class="tm-action cancel" style="text-decoration:none;">
+                <a href="BpoHome" class="ssa-action cancel" style="text-decoration:none;">
                   <i class="bi bi-x-lg me-1"></i>Cancel
                 </a>
               </c:when>
               <c:when test="${sessionScope.local.getCurrentActivity() != null && sessionScope.local.getCurrentActivity().getActivity().getClass().getSimpleName().equals(\"CheckList\")}">
-                <a href="goCheckListDetail" class="tm-action cancel" style="text-decoration:none;">
+                <a href="ViewChecklist25" class="ssa-action cancel" style="text-decoration:none;">
                   <i class="bi bi-x-lg me-1"></i>Cancel
                 </a>
               </c:when>
               <c:otherwise>
-                <a href="ViewActivity25" class="tm-action cancel" style="text-decoration:none;">
+                <a href="ViewActivity25" class="ssa-action cancel" style="text-decoration:none;">
                   <i class="bi bi-x-lg me-1"></i>Cancel
                 </a>
               </c:otherwise>

@@ -396,9 +396,10 @@
             <input type="text" name="taxId" class="form-control" placeholder="XX-XXXXXXX">
           </div>
         </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-          <button type="submit" class="btn btn-primary">Create Agency</button>
+        <div class="modal-footer justify-content-center border-0">
+          <button type="submit" class="ssa-action save"><i class="bi bi-plus-circle me-1"></i>Create Agency</button>
+          <span class="ssa-action-sep">|</span>
+          <button type="button" class="ssa-action cancel" data-bs-dismiss="modal"><i class="bi bi-x-lg me-1"></i>Cancel</button>
         </div>
       </form>
     </div>
@@ -502,9 +503,10 @@
             </div>
           </div>
         </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-          <button type="submit" class="btn btn-ssa"><i class="bi bi-send me-1"></i>Send Invitation</button>
+        <div class="modal-footer justify-content-center border-0">
+          <button type="submit" class="ssa-action save"><i class="bi bi-send me-1"></i>Send Invitation</button>
+          <span class="ssa-action-sep">|</span>
+          <button type="button" class="ssa-action cancel" data-bs-dismiss="modal"><i class="bi bi-x-lg me-1"></i>Cancel</button>
         </div>
       </form>
     </div>
@@ -600,9 +602,10 @@
               </div>
             </div>
           </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-            <button type="submit" class="btn btn-primary">Save Changes</button>
+          <div class="modal-footer justify-content-center border-0">
+            <button type="submit" class="ssa-action save"><i class="bi bi-check-lg me-1"></i>Save Changes</button>
+            <span class="ssa-action-sep">|</span>
+            <button type="button" class="ssa-action cancel" data-bs-dismiss="modal"><i class="bi bi-x-lg me-1"></i>Cancel</button>
           </div>
         </form>
       </div>
@@ -643,11 +646,12 @@
               </c:otherwise>
             </c:choose>
           </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <div class="modal-footer justify-content-center border-0">
             <c:if test="${not empty pendingAgents}">
-              <button type="submit" class="btn btn-primary">Assign</button>
+              <button type="submit" class="ssa-action save"><i class="bi bi-check-lg me-1"></i>Assign</button>
+              <span class="ssa-action-sep">|</span>
             </c:if>
+            <button type="button" class="ssa-action cancel" data-bs-dismiss="modal"><i class="bi bi-x-lg me-1"></i>Cancel</button>
           </div>
         </form>
       </div>

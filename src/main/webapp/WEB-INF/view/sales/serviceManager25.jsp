@@ -788,9 +788,10 @@
                                                                                                      placeholder="e.g. FSA">
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Create</button>
+                <div class="modal-footer justify-content-center border-0">
+                    <button type="submit" class="ssa-action save"><i class="bi bi-plus-circle me-1"></i>Create</button>
+                    <span class="ssa-action-sep">|</span>
+                    <button type="button" class="ssa-action cancel" data-bs-dismiss="modal"><i class="bi bi-x-lg me-1"></i>Cancel</button>
                 </div>
             </form>
         </div>
@@ -822,9 +823,10 @@
                                                                                                      placeholder="e.g. Cards">
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Create</button>
+                <div class="modal-footer justify-content-center border-0">
+                    <button type="submit" class="ssa-action save"><i class="bi bi-plus-circle me-1"></i>Create</button>
+                    <span class="ssa-action-sep">|</span>
+                    <button type="button" class="ssa-action cancel" data-bs-dismiss="modal"><i class="bi bi-x-lg me-1"></i>Cancel</button>
                 </div>
             </form>
         </div>
@@ -862,15 +864,16 @@
                                                                                                          value="${selectedLos.getShortText()}">
                         </div>
                     </div>
-                    <div class="modal-footer">
+                    <div class="modal-footer border-0">
                         <button type="button"
                                 class="btn btn-sm btn-outline-${selectedLos.isSuppressed() ? 'success' : 'warning'}"
                                 onclick="document.getElementById('suppressLosForm').submit();">
                             <i class="bi bi-eye${selectedLos.isSuppressed() ? '' : '-slash'} me-1"></i>${selectedLos.isSuppressed() ? 'Unsuppress' : 'Suppress'}
                         </button>
                         <span class="flex-grow-1"></span>
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                        <button type="submit" class="btn btn-primary">Save</button>
+                        <button type="submit" class="ssa-action save"><i class="bi bi-check-lg me-1"></i>Save</button>
+                        <span class="ssa-action-sep">|</span>
+                        <button type="button" class="ssa-action cancel" data-bs-dismiss="modal"><i class="bi bi-x-lg me-1"></i>Cancel</button>
                     </div>
                 </form>
             </div>
@@ -908,15 +911,16 @@
                                                                                                          value="${selectedEnhancement.getShortText()}">
                         </div>
                     </div>
-                    <div class="modal-footer">
+                    <div class="modal-footer border-0">
                         <button type="button"
                                 class="btn btn-sm btn-outline-${selectedEnhancement.isSuppressed() ? 'success' : 'warning'}"
                                 onclick="document.getElementById('suppressEnhForm').submit();">
                             <i class="bi bi-eye${selectedEnhancement.isSuppressed() ? '' : '-slash'} me-1"></i>${selectedEnhancement.isSuppressed() ? 'Unsuppress' : 'Suppress'}
                         </button>
                         <span class="flex-grow-1"></span>
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                        <button type="submit" class="btn btn-primary">Save</button>
+                        <button type="submit" class="ssa-action save"><i class="bi bi-check-lg me-1"></i>Save</button>
+                        <span class="ssa-action-sep">|</span>
+                        <button type="button" class="ssa-action cancel" data-bs-dismiss="modal"><i class="bi bi-x-lg me-1"></i>Cancel</button>
                     </div>
                 </form>
             </div>
@@ -1110,9 +1114,10 @@
                             </select>
                         </div>
                     </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                        <button type="submit" class="btn btn-primary">Add Feature</button>
+                    <div class="modal-footer justify-content-center border-0">
+                        <button type="submit" class="ssa-action save"><i class="bi bi-plus-circle me-1"></i>Add Feature</button>
+                        <span class="ssa-action-sep">|</span>
+                        <button type="button" class="ssa-action cancel" data-bs-dismiss="modal"><i class="bi bi-x-lg me-1"></i>Cancel</button>
                     </div>
                 </form>
             </div>
@@ -1169,9 +1174,10 @@
                             </select>
                         </div>
                     </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                        <button type="submit" class="btn btn-primary">Save</button>
+                    <div class="modal-footer justify-content-center border-0">
+                        <button type="submit" class="ssa-action save"><i class="bi bi-check-lg me-1"></i>Save</button>
+                        <span class="ssa-action-sep">|</span>
+                        <button type="button" class="ssa-action cancel" data-bs-dismiss="modal"><i class="bi bi-x-lg me-1"></i>Cancel</button>
                     </div>
                 </form>
             </div>
@@ -1209,9 +1215,10 @@
                         </select>
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Create</button>
+                <div class="modal-footer justify-content-center border-0">
+                    <button type="submit" class="ssa-action save"><i class="bi bi-plus-circle me-1"></i>Create</button>
+                    <span class="ssa-action-sep">|</span>
+                    <button type="button" class="ssa-action cancel" data-bs-dismiss="modal"><i class="bi bi-x-lg me-1"></i>Cancel</button>
                 </div>
             </form>
         </div>
@@ -1260,15 +1267,16 @@
                             </select>
                         </div>
                     </div>
-                    <div class="modal-footer">
+                    <div class="modal-footer border-0">
                         <button type="button"
                                 class="btn btn-sm btn-outline-${selectedSection.isSuppressed() ? 'success' : 'warning'}"
                                 onclick="document.getElementById('suppressSectionForm').submit();">
                             <i class="bi bi-eye${selectedSection.isSuppressed() ? '' : '-slash'} me-1"></i>${selectedSection.isSuppressed() ? 'Unsuppress' : 'Suppress'}
                         </button>
                         <span class="flex-grow-1"></span>
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                        <button type="submit" class="btn btn-primary">Save</button>
+                        <button type="submit" class="ssa-action save"><i class="bi bi-check-lg me-1"></i>Save</button>
+                        <span class="ssa-action-sep">|</span>
+                        <button type="button" class="ssa-action cancel" data-bs-dismiss="modal"><i class="bi bi-x-lg me-1"></i>Cancel</button>
                     </div>
                 </form>
             </div>
@@ -1302,7 +1310,7 @@
                 <div class="mb-3"><label class="form-label fw-semibold">Help Text</label><input type="text" name="helpText" class="form-control" maxlength="500" placeholder="Optional tooltip or guidance"></div>
                 <div class="form-check mb-3"><input class="form-check-input" type="checkbox" name="isRequired" id="newFieldReq"><label class="form-check-label fw-semibold" for="newFieldReq">Required</label></div>
             </div>
-            <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button><button type="submit" class="btn btn-primary">Create</button></div>
+            <div class="modal-footer justify-content-center border-0"><button type="submit" class="ssa-action save"><i class="bi bi-plus-circle me-1"></i>Create</button><span class="ssa-action-sep">|</span><button type="button" class="ssa-action cancel" data-bs-dismiss="modal"><i class="bi bi-x-lg me-1"></i>Cancel</button></div>
         </form>
     </div></div></div>
 
@@ -1325,7 +1333,7 @@
                 <div class="mb-3"><label class="form-label fw-semibold">Help Text</label><input type="text" name="helpText" id="editFieldHelp" class="form-control" maxlength="500"></div>
                 <div class="form-check mb-3"><input class="form-check-input" type="checkbox" name="isRequired" id="editFieldReq"><label class="form-check-label fw-semibold" for="editFieldReq">Required</label></div>
             </div>
-            <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button><button type="submit" class="btn btn-primary">Save</button></div>
+            <div class="modal-footer justify-content-center border-0"><button type="submit" class="ssa-action save"><i class="bi bi-check-lg me-1"></i>Save</button><span class="ssa-action-sep">|</span><button type="button" class="ssa-action cancel" data-bs-dismiss="modal"><i class="bi bi-x-lg me-1"></i>Cancel</button></div>
         </form>
     </div></div></div>
 </c:if>

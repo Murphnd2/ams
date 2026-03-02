@@ -484,7 +484,7 @@
             <div class="col-12 col-lg-6 mt-2 mt-lg-auto">
                 <c:choose>
                     <c:when test="${sessionScope.sVar.getCurrentActivity().getClass().getSimpleName().equals(\"CheckList\")}">
-                        <a href="goCheckListDetail" class="btn btn-outline-danger w-100">
+                        <a href="ViewChecklist25" class="btn btn-outline-danger w-100">
                             <i class="bi bi-chevron-left"></i>&nbsp;
                             Cancel Changes
                         </a>
