@@ -662,3 +662,32 @@ Consolidated navbar menu items to eliminate duplication for multi-role users (es
 - `src/main/webapp/WEB-INF/view/a/general/navbar25.jsp` — Only file modified
 
 No database changes.
+
+## March 1, 2026 — PSP Role Separation: PSP Priority Over Agent (Session 15)
+
+Fixed login redirect chain, navbar logo, and activity filter behavior so PSP roles take priority over Agent roles for dual-role users. Previously Agent/AgencyAdmin won over PSP in routing.
+
+### Priority Rule (applied everywhere)
+1. BPO roles → BpoHome (unchanged)
+2. PSP roles (isPspUser || isPspAdmin) → ViewHome25 — **PSP wins** even if user also has Agent
+3. Agent-only (isAgent || isAgencyAdmin but NOT PSP) → AgentHome
+
+### Login Redirect Reorder
+- **AuthenticateUser.java** `goToPage()` — reordered BPO → PSP → Agent-only; switched unsafe `(boolean)` casts to `Boolean.TRUE.equals()`
+- **OneTimeUserLogin.java** `authenticateAndRedirect()` — added `isPspUser`/`isPspAdmin` session reads; reordered redirect chain
+
+### Activity Filter: Opportunity Chip for Agents
+- **activityHeader25.jsp** — added `sessionScope.isAgent` to Opportunity chip visibility gate (was `isPspSales || isPspAdmin` only)
+- **FilterActivities25.java** — added `isAgent` to opportunity preservation in preset path
+
+### Agent-Only Default Filters
+- **AmsDataLocal.java** `intializeLocalData()` — agent-only users (no PSP roles) default to Ticket + Opportunity only; Renewal and Setup hidden
+
+### Other Servlet Redirects
+- **CreateUser25.java** `goToHome()` — reordered to BPO → PSP → Agent-only
+- **Reviewed (no change needed):** ChecklistAction25, CloseActivity25, CreateChecklist25, CreateReminder25, MakeRecurringFromChecklist25, ModifyRecurringTask25, UpdateTask25 — all already forward to ViewHome25 for non-BPO users
+
+### Files Changed
+- `AuthenticateUser.java`, `OneTimeUserLogin.java`, `CreateUser25.java`, `FilterActivities25.java`, `AmsDataLocal.java`, `activityHeader25.jsp`
+
+No database changes.

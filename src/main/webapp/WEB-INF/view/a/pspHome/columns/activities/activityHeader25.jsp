@@ -305,7 +305,7 @@
             <i class="bi bi-check-lg af-chip-check"></i>
             <input type="checkbox" name="vTicket" value="5" class="d-none" ${af.isViewTicket() ? 'checked' : ''}>
           </div>
-          <c:if test="${sessionScope.isPspSales || sessionScope.isPspAdmin}">
+          <c:if test="${sessionScope.isPspSales || sessionScope.isPspAdmin || sessionScope.isAgent}">
             <div class="af-chip ${af.isViewOpportunity() ? 'on' : 'off'}" data-type="opportunity" onclick="afToggleType(this)">
               <span class="af-chip-icon"><i class="bi bi-graph-up-arrow"></i></span>
               Opportunities

@@ -44,10 +44,11 @@ public class FilterActivities25 extends HttpServlet {
                     for (UserFilterPreset p : presets) {
                         if (p.getSlotNumber() == slot) {
                             local.applyPresetToFilter(p);
-                            // Preserve opportunity visibility for sales roles
+                            // Preserve opportunity visibility for sales roles and agents
                             boolean isPspSales = Boolean.TRUE.equals(request.getSession().getAttribute("isPspSales"));
                             boolean isPspAdmin = Boolean.TRUE.equals(request.getSession().getAttribute("isPspAdmin"));
-                            if (isPspSales || isPspAdmin) {
+                            boolean isAgent = Boolean.TRUE.equals(request.getSession().getAttribute("isAgent"));
+                            if (isPspSales || isPspAdmin || isAgent) {
                                 af.setViewOpportunity(af.isViewOpportunity());
                             }
                             break;

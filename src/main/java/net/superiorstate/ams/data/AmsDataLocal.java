@@ -104,6 +104,16 @@ public class AmsDataLocal implements AutoCloseable {
         if (isPspSales || isPspAdminRole) {
             getActivityFilter().setViewOpportunity(true);
         }
+        // Agent-only at PSP home: default to Ticket + Opportunity only
+        boolean isPspUser = Boolean.TRUE.equals(request.getSession().getAttribute("isPspUser"));
+        boolean isAgent = Boolean.TRUE.equals(request.getSession().getAttribute("isAgent"));
+        boolean isAgencyAdmin = Boolean.TRUE.equals(request.getSession().getAttribute("isAgencyAdmin"));
+        if ((isAgent || isAgencyAdmin) && !isPspUser && !isPspAdminRole) {
+            getActivityFilter().setViewRenewal(false);
+            getActivityFilter().setViewSetup(false);
+            getActivityFilter().setViewTicket(true);
+            getActivityFilter().setViewOpportunity(true);
+        }
         setCurrentEmail(new CurrentEmail());
         getCurrentEmail().initializeEmail();
         setActivitiesAllOpen(global.getActivitiesAllOpen());

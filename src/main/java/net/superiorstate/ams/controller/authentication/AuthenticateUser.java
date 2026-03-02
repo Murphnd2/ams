@@ -50,13 +50,18 @@ public class AuthenticateUser extends HttpServlet {
     }
 
     private void goToPage(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-        boolean isAgent = (boolean) request.getSession().getAttribute("isAgent");
-        boolean isAgencyAdmin = (boolean) request.getSession().getAttribute("isAgencyAdmin");
-        boolean isBpo = (boolean) request.getSession().getAttribute("isBpo");
-        boolean isBpoAdmin = (boolean) request.getSession().getAttribute("isBpoAdmin");
-        boolean isBpoUser = (boolean) request.getSession().getAttribute("isBpoUser");
+        boolean isPspUser = Boolean.TRUE.equals(request.getSession().getAttribute("isPspUser"));
+        boolean isPspAdmin = Boolean.TRUE.equals(request.getSession().getAttribute("isPspAdmin"));
+        boolean isAgent = Boolean.TRUE.equals(request.getSession().getAttribute("isAgent"));
+        boolean isAgencyAdmin = Boolean.TRUE.equals(request.getSession().getAttribute("isAgencyAdmin"));
+        boolean isBpo = Boolean.TRUE.equals(request.getSession().getAttribute("isBpo"));
+        boolean isBpoAdmin = Boolean.TRUE.equals(request.getSession().getAttribute("isBpoAdmin"));
+        boolean isBpoUser = Boolean.TRUE.equals(request.getSession().getAttribute("isBpoUser"));
+
         if (isBpo || isBpoAdmin || isBpoUser) {
             response.sendRedirect("BpoHome");
+        } else if (isPspUser || isPspAdmin) {
+            response.sendRedirect("ViewHome25");
         } else if (isAgent || isAgencyAdmin) {
             response.sendRedirect("AgentHome");
         } else {

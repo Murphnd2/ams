@@ -60,14 +60,18 @@ public class CreateUser25 extends HttpServlet {
     }
 
     private void goToHome(HttpServletRequest request, HttpServletResponse response) throws IOException {
+        boolean isPspUser = Boolean.TRUE.equals(request.getSession().getAttribute("isPspUser"));
+        boolean isPspAdmin = Boolean.TRUE.equals(request.getSession().getAttribute("isPspAdmin"));
+        boolean isAgent = Boolean.TRUE.equals(request.getSession().getAttribute("isAgent"));
+        boolean isAgencyAdmin = Boolean.TRUE.equals(request.getSession().getAttribute("isAgencyAdmin"));
         boolean isBpo = Boolean.TRUE.equals(request.getSession().getAttribute("isBpo"));
         boolean isBpoAdmin = Boolean.TRUE.equals(request.getSession().getAttribute("isBpoAdmin"));
-        boolean isAgencyAdmin = Boolean.TRUE.equals(request.getSession().getAttribute("isAgencyAdmin"));
-        boolean isPspAdmin = Boolean.TRUE.equals(request.getSession().getAttribute("isPspAdmin"));
 
         if (isBpo || isBpoAdmin) {
             response.sendRedirect("BpoHome");
-        } else if (isAgencyAdmin && !isPspAdmin) {
+        } else if (isPspUser || isPspAdmin) {
+            response.sendRedirect("ViewHome25");
+        } else if (isAgent || isAgencyAdmin) {
             response.sendRedirect("AgentHome");
         } else {
             response.sendRedirect("ViewHome25");

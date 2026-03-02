@@ -149,6 +149,8 @@ public class OneTimeUserLogin extends HttpServlet {
         request.getSession().setAttribute("local", local);
 
         // 6. Role-based redirect — same as AuthenticateUser.goToPage()
+        boolean isPspUser = Boolean.TRUE.equals(request.getSession().getAttribute("isPspUser"));
+        boolean isPspAdmin = Boolean.TRUE.equals(request.getSession().getAttribute("isPspAdmin"));
         boolean isAgent = Boolean.TRUE.equals(request.getSession().getAttribute("isAgent"));
         boolean isAgencyAdmin = Boolean.TRUE.equals(request.getSession().getAttribute("isAgencyAdmin"));
         boolean isBpo = Boolean.TRUE.equals(request.getSession().getAttribute("isBpo"));
@@ -157,6 +159,8 @@ public class OneTimeUserLogin extends HttpServlet {
 
         if (isBpo || isBpoAdmin || isBpoUser) {
             response.sendRedirect("BpoHome");
+        } else if (isPspUser || isPspAdmin) {
+            response.sendRedirect("ViewHome25");
         } else if (isAgent || isAgencyAdmin) {
             response.sendRedirect("AgentHome");
         } else {
