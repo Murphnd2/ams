@@ -724,7 +724,14 @@
                                                        onclick="openEditField('${field.getFieldKey()}', '${fn:escapeXml(field.getLabel())}', '${fn:escapeXml(field.getHelpText())}', ${field.isRequired()}, '${fn:escapeXml(field.getSelectOptions())}', '${field.getFieldType()}'); return false;">
                                                         <i class="bi bi-pencil"></i>
                                                     </a>
-
+                                                    <form method="post" action="ServiceManagerAction" class="d-inline">
+                                                        <input type="hidden" name="action" value="suppressAppField"/>
+                                                        <input type="hidden" name="sectionId" value="${selectedSection.getId()}"/>
+                                                        <input type="hidden" name="fieldKey" value="${field.getFieldKey()}"/>
+                                                        <button type="submit" class="btn btn-link p-0 text-muted" style="font-size:0.8rem;" title="${field.isSuppressed() ? 'Unsuppress' : 'Suppress'}">
+                                                            <i class="bi ${field.isSuppressed() ? 'bi-eye' : 'bi-eye-slash'}"></i>
+                                                        </button>
+                                                    </form>
                                                 </td>
                                             </tr>
                                         </c:forEach>

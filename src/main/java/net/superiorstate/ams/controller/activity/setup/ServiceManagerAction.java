@@ -333,6 +333,8 @@ public class ServiceManagerAction extends HttpServlet {
                     em.merge(section);
                     em.getTransaction().commit();
 
+                    emf.getCache().evict(ApplicationSection.class, sId);
+
                     // If scope changed TO "ALL", additively link missing LOSs and Enhancements
                     if ("ALL".equals(section.getScope())) {
                         List<LOS> allLos = em.createQuery(
@@ -366,6 +368,7 @@ public class ServiceManagerAction extends HttpServlet {
                     section.setSuppressed(!section.isSuppressed());
                     em.merge(section);
                     em.getTransaction().commit();
+                    emf.getCache().evict(ApplicationSection.class, sId);
                 }
 
                 // ── ApplicationField CRUD ────────────────────────────────
@@ -388,11 +391,12 @@ public class ServiceManagerAction extends HttpServlet {
                     em.getTransaction().begin();
                     em.persist(field);
                     em.getTransaction().commit();
+                    emf.getCache().evict(ApplicationSection.class, sId);
                 }
 
                 case "editAppField" -> {
-                    long fieldId = Long.parseLong(request.getParameter("fieldId"));
-                    ApplicationField field = em.find(ApplicationField.class, fieldId);
+                    String fieldKey = request.getParameter("fieldKey");
+                    ApplicationField field = em.find(ApplicationField.class, fieldKey);
                     em.getTransaction().begin();
                     field.setLabel(request.getParameter("label").trim());
                     String opts = request.getParameter("selectOptions");
@@ -402,15 +406,19 @@ public class ServiceManagerAction extends HttpServlet {
                     field.setRequired("on".equals(request.getParameter("isRequired")));
                     em.merge(field);
                     em.getTransaction().commit();
+                    long sId = Long.parseLong(sectionIdParam);
+                    emf.getCache().evict(ApplicationSection.class, sId);
                 }
 
                 case "suppressAppField" -> {
-                    long fieldId = Long.parseLong(request.getParameter("fieldId"));
-                    ApplicationField field = em.find(ApplicationField.class, fieldId);
+                    String fieldKey = request.getParameter("fieldKey");
+                    ApplicationField field = em.find(ApplicationField.class, fieldKey);
                     em.getTransaction().begin();
                     field.setSuppressed(!field.isSuppressed());
                     em.merge(field);
                     em.getTransaction().commit();
+                    long sId = Long.parseLong(sectionIdParam);
+                    emf.getCache().evict(ApplicationSection.class, sId);
                 }
 
                 // ── Feature CRUD (under ServiceModule) ──────────────────
@@ -464,8 +472,12 @@ public class ServiceManagerAction extends HttpServlet {
                 }
             }
 
+        } catch (Exception e) {
+            System.out.println("ServiceManagerAction error (" + action + "): " + e.getMessage());
+            e.printStackTrace();
+            if (em.getTransaction().isActive()) em.getTransaction().rollback();
         } finally {
-            em.close();
+            if (em.isOpen()) em.close();
         }
 
         // Refresh global sales data cache after any service manager change

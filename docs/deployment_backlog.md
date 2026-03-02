@@ -377,6 +377,23 @@ The Setup tab in the Add Activity modal previously rendered dropdown data via se
 
 ---
 
+### D-40: Fix ServiceManagerAction — ApplicationField CRUD Bugs + Cache Eviction
+
+**Completed:** March 1, 2026
+**Files:**
+- `src/main/java/net/superiorstate/ams/controller/activity/setup/ServiceManagerAction.java` — Bug fixes + cache eviction
+- `src/main/webapp/WEB-INF/view/sales/serviceManager25.jsp` — Added suppress button to field rows
+
+**Bug fixes:**
+- **Error handling:** Added catch block with logging and transaction rollback to `doPost()` (was try/finally only — exceptions propagated silently)
+- **editAppField:** Changed from `Long.parseLong(request.getParameter("fieldId"))` to `request.getParameter("fieldKey")` — ApplicationField PK is `String fieldKey`, not Long
+- **suppressAppField:** Same fieldId→fieldKey fix
+- **JSP suppress button:** Added inline form with eye/eye-slash toggle in field row Actions column (was missing entirely)
+
+**Cache eviction:** Added `emf.getCache().evict(ApplicationSection.class, sId)` after commits in all 5 section/field mutation cases (`editAppSection`, `suppressAppSection`, `createAppField`, `editAppField`, `suppressAppField`) to prevent EclipseLink L2 cache from serving stale data on redirect.
+
+---
+
 ## Remaining TODOs
 
 - Run `schema_version_migration.sql` on production database (holding until further testing)
