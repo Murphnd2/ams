@@ -34,7 +34,7 @@
 
 <%-- Header bar --%>
 <div class="hdr-bar mt-2 mb-0 d-flex align-items-center">
-  <a class="btn btn-outline-light btn-sm me-2" href="${sessionScope.isAgent || sessionScope.isAgencyAdmin ? 'AgentHome' : 'ViewHome25'}">
+  <a class="btn btn-outline-light btn-sm me-2" href="${cName == 'Opportunity' && !sessionScope.isPspAdmin && !sessionScope.isPspUser ? 'AgentHome' : 'ViewHome25'}">
     <i class="bi bi-arrow-return-left"></i>
   </a>
   <i class="bi bi-${aIcon} me-2"></i>

@@ -69,14 +69,29 @@ public class CreateOpportunity extends HttpServlet {
 
             if (prospect == null) return null;
 
+            // Determine the agent for this opportunity
+            Person agent;
+            if ("new".equals(prospectMode)) {
+                agent = resolveAgent(em, request, agency, currentUser);
+            } else {
+                // Existing prospect — use the prospect's agent if available
+                agent = (prospect.getAgent() != null) ? prospect.getAgent() : currentUser;
+            }
+
+            // Determine if this is an outside-agency creation (PSP admin creating for someone else)
+            boolean isOutsideAgency = !agent.getId().equals(currentUser.getId());
+
             // Create Opportunity
             em.getTransaction().begin();
             Opportunity opp = new Opportunity();
             opp.setProspect(prospect);
             opp.setAgency(agency);
             opp.setStage("NEW");
-            opp.setAssignedTo(currentUser);
-            opp.setLoggedBy(currentUser);
+            opp.setAssignedTo(agent);                          // Agent owns the work
+            opp.setLoggedBy(currentUser);                      // PSP admin created it
+            if (isOutsideAgency) {
+                opp.setManagedBy(currentUser);                 // PSP admin maintains oversight
+            }
             opp.setPrimaryContact(prospect.getContact());
             opp.setFullName(prospect.getName().trim().toUpperCase());
             opp.setDueDate(Date.valueOf(LocalDate.now().plusDays(30)));
@@ -155,26 +170,11 @@ public class CreateOpportunity extends HttpServlet {
         }
     }
 
-    private Prospect createNewProspect(EntityManager em, HttpServletRequest request, Agency agency, Person currentUser) {
-        String companyName = request.getParameter("companyName");
-        String contactFirst = request.getParameter("contactFirst");
-        String contactLast = request.getParameter("contactLast");
-        String contactEmail = request.getParameter("contactEmail");
-
-        if (companyName == null || companyName.trim().isEmpty()) return null;
-
-        // Create contact Person
-        em.getTransaction().begin();
-        Person contact = new Person();
-        contact.setFirstName(contactFirst != null ? contactFirst.trim() : "");
-        contact.setLastName(contactLast != null ? contactLast.trim() : "");
-        contact.setFullName((contact.getFirstName() + " " + contact.getLastName()).trim());
-        contact.setEmail(contactEmail != null ? contactEmail.trim() : "");
-        contact.setPsp(currentUser.getPsp());
-        em.persist(contact);
-        em.getTransaction().commit();
-
-        // Determine agent: explicit agentId param > current user if in agency > first agent in agency > fallback
+    /**
+     * Resolve the agent for the given agency.
+     * Priority: explicit agentId param > current user if in agency > first agent in agency > fallback to currentUser
+     */
+    private Person resolveAgent(EntityManager em, HttpServletRequest request, Agency agency, Person currentUser) {
         Person agent = null;
         String agentIdParam = request.getParameter("agentId");
         if (agentIdParam != null && !agentIdParam.isEmpty()) {
@@ -199,6 +199,30 @@ public class CreateOpportunity extends HttpServlet {
         if (agent == null) {
             agent = currentUser;
         }
+        return agent;
+    }
+
+    private Prospect createNewProspect(EntityManager em, HttpServletRequest request, Agency agency, Person currentUser) {
+        String companyName = request.getParameter("companyName");
+        String contactFirst = request.getParameter("contactFirst");
+        String contactLast = request.getParameter("contactLast");
+        String contactEmail = request.getParameter("contactEmail");
+
+        if (companyName == null || companyName.trim().isEmpty()) return null;
+
+        // Create contact Person
+        em.getTransaction().begin();
+        Person contact = new Person();
+        contact.setFirstName(contactFirst != null ? contactFirst.trim() : "");
+        contact.setLastName(contactLast != null ? contactLast.trim() : "");
+        contact.setFullName((contact.getFirstName() + " " + contact.getLastName()).trim());
+        contact.setEmail(contactEmail != null ? contactEmail.trim() : "");
+        contact.setPsp(currentUser.getPsp());
+        em.persist(contact);
+        em.getTransaction().commit();
+
+        // Resolve agent for the prospect
+        Person agent = resolveAgent(em, request, agency, currentUser);
 
         // Create Prospect
         em.getTransaction().begin();
