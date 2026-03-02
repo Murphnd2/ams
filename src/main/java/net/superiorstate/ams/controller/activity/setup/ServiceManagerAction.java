@@ -67,6 +67,17 @@ public class ServiceManagerAction extends HttpServlet {
                     em.merge(los);
                     em.getTransaction().commit();
 
+                    // Auto-create linked ServiceModule (required for features)
+                    ServiceModule sm = new ServiceModule();
+                    sm.setDescription(description.trim());
+                    sm.setShortText(shortText.trim());
+                    sm.setSortOrder(los.getSortOrder());
+                    sm.setPsp(psp);
+                    sm.setLos(los);
+                    em.getTransaction().begin();
+                    em.persist(sm);
+                    em.getTransaction().commit();
+
                     // Auto-link all ALL-scoped sections to this new LOS
                     List<ApplicationSection> allScopedSections = em.createQuery(
                                     "SELECT s FROM ApplicationSection s WHERE s.psp.id = :pspId AND s.scope = 'ALL' AND s.suppressed = false",
@@ -137,6 +148,17 @@ public class ServiceManagerAction extends HttpServlet {
                     em.merge(enh);
                     em.getTransaction().commit();
 
+                    // Auto-create linked ServiceModule (required for features)
+                    ServiceModule sm = new ServiceModule();
+                    sm.setDescription(desc.trim());
+                    sm.setShortText(shortText.trim());
+                    sm.setSortOrder(enh.getSortOrder());
+                    sm.setPsp(psp);
+                    sm.setEnhancement(enh);
+                    em.getTransaction().begin();
+                    em.persist(sm);
+                    em.getTransaction().commit();
+
                     // Auto-link all ALL-scoped sections to this new Enhancement
                     List<ApplicationSection> allScopedSections = em.createQuery(
                                     "SELECT s FROM ApplicationSection s WHERE s.psp.id = :pspId AND s.scope = 'ALL' AND s.suppressed = false",
@@ -178,15 +200,17 @@ public class ServiceManagerAction extends HttpServlet {
 
                 // ── LOS ↔ Enhancement Associations ──────────────────────
 
-                case "addLosToEnhancement" -> {
+                case "assignLosToEnhancement" -> {
                     long enhId = Long.parseLong(enhIdParam);
                     long losId = Long.parseLong(request.getParameter("losId"));
                     Enhancement enh = em.find(Enhancement.class, enhId);
                     LOS los = EntityLookup.getLosById(em, losId);
-                    em.getTransaction().begin();
-                    enh.getLosList().add(los);
-                    em.merge(enh);
-                    em.getTransaction().commit();
+                    if (!enh.getLosList().contains(los)) {
+                        em.getTransaction().begin();
+                        enh.getLosList().add(los);
+                        em.merge(enh);
+                        em.getTransaction().commit();
+                    }
                 }
 
                 case "removeLosFromEnhancement" -> {
@@ -200,7 +224,7 @@ public class ServiceManagerAction extends HttpServlet {
                     em.getTransaction().commit();
                 }
 
-                case "addEnhancementToLos" -> {
+                case "assignEnhancementToLos" -> {
                     long losId = Long.parseLong(losIdParam);
                     long enhId = Long.parseLong(request.getParameter("enhId"));
                     LOS los = EntityLookup.getLosById(em, losId);

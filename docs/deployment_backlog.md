@@ -1,6 +1,6 @@
 # Deployment Backlog
 
-**Last Updated:** March 1, 2026
+**Last Updated:** March 2, 2026
 **Reference:** See `docs/deployment_strategy.md` for full context on each item.
 
 Items are ordered by dependency (earlier items unblock later ones).
@@ -412,6 +412,19 @@ Converted the Opportunity section of the Add Activity modal from server-rendered
 - New `aa_rebuildOppOptions()` — populates agency dropdown, auto-selects single agency or homeAgencyId
 - New `aa_onOppAgencyChange()` — filters prospect dropdown by `agencyIds` from SetupModalData response
 - Modal close now sets `aa_setupData = null` for fresh fetch on next open
+
+---
+
+### D-42: ServiceManager Enhancement Assignment + Feature Creation Fixes ✅
+
+**Completed:** March 2, 2026
+**File:** `src/main/java/net/superiorstate/ams/controller/activity/setup/ServiceManagerAction.java`
+
+**Enhancement ↔ LOS assignment fix:** JSP forms sent `assignEnhancementToLos` / `assignLosToEnhancement` but servlet switch cases were `addEnhancementToLos` / `addLosToEnhancement`. Renamed cases to match. Added missing `contains()` guard.
+
+**Feature creation fix:** `createLos` and `createEnhancement` auto-created ServiceItem but never created ServiceModule. Without a ServiceModule, the Add Feature UI never rendered. Added ServiceModule auto-creation to both.
+
+**Note:** Existing LOS/Enhancement records created before this fix lack ServiceModules. A one-time backfill INSERT is needed for existing installations.
 
 ---
 

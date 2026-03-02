@@ -2,7 +2,7 @@
 
 > **Purpose:** Consolidated historical record of all build sessions. For current project state, see `project_backlog.md`. For current architecture, see `application_flow.md` and `entity_reference.md`.
 >
-> **Last Updated:** March 1, 2026
+> **Last Updated:** March 2, 2026
 
 ---
 
@@ -706,5 +706,40 @@ Converted the Opportunity section of the Add Activity modal from JSTL to AJAX, a
 
 ### Files Changed
 - `src/main/webapp/WEB-INF/view/a/pspHome/columns/activities/addActivityModal25.jsp` — Only file modified
+
+No database changes.
+
+## March 1, 2026 — Global Ghost Buttons + Checklist Detail Fix (Session 17)
+
+- **Global `.ssa-action` ghost buttons:** Applied across 30+ modals in 15 files for modal footers/form actions
+- **Fixed broken `goCheckListDetail` cancel URL**
+
+No database changes.
+
+---
+
+## March 2, 2026 — Client-Side Activity Filtering + ServiceManager Fixes (Session 18)
+
+### Client-Side Activity Filtering
+Converted the home page activity filter from server-side round-trips to instant client-side filtering:
+
+- **ViewHome25.java** — Loads ALL open activities in one SQL query (ownership=0, all types, no attention filter). Removed `isActionableForPerson` post-filter. Added `mePersonId`, `daysSinceWarning`, `canSeeOpportunities` request attributes for JS.
+- **FilterActivities25.java** — Added AJAX support: returns 204 No Content for `X-Requested-With: XMLHttpRequest` requests instead of forwarding to ViewHome25.
+- **activityHeader25.jsp** — `afSubmit()` now calls `filterAndRender()` (client-side) + debounced `syncFilterToServer()` (background AJAX). Presets serialized to JS array. Preset links changed from `href` navigation to `onclick` with `applyPreset()`. Added `updateRowCount()`, `buildSummary()` functions.
+- **activityList25.jsp** — `activityRows` serialized to `ALL_ACTIVITIES` JS array. JSTL `<c:forEach>` replaced with `filterAndRender()` that produces identical card HTML. Row click uses dynamic form POST to `GoActivityDetail25`. Initial render on page load uses current UI control state.
+
+### ServiceManager Enhancement ↔ LOS Assignment Fix
+- **Bug:** JSP forms sent `assignEnhancementToLos` / `assignLosToEnhancement` but servlet cases were named `addEnhancementToLos` / `addLosToEnhancement` — action name mismatch caused silent no-ops
+- **Fix:** Renamed both servlet cases to match JSP (`assign*` prefix, consistent with section assignment naming)
+- **Also:** Added missing `contains()` guard to `assignLosToEnhancement`
+
+### ServiceModule Auto-Creation for Features
+- **Bug:** `createLos` and `createEnhancement` auto-created ServiceItem but never created ServiceModule. Without a ServiceModule, `findModuleByLos`/`findModuleByEnhancement` returned null, so the Add Feature button/modal never rendered.
+- **Fix:** Added auto-creation of ServiceModule in both `createLos` (linked via `setLos`) and `createEnhancement` (linked via `setEnhancement`)
+
+### Files Changed
+- `ViewHome25.java`, `FilterActivities25.java` — Client-side filter infrastructure
+- `activityHeader25.jsp`, `activityList25.jsp` — JS filtering + rendering
+- `ServiceManagerAction.java` — Enhancement assignment fix + ServiceModule auto-creation
 
 No database changes.
