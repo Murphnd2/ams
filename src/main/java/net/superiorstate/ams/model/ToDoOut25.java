@@ -90,7 +90,7 @@ public class ToDoOut25 {
         this.isDelegated = (hasOwner && !this.isMyTask) || (isSourced && bpoRegistration != null);
 
         this.isTimeBlocked = (openIndex > 0) && (!allowEarly || blockFuture);
-        this.isWhoBlocked = !this.isMyTask && !allowNonOwner && (hasOwner || isSourced);
+        this.isWhoBlocked = !this.isMyTask && !allowNonOwner && (hasOwner || isSourced) && !bpoCompleted;
 
         boolean adminOverride = isAdmin;
 

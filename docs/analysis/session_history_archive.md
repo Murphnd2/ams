@@ -2,7 +2,7 @@
 
 > **Purpose:** Consolidated historical record of all build sessions. For current project state, see `project_backlog.md`. For current architecture, see `application_flow.md` and `entity_reference.md`.
 >
-> **Last Updated:** March 3, 2026
+> **Last Updated:** March 4, 2026
 
 ---
 
@@ -890,3 +890,41 @@ Added file attachment support to BPO task notes. BPO users can attach files when
 ### Follow-up Fix: L2 Cache Eviction
 
 After persisting a WebLink attachment in `uploadNoteAttachment()`, EclipseLink's L2 shared cache retained the ToDoNote with an empty `webLinkList`. Subsequent `LEFT JOIN FETCH` queries in `BpoGetNotes` returned the stale cached entity. Added `em.getEntityManagerFactory().getCache().evict(ToDoNote.class, note.getId())` after the WebLink commit — established EclipseLink pattern used elsewhere in the codebase.
+
+---
+
+## March 3, 2026 — PSP Note Viewer + Vendor Only Display Polish (Session 24)
+
+Enabled PSP users to view and add notes on sourced/delegated tasks directly from the checklist panel. Also refined the display state for Vendor Only tasks so BPO-completed items show as normal completed rather than locked.
+
+### WS1: BpoGetNotes PSP Compatibility (Verified)
+- **BpoGetNotes.java** — Already works on both PSP and BPO deployments. No `AppConfig.isBpo()` guard. Accepts both `todoId` and `todoGuid` parameters. Handles linkType 1 (local Wasabi pre-signed URL) and linkType 2 (external URL from cross-system). No changes needed.
+
+### WS2: Note Indicator on Sourced Tasks
+- **checklistBasic25.jsp** — Added `bpo-note-indicator` span to each sourced task row (after BPO Done badge). Hidden by default; DOMContentLoaded AJAX fetches notes via `BpoGetNotes?todoId=` for each sourced task and reveals indicator with count when notes exist. Clickable — opens notes modal.
+
+### WS3: Notes Modal + AddNoteToToDo25 Servlet
+- **checklistBasic25.jsp** — Added Bootstrap modal (`#bpoNotesModal`) with:
+  - Note list viewer (`pspRenderNotes()`) rendering BPO/PSP source badges, author, date, text, and attachment pills
+  - Text input with "Add" button and file attachment support (same pattern as BPO dashboard)
+  - `openBpoNotesModal(todoId)` — loads notes via AJAX, shows modal
+  - `pspAddNoteAjax()` — FormData POST to AddNoteToToDo25, refreshes note list after success
+  - File label/clear helper functions (`pspUpdateFileLabel`, `pspClearFileInput`)
+- **"Notes" kebab menu item** — Added to sourced task dropdown menus as alternative modal trigger
+- **AddNoteToToDo25.java** (new) — `@WebServlet("/AddNoteToToDo25")`, `@MultipartConfig`. PSP-side servlet for note+attachment submission:
+  1. Persists ToDoNote with sourceType="PSP", todoGuid from the local ToDo
+  2. Optional file upload to Wasabi via StorageDAO, WebLink with linkType=1
+  3. L2 cache eviction after WebLink persist
+  4. Cross-system callback to BPO's TaskNotesApi POST endpoint (non-fatal) when task is sourced, includes attachment metadata with 7-day pre-signed URL
+
+### WS4: Vendor Only Display State Refinement
+- **ToDoOut25.java** — Single-line change in `computeDisplayState()`:
+  - Before: `this.isWhoBlocked = !this.isMyTask && !allowNonOwner && (hasOwner || isSourced);`
+  - After: `this.isWhoBlocked = !this.isMyTask && !allowNonOwner && (hasOwner || isSourced) && !bpoCompleted;`
+  - Effect: BPO-completed Vendor Only tasks show as normal strikethrough (not locked). Source but Verify tasks where BPO is done show "BPO Done - Verify" badge and are actionable.
+
+### Files Changed
+- **New (1):** AddNoteToToDo25.java
+- **Modified (2):** checklistBasic25.jsp, ToDoOut25.java
+
+No database changes.

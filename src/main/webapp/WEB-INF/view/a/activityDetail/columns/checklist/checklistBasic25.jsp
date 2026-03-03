@@ -105,6 +105,15 @@
                 <c:if test="${toDo.isBpoCompleted() && !toDo.isComplete()}">
                   <span class="badge bg-warning text-dark" style="font-size: 0.6rem; margin-left: 0.3rem;">BPO Done - Verify</span>
                 </c:if>
+                <c:if test="${toDo.isSourced() && toDo.getBpoRegistration() != null}">
+                  <span class="bpo-note-indicator" data-todo-id="${toDo.getToDo().getId()}"
+                        style="display:none; cursor:pointer; margin-left:0.3rem;"
+                        title="View BPO Notes"
+                        onclick="openBpoNotesModal(${toDo.getToDo().getId()})">
+                    <i class="bi bi-chat-left-text" style="font-size:0.75rem; color:#0d5681;"></i>
+                    <span class="bpo-note-count" style="font-size:0.65rem; color:#0d5681;"></span>
+                  </span>
+                </c:if>
               </div>
 
               <%-- Automation icon (first open item only) --%>
@@ -135,6 +144,13 @@
                     <c:if test="${toDo.hasGoto()==true && toDo.getGotoLink()!=null}">
                       <li>
                         <a class="dropdown-item py-1" href="${toDo.getGotoLink().getLinkPath()}" target="_blank"><i class="bi bi-box-arrow-up-right me-2"></i>Go To</a>
+                      </li>
+                    </c:if>
+                    <c:if test="${toDo.isSourced() && toDo.getBpoRegistration() != null}">
+                      <li>
+                        <a class="dropdown-item py-1" href="javascript:void(0)" onclick="openBpoNotesModal(${toDo.getToDo().getId()})">
+                          <i class="bi bi-chat-left-text me-2"></i>Notes
+                        </a>
                       </li>
                     </c:if>
                     <c:if test="${toDo.getBtnIcon() == 'square'}">
@@ -246,6 +262,161 @@
     </div>
   </div>
 </c:if>
+
+<%-- ===== BPO NOTES MODAL ===== --%>
+<div class="modal fade" id="bpoNotesModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header" style="background:var(--ssa); color:white; padding:0.5rem 1rem;">
+        <h6 class="modal-title mb-0"><i class="bi bi-chat-left-text me-2"></i>Task Notes</h6>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" style="padding:0.75rem 1rem;">
+        <div id="pspNotesList" style="max-height:300px; overflow-y:auto; margin-bottom:0.75rem;">
+          <div class="text-center text-muted fst-italic py-2" style="font-size:0.8rem;">Loading...</div>
+        </div>
+        <hr style="margin:0.5rem 0;">
+        <div class="mb-2">
+          <div class="input-group input-group-sm">
+            <input type="text" class="form-control" id="pspNoteInput" placeholder="Add a note...">
+            <button type="button" class="btn btn-sm btn-outline-ssa" onclick="pspAddNoteAjax()">
+              <i class="bi bi-chat-dots me-1"></i>Add
+            </button>
+          </div>
+          <div class="mt-1">
+            <label class="form-label mb-0" style="font-size:0.75rem; color:#6c757d; cursor:pointer;">
+              <i class="bi bi-paperclip"></i> Attach file
+              <input type="file" id="pspNoteFile" style="display:none;" onchange="pspUpdateFileLabel(this)">
+            </label>
+            <span id="pspFileLabel" style="font-size:0.75rem; color:#0d5681;"></span>
+            <span id="pspFileClear" style="display:none; font-size:0.75rem; color:#dc3545; cursor:pointer; margin-left:0.3rem;" onclick="pspClearFileInput()">&times;</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  /* === WS2: Note indicator AJAX on page load === */
+  document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.bpo-note-indicator').forEach(function(el) {
+      const todoId = el.dataset.todoId;
+      fetch('BpoGetNotes?todoId=' + todoId)
+        .then(function(r) { return r.json(); })
+        .then(function(notes) {
+          if (notes.length > 0) {
+            el.style.display = 'inline';
+            el.querySelector('.bpo-note-count').textContent = ' (' + notes.length + ')';
+          }
+        })
+        .catch(function() {}); // silent fail
+    });
+  });
+
+  /* === WS3: Notes modal functions === */
+  let currentPspNoteToDoId = null;
+
+  function openBpoNotesModal(todoId) {
+    currentPspNoteToDoId = todoId;
+    const notesList = document.getElementById('pspNotesList');
+    notesList.innerHTML = '<div class="text-center text-muted fst-italic py-2" style="font-size:0.8rem;">Loading...</div>';
+    document.getElementById('pspNoteInput').value = '';
+    pspClearFileInput();
+
+    fetch('BpoGetNotes?todoId=' + todoId)
+      .then(function(r) { return r.json(); })
+      .then(function(notes) { pspRenderNotes(notes); })
+      .catch(function() {
+        notesList.innerHTML = '<div class="text-center text-muted py-2" style="font-size:0.8rem;">Could not load notes</div>';
+      });
+
+    new bootstrap.Modal(document.getElementById('bpoNotesModal')).show();
+  }
+
+  function pspRenderNotes(notes) {
+    const notesDiv = document.getElementById('pspNotesList');
+    if (notes.length === 0) {
+      notesDiv.innerHTML = '<div class="text-center text-muted fst-italic py-2" style="font-size:0.8rem;">No notes yet</div>';
+      return;
+    }
+    let html = '';
+    notes.forEach(function(n) {
+      const badgeStyle = n.source === 'BPO'
+        ? 'background:#e8f4f8; color:#0d5681;'
+        : 'background:#fff3cd; color:#856404;';
+      html += '<div style="padding:0.35rem 0; border-bottom:1px solid #f0f0f0;">';
+      html += '  <div class="d-flex align-items-center gap-2">';
+      html += '    <span style="font-size:0.65rem; padding:0.1rem 0.4rem; border-radius:8px; ' + badgeStyle + '">' + n.source + '</span>';
+      html += '    <span style="font-size:0.8rem; font-weight:500;">' + n.author + '</span>';
+      html += '    <span style="font-size:0.7rem; color:#999;">' + n.date + '</span>';
+      html += '  </div>';
+      html += '  <div style="font-size:0.85rem; margin-top:0.15rem; padding-left:0.2rem;">' + n.text + '</div>';
+      if (n.attachments && n.attachments.length > 0) {
+        html += '<div style="margin-top:0.25rem; padding-left:0.2rem;">';
+        n.attachments.forEach(function(att) {
+          html += '<a href="' + att.url + '" target="_blank" '
+               + 'style="display:inline-block; font-size:0.75rem; padding:0.15rem 0.5rem; '
+               + 'background:#e8f4f8; color:#0d5681; border-radius:12px; text-decoration:none; '
+               + 'margin-right:0.3rem; margin-bottom:0.2rem;">'
+               + '<i class="bi bi-paperclip"></i> ' + att.name + '</a>';
+        });
+        html += '</div>';
+      }
+      html += '</div>';
+    });
+    notesDiv.innerHTML = html;
+  }
+
+  function pspAddNoteAjax() {
+    const input = document.getElementById('pspNoteInput');
+    const noteText = input.value.trim();
+    if (!noteText) return;
+
+    const fileInput = document.getElementById('pspNoteFile');
+    input.disabled = true;
+
+    const formData = new FormData();
+    formData.append('todoId', currentPspNoteToDoId);
+    formData.append('noteText', noteText);
+    if (fileInput.files.length > 0) {
+      formData.append('noteFile', fileInput.files[0]);
+    }
+
+    fetch('AddNoteToToDo25', {
+      method: 'POST',
+      body: formData
+    })
+    .then(function() {
+      input.value = '';
+      input.disabled = false;
+      pspClearFileInput();
+      input.focus();
+      return fetch('BpoGetNotes?todoId=' + currentPspNoteToDoId);
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(notes) { pspRenderNotes(notes); })
+    .catch(function() { input.disabled = false; });
+  }
+
+  function pspUpdateFileLabel(input) {
+    const label = document.getElementById('pspFileLabel');
+    const clear = document.getElementById('pspFileClear');
+    if (input.files.length > 0) {
+      label.textContent = input.files[0].name;
+      clear.style.display = 'inline';
+    } else {
+      label.textContent = '';
+      clear.style.display = 'none';
+    }
+  }
+
+  function pspClearFileInput() {
+    document.getElementById('pspNoteFile').value = '';
+    document.getElementById('pspFileLabel').textContent = '';
+    document.getElementById('pspFileClear').style.display = 'none';
+  }
+</script>
 
 <!-- Auto-save on page unload -->
 <form id="autoSaveForm" method="post" action="PersistChecklist25" style="display:none;">
