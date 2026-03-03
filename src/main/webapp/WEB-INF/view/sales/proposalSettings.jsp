@@ -106,6 +106,9 @@
                                 <c:if test="${!section.isActive()}">
                                     <span class="section-badge bg-warning text-dark">Inactive</span>
                                 </c:if>
+                                <c:if test="${section.getSectionType() == 'CUSTOM' && section.getScope() == 'SCOPED'}">
+                                    <span class="section-badge bg-info text-white">Scoped</span>
+                                </c:if>
                             </div>
                         </div>
                     </c:forEach>
@@ -195,6 +198,85 @@
                                             </button>
                                         </div>
                                     </form>
+
+                                    <%-- Display Scope (CUSTOM sections only) --%>
+                                    <c:if test="${section.getSectionType() == 'CUSTOM'}">
+                                      <div class="card mt-3">
+                                        <div class="card-header py-2" style="background-color: var(--ssa); color: white;">
+                                          <h6 class="mb-0 fw-semibold"><i class="bi bi-funnel me-2"></i>Display Scope</h6>
+                                        </div>
+                                        <div class="card-body">
+                                          <form method="post" action="ProposalSettings" id="scopeForm-${section.getId()}">
+                                            <input type="hidden" name="action" value="updateScope"/>
+                                            <input type="hidden" name="sectionId" value="${section.getId()}"/>
+
+                                            <div class="form-check mb-2">
+                                              <input class="form-check-input" type="radio" name="scope" value="ALL"
+                                                     id="scopeAll-${section.getId()}"
+                                                     ${section.getScope() != 'SCOPED' ? 'checked' : ''}
+                                                     onchange="toggleScopePanel(${section.getId()}, false)">
+                                              <label class="form-check-label" for="scopeAll-${section.getId()}">
+                                                Show on <strong>all</strong> proposals
+                                              </label>
+                                            </div>
+                                            <div class="form-check mb-3">
+                                              <input class="form-check-input" type="radio" name="scope" value="SCOPED"
+                                                     id="scopeScoped-${section.getId()}"
+                                                     ${section.getScope() == 'SCOPED' ? 'checked' : ''}
+                                                     onchange="toggleScopePanel(${section.getId()}, true)">
+                                              <label class="form-check-label" for="scopeScoped-${section.getId()}">
+                                                Show only when <strong>specific services</strong> are proposed
+                                              </label>
+                                            </div>
+
+                                            <div id="scopeDetail-${section.getId()}"
+                                                 style="display: ${section.getScope() == 'SCOPED' ? 'block' : 'none'};">
+                                              <p class="text-muted" style="font-size: 0.85rem;">
+                                                This page appears on proposals that include at least one of the selected services.
+                                              </p>
+
+                                              <%-- LOS Checkboxes --%>
+                                              <div class="mb-3">
+                                                <label class="form-label fw-semibold" style="font-size: 0.9rem;">Lines of Service</label>
+                                                <c:forEach var="los" items="${allLos}">
+                                                  <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" name="losIds"
+                                                           value="${los.getId()}" id="psLos-${section.getId()}-${los.getId()}"
+                                                           <c:forEach var="linked" items="${section.getLosList()}">
+                                                             <c:if test="${linked.getId() == los.getId()}">checked</c:if>
+                                                           </c:forEach>>
+                                                    <label class="form-check-label" for="psLos-${section.getId()}-${los.getId()}"
+                                                           style="font-size: 0.85rem;">${los.getDescription()}</label>
+                                                  </div>
+                                                </c:forEach>
+                                              </div>
+
+                                              <%-- Enhancement Checkboxes --%>
+                                              <c:if test="${not empty allEnhancements}">
+                                                <div class="mb-3">
+                                                  <label class="form-label fw-semibold" style="font-size: 0.9rem;">Enhancements</label>
+                                                  <c:forEach var="enh" items="${allEnhancements}">
+                                                    <div class="form-check">
+                                                      <input class="form-check-input" type="checkbox" name="enhIds"
+                                                             value="${enh.getId()}" id="psEnh-${section.getId()}-${enh.getId()}"
+                                                             <c:forEach var="linked" items="${section.getEnhancementList()}">
+                                                               <c:if test="${linked.getId() == enh.getId()}">checked</c:if>
+                                                             </c:forEach>>
+                                                      <label class="form-check-label" for="psEnh-${section.getId()}-${enh.getId()}"
+                                                             style="font-size: 0.85rem;">${enh.getDescription()}</label>
+                                                    </div>
+                                                  </c:forEach>
+                                                </div>
+                                              </c:if>
+                                            </div>
+
+                                            <button type="submit" class="btn btn-sm btn-outline-ssa">
+                                              <i class="bi bi-check-lg me-1"></i>Save Scope
+                                            </button>
+                                          </form>
+                                        </div>
+                                      </div>
+                                    </c:if>
 
                                     <%-- Available Tokens reference --%>
                                     <div class="token-ref mt-3">
@@ -317,6 +399,11 @@
             source.value = editors[sectionId].getData();
         }
         document.getElementById('saveForm-' + sectionId).submit();
+    }
+
+    // ── Toggle Scope Detail Panel ──────────────────────────────────────
+    function toggleScopePanel(sectionId, show) {
+        document.getElementById('scopeDetail-' + sectionId).style.display = show ? 'block' : 'none';
     }
 
     // ── Select Section ──────────────────────────────────────────────────

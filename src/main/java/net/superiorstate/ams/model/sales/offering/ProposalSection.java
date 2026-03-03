@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import net.superiorstate.ams.model.general.PSP;
 
 import java.sql.Timestamp;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "proposal_section")
@@ -26,6 +28,21 @@ public class ProposalSection {
 
     @Column(name = "html_content", columnDefinition = "text")
     private String htmlContent;
+
+    @Column(name = "scope", columnDefinition = "varchar(10) DEFAULT 'ALL'", nullable = false)
+    private String scope = "ALL";
+
+    @ManyToMany
+    @JoinTable(name = "proposalsectionlos",
+            joinColumns = @JoinColumn(name = "section_id"),
+            inverseJoinColumns = @JoinColumn(name = "los_id"))
+    private List<LOS> losList = new ArrayList<>();
+
+    @ManyToMany
+    @JoinTable(name = "proposalsectionenhancement",
+            joinColumns = @JoinColumn(name = "section_id"),
+            inverseJoinColumns = @JoinColumn(name = "enhancement_id"))
+    private List<Enhancement> enhancementList = new ArrayList<>();
 
     @Column(name = "sort_order", nullable = false)
     private int sortOrder;
@@ -103,5 +120,29 @@ public class ProposalSection {
 
     public Timestamp getDateModified() {
         return dateModified;
+    }
+
+    public String getScope() {
+        return scope;
+    }
+
+    public void setScope(String scope) {
+        this.scope = scope;
+    }
+
+    public List<LOS> getLosList() {
+        return losList;
+    }
+
+    public void setLosList(List<LOS> losList) {
+        this.losList = losList;
+    }
+
+    public List<Enhancement> getEnhancementList() {
+        return enhancementList;
+    }
+
+    public void setEnhancementList(List<Enhancement> enhancementList) {
+        this.enhancementList = enhancementList;
     }
 }

@@ -12,7 +12,9 @@ import net.superiorstate.ams.data.dao.SalesDAO;
 import net.superiorstate.ams.data.dao.StorageDAO;
 import net.superiorstate.ams.model.sales.agency.Proposal;
 import net.superiorstate.ams.model.sales.agency.RateTable;
+import net.superiorstate.ams.model.sales.offering.Enhancement;
 import net.superiorstate.ams.model.sales.offering.Feature;
+import net.superiorstate.ams.model.sales.offering.LOS;
 import net.superiorstate.ams.model.sales.offering.MarketingMaterial;
 import net.superiorstate.ams.model.sales.offering.ProposalSection;
 import net.superiorstate.ams.model.general.PSP;
@@ -148,6 +150,57 @@ public class ViewProposal extends HttpServlet {
                                 ProposalSection.class)
                         .setParameter("pspId", psp.getId())
                         .getResultList();
+
+                // Force-init M:N collections for scope filtering
+                for (ProposalSection s : sections) {
+                    if (s.getLosList() != null) s.getLosList().size();
+                    if (s.getEnhancementList() != null) s.getEnhancementList().size();
+                }
+
+                // Scope filtering — remove SCOPED sections that don't match the proposal
+                Set<Long> proposalLosIds = new HashSet<>();
+                if (proposal.getLosList() != null) {
+                    for (LOS los : proposal.getLosList()) {
+                        proposalLosIds.add(los.getId());
+                    }
+                }
+
+                Set<Long> proposalEnhIds = new HashSet<>();
+                for (RateTable rt : pricing) {
+                    if (rt.getModule() != null && rt.getModule().getEnhancement() != null) {
+                        proposalEnhIds.add(rt.getModule().getEnhancement().getId());
+                    }
+                }
+
+                List<ProposalSection> filteredSections = new ArrayList<>();
+                for (ProposalSection section : sections) {
+                    if (!"SCOPED".equals(section.getScope())) {
+                        filteredSections.add(section);
+                        continue;
+                    }
+                    // SCOPED — check if any linked LOS or Enhancement matches
+                    boolean matches = false;
+                    if (section.getLosList() != null) {
+                        for (LOS los : section.getLosList()) {
+                            if (proposalLosIds.contains(los.getId())) {
+                                matches = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (!matches && section.getEnhancementList() != null) {
+                        for (Enhancement enh : section.getEnhancementList()) {
+                            if (proposalEnhIds.contains(enh.getId())) {
+                                matches = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (matches) {
+                        filteredSections.add(section);
+                    }
+                }
+                sections = filteredSections;
 
                 if (!sections.isEmpty()) {
                     // Build token replacement map

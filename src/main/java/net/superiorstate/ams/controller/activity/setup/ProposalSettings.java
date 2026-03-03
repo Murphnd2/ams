@@ -7,10 +7,13 @@ import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.AmsDataLocal;
 import net.superiorstate.ams.model.general.PSP;
+import net.superiorstate.ams.model.sales.offering.Enhancement;
+import net.superiorstate.ams.model.sales.offering.LOS;
 import net.superiorstate.ams.model.sales.offering.ProposalSection;
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
 
@@ -57,7 +60,23 @@ public class ProposalSettings extends HttpServlet {
                 sections = loadSections(em, psp);
             }
 
+            // Force-init M:N collections while EM is open
+            for (ProposalSection s : sections) {
+                if (s.getLosList() != null) s.getLosList().size();
+                if (s.getEnhancementList() != null) s.getEnhancementList().size();
+            }
+
+            // Load LOS and Enhancement lists for scope checkboxes
+            List<LOS> allLos = em.createQuery(
+                    "SELECT l FROM LOS l WHERE l.psp.id = :pspId AND l.suppressed = false ORDER BY l.sortOrder", LOS.class)
+                    .setParameter("pspId", psp.getId().longValue()).getResultList();
+            List<Enhancement> allEnhancements = em.createQuery(
+                    "SELECT e FROM Enhancement e WHERE e.psp.id = :pspId AND e.suppressed = false ORDER BY e.sortOrder", Enhancement.class)
+                    .setParameter("pspId", psp.getId().longValue()).getResultList();
+
             request.setAttribute("sections", sections);
+            request.setAttribute("allLos", allLos);
+            request.setAttribute("allEnhancements", allEnhancements);
             request.setAttribute("pageTitle", "Proposal Settings");
             request.setAttribute("pageIcon", "bi-file-earmark-text");
 
@@ -215,6 +234,49 @@ public class ProposalSettings extends HttpServlet {
                         em.getTransaction().commit();
                     }
                 }
+
+                case "updateScope" -> {
+                    long sectionId = Long.parseLong(request.getParameter("sectionId"));
+                    String scope = request.getParameter("scope");
+                    ProposalSection section = em.find(ProposalSection.class, sectionId);
+
+                    if (section != null && "CUSTOM".equals(section.getSectionType())
+                            && section.getPsp().getId().equals(psp.getId())) {
+
+                        // Initialize collections if needed
+                        if (section.getLosList() == null) section.setLosList(new ArrayList<>());
+                        if (section.getEnhancementList() == null) section.setEnhancementList(new ArrayList<>());
+
+                        em.getTransaction().begin();
+                        section.setScope("SCOPED".equals(scope) ? "SCOPED" : "ALL");
+
+                        // Clear existing associations
+                        section.getLosList().clear();
+                        section.getEnhancementList().clear();
+
+                        // If SCOPED, add selected LOS and Enhancement associations
+                        if ("SCOPED".equals(scope)) {
+                            String[] losIds = request.getParameterValues("losIds");
+                            if (losIds != null) {
+                                for (String id : losIds) {
+                                    LOS los = em.find(LOS.class, Long.parseLong(id));
+                                    if (los != null) section.getLosList().add(los);
+                                }
+                            }
+                            String[] enhIds = request.getParameterValues("enhIds");
+                            if (enhIds != null) {
+                                for (String id : enhIds) {
+                                    Enhancement enh = em.find(Enhancement.class, Long.parseLong(id));
+                                    if (enh != null) section.getEnhancementList().add(enh);
+                                }
+                            }
+                        }
+
+                        em.merge(section);
+                        em.getTransaction().commit();
+                        request.getSession().setAttribute("flashMessage", "Scope updated.");
+                    }
+                }
             }
 
         } catch (Exception e) {
@@ -246,6 +308,7 @@ public class ProposalSettings extends HttpServlet {
         title.setHtmlContent(DEFAULT_TITLE_HTML);
         title.setSortOrder(1);
         title.setActive(true);
+        title.setScope("ALL");
         em.persist(title);
 
         ProposalSection features = new ProposalSection();
@@ -254,6 +317,7 @@ public class ProposalSettings extends HttpServlet {
         features.setTitle("Features");
         features.setSortOrder(2);
         features.setActive(true);
+        features.setScope("ALL");
         em.persist(features);
 
         ProposalSection pricing = new ProposalSection();
@@ -262,6 +326,7 @@ public class ProposalSettings extends HttpServlet {
         pricing.setTitle("Pricing");
         pricing.setSortOrder(3);
         pricing.setActive(true);
+        pricing.setScope("ALL");
         em.persist(pricing);
 
         ProposalSection closing = new ProposalSection();
@@ -271,6 +336,7 @@ public class ProposalSettings extends HttpServlet {
         closing.setHtmlContent(DEFAULT_CLOSING_HTML);
         closing.setSortOrder(4);
         closing.setActive(true);
+        closing.setScope("ALL");
         em.persist(closing);
 
         em.getTransaction().commit();

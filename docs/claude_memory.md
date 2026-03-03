@@ -15,14 +15,14 @@
 
 ## Current State
 - **Branch:** `feature/proposal-customization` (from `refactor/modernize-architecture`)
-- **Latest migration:** V036
-- **Session count:** 28
+- **Latest migration:** V037
+- **Session count:** 29
 - V025-V033 applied to Demo PSP, BPO, and Master only; not yet applied to production or local dev
 - V034 not yet applied anywhere (starter package template_key)
-- V035-V036 not yet applied anywhere (proposal customization)
+- V035-V037 not yet applied anywhere (proposal customization + section scoping)
 
 ## Database Migrations
-- Current highest version: **V036**
+- Current highest version: **V037**
 - Migration tracker: `docs/analysis/migration_tracker.md`
 - Schema version SQL: `docs/schema_version_migration.sql`
 
@@ -117,6 +117,14 @@
 - **viewProposal.jsp:** section-based rendering when proposalSections exist, falls back to legacy layout
 - **Extracted includes:** proposalFeatures.jsp, proposalPricing.jsp
 - **D-54** in deployment_backlog — code complete, needs V035+V036 applied + browser testing
+
+## Proposal Section Scoping (Session 29, V037)
+- **V037:** scope column on proposal_section + proposalsectionlos/proposalsectionenhancement join tables
+- **ProposalSection entity:** scope (ALL/SCOPED), losList (M:N → LOS), enhancementList (M:N → Enhancement)
+- **ProposalSettings servlet:** `updateScope` POST case, loads allLos/allEnhancements for checkboxes
+- **proposalSettings.jsp:** "Scoped" badge on left panel, Display Scope card with radio + checkboxes on CUSTOM sections
+- **ViewProposal.java:** scope filtering — SCOPED sections only render when proposal's LOS/Enhancements overlap
+- **Pattern:** mirrors ApplicationSection scope pattern (same column, same join table naming convention)
 
 ## Full-Height Dashboard Layouts (Session 28)
 - **BPO Dashboard:** `.bpo-layout` flex wrapper, `.bpo-columns` row, `.bpo-col-left`/`.bpo-col-right` flex columns — both scroll internally
