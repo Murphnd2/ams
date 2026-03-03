@@ -998,3 +998,41 @@ Fixed package loading (fields not persisting, ALL-scope not linking) and added P
 - **Modified (3):** PackageLoader.java, ServiceManagerAction.java, serviceManager25.jsp
 
 No database changes (uses V034 from Session 25).
+
+---
+
+## March 3, 2026 — Proposal Customization (Session 27)
+
+Added composable proposal layout with PSP admin editor and feature sales blurb upgrade.
+
+### Phase 1: Feature Sales Blurb Upgrade
+- **V035:** Added `headline VARCHAR(200)` to feature table, widened `description` from VARCHAR(500) to VARCHAR(2000). Headline shows as bold text above the description in proposal rendering.
+- **Feature.java:** New `headline` field with getter/setter, `description` column definition updated.
+- **Service Manager UI:** Add/Edit Feature modals updated — new Headline input, Description textarea widened to 4 rows with 2000 char limit, labels clarified with helper text.
+- **ServiceManagerAction:** `createFeature` and `editFeature` cases read/persist headline. Edit case clears headline to null when blank.
+- **viewProposal.jsp:** Two-tier feature rendering — bold headline above muted description text. Falls back gracefully when no headline set.
+
+### Phase 2: Proposal Section Architecture
+- **V036:** Created `proposal_section` table (section_id, psp_id FK→assignee, section_type, title, html_content TEXT, sort_order, is_active, timestamps). FK targets `assignee(id)` due to single-table inheritance (PSP extends Assignee).
+- **ProposalSection.java:** New JPA entity in `model/sales/offering/`.
+- **ProposalSettings.java:** New servlet with full CRUD — `saveContent` (CKEditor HTML with sanitization), `createCustom` (inserts before CLOSING), `deleteCustom`, `reorder` (AJAX SortableJS), `toggleActive`, `renameSection`. Auto-initializes 4 default sections (TITLE, FEATURES, PRICING, CLOSING) on first access.
+- **proposalSettings.jsp:** Two-panel admin page — left panel: drag-drop section list with type icons and badges; right panel: CKEditor 5 Classic (v36.0.1) with HTML source toggle, merge token reference panel. Modal for adding custom pages.
+- **HTML sanitization:** Regex-based `sanitizeHtml()` strips `<script>`, `on*` event handlers, and `javascript:` protocols.
+- **Merge tokens:** 10 tokens (`{{PROSPECT_NAME}}`, `{{AGENT_NAME}}`, `{{AGENT_EMAIL}}`, `{{AGENCY_NAME}}`, `{{PSP_NAME}}`, `{{DATE_CREATED}}`, `{{PRIMARY_COLOR}}`, `{{ACCENT_COLOR}}`, `{{APPLY_BUTTON}}`, `{{PROPOSAL_ID}}`) replaced at render time in ViewProposal.java.
+- **ViewProposal.java:** Loads active ProposalSections for the proposal's PSP, builds token map from proposal data, replaces tokens in HTML content, passes `proposalSections` list and `sectionHtml` map to JSP.
+- **viewProposal.jsp:** Section-based rendering loop when `proposalSections` exist — dispatches TITLE/CLOSING/CUSTOM to rendered HTML, FEATURES to `proposalFeatures.jsp` include, PRICING to `proposalPricing.jsp` include. Falls back to legacy hardcoded layout when no sections configured.
+- **Extracted includes:** `proposalFeatures.jsp` (LOS cards + Enhancement cards), `proposalPricing.jsp` (rate table) — shared between section-based and legacy rendering paths.
+
+### Phase 3: Navigation
+- **navbar25.jsp:** "Proposal Settings" link added to Admin dropdown (between Resource Library and Sequence Builder divider), `bi-sliders` icon.
+
+### Backlog Items
+- **D-54:** Apply V035+V036 migrations and browser-test Proposal Settings page
+
+### Files Changed
+- **New (5):** V035 migration, V036 migration, ProposalSection.java, ProposalSettings.java, proposalSettings.jsp, proposalFeatures.jsp, proposalPricing.jsp
+- **Modified (8):** Feature.java, ServiceManagerAction.java, ViewProposal.java, viewProposal.jsp, serviceManager25.jsp, navbar25.jsp, migration_tracker.md, schema_version_migration.sql
+
+### Database Changes
+- **V035:** `ALTER TABLE feature ADD COLUMN headline VARCHAR(200)`, `ALTER TABLE feature MODIFY COLUMN description VARCHAR(2000)`
+- **V036:** `CREATE TABLE proposal_section` (FK to assignee table)

@@ -486,6 +486,10 @@ public class ServiceManagerAction extends HttpServlet {
                     ServiceModule module = em.find(ServiceModule.class, moduleId);
                     Feature feature = new Feature();
                     feature.setDescription(request.getParameter("description").trim());
+                    String headline = request.getParameter("headline");
+                    if (headline != null && !headline.trim().isEmpty()) {
+                        feature.setHeadline(headline.trim());
+                    }
                     feature.setSortOrder(9999);
                     feature.setServiceModule(module);
                     feature.setPsp(psp);
@@ -506,6 +510,8 @@ public class ServiceManagerAction extends HttpServlet {
                     Feature feature = em.find(Feature.class, featureId);
                     em.getTransaction().begin();
                     feature.setDescription(request.getParameter("description").trim());
+                    String headline = request.getParameter("headline");
+                    feature.setHeadline(headline != null && !headline.trim().isEmpty() ? headline.trim() : null);
 
                     // Update library resource link
                     String resIdParam = request.getParameter("libraryResourceId");

@@ -14,8 +14,11 @@ public class Feature {
     @JoinColumn(name="module_id",nullable = false)
     private ServiceModule serviceModule;
 
-    @Column(name="description",columnDefinition = "varchar(500)",nullable = false)
+    @Column(name="description",columnDefinition = "varchar(2000)",nullable = false)
     private String description;
+
+    @Column(name="headline",columnDefinition = "varchar(200)")
+    private String headline;
 
     @Column(name="sort_order")
     private int sortOrder;
@@ -52,6 +55,14 @@ public class Feature {
 
     public void setDescription(String description) {
         this.description = description;
+    }
+
+    public String getHeadline() {
+        return headline;
+    }
+
+    public void setHeadline(String headline) {
+        this.headline = headline;
     }
 
     public int getSortOrder() {

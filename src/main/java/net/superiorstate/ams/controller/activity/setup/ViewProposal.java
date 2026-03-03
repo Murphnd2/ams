@@ -14,9 +14,13 @@ import net.superiorstate.ams.model.sales.agency.Proposal;
 import net.superiorstate.ams.model.sales.agency.RateTable;
 import net.superiorstate.ams.model.sales.offering.Feature;
 import net.superiorstate.ams.model.sales.offering.MarketingMaterial;
+import net.superiorstate.ams.model.sales.offering.ProposalSection;
+import net.superiorstate.ams.model.general.PSP;
+import net.superiorstate.ams.model.general.Person;
 
 import java.io.IOException;
 import java.sql.Timestamp;
+import java.text.SimpleDateFormat;
 import java.time.Instant;
 import java.util.*;
 import java.util.regex.Matcher;
@@ -136,6 +140,34 @@ public class ViewProposal extends HttpServlet {
             request.setAttribute("accentColor", accentColor);
             request.setAttribute("pspName", pspName);
 
+            // Section-based rendering: load active ProposalSections for this PSP
+            PSP psp = proposal.getProspect().getContact().getPsp();
+            if (psp != null) {
+                List<ProposalSection> sections = em.createQuery(
+                                "SELECT s FROM ProposalSection s WHERE s.psp.id = :pspId AND s.active = true ORDER BY s.sortOrder",
+                                ProposalSection.class)
+                        .setParameter("pspId", psp.getId())
+                        .getResultList();
+
+                if (!sections.isEmpty()) {
+                    // Build token replacement map
+                    Map<String, String> tokens = buildTokenMap(proposal, psp, primaryColor, accentColor, request);
+
+                    // Build rendered HTML map for sections with content
+                    Map<Long, String> sectionHtml = new LinkedHashMap<>();
+                    for (ProposalSection section : sections) {
+                        String type = section.getSectionType();
+                        if (("TITLE".equals(type) || "CLOSING".equals(type) || "CUSTOM".equals(type))
+                                && section.getHtmlContent() != null) {
+                            sectionHtml.put(section.getId(), replaceTokens(section.getHtmlContent(), tokens));
+                        }
+                    }
+
+                    request.setAttribute("proposalSections", sections);
+                    request.setAttribute("sectionHtml", sectionHtml);
+                }
+            }
+
         } finally {
             em.close();
         }
@@ -220,5 +252,66 @@ public class ViewProposal extends HttpServlet {
     private String escapeHtml(String s) {
         if (s == null) return "";
         return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;");
+    }
+
+    /** Builds the merge token map from proposal data */
+    private Map<String, String> buildTokenMap(Proposal proposal, PSP psp, String primaryColor, String accentColor, HttpServletRequest request) {
+        Map<String, String> tokens = new HashMap<>();
+
+        // Prospect
+        tokens.put("PROSPECT_NAME", proposal.getProspect().getName() != null ? proposal.getProspect().getName() : "");
+
+        // Agent (createdBy)
+        Person agent = proposal.getCreatedBy();
+        if (agent != null) {
+            String agentName = (agent.getFirstName() != null ? agent.getFirstName() : "") +
+                    " " + (agent.getLastName() != null ? agent.getLastName() : "");
+            tokens.put("AGENT_NAME", agentName.trim());
+            tokens.put("AGENT_EMAIL", agent.getEmail() != null ? agent.getEmail() : "");
+        } else {
+            tokens.put("AGENT_NAME", "");
+            tokens.put("AGENT_EMAIL", "");
+        }
+
+        // Agency/PSP
+        tokens.put("AGENCY_NAME", psp.getFullName() != null ? psp.getFullName() : "");
+        tokens.put("PSP_NAME", psp.getFullName() != null ? psp.getFullName() : "");
+
+        // Date
+        if (proposal.getDateCreated() != null) {
+            SimpleDateFormat sdf = new SimpleDateFormat("MMMM d, yyyy");
+            tokens.put("DATE_CREATED", sdf.format(proposal.getDateCreated()));
+        } else {
+            tokens.put("DATE_CREATED", "");
+        }
+
+        // Colors
+        tokens.put("PRIMARY_COLOR", primaryColor);
+        tokens.put("ACCENT_COLOR", accentColor);
+
+        // Proposal ID
+        tokens.put("PROPOSAL_ID", proposal.getId() != null ? proposal.getId().toString() : "");
+
+        // Apply Now button
+        String contextPath = request.getContextPath();
+        String applyUrl = contextPath + "/apply/" + proposal.getApplicationGUID();
+        tokens.put("APPLY_BUTTON",
+                "<a href=\"" + applyUrl + "\" style=\"display:inline-block; padding:0.75rem 3rem; background:" +
+                        accentColor + "; color:white; text-decoration:none; font-size:1.15rem; font-weight:600; border-radius:6px;\">" +
+                        "<i class=\"bi bi-pencil-square\" style=\"margin-right:0.5rem;\"></i>Apply Now</a>");
+
+        return tokens;
+    }
+
+    /** Replaces {{TOKEN_NAME}} placeholders in HTML content (case-insensitive) */
+    private String replaceTokens(String html, Map<String, String> tokens) {
+        if (html == null) return "";
+        String result = html;
+        for (Map.Entry<String, String> entry : tokens.entrySet()) {
+            // Case-insensitive replacement of {{TOKEN_NAME}}
+            String pattern = "(?i)\\{\\{" + Pattern.quote(entry.getKey()) + "\\}\\}";
+            result = result.replaceAll(pattern, Matcher.quoteReplacement(entry.getValue()));
+        }
+        return result;
     }
 }

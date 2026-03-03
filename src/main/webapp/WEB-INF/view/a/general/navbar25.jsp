@@ -201,6 +201,7 @@
               <li><a class="dropdown-item" href="PspAdminHome"><i class="bi bi-cash-coin me-2"></i>Rate Manager</a></li>
               <li><a class="dropdown-item" href="PspAgencyHome"><i class="bi bi-people-fill me-2"></i>Agency Manager</a></li>
               <li><a class="dropdown-item" href="LibraryHome"><i class="bi bi-collection me-2"></i>Resource Library</a></li>
+              <li><a class="dropdown-item" href="ProposalSettings"><i class="bi bi-sliders me-2"></i>Proposal Settings</a></li>
               <li><hr class="dropdown-divider"></li>
               <li><a class="dropdown-item" href="SequenceBuilder25"><i class="bi bi-list-check me-2"></i>Sequence Builder</a></li>
               <c:if test="${applicationScope.global.useTimeclock}">

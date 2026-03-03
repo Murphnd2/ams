@@ -431,7 +431,7 @@
                                 <c:when test="${not empty featureList}">
                                     <c:forEach var="feature" items="${featureList}">
                                         <div class="assoc-row d-flex justify-content-between align-items-center feature-item"
-                                             data-id="${feature.getId()}">
+                                             data-id="${feature.getId()}" data-headline="${feature.getHeadline()}">
                                             <div class="d-flex align-items-center flex-grow-1">
                                                 <i class="bi bi-grip-vertical drag-handle"></i>
                                                 <i class="bi bi-check2 me-1" style="color: var(--ssa-alt);"></i>
@@ -445,7 +445,7 @@
                                             </div>
                                             <div class="d-flex align-items-center gap-1">
                                                 <button type="button" class="btn-remove" style="color: var(--ssa);"
-                                                        onclick="openEditFeature(${feature.getId()}, this.closest('.feature-item').querySelector('.feature-text').textContent, '${not empty feature.getLibraryResource() ? feature.getLibraryResource().getId() : ''}')"
+                                                        onclick="openEditFeature(${feature.getId()}, this.closest('.feature-item').querySelector('.feature-text').textContent, '${not empty feature.getLibraryResource() ? feature.getLibraryResource().getId() : ''}', this.closest('.feature-item').dataset.headline)"
                                                         title="Edit"><i class="bi bi-pencil"></i></button>
                                                 <form method="post" action="ServiceManagerAction" class="d-inline"
                                                       onsubmit="return confirm('Delete this feature?');">
@@ -580,7 +580,7 @@
                                 <c:when test="${not empty featureList}">
                                     <c:forEach var="feature" items="${featureList}">
                                         <div class="assoc-row d-flex justify-content-between align-items-center feature-item"
-                                             data-id="${feature.getId()}">
+                                             data-id="${feature.getId()}" data-headline="${feature.getHeadline()}">
                                             <div class="d-flex align-items-center flex-grow-1">
                                                 <i class="bi bi-grip-vertical drag-handle"></i>
                                                 <i class="bi bi-check2 me-1" style="color: var(--ssa-alt);"></i>
@@ -594,7 +594,7 @@
                                             </div>
                                             <div class="d-flex align-items-center gap-1">
                                                 <button type="button" class="btn-remove" style="color: var(--ssa);"
-                                                        onclick="openEditFeature(${feature.getId()}, this.closest('.feature-item').querySelector('.feature-text').textContent, '${not empty feature.getLibraryResource() ? feature.getLibraryResource().getId() : ''}')"
+                                                        onclick="openEditFeature(${feature.getId()}, this.closest('.feature-item').querySelector('.feature-text').textContent, '${not empty feature.getLibraryResource() ? feature.getLibraryResource().getId() : ''}', this.closest('.feature-item').dataset.headline)"
                                                         title="Edit"><i class="bi bi-pencil"></i></button>
                                                 <form method="post" action="ServiceManagerAction" class="d-inline"
                                                       onsubmit="return confirm('Delete this feature?');">
@@ -1104,10 +1104,14 @@
                     </div>
                     <div class="modal-body">
                         <div class="mb-3">
-                            <label class="form-label fw-semibold">Feature Text <span
-                                    class="text-danger">*</span></label>
-                            <textarea name="description" id="addFeatureDesc" class="form-control" rows="2" required
-                                      maxlength="500" placeholder="e.g. Online Web Access and Claim Filing"></textarea>
+                            <label class="form-label fw-semibold">Headline <small class="text-muted fw-normal">(short, punchy summary shown as a bullet point)</small></label>
+                            <input type="text" name="headline" id="addFeatureHeadline" class="form-control" maxlength="200" placeholder="e.g. Comprehensive FSA Administration"/>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Description <span
+                                    class="text-danger">*</span> <small class="text-muted fw-normal">(detailed paragraph shown below the headline)</small></label>
+                            <textarea name="description" id="addFeatureDesc" class="form-control" rows="4" required
+                                      maxlength="2000" placeholder="e.g. Online Web Access and Claim Filing"></textarea>
                             <div class="link-toolbar">
                                 <button type="button" class="btn btn-outline-secondary"
                                         onclick="insertLink('addFeatureDesc','addFeatureLinkRes')"
@@ -1164,10 +1168,14 @@
                     </div>
                     <div class="modal-body">
                         <div class="mb-3">
-                            <label class="form-label fw-semibold">Feature Text <span
-                                    class="text-danger">*</span></label>
-                            <textarea name="description" id="editFeatureDesc" class="form-control" rows="2" required
-                                      maxlength="500"></textarea>
+                            <label class="form-label fw-semibold">Headline <small class="text-muted fw-normal">(short, punchy summary shown as a bullet point)</small></label>
+                            <input type="text" name="headline" id="editFeatureHeadline" class="form-control" maxlength="200"/>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Description <span
+                                    class="text-danger">*</span> <small class="text-muted fw-normal">(detailed paragraph shown below the headline)</small></label>
+                            <textarea name="description" id="editFeatureDesc" class="form-control" rows="4" required
+                                      maxlength="2000"></textarea>
                             <div class="link-toolbar">
                                 <button type="button" class="btn btn-outline-secondary"
                                         onclick="insertLink('editFeatureDesc','editFeatureLinkRes')"
@@ -1491,8 +1499,9 @@
     });
 
     // ── Edit Feature modal population ─────────────────────────────────
-    function openEditFeature(id, desc, resId) {
+    function openEditFeature(id, desc, resId, headline) {
         document.getElementById('editFeatureId').value = id;
+        document.getElementById('editFeatureHeadline').value = headline || '';
         document.getElementById('editFeatureDesc').value = desc;
         document.getElementById('editFeatureResId').value = resId || '';
         new bootstrap.Modal(document.getElementById('editFeatureModal')).show();

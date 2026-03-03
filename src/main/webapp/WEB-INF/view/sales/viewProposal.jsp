@@ -138,6 +138,39 @@
 
 <div class="proposal-container">
 
+<c:choose>
+  <%-- Section-based rendering (when ProposalSections exist for this PSP) --%>
+  <c:when test="${not empty proposalSections}">
+    <c:forEach var="section" items="${proposalSections}">
+      <c:choose>
+        <c:when test="${section.getSectionType() == 'TITLE'}">
+          <div class="proposal-section title-section">
+            ${sectionHtml[section.getId()]}
+          </div>
+        </c:when>
+        <c:when test="${section.getSectionType() == 'FEATURES'}">
+          <%@ include file="proposalFeatures.jsp" %>
+        </c:when>
+        <c:when test="${section.getSectionType() == 'PRICING'}">
+          <%@ include file="proposalPricing.jsp" %>
+        </c:when>
+        <c:when test="${section.getSectionType() == 'CLOSING'}">
+          <div class="proposal-section closing-section">
+            ${sectionHtml[section.getId()]}
+          </div>
+        </c:when>
+        <c:when test="${section.getSectionType() == 'CUSTOM'}">
+          <div class="proposal-section custom-section">
+            ${sectionHtml[section.getId()]}
+          </div>
+        </c:when>
+      </c:choose>
+    </c:forEach>
+  </c:when>
+
+  <%-- Fallback: legacy hardcoded layout (PSPs with no proposal_section rows) --%>
+  <c:otherwise>
+
   <%-- Greeting --%>
   <div class="greeting-card">
     <h4 class="mb-2" style="color: var(--psp-primary);">
@@ -152,104 +185,8 @@
     </p>
   </div>
 
-  <%-- Lines of Service with Features --%>
-  <c:forEach var="los" items="${proposal.getLosList()}">
-    <div class="los-card">
-      <div class="los-card-header">
-        <i class="bi bi-check-circle me-2"></i>${los.getDescription()}
-      </div>
-      <div class="los-card-body">
-          <%-- Features for modules in this LOS --%>
-        <c:set var="hasFeatures" value="false"/>
-        <c:forEach var="module" items="${los.getServiceModuleList()}">
-          <c:forEach var="feature" items="${features}">
-            <c:if test="${feature.getServiceModule().getId() == module.getId()}">
-              <c:set var="hasFeatures" value="true"/>
-              <div class="feature-item">
-                <i class="bi bi-check2"></i>
-                <span>${renderedFeatures[feature.getId()]}</span>
-              </div>
-            </c:if>
-          </c:forEach>
-        </c:forEach>
-        <c:if test="${hasFeatures == 'false'}">
-          <p class="text-muted mb-0">Full-service administration included.</p>
-        </c:if>
-      </div>
-    </div>
-  </c:forEach>
-
-  <%-- Enhancement Feature Cards --%>
-  <c:set var="shownEnhIds" value=","/>
-  <c:forEach var="rt" items="${pricing}">
-    <c:if test="${not empty rt.getModule().getEnhancement()}">
-      <c:set var="enhId" value="${rt.getModule().getEnhancement().getId()}"/>
-      <c:if test="${!shownEnhIds.contains(','.concat(String.valueOf(enhId)).concat(','))}">
-        <c:set var="shownEnhIds" value="${shownEnhIds}${enhId},"/>
-        <c:set var="enhModuleId" value="${rt.getModule().getId()}"/>
-        <c:set var="hasEnhFeatures" value="false"/>
-        <c:forEach var="feature" items="${features}">
-          <c:if test="${feature.getServiceModule().getId() == enhModuleId}">
-            <c:set var="hasEnhFeatures" value="true"/>
-          </c:if>
-        </c:forEach>
-        <c:if test="${hasEnhFeatures == 'true'}">
-          <div class="los-card">
-            <div class="los-card-header" style="background: var(--psp-accent);">
-              <i class="bi bi-puzzle me-2"></i>${rt.getModule().getEnhancement().getDescription()}
-            </div>
-            <div class="los-card-body">
-              <c:forEach var="feature" items="${features}">
-                <c:if test="${feature.getServiceModule().getId() == enhModuleId}">
-                  <div class="feature-item">
-                    <i class="bi bi-check2"></i>
-                    <span>${renderedFeatures[feature.getId()]}</span>
-                  </div>
-                </c:if>
-              </c:forEach>
-            </div>
-          </div>
-        </c:if>
-      </c:if>
-    </c:if>
-  </c:forEach>
-
-  <%-- Pricing Table --%>
-  <div class="pricing-card">
-    <div class="card-header">
-      <h5 class="mb-0 fw-semibold" style="color: var(--psp-primary);">
-        <i class="bi bi-tag me-2"></i>Pricing
-      </h5>
-    </div>
-    <div class="card-body p-0">
-      <c:set var="currentModule" value=""/>
-      <table class="table table-sm mb-0">
-        <c:forEach var="rt" items="${pricing}">
-          <c:if test="${rt.getModule().getId() != currentModule}">
-            <c:set var="currentModule" value="${rt.getModule().getId()}"/>
-            <tr class="pricing-module-header">
-              <td colspan="2">
-                <c:choose>
-                  <c:when test="${not empty rt.getModule().getLos()}">${rt.getModule().getLos().getDescription()}</c:when>
-                  <c:when test="${not empty rt.getModule().getEnhancement()}">${rt.getModule().getEnhancement().getDescription()}</c:when>
-                  <c:otherwise>${rt.getModule().getDescription()}</c:otherwise>
-                </c:choose>
-              </td>
-            </tr>
-          </c:if>
-          <tr class="pricing-row">
-            <td class="ps-4">${rt.getPriceItem().getDescription()}</td>
-            <td class="text-end pe-4">
-              <fmt:formatNumber value="${rt.getPrice()}" type="currency"/>
-            </td>
-          </tr>
-        </c:forEach>
-        <c:if test="${empty pricing}">
-          <tr><td class="text-muted p-3" colspan="2">Pricing details will be provided separately.</td></tr>
-        </c:if>
-      </table>
-    </div>
-  </div>
+  <%@ include file="proposalFeatures.jsp" %>
+  <%@ include file="proposalPricing.jsp" %>
 
   <%-- Apply Now --%>
   <div class="apply-section">
@@ -258,6 +195,9 @@
       <i class="bi bi-pencil-square me-2"></i>Apply Now
     </a>
   </div>
+
+  </c:otherwise>
+</c:choose>
 
   <%-- Footer --%>
   <div class="proposal-footer">
