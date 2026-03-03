@@ -337,12 +337,22 @@
                     <div class="text-center text-muted fst-italic py-2" style="font-size:0.8rem;">Loading...</div>
                 </div>
 
-                    <%-- Add note (AJAX) --%>
-                    <div class="input-group input-group-sm mb-2">
-                        <input type="text" class="form-control" id="modalNoteInput" placeholder="Add a note...">
-                        <button type="button" class="btn btn-sm btn-outline-ssa" onclick="addNoteAjax()">
-                            <i class="bi bi-chat-dots me-1"></i>Add
-                        </button>
+                    <%-- Add note with optional attachment --%>
+                    <div class="mb-2">
+                        <div class="input-group input-group-sm">
+                            <input type="text" class="form-control" id="modalNoteInput" placeholder="Add a note...">
+                            <button type="button" class="btn btn-sm btn-outline-ssa" onclick="addNoteAjax()">
+                                <i class="bi bi-chat-dots me-1"></i>Add
+                            </button>
+                        </div>
+                        <div class="mt-1">
+                            <label class="form-label mb-0" style="font-size:0.75rem; color:#6c757d; cursor:pointer;">
+                                <i class="bi bi-paperclip"></i> Attach file
+                                <input type="file" id="modalNoteFile" style="display:none;" onchange="updateFileLabel(this)">
+                            </label>
+                            <span id="modalFileLabel" style="font-size:0.75rem; color:#0d5681;"></span>
+                            <span id="modalFileClear" style="display:none; font-size:0.75rem; color:#dc3545; cursor:pointer; margin-left:0.3rem;" onclick="clearFileInput()">&#10005;</span>
+                        </div>
                     </div>
 
             </div>
@@ -483,19 +493,29 @@
         if (!noteText) return;
 
         const todoId = document.getElementById('modalCompleteToDoId').value;
+        const fileInput = document.getElementById('modalNoteFile');
         input.disabled = true;
 
-        let body = 'action=addNote&todoId=' + todoId + '&noteText=' + encodeURIComponent(noteText);
-        if (currentCrossSystem) body += '&crossSystem=true&todoGuid=' + encodeURIComponent(currentTodoGuid);
+        const formData = new FormData();
+        formData.append('action', 'addNote');
+        formData.append('todoId', todoId);
+        formData.append('noteText', noteText);
+        if (currentCrossSystem) {
+            formData.append('crossSystem', 'true');
+            formData.append('todoGuid', currentTodoGuid);
+        }
+        if (fileInput.files.length > 0) {
+            formData.append('noteFile', fileInput.files[0]);
+        }
 
         fetch('BpoCompleteTask', {
             method: 'POST',
-            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-            body: body
+            body: formData
         })
             .then(() => {
                 input.value = '';
                 input.disabled = false;
+                clearFileInput();
                 input.focus();
                 const notesUrl = currentCrossSystem
                     ? 'BpoGetNotes?todoGuid=' + encodeURIComponent(currentTodoGuid)
@@ -509,6 +529,24 @@
             .catch(() => {
                 input.disabled = false;
             });
+    }
+
+    function updateFileLabel(input) {
+        const label = document.getElementById('modalFileLabel');
+        const clear = document.getElementById('modalFileClear');
+        if (input.files.length > 0) {
+            label.textContent = input.files[0].name;
+            clear.style.display = 'inline';
+        } else {
+            label.textContent = '';
+            clear.style.display = 'none';
+        }
+    }
+
+    function clearFileInput() {
+        document.getElementById('modalNoteFile').value = '';
+        document.getElementById('modalFileLabel').textContent = '';
+        document.getElementById('modalFileClear').style.display = 'none';
     }
 
     function renderNotes(notes) {
@@ -527,6 +565,18 @@
             html += '    <span style="font-size:0.7rem; color:#999;">' + n.date + '</span>';
             html += '  </div>';
             html += '  <div style="font-size:0.85rem; margin-top:0.15rem; padding-left:0.2rem;">' + n.text + '</div>';
+            // Attachments
+            if (n.attachments && n.attachments.length > 0) {
+                html += '<div style="margin-top:0.25rem; padding-left:0.2rem;">';
+                n.attachments.forEach(att => {
+                    html += '<a href="' + att.url + '" target="_blank" '
+                         + 'style="display:inline-block; font-size:0.75rem; padding:0.15rem 0.5rem; '
+                         + 'background:#e8f4f8; color:#0d5681; border-radius:12px; text-decoration:none; '
+                         + 'margin-right:0.3rem; margin-bottom:0.2rem;">'
+                         + '<i class="bi bi-paperclip"></i> ' + att.name + '</a>';
+                });
+                html += '</div>';
+            }
             html += '</div>';
         });
         notesDiv.innerHTML = html;

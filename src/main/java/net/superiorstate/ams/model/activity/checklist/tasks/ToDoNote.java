@@ -2,8 +2,10 @@ package net.superiorstate.ams.model.activity.checklist.tasks;
 
 import jakarta.persistence.*;
 import net.superiorstate.ams.model.general.Person;
+import net.superiorstate.ams.model.general.WebLink;
 
 import java.sql.Timestamp;
+import java.util.List;
 
 @Entity
 @Table(name="todo_note")
@@ -36,6 +38,9 @@ public class ToDoNote {
 
     @Column(name="author_name", length=100)
     private String authorName;
+
+    @OneToMany(mappedBy = "toDoNote")
+    private List<WebLink> webLinkList;
 
     public ToDoNote() {}
 
@@ -113,6 +118,14 @@ public class ToDoNote {
 
     public void setAuthorName(String authorName) {
         this.authorName = authorName;
+    }
+
+    public List<WebLink> getWebLinkList() {
+        return webLinkList;
+    }
+
+    public void setWebLinkList(List<WebLink> webLinkList) {
+        this.webLinkList = webLinkList;
     }
 
     /** Returns the display name: createdBy.fullName if available, else authorName, else sourceType. */

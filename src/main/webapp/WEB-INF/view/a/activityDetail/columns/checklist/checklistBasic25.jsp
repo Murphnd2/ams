@@ -6,6 +6,7 @@
   .td-item.td-blocked { opacity: 0.55; }
   .td-item.td-delegated { border-left-color: #6c757d; }
   .td-item.td-closed { border-left-color: #198754; background: #f8f9fa; opacity: 0.65; }
+  .td-item.bpo-awaiting-verify { border-left-color: #ffc107; background: #fffbea; }
 
   /* State icon button */
   .td-btn { border: none; background: none; padding: 0; line-height: 1; font-size: 0.95rem; cursor: pointer; width: 1.4rem; text-align: center; flex-shrink: 0; }
@@ -63,6 +64,9 @@
           <c:if test="${toDo.isDelegated()}">
             <c:set var="rowClass" value="td-item td-delegated"/>
           </c:if>
+          <c:if test="${toDo.isBpoCompleted() && !toDo.isComplete()}">
+            <c:set var="rowClass" value="td-item bpo-awaiting-verify"/>
+          </c:if>
 
           <div class="${rowClass}">
             <div class="d-flex align-items-center">
@@ -97,6 +101,9 @@
                 </c:choose>
                 <c:if test="${toDo.hasInfo()==true && toDo.getInfoLink()!=null}">
                   <a href="${toDo.getInfoLink().getLinkPath()}" target="_blank" class="td-info" title="Info"><i class="bi bi-question-circle-fill"></i></a>
+                </c:if>
+                <c:if test="${toDo.isBpoCompleted() && !toDo.isComplete()}">
+                  <span class="badge bg-warning text-dark" style="font-size: 0.6rem; margin-left: 0.3rem;">BPO Done - Verify</span>
                 </c:if>
               </div>
 

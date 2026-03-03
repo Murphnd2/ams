@@ -2,7 +2,7 @@
 
 > **Purpose:** Consolidated historical record of all build sessions. For current project state, see `project_backlog.md`. For current architecture, see `application_flow.md` and `entity_reference.md`.
 >
-> **Last Updated:** March 2, 2026
+> **Last Updated:** March 3, 2026
 
 ---
 
@@ -864,3 +864,25 @@ Added centralized BPO vendor directory on the master installation. PSP deploymen
 ### Files Changed
 - **New (4):** V032 migration, ApprovedVendor.java, VendorRegistryApi.java, VendorRegistryService.java
 - **Modified (7):** migration_tracker.md, schema_version_migration.sql, deployment_backlog.md, ApiClient.java, ApiTokenFilter.java, DatabaseInitializer.java, VendorManager25.java, vendorManager25.jsp
+
+---
+
+## March 3, 2026 — BPO Note Attachments (Session 23)
+
+Added file attachment support to BPO task notes. BPO users can attach files when adding notes via the BPO dashboard modal. Files upload to Wasabi S3 and are served via pre-signed URLs. Cross-system mode includes attachment metadata in API callbacks so PSP deployments can display BPO-side attachments.
+
+### Key Changes
+
+- **V033 Migration** — `todo_note_id BIGINT NULL` FK column on `weblink` table with index. Follows the `email_id` FK pattern for email attachments.
+- **ToDoNote.java** — Added `@OneToMany(mappedBy = "toDoNote") List<WebLink> webLinkList` relationship.
+- **WebLink.java** — Added `@ManyToOne @JoinColumn(name = "todo_note_id") ToDoNote toDoNote` inverse side.
+- **BpoCompleteTask.java** — Added `@MultipartConfig` annotation. New `uploadNoteAttachment()` helper method handles file upload to Wasabi via `StorageDAO` and persists `WebLink` with `toDoNote` FK. Both `addNote()` and `addNoteCrossSystem()` call the helper after persisting the note. Updated `callbackNoteAdded()` to include attachment metadata (7-day pre-signed URLs) using `ApiClient.postJsonObject()` for nested payloads.
+- **bpoHome25.jsp** — Replaced URL-encoded AJAX with `FormData` multipart submission. Added file input with label/clear controls. `renderNotes()` now renders attachment pills (paperclip icon, SSA-colored badges) linking to pre-signed Wasabi URLs.
+- **BpoGetNotes.java** — Queries use `LEFT JOIN FETCH n.webLinkList`. JSON response includes `attachments` array with `name` and `url` fields. Handles both linkType 1 (local Wasabi file, 1-hour pre-signed URL) and linkType 2 (external URL from cross-system).
+- **TaskNotesApi.java** — GET response includes attachments with 7-day pre-signed URLs for cross-system access. POST handler accepts optional `attachments` array and persists as `WebLink` with linkType=2 (external URL).
+- **NoteAddedCallbackApi.java** — Accepts optional `attachments` array in callback payload. Persists as `WebLink` with linkType=2, attached to the local `ToDoNote`.
+- **WS7 (PSP-side note display)** — Deferred. PSP checklist views don't currently render BPO notes; attachment infrastructure is in place for when they do.
+
+### Files Changed
+- **New (1):** V033 migration script
+- **Modified (9):** ToDoNote.java, WebLink.java, BpoCompleteTask.java, bpoHome25.jsp, BpoGetNotes.java, TaskNotesApi.java, NoteAddedCallbackApi.java, migration_tracker.md, schema_version_migration.sql

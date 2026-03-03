@@ -3,6 +3,7 @@ package net.superiorstate.ams.model.general;
 import jakarta.persistence.*;
 import net.superiorstate.ams.data.dao.AppConstantDAO;
 import net.superiorstate.ams.model.activity.checklist.tasks.Task;
+import net.superiorstate.ams.model.activity.checklist.tasks.ToDoNote;
 import net.superiorstate.ams.model.activity.note.Email;
 
 import java.util.List;
@@ -30,6 +31,10 @@ public class WebLink {
     @ManyToOne
     @JoinColumn(name="email_id")
     private Email email;
+
+    @ManyToOne
+    @JoinColumn(name = "todo_note_id")
+    private ToDoNote toDoNote;
 
     @ManyToMany(mappedBy="webLinkList")
     List<Task> listOfTasksWithThisWebLink;
@@ -115,5 +120,12 @@ public class WebLink {
         return listOfAssigneesWithThisWebLink;
     }
 
+    public ToDoNote getToDoNote() {
+        return toDoNote;
+    }
+
+    public void setToDoNote(ToDoNote toDoNote) {
+        this.toDoNote = toDoNote;
+    }
 
 }

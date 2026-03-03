@@ -34,6 +34,7 @@ public class ToDoOut25 {
     private boolean hasInfo;
     private WebLink infoLink;
     private boolean hasFutureBlock;
+    private boolean bpoCompleted;
 
     private boolean wasComplete;
     // === Pre-computed display state ===
@@ -72,6 +73,7 @@ public class ToDoOut25 {
         setHasInfo(t.getTask().hasInfo());
         setInfoLink(t.getTask().getInfoLink());
         setHasFutureBlock(false);
+        setBpoCompleted(t.isBpoCompleted());
         this.wasComplete = toDo.isComplete();
     }
     public boolean isMyTask() { return isMyTask; }
@@ -111,6 +113,9 @@ public class ToDoOut25 {
         } else if (isTimeBlocked) {
             btnIcon = "clock-fill";
             pointerEvents = "pe-none";
+        } else if (bpoCompleted && !isComplete) {
+            btnIcon = "check2-square";
+            rowCssClass = "bpo-awaiting-verify";
         } else if (isDelegated) {
             btnIcon = "box-arrow-up-left";
         } else if (!isMyActivity && !isMyTask) {
@@ -322,4 +327,7 @@ public class ToDoOut25 {
 
     public boolean wasComplete() { return wasComplete; }
     public void setWasComplete(boolean b) { this.wasComplete = b; }
+
+    public boolean isBpoCompleted() { return bpoCompleted; }
+    public void setBpoCompleted(boolean bpoCompleted) { this.bpoCompleted = bpoCompleted; }
 }

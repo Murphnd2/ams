@@ -119,12 +119,13 @@ public class TaskReceiveApi extends HttpServlet {
 
             response.setStatus(HttpServletResponse.SC_CREATED);
             response.getWriter().write("{\"status\": \"OK\", \"created\": " + created + ", \"skipped\": " + skipped + "}");
+            System.out.println("[BPO-API] TaskReceiveApi: received tasks, created=" + created + " skipped=" + skipped);
 
         } catch (Exception e) {
             if (em.getTransaction().isActive()) em.getTransaction().rollback();
             response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
             response.getWriter().write("{\"error\": \"Internal server error\"}");
-            System.err.println("TaskReceiveApi error: " + e.getMessage());
+            System.out.println("[BPO-API] TaskReceiveApi error: " + e.getMessage());
         } finally {
             if (em.isOpen()) em.close();
         }

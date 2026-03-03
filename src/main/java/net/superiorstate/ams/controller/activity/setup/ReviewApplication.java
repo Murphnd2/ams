@@ -12,6 +12,7 @@ import net.superiorstate.ams.data.dao.ActivityDAO;
 import net.superiorstate.ams.data.dao.AppConstantDAO;
 import net.superiorstate.ams.data.dao.ApplicationTaskDAO;
 import net.superiorstate.ams.data.dao.StorageDAO;
+import net.superiorstate.ams.data.service.BpoTaskPushService;
 import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.model.Activity25;
 import net.superiorstate.ams.model.Activity25u;
@@ -354,6 +355,10 @@ public class ReviewApplication extends HttpServlet {
             em.getTransaction().commit();
             System.out.println("[ReviewApplication] Todo created for Task: " + st.getTask().getDescription());
         }
+
+        // Push sourced tasks to BPO vendors (non-fatal, after all transactions committed)
+        CheckList freshChecklist = EntityLookup.getCheckListById(em, c.getId());
+        BpoTaskPushService.pushDelegatedTasks(em, freshChecklist);
     }
 
     // ======================== Activity Cache Update (mirrors GenerateProp25) ========================

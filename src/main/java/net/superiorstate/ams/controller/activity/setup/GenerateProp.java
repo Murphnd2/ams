@@ -9,6 +9,7 @@ import net.superiorstate.ams.data.dao.ActivityDAO;
 import net.superiorstate.ams.data.dao.SalesDAO;
 import net.superiorstate.ams.data.dao.ApplicationTaskDAO;
 import net.superiorstate.ams.data.resolver.EntityLookup;
+import net.superiorstate.ams.data.service.BpoTaskPushService;
 import net.superiorstate.ams.data.util.ActivityViewHelper;
 import net.superiorstate.ams.model.activity.checklist.CheckList;
 import net.superiorstate.ams.model.activity.checklist.sequences.support.ServiceItem;
@@ -296,6 +297,10 @@ public class GenerateProp extends HttpServlet {
             em.getTransaction().commit();
             System.out.println("Todo created for Task: "+ st.getTask().getDescription());
         }
+
+        // Push sourced tasks to BPO vendors (non-fatal, after all transactions committed)
+        CheckList freshChecklist = EntityLookup.getCheckListById(em, c.getId());
+        BpoTaskPushService.pushDelegatedTasks(em, freshChecklist);
     }
 
 

@@ -8,8 +8,11 @@ import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import net.superiorstate.ams.AppConfig;
+import net.superiorstate.ams.data.dao.SequenceDAO;
 import net.superiorstate.ams.model.activity.checklist.tasks.ToDo;
 import net.superiorstate.ams.model.activity.checklist.tasks.ToDoNote;
+import net.superiorstate.ams.model.general.LinkType;
+import net.superiorstate.ams.model.general.WebLink;
 
 import java.io.IOException;
 import java.util.List;
@@ -87,16 +90,38 @@ public class NoteAddedCallbackApi extends HttpServlet {
             // createdBy is null — BPO person doesn't exist on PSP side
             em.persist(note);
 
+            // Store attachment metadata from BPO (external URLs — linkType 2)
+            JsonArray attachments = json.has("attachments") ? json.getAsJsonArray("attachments") : null;
+            if (attachments != null && attachments.size() > 0) {
+                LinkType externalLinkType = SequenceDAO.getLinkTypeById(em, 2); // type 2 = external link
+                for (JsonElement el : attachments) {
+                    JsonObject att = el.getAsJsonObject();
+                    String displayName = getJsonString(att, "displayName");
+                    String downloadUrl = getJsonString(att, "downloadUrl");
+                    if (displayName != null && downloadUrl != null) {
+                        WebLink w = new WebLink();
+                        w.setPlainText(displayName);
+                        w.setLinkPath(downloadUrl);
+                        w.setLinkType(externalLinkType);
+                        w.setActive(true);
+                        w.setToDoNote(note);
+                        em.persist(w);
+                    }
+                }
+            }
+
             em.getTransaction().commit();
 
             response.setStatus(HttpServletResponse.SC_CREATED);
             response.getWriter().write("{\"status\": \"OK\"}");
+            System.out.println("[BPO-API] NoteAddedCallbackApi: note received" +
+                    (attachments != null && attachments.size() > 0 ? " with " + attachments.size() + " attachment(s)" : ""));
 
         } catch (Exception e) {
             if (em.getTransaction().isActive()) em.getTransaction().rollback();
             response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
             response.getWriter().write("{\"error\": \"Internal server error\"}");
-            System.err.println("NoteAddedCallbackApi error: " + e.getMessage());
+            System.out.println("[BPO-API] NoteAddedCallbackApi error: " + e.getMessage());
         } finally {
             if (em.isOpen()) em.close();
         }

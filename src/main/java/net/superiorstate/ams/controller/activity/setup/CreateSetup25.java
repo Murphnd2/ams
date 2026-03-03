@@ -11,6 +11,7 @@ import net.superiorstate.ams.data.AmsDataGlobal;
 import net.superiorstate.ams.data.AmsDataLocal;
 import net.superiorstate.ams.data.dao.ActivityDAO;
 import net.superiorstate.ams.data.dao.ApplicationTaskDAO;
+import net.superiorstate.ams.data.service.BpoTaskPushService;
 import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.model.Activity25;
 import net.superiorstate.ams.model.Activity25u;
@@ -330,6 +331,10 @@ public class CreateSetup25 extends HttpServlet {
             em.persist(checkList);
             em.getTransaction().commit();
         }
+
+        // Push sourced tasks to BPO vendors (non-fatal, after all transactions committed)
+        CheckList freshChecklist = EntityLookup.getCheckListById(em, c.getId());
+        BpoTaskPushService.pushDelegatedTasks(em, freshChecklist);
     }
 
     // ======================== Helpers ========================

@@ -137,7 +137,7 @@ public class BpoPspClients extends HttpServlet {
         } catch (Exception e) {
             if (em.getTransaction().isActive()) em.getTransaction().rollback();
             request.getSession().setAttribute("clientError", "Error: " + e.getMessage());
-            System.err.println("BpoPspClients approve error: " + e.getMessage());
+            System.out.println("[BPO-API] BpoPspClients approve error: " + e.getMessage());
         } finally {
             if (em.isOpen()) em.close();
         }

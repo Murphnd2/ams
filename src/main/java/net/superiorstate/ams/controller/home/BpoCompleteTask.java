@@ -6,19 +6,32 @@ import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.AmsDataLocal;
+import net.superiorstate.ams.data.dao.SequenceDAO;
+import net.superiorstate.ams.data.dao.StorageDAO;
 import net.superiorstate.ams.data.util.ApiClient;
+import net.superiorstate.ams.data.util.Validator;
 import net.superiorstate.ams.model.activity.checklist.tasks.DelegatedToDo;
 import net.superiorstate.ams.model.activity.checklist.tasks.ToDo;
 import net.superiorstate.ams.model.activity.checklist.tasks.ToDoNote;
+import net.superiorstate.ams.model.general.LinkType;
 import net.superiorstate.ams.model.general.Person;
 import net.superiorstate.ams.model.general.PspClient;
+import net.superiorstate.ams.model.general.WebLink;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Paths;
 import java.sql.Date;
+import java.time.Duration;
 import java.time.LocalDate;
-import java.util.Map;
+import java.util.*;
 
 @WebServlet(name = "BpoCompleteTask", value = "/BpoCompleteTask")
+@MultipartConfig(
+        fileSizeThreshold = 1024 * 1024,      // 1 MB
+        maxFileSize = 1024 * 1024 * 10,        // 10 MB
+        maxRequestSize = 1024 * 1024 * 100     // 100 MB
+)
 public class BpoCompleteTask extends HttpServlet {
 
     @Override
@@ -101,6 +114,7 @@ public class BpoCompleteTask extends HttpServlet {
             ToDo todo = em.find(ToDo.class, todoId);
             if (todo == null) return;
 
+            // Persist the note
             em.getTransaction().begin();
             ToDoNote note = new ToDoNote();
             note.setToDo(todo);
@@ -109,6 +123,10 @@ public class BpoCompleteTask extends HttpServlet {
             note.setSourceType("BPO");
             em.persist(note);
             em.getTransaction().commit();
+
+            // Handle optional file attachment (separate transaction after note has ID)
+            uploadNoteAttachment(request, em, local, note);
+
         } catch (Exception e) {
             if (em.getTransaction().isActive()) em.getTransaction().rollback();
             e.printStackTrace();
@@ -201,6 +219,7 @@ public class BpoCompleteTask extends HttpServlet {
             String noteText = request.getParameter("noteText");
             if (todoGuid == null || noteText == null || noteText.trim().isEmpty()) return;
 
+            // Persist the note
             em.getTransaction().begin();
             ToDoNote note = new ToDoNote();
             note.setTodoGuid(todoGuid);
@@ -210,8 +229,11 @@ public class BpoCompleteTask extends HttpServlet {
             em.persist(note);
             em.getTransaction().commit();
 
+            // Handle optional file attachment (separate transaction after note has ID)
+            WebLink attachment = uploadNoteAttachment(request, em, local, note);
+
             // Callback to PSP (non-fatal, AFTER commit)
-            callbackNoteAdded(em, todoGuid, noteText.trim(), currentUser);
+            callbackNoteAdded(em, todoGuid, noteText.trim(), currentUser, local, attachment);
 
         } catch (Exception e) {
             if (em.getTransaction().isActive()) em.getTransaction().rollback();
@@ -252,6 +274,52 @@ public class BpoCompleteTask extends HttpServlet {
         }
     }
 
+    // ═══ FILE ATTACHMENT HELPER ═══
+
+    /**
+     * Checks for an uploaded file ("noteFile" part) and, if present, uploads it to Wasabi
+     * and persists a WebLink attached to the given ToDoNote.
+     * Returns the WebLink if created, null otherwise.
+     */
+    private WebLink uploadNoteAttachment(HttpServletRequest request, EntityManager em,
+                                         AmsDataLocal local, ToDoNote note) {
+        try {
+            Part filePart = request.getPart("noteFile");
+            if (filePart == null || filePart.getSize() == 0) return null;
+
+            String fileName = Paths.get(filePart.getSubmittedFileName()).getFileName().toString();
+            String extension = Validator.getExtensionByStringHandling(fileName).orElse("bin");
+            String objectKey = UUID.randomUUID() + "." + extension;
+            String displayName = fileName.replaceAll(" ", "_");
+            String pspName = local.getCurrentPerson().getPsp().getFullName();
+
+            try (InputStream is = filePart.getInputStream()) {
+                StorageDAO.uploadFile(em, pspName, objectKey, displayName, is,
+                        filePart.getSize(), filePart.getContentType());
+            }
+
+            // Persist WebLink attached to the note (new transaction)
+            em.getTransaction().begin();
+            WebLink w = new WebLink();
+            w.setPlainText(displayName);
+            w.setLinkPath(objectKey);
+            LinkType linkType = SequenceDAO.getLinkTypeById(em, 1); // type 1 = file
+            w.setLinkType(linkType);
+            w.setActive(true);
+            w.setToDoNote(note);
+            em.persist(w);
+            em.getTransaction().commit();
+
+            System.out.println("[BPO] Note attachment uploaded: " + displayName + " → " + objectKey);
+            return w;
+
+        } catch (Exception e) {
+            if (em.getTransaction().isActive()) em.getTransaction().rollback();
+            System.out.println("[BPO] Note attachment upload failed (non-fatal): " + e.getMessage());
+            return null;
+        }
+    }
+
     // ═══ PSP CALLBACKS (non-fatal) ═══
 
     private void callbackTaskCompleted(DelegatedToDo dt, Person completedBy) {
@@ -264,13 +332,15 @@ public class BpoCompleteTask extends HttpServlet {
                     "todoGuid", dt.getTodoGuid(),
                     "completedByName", completedBy.getFullName()
             );
-            ApiClient.postJson(url, payload, psp.getApiTokenOutbound());
+            ApiClient.ApiResponse resp = ApiClient.postJson(url, payload, psp.getApiTokenOutbound());
+            System.out.println("[BPO-API] callbackTaskCompleted: todoGuid=" + dt.getTodoGuid() + " to " + psp.getPspName() + " (" + resp.statusCode + ")");
         } catch (Exception e) {
-            System.err.println("BpoCompleteTask callback (task-completed) failed (non-fatal): " + e.getMessage());
+            System.out.println("[BPO-API] callbackTaskCompleted: failed (non-fatal): " + e.getMessage());
         }
     }
 
-    private void callbackNoteAdded(EntityManager em, String todoGuid, String noteText, Person author) {
+    private void callbackNoteAdded(EntityManager em, String todoGuid, String noteText, Person author,
+                                   AmsDataLocal local, WebLink attachment) {
         try {
             // Find PspClient from the DelegatedToDo
             var matches = em.createQuery(
@@ -283,14 +353,27 @@ public class BpoCompleteTask extends HttpServlet {
             if (psp.getPspUrl() == null || psp.getApiTokenOutbound() == null) return;
 
             String url = psp.getPspUrl() + "/api/v1/callback/note-added";
-            Map<String, String> payload = Map.of(
-                    "todoGuid", todoGuid,
-                    "noteText", noteText,
-                    "authorName", author.getFullName()
-            );
-            ApiClient.postJson(url, payload, psp.getApiTokenOutbound());
+
+            // Build payload with optional attachment metadata
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("todoGuid", todoGuid);
+            payload.put("noteText", noteText);
+            payload.put("authorName", author.getFullName());
+
+            if (attachment != null) {
+                String pspName = local.getCurrentPerson().getPsp().getFullName();
+                String downloadUrl = StorageDAO.getDownloadUrl(null, pspName, attachment.getLinkPath(), Duration.ofDays(7));
+                List<Map<String, String>> attachments = List.of(Map.of(
+                        "displayName", attachment.getPlainText(),
+                        "downloadUrl", downloadUrl
+                ));
+                payload.put("attachments", attachments);
+            }
+
+            ApiClient.ApiResponse resp = ApiClient.postJsonObject(url, payload, psp.getApiTokenOutbound());
+            System.out.println("[BPO-API] callbackNoteAdded: todoGuid=" + todoGuid + " to " + psp.getPspName() + " (" + resp.statusCode + ")");
         } catch (Exception e) {
-            System.err.println("BpoCompleteTask callback (note-added) failed (non-fatal): " + e.getMessage());
+            System.out.println("[BPO-API] callbackNoteAdded: failed (non-fatal): " + e.getMessage());
         }
     }
 }

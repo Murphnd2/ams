@@ -1,6 +1,6 @@
 # Deployment Backlog
 
-**Last Updated:** March 2, 2026
+**Last Updated:** March 3, 2026
 **Reference:** See `docs/deployment_strategy.md` for full context on each item.
 
 Items are ordered by dependency (earlier items unblock later ones).
@@ -485,6 +485,15 @@ INSERT INTO approved_vendors (vendor_name, vendor_url, description, is_active, d
 VALUES ('Accelergent BPO Services', 'https://bpo.superiorstate.biz', 'DataPath subsidiary — claims processing, data entry, compliance support', TRUE, CURDATE());
 ```
 Additional vendors can be added via direct SQL on the master installation. A future admin UI for managing the registry is a backlog item.
+
+---
+
+### D-48: Apply V033 Migration (BPO Note Attachments)
+
+**Priority:** MEDIUM — Required before deploying note attachment WAR
+**Status:** Not started
+
+Run `V033__todo_note_attachments.sql` on target environments to add `todo_note_id` FK column to weblink table. Required on any environment where BPO note attachments will be used (Demo PSP, BPO, Master). No data migration needed — column is nullable and only populated by new note+file submissions.
 
 ---
 

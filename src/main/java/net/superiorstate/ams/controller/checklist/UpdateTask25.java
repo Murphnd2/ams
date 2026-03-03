@@ -9,6 +9,7 @@ import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.AmsDataGlobal;
 import net.superiorstate.ams.data.AmsDataLocal;
 import net.superiorstate.ams.model.ToDoOut25;
+import net.superiorstate.ams.data.service.BpoTaskPushService;
 import net.superiorstate.ams.data.util.SessionVar;
 import net.superiorstate.ams.data.util.Validator;
 import net.superiorstate.ams.data.resolver.EntityLookup;
@@ -239,6 +240,10 @@ public class UpdateTask25 extends HttpServlet {
         if(t==null)
             return null;
 
+        // Capture old sourcing state before update (for Fix 2 & 3)
+        boolean wasSourced = t.isSourced();
+        BpoRegistration oldBpoReg = t.getBpoRegistration();
+
         setDelegationChange(hasOwner!=t.hasOwner());
 
         em.getTransaction().begin();
@@ -256,6 +261,24 @@ public class UpdateTask25 extends HttpServlet {
         em.persist(t);
         em.getTransaction().commit();
         em.refresh(t);
+
+        // Fix 3: Handle sourcing transitions (Internal↔Sourced, Vendor A→Vendor B)
+        if (!wasSourced && hasSource) {
+            // Internal → Sourced: push all incomplete ToDos to the new BPO
+            BpoTaskPushService.pushTaskTodos(em, t);
+        } else if (wasSourced && !hasSource && oldBpoReg != null) {
+            // Sourced → Internal: recall from old BPO
+            BpoTaskPushService.recallTask(em, t, oldBpoReg);
+        } else if (wasSourced && hasSource && oldBpoReg != null && bpoReg != null
+                && !Objects.equals(oldBpoReg.getId(), bpoReg.getId())) {
+            // Vendor A → Vendor B: recall from A, push to B
+            BpoTaskPushService.recallTask(em, t, oldBpoReg);
+            BpoTaskPushService.pushTaskTodos(em, t);
+        } else if (wasSourced && hasSource) {
+            // Fix 2: Same vendor, task metadata changed — push update
+            BpoTaskPushService.pushTaskUpdate(em, t);
+        }
+
         return t;
     }
     private Automation createAutomation(EntityManager em, String title, String html, Task t){

@@ -4,6 +4,7 @@ import jakarta.persistence.EntityManager;
 import net.superiorstate.ams.AppConfig;
 import net.superiorstate.ams.data.util.ApiClient;
 import net.superiorstate.ams.model.activity.checklist.CheckList;
+import net.superiorstate.ams.model.activity.checklist.tasks.Task;
 import net.superiorstate.ams.model.activity.checklist.tasks.ToDo;
 import net.superiorstate.ams.model.general.BpoRegistration;
 
@@ -55,7 +56,7 @@ public class BpoTaskPushService {
             }
 
         } catch (Exception e) {
-            System.err.println("BpoTaskPushService error (non-fatal): " + e.getMessage());
+            System.out.println("[BPO-API] pushDelegatedTasks error (non-fatal): " + e.getMessage());
         }
     }
 
@@ -118,16 +119,156 @@ public class BpoTaskPushService {
             ApiClient.ApiResponse resp = ApiClient.postJsonObject(url, payload, token);
 
             if (resp.isSuccess()) {
-                System.out.println("BpoTaskPushService: Pushed " + taskList.size() +
+                System.out.println("[BPO-API] pushToVendor: Pushed " + taskList.size() +
                         " tasks to " + reg.getBpoName() + " (" + resp.statusCode + ")");
             } else {
-                System.err.println("BpoTaskPushService: Push to " + reg.getBpoName() +
+                System.out.println("[BPO-API] pushToVendor: Push to " + reg.getBpoName() +
                         " returned " + resp.statusCode + ": " + resp.body);
             }
 
         } catch (Exception e) {
-            System.err.println("BpoTaskPushService: Failed push to " +
+            System.out.println("[BPO-API] pushToVendor: Failed push to " +
                     reg.getBpoName() + " (non-fatal): " + e.getMessage());
+        }
+    }
+
+    /**
+     * Push a single ToDo to its BPO vendor.
+     * Used when a task becomes sourced or a new ToDo is added individually.
+     */
+    public static void pushSingleTask(EntityManager em, ToDo todo) {
+        if (!AppConfig.isPsp()) return;
+        if (todo == null || todo.getTask() == null || !todo.getTask().isSourced()) return;
+        if (todo.isComplete() || todo.isBpoCompleted()) return;
+
+        try {
+            BpoRegistration reg = todo.getTask().getBpoRegistration();
+            if (reg == null || !reg.isAvailable()) return;
+            if (reg.getPartnerUrl() == null || reg.getApiTokenOutbound() == null) return;
+
+            CheckList checklist = todo.getCheckList();
+            if (checklist == null) return;
+
+            pushToVendor(reg, List.of(todo), checklist);
+        } catch (Exception e) {
+            System.out.println("[BPO-API] pushSingleTask error (non-fatal): " + e.getMessage());
+        }
+    }
+
+    /**
+     * Notify BPO that a task's metadata has changed (name, description, links, due date).
+     * Sends UPDATE command to the BPO's /api/v1/tasks/update endpoint for each affected ToDo.
+     */
+    public static void pushTaskUpdate(EntityManager em, Task task) {
+        if (!AppConfig.isPsp()) return;
+        if (task == null || !task.isSourced()) return;
+
+        BpoRegistration reg = task.getBpoRegistration();
+        if (reg == null || !reg.isAvailable()) return;
+        if (reg.getPartnerUrl() == null || reg.getApiTokenOutbound() == null) return;
+
+        try {
+            // Find all incomplete ToDos for this task
+            List<ToDo> todos = em.createQuery(
+                            "SELECT t FROM ToDo t WHERE t.task.id = :taskId AND t.isComplete = false",
+                            ToDo.class)
+                    .setParameter("taskId", task.getId())
+                    .getResultList();
+
+            String url = reg.getPartnerUrl() + "/api/v1/tasks/update";
+            String token = reg.getApiTokenOutbound();
+
+            for (ToDo todo : todos) {
+                Map<String, String> payload = new LinkedHashMap<>();
+                payload.put("action", "UPDATE");
+                payload.put("todoGuid", todo.getTodoGuid());
+                payload.put("taskName", task.getPlainDescription());
+                payload.put("taskDescription", task.getDescription());
+
+                if (task.hasGoTo() && task.getGoToLink() != null) {
+                    payload.put("gotoLink", task.getGoToLink().getLinkPath());
+                }
+                if (task.hasInfo() && task.getInfoLink() != null) {
+                    payload.put("infoLink", task.getInfoLink().getLinkPath());
+                }
+
+                ApiClient.ApiResponse resp = ApiClient.postJson(url, payload, token);
+                System.out.println("[BPO-API] pushTaskUpdate: todoGuid=" + todo.getTodoGuid() +
+                        " to " + reg.getBpoName() + " (" + resp.statusCode + ")");
+            }
+        } catch (Exception e) {
+            System.out.println("[BPO-API] pushTaskUpdate error (non-fatal): " + e.getMessage());
+        }
+    }
+
+    /**
+     * Recall all incomplete ToDos for a task from a BPO vendor.
+     * Sends RECALL command to the BPO's /api/v1/tasks/update endpoint.
+     */
+    public static void recallTask(EntityManager em, Task task, BpoRegistration reg) {
+        if (!AppConfig.isPsp()) return;
+        if (task == null || reg == null) return;
+        if (reg.getPartnerUrl() == null || reg.getApiTokenOutbound() == null) return;
+
+        try {
+            List<ToDo> todos = em.createQuery(
+                            "SELECT t FROM ToDo t WHERE t.task.id = :taskId AND t.isComplete = false",
+                            ToDo.class)
+                    .setParameter("taskId", task.getId())
+                    .getResultList();
+
+            String url = reg.getPartnerUrl() + "/api/v1/tasks/update";
+            String token = reg.getApiTokenOutbound();
+
+            for (ToDo todo : todos) {
+                Map<String, String> payload = new LinkedHashMap<>();
+                payload.put("action", "RECALL");
+                payload.put("todoGuid", todo.getTodoGuid());
+
+                ApiClient.ApiResponse resp = ApiClient.postJson(url, payload, token);
+                System.out.println("[BPO-API] recallTask: todoGuid=" + todo.getTodoGuid() +
+                        " from " + reg.getBpoName() + " (" + resp.statusCode + ")");
+            }
+        } catch (Exception e) {
+            System.out.println("[BPO-API] recallTask error (non-fatal): " + e.getMessage());
+        }
+    }
+
+    /**
+     * Push all incomplete ToDos for a task to its BPO vendor.
+     * Used when a task transitions from Internal to Sourced.
+     */
+    public static void pushTaskTodos(EntityManager em, Task task) {
+        if (!AppConfig.isPsp()) return;
+        if (task == null || !task.isSourced()) return;
+
+        BpoRegistration reg = task.getBpoRegistration();
+        if (reg == null || !reg.isAvailable()) return;
+        if (reg.getPartnerUrl() == null || reg.getApiTokenOutbound() == null) return;
+
+        try {
+            List<ToDo> todos = em.createQuery(
+                            "SELECT t FROM ToDo t WHERE t.task.id = :taskId AND t.isComplete = false AND t.bpoCompleted = false",
+                            ToDo.class)
+                    .setParameter("taskId", task.getId())
+                    .getResultList();
+
+            if (todos.isEmpty()) return;
+
+            // Group by checklist and push
+            Map<Long, List<ToDo>> byChecklist = new LinkedHashMap<>();
+            for (ToDo todo : todos) {
+                if (todo.getCheckList() != null) {
+                    byChecklist.computeIfAbsent(todo.getCheckList().getId(), k -> new ArrayList<>()).add(todo);
+                }
+            }
+
+            for (Map.Entry<Long, List<ToDo>> entry : byChecklist.entrySet()) {
+                CheckList cl = entry.getValue().get(0).getCheckList();
+                pushToVendor(reg, entry.getValue(), cl);
+            }
+        } catch (Exception e) {
+            System.out.println("[BPO-API] pushTaskTodos error (non-fatal): " + e.getMessage());
         }
     }
 }

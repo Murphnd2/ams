@@ -73,12 +73,13 @@ public class PartnershipApproveApi extends HttpServlet {
 
             response.setStatus(HttpServletResponse.SC_OK);
             response.getWriter().write("{\"status\": \"APPROVED\", \"message\": \"Partnership approved and tokens exchanged.\"}");
+            System.out.println("[BPO-API] PartnershipApproveApi: partnership approved");
 
         } catch (Exception e) {
             if (em.getTransaction().isActive()) em.getTransaction().rollback();
             response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
             response.getWriter().write("{\"error\": \"Internal server error\"}");
-            System.err.println("PartnershipApproveApi error: " + e.getMessage());
+            System.out.println("[BPO-API] PartnershipApproveApi error: " + e.getMessage());
         } finally {
             if (em.isOpen()) em.close();
         }

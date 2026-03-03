@@ -20,6 +20,7 @@ import net.superiorstate.ams.model.activity.ticket.Ticket;
 import net.superiorstate.ams.model.activity.ticket.TicketCategory;
 import net.superiorstate.ams.model.general.PSP;
 import net.superiorstate.ams.model.general.Person;
+import net.superiorstate.ams.data.service.BpoTaskPushService;
 import net.superiorstate.ams.model.summit.archive.Employee;
 
 import java.io.IOException;
@@ -204,7 +205,9 @@ public class CreateTicket25 extends HttpServlet {
             em.persist(c);
             em.getTransaction().commit();
             createToDoList(em,c);
-            return EntityLookup.getCheckListById(em,c.getId());
+            CheckList freshChecklist = EntityLookup.getCheckListById(em,c.getId());
+            BpoTaskPushService.pushDelegatedTasks(em, freshChecklist);
+            return freshChecklist;
         }
 
         private void createToDoList(EntityManager em, CheckList c){

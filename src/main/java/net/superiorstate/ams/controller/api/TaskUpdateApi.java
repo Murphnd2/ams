@@ -130,12 +130,13 @@ public class TaskUpdateApi extends HttpServlet {
 
             response.setStatus(HttpServletResponse.SC_OK);
             response.getWriter().write("{\"status\": \"OK\", \"action\": \"" + action.toUpperCase() + "\"}");
+            System.out.println("[BPO-API] TaskUpdateApi: action=" + action.toUpperCase() + " todoGuid=" + todoGuid);
 
         } catch (Exception e) {
             if (em.getTransaction().isActive()) em.getTransaction().rollback();
             response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
             response.getWriter().write("{\"error\": \"Internal server error\"}");
-            System.err.println("TaskUpdateApi error: " + e.getMessage());
+            System.out.println("[BPO-API] TaskUpdateApi error: " + e.getMessage());
         } finally {
             if (em.isOpen()) em.close();
         }
