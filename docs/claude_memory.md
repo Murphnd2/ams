@@ -90,6 +90,7 @@
 - **resetSectionToDefault(em, section):** restores section+fields to JSON defaults, suppresses manually-added fields
 - **ServiceManagerAction** cases: `loadStarterPackage`, `resetSectionToDefault`
 - **serviceManager25.jsp** — Load Package button hidden when all loaded, Reset to Default button on package sections
+- **selectOptions delimiter:** pipe-delimited (`|`), not comma — required by field rendering logic
 - **D-53** in deployment_backlog — code complete, needs V034 migration applied + browser testing
 
 ## Session History

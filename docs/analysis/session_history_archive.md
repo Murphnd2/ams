@@ -994,7 +994,11 @@ Fixed package loading (fields not persisting, ALL-scope not linking) and added P
 - **JSP changes:** Load Package button wrapped in `<c:if test="${not empty availablePackages}">` (hidden when all loaded). "Reset to Default" button in section detail header for package-loaded sections only (`templateKey != null`), with confirm dialog.
 - **Suppress-as-delete audit:** Confirmed no `em.remove()` calls exist for ApplicationField or ApplicationSection — only suppress toggle. Safe for reset-to-default pattern.
 
+### Data Fixes
+- **selectOptions delimiter:** All 31 `selectOptions` values across 8 package JSON files changed from comma-delimited to pipe-delimited (`Yes,No` → `Yes|No`). Pipe delimiter is required by the application's field rendering logic.
+
 ### Files Changed
 - **Modified (3):** PackageLoader.java, ServiceManagerAction.java, serviceManager25.jsp
+- **Modified (8):** All package JSON files (selectOptions comma→pipe)
 
 No database changes (uses V034 from Session 25).
