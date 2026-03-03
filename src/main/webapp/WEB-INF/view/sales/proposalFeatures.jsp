@@ -9,21 +9,19 @@
     </div>
     <div class="los-card-body">
       <c:set var="hasFeatures" value="false"/>
-      <c:forEach var="module" items="${los.getServiceModuleList()}">
-        <c:forEach var="feature" items="${features}">
-          <c:if test="${feature.getServiceModule().getId() == module.getId()}">
-            <c:set var="hasFeatures" value="true"/>
-            <div class="feature-item">
-              <i class="bi bi-check2"></i>
-              <div>
-                <c:if test="${not empty feature.getHeadline()}">
-                  <div class="fw-semibold">${feature.getHeadline()}</div>
-                </c:if>
-                <span class="${not empty feature.getHeadline() ? 'text-muted' : ''}">${renderedFeatures[feature.getId()]}</span>
-              </div>
+      <c:forEach var="feature" items="${features}">
+        <c:if test="${not empty feature.getServiceModule().getLos() && feature.getServiceModule().getLos().getId() == los.getId()}">
+          <c:set var="hasFeatures" value="true"/>
+          <div class="feature-item">
+            <i class="bi bi-check2"></i>
+            <div>
+              <c:if test="${not empty feature.getHeadline()}">
+                <div class="fw-semibold">${feature.getHeadline()}</div>
+              </c:if>
+              <span class="${not empty feature.getHeadline() ? 'text-muted' : ''}">${renderedFeatures[feature.getId()]}</span>
             </div>
-          </c:if>
-        </c:forEach>
+          </div>
+        </c:if>
       </c:forEach>
       <c:if test="${hasFeatures == 'false'}">
         <p class="text-muted mb-0">Full-service administration included.</p>
@@ -39,10 +37,9 @@
     <c:set var="enhId" value="${rt.getModule().getEnhancement().getId()}"/>
     <c:if test="${!shownEnhIds.contains(','.concat(String.valueOf(enhId)).concat(','))}">
       <c:set var="shownEnhIds" value="${shownEnhIds}${enhId},"/>
-      <c:set var="enhModuleId" value="${rt.getModule().getId()}"/>
       <c:set var="hasEnhFeatures" value="false"/>
       <c:forEach var="feature" items="${features}">
-        <c:if test="${feature.getServiceModule().getId() == enhModuleId}">
+        <c:if test="${not empty feature.getServiceModule().getEnhancement() && feature.getServiceModule().getEnhancement().getId() == enhId}">
           <c:set var="hasEnhFeatures" value="true"/>
         </c:if>
       </c:forEach>
@@ -53,7 +50,7 @@
           </div>
           <div class="los-card-body">
             <c:forEach var="feature" items="${features}">
-              <c:if test="${feature.getServiceModule().getId() == enhModuleId}">
+              <c:if test="${not empty feature.getServiceModule().getEnhancement() && feature.getServiceModule().getEnhancement().getId() == enhId}">
                 <div class="feature-item">
                   <i class="bi bi-check2"></i>
                   <div>

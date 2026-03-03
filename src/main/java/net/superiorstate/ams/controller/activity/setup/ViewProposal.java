@@ -17,6 +17,7 @@ import net.superiorstate.ams.model.sales.offering.Feature;
 import net.superiorstate.ams.model.sales.offering.LOS;
 import net.superiorstate.ams.model.sales.offering.MarketingMaterial;
 import net.superiorstate.ams.model.sales.offering.ProposalSection;
+import net.superiorstate.ams.model.sales.offering.ServiceModule;
 import net.superiorstate.ams.model.general.PSP;
 import net.superiorstate.ams.model.general.Person;
 
@@ -74,18 +75,45 @@ public class ViewProposal extends HttpServlet {
             // Load pricing
             List<RateTable> pricing = SalesDAO.getPricing(em, proposal);
 
-            // Load features with library resources eagerly fetched
-            List<Long> moduleIds = pricing.stream()
-                    .map(rt -> rt.getModule().getId())
-                    .distinct()
-                    .toList();
+            // Collect direct-FK module IDs for all proposed LOSs and all Enhancements with pricing
+            Set<Long> featureModuleIds = new LinkedHashSet<>();
 
-            List<Feature> features = List.of();
-            if (!moduleIds.isEmpty()) {
-                Query fq = em.createQuery(
-                        "SELECT f FROM Feature f LEFT JOIN FETCH f.libraryResource WHERE f.serviceModule.id IN :moduleIds ORDER BY f.serviceModule.sortOrder, f.sortOrder");
-                fq.setParameter("moduleIds", moduleIds);
-                features = fq.getResultList();
+            // LOS modules (direct FK: servicemodule.los_id)
+            for (LOS los : proposal.getLosList()) {
+                try {
+                    ServiceModule sm = em.createQuery(
+                            "SELECT sm FROM ServiceModule sm WHERE sm.los.id = :losId", ServiceModule.class)
+                            .setParameter("losId", los.getId())
+                            .getSingleResult();
+                    featureModuleIds.add(sm.getId());
+                } catch (NoResultException ignored) {}
+            }
+
+            // Enhancement modules (direct FK: servicemodule.enhancement_id) — only for enhancements with pricing
+            Set<Long> enhancementIdsWithPricing = new HashSet<>();
+            for (RateTable rt : pricing) {
+                if (rt.getModule() != null && rt.getModule().getEnhancement() != null) {
+                    enhancementIdsWithPricing.add(rt.getModule().getEnhancement().getId());
+                }
+            }
+            for (Long enhId : enhancementIdsWithPricing) {
+                try {
+                    ServiceModule sm = em.createQuery(
+                            "SELECT sm FROM ServiceModule sm WHERE sm.enhancement.id = :enhId", ServiceModule.class)
+                            .setParameter("enhId", enhId)
+                            .getSingleResult();
+                    featureModuleIds.add(sm.getId());
+                } catch (NoResultException ignored) {}
+            }
+
+            // Load features for all collected modules (JOIN FETCH los + enhancement for lazy-load safety)
+            List<Feature> features = new ArrayList<>();
+            if (!featureModuleIds.isEmpty()) {
+                features = em.createQuery(
+                        "SELECT f FROM Feature f LEFT JOIN FETCH f.libraryResource LEFT JOIN FETCH f.serviceModule sm LEFT JOIN FETCH sm.los LEFT JOIN FETCH sm.enhancement WHERE f.serviceModule.id IN :moduleIds ORDER BY sm.sortOrder, f.sortOrder",
+                        Feature.class)
+                        .setParameter("moduleIds", new ArrayList<>(featureModuleIds))
+                        .getResultList();
             }
 
             // Get PSP name for storage URLs
