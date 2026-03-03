@@ -14,13 +14,13 @@ import net.superiorstate.ams.data.util.ApiClient;
 import net.superiorstate.ams.model.general.BpoRegistration;
 import net.superiorstate.ams.model.general.PSP;
 
+import net.superiorstate.ams.data.service.VendorRegistryService;
+
 import java.io.IOException;
 import java.sql.Date;
 import java.time.LocalDate;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * PSP Admin — Vendor Management page.
@@ -49,7 +49,42 @@ public class VendorManager25 extends HttpServlet {
                     .setParameter("pspId", pspId)
                     .getResultList();
 
+            // Fetch approved vendors from master registry (null = fetch failed)
+            List<Map<String, String>> registryVendors = VendorRegistryService.fetchApprovedVendors(em);
+            boolean registryAvailable = registryVendors != null;
+            if (registryVendors == null) registryVendors = List.of();
+
+            // Build set of already-registered URLs (normalized: lowercase, no trailing slash)
+            Set<String> localUrls = vendors.stream()
+                    .filter(v -> v.getPartnerUrl() != null)
+                    .map(v -> {
+                        String u = v.getPartnerUrl().toLowerCase().trim();
+                        return u.endsWith("/") ? u.substring(0, u.length() - 1) : u;
+                    })
+                    .collect(Collectors.toSet());
+
+            // Also include bpoUrl for registrations that may not have partnerUrl set
+            vendors.stream()
+                    .filter(v -> v.getBpoUrl() != null)
+                    .forEach(v -> {
+                        String u = v.getBpoUrl().toLowerCase().trim();
+                        localUrls.add(u.endsWith("/") ? u.substring(0, u.length() - 1) : u);
+                    });
+
+            // Filter out vendors already connected or pending
+            List<Map<String, String>> filteredRegistry = registryVendors.stream()
+                    .filter(rv -> {
+                        String regUrl = rv.get("vendorUrl");
+                        if (regUrl == null) return false;
+                        regUrl = regUrl.toLowerCase().trim();
+                        if (regUrl.endsWith("/")) regUrl = regUrl.substring(0, regUrl.length() - 1);
+                        return !localUrls.contains(regUrl);
+                    })
+                    .collect(Collectors.toList());
+
             request.setAttribute("vendors", vendors);
+            request.setAttribute("registryVendors", filteredRegistry);
+            request.setAttribute("registryAvailable", registryAvailable);
             request.setAttribute("pageTitle", "Vendor Management");
             request.setAttribute("pageIcon", "bi-diagram-3");
             request.getRequestDispatcher("/WEB-INF/view/a/admin/vendorManager25.jsp").forward(request, response);

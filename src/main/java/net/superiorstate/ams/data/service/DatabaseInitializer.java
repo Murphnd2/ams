@@ -874,6 +874,8 @@ public abstract class DatabaseInitializer {
             createConstant(em,"USE_TIMECLOCK","true");
         if(getConstantByName(em,"DAYS_SINCE_WARNING")==null)
             createConstant(em,"DAYS_SINCE_WARNING","7");
+        if(getConstantByName(em,"MASTER_REGISTRY_URL")==null)
+            createConstant(em,"MASTER_REGISTRY_URL","https://superiorstate.biz");
     }
 
     private static void addBpoConstants(EntityManager em) {

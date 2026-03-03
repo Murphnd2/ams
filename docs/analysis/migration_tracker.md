@@ -16,7 +16,7 @@ Tracks database schema versions across environments.
 | BPO | bpo.superiorstate.biz | beta_ssa | BPO instance (V031, initialized) |
 | Master | master.superiorstate.biz | beta_ssa | Snapshot v7 (V031, stopped) |
 
-## Current Highest Version: V031
+## Current Highest Version: V033
 
 ## Dev Baseline
 
@@ -63,6 +63,8 @@ Individual migration scripts are no longer stored in the repo. The baseline dump
 | V029 | Add is_active column to user table for user deactivation | ⬜ | ⬜ | ⬜ | ⬜ | ✅ | ✅ | ✅ |
 | V030 | BPO cross-system foundation: psp_clients, delegated_todo, API columns, todo_note GUID | ⬜ | ⬜ | ⬜ | ⬜ | ✅ | ✅ | ✅ |
 | V031 | ToDoNote cross-system: nullable todo_id/created_by_id, author_name column | ⬜ | ⬜ | ⬜ | ⬜ | ✅ | ✅ | ✅ |
+| V032 | Approved vendors registry table | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
+| V033 | ToDoNote attachments: todo_note_id FK on weblink | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
 
 ## Notes
 
@@ -79,5 +81,7 @@ Individual migration scripts are no longer stored in the repo. The baseline dump
 - V029 adds is_active BOOLEAN NOT NULL DEFAULT TRUE to user table. Enables user deactivation in the new User Manager page. All existing users default to active.
 - V030 adds BPO cross-system foundation: adds API token (outbound/inbound), partner_url, and date columns to bpo_registration; creates psp_clients table (BPO side, tracks PSP clients with status PENDING/APPROVED/REJECTED/DISCONNECTED); creates delegated_todo table (BPO side, local copy of tasks from PSPs); adds todo_guid column to todo_note for cross-system note sync.
 - V031 makes todo_note.todo_id and todo_note.created_by_id nullable for cross-system notes where the originating entity doesn't exist locally. Adds author_name column for display when created_by is null.
+- V032 creates the approved_vendors table for a centralized BPO vendor directory. Table exists on all deployments (same WAR/schema), only populated on master.
+- V033 adds todo_note_id FK column to the weblink table, enabling file attachments on BPO task notes. Follows the same pattern as email_id FK for email attachments.
 - Demo PSP, BPO, and Master environments all provisioned from the V031 master snapshot `SSA-Master-Base-v7-2026-03-02`.
 - Production remains at V024 and is intentionally isolated from conference demo infrastructure.

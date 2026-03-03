@@ -1,6 +1,7 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 <%@ taglib prefix="fmt" uri="http://java.sun.com/jsp/jstl/fmt" %>
+<%@ taglib prefix="fn" uri="http://java.sun.com/jsp/jstl/functions" %>
 
 <!DOCTYPE html>
 <html lang="en">
@@ -21,6 +22,7 @@
         .vendor-card.approved { border-left-color: #198754; }
         .vendor-card.pending { border-left-color: #fd7e14; }
         .vendor-card.disconnected { border-left-color: #adb5bd; opacity: 0.6; }
+        .vendor-card.registry { border-left-color: var(--ssa, #0d5681); }
         .status-dot {
             display: inline-block;
             width: 8px;
@@ -68,32 +70,82 @@
                 <c:remove var="vendorError" scope="session"/>
             </c:if>
 
-            <%-- Request New Connection --%>
-            <div class="card mb-4">
-                <div class="hdr-bar d-flex align-items-center">
-                    <i class="bi bi-plus-circle me-2"></i>Request New Connection
-                </div>
-                <div class="card-body">
-                    <form method="post" action="VendorManager" class="row g-3 align-items-end">
-                        <input type="hidden" name="action" value="requestConnection">
-                        <div class="col-md-4">
-                            <label class="form-label" style="font-size:0.8rem; font-weight:600; color:#495057;">BPO Name</label>
-                            <input type="text" class="form-control form-control-sm" name="bpoName"
-                                   placeholder="e.g. Accelergent BPO Services" required>
+            <%-- Available Vendors (from registry) --%>
+            <c:choose>
+                <c:when test="${registryAvailable && not empty registryVendors}">
+                    <div class="card mb-4">
+                        <div class="hdr-bar d-flex align-items-center justify-content-between">
+                            <span><i class="bi bi-shop me-2"></i>Available Vendors</span>
+                            <span class="badge bg-white text-dark" style="font-size:0.75rem;">${fn:length(registryVendors)}</span>
                         </div>
-                        <div class="col-md-5">
-                            <label class="form-label" style="font-size:0.8rem; font-weight:600; color:#495057;">BPO URL</label>
-                            <input type="url" class="form-control form-control-sm" name="bpoUrl"
-                                   placeholder="https://bpo.example.com" required pattern="https://.*">
+                        <div class="card-body">
+                            <c:forEach var="rv" items="${registryVendors}">
+                                <div class="vendor-card registry">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <div style="font-size:1rem; font-weight:600; color:#212529;">
+                                                <c:out value="${rv.vendorName}"/>
+                                            </div>
+                                            <div style="font-size:0.8rem; color:#6c757d; margin-top:0.15rem;">
+                                                <i class="bi bi-link-45deg me-1"></i><c:out value="${rv.vendorUrl}"/>
+                                            </div>
+                                            <c:if test="${not empty rv.description}">
+                                                <div style="font-size:0.8rem; color:#495057; margin-top:0.35rem;">
+                                                    <c:out value="${rv.description}"/>
+                                                </div>
+                                            </c:if>
+                                        </div>
+                                        <form method="post" action="VendorManager">
+                                            <input type="hidden" name="action" value="requestConnection">
+                                            <input type="hidden" name="bpoName" value="${fn:escapeXml(rv.vendorName)}">
+                                            <input type="hidden" name="bpoUrl" value="${fn:escapeXml(rv.vendorUrl)}">
+                                            <button type="submit" class="btn btn-ssa btn-sm">
+                                                <i class="bi bi-plug me-1"></i>Connect
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </c:forEach>
                         </div>
-                        <div class="col-md-3">
-                            <button type="submit" class="btn btn-ssa btn-sm w-100">
-                                <i class="bi bi-send me-1"></i>Request Connection
-                            </button>
+                    </div>
+                </c:when>
+                <c:when test="${registryAvailable && empty registryVendors}">
+                    <div class="alert alert-info py-2 mb-4" style="font-size:0.85rem;">
+                        <i class="bi bi-check-circle me-1"></i>All available vendors are already connected.
+                    </div>
+                </c:when>
+                <c:otherwise>
+                    <%-- Registry fetch failed — show manual entry form as fallback --%>
+                    <div class="card mb-4">
+                        <div class="hdr-bar d-flex align-items-center">
+                            <i class="bi bi-plus-circle me-2"></i>Request New Connection
                         </div>
-                    </form>
-                </div>
-            </div>
+                        <div class="card-body">
+                            <div class="alert alert-secondary py-2 mb-3" style="font-size:0.8rem;">
+                                <i class="bi bi-info-circle me-1"></i>Could not reach vendor registry. You can enter vendor details manually.
+                            </div>
+                            <form method="post" action="VendorManager" class="row g-3 align-items-end">
+                                <input type="hidden" name="action" value="requestConnection">
+                                <div class="col-md-4">
+                                    <label class="form-label" style="font-size:0.8rem; font-weight:600; color:#495057;">BPO Name</label>
+                                    <input type="text" class="form-control form-control-sm" name="bpoName"
+                                           placeholder="e.g. Accelergent BPO Services" required>
+                                </div>
+                                <div class="col-md-5">
+                                    <label class="form-label" style="font-size:0.8rem; font-weight:600; color:#495057;">BPO URL</label>
+                                    <input type="url" class="form-control form-control-sm" name="bpoUrl"
+                                           placeholder="https://bpo.example.com" required pattern="https://.*">
+                                </div>
+                                <div class="col-md-3">
+                                    <button type="submit" class="btn btn-ssa btn-sm w-100">
+                                        <i class="bi bi-send me-1"></i>Request Connection
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </c:otherwise>
+            </c:choose>
 
             <%-- Registered Vendors --%>
             <div class="card">

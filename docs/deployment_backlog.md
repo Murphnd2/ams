@@ -461,6 +461,33 @@ Add optional "Sign in with Microsoft" button on login page using Microsoft Entra
 
 ---
 
+### D-46: Seed MASTER_REGISTRY_URL Constant on Existing PSPs
+
+**Priority:** MEDIUM — Required after deploying approved vendors WAR
+**Status:** Not started
+
+After deploying the approved vendors WAR, insert the constant on existing PSP deployments:
+```sql
+INSERT IGNORE INTO constant (constant_name, constant_value) VALUES ('MASTER_REGISTRY_URL', 'https://superiorstate.biz');
+```
+New deployments get this automatically via DatabaseInitializer.
+
+---
+
+### D-47: Populate Approved Vendors on Master/Production
+
+**Priority:** MEDIUM — Required after deploying V032 WAR to master
+**Status:** Not started
+
+After deploying V032 WAR to master and production, insert the BPO VPS as an approved vendor:
+```sql
+INSERT INTO approved_vendors (vendor_name, vendor_url, description, is_active, date_added)
+VALUES ('Accelergent BPO Services', 'https://bpo.superiorstate.biz', 'DataPath subsidiary — claims processing, data entry, compliance support', TRUE, CURDATE());
+```
+Additional vendors can be added via direct SQL on the master installation. A future admin UI for managing the registry is a backlog item.
+
+---
+
 ### D-37: Backfill PSP Home Agency Config
 
 **Priority:** HIGH

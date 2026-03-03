@@ -838,3 +838,29 @@ Added BPO deployment initialization support. When `initialize.jsp` submits a dep
 - **Modified (6):** AppConfig.java, DatabaseInitializer.java, InitializeDataBase.java, AmsDataGlobal.java, EmfListener.java, initialize.jsp
 
 No database migration required — initialization-only changes.
+
+---
+
+## March 3, 2026 — Approved Vendors Registry (Session 22)
+
+Added centralized BPO vendor directory on the master installation. PSP deployments query the registry to discover available BPOs and connect via the existing partnership handshake.
+
+### Key Changes
+
+- **V032 Migration** — `approved_vendors` table (vendor_id, vendor_name, vendor_url, description, is_active, date_added) with unique constraint on vendor_url. Table exists on all deployments, only populated on master.
+- **ApprovedVendor.java** (new) — JPA entity for `approved_vendors` table. Auto-discovered via `exclude-unlisted-classes=false` in persistence.xml.
+- **ApiClient.java** — Added `redirectClient` (follows 301/302, 5s timeout) and `getJson()` method for non-authenticated GET requests. Returns `ApiResponse` with statusCode=-1 on failure.
+- **VendorRegistryApi.java** (new) — `@WebServlet("/api/v1/registry/vendors")`, public GET endpoint returning JSON array of active vendors. Returns 405 for non-GET methods.
+- **ApiTokenFilter.java** — Added bypass for `/api/v1/registry/` path prefix (public endpoint, no auth required).
+- **DatabaseInitializer.java** — Added `MASTER_REGISTRY_URL` constant to `addPspConstants()` (PSP only, defaults to `https://superiorstate.biz`).
+- **VendorRegistryService.java** (new) — Static utility that fetches approved vendors from the master registry via `ApiClient.getJson()`. Returns `null` on failure (for `registryAvailable` flag), empty list on success with no results. Guarded by `AppConfig.isPsp()`.
+- **VendorManager25.java** — `doGet()` now calls `VendorRegistryService.fetchApprovedVendors()`, builds set of already-registered URLs, filters out connected vendors, and passes `registryVendors` + `registryAvailable` to JSP.
+- **vendorManager25.jsp** — Replaced manual "Request New Connection" form with registry-driven "Available Vendors" card. Connect button submits to existing `requestConnection` POST handler. Falls back to manual entry form when registry is unreachable. Shows "All available vendors are already connected" when registry returns empty after filtering.
+
+### Deployment Backlog
+- **D-46:** Seed `MASTER_REGISTRY_URL` constant on existing PSP deployments
+- **D-47:** Populate `approved_vendors` table on master/production with Accelergent BPO Services
+
+### Files Changed
+- **New (4):** V032 migration, ApprovedVendor.java, VendorRegistryApi.java, VendorRegistryService.java
+- **Modified (7):** migration_tracker.md, schema_version_migration.sql, deployment_backlog.md, ApiClient.java, ApiTokenFilter.java, DatabaseInitializer.java, VendorManager25.java, vendorManager25.jsp

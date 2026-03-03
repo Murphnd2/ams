@@ -15,6 +15,10 @@ public class ApiClient {
     private static final HttpClient client = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(10))
             .build();
+    private static final HttpClient redirectClient = HttpClient.newBuilder()
+            .connectTimeout(Duration.ofSeconds(5))
+            .followRedirects(HttpClient.Redirect.NORMAL)
+            .build();
     private static final Gson gson = new Gson();
 
     /**
@@ -59,6 +63,28 @@ public class ApiClient {
             return new ApiResponse(response.statusCode(), response.body());
         } catch (Exception e) {
             throw new RuntimeException("API call failed to " + url + ": " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * GET JSON from a URL. Uses redirect-following client with 5s timeout.
+     * On any exception, returns ApiResponse with statusCode = -1 and empty body.
+     */
+    public static ApiResponse getJson(String url) {
+        try {
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(url))
+                    .header("Accept", "application/json")
+                    .timeout(Duration.ofSeconds(5))
+                    .GET()
+                    .build();
+
+            HttpResponse<String> response = redirectClient.send(request,
+                    HttpResponse.BodyHandlers.ofString());
+
+            return new ApiResponse(response.statusCode(), response.body());
+        } catch (Exception e) {
+            return new ApiResponse(-1, "");
         }
     }
 

@@ -27,6 +27,13 @@ public class ApiTokenFilter implements Filter {
             return;
         }
 
+        // Skip auth for public vendor registry endpoint
+        String contextPath = request.getContextPath();
+        if (uri.startsWith(contextPath + "/api/v1/registry/")) {
+            chain.doFilter(request, response);
+            return;
+        }
+
         String authHeader = request.getHeader("Authorization");
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             sendUnauthorized(response);
