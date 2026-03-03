@@ -51,6 +51,12 @@ public class LoginFilter implements Filter {
             return;
         }
 
+        // Allow API endpoints (authenticated via ApiTokenFilter, not session)
+        if (path.startsWith("/api/")) {
+            chain.doFilter(req, res);
+            return;
+        }
+
         // Check if database is uninitialized
         boolean uninitialized = false;
         try {
