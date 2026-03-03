@@ -1,17 +1,17 @@
 # SSA/AMS Deployment Strategy
 
-**Last Updated:** February 22, 2026
-**Status:** Planning / Pre-Implementation
+**Last Updated:** March 2, 2026
+**Status:** Active — BPO deployed, Demo PSP next
 
 ---
 
 ## 1. Overview
 
-This document defines the long-term strategy for deploying the AMS web application to multiple PSP (Professional Service Provider) clients. Each PSP operates as an independent instance — its own VPS, its own database, its own domain — all running the same application codebase.
+This document defines the long-term strategy for deploying the AMS web application to multiple PSP (Professional Service Provider) clients. Each PSP operates as an independent instance — its own VM, its own database, its own domain — all running the same application codebase.
 
 ### Core Principle
 
-**One codebase, many instances.** Every PSP gets a cloned VPS running an identical application stack. PSP-specific data lives in the database (seeded at initialization). Infrastructure-level configuration lives in a properties file outside the WAR. The WAR itself is identical across all PSPs.
+**One codebase, many instances.** Every PSP gets a cloned VM running an identical application stack. PSP-specific data lives in the database (seeded at initialization). Infrastructure-level configuration lives in a properties file outside the WAR. The WAR itself is identical across all PSPs.
 
 ---
 
@@ -19,35 +19,52 @@ This document defines the long-term strategy for deploying the AMS web applicati
 
 ### 2.1 Hosting
 
-- **Provider:** IONOS Cloud
-- **Per-PSP setup:** Each PSP gets its own Linux VPS (Ubuntu), cloned from a master image
-- **Each VPS gets:** its own external IP address, its own domain (managed by the PSP's DNS)
+- **Provider:** IONOS Cloud — **Data Center Designer (DCD)** product (not VPS Cloud Panel)
+- **Management console:** DCD at https://dcd.ionos.com
+- **Per-PSP setup:** Each PSP gets its own Linux VM (Ubuntu), cloned from a master snapshot in the DCD
+- **Each VM gets:** its own external IP address (reserved via DCD IP Manager), its own domain (managed by the PSP's DNS)
+- **VDC location:** US-Las Vegas (SSA-PSP VDC)
 
-### 2.2 Master VPS Image
+#### 2.1.1 IONOS DCD IP Management
 
-A "gold master" VPS image is maintained with the full stack pre-installed and ready to clone:
+Static IPs are reserved via **Menu → Network Services → IP Management** in the DCD (not the Cloud Panel). IPs are allocated as consecutive IP blocks. Key notes:
+
+- You cannot reserve a specific IPv4 address — IONOS assigns a random address from the pool
+- If you return a static IP, you cannot reserve it again afterward
+- DHCP-assigned IPs are dynamic and may change if the VM is deallocated — use reserved static IPs for production
+- DHCP-assigned IPs are stable enough for demo/test VMs as long as the VM is not deallocated
+- **Known issue (2026-03-02):** Received "error occurred while reserving ip block" when attempting to reserve a second IP block. Root cause unknown — may be an account-level limit or transient DCD error. Investigate with IONOS support if this recurs. See D-22 in `docs/deployment_backlog.md`.
+
+### 2.2 Master VM Image
+
+A "gold master" VM snapshot is maintained with the full stack pre-installed and ready to clone:
 
 | Component | Version | Location |
 |-----------|---------|----------|
 | Ubuntu | 24.x LTS | — |
 | Java | OpenJDK 17 | `/usr/lib/jvm/java-17-openjdk-amd64` |
 | Tomcat | 10.x | Base: `/var/lib/tomcat10`, Home: `/usr/share/tomcat10` |
-| MySQL | 8.x | Standard package install |
+| MySQL | 8.x | Standard package install, `lower_case_table_names = 1` |
 | Certbot | Latest | For Let's Encrypt SSL |
 
 **Pre-installed on the master image:**
 
-- Empty beta_ssa database schema at V024 (all tables, views, stored procedures — no PSP data)
-- Latest WAR file deployed to `/var/lib/tomcat10/webapps/`
-- Config file template at `/var/lib/tomcat10/conf/ssa.properties` with `PSP_ID=UNINITIALIZED`
+- Empty beta_ssa database schema at V031 (all tables, views, stored procedures — no PSP data)
+- `schema_version` table populated with V001–V031 tracking records
+- MySQL configured with `lower_case_table_names = 1` (required for EclipseLink compatibility on Linux)
+- `ams_app` MySQL user created with password matching `context.xml`
+- No WAR deployed (clones pull via GitHub Releases update script)
+- Config file template at `/var/lib/tomcat10/conf/ssa.properties` with `PSP_ID=UNINITIALIZED` and `SYSTEM_URL=` (blank)
 - Backup script (cron job) — see §5
 - Update script (cron job) — see §6
 - Health check script (cron job) — see §7
 - Certbot installed (but not yet configured — requires DNS to be pointed first)
 
-**Current snapshot:** `SSA-Master-Base-v5-2026-02-27` (V024 schema, no WAR)
+**Current snapshot:** `SSA-Master-Base-v7-2026-03-02` (V031 schema, `lower_case_table_names=1`, no WAR)
 
-### 2.3 Standard Directory Layout (All PSP VPSes)
+**Master VPS:** 208.94.39.77 (`master.superiorstate.biz`)
+
+### 2.3 Standard Directory Layout (All PSP VMs)
 
 | Purpose | Path |
 |---------|------|
@@ -66,86 +83,32 @@ A "gold master" VPS image is maintained with the full stack pre-installed and re
 
 Configuration is split into two layers, each serving a distinct purpose.
 
-### 3.1 Infrastructure Config — `ssa.properties`
+### 3.1 Infrastructure Config (`ssa.properties`)
 
-Located at `/var/lib/tomcat10/conf/ssa.properties`, this file holds values that are:
+Lives at `/var/lib/tomcat10/conf/ssa.properties` on every VM. Set once at provisioning time. Contains:
 
-- Set once when the VPS is provisioned
-- Never changed through the application UI
-- Specific to the server environment, not the PSP's business data
+- `PSP_ID` — human-readable identifier (used for backups, logging, health reports)
+- `SYSTEM_URL` — the full URL for this instance (set during provisioning, used by VendorManager for partnership requests)
+- `DEPLOYMENT_KEY` — secret key for initialization endpoint
+- Database credentials (`DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`)
+- Wasabi S3 credentials (`S3_ENDPOINT`, `S3_BUCKET`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`)
+- File paths (`SAVE_PATH`, `LOG_PATH`, `BRANDING_PATH`)
+- Chatbot settings (`CHATBOT_ENABLED`, `ANTHROPIC_API_KEY`)
+- Release management (`RELEASE_REPO`, `RELEASE_TOKEN`)
+- Backup target (`WASABI_BUCKET`, `WASABI_ENDPOINT`, `WASABI_REGION`)
+- Health monitoring (`HEALTH_EMAIL_TO`, `HEALTH_EMAIL_FROM`)
+- System health email (`SYS_HEALTH_*` keys — SMTP config for health check script)
 
-**Contents:**
+### 3.2 Application Config (Database Constants)
 
-```properties
-# PSP Identifier — human-readable, used for backup labels, logging, health reports
-PSP_ID=UNINITIALIZED
+Stored in the `constant` table, seeded during initialization. Contains PSP-specific business configuration:
 
-# Database connection (currently in persistence.xml inside the WAR — to be externalized)
-DB_HOST=localhost
-DB_PORT=3306
-DB_NAME=beta_ssa
-DB_USER=ssa_app
-DB_PASSWORD=<set during provisioning>
-
-# File system paths
-SAVE_PATH=/var/lib/tomcat10/data/
-LOG_PATH=/var/lib/tomcat10/logs/
-
-# Release management
-RELEASE_REPO=https://api.github.com/repos/<org>/<repo>/releases
-RELEASE_TOKEN=<read-only GitHub PAT>
-
-# Backup target
-WASABI_BUCKET=ssa-backups
-WASABI_ACCESS_KEY=<set during provisioning>
-WASABI_SECRET_KEY=<set during provisioning>
-WASABI_REGION=us-east-1
-```
-
-**How the application reads this:** The `EmfListener` (or a new startup listener) reads this file on context initialization and makes values available to the application. The WAR never contains environment-specific values.
-
-### 3.2 PSP Business Config — Database Constants Table
-
-The existing `constant` table holds values that are:
-
-- PSP-specific business configuration
-- Potentially editable through the application (now or in the future)
-- Seeded during database initialization via `initialize.jsp`
-
-**Current constants seeded by `DatabaseInitializer`:**
-
-| Constant | Purpose | Source |
-|----------|---------|--------|
-| `SMTP_SERVER` | Email sending | initialize.jsp form |
-| `SMTP_PORT` | Email sending | initialize.jsp form |
-| `SMTP_USER` | Email sending | initialize.jsp form |
-| `SMTP_PASSWORD` | Email sending | initialize.jsp form |
-| `WEB_PATH` | Domain for email links | initialize.jsp form |
-| `SUMMIT_PATH` | Path to Summit data | initialize.jsp form |
-| `SSL_PORT` | HTTPS port (always "443") | Hardcoded |
-| `FALSE_CLOSE` | Business logic date | Hardcoded |
-| `LOGO_NAVBAR` | Navbar logo path (PSP-customizable) | Hardcoded default, updatable via Branding page |
-| `LOGO_LOGIN` | Login page logo path (PSP-customizable) | Hardcoded default, updatable via Branding page |
-| `FAVICON` | Browser tab icon path (PSP-customizable) | Hardcoded default, updatable via Branding page |
-| `SYS_HEALTH_EMAIL_TO` | Health check recipient | Hardcoded |
-| `SYS_HEALTH_SMTP_SERVER` | Health check SMTP server | Hardcoded |
-| `SYS_HEALTH_SMTP_PORT` | Health check SMTP port | Hardcoded |
-| `SYS_HEALTH_SMTP_USER` | Health check SMTP user | Hardcoded |
-| `SYS_HEALTH_SMTP_PASSWORD` | Health check SMTP password | Hardcoded |
-| `SYS_HEALTH_ENABLED` | Health check on/off switch | Hardcoded (true) |
-| `SYS_HEALTH_EMAIL_FROM` | Health check sender address | Hardcoded |
-
-### 3.3 Migration Plan: What Moves to `ssa.properties`
-
-| Value | Currently | Should Be | Reason |
-|-------|-----------|-----------|--------|
-| `SAVE_PATH` | DB constant (hardcoded `C:\\data\\`) | `ssa.properties` | Infrastructure path, same on all Linux VPSes |
-| `LOG_PATH` | Hardcoded in `EmfListener` (Windows path) | `ssa.properties` | Infrastructure path |
-| DB connection | `persistence.xml` inside WAR | `ssa.properties` | Must vary per VPS without rebuilding WAR |
-| `SSL_PORT` | DB constant | Can stay | Rarely changes, fine in DB |
-| SMTP settings | DB constants via initialize.jsp | Stay in DB | PSP-specific, may be editable later |
-| `WEB_PATH` | DB constant via initialize.jsp | Stay in DB | PSP-specific |
-| `SUMMIT_PATH` | DB constant via initialize.jsp | Stay in DB | PSP-specific |
+- SMTP settings (email host, port, user, password, from address)
+- Domain/web path
+- Summit path (Datapath integration)
+- Tax ID
+- SSL port
+- Feature flags
 
 ---
 
@@ -153,7 +116,7 @@ The existing `constant` table holds values that are:
 
 ### 4.1 Current Flow
 
-1. Fresh VPS has empty `beta_ssa` schema (tables/views only, no data)
+1. Fresh VM has empty `beta_ssa` schema (tables/views only, no data)
 2. Tomcat starts, `EmfListener` checks for `SSL_PORT` constant — finds none, skips global data load
 3. PSP navigates to `/initialize.jsp` (public, no auth required)
 4. PSP fills out form: company name, contact info, address, domain, SMTP settings, tax ID, deployment key
@@ -242,6 +205,8 @@ Releases are published to **GitHub Releases** on the project repository. Each re
 ### 6.2 Versioning Convention
 
 - WAR files: semantic versioning (`ssa-MAJOR.MINOR.PATCH.war`)
+- Pre-release versions: `0.x.y` (e.g., `v0.31.0` — "BPO cross-system architecture, V031 schema")
+- Conference-ready: `1.0.0`
 - Database migrations: numbered sequentially (`V001__initial.sql`, `V002__sales_pipeline.sql`, etc.)
 - A WAR version and a database migration version must always be compatible — release notes specify which migrations are required for each WAR version
 
@@ -261,7 +226,7 @@ CREATE TABLE schema_version (
 
 The update script checks this table to determine which migrations have been applied and runs any new ones in order.
 
-### 6.4 Update Script Behavior (Per-VPS Cron Job)
+### 6.4 Update Script Behavior (Per-VM Cron Job)
 
 Runs nightly (after backup completes):
 
@@ -279,7 +244,7 @@ Runs nightly (after backup completes):
 
 - Previous WAR is kept at `/opt/ssa/backups/ssa-previous.war`
 - Database rollback = restore from the nightly backup taken before the update ran
-- Manual intervention: SSH into the VPS, swap WAR files, restore DB dump, restart Tomcat
+- Manual intervention: SSH into the VM, swap WAR files, restore DB dump, restart Tomcat
 - Automated rollback is a future enhancement — manual is acceptable for the first 5-10 PSPs
 
 ---
@@ -288,7 +253,7 @@ Runs nightly (after backup completes):
 
 ### 7.1 Phase 1: Email Digest
 
-Each VPS runs a nightly health check script that collects:
+Each VM runs a nightly health check script that collects:
 
 - Tomcat status (running/stopped)
 - MySQL status (running/stopped)
@@ -305,12 +270,12 @@ The script emails a summary to a designated address (e.g., `health@monitor.super
 
 A master admin dashboard built into the AMS application, accessible only to users with the "Master Admin" role. This would:
 
-- Receive health check data from all PSP VPSes (each VPS POSTs its health report to a central endpoint)
+- Receive health check data from all PSP VMs (each VM POSTs its health report to a central endpoint)
 - Display a summary grid: one row per PSP, showing status indicators
 - Alert on failures (red indicators for down services, failed backups, failed updates)
 - Show version drift (which PSPs are behind on WAR or migration versions)
 
-The dashboard lives in the same codebase (not a separate site) and is deployed on a "master" VPS that you control. Other PSP VPSes would not see this view — it's role-gated.
+The dashboard lives in the same codebase (not a separate site) and is deployed on a "master" VM that you control. Other PSP VMs would not see this view — it's role-gated.
 
 ---
 
@@ -318,19 +283,21 @@ The dashboard lives in the same codebase (not a separate site) and is deployed o
 
 ### 8.1 Pre-Onboarding (Your Side)
 
-1. Clone the master VPS image in IONOS
-2. SSH into the new VPS
-3. Set `PSP_ID` in `/var/lib/tomcat10/conf/ssa.properties` (e.g., `PSP_ID=acme_benefits`)
-4. Set database credentials in `ssa.properties`
-5. Set Wasabi credentials in `ssa.properties`
-6. Create the data directory: `sudo mkdir -p /var/lib/tomcat10/data && sudo chown tomcat:tomcat /var/lib/tomcat10/data`
-7. Verify Tomcat starts and serves the uninitialized application
-8. Note the VPS external IP address
-9. Communicate IP to the PSP with DNS instructions
+1. Clone the master VM snapshot in IONOS DCD
+2. Reserve a static IP in DCD IP Manager and assign to the new VM's NIC
+3. SSH into the new VM
+4. Set `PSP_ID` in `/var/lib/tomcat10/conf/ssa.properties` (e.g., `PSP_ID=acme_benefits`)
+5. Set `SYSTEM_URL` (e.g., `https://acme.superiorstate.biz`)
+6. Set database credentials in `ssa.properties`
+7. Set Wasabi credentials in `ssa.properties`
+8. Create the data directory: `sudo mkdir -p /var/lib/tomcat10/data && sudo chown tomcat:tomcat /var/lib/tomcat10/data`
+9. Verify Tomcat starts and serves the uninitialized application
+10. Note the VM external IP address
+11. Communicate IP to the PSP with DNS instructions
 
 ### 8.2 DNS Setup (PSP's Side)
 
-The PSP creates an A record pointing their chosen domain to the VPS IP address.
+The PSP creates an A record pointing their chosen domain to the VM IP address.
 
 ### 8.3 SSL Provisioning (Your Side, After DNS)
 
@@ -365,11 +332,21 @@ The `/InitializeDataBase` endpoint is publicly accessible (no auth required — 
 
 ### 9.2 SSH Access
 
-All VPS administration (config changes, manual DB access, troubleshooting) is done via SSH. Each VPS should use key-based authentication. Password-based SSH login should be disabled on the master image.
+All VM administration (config changes, manual DB access, troubleshooting) is done via SSH. Each VM should use key-based authentication. Password-based SSH login should be disabled on the master image.
 
 ### 9.3 Initialize Endpoint Protection
 
 After initialization completes, the `/InitializeDataBase` endpoint should be effectively disabled. The current mechanism for this is the `SSL_PORT` constant check in `EmfListener` — once initialization sets `SSL_PORT=443`, the application knows it's initialized. The initialize endpoint itself should also check this and refuse to run a second time.
+
+### 9.4 MySQL Password Handling
+
+MySQL passwords containing special characters (`!`, `$`, `\`, `` ` ``) must be set using the **interactive MySQL shell**, not via the `-e` flag. Bash interprets these characters before passing them to MySQL, causing CREATE/ALTER USER failures. Always use:
+
+```bash
+LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu mysql --socket=/var/run/mysqld/mysqld.sock -u root -p
+```
+
+Then paste the password directly at the `mysql>` prompt.
 
 ---
 
@@ -423,7 +400,7 @@ When ready to deploy a new version to PSP servers:
    - Attach: any new SQL migration scripts
    - Publish
 
-6. **PSP VPSes pick up the release** via their nightly update script (or manual trigger).
+6. **PSP VMs pick up the release** via their nightly update script (or manual trigger).
 
 ### 10.3 Migration Script Naming Convention
 
@@ -436,7 +413,7 @@ V003__sales_pipeline_2.sql
 ...
 ```
 
-Each release's notes specify which migrations are required. The update script on each VPS checks the `schema_version` table and applies any new ones in order.
+Each release's notes specify which migrations are required. The update script on each VM checks the `schema_version` table and applies any new ones in order.
 
 ---
 
@@ -454,3 +431,14 @@ High-level categories:
 6. **Build the update and backup scripts** — shell scripts for the master image
 7. **Build the health check script** — email-based reporting
 8. **Externalize database connection** — move from `persistence.xml` to `ssa.properties`
+
+---
+
+## 12. Current Deployed Instances
+
+| Instance | URL | IP | Type | Schema | Status |
+|----------|-----|----|------|--------|--------|
+| Production PSP | https://superiorstate.biz | (production IP) | PSP | V024 | Running |
+| BPO | https://bpo.superiorstate.biz | 158.222.102.168 (DHCP) | BPO | V031 | Running, initialized |
+| Master | master.superiorstate.biz | 208.94.39.77 | Master image | V031 | Snapshot v7 taken |
+| Demo PSP | demo.superiorstate.biz | TBD | PSP | — | Not yet deployed |

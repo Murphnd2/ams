@@ -79,63 +79,6 @@ No expiration, read-only, scoped to Murphnd2/ams.
 
 ---
 
-### D-27: Create Tomcat SSL Reference Doc ✅
-
-**Completed:** February 23, 2026 (Session 2)
-**File:** `docs/tomcat_ssl_setup.md`
-
-Step-by-step guide covering Certbot certificate generation, Tomcat `server.xml` HTTPS connector configuration, HTTP→HTTPS redirect, privileged port binding, and auto-renewal with deploy hooks. Referenced from `docs/deployment_runbook.md` Phase 3.
-
----
-
-### D-28: Save Blank Schema Dump on Master Image ✅
-
-**Completed:** February 23, 2026 (Session 2)
-**Location:** `/opt/ssa/schema/beta_ssa_blank.sql` on master VPS
-
-Enables quick rollback: drop database, re-import blank schema, re-initialize. Referenced in deployment runbook rollback procedure.
-
----
-
-## Open Items
-
-### D-07: Externalize Database Connection
-
-**Priority:** MEDIUM — Currently working via JNDI in context.xml
-**Status:** Deferred
-
-The database connection is currently configured via Tomcat JNDI datasource in `context.xml`, which is outside the WAR. This works for multi-PSP deployment. Moving it to `ssa.properties` is a future nice-to-have but not blocking.
-
----
-
-### D-14: Master Admin Dashboard & PSP Instance Management
-
-**Priority:** LOW — Phase 2 (after health check emails are operational)
-**Status:** Not started
-
-Build a dashboard view in the AMS application, accessible only to "Master Admin" role. This serves as the central management console for all PSP instances.
-
-**Features:**
-- Receives health check data from all PSP VPSes and displays status grid
-- PSP instance registry: list of all deployed PSPs with status, domain, version, last backup
-- Deployment feedback: surface errors, version drift, failed updates
-- "Master Admin" concept that manages PSP installs
-
-**Architecture decision:** Build within the AMS app (role-gated) rather than a separate website. The infrastructure and auth system already exist.
-
-**When built:** Push migration to set `SYS_HEALTH_ENABLED=false` across all PSPs to stop email reports. Update deployment runbook Phase 7 to reference the new dashboard workflow.
-
----
-
-### D-22: Investigate IONOS vCPU Core Quota
-
-**Priority:** MEDIUM
-**Status:** Not started
-
-Determine if IONOS has a per-account limit on vCPU cores and whether additional quota needs to be requested before spinning up multiple PSP VPSes.
-
----
-
 ### D-24: Create Demo Seeder Servlet ✅
 
 **Completed:** February 28, 2026
@@ -161,15 +104,6 @@ Determine if IONOS has a per-account limit on vCPU cores and whether additional 
 
 ---
 
-### D-25: Manual Benefit Creation UI
-
-**Priority:** MEDIUM
-**Status:** Not started
-
-Build an admin page to manually create Benefit records without requiring a Summit import. Currently benefits can only enter the system through the Summit CSV import pipeline or the demo data in the initializer.
-
----
-
 ### D-26: Vendor Management Admin Page ✅
 
 **Completed:** March 2, 2026
@@ -183,6 +117,24 @@ PSP-side Vendor Manager for managing BPO vendor partnerships (approve/reject req
 
 ---
 
+### D-27: Create Tomcat SSL Reference Doc ✅
+
+**Completed:** February 23, 2026 (Session 2)
+**File:** `docs/tomcat_ssl_setup.md`
+
+Step-by-step guide covering Certbot certificate generation, Tomcat `server.xml` HTTPS connector configuration, HTTP→HTTPS redirect, privileged port binding, and auto-renewal with deploy hooks. Referenced from `docs/deployment_runbook.md` Phase 3.
+
+---
+
+### D-28: Save Blank Schema Dump on Master Image ✅
+
+**Completed:** February 23, 2026 (Session 2)
+**Location:** `/opt/ssa/schema/beta_ssa_blank.sql` on master VPS
+
+Enables quick rollback: drop database, re-import blank schema, re-initialize. Referenced in deployment runbook rollback procedure.
+
+---
+
 ### D-29: BPO Task Assignment from BPO Dashboard ✅
 
 **Completed:** March 2, 2026
@@ -191,38 +143,6 @@ PSP-side Vendor Manager for managing BPO vendor partnerships (approve/reject req
 - `src/main/webapp/WEB-INF/view/bpo/bpoHome25.jsp` — Assign dropdown in task detail modal
 
 BPO task assignment implemented as part of the cross-system BPO architecture. Both co-located mode (local ToDo.bpoAssignedTo) and cross-system mode (DelegatedToDo.assignedTo) supported. AJAX-powered via BpoCompleteTask servlet with `action=assign` parameter.
-
----
-
-### D-30: BPO Automation Email — Contact-less Checklist Support
-
-**Priority:** MEDIUM
-**Status:** Not started (design discussion completed)
-
-The ManageTask25 automation feature uses the activity's primary contact for email To:/Cc: fields. Checklists have no primary contacts, so automation is currently hidden for BPO users. Design needed: in the absence of valid email addresses, show a prompt for manual email entry (validated, semicolon-separated or add-one-at-a-time). This benefits all standalone checklists, not just BPO.
-
----
-
-### D-31: Microsoft 365 SSO (Optional Per-PSP)
-
-**Priority:** LOW — Phase 2 (after multi-PSP foundation is stable)
-**Status:** Not started
-
-Add optional "Sign in with Microsoft" button on login page using Microsoft Entra ID (Azure AD) with OpenID Connect / OAuth 2.0. Existing username/password auth remains as the default and fallback.
-
-**Design considerations:**
-- Per-PSP opt-in: each PSP decides whether to enable SSO via a `SSO_ENABLED` database constant
-- Azure AD app registration: one multi-tenant app or per-PSP registrations (TBD)
-- OAuth callback URLs must be domain-specific (each PSP has its own domain)
-- User matching: SSO email matched to existing AMS user record — no auto-provisioning initially
-- Fallback required for users without M365 accounts (agents, clients, external contacts)
-- Session setup must follow same `AmsDataLocal` initialization path as normal login
-
-**Implementation approach (when ready):**
-- Add `microsoft-identity-web` or manual OAuth 2.0 authorization code flow
-- New servlet: `MicrosoftLoginCallback` to handle the OAuth redirect
-- Login page: conditional "Sign in with Microsoft" button when `SSO_ENABLED=true`
-- Map authenticated email → `User.email` → full `loadSessionData25()` flow
 
 ---
 
@@ -253,10 +173,9 @@ Add optional "Sign in with Microsoft" button on login page using Microsoft Entra
    sudo systemctl daemon-reload && sudo systemctl restart tomcat10
    ```
 
-**Also applies to:** Master VPS image — must be baked into the snapshot so cloned PSP instances work out of the box. Update the master image with:
-- Directory created and owned by `tomcat:tomcat`
-- `BRANDING_PATH` in `ssa.properties`
-- Systemd override in place
+**Also applies to:** Master VPS image — baked into the snapshot so cloned PSP instances work out of the box.
+
+---
 
 ### D-33: Update Master VPS Blank Schema and Snapshot ✅
 
@@ -266,32 +185,30 @@ Add optional "Sign in with Microsoft" button on login page using Microsoft Entra
 Updated master VPS image from v4 (pre-V001 schema) to v5:
 - Replaced `/opt/ssa/schema/beta_ssa_blank.sql` with V024 structure dump from production
 - Verified `ssa.properties` has all current keys (SYS_HEALTH_*, BRANDING_PATH, S3, chatbot, etc.)
-- Created `/var/lib/tomcat10/branding/` directory (tomcat:tomcat ownership)
-- Added systemd override for branding write access (`ReadWritePaths`)
-- Verified healthcheck.sh reads from ssa.properties (not DB)
-- Verified all three cron jobs (backup, update, healthcheck)
-- No WAR on master — clones pull via update.sh
-- Updated `deployment_runbook.md` with v5 references, new Phase 2.5, corrected health check docs
 
 ---
 
-### D-35: Summit Data Import Wizard ✅
+### D-34: Benefit Renewal Audit Page ✅
 
-**Completed:** February 28, 2026
+**Completed:** March 1, 2026
 **Files:**
-- `src/main/java/net/superiorstate/ams/controller/data/SummitImportWizard.java` — Multi-step wizard servlet
-- `src/main/java/net/superiorstate/ams/data/service/SummitImportService.java` — Import business logic
-- `src/main/webapp/WEB-INF/view/a/general/summitImport/` — Wizard step JSPs
-- `docs/migrations/V025__plantype_import_columns.sql` — PlanType import columns
-- `docs/migrations/V026__benefit_surrogate_pk.sql` — Benefit surrogate PK with source tracking
-
-Multi-step wizard at `/SummitImport` for importing Summit CSV exports into AMS. Handles Plan Types (J2), Employers (J1), Employees (J3a/J3b), Benefits CDH (J4), Benefits COBRA (J7), and Benefit Plan Years (J5). V026 restructures the Benefit table from Summit's `EmployerPlan_ID` as PK to a surrogate auto-increment PK with `summit_id`/`source_type` composite unique key, eliminating the negative-ID hack for COBRA benefits. V028 adds `plan_year_start`/`plan_year_end` columns to benefit for renewal date correction.
-
-**J5/J7 Plan Year Integration (Session 11):** J7 COBRA import now uses `enddate + 1` as renewal anchor for new benefits and stores plan year dates. J5 CDH import parses plan year CSV, stores plan year boundaries, and seeds renewal dates on first import only. Short plan year detection flags year-to-year end date changes.
+- `src/main/java/net/superiorstate/ams/controller/activity/renewal/BenefitAudit.java` (new)
+- `src/main/webapp/WEB-INF/view/a/renew/benefitAudit25.jsp` (new)
+- `src/main/java/net/superiorstate/ams/data/dao/BenefitDAO.java` (new)
+- `src/main/java/net/superiorstate/ams/model/summit/BenefitOverview.java` (new)
+- `docs/migrations/V028__benefit_nextrenew_renew_months.sql`
+- Multiple model/DAO files updated for `nextRenewalDue` and `renewalMonths` columns
 
 **Benefit Renewal Audit:** New page at `/BenefitAudit` (PSP Admin only) — lists all active benefits with plan year data, detected renewal dates, inline editing of `nextRenewalDue` and `renewalMonths`, employer search, flagged/no-renewal filters, "Accept All Detected" bulk action.
 
 **Also in this session:** DatabaseInitializer seed data overhaul (ServiceItem unification alignment, onboarding checklist rewrite, simplified LOS/Enhancement/PlanType seeding), form validation on `initialize.jsp`, ManageTask25 NPE fix, Agency `tax_id` column widened to `varchar(20)`.
+
+---
+
+### D-35: Benefit Renewal Audit Page ✅
+
+**Completed:** March 1, 2026
+(See D-34 — same session)
 
 ---
 
@@ -313,20 +230,6 @@ Multi-step wizard at `/SummitImport` for importing Summit CSV exports into AMS. 
 - `src/main/java/net/superiorstate/ams/controller/user/CreateUser25.java` — Removed returnTo handling
 
 PSP Admin modal for user lifecycle management: deactivate with bulk reassignment, reactivate, add/remove agent role (home agency scoped), expand agent to PSP User. BPO users excluded. External agency agent deactivation deferred.
-
----
-
-### D-37: Backfill PSP Home Agency Config
-
-**Priority:** HIGH
-**Status:** Not started
-
-On existing installations, run one-time SQL to:
-1. Add Agent (2) and Agency Admin (8) roles to the PSP admin user
-2. Set `manager_id` on the home agency to the PSP admin's person ID
-3. Insert `PSP_HOME_AGENCY_ID` constant with the home agency's ID
-
-This aligns existing databases with the updated DatabaseInitializer behavior.
 
 ---
 
@@ -369,28 +272,17 @@ No migration required — initialization-only changes. Existing `ReSeedDb`/`ReSe
 
 The Setup tab in the Add Activity modal previously rendered dropdown data via server-side JSTL at page load. Cascade relationships were baked into `data-*` attributes on `<option>` elements. When admin tools modified rates/agencies/LOS, the modal HTML remained stale until full page refresh.
 
-**New endpoint:** `SetupModalData` servlet (GET, JSON) reads from `AmsDataGlobal` cache — returns agencies (with rateIds), prospects (with agencyIds), agents (with agencyIds), rates, LOS list, enhancements (with serviceItemId), rateLosMap, rateExtraMap, homeAgencyId, and currentPersonId.
-
-**JSP changes:** Replaced 6 JSTL `<c:forEach>` loops with empty containers. Added `aa_loadSetupData()` (fetches fresh data every time Setup tab is shown), `aa_rebuildSetupOptions()` (dynamically builds all options from JSON), and `aa_escapeHtml()` helper. Modified `aa_onRateChange()` to look up LOS/extra IDs from the JS data object instead of `data-*` attributes.
-
-**Admin servlet cache refresh:** Added `refreshSalesData()` calls to 5 servlets that were missing them: ServiceManagerAction, AgencyAction, SendInvitation, CreateProspect, and replaced targeted `setProspects()` in CreateOpportunity with full `refreshSalesData(em)`.
-
 ---
 
-### D-40: Fix ServiceManagerAction — ApplicationField CRUD Bugs + Cache Eviction
+### D-40: ServiceManager Full Admin Page ✅
 
 **Completed:** March 1, 2026
 **Files:**
-- `src/main/java/net/superiorstate/ams/controller/activity/setup/ServiceManagerAction.java` — Bug fixes + cache eviction
-- `src/main/webapp/WEB-INF/view/sales/serviceManager25.jsp` — Added suppress button to field rows
+- `src/main/java/net/superiorstate/ams/controller/activity/setup/ServiceManagerAction.java` (major rewrite)
+- `src/main/webapp/WEB-INF/view/a/admin/serviceManager25.jsp` (major rewrite)
+- `src/main/java/net/superiorstate/ams/data/dao/ServiceItemDAO.java` (new)
 
-**Bug fixes:**
-- **Error handling:** Added catch block with logging and transaction rollback to `doPost()` (was try/finally only — exceptions propagated silently)
-- **editAppField:** Changed from `Long.parseLong(request.getParameter("fieldId"))` to `request.getParameter("fieldKey")` — ApplicationField PK is `String fieldKey`, not Long
-- **suppressAppField:** Same fieldId→fieldKey fix
-- **JSP suppress button:** Added inline form with eye/eye-slash toggle in field row Actions column (was missing entirely)
-
-**Cache eviction:** Added `emf.getCache().evict(ApplicationSection.class, sId)` after commits in all 5 section/field mutation cases (`editAppSection`, `suppressAppSection`, `createAppField`, `editAppField`, `suppressAppField`) to prevent EclipseLink L2 cache from serving stale data on redirect.
+Full admin page for managing ServiceItems, LOS, Enhancements, and their relationships. Accordion-based layout with inline create/edit/delete operations. ServiceItem CRUD, LOS↔Enhancement assignment, automatic ServiceModule creation.
 
 ---
 
@@ -400,18 +292,6 @@ The Setup tab in the Add Activity modal previously rendered dropdown data via se
 **File:** `src/main/webapp/WEB-INF/view/a/pspHome/columns/activities/addActivityModal25.jsp`
 
 Converted the Opportunity section of the Add Activity modal from server-rendered JSTL to AJAX-populated JavaScript, reusing the existing `SetupModalData` endpoint. No servlet changes needed.
-
-**HTML changes:**
-- Replaced JSTL `<c:choose>`/`<c:forEach>` on agency `<select>` with empty container populated by JS
-- Replaced JSTL `<c:forEach>` on prospect `<select>` with empty container filtered by agency
-- Moved agency dropdown above prospect toggle (agency drives cascade)
-
-**JavaScript changes:**
-- `aa_showType()` now calls `aa_loadModalData(type)` for both `opportunity` and `setup` (was `aa_loadSetupData()` for setup only)
-- New `aa_loadModalData(type)` replaces `aa_loadSetupData` — shared fetch with caching, rebuilds both tabs from single `SetupModalData` call
-- New `aa_rebuildOppOptions()` — populates agency dropdown, auto-selects single agency or homeAgencyId
-- New `aa_onOppAgencyChange()` — filters prospect dropdown by `agencyIds` from SetupModalData response
-- Modal close now sets `aa_setupData = null` for fresh fetch on next open
 
 ---
 
@@ -476,30 +356,119 @@ No database changes.
 - `AddRenewal25.java`, `CreateChecklist25.java` — BpoTaskPushService push hooks
 - `navbar25.jsp` — System-type-aware admin links
 
-Full cross-system BPO architecture enabling PSP and BPO deployments to exchange tasks, notes, and completion status via authenticated REST APIs. Same WAR detects role from `ssa.properties` `system.type` property. All cross-system API failures are non-fatal (logged, never propagate).
+Full cross-system BPO architecture enabling PSP and BPO deployments to exchange tasks, notes, and completion status via authenticated REST APIs.
 
 ---
 
-### D-45: BPO Initialization Path ✅
+### D-45: Master VPS Image Fix — v7 Snapshot ✅
 
 **Completed:** March 2, 2026
-**Files (modified):**
-- `src/main/java/net/superiorstate/ams/AppConfig.java` — Added `cachedSystemType` with `setSystemType()`, `getSystemType()` checks cache first
-- `src/main/java/net/superiorstate/ams/data/service/DatabaseInitializer.java` — Added `SYSTEM_TYPE=PSP` to `addPspConstants()`, new `addBpoConstants()`, new `createBpoWelcomeChecklist()`, new `initializeBpoDataBase()`
-- `src/main/java/net/superiorstate/ams/controller/authentication/InitializeDataBase.java` — New key format `{TYPE}-{KEY}` or `{TYPE}-{KEY}-{DEMOTAG}`, branches to PSP or BPO initializer, refreshes system type attributes post-init
-- `src/main/java/net/superiorstate/ams/data/AmsDataGlobal.java` — Reads `SYSTEM_TYPE` from DB constants and caches via `AppConfig.setSystemType()` during global init
-- `src/main/java/net/superiorstate/ams/EmfListener.java` — Refreshes system type servlet context attributes after `initializeGlobalData()` completes
-- `src/main/webapp/initialize.jsp` — Hint text below deployment key field about PSP-/BPO- prefix format
+**Snapshot:** `SSA-Master-Base-v7-2026-03-02`
 
-When a fresh deployment is initialized via `initialize.jsp`, the deployment key prefix determines whether the system becomes a PSP or BPO deployment. BPO initialization seeds the minimum reference data needed (sequence, statuses, roles, contact methods, activity categories, ticket category, sentinel tasks) while skipping PSP-specific structures (plan types, billing groups, LOS/Enhancement, service modules, application sections, Summit onboarding checklist, demo users). BPO admin user gets role 102 (BPO Admin) instead of PSP Admin. The BPO welcome checklist guides partnership setup instead of Summit data transfer.
+Fixed critical MySQL configuration issues discovered during BPO VPS standup. Changes applied to master VPS (208.94.39.77 / `master.superiorstate.biz`):
 
-No database migration required — initialization-only changes. Existing `ReSeedDb`/`ReSeedDemoData` inherit PSP path automatically.
+1. **`lower_case_table_names = 1`** — MySQL 8 on Linux defaults to case-sensitive table names. EclipseLink generates uppercase queries (`SELECT ... FROM ACTIVITYSTATUS`), which fail on case-sensitive MySQL. Required reinitializing the MySQL data directory (`--initialize-insecure`).
+2. **`ams_app` MySQL user recreated** — After data directory reinit, all users were wiped. Recreated `ams_app` with password matching `context.xml`, using interactive MySQL shell (not `-e` flag) to avoid bash escaping special characters.
+3. **V031 schema + schema_version reimported** — Schema dump from `dev_ssa` (structure-only) plus `schema_version_migration.sql` for 31 version tracking records.
+4. **`SYSTEM_URL=` placeholder verified** — Added by WS2, needed by VendorManager for partnership requests. Blank on master, set during provisioning.
+5. **Clean state** — Temp files removed, no WAR, logs cleared, Tomcat stopped before snapshot.
 
 ---
 
-## Remaining TODOs
+## Open Items
 
-- Run `schema_version_migration.sql` on production database (holding until further testing)
-- Update master VPS snapshot version in runbook after future image updates
-- Update deployment runbook Phase 7 when PSP admin dashboard is built (D-14)
-- Reserve static IPs in IONOS for each PSP deployment
+### D-07: Externalize Database Connection
+
+**Priority:** MEDIUM — Currently working via JNDI in context.xml
+**Status:** Deferred
+
+The database connection is currently configured via Tomcat JNDI datasource in `context.xml`, which is outside the WAR. This works for multi-PSP deployment. Moving it to `ssa.properties` is a future nice-to-have but not blocking.
+
+---
+
+### D-14: Master Admin Dashboard & PSP Instance Management
+
+**Priority:** LOW — Phase 2 (after health check emails are operational)
+**Status:** Not started
+
+Build a dashboard view in the AMS application, accessible only to "Master Admin" role. This serves as the central management console for all PSP instances.
+
+**Features:**
+- Receives health check data from all PSP VMs and displays status grid
+- PSP instance registry: list of all deployed PSPs with status, domain, version, last backup
+- Deployment feedback: surface errors, version drift, failed updates
+- "Master Admin" concept that manages PSP installs
+
+**Architecture decision:** Build within the AMS app (role-gated) rather than a separate website. The infrastructure and auth system already exist.
+
+**When built:** Push migration to set `SYS_HEALTH_ENABLED=false` across all PSPs to stop email reports. Update deployment runbook Phase 7 to reference the new dashboard workflow.
+
+---
+
+### D-22: Investigate IONOS DCD Resource Limits
+
+**Priority:** MEDIUM
+**Status:** In progress — IP block reservation error encountered
+
+Investigate IONOS Cloud DCD account-level limits on:
+1. **IP block reservations** — Received "error occurred while reserving ip block" when attempting to reserve a second static IP block via DCD IP Manager (Menu → Network Services → IP Management). Root cause unknown. First block reservation (for production) succeeded; second (for BPO VPS) failed.
+2. **vCPU core quota** — Determine if there's a per-account limit on total vCPU cores across all VMs in the VDC.
+
+**Workaround (current):** BPO VPS at `bpo.superiorstate.biz` (158.222.102.168) is running on a DHCP-assigned IP, which is stable unless the VM is deallocated. Acceptable for demo/test; reserve a static IP for production BPO if the IP block issue is resolved.
+
+**Next steps:** Contact IONOS Cloud support to clarify account limits and request quota increase if needed. Reference DCD contract and SSA-PSP VDC (US-Las Vegas).
+
+---
+
+### D-25: Manual Benefit Creation UI
+
+**Priority:** MEDIUM
+**Status:** Not started
+
+Build an admin page to manually create Benefit records without requiring a Summit import. Currently benefits can only enter the system through the Summit CSV import pipeline or the demo data in the initializer.
+
+---
+
+### D-30: BPO Automation Email — Contact-less Checklist Support
+
+**Priority:** MEDIUM
+**Status:** Not started (design discussion completed)
+
+The ManageTask25 automation feature uses the activity's primary contact for email To:/Cc: fields. Checklists have no primary contacts, so automation is currently hidden for BPO users. Design needed: in the absence of valid email addresses, show a prompt for manual email entry (validated, semicolon-separated or add-one-at-a-time). This benefits all standalone checklists, not just BPO.
+
+---
+
+### D-31: Microsoft 365 SSO (Optional Per-PSP)
+
+**Priority:** LOW — Phase 2 (after multi-PSP foundation is stable)
+**Status:** Not started
+
+Add optional "Sign in with Microsoft" button on login page using Microsoft Entra ID (Azure AD) with OpenID Connect / OAuth 2.0. Existing username/password auth remains as the default and fallback.
+
+**Design considerations:**
+- Per-PSP opt-in: each PSP decides whether to enable SSO via a `SSO_ENABLED` database constant
+- Azure AD app registration: one multi-tenant app or per-PSP registrations (TBD)
+- OAuth callback URLs must be domain-specific (each PSP has its own domain)
+- User matching: SSO email matched to existing AMS user record — no auto-provisioning initially
+- Fallback required for users without M365 accounts (agents, clients, external contacts)
+- Session setup must follow same `AmsDataLocal` initialization path as normal login
+
+**Implementation approach (when ready):**
+- Add `microsoft-identity-web` or manual OAuth 2.0 authorization code flow
+- New servlet: `MicrosoftLoginCallback` to handle the OAuth redirect
+- Login page: conditional "Sign in with Microsoft" button when `SSO_ENABLED=true`
+- Map authenticated email → `User.email` → full `loadSessionData25()` flow
+
+---
+
+### D-37: Backfill PSP Home Agency Config
+
+**Priority:** HIGH
+**Status:** Not started
+
+On existing installations, run one-time SQL to:
+1. Add Agent (2) and Agency Admin (8) roles to the PSP admin user
+2. Set `manager_id` on the home agency to the PSP admin's person ID
+3. Insert `PSP_HOME_AGENCY_ID` constant with the home agency's ID
+
+This aligns existing databases with the updated DatabaseInitializer behavior.
