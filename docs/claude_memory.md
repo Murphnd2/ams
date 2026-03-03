@@ -118,6 +118,11 @@
 - **Extracted includes:** proposalFeatures.jsp, proposalPricing.jsp
 - **D-54** in deployment_backlog — code complete, needs V035+V036 applied + browser testing
 
+## Proposal Feature Display Fix (Session 29)
+- **Root cause:** Feature loading used RateTable module IDs, but Features attach to the direct-FK module (`servicemodule.los_id` / `servicemodule.enhancement_id`) — different IDs
+- **ViewProposal.java fix:** Resolves direct-FK modules per LOS/Enhancement instead of deriving from pricing; JOIN FETCH `sm.los` + `sm.enhancement` for lazy-load safety after `em.close()`
+- **proposalFeatures.jsp fix:** LOS matching changed from M:N `los.getServiceModuleList()` to direct FK `feature.getServiceModule().getLos().getId()`; Enhancement matching uses `feature.getServiceModule().getEnhancement().getId()`
+
 ## Proposal Section Scoping (Session 29, V037)
 - **V037:** scope column on proposal_section + proposalsectionlos/proposalsectionenhancement join tables
 - **ProposalSection entity:** scope (ALL/SCOPED), losList (M:N → LOS), enhancementList (M:N → Enhancement)
