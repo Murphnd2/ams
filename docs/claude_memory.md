@@ -92,6 +92,12 @@
 - **serviceManager25.jsp** — Load Package button hidden when all loaded, Reset to Default button on package sections
 - **D-53** in deployment_backlog — code complete, needs V034 migration applied + browser testing
 
+## Full-Height Dashboard Layouts (Session 28)
+- **BPO Dashboard:** `.bpo-layout` flex wrapper, `.bpo-columns` row, `.bpo-col-left`/`.bpo-col-right` flex columns — both scroll internally
+- **PSP Dashboard:** `.psp-dash-body` flex wrapper, `.psp-dash-col-left`/`.psp-dash-col-right` flex columns — removed inline `max-height` from `.dash-scroll` divs
+- **Both:** `@media (min-width: 992px)` only — mobile layout unchanged
+- **Dropdown clipping fix:** `toDoCurrentList25.jsp` — pre-init kebab dropdowns with `popperConfig: { strategy: 'fixed' }` so menus aren't clipped by `overflow-y: auto` scroll containers
+
 ## Session History
 - Full archive: `docs/analysis/session_history_archive.md`
-- Last session (25): Starter Packages for Application Sections — V034 migration, PackageLoader service, 8 JSON packages, Service Manager UI modal
+- Last session (28): Full-height dashboard layouts + kebab dropdown clipping fix

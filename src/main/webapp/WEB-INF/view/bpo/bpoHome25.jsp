@@ -27,15 +27,58 @@
         .due-future { color: #6c757d; }
         .sort-header { cursor: pointer; user-select: none; }
         .sort-header:hover { color: #0d5681; }
+
+        /* Full-viewport flex layout on desktop */
+        @media (min-width: 992px) {
+            .bpo-layout {
+                display: flex;
+                flex-direction: column;
+                height: calc(100vh - 70px);
+                overflow: hidden;
+            }
+            .bpo-columns {
+                flex: 1;
+                min-height: 0;
+            }
+            .bpo-col-left {
+                display: flex;
+                flex-direction: column;
+            }
+            .bpo-col-left > .card {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                overflow: hidden;
+            }
+            .bpo-col-left > .card > .card-body {
+                flex: 1;
+                overflow-y: auto;
+            }
+            .bpo-col-right {
+                display: flex;
+                flex-direction: column;
+            }
+            .bpo-col-right > .card {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                overflow: hidden;
+            }
+            .bpo-col-right > .card > .card-body {
+                flex: 1;
+                overflow-y: auto;
+            }
+        }
     </style>
 </head>
 <body>
 <div class="container-fluid">
     <c:import url="/WEB-INF/view/a/general/navbar25.jsp"/>
-    <div class="row g-3 mt-1">
+    <div class="bpo-layout">
+    <div class="row g-3 mt-1 bpo-columns">
 
         <%-- ═══ LEFT COLUMN: Personal Checklists ═══ --%>
-        <div class="col-lg-4 col-xl-3">
+        <div class="col-lg-4 col-xl-3 bpo-col-left">
             <div class="card">
                 <div class="hdr-bar d-flex align-items-center justify-content-between">
                     <span><i class="bi bi-check2-square me-2"></i>My Checklists</span>
@@ -57,7 +100,7 @@
         </div>
 
         <%-- ═══ RIGHT COLUMN: Delegated ToDos ═══ --%>
-        <div class="col-lg-8 col-xl-9">
+        <div class="col-lg-8 col-xl-9 bpo-col-right">
             <div class="card">
                 <div class="hdr-bar d-flex align-items-center justify-content-between">
                     <span><i class="bi bi-list-task me-2"></i>Delegated Tasks</span>
@@ -267,6 +310,7 @@
             </div>
         </div>
 
+    </div>
     </div>
 </div>
 

@@ -260,4 +260,10 @@
     var el = document.getElementById(id);
     if (el) { new bootstrap.Collapse(el, {toggle: true}); }
   }
+
+  /* Pre-init kebab dropdowns with fixed positioning so they aren't
+     clipped by overflow-y:auto / overflow:hidden scroll containers  */
+  document.querySelectorAll('.todo-current [data-bs-toggle="dropdown"]').forEach(function(el) {
+    new bootstrap.Dropdown(el, { popperConfig: { strategy: 'fixed' } });
+  });
 </script>

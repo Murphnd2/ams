@@ -2,7 +2,7 @@
 
 > **Purpose:** Consolidated historical record of all build sessions. For current project state, see `project_backlog.md`. For current architecture, see `application_flow.md` and `entity_reference.md`.
 >
-> **Last Updated:** March 4, 2026
+> **Last Updated:** March 3, 2026
 
 ---
 
@@ -1036,3 +1036,28 @@ Added composable proposal layout with PSP admin editor and feature sales blurb u
 ### Database Changes
 - **V035:** `ALTER TABLE feature ADD COLUMN headline VARCHAR(200)`, `ALTER TABLE feature MODIFY COLUMN description VARCHAR(2000)`
 - **V036:** `CREATE TABLE proposal_section` (FK to assignee table)
+
+---
+
+## March 3, 2026 — Full-Height Dashboard Layouts + Dropdown Fix (Session 28)
+
+Made the BPO Dashboard and PSP Dashboard fill the full viewport height on desktop (≥992px) instead of scrolling the entire page. Also fixed kebab dropdown menus getting clipped inside scrollable containers.
+
+### BPO Dashboard (`bpoHome25.jsp`)
+- **CSS media query** `@media (min-width: 992px)` — Added flex layout classes: `.bpo-layout` (flex column, `height: calc(100vh - 70px)`, overflow hidden), `.bpo-columns` (flex child fills remaining height), `.bpo-col-left` / `.bpo-col-right` (flex columns with cards stretching to fill and card-body scrolling internally).
+- **HTML structure** — Wrapped content in `<div class="bpo-layout">`, added `bpo-columns` to the row, `bpo-col-left` to the left column (My Checklists), `bpo-col-right` to the right column (Delegated Tasks).
+- Both columns now scroll internally; page body no longer scrolls on desktop.
+
+### PSP Dashboard (`pspDashboard25.jsp`)
+- **CSS media query** `@media (min-width: 992px)` — Added flex layout classes: `.psp-dash-body` (flex column, `height: calc(100vh - 70px)`, overflow hidden), `.psp-dash-col-left` / `.psp-dash-col-right` (flex columns). Left column's card and `.dash-scroll` fill available height. Right column's first card (Team Workload) flexes to fill.
+- **HTML structure** — Wrapped header + stat cards + filter bar + two-column row in `<div class="psp-dash-body">`, added `psp-dash-col-left` to `col-lg-8`, `psp-dash-col-right` to `col-lg-4`.
+- **Removed inline max-heights** from all four `.dash-scroll` divs (600px, 280px, 200px, 200px) — flex layout now controls sizing.
+
+### Kebab Dropdown Clipping Fix (`toDoCurrentList25.jsp`)
+- **Problem:** With the new `overflow-y: auto` on scrollable card bodies, Bootstrap dropdown menus from kebab buttons on checklist items rendered inside the scroll container and were clipped. A tiny scrollbar appeared instead of the menu being visible.
+- **Fix:** Pre-initialized all kebab dropdowns inside `.todo-current` with `new bootstrap.Dropdown(el, { popperConfig: { strategy: 'fixed' } })`. The `fixed` strategy tells Popper.js to position the menu relative to the viewport rather than the overflow ancestor, preventing clipping.
+
+### Files Changed
+- **Modified (3):** bpoHome25.jsp, pspDashboard25.jsp, toDoCurrentList25.jsp
+
+No database changes.
