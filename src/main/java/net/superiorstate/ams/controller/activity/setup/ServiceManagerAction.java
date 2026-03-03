@@ -452,6 +452,9 @@ public class ServiceManagerAction extends HttpServlet {
                     String packageId = request.getParameter("packageId");
                     PackageLoader.PackageLoadResult result = PackageLoader.loadPackage(em, packageId, psp);
 
+                    // Evict all ApplicationSection from L2 cache so fields are visible immediately
+                    emf.getCache().evict(ApplicationSection.class);
+
                     if (result.sectionsLoaded() > 0) {
                         request.getSession().setAttribute("flashMessage",
                                 result.sectionsLoaded() + " section(s) loaded successfully." +
@@ -459,6 +462,20 @@ public class ServiceManagerAction extends HttpServlet {
                     } else {
                         request.getSession().setAttribute("flashMessage",
                                 "All sections from this package are already loaded.");
+                    }
+                }
+
+                case "resetSectionToDefault" -> {
+                    long sId = Long.parseLong(sectionIdParam);
+                    ApplicationSection section = em.find(ApplicationSection.class, sId);
+                    if (section != null && section.getTemplateKey() != null) {
+                        int fieldsProcessed = PackageLoader.resetSectionToDefault(em, section);
+                        request.getSession().setAttribute("flashMessage",
+                                "Section '" + section.getName() + "' reset to default (" + fieldsProcessed + " fields restored).");
+                        emf.getCache().evict(ApplicationSection.class, sId);
+                    } else {
+                        request.getSession().setAttribute("flashMessage",
+                                "This section was not loaded from a starter package and cannot be reset.");
                     }
                 }
 
@@ -539,7 +556,7 @@ public class ServiceManagerAction extends HttpServlet {
         if ("loadStarterPackage".equals(action)) {
             redirect += "?tab=section";
         } else if (sectionIdParam != null && !sectionIdParam.isEmpty()
-                && (action.startsWith("createApp") || action.startsWith("editApp") || action.startsWith("suppressApp"))) {
+                && (action.startsWith("createApp") || action.startsWith("editApp") || action.startsWith("suppressApp") || action.startsWith("resetSection"))) {
             redirect += "?sectionId=" + sectionIdParam + "&tab=section";
         } else if (losIdParam != null && !losIdParam.isEmpty()) {
             redirect += "?losId=" + losIdParam;

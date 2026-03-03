@@ -127,7 +127,7 @@ public class ServiceManagerHome extends HttpServlet {
             }
 
             // Load available starter packages for the modal
-            request.setAttribute("availablePackages", PackageLoader.getAvailablePackages());
+            request.setAttribute("availablePackages", PackageLoader.getAvailablePackagesForPsp(em, (long) pspId));
 
         } finally {
             em.close();

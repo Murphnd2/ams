@@ -975,3 +975,26 @@ Added a "Load Starter Package" feature to the Service Manager, allowing PSP admi
 
 ### Database Changes
 - **V034:** `ALTER TABLE applicationsection ADD COLUMN template_key VARCHAR(50) NULL` + unique index `uq_section_template_psp (template_key, psp_id)`
+
+---
+
+## March 3, 2026 — Starter Package Fixes + Enhancements (Session 26)
+
+Fixed package loading (fields not persisting, ALL-scope not linking) and added PSP-filtered dropdown, reset-to-default, and L2 cache eviction.
+
+### Bug Fixes
+- **EclipseLink merge interference:** `em.merge(section)` for ALL-scope linking within the same transaction as field creation caused fields to silently not persist. Restructured `loadPackage()` into two passes — Pass 1 creates sections+fields and commits, Pass 2 links ALL-scope sections to LOS/Enhancements in a separate transaction (matching `createAppSection` pattern).
+- **L2 cache stale data:** After package load, `ServiceManagerHome` queries returned cached sections without fields. Added `emf.getCache().evict(ApplicationSection.class)` after `loadStarterPackage` in `ServiceManagerAction`.
+- **Field suppressed flag:** Ensured `field.setSuppressed(false)` set explicitly on all new fields during load.
+
+### Enhancements
+- **`getAvailablePackagesForPsp(em, pspId)`** — Filters dropdown to hide fully-loaded packages. Counts existing templateKeys per PSP vs package sections; hides package when all sections already exist.
+- **`resetSectionToDefault(em, section)`** — Restores package-loaded section and fields to JSON template defaults. Existing fields: properties restored, un-suppressed. Missing fields: created. Extra manually-added fields: suppressed. Section name/description/scope/sortOrder restored.
+- **`resetSectionToDefault` servlet action** — New case in `ServiceManagerAction`, flash message with field count, L2 cache eviction, redirect to section tab.
+- **JSP changes:** Load Package button wrapped in `<c:if test="${not empty availablePackages}">` (hidden when all loaded). "Reset to Default" button in section detail header for package-loaded sections only (`templateKey != null`), with confirm dialog.
+- **Suppress-as-delete audit:** Confirmed no `em.remove()` calls exist for ApplicationField or ApplicationSection — only suppress toggle. Safe for reset-to-default pattern.
+
+### Files Changed
+- **Modified (3):** PackageLoader.java, ServiceManagerAction.java, serviceManager25.jsp
+
+No database changes (uses V034 from Session 25).

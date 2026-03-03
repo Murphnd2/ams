@@ -184,9 +184,11 @@
                         <button type="button" class="btn btn-sm" title="Show/hide suppressed"
                                 onclick="toggleSuppressed()"><i class="bi bi-eye-slash" id="toggleSuppressedIcon"></i>
                         </button>
+                        <c:if test="${not empty availablePackages}">
                         <button type="button" class="btn btn-sm" id="loadPkgBtn" data-bs-toggle="modal"
                                 data-bs-target="#loadPackageModal" title="Load starter package"
                                 style="display:${activeTab == 'section' ? 'inline-block' : 'none'}"><i class="bi bi-box-seam"></i></button>
+                        </c:if>
                         <button type="button" class="btn btn-sm" id="addBtn" data-bs-toggle="modal"
                                 data-bs-target="#addLosModal" title="Add new"><i class="bi bi-plus-lg"></i></button>
                     </li>
@@ -299,10 +301,20 @@
                 </h5>
             </c:if>
             <c:if test="${not empty selectedSection}">
-                <h5 class="mb-2 px-3 py-2 rounded" style="background-color: #87a948; color: white;">
+                <h5 class="mb-2 px-3 py-2 rounded d-flex align-items-center" style="background-color: #87a948; color: white;">
                     <i class="bi bi-file-earmark-text me-1"></i>${selectedSection.getName()}
                     <a href="#" class="edit-link" data-bs-toggle="modal" data-bs-target="#editSectionModal" title="Edit"><i class="bi bi-pencil"></i></a>
                     <small class="text-muted ms-2" style="font-size:0.75rem;">${selectedSection.getScope()}</small>
+                    <c:if test="${selectedSection.getTemplateKey() != null}">
+                        <form method="post" action="ServiceManagerAction" style="display:inline; margin-left:auto;"
+                              onsubmit="return confirm('Reset this section and all its fields to package defaults?');">
+                            <input type="hidden" name="action" value="resetSectionToDefault"/>
+                            <input type="hidden" name="sectionId" value="${selectedSection.getId()}"/>
+                            <button type="submit" class="btn btn-sm btn-outline-light" title="Reset to package defaults">
+                                <i class="bi bi-arrow-counterclockwise"></i> Reset to Default
+                            </button>
+                        </form>
+                    </c:if>
                 </h5>
             </c:if>
             <div class="detail-scroll">
@@ -1392,7 +1404,7 @@
         if (tabEl) {
             tabEl.addEventListener('shown.bs.tab', () => {
                 addBtn.setAttribute('data-bs-target', modalTarget);
-                loadPkgBtn.style.display = (tabId === 'secTab') ? 'inline-block' : 'none';
+                if (loadPkgBtn) loadPkgBtn.style.display = (tabId === 'secTab') ? 'inline-block' : 'none';
             });
         }
     });

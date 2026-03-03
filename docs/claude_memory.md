@@ -79,13 +79,17 @@
 - **Kebab menu** on sourced tasks includes "Notes" option opening the modal
 - **ToDoOut25.isWhoBlocked** — now includes `&& !bpoCompleted` so BPO-completed tasks show as normal completed (not locked)
 
-## Starter Packages (V034, Session 25)
+## Starter Packages (V034, Sessions 25–26)
 - **PackageLoader.java** in `data/service/` — reads JSON from `src/main/resources/packages/`
 - **8 packages:** general, pretax_s125, fsa, hra, hsa, transit_parking, billing_payments, specialty
 - **Duplicate detection:** `template_key` column on applicationsection, unique per (template_key, psp_id)
 - **ApplicationField.fieldKey** is String PK — skip individual fields if key already exists
-- **ServiceManagerAction** `loadStarterPackage` case — loads package, sets flash message, redirects to section tab
-- **serviceManager25.jsp** — Load Package button (box-seam icon) visible only on Sections tab, modal with package dropdown
+- **em.flush()** after section persist ensures section_id assigned before field FK references
+- **Scope ALL auto-assign:** new ALL-scoped sections auto-linked to all active LOS and Enhancements on load
+- **getAvailablePackagesForPsp(em, pspId):** hides fully-loaded packages from dropdown
+- **resetSectionToDefault(em, section):** restores section+fields to JSON defaults, suppresses manually-added fields
+- **ServiceManagerAction** cases: `loadStarterPackage`, `resetSectionToDefault`
+- **serviceManager25.jsp** — Load Package button hidden when all loaded, Reset to Default button on package sections
 - **D-53** in deployment_backlog — code complete, needs V034 migration applied + browser testing
 
 ## Session History
