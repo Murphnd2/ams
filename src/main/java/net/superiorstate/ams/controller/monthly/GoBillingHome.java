@@ -45,6 +45,11 @@ public class GoBillingHome extends HttpServlet {
             Employee ee = (Employee) request.getSession().getAttribute("currentBillingEmployee");
             List<BillingMonth> billingMonthList = BillingQueryDAO.getBillingMonths(em);
             request.getSession().setAttribute("billingMonths", billingMonthList);
+            if (bm == null && !billingMonthList.isEmpty()) {
+                bm = billingMonthList.get(0);
+                request.getSession().setAttribute("billingMonth", bm);
+            }
+            if (bm == null) return;
             boolean changeOnlyBilling;
             try {
                 String cob = request.getSession().getAttribute("changeOnlyBilling").toString();
