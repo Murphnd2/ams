@@ -928,3 +928,50 @@ Enabled PSP users to view and add notes on sourced/delegated tasks directly from
 - **Modified (2):** checklistBasic25.jsp, ToDoOut25.java
 
 No database changes.
+
+---
+
+## March 3, 2026 — Starter Packages + Healthcheck Fixes (Session 25)
+
+Added a "Load Starter Package" feature to the Service Manager, allowing PSP admins to load pre-configured sets of ApplicationSections and fields from bundled JSON templates. Also verified and committed the rewritten healthcheck script and added D-49 through D-52 deployment backlog items from a separate healthcheck troubleshooting session.
+
+### WS1: V034 Migration + Entity Update
+- **V034__starter_package_template_key.sql** — Adds nullable `template_key VARCHAR(50)` to `applicationsection` with unique index scoped to `(template_key, psp_id)`. NULL values (manual/seeded sections) unaffected by unique constraint.
+- **ApplicationSection.java** — Added `templateKey` field with getter/setter.
+
+### WS2: JSON Package Files
+- **src/main/resources/packages/** — 9 files total:
+  - `package-index.json` — registry of all packages with id, name, description, file reference
+  - 8 package files: `general.json`, `pretax_s125.json`, `fsa.json`, `hra.json`, `hsa.json`, `transit_parking.json`, `billing_payments.json`, `specialty.json`
+- Each package defines sections with `templateKey`, name, description, scope, sortOrder, and nested fields with fieldKey, label, fieldType, required, sortOrder, helpText, selectOptions.
+
+### WS3: PackageLoader Service
+- **PackageLoader.java** (new, `data/service/`) — Static utility class:
+  - `getAvailablePackages()` — reads `package-index.json`, returns `List<PackageSummary>` (record: id, name, description)
+  - `loadPackage(em, packageId, psp)` — reads package JSON, persists sections+fields in single transaction, returns `PackageLoadResult` (record: sectionsLoaded, sectionsSkipped, skippedKeys)
+  - Duplicate detection: JPQL count query on `templateKey + psp.id`; existing fields skipped by `em.find(ApplicationField.class, fieldKey)`
+
+### WS4: Servlet Endpoints
+- **ServiceManagerHome.java** — Added `PackageLoader.getAvailablePackages()` to request attributes for the modal dropdown.
+- **ServiceManagerAction.java** — New `loadStarterPackage` case: calls `PackageLoader.loadPackage()`, sets session `flashMessage` with result summary, redirects to `?tab=section`.
+
+### WS5: JSP Modal UI
+- **serviceManager25.jsp** — Three changes:
+  1. Flash message display (alert-success, auto-dismiss) after navbar import, reads/clears `flashMessage` session attribute
+  2. "Load Package" button (bi-box-seam icon) in tab-tools area, visible only when Sections tab is active (JS toggles on tab switch)
+  3. `#loadPackageModal` — Bootstrap modal with package select dropdown populated from `availablePackages`, form POSTs to `ServiceManagerAction` with `action=loadStarterPackage`
+
+### Healthcheck Script Verification + Backlog
+- **docs/scripts/healthcheck.sh** — Verified final version contains all fixes: `set -uo pipefail`, `get_prop()`, `run_mysql()` with LD_LIBRARY_PATH, `SELECT COUNT(*) FROM constant` init check, SMTP from `SYS_HEALTH_*` keys, no hardcoded fallbacks, no `db_constant()`.
+- **D-49:** Update healthcheck + config on master VPS image
+- **D-50:** Set unique hostnames on VPS boxes
+- **D-51:** Configure BPO backup cron + Wasabi
+- **D-52:** Reduce healthcheck error log noise
+- **D-53:** Starter packages (renumbered from original D-49)
+
+### Files Changed
+- **New (11):** PackageLoader.java, V034 migration script, package-index.json, 8 package JSON files
+- **Modified (9):** ApplicationSection.java, ServiceManagerHome.java, ServiceManagerAction.java, serviceManager25.jsp, healthcheck.sh, deployment_backlog.md, migration_tracker.md, schema_version_migration.sql, claude_memory.md
+
+### Database Changes
+- **V034:** `ALTER TABLE applicationsection ADD COLUMN template_key VARCHAR(50) NULL` + unique index `uq_section_template_psp (template_key, psp_id)`
