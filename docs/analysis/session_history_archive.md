@@ -2,7 +2,7 @@
 
 > **Purpose:** Consolidated historical record of all build sessions. For current project state, see `project_backlog.md`. For current architecture, see `application_flow.md` and `entity_reference.md`.
 >
-> **Last Updated:** March 4, 2026
+> **Last Updated:** March 3, 2026
 
 ---
 
@@ -1002,3 +1002,66 @@ Fixed package loading (fields not persisting, ALL-scope not linking) and added P
 - **Modified (8):** All package JSON files (selectOptions comma→pipe)
 
 No database changes (uses V034 from Session 25).
+
+---
+
+## March 3, 2026 — Proposal Customization (Session 27)
+
+Added composable proposal layout with PSP admin editor and feature sales blurb upgrade.
+
+### Phase 1: Feature Sales Blurb Upgrade
+- **V035:** Added `headline VARCHAR(200)` to feature table, widened `description` from VARCHAR(500) to VARCHAR(2000). Headline shows as bold text above the description in proposal rendering.
+- **Feature.java:** New `headline` field with getter/setter, `description` column definition updated.
+- **Service Manager UI:** Add/Edit Feature modals updated — new Headline input, Description textarea widened to 4 rows with 2000 char limit, labels clarified with helper text.
+- **ServiceManagerAction:** `createFeature` and `editFeature` cases read/persist headline. Edit case clears headline to null when blank.
+- **viewProposal.jsp:** Two-tier feature rendering — bold headline above muted description text. Falls back gracefully when no headline set.
+
+### Phase 2: Proposal Section Architecture
+- **V036:** Created `proposal_section` table (section_id, psp_id FK→assignee, section_type, title, html_content TEXT, sort_order, is_active, timestamps). FK targets `assignee(id)` due to single-table inheritance (PSP extends Assignee).
+- **ProposalSection.java:** New JPA entity in `model/sales/offering/`.
+- **ProposalSettings.java:** New servlet with full CRUD — `saveContent` (CKEditor HTML with sanitization), `createCustom` (inserts before CLOSING), `deleteCustom`, `reorder` (AJAX SortableJS), `toggleActive`, `renameSection`. Auto-initializes 4 default sections (TITLE, FEATURES, PRICING, CLOSING) on first access.
+- **proposalSettings.jsp:** Two-panel admin page — left panel: drag-drop section list with type icons and badges; right panel: CKEditor 5 Classic (v36.0.1) with HTML source toggle, merge token reference panel. Modal for adding custom pages.
+- **HTML sanitization:** Regex-based `sanitizeHtml()` strips `<script>`, `on*` event handlers, and `javascript:` protocols.
+- **Merge tokens:** 10 tokens (`{{PROSPECT_NAME}}`, `{{AGENT_NAME}}`, `{{AGENT_EMAIL}}`, `{{AGENCY_NAME}}`, `{{PSP_NAME}}`, `{{DATE_CREATED}}`, `{{PRIMARY_COLOR}}`, `{{ACCENT_COLOR}}`, `{{APPLY_BUTTON}}`, `{{PROPOSAL_ID}}`) replaced at render time in ViewProposal.java.
+- **ViewProposal.java:** Loads active ProposalSections for the proposal's PSP, builds token map from proposal data, replaces tokens in HTML content, passes `proposalSections` list and `sectionHtml` map to JSP.
+- **viewProposal.jsp:** Section-based rendering loop when `proposalSections` exist — dispatches TITLE/CLOSING/CUSTOM to rendered HTML, FEATURES to `proposalFeatures.jsp` include, PRICING to `proposalPricing.jsp` include. Falls back to legacy hardcoded layout when no sections configured.
+- **Extracted includes:** `proposalFeatures.jsp` (LOS cards + Enhancement cards), `proposalPricing.jsp` (rate table) — shared between section-based and legacy rendering paths.
+
+### Phase 3: Navigation
+- **navbar25.jsp:** "Proposal Settings" link added to Admin dropdown (between Resource Library and Sequence Builder divider), `bi-sliders` icon.
+
+### Backlog Items
+- **D-54:** Apply V035+V036 migrations and browser-test Proposal Settings page
+
+### Files Changed
+- **New (5):** V035 migration, V036 migration, ProposalSection.java, ProposalSettings.java, proposalSettings.jsp, proposalFeatures.jsp, proposalPricing.jsp
+- **Modified (8):** Feature.java, ServiceManagerAction.java, ViewProposal.java, viewProposal.jsp, serviceManager25.jsp, navbar25.jsp, migration_tracker.md, schema_version_migration.sql
+
+### Database Changes
+- **V035:** `ALTER TABLE feature ADD COLUMN headline VARCHAR(200)`, `ALTER TABLE feature MODIFY COLUMN description VARCHAR(2000)`
+- **V036:** `CREATE TABLE proposal_section` (FK to assignee table)
+
+---
+
+## March 3, 2026 — Full-Height Dashboard Layouts + Dropdown Fix (Session 28)
+
+Made the BPO Dashboard and PSP Dashboard fill the full viewport height on desktop (≥992px) instead of scrolling the entire page. Also fixed kebab dropdown menus getting clipped inside scrollable containers.
+
+### BPO Dashboard (`bpoHome25.jsp`)
+- **CSS media query** `@media (min-width: 992px)` — Added flex layout classes: `.bpo-layout` (flex column, `height: calc(100vh - 70px)`, overflow hidden), `.bpo-columns` (flex child fills remaining height), `.bpo-col-left` / `.bpo-col-right` (flex columns with cards stretching to fill and card-body scrolling internally).
+- **HTML structure** — Wrapped content in `<div class="bpo-layout">`, added `bpo-columns` to the row, `bpo-col-left` to the left column (My Checklists), `bpo-col-right` to the right column (Delegated Tasks).
+- Both columns now scroll internally; page body no longer scrolls on desktop.
+
+### PSP Dashboard (`pspDashboard25.jsp`)
+- **CSS media query** `@media (min-width: 992px)` — Added flex layout classes: `.psp-dash-body` (flex column, `height: calc(100vh - 70px)`, overflow hidden), `.psp-dash-col-left` / `.psp-dash-col-right` (flex columns). Left column's card and `.dash-scroll` fill available height. Right column's first card (Team Workload) flexes to fill.
+- **HTML structure** — Wrapped header + stat cards + filter bar + two-column row in `<div class="psp-dash-body">`, added `psp-dash-col-left` to `col-lg-8`, `psp-dash-col-right` to `col-lg-4`.
+- **Removed inline max-heights** from all four `.dash-scroll` divs (600px, 280px, 200px, 200px) — flex layout now controls sizing.
+
+### Kebab Dropdown Clipping Fix (`toDoCurrentList25.jsp`)
+- **Problem:** With the new `overflow-y: auto` on scrollable card bodies, Bootstrap dropdown menus from kebab buttons on checklist items rendered inside the scroll container and were clipped. A tiny scrollbar appeared instead of the menu being visible.
+- **Fix:** Pre-initialized all kebab dropdowns inside `.todo-current` with `new bootstrap.Dropdown(el, { popperConfig: { strategy: 'fixed' } })`. The `fixed` strategy tells Popper.js to position the menu relative to the viewport rather than the overflow ancestor, preventing clipping.
+
+### Files Changed
+- **Modified (3):** bpoHome25.jsp, pspDashboard25.jsp, toDoCurrentList25.jsp
+
+No database changes.

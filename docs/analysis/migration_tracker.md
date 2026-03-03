@@ -16,7 +16,7 @@ Tracks database schema versions across environments.
 | BPO | bpo.superiorstate.biz | beta_ssa | BPO instance (V031, initialized) |
 | Master | master.superiorstate.biz | beta_ssa | Snapshot v7 (V031, stopped) |
 
-## Current Highest Version: V034
+## Current Highest Version: V036
 
 ## Dev Baseline
 
@@ -66,6 +66,8 @@ Individual migration scripts are no longer stored in the repo. The baseline dump
 | V032 | Approved vendors registry table | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
 | V033 | ToDoNote attachments: todo_note_id FK on weblink | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
 | V034 | Add template_key to applicationsection for starter packages | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
+| V035 | Feature headline column and description widening | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
+| V036 | Proposal section table for composable proposal content | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
 
 ## Notes
 
@@ -87,3 +89,5 @@ Individual migration scripts are no longer stored in the repo. The baseline dump
 - Demo PSP, BPO, and Master environments all provisioned from the V031 master snapshot `SSA-Master-Base-v7-2026-03-02`.
 - Production remains at V024 and is intentionally isolated from conference demo infrastructure.
 - V034 adds nullable template_key VARCHAR(50) to applicationsection with a unique index scoped to (template_key, psp_id). Used for starter package duplicate detection. NULL values (manual/seeded sections) are unaffected by the unique constraint.
+- V035 adds nullable headline VARCHAR(200) to feature table for short punchy summary text. Widens description from VARCHAR(500) to VARCHAR(2000) for paragraph content. Part of the proposal customization feature (feature sales blurb upgrade).
+- V036 creates the proposal_section table for composable proposal content per PSP. Section types: TITLE, PRICING, FEATURES, CLOSING, CUSTOM. Supports HTML content with merge tokens, sort ordering, and active/inactive toggling.

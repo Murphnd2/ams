@@ -591,6 +591,26 @@ New "Load Starter Package" feature on the Service Manager page. PSP admins can l
 
 ---
 
+### D-54: Proposal Customization — Apply V035+V036 and Browser Test
+
+**Priority:** MEDIUM
+**Status:** Code complete — needs V035+V036 applied and browser testing
+
+**Prerequisites:** V035 + V036 migrations applied to target environment
+
+Proposal customization feature: composable section-based proposal layout with PSP admin editor. Feature sales blurb upgrade (headline + expanded description), CKEditor 5 for TITLE/CLOSING/CUSTOM page editing, drag-drop section reorder, merge token replacement, HTML sanitization. Auto-initializes default sections on first access.
+
+**Files:**
+- V035 migration (feature headline + description widening)
+- V036 migration (proposal_section table, FK→assignee)
+- ProposalSection.java entity
+- ProposalSettings.java servlet + proposalSettings.jsp
+- Feature.java, ServiceManagerAction.java, ViewProposal.java updates
+- viewProposal.jsp section-based rendering + proposalFeatures.jsp + proposalPricing.jsp includes
+- navbar25.jsp (Proposal Settings link)
+
+---
+
 ### D-37: Backfill PSP Home Agency Config
 
 **Priority:** HIGH

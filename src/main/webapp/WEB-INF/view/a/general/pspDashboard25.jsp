@@ -144,6 +144,50 @@
     }
     .prospect-box .pval { font-size: 1.2rem; font-weight: 700; color: var(--ssa); }
     .prospect-box .plbl { font-size: 0.62rem; font-weight: 600; text-transform: uppercase; color: #6c757d; }
+
+    /* Full-viewport flex layout on desktop */
+    @media (min-width: 992px) {
+        .psp-dash-body {
+            display: flex;
+            flex-direction: column;
+            height: calc(100vh - 70px);
+            overflow: hidden;
+        }
+        .psp-dash-body > .row {
+            flex: 1;
+            min-height: 0;
+        }
+        .psp-dash-col-left {
+            display: flex;
+            flex-direction: column;
+        }
+        .psp-dash-col-left > .card {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .psp-dash-col-left > .card > .dash-scroll {
+            flex: 1;
+            overflow-y: auto;
+            max-height: none !important;
+        }
+        .psp-dash-col-right {
+            display: flex;
+            flex-direction: column;
+        }
+        .psp-dash-col-right > .card:first-child {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .psp-dash-col-right > .card:first-child > .dash-scroll {
+            flex: 1;
+            overflow-y: auto;
+            max-height: none !important;
+        }
+    }
   </style>
 </head>
 <body>
@@ -151,6 +195,7 @@
   <c:import url="/WEB-INF/view/css-js.jsp"/>
 
   <%-- ═══ PAGE HEADER ═══ --%>
+  <div class="psp-dash-body">
   <div class="rounded-3 mb-3 px-4 py-3"
        style="background: linear-gradient(135deg, var(--ssa) 0%, #0a4568 100%); color: #fff;">
     <div class="d-flex align-items-center justify-content-between">
@@ -194,7 +239,7 @@
   <%-- ═══ TWO-COLUMN LAYOUT ═══ --%>
   <div class="row g-3">
     <%-- LEFT: Activity List --%>
-    <div class="col-lg-8">
+    <div class="col-lg-8 psp-dash-col-left">
       <div class="card border rounded-3 overflow-hidden">
         <div class="dash-section-hdr">
           <div>
@@ -204,14 +249,14 @@
           </div>
           <div id="activeFilterBadges"></div>
         </div>
-        <div class="dash-scroll" id="activityListContainer" style="max-height: 600px;">
+        <div class="dash-scroll" id="activityListContainer">
           <%-- Populated by JS --%>
         </div>
       </div>
     </div>
 
     <%-- RIGHT SIDEBAR --%>
-    <div class="col-lg-4">
+    <div class="col-lg-4 psp-dash-col-right">
       <%-- Team Workload --%>
       <div class="card border rounded-3 overflow-hidden mb-3">
         <div class="dash-section-hdr">
@@ -220,7 +265,7 @@
             <span class="hdr-title">Team Workload</span>
           </div>
         </div>
-        <div class="dash-scroll p-2" id="teamPanel" style="max-height: 280px;">
+        <div class="dash-scroll p-2" id="teamPanel">
           <%-- Populated by JS --%>
         </div>
       </div>
@@ -233,7 +278,7 @@
             <span class="hdr-title">Agent Pipeline</span>
           </div>
         </div>
-        <div class="dash-scroll p-3" style="max-height: 200px;">
+        <div class="dash-scroll p-3">
           <div class="text-muted fst-italic" style="font-size:0.82rem;">
             <i class="bi bi-info-circle me-1"></i>Agent and prospect data coming soon.
           </div>
@@ -248,7 +293,7 @@
             <span class="hdr-title">BPO Vendors</span>
           </div>
         </div>
-        <div class="dash-scroll p-3" style="max-height: 200px;">
+        <div class="dash-scroll p-3">
           <div class="text-muted fst-italic" style="font-size:0.82rem;">
             <i class="bi bi-info-circle me-1"></i>BPO registration and sync status coming soon.
           </div>
@@ -270,6 +315,7 @@
         </div>
       </div>
     </div>
+  </div>
   </div>
 </div>
 

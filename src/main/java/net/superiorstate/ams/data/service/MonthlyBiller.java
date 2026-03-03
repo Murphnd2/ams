@@ -31,24 +31,74 @@ public class MonthlyBiller extends Biller {
     public MonthlyBiller(EntityManager em) {
         super(em);
     }
+
     @Override
     public void run() {
-        setBillingFlags();
-        createBillingMonth();
-        clearBillingEnrollmentTable();
-        fillBillingEnrollmentTable();
-        clearBillingCoverageTable();
-        clearCoverageStatusForMonth();
-        fillBillingCoverageTableAlt(0);
-        logCoverageStatusForThisMonthCDH();
-        logCoverageStatusForThisMonthPB(0);
-        clearBillingGridForMonth();
-        fillBillingGrid(0);
+        setBillingFlags();                  em.clear();
+        createBillingMonth();               em.clear();
+        clearBillingEnrollmentTable();      em.clear();
+        fillBillingEnrollmentTable();       em.clear();
+        clearBillingCoverageTable();        em.clear();
+        clearCoverageStatusForMonth();      em.clear();
+        fillBillingCoverageTableAlt(0);     em.clear();
+        logCoverageStatusForThisMonthCDH(); em.clear();
+        logCoverageStatusForThisMonthPB(0); em.clear();
+        clearBillingGridForMonth();         em.clear();
+        fillBillingGrid(0);                 em.clear();
         BillingMonth bm = getBillingMonthByDate(BillingHelper.getMonthFor());
-        fillHsaBillingGrid(bm);
-        fillBillingLinks();
+        fillHsaBillingGrid(bm);            em.clear();
+        fillBillingLinks();                 em.clear();
         fillDualParticipantGrid();
     }
+
+    // ── Step 1: Set billing flags on employers ─────────────────────
+
+    protected void setBillingFlags() {
+        List<Object[]> results = em.createQuery("""
+            SELECT b.employer.id, b.planType.planTypeId
+            FROM Benefit b
+            WHERE b.isActive = true
+            """, Object[].class).getResultList();
+
+        Map<Integer, Boolean> hasPb = new HashMap<>();
+        Map<Integer, Boolean> hasCdh = new HashMap<>();
+        Map<Integer, Boolean> hasPop = new HashMap<>();
+
+        for (Object[] row : results) {
+            Integer employerId = (Integer) row[0];
+            Integer planTypeId = (Integer) row[1];
+
+            if (planTypeId == 1005 || planTypeId == 1007) {
+                hasPop.put(employerId, true);
+            } else if (planTypeId <= 8 || (planTypeId >= 1001 && planTypeId <= 1004)) {
+                hasCdh.put(employerId, true);
+            } else if (planTypeId <= 14 || planTypeId == 1010) {
+                hasPb.put(employerId, true);
+            }
+        }
+
+        List<Employer> employers = em.createQuery(
+                "SELECT er FROM Employer er WHERE er.id > 0", Employer.class).getResultList();
+
+        em.getTransaction().begin();
+        for (Employer er : employers) {
+            int id = er.getId();
+            boolean pb = hasPb.getOrDefault(id, false);
+            boolean cdh = hasCdh.getOrDefault(id, false);
+            boolean pop = hasPop.getOrDefault(id, false);
+
+            if (er.isPb() != pb || er.isCdh() != cdh || er.isPop() != pop) {
+                er.setHasPb(pb);
+                er.setHasCdh(cdh);
+                er.setHasPop(pop);
+                em.persist(er);
+            }
+        }
+        em.getTransaction().commit();
+    }
+
+    // ── Step 2: Create billing month ───────────────────────────────
+
     protected void createBillingMonth() {
         LocalDate billingDate = LocalDate.now().withDayOfMonth(1);
         Date fullDate = Date.valueOf(billingDate);
@@ -68,20 +118,27 @@ public class MonthlyBiller extends Biller {
             em.getTransaction().commit();
         }
     }
-    protected BillingMonth getBillingMonthByDate(Date date) {
+
+    public BillingMonth getBillingMonthByDate(Date date) {
         try {
             return em.createQuery("SELECT bm FROM BillingMonth bm WHERE bm.fullDate = :date", BillingMonth.class)
                     .setParameter("date", date)
                     .getSingleResult();
         } catch (NoResultException e) {
-            return new BillingMonth(); // empty default — you can refine
+            return new BillingMonth();
         }
     }
+
+    // ── Step 3: Clear enrollment staging table ─────────────────────
+
     protected void clearBillingEnrollmentTable() {
         em.getTransaction().begin();
         em.createQuery("DELETE FROM Enrollment2").executeUpdate();
         em.getTransaction().commit();
     }
+
+    // ── Step 4: Fill enrollment staging table ──────────────────────
+
     @SuppressWarnings("unchecked")
     protected void fillBillingEnrollmentTable() {
         List<ImportEnrollment> enrollments = em.createQuery(
@@ -92,7 +149,6 @@ public class MonthlyBiller extends Biller {
         System.out.println("📄 Found enrollments: " + enrollments.size());
         if (enrollments.isEmpty()) return;
 
-        // Step 1: Preload all benefits
         Map<Integer, ImportBenefitCdh> benefitMap = em.createQuery(
                 "SELECT b FROM ImportBenefitCdh b", ImportBenefitCdh.class
         ).getResultStream().collect(Collectors.toMap(
@@ -156,11 +212,17 @@ public class MonthlyBiller extends Biller {
         em.getTransaction().commit();
         System.out.printf("✅ Billing enrollment import complete. Imported: %d, Skipped: %d%n", count, skipped);
     }
+
+    // ── Step 5: Clear coverage staging table ───────────────────────
+
     protected void clearBillingCoverageTable() {
         em.getTransaction().begin();
         em.createQuery("DELETE FROM Coverage").executeUpdate();
         em.getTransaction().commit();
     }
+
+    // ── Step 6: Clear coverage status for month ────────────────────
+
     protected void clearCoverageStatusForMonth() {
         em.getTransaction().begin();
         em.createQuery("DELETE FROM CoverageStatus cs WHERE cs.monthFor = :month")
@@ -168,23 +230,24 @@ public class MonthlyBiller extends Biller {
                 .executeUpdate();
         em.getTransaction().commit();
     }
+
+    // ── Step 7: Fill coverage table (PB employers) ─────────────────
+
     @SuppressWarnings("unchecked")
     protected void fillBillingCoverageTableAlt(int erId) {
         int coverageId = (erId != 0) ? 99999 : 0;
         Date monthFor = BillingHelper.getMonthFor();
         int count = 0, skipped = 0;
 
-        // Step 1: Load existing CoverageStatus keys to skip duplicates
         Set<String> existingKeys = em.createQuery("""
-        SELECT CONCAT(cs.monthFor, '-', cs.benefit.id, '-', cs.employee.id)
-        FROM CoverageStatus cs
-        WHERE cs.monthFor = :month
-    """, String.class)
+            SELECT CONCAT(cs.monthFor, '-', cs.benefit.id, '-', cs.employee.id)
+            FROM CoverageStatus cs
+            WHERE cs.monthFor = :month
+            """, String.class)
                 .setParameter("month", monthFor)
                 .getResultStream()
                 .collect(Collectors.toSet());
 
-        // Step 2: Load employers
         List<Employer> employers = (erId != 0)
                 ? Collections.singletonList(EntityLookup.getEmployerById(em, erId))
                 : em.createQuery("SELECT er FROM Employer er WHERE er.hasPb = true", Employer.class)
@@ -194,11 +257,11 @@ public class MonthlyBiller extends Biller {
 
         for (Employer er : employers) {
             List<Benefit> benefits = em.createQuery("""
-            SELECT b FROM Benefit b
-            WHERE b.employer.id = :id
-              AND b.isActive = true
-              AND b.planType.billingGroup.id = 3
-        """, Benefit.class)
+                SELECT b FROM Benefit b
+                WHERE b.employer.id = :id
+                  AND b.isActive = true
+                  AND b.planType.billingGroup.id = 3
+                """, Benefit.class)
                     .setParameter("id", er.getId())
                     .getResultList();
 
@@ -208,9 +271,9 @@ public class MonthlyBiller extends Biller {
             BillingGroup group = EntityLookup.getBillingGroupById(em, 3);
 
             List<Employee> employees = em.createQuery("""
-            SELECT ee FROM Employee ee
-            WHERE ee.employer.id = :id AND ee.id > 0
-        """, Employee.class)
+                SELECT ee FROM Employee ee
+                WHERE ee.employer.id = :id AND ee.id > 0
+                """, Employee.class)
                     .setParameter("id", er.getId())
                     .getResultList();
 
@@ -250,6 +313,9 @@ public class MonthlyBiller extends Biller {
         em.getTransaction().commit();
         System.out.printf("✅ Coverage import complete. Inserted: %d, Skipped (duplicates): %d%n", count, skipped);
     }
+
+    // ── Step 8: Log coverage status — CDH ──────────────────────────
+
     @SuppressWarnings("unchecked")
     protected void logCoverageStatusForThisMonthCDH() {
         List<Enrollment2> list = em.createQuery(
@@ -282,6 +348,9 @@ public class MonthlyBiller extends Biller {
 
         em.getTransaction().commit();
     }
+
+    // ── Step 9: Log coverage status — PB/COBRA ────────────────────
+
     @SuppressWarnings("unchecked")
     protected void logCoverageStatusForThisMonthPB(int erId) {
         List<Coverage> coverages = em.createQuery(
@@ -293,7 +362,8 @@ public class MonthlyBiller extends Biller {
         for (Coverage coverage : coverages) {
             if (erId != 0 && coverage.getSummitOrganization().getId() != erId) continue;
 
-            Benefit b = EntityLookup.getBenefitBySummitKey(em, "COBRA", coverage.getPbBenefitId());
+            // pbBenefitId stores the internal benefit PK, not summit_id — use direct lookup
+            Benefit b = EntityLookup.getBenefitById(em, coverage.getPbBenefitId(), true);
             Employee ee = EntityLookup.getEmployeeById(em, coverage.getSummitEmployee().getId());
 
             if (b == null || ee == null) continue;
@@ -318,11 +388,30 @@ public class MonthlyBiller extends Biller {
 
         em.getTransaction().commit();
     }
+
+    // ── Step 10: Clear billing grid for month ──────────────────────
+
+    protected void clearBillingGridForMonth() {
+        int monthId = resolveMonthId();
+        if (monthId == -1) {
+            System.out.println("⚠️ No billing month found — skipping billing grid clear.");
+            return;
+        }
+
+        System.out.println("🧹 Clearing BillingGrid entries for monthId: " + monthId);
+        em.getTransaction().begin();
+        em.createQuery("DELETE FROM BillingGrid bg WHERE bg.billingMonth.monthId = :monthId")
+                .setParameter("monthId", monthId)
+                .executeUpdate();
+        em.getTransaction().commit();
+    }
+
+    // ── Step 11: Fill billing grid ─────────────────────────────────
+
     @SuppressWarnings("unchecked")
     protected void fillBillingGrid(int erId) {
         Date targetMonth = BillingHelper.getMonthFor();
 
-        // Fetch all active CoverageStatus records for the billing month
         List<CoverageStatus> statuses = em.createQuery(
                         "SELECT cs FROM CoverageStatus cs WHERE cs.monthFor = :monthFor AND cs.isActive = true", CoverageStatus.class)
                 .setParameter("monthFor", targetMonth)
@@ -330,7 +419,6 @@ public class MonthlyBiller extends Biller {
 
         if (statuses.isEmpty()) return;
 
-        // Preload all existing BillingGrids for that month
         Map<String, BillingGrid> gridMap = preloadGridMap(targetMonth);
 
         em.getTransaction().begin();
@@ -345,7 +433,7 @@ public class MonthlyBiller extends Biller {
             if (bg == null) {
                 bg = new BillingGrid();
                 bg.setGridId(gridId);
-                bg.setBillingMonth(getOrCreateBillingMonth(targetMonth)); // optional safety
+                bg.setBillingMonth(getOrCreateBillingMonth(targetMonth));
                 bg.setEmployer(cs.getEmployer());
                 bg.setEmployee(cs.getEmployee());
                 gridMap.put(gridId, bg);
@@ -362,50 +450,47 @@ public class MonthlyBiller extends Biller {
 
         em.getTransaction().commit();
     }
-    private Map<String, BillingGrid> preloadGridMap(Date monthFor) {
-        List<BillingGrid> grids = em.createQuery(
-                        "SELECT bg FROM BillingGrid bg WHERE bg.billingMonth.fullDate = :monthFor", BillingGrid.class)
-                .setParameter("monthFor", monthFor)
-                .getResultList();
 
-        return grids.stream()
-                .collect(Collectors.toMap(BillingGrid::getGridId, Function.identity()));
-    }
-    private BillingMonth getOrCreateBillingMonth(Date fullDate) {
-        try {
-            return em.createQuery("SELECT bm FROM BillingMonth bm WHERE bm.fullDate = :date", BillingMonth.class)
-                    .setParameter("date", fullDate)
-                    .getSingleResult();
-        } catch (NoResultException e) {
-            BillingMonth bm = new BillingMonth();
-            bm.setFullDate(fullDate);
-            bm.setMonth(LocalDate.ofInstant(fullDate.toInstant(), ZoneId.systemDefault()).getMonthValue());
-            bm.setYear(LocalDate.ofInstant(fullDate.toInstant(), ZoneId.systemDefault()).getYear());
-            em.persist(bm);
-            return bm;
-        }
-    }
-    protected void addCoverageStatusToBillingGrid(CoverageStatus cs, BillingGrid bg) {
-        bg.setBillingMonth(getBillingMonthByDate(BillingHelper.getMonthFor()));
-        bg.setEmployee(cs.getEmployee());
-        bg.setEmployer(cs.getEmployer());
-        bg.setCurrentStatus("TBD");
+    // ── Step 12: Fill HSA billing grid ─────────────────────────────
 
-        switch (cs.getBillingGroup().getId()) {
-            case 1 -> {
-                bg.setFlexSpend(true);
-                if (bg.isHealthReimb()) bg.setDualPlan(true);
+    protected void fillHsaBillingGrid(BillingMonth bm) {
+        List<HsaAccount> accounts = getActiveHsas();
+        if (accounts.isEmpty()) return;
+
+        Map<Integer, HsaEe> eeMap = getHsaEeMap();
+        Map<String, BillingGrid> gridMap = getGridMap(bm);
+
+        em.getTransaction().begin();
+        int count = 0;
+
+        for (HsaAccount account : accounts) {
+            HsaEe hsaEe = eeMap.get(account.getHsaId());
+            if (hsaEe == null || hsaEe.getEmployee() == null) continue;
+
+            if (!hsaEe.getHsaEr().isBilledDirect()) {
+                String gridId = getGridId(hsaEe, bm);
+                BillingGrid bg = gridMap.get(gridId);
+
+                if (bg == null) {
+                    bg = createBillingGridForEe(hsaEe, bm);
+                    gridMap.put(gridId, bg);
+                } else {
+                    bg.setHsa(true);
+                    em.merge(bg);
+                }
+
+                if (++count % 50 == 0) {
+                    em.flush();
+                    em.clear();
+                }
             }
-            case 2 -> {
-                bg.setHealthReimb(true);
-                if (bg.isFlexSpend()) bg.setDualPlan(true);
-            }
-            case 3 -> bg.setCobra(true);
-            case 4 -> bg.setTransit(true);
-            case 5 -> bg.setHsa(true);
-            case 6 -> bg.setLsa(true);
         }
+
+        em.getTransaction().commit();
     }
+
+    // ── Step 13: Fill billing links ────────────────────────────────
+
     @SuppressWarnings("unchecked")
     protected void fillBillingLinks() {
         List<BillingMonth> months = em.createQuery(
@@ -424,9 +509,9 @@ public class MonthlyBiller extends Biller {
                 if (bg.getEmployer() == null) continue;
 
                 Long linkCount = em.createQuery("""
-                SELECT COUNT(bl) FROM BillingLink bl 
-                WHERE bl.billingMonth.monthId = :mId AND bl.employer.id = :eId
-                """, Long.class)
+                    SELECT COUNT(bl) FROM BillingLink bl
+                    WHERE bl.billingMonth.monthId = :mId AND bl.employer.id = :eId
+                    """, Long.class)
                         .setParameter("mId", bm.getMonthId())
                         .setParameter("eId", bg.getEmployer().getId())
                         .getSingleResult();
@@ -450,6 +535,9 @@ public class MonthlyBiller extends Biller {
 
         em.getTransaction().commit();
     }
+
+    // ── Step 14: Fill dual participant grid ─────────────────────────
+
     @SuppressWarnings("unchecked")
     protected void fillDualParticipantGrid() {
         BillingMonth bm = getBillingMonthByDate(BillingHelper.getMonthFor());
@@ -466,7 +554,7 @@ public class MonthlyBiller extends Biller {
 
         for (BillingGrid bg : grids) {
             if (qualifiesForDualPlan(bg) && !bg.isDualPlan()) {
-                bg.setDualPlan(true); // Managed entity, no need for persist or merge
+                bg.setDualPlan(true);
 
                 if (++count % 50 == 0) {
                     em.flush();
@@ -477,79 +565,81 @@ public class MonthlyBiller extends Biller {
 
         em.getTransaction().commit();
     }
+
+    // ── Helper methods ─────────────────────────────────────────────
+
     private boolean qualifiesForDualPlan(BillingGrid bg) {
         boolean hasFS = bg.isFlexSpend();
         boolean hasHRA = bg.isHealthReimb();
         boolean hasHSA = bg.isHsa();
-
         return (hasFS && hasHRA) || (hasFS && hasHSA) || (hasHRA && hasHSA);
     }
-    protected void setBillingFlags() {
-        List<Object[]> results = em.createQuery("""
-        SELECT b.employer.id, b.planType.planTypeId 
-        FROM Benefit b 
-        WHERE b.isActive = true
-        """, Object[].class).getResultList();
 
-        // Step 1: Build maps of employer ID -> flag types
-        Map<Integer, Boolean> hasPb = new HashMap<>();
-        Map<Integer, Boolean> hasCdh = new HashMap<>();
-        Map<Integer, Boolean> hasPop = new HashMap<>();
-
-        for (Object[] row : results) {
-            Integer employerId = (Integer) row[0];
-            Integer planTypeId = (Integer) row[1];
-
-            if (planTypeId == 1005 || planTypeId == 1007) {
-                hasPop.put(employerId, true);
-            } else if (planTypeId <= 8 || (planTypeId >= 1001 && planTypeId <= 1004)) {
-                hasCdh.put(employerId, true);
-            } else if (planTypeId <= 14 || planTypeId == 1010) {
-                hasPb.put(employerId, true);
-            }
-        }
-
-        // Step 2: Bulk load all employers and apply flag logic
-        List<Employer> employers = em.createQuery(
-                "SELECT er FROM Employer er WHERE er.id > 0", Employer.class).getResultList();
-
-        em.getTransaction().begin();
-        for (Employer er : employers) {
-            int id = er.getId();
-            boolean pb = hasPb.getOrDefault(id, false);
-            boolean cdh = hasCdh.getOrDefault(id, false);
-            boolean pop = hasPop.getOrDefault(id, false);
-
-            // Only update if any value differs
-            if (er.isPb() != pb || er.isCdh() != cdh || er.isPop() != pop) {
-                er.setHasPb(pb);
-                er.setHasCdh(cdh);
-                er.setHasPop(pop);
-                em.persist(er);
-            }
-        }
-        em.getTransaction().commit();
-    }
-
-    // Determines if the employee should be considered billable
     private boolean isBillable(Employee ee) {
-        if (ee.getCobraStatusId() != null && ee.getCobraStatusId() == 1) return false; // Terminated
-        if (ee.getSystemStatusId() != null && ee.getSystemStatusId() == 2) return false; // System inactive
-        if (ee.getEeStatusId() != null && ee.getEeStatusId() > 8) return false; // Inactive employment status
-        return ee.isActive(); // Active flag must be true
+        if (ee.getCobraStatusId() != null && ee.getCobraStatusId() == 1) return false;
+        if (ee.getSystemStatusId() != null && ee.getSystemStatusId() == 2) return false;
+        if (ee.getEeStatusId() != null && ee.getEeStatusId() > 8) return false;
+        return ee.isActive();
     }
 
-    // Resolves coverage status label for reporting
     private String getStatus(Employee ee) {
         if (ee.getCobraStatusId() != null) {
             return switch (ee.getCobraStatusId()) {
-                case 2 -> "QB";   // Qualified Beneficiary
-                case 1 -> "TERM"; // Terminated
+                case 2 -> "QB";
+                case 1 -> "TERM";
                 default -> "COBRA";
             };
         }
         return "Active";
     }
+
+    protected void addCoverageStatusToBillingGrid(CoverageStatus cs, BillingGrid bg) {
+        bg.setBillingMonth(getBillingMonthByDate(BillingHelper.getMonthFor()));
+        bg.setEmployee(cs.getEmployee());
+        bg.setEmployer(cs.getEmployer());
+        bg.setCurrentStatus("TBD");
+
+        switch (cs.getBillingGroup().getId()) {
+            case 1 -> {
+                bg.setFlexSpend(true);
+                if (bg.isHealthReimb()) bg.setDualPlan(true);
+            }
+            case 2 -> {
+                bg.setHealthReimb(true);
+                if (bg.isFlexSpend()) bg.setDualPlan(true);
+            }
+            case 3 -> bg.setCobra(true);
+            case 4 -> bg.setTransit(true);
+            case 5 -> bg.setHsa(true);
+            case 6 -> bg.setLsa(true);
+        }
+    }
+
+    private Map<String, BillingGrid> preloadGridMap(Date monthFor) {
+        List<BillingGrid> grids = em.createQuery(
+                        "SELECT bg FROM BillingGrid bg WHERE bg.billingMonth.fullDate = :monthFor", BillingGrid.class)
+                .setParameter("monthFor", monthFor)
+                .getResultList();
+
+        return grids.stream()
+                .collect(Collectors.toMap(BillingGrid::getGridId, Function.identity()));
+    }
+
+    private BillingMonth getOrCreateBillingMonth(Date fullDate) {
+        try {
+            return em.createQuery("SELECT bm FROM BillingMonth bm WHERE bm.fullDate = :date", BillingMonth.class)
+                    .setParameter("date", fullDate)
+                    .getSingleResult();
+        } catch (NoResultException e) {
+            BillingMonth bm = new BillingMonth();
+            bm.setFullDate(fullDate);
+            bm.setMonth(LocalDate.ofInstant(fullDate.toInstant(), ZoneId.systemDefault()).getMonthValue());
+            bm.setYear(LocalDate.ofInstant(fullDate.toInstant(), ZoneId.systemDefault()).getYear());
+            em.persist(bm);
+            return bm;
+        }
+    }
+
     protected BillingGrid getOrCreateGridById(String id, Date month, Employer er, Employee ee) {
         try {
             return em.createQuery("SELECT bg FROM BillingGrid bg WHERE bg.gridId = :id", BillingGrid.class)
@@ -565,26 +655,41 @@ public class MonthlyBiller extends Biller {
             return bg;
         }
     }
-    private String getGridId(HsaEe hsaEe, BillingMonth bm) {
-        int eeId = hsaEe.getEmployee().getId();
-        String eeIdString = (eeId < 0) ? "N" + (-1 * eeId) : String.valueOf(eeId);
-        return bm.getFullDate() + "-" + eeIdString;
+
+    // HSA helpers
+
+    protected List<HsaAccount> getActiveHsas() {
+        return em.createQuery("SELECT h FROM HsaAccount h WHERE h.active = true", HsaAccount.class)
+                .getResultList();
     }
+
+    private Map<Integer, HsaEe> getHsaEeMap() {
+        List<HsaEe> list = em.createQuery(
+                        "SELECT e FROM HsaEe e WHERE e.employee IS NOT NULL", HsaEe.class)
+                .getResultList();
+        return list.stream().collect(Collectors.toMap(HsaEe::getHsaId, Function.identity()));
+    }
+
     private Map<String, BillingGrid> getGridMap(BillingMonth bm) {
         List<BillingGrid> grids = em.createQuery(
                         "SELECT bg FROM BillingGrid bg WHERE bg.billingMonth = :bm", BillingGrid.class)
                 .setParameter("bm", bm)
                 .getResultList();
-
         return grids.stream().collect(Collectors.toMap(BillingGrid::getGridId, Function.identity()));
     }
+
+    private String getGridId(HsaEe hsaEe, BillingMonth bm) {
+        int eeId = hsaEe.getEmployee().getId();
+        String eeIdString = (eeId < 0) ? "N" + (-1 * eeId) : String.valueOf(eeId);
+        return bm.getFullDate() + "-" + eeIdString;
+    }
+
     protected BillingGrid createBillingGridForEe(HsaEe hsaEe, BillingMonth bm) {
         BillingGrid bg = new BillingGrid();
         bg.setGridId(getGridId(hsaEe, bm));
         bg.setBillingMonth(bm);
         bg.setEmployee(hsaEe.getEmployee());
         bg.setEmployer(hsaEe.getHsaEr().getEmployer());
-
         bg.setCurrentStatus("TBD");
         bg.setCobra(false);
         bg.setDirect(false);
@@ -595,74 +700,29 @@ public class MonthlyBiller extends Biller {
         bg.setLsa(false);
         bg.setRetiree(false);
         bg.setTransit(false);
-
         em.persist(bg);
         return bg;
     }
-    protected void fillHsaBillingGrid(BillingMonth bm) {
-        List<HsaAccount> accounts = getActiveHsas();
-        if (accounts.isEmpty()) return;
 
-        // Preload all relevant HsaEe records mapped by HsaId
-        Map<Integer, HsaEe> eeMap = getHsaEeMap();
+    // ── Public step methods for diagnostic servlet ──────────────────
 
-        // Preload all BillingGrid records for the given billing month, mapped by gridId
-        Map<String, BillingGrid> gridMap = getGridMap(bm);
-
-        em.getTransaction().begin();
-        int count = 0;
-
-        for (HsaAccount account : accounts) {
-            HsaEe hsaEe = eeMap.get(account.getHsaId());
-            if (hsaEe == null || hsaEe.getEmployee() == null) continue;
-
-            if (!hsaEe.getHsaEr().isBilledDirect()) {
-                String gridId = getGridId(hsaEe, bm);
-                BillingGrid bg = gridMap.get(gridId);
-
-                if (bg == null) {
-                    bg = createBillingGridForEe(hsaEe, bm);
-                    gridMap.put(gridId, bg); // cache new grid
-                } else {
-                    bg.setHsa(true);
-                    em.merge(bg);
-                }
-
-                if (++count % 50 == 0) {
-                    em.flush();
-                    em.clear();
-                }
-            }
-        }
-
-        em.getTransaction().commit();
+    public void step_setBillingFlags()           { setBillingFlags();                  em.clear(); }
+    public void step_createBillingMonth()        { createBillingMonth();               em.clear(); }
+    public BillingMonth step_getBillingMonthByDate(Date date) { return getBillingMonthByDate(date); }
+    public void step_clearBillingEnrollmentTable() { clearBillingEnrollmentTable();    em.clear(); }
+    public void step_fillBillingEnrollmentTable() { fillBillingEnrollmentTable();      em.clear(); }
+    public void step_clearBillingCoverageTable() { clearBillingCoverageTable();        em.clear(); }
+    public void step_clearCoverageStatusForMonth() { clearCoverageStatusForMonth();    em.clear(); }
+    public void step_fillBillingCoverageTableAlt() { fillBillingCoverageTableAlt(0);   em.clear(); }
+    public void step_logCoverageStatusCDH()      { logCoverageStatusForThisMonthCDH(); em.clear(); }
+    public void step_logCoverageStatusPB()       { logCoverageStatusForThisMonthPB(0); em.clear(); }
+    public void step_clearBillingGridForMonth()  { clearBillingGridForMonth();         em.clear(); }
+    public void step_fillBillingGrid()           { fillBillingGrid(0);                 em.clear(); }
+    public void step_fillHsaBillingGrid() {
+        BillingMonth bm = getBillingMonthByDate(BillingHelper.getMonthFor());
+        fillHsaBillingGrid(bm);
+        em.clear();
     }
-    protected List<HsaAccount> getActiveHsas() {
-        return em.createQuery("SELECT h FROM HsaAccount h WHERE h.active = true", HsaAccount.class)
-                .getResultList();
-    }
-    private Map<Integer, HsaEe> getHsaEeMap() {
-        List<HsaEe> list = em.createQuery(
-                        "SELECT e FROM HsaEe e WHERE e.employee IS NOT NULL", HsaEe.class)
-                .getResultList();
-
-        return list.stream().collect(Collectors.toMap(HsaEe::getHsaId, Function.identity()));
-    }
-    protected void clearBillingGridForMonth() {
-        int monthId = resolveMonthId();  // already wraps Helper.getMonthFor()
-        if (monthId == -1) {
-            System.out.println("⚠️ No billing month found — skipping billing grid clear.");
-            return;
-        }
-
-        System.out.println("🧹 Clearing BillingGrid entries for monthId: " + monthId);
-        em.getTransaction().begin();
-        em.createQuery("DELETE FROM BillingGrid bg WHERE bg.billingMonth.monthId = :monthId")
-                .setParameter("monthId", monthId)
-                .executeUpdate();
-        em.getTransaction().commit();
-    }
-
-
+    public void step_fillBillingLinks()          { fillBillingLinks();                 em.clear(); }
+    public void step_fillDualParticipantGrid()   { fillDualParticipantGrid(); }
 }
-

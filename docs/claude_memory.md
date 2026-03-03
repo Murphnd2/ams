@@ -1,24 +1,41 @@
 # AMS Project Memory
 
+## Build Tool
+- Maven wrapper: `./mvnw compile` (no system `mvn` on PATH)
+- Compile check: `./mvnw compile 2>&1 | tail -30`
+- Full build: `./mvnw package -DskipTests`
+
 ## Key Patterns
 - **"25" suffix** = current/modern version of servlet or JSP
 - **Ghost buttons** = `.ssa-action` global class (css-js.jsp) for modal footers/form actions, `.ghost-action` for toolbar actions, `.nav-ghost` for navbar
 - **Flex page layout** = `.audit-wrap` pattern: flex column, toolbar + scrollable body, `height: calc(100vh - 64px)`
 - **Sticky headers** = `position: sticky; top: 0; background: #f8f9fa; z-index: 1` on `<th>`
 - **pageTitle/pageIcon** = set as request attributes before navbar import for dynamic page title in navbar
+- **selectOptions delimiter:** pipe-delimited (`|`), not comma — required by field rendering logic
+
+## Current State
+- **Branch:** `feature/proposal-customization` (from `refactor/modernize-architecture`)
+- **Latest migration:** V036
+- **Session count:** 28
+- V025-V033 applied to Demo PSP, BPO, and Master only; not yet applied to production or local dev
+- V034 not yet applied anywhere (starter package template_key)
+- V035-V036 not yet applied anywhere (proposal customization)
+
+## Database Migrations
+- Current highest version: **V036**
+- Migration tracker: `docs/analysis/migration_tracker.md`
+- Schema version SQL: `docs/schema_version_migration.sql`
+
+## Role System
+- 1=PSP User, 2=Agent, 3=Client, 4=Applicant, 5=PSP Admin, 8=Agency Admin, 9=PSP Sales
+- 102=BPO Admin, 103=BPO User
+- Home agency = first agency matching PSP ID (internal staff agents always here)
 
 ## Summit Import Architecture
 - **Import order:** Plan Types → Employers → Employees → Benefits CDH (J4) → Benefits COBRA (J7) → Benefit Plan Years (J5)
 - **J5 does NOT auto-modify nextRenewalDue** — only stores plan year data. Audit page drives corrections.
 - **New benefit seeding:** J7 → `enddate + 1`; J4/J5 → `planYearEnd + 1`; J4 alone → `effectiveDate + 12mo`
 - **Existing benefits on re-import:** Only update plan year dates, never overwrite nextRenewalDue
-
-## Database Migrations
-- Current highest version: **V034**
-- Migration tracker: `docs/analysis/migration_tracker.md`
-- Schema version SQL: `docs/schema_version_migration.sql`
-- V025-V033 applied to Demo PSP, BPO, and Master only; not yet applied to production or local dev
-- V034 not yet applied anywhere (starter package template_key)
 
 ## Benefit Entity
 - Surrogate PK (`benefit_id` AUTO_INCREMENT), natural key (`summit_id` + `source_type`)
@@ -35,11 +52,6 @@
 - **Deferred:** external agency agent deactivation, "turn off agency" feature
 - **BPO users excluded** from manage view (not relevant for production systems)
 
-## Role System
-- 1=PSP User, 2=Agent, 3=Client, 4=Applicant, 5=PSP Admin, 8=Agency Admin, 9=PSP Sales
-- 102=BPO Admin, 103=BPO User
-- Home agency = first agency matching PSP ID (internal staff agents always here)
-
 ## Service Manager (ServiceManagerAction)
 - **ApplicationField PK** is `String fieldKey` (not Long) — use `request.getParameter("fieldKey")` and `em.find(ApplicationField.class, fieldKey)`
 - **L2 cache eviction** required after field/section mutations: `emf.getCache().evict(ApplicationSection.class, sId)` after commit
@@ -54,7 +66,7 @@
 ## Agency Creation (WIP)
 - **Create Agency modal** expanded to two-column layout with Primary Contact / Agency Manager fields
 - **AgencyAction.createAgency** now creates Person and sets as both `primaryContact` + `manager` on Agency
-- **Status:** Form renders correctly, but backend function still not working as desired — needs debugging next session
+- **Status:** Form renders correctly, but backend function still not working as desired — needs debugging
 - **Files:** `AgencyAction.java` (createAgency case), `agencyManager25.jsp` (#addAgencyModal)
 
 ## Approved Vendors Registry (V032)
@@ -93,6 +105,27 @@
 - **selectOptions delimiter:** pipe-delimited (`|`), not comma — required by field rendering logic
 - **D-53** in deployment_backlog — code complete, needs V034 migration applied + browser testing
 
-## Session History
-- Full archive: `docs/analysis/session_history_archive.md`
-- Last session (25): Starter Packages for Application Sections — V034 migration, PackageLoader service, 8 JSON packages, Service Manager UI modal
+## Proposal Customization (Session 27)
+- **V035:** Feature headline VARCHAR(200) + description widened to VARCHAR(2000)
+- **V036:** proposal_section table for composable proposal sections per PSP
+- **ProposalSection** entity in `model/sales/offering/`
+- **ProposalSettings.java** servlet: CRUD for sections, CKEditor 5 Classic + SortableJS on JSP
+- **Section types:** TITLE, PRICING, FEATURES, CLOSING, CUSTOM (string-based, no enum)
+- **Merge tokens:** `{{TOKEN_NAME}}` replaced at render time in ViewProposal.java
+- Auto-initializes default sections on first access (TITLE, FEATURES, PRICING, CLOSING)
+- **HTML sanitization:** regex-based in ProposalSettings.sanitizeHtml() (strips script/on*/javascript:)
+- **viewProposal.jsp:** section-based rendering when proposalSections exist, falls back to legacy layout
+- **Extracted includes:** proposalFeatures.jsp, proposalPricing.jsp
+- **D-54** in deployment_backlog — code complete, needs V035+V036 applied + browser testing
+
+## Full-Height Dashboard Layouts (Session 28)
+- **BPO Dashboard:** `.bpo-layout` flex wrapper, `.bpo-columns` row, `.bpo-col-left`/`.bpo-col-right` flex columns — both scroll internally
+- **PSP Dashboard:** `.psp-dash-body` flex wrapper, `.psp-dash-col-left`/`.psp-dash-col-right` flex columns — removed inline `max-height` from `.dash-scroll` divs
+- **Both:** `@media (min-width: 992px)` only — mobile layout unchanged
+- **Dropdown clipping fix:** `toDoCurrentList25.jsp` — pre-init kebab dropdowns with `popperConfig: { strategy: 'fixed' }` so menus aren't clipped by `overflow-y: auto` scroll containers
+
+## Reference
+- Full session archive: `docs/analysis/session_history_archive.md`
+- Deployment backlog: `docs/deployment_backlog.md`
+- Migration tracker: `docs/analysis/migration_tracker.md`
+- Stashed memory source: `docs/claude_memory.md`
