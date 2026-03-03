@@ -886,3 +886,7 @@ Added file attachment support to BPO task notes. BPO users can attach files when
 ### Files Changed
 - **New (1):** V033 migration script
 - **Modified (9):** ToDoNote.java, WebLink.java, BpoCompleteTask.java, bpoHome25.jsp, BpoGetNotes.java, TaskNotesApi.java, NoteAddedCallbackApi.java, migration_tracker.md, schema_version_migration.sql
+
+### Follow-up Fix: L2 Cache Eviction
+
+After persisting a WebLink attachment in `uploadNoteAttachment()`, EclipseLink's L2 shared cache retained the ToDoNote with an empty `webLinkList`. Subsequent `LEFT JOIN FETCH` queries in `BpoGetNotes` returned the stale cached entity. Added `em.getEntityManagerFactory().getCache().evict(ToDoNote.class, note.getId())` after the WebLink commit — established EclipseLink pattern used elsewhere in the codebase.

@@ -309,6 +309,7 @@ public class BpoCompleteTask extends HttpServlet {
             w.setToDoNote(note);
             em.persist(w);
             em.getTransaction().commit();
+            em.getEntityManagerFactory().getCache().evict(ToDoNote.class, note.getId());
 
             System.out.println("[BPO] Note attachment uploaded: " + displayName + " → " + objectKey);
             return w;
