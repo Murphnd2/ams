@@ -10,7 +10,7 @@
       "fields": [
         { "fieldKey": "plan_year_start", "label": "Plan Year Start Date", "fieldType": "DATE", "required": true, "sortOrder": 100, "helpText": null, "selectOptions": null },
         { "fieldKey": "plan_year_end", "label": "Plan Year End Date", "fieldType": "DATE", "required": true, "sortOrder": 200, "helpText": null, "selectOptions": null },
-        { "fieldKey": "plan_year_short", "label": "Short Plan Year?", "fieldType": "RADIO", "required": false, "sortOrder": 300, "helpText": null, "selectOptions": "Yes,No" },
+        { "fieldKey": "plan_year_short", "label": "Short Plan Year?", "fieldType": "RADIO", "required": false, "sortOrder": 300, "helpText": null, "selectOptions": "Yes|No" },
         { "fieldKey": "plan_year_short_start", "label": "Short Plan Year Start Date", "fieldType": "DATE", "required": false, "sortOrder": 400, "helpText": null, "selectOptions": null }
       ]
     },
@@ -21,7 +21,7 @@
       "scope": "ALL",
       "sortOrder": 500,
       "fields": [
-        { "fieldKey": "pay_frequency", "label": "Pay Frequency", "fieldType": "SELECT", "required": true, "sortOrder": 100, "helpText": null, "selectOptions": "Weekly,Bi-Weekly,Semi-Monthly,Monthly" },
+        { "fieldKey": "pay_frequency", "label": "Pay Frequency", "fieldType": "SELECT", "required": true, "sortOrder": 100, "helpText": null, "selectOptions": "Weekly|Bi-Weekly|Semi-Monthly|Monthly" },
         { "fieldKey": "pay_day", "label": "Pay Day", "fieldType": "TEXT", "required": false, "sortOrder": 200, "helpText": null, "selectOptions": null },
         { "fieldKey": "first_pay_date", "label": "First Pay Date of Plan Year", "fieldType": "DATE", "required": false, "sortOrder": 300, "helpText": null, "selectOptions": null }
       ]
@@ -49,7 +49,7 @@
         { "fieldKey": "bank_name", "label": "Bank Name", "fieldType": "TEXT", "required": false, "sortOrder": 100, "helpText": null, "selectOptions": null },
         { "fieldKey": "bank_routing", "label": "Routing Number", "fieldType": "TEXT", "required": false, "sortOrder": 200, "helpText": null, "selectOptions": null },
         { "fieldKey": "bank_account", "label": "Account Number", "fieldType": "TEXT", "required": false, "sortOrder": 300, "helpText": null, "selectOptions": null },
-        { "fieldKey": "bank_account_type", "label": "Account Type", "fieldType": "SELECT", "required": false, "sortOrder": 400, "helpText": null, "selectOptions": "Checking,Savings" }
+        { "fieldKey": "bank_account_type", "label": "Account Type", "fieldType": "SELECT", "required": false, "sortOrder": 400, "helpText": null, "selectOptions": "Checking|Savings" }
       ]
     }
   ]

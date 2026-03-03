@@ -8,11 +8,11 @@
       "scope": "LOS",
       "sortOrder": 800,
       "fields": [
-        { "fieldKey": "pretax_medical", "label": "Medical Premium Pre-Tax", "fieldType": "RADIO", "required": false, "sortOrder": 100, "helpText": null, "selectOptions": "Yes,No" },
-        { "fieldKey": "pretax_dental", "label": "Dental Premium Pre-Tax", "fieldType": "RADIO", "required": false, "sortOrder": 200, "helpText": null, "selectOptions": "Yes,No" },
-        { "fieldKey": "pretax_vision", "label": "Vision Premium Pre-Tax", "fieldType": "RADIO", "required": false, "sortOrder": 300, "helpText": null, "selectOptions": "Yes,No" },
-        { "fieldKey": "pretax_supplemental", "label": "Supplemental Insurance Pre-Tax", "fieldType": "RADIO", "required": false, "sortOrder": 400, "helpText": null, "selectOptions": "Yes,No" },
-        { "fieldKey": "pretax_group_life", "label": "Group Life Pre-Tax", "fieldType": "RADIO", "required": false, "sortOrder": 500, "helpText": null, "selectOptions": "Yes,No" }
+        { "fieldKey": "pretax_medical", "label": "Medical Premium Pre-Tax", "fieldType": "RADIO", "required": false, "sortOrder": 100, "helpText": null, "selectOptions": "Yes|No" },
+        { "fieldKey": "pretax_dental", "label": "Dental Premium Pre-Tax", "fieldType": "RADIO", "required": false, "sortOrder": 200, "helpText": null, "selectOptions": "Yes|No" },
+        { "fieldKey": "pretax_vision", "label": "Vision Premium Pre-Tax", "fieldType": "RADIO", "required": false, "sortOrder": 300, "helpText": null, "selectOptions": "Yes|No" },
+        { "fieldKey": "pretax_supplemental", "label": "Supplemental Insurance Pre-Tax", "fieldType": "RADIO", "required": false, "sortOrder": 400, "helpText": null, "selectOptions": "Yes|No" },
+        { "fieldKey": "pretax_group_life", "label": "Group Life Pre-Tax", "fieldType": "RADIO", "required": false, "sortOrder": 500, "helpText": null, "selectOptions": "Yes|No" }
       ]
     },
     {
@@ -22,10 +22,10 @@
       "scope": "LOS",
       "sortOrder": 900,
       "fields": [
-        { "fieldKey": "s125_new_or_existing", "label": "New or Existing Section 125 Plan?", "fieldType": "RADIO", "required": false, "sortOrder": 100, "helpText": null, "selectOptions": "New Plan,Existing Plan" },
+        { "fieldKey": "s125_new_or_existing", "label": "New or Existing Section 125 Plan?", "fieldType": "RADIO", "required": false, "sortOrder": 100, "helpText": null, "selectOptions": "New Plan|Existing Plan" },
         { "fieldKey": "s125_prior_tpa", "label": "Prior TPA (if existing)", "fieldType": "TEXT", "required": false, "sortOrder": 200, "helpText": null, "selectOptions": null },
         { "fieldKey": "s125_effective_date", "label": "Section 125 Effective Date", "fieldType": "DATE", "required": false, "sortOrder": 300, "helpText": null, "selectOptions": null },
-        { "fieldKey": "s125_grace_period", "label": "Grace Period", "fieldType": "SELECT", "required": false, "sortOrder": 400, "helpText": null, "selectOptions": "None,2.5 Months,$610 Rollover" }
+        { "fieldKey": "s125_grace_period", "label": "Grace Period", "fieldType": "SELECT", "required": false, "sortOrder": 400, "helpText": null, "selectOptions": "None|2.5 Months|$610 Rollover" }
       ]
     }
   ]

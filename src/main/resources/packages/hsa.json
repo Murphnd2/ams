@@ -8,11 +8,11 @@
       "scope": "LOS",
       "sortOrder": 1300,
       "fields": [
-        { "fieldKey": "hsa_employer_contrib", "label": "Employer HSA Contribution?", "fieldType": "RADIO", "required": false, "sortOrder": 100, "helpText": null, "selectOptions": "Yes,No" },
+        { "fieldKey": "hsa_employer_contrib", "label": "Employer HSA Contribution?", "fieldType": "RADIO", "required": false, "sortOrder": 100, "helpText": null, "selectOptions": "Yes|No" },
         { "fieldKey": "hsa_ee_amount", "label": "Employer Contribution (Employee)", "fieldType": "TEXT", "required": false, "sortOrder": 200, "helpText": null, "selectOptions": null },
         { "fieldKey": "hsa_fam_amount", "label": "Employer Contribution (Family)", "fieldType": "TEXT", "required": false, "sortOrder": 300, "helpText": null, "selectOptions": null },
         { "fieldKey": "hsa_custodian", "label": "HSA Custodian/Bank", "fieldType": "TEXT", "required": false, "sortOrder": 400, "helpText": null, "selectOptions": null },
-        { "fieldKey": "hsa_catch_up", "label": "Allow Catch-Up Contributions (55+)?", "fieldType": "RADIO", "required": false, "sortOrder": 500, "helpText": null, "selectOptions": "Yes,No" }
+        { "fieldKey": "hsa_catch_up", "label": "Allow Catch-Up Contributions (55+)?", "fieldType": "RADIO", "required": false, "sortOrder": 500, "helpText": null, "selectOptions": "Yes|No" }
       ]
     }
   ]
