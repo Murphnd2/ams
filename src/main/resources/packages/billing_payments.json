@@ -1,0 +1,44 @@
+{
+  "packageId": "billing_payments",
+  "sections": [
+    {
+      "templateKey": "billing_plan_design",
+      "name": "Billing Plan Design",
+      "description": "Retiree and direct billing plan parameters.",
+      "scope": "LOS",
+      "sortOrder": 1500,
+      "fields": [
+        { "fieldKey": "billing_type", "label": "Billing Type", "fieldType": "SELECT", "required": false, "sortOrder": 100, "helpText": null, "selectOptions": "Self-Bill,List Bill" },
+        { "fieldKey": "billing_frequency", "label": "Billing Frequency", "fieldType": "SELECT", "required": false, "sortOrder": 200, "helpText": null, "selectOptions": "Monthly,Quarterly" },
+        { "fieldKey": "billing_due_day", "label": "Payment Due Day of Month", "fieldType": "TEXT", "required": false, "sortOrder": 300, "helpText": null, "selectOptions": null },
+        { "fieldKey": "billing_contact_name", "label": "Billing Contact Name", "fieldType": "TEXT", "required": false, "sortOrder": 400, "helpText": null, "selectOptions": null },
+        { "fieldKey": "billing_contact_email", "label": "Billing Contact Email", "fieldType": "EMAIL", "required": false, "sortOrder": 500, "helpText": null, "selectOptions": null }
+      ]
+    },
+    {
+      "templateKey": "payment_services",
+      "name": "Payment Services",
+      "description": "Reimbursement payment method preferences.",
+      "scope": "LOS",
+      "sortOrder": 1600,
+      "fields": [
+        { "fieldKey": "payment_method", "label": "Reimbursement Payment Method", "fieldType": "SELECT", "required": false, "sortOrder": 100, "helpText": null, "selectOptions": "Direct Deposit,Check,Payroll" },
+        { "fieldKey": "payment_schedule", "label": "Payment Schedule", "fieldType": "SELECT", "required": false, "sortOrder": 200, "helpText": null, "selectOptions": "Weekly,Bi-Weekly,Semi-Monthly,Monthly" },
+        { "fieldKey": "payment_min_amount", "label": "Minimum Reimbursement Amount", "fieldType": "TEXT", "required": false, "sortOrder": 300, "helpText": null, "selectOptions": null }
+      ]
+    },
+    {
+      "templateKey": "debit_card_services",
+      "name": "Debit Card Services",
+      "description": "Debit card setup for participant benefit access.",
+      "scope": "LOS",
+      "sortOrder": 1700,
+      "fields": [
+        { "fieldKey": "debit_card_needed", "label": "Debit Cards Needed?", "fieldType": "RADIO", "required": false, "sortOrder": 100, "helpText": null, "selectOptions": "Yes,No" },
+        { "fieldKey": "debit_card_accounts", "label": "Accounts Linked to Card", "fieldType": "CHECKBOX", "required": false, "sortOrder": 200, "helpText": null, "selectOptions": "FSA,HRA,HSA,Transit" },
+        { "fieldKey": "debit_card_dependents", "label": "Issue Dependent Cards?", "fieldType": "RADIO", "required": false, "sortOrder": 300, "helpText": null, "selectOptions": "Yes,No" },
+        { "fieldKey": "debit_card_count", "label": "Number of Cards Needed", "fieldType": "NUMBER", "required": false, "sortOrder": 400, "helpText": null, "selectOptions": null }
+      ]
+    }
+  ]
+}

@@ -27,6 +27,9 @@ public class ApplicationSection implements Comparable<ApplicationSection> {
     @Column(name="sort_order")
     private int sortOrder;
 
+    @Column(name = "template_key", columnDefinition = "varchar(50)")
+    private String templateKey;
+
     @Column(columnDefinition = "TINYINT")
     private boolean suppressed;
 
@@ -66,6 +69,9 @@ public class ApplicationSection implements Comparable<ApplicationSection> {
 
     public int getSortOrder() { return sortOrder; }
     public void setSortOrder(int sortOrder) { this.sortOrder = sortOrder; }
+
+    public String getTemplateKey() { return templateKey; }
+    public void setTemplateKey(String templateKey) { this.templateKey = templateKey; }
 
     public boolean isSuppressed() { return suppressed; }
     public void setSuppressed(boolean suppressed) { this.suppressed = suppressed; }

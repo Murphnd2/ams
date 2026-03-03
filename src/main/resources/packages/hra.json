@@ -1,0 +1,33 @@
+{
+  "packageId": "hra",
+  "sections": [
+    {
+      "templateKey": "hra_plan_design",
+      "name": "HRA Plan Design",
+      "description": "Health Reimbursement Arrangement plan structure and eligible expenses.",
+      "scope": "LOS",
+      "sortOrder": 1100,
+      "fields": [
+        { "fieldKey": "hra_plan_type", "label": "HRA Plan Type", "fieldType": "SELECT", "required": false, "sortOrder": 100, "helpText": null, "selectOptions": "Integrated,Stand-Alone,Post-Deductible" },
+        { "fieldKey": "hra_eligible_expenses", "label": "Eligible Expense Categories", "fieldType": "TEXTAREA", "required": false, "sortOrder": 200, "helpText": null, "selectOptions": null },
+        { "fieldKey": "hra_annual_allowance", "label": "Annual Allowance per Employee", "fieldType": "TEXT", "required": false, "sortOrder": 300, "helpText": null, "selectOptions": null },
+        { "fieldKey": "hra_family_allowance", "label": "Annual Allowance per Family", "fieldType": "TEXT", "required": false, "sortOrder": 400, "helpText": null, "selectOptions": null },
+        { "fieldKey": "hra_proration", "label": "Prorate New Hire Allowance?", "fieldType": "RADIO", "required": false, "sortOrder": 500, "helpText": null, "selectOptions": "Yes,No" }
+      ]
+    },
+    {
+      "templateKey": "hra_carryover_runout",
+      "name": "HRA Carryover & Runout",
+      "description": "Carryover rules, runout periods, and rollover options for HRA plans.",
+      "scope": "LOS",
+      "sortOrder": 1200,
+      "fields": [
+        { "fieldKey": "hra_carryover", "label": "Carryover Unused Funds?", "fieldType": "RADIO", "required": false, "sortOrder": 100, "helpText": null, "selectOptions": "Yes,No" },
+        { "fieldKey": "hra_carryover_limit", "label": "Carryover Limit", "fieldType": "TEXT", "required": false, "sortOrder": 200, "helpText": null, "selectOptions": null },
+        { "fieldKey": "hra_carryover_cap", "label": "Lifetime Carryover Cap", "fieldType": "TEXT", "required": false, "sortOrder": 300, "helpText": null, "selectOptions": null },
+        { "fieldKey": "hra_runout_period", "label": "Runout Period After Plan Year End", "fieldType": "SELECT", "required": false, "sortOrder": 400, "helpText": null, "selectOptions": "90 Days,6 Months,12 Months" },
+        { "fieldKey": "hra_term_runout", "label": "Runout Period After Termination", "fieldType": "SELECT", "required": false, "sortOrder": 500, "helpText": null, "selectOptions": "None,30 Days,60 Days,90 Days" }
+      ]
+    }
+  ]
+}

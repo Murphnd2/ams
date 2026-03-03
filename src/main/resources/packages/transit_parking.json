@@ -1,0 +1,18 @@
+{
+  "packageId": "transit_parking",
+  "sections": [
+    {
+      "templateKey": "transit_parking_plan",
+      "name": "Transit/Parking Plan Design",
+      "description": "Commuter benefit plan parameters and limits.",
+      "scope": "LOS",
+      "sortOrder": 1400,
+      "fields": [
+        { "fieldKey": "transit_monthly_limit", "label": "Monthly Transit Limit", "fieldType": "TEXT", "required": false, "sortOrder": 100, "helpText": null, "selectOptions": null },
+        { "fieldKey": "parking_monthly_limit", "label": "Monthly Parking Limit", "fieldType": "TEXT", "required": false, "sortOrder": 200, "helpText": null, "selectOptions": null },
+        { "fieldKey": "transit_employer_sub", "label": "Employer Subsidy?", "fieldType": "RADIO", "required": false, "sortOrder": 300, "helpText": null, "selectOptions": "Yes,No" },
+        { "fieldKey": "transit_sub_amount", "label": "Employer Subsidy Amount", "fieldType": "TEXT", "required": false, "sortOrder": 400, "helpText": null, "selectOptions": null }
+      ]
+    }
+  ]
+}

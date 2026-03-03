@@ -1,0 +1,20 @@
+{
+  "packageId": "fsa",
+  "sections": [
+    {
+      "templateKey": "fsa_plan_design",
+      "name": "FSA Plan Design",
+      "description": "Flexible Spending Account plan parameters and limits.",
+      "scope": "LOS",
+      "sortOrder": 1000,
+      "fields": [
+        { "fieldKey": "fsa_medical_limit", "label": "Medical FSA Annual Limit", "fieldType": "TEXT", "required": false, "sortOrder": 100, "helpText": null, "selectOptions": null },
+        { "fieldKey": "fsa_dependent_limit", "label": "Dependent Care FSA Annual Limit", "fieldType": "TEXT", "required": false, "sortOrder": 200, "helpText": null, "selectOptions": null },
+        { "fieldKey": "fsa_employer_contrib", "label": "Employer Contribution to FSA?", "fieldType": "RADIO", "required": false, "sortOrder": 300, "helpText": null, "selectOptions": "Yes,No" },
+        { "fieldKey": "fsa_employer_amount", "label": "Employer FSA Contribution Amount", "fieldType": "TEXT", "required": false, "sortOrder": 400, "helpText": null, "selectOptions": null },
+        { "fieldKey": "fsa_runout_period", "label": "FSA Runout Period", "fieldType": "SELECT", "required": false, "sortOrder": 500, "helpText": null, "selectOptions": "90 Days,6 Months,12 Months" },
+        { "fieldKey": "fsa_min_election", "label": "Minimum Annual Election", "fieldType": "TEXT", "required": false, "sortOrder": 600, "helpText": null, "selectOptions": null }
+      ]
+    }
+  ]
+}

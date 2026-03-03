@@ -16,7 +16,7 @@ Tracks database schema versions across environments.
 | BPO | bpo.superiorstate.biz | beta_ssa | BPO instance (V031, initialized) |
 | Master | master.superiorstate.biz | beta_ssa | Snapshot v7 (V031, stopped) |
 
-## Current Highest Version: V033
+## Current Highest Version: V034
 
 ## Dev Baseline
 
@@ -65,6 +65,7 @@ Individual migration scripts are no longer stored in the repo. The baseline dump
 | V031 | ToDoNote cross-system: nullable todo_id/created_by_id, author_name column | ⬜ | ⬜ | ⬜ | ⬜ | ✅ | ✅ | ✅ |
 | V032 | Approved vendors registry table | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
 | V033 | ToDoNote attachments: todo_note_id FK on weblink | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
+| V034 | Add template_key to applicationsection for starter packages | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
 
 ## Notes
 
@@ -85,3 +86,4 @@ Individual migration scripts are no longer stored in the repo. The baseline dump
 - V033 adds todo_note_id FK column to the weblink table, enabling file attachments on BPO task notes. Follows the same pattern as email_id FK for email attachments.
 - Demo PSP, BPO, and Master environments all provisioned from the V031 master snapshot `SSA-Master-Base-v7-2026-03-02`.
 - Production remains at V024 and is intentionally isolated from conference demo infrastructure.
+- V034 adds nullable template_key VARCHAR(50) to applicationsection with a unique index scoped to (template_key, psp_id). Used for starter package duplicate detection. NULL values (manual/seeded sections) are unaffected by the unique constraint.

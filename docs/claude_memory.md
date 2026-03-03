@@ -14,10 +14,11 @@
 - **Existing benefits on re-import:** Only update plan year dates, never overwrite nextRenewalDue
 
 ## Database Migrations
-- Current highest version: **V033**
+- Current highest version: **V034**
 - Migration tracker: `docs/analysis/migration_tracker.md`
 - Schema version SQL: `docs/schema_version_migration.sql`
 - V025-V033 applied to Demo PSP, BPO, and Master only; not yet applied to production or local dev
+- V034 not yet applied anywhere (starter package template_key)
 
 ## Benefit Entity
 - Surrogate PK (`benefit_id` AUTO_INCREMENT), natural key (`summit_id` + `source_type`)
@@ -78,6 +79,15 @@
 - **Kebab menu** on sourced tasks includes "Notes" option opening the modal
 - **ToDoOut25.isWhoBlocked** — now includes `&& !bpoCompleted` so BPO-completed tasks show as normal completed (not locked)
 
+## Starter Packages (V034, Session 25)
+- **PackageLoader.java** in `data/service/` — reads JSON from `src/main/resources/packages/`
+- **8 packages:** general, pretax_s125, fsa, hra, hsa, transit_parking, billing_payments, specialty
+- **Duplicate detection:** `template_key` column on applicationsection, unique per (template_key, psp_id)
+- **ApplicationField.fieldKey** is String PK — skip individual fields if key already exists
+- **ServiceManagerAction** `loadStarterPackage` case — loads package, sets flash message, redirects to section tab
+- **serviceManager25.jsp** — Load Package button (box-seam icon) visible only on Sections tab, modal with package dropdown
+- **D-53** in deployment_backlog — code complete, needs V034 migration applied + browser testing
+
 ## Session History
 - Full archive: `docs/analysis/session_history_archive.md`
-- Last session (24): PSP Note Viewer + Vendor Only Display Polish — note indicator on sourced tasks, notes modal, AddNoteToToDo25 servlet, isWhoBlocked fix
+- Last session (25): Starter Packages for Application Sections — V034 migration, PackageLoader service, 8 JSON packages, Service Manager UI modal

@@ -497,6 +497,100 @@ Run `V033__todo_note_attachments.sql` on target environments to add `todo_note_i
 
 ---
 
+### D-49: Update Healthcheck Script + Config on Master VPS Image
+
+**Priority:** HIGH — Bundle with next master image update/snapshot
+**Status:** Not started
+
+The healthcheck script on the master VPS image had multiple bugs causing false "Not initialized" and "Query failed" results on all cloned deployments. Fixed version is committed in the repo at `docs/scripts/healthcheck.sh` and deployed manually to demo and BPO.
+
+**Bugs fixed:** (1) MySQL Acronis library workaround missing, (2) used root instead of ams_app credentials, (3) SSL_PORT init check too specific, (4) SMTP config read from DB instead of ssa.properties, (5) set -e caused silent exits.
+
+**Action when updating master:**
+1. Copy `docs/scripts/healthcheck.sh` from the repo to `/opt/ssa/scripts/healthcheck.sh` on master
+2. `chmod +x /opt/ssa/scripts/healthcheck.sh`
+3. Verify `ssa.properties` has correct `DB_PASSWORD` matching the `ams_app` MySQL user password and matching `context.xml`
+4. Verify `ssa.properties` has correct `SYS_HEALTH_SMTP_PASSWORD` matching the SMTP2GO amsSystemHealth account
+5. Verify `context.xml` has the JNDI `<Resource>` block with correct `ams_app` password
+6. Take new snapshot
+
+**Critical note:** All three password locations must match for DB access to work:
+- MySQL user password (set via ALTER USER in MySQL shell)
+- `context.xml` password attribute (used by Tomcat JNDI for app DB connections)
+- `ssa.properties` DB_PASSWORD (used by healthcheck and backup scripts)
+
+---
+
+### D-50: Set Unique Hostnames on VPS Boxes
+
+**Priority:** LOW
+**Status:** Not started
+
+All cloned VPS boxes have hostname `ubuntu` (inherited from master image). Health report emails all show `Hostname: ubuntu` making them hard to distinguish.
+
+**Action:** Set unique hostnames on each VPS:
+- Demo PSP: `sudo hostnamectl set-hostname demo-psp`
+- BPO: `sudo hostnamectl set-hostname bpo`
+- Production: `sudo hostnamectl set-hostname production`
+
+**Master image:** Leave as `ubuntu` or set to `uninitialized` — set during provisioning per Section 8.1 of deployment_strategy.md.
+
+---
+
+### D-51: Configure BPO VPS Backup Cron + Wasabi
+
+**Priority:** MEDIUM
+**Status:** Not started
+
+The BPO VPS (bpo.superiorstate.biz) has no backup cron configured and no Wasabi uploads. Demo PSP is backing up correctly.
+
+**Action:**
+1. Verify `/opt/ssa/scripts/backup.sh` exists and is executable on BPO
+2. Verify Wasabi credentials in `ssa.properties` on BPO
+3. Add backup cron: `0 2 * * * /opt/ssa/scripts/backup.sh`
+4. Test: run backup script manually, confirm local file + Wasabi upload
+
+---
+
+### D-52: Reduce Healthcheck Error Log Noise
+
+**Priority:** LOW
+**Status:** Not started
+
+Health reports show 250-300+ errors/day, mostly bots and scanners. Real errors get drowned out.
+
+**Common noise patterns:**
+- `userRoleList is null` NPE — unauthenticated requests hitting protected pages
+- `Error parsing HTTP request header` / `Invalid character found` — bot garbage requests
+- `Connection reset by peer` / `Failed to send ping` — dropped HTTP/2 connections
+
+**Possible approaches:**
+- Add null guard for `userRoleList` in the code path that iterates it
+- Filter healthcheck error grep to exclude known noise patterns
+- Or both
+
+---
+
+### D-53: Starter Packages for Application Sections
+
+**Priority:** MEDIUM
+**Status:** Code complete — needs V034 migration applied and browser testing
+
+**Prerequisite:** V034 migration (`template_key` column on `applicationsection`)
+
+New "Load Starter Package" feature on the Service Manager page. PSP admins can load pre-configured sets of ApplicationSections with fields from bundled JSON templates. 8 packages available: General Employer Setup, Pre-Tax/S125, FSA, HRA, HSA, Transit/Parking, Billing & Payments, Specialty Benefits. Duplicate detection via `template_key` column — re-loading a package skips already-loaded sections.
+
+**Files:**
+- `V034__starter_package_template_key.sql` — migration
+- `ApplicationSection.java` — `templateKey` field
+- `src/main/resources/packages/` — 9 JSON files (index + 8 packages)
+- `PackageLoader.java` — service class
+- `ServiceManagerHome.java` — passes available packages to JSP
+- `ServiceManagerAction.java` — `loadStarterPackage` action
+- `serviceManager25.jsp` — modal + flash message
+
+---
+
 ### D-37: Backfill PSP Home Agency Config
 
 **Priority:** HIGH

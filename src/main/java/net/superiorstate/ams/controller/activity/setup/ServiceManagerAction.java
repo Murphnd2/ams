@@ -11,6 +11,7 @@ import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.model.activity.checklist.sequences.support.ActivityCategory;
 import net.superiorstate.ams.model.activity.checklist.sequences.support.ServiceItem;
 import net.superiorstate.ams.model.general.PSP;
+import net.superiorstate.ams.data.service.PackageLoader;
 import net.superiorstate.ams.model.sales.application.ApplicationField;
 import net.superiorstate.ams.model.sales.application.ApplicationSection;
 import net.superiorstate.ams.model.sales.offering.*;
@@ -445,6 +446,22 @@ public class ServiceManagerAction extends HttpServlet {
                     emf.getCache().evict(ApplicationSection.class, sId);
                 }
 
+                // ── Starter Packages ──────────────────────────────────────
+
+                case "loadStarterPackage" -> {
+                    String packageId = request.getParameter("packageId");
+                    PackageLoader.PackageLoadResult result = PackageLoader.loadPackage(em, packageId, psp);
+
+                    if (result.sectionsLoaded() > 0) {
+                        request.getSession().setAttribute("flashMessage",
+                                result.sectionsLoaded() + " section(s) loaded successfully." +
+                                        (result.sectionsSkipped() > 0 ? " " + result.sectionsSkipped() + " already existed and were skipped." : ""));
+                    } else {
+                        request.getSession().setAttribute("flashMessage",
+                                "All sections from this package are already loaded.");
+                    }
+                }
+
                 // ── Feature CRUD (under ServiceModule) ──────────────────
 
                 case "createFeature" -> {
@@ -519,7 +536,9 @@ public class ServiceManagerAction extends HttpServlet {
 
         // Redirect back preserving selection and tab
         String redirect = "ServiceManagerHome";
-        if (sectionIdParam != null && !sectionIdParam.isEmpty()
+        if ("loadStarterPackage".equals(action)) {
+            redirect += "?tab=section";
+        } else if (sectionIdParam != null && !sectionIdParam.isEmpty()
                 && (action.startsWith("createApp") || action.startsWith("editApp") || action.startsWith("suppressApp"))) {
             redirect += "?sectionId=" + sectionIdParam + "&tab=section";
         } else if (losIdParam != null && !losIdParam.isEmpty()) {

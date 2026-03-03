@@ -149,6 +149,13 @@
     <c:set var="pageIcon" value="bi-diagram-3" scope="request"/>
     <c:import url="/WEB-INF/view/a/general/navbar25.jsp"/>
 
+    <% String flash = (String) session.getAttribute("flashMessage"); if (flash != null) { session.removeAttribute("flashMessage"); %>
+    <div class="alert alert-success alert-dismissible fade show mt-2 mb-0" role="alert">
+        <i class="bi bi-check-circle me-1"></i><%= flash %>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    <% } %>
+
     <div class="row g-3 mt-3">
 
         <%-- ======================== LEFT COLUMN ======================== --%>
@@ -177,6 +184,9 @@
                         <button type="button" class="btn btn-sm" title="Show/hide suppressed"
                                 onclick="toggleSuppressed()"><i class="bi bi-eye-slash" id="toggleSuppressedIcon"></i>
                         </button>
+                        <button type="button" class="btn btn-sm" id="loadPkgBtn" data-bs-toggle="modal"
+                                data-bs-target="#loadPackageModal" title="Load starter package"
+                                style="display:${activeTab == 'section' ? 'inline-block' : 'none'}"><i class="bi bi-box-seam"></i></button>
                         <button type="button" class="btn btn-sm" id="addBtn" data-bs-toggle="modal"
                                 data-bs-target="#addLosModal" title="Add new"><i class="bi bi-plus-lg"></i></button>
                     </li>
@@ -1225,6 +1235,38 @@
     </div>
 </div>
 
+<%-- Load Starter Package --%>
+<div class="modal fade" id="loadPackageModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" action="ServiceManagerAction">
+                <input type="hidden" name="action" value="loadStarterPackage"/>
+                <div class="modal-header py-2" style="background-color: var(--ssa); color: white;">
+                    <h6 class="modal-title fw-semibold"><i class="bi bi-box-seam me-2"></i>Load Starter Package</h6>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted mb-3" style="font-size:0.85rem;">Select a pre-configured package to load its application sections and fields. Sections that already exist will be skipped.</p>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Package</label>
+                        <select name="packageId" class="form-select" required>
+                            <option value="">-- Select a package --</option>
+                            <c:forEach var="pkg" items="${availablePackages}">
+                                <option value="${pkg.id()}">${pkg.name()} - ${pkg.description()}</option>
+                            </c:forEach>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer justify-content-center border-0">
+                    <button type="submit" class="ssa-action save"><i class="bi bi-box-seam me-1"></i>Load Package</button>
+                    <span class="ssa-action-sep">|</span>
+                    <button type="button" class="ssa-action cancel" data-bs-dismiss="modal"><i class="bi bi-x-lg me-1"></i>Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <%-- Edit App Section --%>
 <c:if test="${not empty selectedSection}">
     <form id="suppressSectionForm" method="post" action="ServiceManagerAction" class="d-none">
@@ -1343,12 +1385,14 @@
 <script>
     // ── Tab-aware add button ──────────────────────────────────────────
     const addBtn = document.getElementById('addBtn');
+    const loadPkgBtn = document.getElementById('loadPkgBtn');
     const tabModalMap = { losTab: '#addLosModal', enhTab: '#addEnhModal', secTab: '#addSectionModal' };
     Object.entries(tabModalMap).forEach(([tabId, modalTarget]) => {
         const tabEl = document.getElementById(tabId);
         if (tabEl) {
             tabEl.addEventListener('shown.bs.tab', () => {
                 addBtn.setAttribute('data-bs-target', modalTarget);
+                loadPkgBtn.style.display = (tabId === 'secTab') ? 'inline-block' : 'none';
             });
         }
     });

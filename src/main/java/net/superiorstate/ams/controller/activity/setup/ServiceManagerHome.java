@@ -12,6 +12,8 @@ import net.superiorstate.ams.model.sales.application.ApplicationField;
 import net.superiorstate.ams.model.sales.application.ApplicationSection;
 import net.superiorstate.ams.model.sales.offering.*;
 
+import net.superiorstate.ams.data.service.PackageLoader;
+
 import java.io.IOException;
 import java.util.*;
 
@@ -123,6 +125,9 @@ public class ServiceManagerHome extends HttpServlet {
                     request.setAttribute("sectionEnhItems", sectionEnhItems);
                 }
             }
+
+            // Load available starter packages for the modal
+            request.setAttribute("availablePackages", PackageLoader.getAvailablePackages());
 
         } finally {
             em.close();

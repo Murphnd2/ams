@@ -53,4 +53,5 @@ INSERT IGNORE INTO schema_version (version, description, script_name) VALUES
 ('V030', 'BPO cross-system foundation: psp_clients, delegated_todo, API columns, todo_note GUID', 'V030__bpo_cross_system_foundation.sql'),
 ('V031', 'ToDoNote cross-system: nullable todo_id/created_by_id, author_name column', 'V031__todo_note_cross_system_nullable.sql'),
 ('V032', 'Approved vendors registry table', 'V032__approved_vendors_registry.sql'),
-('V033', 'ToDoNote attachments: todo_note_id FK on weblink', 'V033__todo_note_attachments.sql');
+('V033', 'ToDoNote attachments: todo_note_id FK on weblink', 'V033__todo_note_attachments.sql'),
+('V034', 'Add template_key to applicationsection for starter packages', 'V034__starter_package_template_key.sql');
