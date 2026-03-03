@@ -56,4 +56,5 @@ INSERT IGNORE INTO schema_version (version, description, script_name) VALUES
 ('V033', 'ToDoNote attachments: todo_note_id FK on weblink', 'V033__todo_note_attachments.sql'),
 ('V034', 'Add template_key to applicationsection for starter packages', 'V034__starter_package_template_key.sql'),
 ('V035', 'Feature headline column and description widening', 'V035__feature_headline_description.sql'),
-('V036', 'Proposal section table for composable proposal content', 'V036__proposal_section_table.sql');
+('V036', 'Proposal section table for composable proposal content', 'V036__proposal_section_table.sql'),
+('V037', 'Add LOS/Enhancement scoping to proposal_section', 'V037__proposal_section_scoping.sql');

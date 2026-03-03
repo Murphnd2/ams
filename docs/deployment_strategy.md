@@ -434,11 +434,23 @@ High-level categories:
 
 ---
 
+# deployment_strategy.md — Section 12 Replacement
+
+Replace the entire §12 block in `docs/deployment_strategy.md` with:
+
+---
+
 ## 12. Current Deployed Instances
 
 | Instance | URL | IP | Type | Schema | Status |
 |----------|-----|----|------|--------|--------|
 | Production PSP | https://superiorstate.biz | (production IP) | PSP | V024 | Running |
-| BPO | https://bpo.superiorstate.biz | 158.222.102.168 (DHCP) | BPO | V031 | Running, initialized |
-| Master | master.superiorstate.biz | 208.94.39.77 | Master image | V031 | Snapshot v7 taken |
-| Demo PSP | demo.superiorstate.biz | TBD | PSP | — | Not yet deployed |
+| Demo PSP | https://demo.superiorstate.biz | 192.152.28.73 (static) | PSP | V031 | Running, seeded with demo data |
+| BPO | https://bpo.superiorstate.biz | 158.222.102.168 (DHCP) | BPO | V031 | Running, initialized, partnered with Demo PSP |
+| Master | master.superiorstate.biz | 208.94.39.77 | Master image | V031 | Snapshot v7 (`SSA-Master-Base-v7-2026-03-02`), stopped |
+
+**Notes:**
+- Demo PSP and BPO are partnered — cross-system BPO task delegation is functional between the two instances.
+- BPO IP is DHCP-assigned (stable as long as VM is not deallocated). Static IP reservation was not needed for a demo/test instance.
+- Production remains intentionally isolated at V024 until conference demo infrastructure is proven.
+- Demo PSP was provisioned March 2–3, 2026 from master snapshot v7. See `docs/analysis/session_summary_2026-03-03_demo_standup.md` for full standup details and lessons learned.

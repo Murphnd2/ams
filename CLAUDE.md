@@ -56,7 +56,7 @@ src/main/java/net/superiorstate/ams/
 All schema changes MUST follow versioned migration conventions:
 
 1. **Every schema change gets a versioned script:** `V{NNN}__{description}.sql`
-2. Check `docs/analysis/migration_tracker.md` for the current highest version (currently **V032**)
+2. Check `docs/analysis/migration_tracker.md` for the current highest version (currently **V036**)
 3. **Scripts self-register:** Every migration must include:
    ```sql
    INSERT IGNORE INTO schema_version (version, description, script_name, applied_on)
@@ -68,7 +68,7 @@ All schema changes MUST follow versioned migration conventions:
 7. **Seed data changes** affecting `DatabaseInitializer` → note in `docs/deployment_backlog.md`
 
 ## Current Branch
-Active work: `refactor/modernize-architecture`
+Active work: `feature/proposal-customization` (branched from `refactor/modernize-architecture`)
 
 ## Production Environment
 - **VPS:** IONOS Cloud, Ubuntu 24.04
@@ -91,10 +91,12 @@ Active work: `refactor/modernize-architecture`
 - End every response with: **Next action: ...**
 
 ## Reference Documentation
-- `docs/analysis/migration_tracker.md` — DB version tracking
-- `docs/analysis/session_history_archive.md` — build session history
-- `docs/analysis/activity_detail_transition_plan.md` — activity detail page plan
+- `docs/analysis/migration_tracker.md` — DB version tracking (V036 current)
+- `docs/analysis/session_history_archive.md` — build session history (28 sessions)
+- `docs/analysis/project_backlog.md` — feature status and priorities
+- `docs/analysis/activity_detail_transition_plan.md` — activity detail page plan (Track A complete)
 - `docs/deployment_strategy.md` — multi-PSP deployment architecture
 - `docs/deployment_runbook.md` — step-by-step deployment procedures
-- `docs/deployment_backlog.md` — tracked work items
+- `docs/deployment_backlog.md` — tracked deployment work items (D-01 through D-54)
 - `docs/schema_version_migration.sql` — schema_version table + all version inserts
+- `docs/claude_memory.md` — session state and working knowledge

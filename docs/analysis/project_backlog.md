@@ -1,7 +1,7 @@
 # AMS Project Backlog
 
 **Created:** February 19, 2026
-**Last Updated:** February 28, 2026
+**Last Updated:** March 3, 2026
 **Reference:** `docs/ams_to_be_vision.md` for full project descriptions
 
 ---
@@ -28,15 +28,15 @@
 
 | # | Feature | Priority | Status | Spec Doc | Notes |
 |---|---------|----------|--------|----------|-------|
-| 1 | Users and Roles Enhancement | CONF | ✅ Done | `ams_to_be_vision.md` §1 | Agent + Agency Manager roles built. Invitation system complete. BPO roles built. SSO future (D-31). |
-| 2 | **Sales Portal** | **CONF** | **✅ Done** | **`sales_pipeline_reference.md`** | **Full pipeline built and tested end-to-end. See status detail below.** |
+| 1 | Users and Roles Enhancement | CONF | ✅ Done | `ams_to_be_vision.md` §1 | Agent + Agency Manager roles built. Invitation system complete. BPO roles built. User Manager modal (V029). SSO future (D-31). |
+| 2 | Sales Portal | CONF | ✅ Done | `sales_pipeline_reference.md` | Full pipeline built and tested end-to-end. Proposal customization added (V035-V036). |
 | 3 | Sales / Marketing Library | CONF | ✅ Done | `session_history_archive.md` (Feb 21) | Resource Library UI, Wasabi upload/download, category management, feature linking to proposals. |
 | 4 | Sequence Template Overhaul | CONF | ✅ Done | `session_history_archive.md` (Feb 19) | New drag-and-drop builder complete. Old pages preserved for cleanup. |
-| 5 | Third-Party Vendor Task Outsourcing (BPO) | CONF | ✅ Done | `bpo_feature_session_history.md` | BPO delegation, dashboard, task completion, notes. Roles 101-103. API sync layer TBD for cross-site. |
+| 5 | Third-Party Vendor Task Outsourcing (BPO) | CONF | ✅ Done | `bpo_feature_session_history.md` | Full cross-system architecture: push/pull API, note sync, file attachments (V033), vendor registry (V032), partnership management. Co-located and federated modes both working. |
 | 6 | Email System Standardization | CONF | ✅ Done | `email_workflow_analysis.md` | Wasabi attachments, branded HTML templates, SMTP sending. Graph API removed. |
-| 7 | Datapath API Readiness | CONF | 💡 Backlog | `ams_to_be_vision.md` §7 | Design principle — abstract data sources from business logic. |
-| 8 | Deployment Readiness | CONF | ✅ Done | `deployment_strategy.md`, `deployment_runbook.md` | Multi-PSP infrastructure built. Master VPS image ready. Backup/update/health scripts deployed. |
-| 9 | Mobile-Friendly Design | CONF | 💡 Backlog | `ams_to_be_vision.md` §9 | Sales portal mobile-first. Responsive improvements elsewhere. Track B. |
+| 7 | Datapath API Readiness | CONF | 💡 Backlog | `ams_to_be_vision.md` §7 | Design principle — abstract data sources from business logic. Summit import wizard (D-35) provides CSV path; API adapter is future work. |
+| 8 | Deployment Readiness | CONF | ✅ Done | `deployment_strategy.md`, `deployment_runbook.md` | Multi-PSP infrastructure built. Master VPS v7 snapshot. Demo PSP + BPO live. Backup/update/health scripts deployed. |
+| 9 | Mobile-Friendly Design | CONF | 💡 Backlog | `ams_to_be_vision.md` §9 | Sales portal mobile-first. Responsive improvements elsewhere. Track B item S5 remaining. |
 
 ---
 
@@ -44,7 +44,7 @@
 
 | # | Feature | Priority | Status | Spec Doc | Notes |
 |---|---------|----------|--------|----------|-------|
-| 10 | Monthly Billing Automation | HIGH | 🔨 Active | `ams_to_be_vision.md` §10 | Core billing flow exists. Enhancements ongoing. GUID 404 fixed, send billing redesigned (Feb 28). |
+| 10 | Monthly Billing Automation | HIGH | 🔨 Active | `ams_to_be_vision.md` §10 | Core billing flow restored (Session 9). GUID 404 fixed, send billing redesigned, CSV upload + monthly import rebuilt. |
 | 11 | Time Tracking | MED | ✅ Done | `session_history_archive.md` (Feb 22) | UI redesigned (daily/weekly views). Correction request workflow built. Payroll export TBD. |
 | 12 | Employee Onboarding Portal | MED | 💡 Backlog | `ams_to_be_vision.md` §12 | Self-service portal for new hires. |
 | 13 | Invoicing System | MED | 💡 Backlog | `ams_to_be_vision.md` §13 | Replace Wave invoicing. Auto-generate from rate data. |
@@ -55,34 +55,46 @@
 
 ## Technical Debt / Infrastructure
 
-| # | Item | Priority | Status | Spec Doc | Notes |
-|---|------|----------|--------|----------|-------|
-| T1 | Code cleanup — dead code removal | HIGH | ✅ Done | `session_history_archive.md` (Feb 15–17) | 238 files deleted, 32 renamed. `previous/` package eliminated. |
-| T2 | Package reorganization | HIGH | ✅ Done | `session_history_archive.md` (Feb 15–17) | All code in clean packages. |
-| T3 | Data layer rename | HIGH | ✅ Done | `session_history_archive.md` (Feb 15–17) | All cryptic names replaced. |
-| T4 | Modal servlet analysis | MED | ✅ Done | — | All modals mapped to servlets. All in modern `controller` package. |
-| T5 | Sequence builder old page cleanup | LOW | 📋 Planned | `session_history_archive.md` (Feb 19) | Delete old builder JSPs/servlets after new builder proven. |
-| T6 | Database migration tracking | HIGH | ✅ Done | `migration_tracker.md` | 24 versions tracked (V001–V024). All applied to all environments. |
-| T7 | Docs cleanup & consolidation | MED | ✅ Done | — | Session summaries consolidated into archive. Obsolete importscripts deleted. Migration docs current at V024. |
-| T8 | Empty checklist / todo list handling | LOW | 💡 Backlog | `ams_to_be_vision.md` §17 | Remove task-153 dummy workaround. Audit display chain for empty todo list safety. |
-| T9 | Refactor manual setup to dynamic LOS | CONF | 📋 Planned | — | `GenerateProp25` uses hardcoded `q1`–`q8` flags mapped to old LOS IDs (5–10) and hardcoded TP IDs (11–19). Needs refactor to dynamic LOS from DB. Stopgap form (`manualSetup.jsp`) works for original 8 modules. |
-| T10 | PspAgencyHome scoping | HIGH | 📋 Planned | `session_history_archive.md` (Feb 21) | Agency Manager should only see their own agency in PspAgencyHome. Hide rate management for non-PSP users. |
-| T11 | Layout/appearance consolidation | MED | ✅ Done | `session_history_archive.md` (Feb 21) | Unified navbar, CSS, admin pages. Create Ticket modal rebuilt. Email screen modernized. |
-| T12 | GUI modernization Track A | HIGH | ✅ Done | `activity_detail_transition_plan.md` | Activity Detail page fully modernized (A1–A14, S4). Email view/history modernized. |
-| T13 | GUI modernization Track B | MED | 📋 Planned | `activity_detail_transition_plan.md` | Mobile responsiveness, remaining pages. |
-| T14 | PSP branding system | MED | ✅ Done | `session_history_archive.md` (Feb 25) | Logo/favicon upload, external storage, dynamic JSP references. D-32 (BRANDING_PATH) still needed on production. |
-| T15 | User filter presets | MED | ✅ Done | `session_history_archive.md` (Feb 25) | 3 configurable filter slots per user. V013 migration. |
-| T16 | Client-side activity list filtering | MED | 💡 Backlog | — | Convert ViewHome25 center column from server-side form submit to client-side JS filtering (same pattern as PspDashboard). |
-| T17 | ServiceItem Unification | HIGH | ✅ Done | `serviceitem_unification_design_v2.md` | TemplatePurpose → ServiceItem rename, TicketSubCategory eliminated, all tickets backfilled. V020–V024. |
-| T18 | Demo Data Seeder (D-24) | CONF | ✅ Done | `session_history_archive.md` (Feb 28) | `SeedDemoData` servlet: 5 employers, 16 employees, 12 benefits, 10 activities, BPO/staff demo users. |
+| # | Item | Priority | Status | Notes |
+|---|------|----------|--------|-------|
+| T1 | Code cleanup — dead code removal | HIGH | ✅ Done | 238 files deleted, 32 renamed. `previous/` package eliminated. |
+| T2 | Package reorganization | HIGH | ✅ Done | All code in clean packages. |
+| T3 | Data layer rename | HIGH | ✅ Done | All cryptic names replaced. |
+| T4 | Modal servlet analysis | MED | ✅ Done | All modals mapped to servlets. |
+| T5 | Sequence builder old page cleanup | LOW | 📋 Planned | Delete old builder JSPs/servlets after new builder proven. |
+| T6 | Database migration tracking | HIGH | ✅ Done | 36 versions tracked (V001–V036). V001-V024 on all environments, V025-V031 on demo/BPO/master, V032-V036 not yet applied. |
+| T7 | Docs cleanup & consolidation | MED | ✅ Done | This audit. Session summaries consolidated. Obsolete docs flagged for deletion. |
+| T8 | Empty checklist / todo list handling | LOW | 💡 Backlog | Remove task-153 dummy workaround. Audit display chain for empty todo list safety. |
+| T9 | Refactor manual setup to dynamic LOS | CONF | 📋 Planned | `GenerateProp25` uses hardcoded `q1`–`q8` flags. Needs refactor to dynamic LOS from DB. |
+| T10 | PspAgencyHome scoping | HIGH | 📋 Planned | Agency Manager should only see their own agency. Hide rate management for non-PSP users. |
+| T11 | Layout/appearance consolidation | MED | ✅ Done | Unified navbar, CSS, admin pages. |
+| T12 | GUI modernization Track A | HIGH | ✅ Done | Activity Detail fully modernized (A1–A14, S4). Email view/history modernized. |
+| T13 | GUI modernization Track B | MED | 📋 Planned | Mobile responsiveness (S5), remaining pages. |
+| T14 | PSP branding system | MED | ✅ Done | Logo/favicon upload, external storage, dynamic JSP references. D-32 complete on production. |
+| T15 | User filter presets | MED | ✅ Done | 3 configurable filter slots per user. V013. |
+| T16 | Client-side activity list filtering | MED | 💡 Backlog | Convert ViewHome25 center column to client-side JS filtering (same pattern as PspDashboard). |
+| T17 | ServiceItem Unification | HIGH | ✅ Done | TemplatePurpose → ServiceItem, TicketSubCategory eliminated. V020–V024. |
+| T18 | Demo Data Seeder (D-24) | CONF | ✅ Done | `SeedDemoData` + `ReSeedDemoData` servlets. |
+| T19 | Summit Import Wizard (D-35) | HIGH | ✅ Done | Multi-step CSV import for Plan Types, Employers, Employees, Benefits. V025-V026. |
+| T20 | BPO Cross-System Architecture | CONF | ✅ Done | Push/pull API, note sync, partnership management, vendor registry. V027-V033. |
+| T21 | User Manager | HIGH | ✅ Done | Modal-based user management: deactivate/reactivate, role assignment. V029. |
+| T22 | Benefit Renewal Audit | HIGH | ✅ Done | Audit page for plan year corrections, detected renewal dates. V028. |
+| T23 | Starter Packages | MED | ✅ Code complete | 8 JSON package templates for ApplicationSections. Needs V034 applied + browser testing. D-53. |
+| T24 | Proposal Customization | MED | ✅ Code complete | Composable section-based proposals, CKEditor 5, merge tokens. Needs V035-V036 applied + browser testing. D-54. |
+| T25 | Full-Height Dashboard Layouts | MED | ✅ Done | Both PSP and BPO dashboards use flex layouts with internal scroll columns. |
 
 ---
 
 ## Post-Conference Tier
 
-| # | Feature | Priority | Status | Spec Doc | Notes |
-|---|---------|----------|--------|----------|-------|
-| 16 | Social Media Marketing Automation | LOW | 💡 Backlog | `ams_to_be_vision.md` §16 | AI-powered content for LSA, ICHRA, HSA growth. |
+| # | Feature | Priority | Status | Notes |
+|---|---------|----------|--------|-------|
+| 16 | Social Media Marketing Automation | LOW | 💡 Backlog | AI-powered content for LSA, ICHRA, HSA growth. |
+| 17 | BPO Questionnaire System | LOW | 💡 Backlog | Structured task responses using ApplicationSection/ApplicationField framework. |
+| 18 | Microsoft 365 SSO | LOW | 💡 Backlog | D-31. Optional per-PSP, OpenID Connect. |
+| 19 | Master Admin Dashboard | LOW | 💡 Backlog | D-14. Central management console for all PSP instances. |
+| 20 | Summit Data Converter Web Tool | LOW | 💡 Backlog | Automate monthly CSV-to-Summit-import-format process. |
+| 21 | Benefit Plan Document Generation | LOW | 💡 Backlog | 15 HTML templates across 5 lines of service. Standalone project, eventual AMS integration. |
 
 ---
 
@@ -90,44 +102,26 @@
 
 **Full reference:** `docs/analysis/sales_pipeline_reference.md`
 
-| Pipeline Step | Status |
-|---------------|--------|
-| Service Manager (LOS, Enhancements, App Sections, Features) | ✅ |
-| Rate Manager (Rates, Fee Types, Rate Tables) | ✅ |
-| Agency Manager (Agencies, Agents, Rate Assignment) | ✅ |
-| Invitation System (PSP → Agent registration flow) | ✅ |
-| Resource Library (Upload, categorize, link to features) | ✅ |
-| Proposal Builder | ✅ |
-| Proposal Detail (internal) | ✅ |
-| Proposal Feature Rendering (inline links, resource icons) | ✅ |
-| Send Proposal (email) | ✅ |
-| Proposal Landing Page (public) | ✅ |
-| Application Form (dynamic sections, conditional logic, IRS limits) | ✅ |
-| Application Section & Field Editor (admin GUI) | ✅ |
-| Save/Restore Progress | ✅ |
-| Rate Sheet Upload (Wasabi) | ✅ |
-| Submit Application | ✅ |
-| Application Review/Approve UI | ✅ |
-| Automated Setup Creation | ✅ |
-| Opportunity System (agent pipeline tracking) | ✅ |
-| Agent Landing Page (pipeline view, stage management) | ✅ |
-| Agent-scoped ProposalBuilder | ✅ |
-| Full Pipeline Test | ✅ |
-| Production DB Migration | ✅ All environments at V024 |
-
----
-
-## AI Chatbot — Status
-
-Code complete. V014 migration applied to all environments. Production deploy ready.
+All pipeline steps complete. Proposal customization (V035-V036) adds composable section-based proposals with CKEditor editing and merge tokens — code complete, pending migration application and browser testing (D-54).
 
 ---
 
 ## PSP Dashboard — Status
 
-Built and functional. See `session_history_archive.md` (Feb 27) for details.
-- Servlet: `PspDashboardHome.java`
-- JSP: `pspDashboard25.jsp`
-- Client-side JS filtering (instant, no server round-trips)
-- Placeholder cards for Agent Pipeline, BPO Vendors, Prospect Overview
-- Accessible via Admin dropdown in navbar
+Built and functional. Client-side JS filtering. Placeholder cards for Agent Pipeline, BPO Vendors, Prospect Overview. Full-height flex layout with internal scroll columns (Session 28).
+
+---
+
+## Deployment Status
+
+| Instance | URL | IP | Type | Schema | Status |
+|----------|-----|----|------|--------|--------|
+| Production PSP | https://superiorstate.biz | (production IP) | PSP | V024 | Running |
+| Demo PSP | https://demo.superiorstate.biz | 192.152.28.73 | PSP | V031 | Running, seeded with demo data |
+| BPO | https://bpo.superiorstate.biz | 158.222.102.168 (DHCP) | BPO | V031 | Running, initialized, partnered with Demo PSP |
+| Master | master.superiorstate.biz | 208.94.39.77 | Master image | V031 | Snapshot v7 taken, stopped |
+
+**Migrations pending application:**
+- V032–V036: Not applied anywhere yet (code complete, in repo)
+- V025–V031: Applied to Demo/BPO/Master only; not on production or local dev
+- Production intentionally isolated at V024 until conference demo infrastructure is proven

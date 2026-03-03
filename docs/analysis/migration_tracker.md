@@ -16,7 +16,7 @@ Tracks database schema versions across environments.
 | BPO | bpo.superiorstate.biz | beta_ssa | BPO instance (V031, initialized) |
 | Master | master.superiorstate.biz | beta_ssa | Snapshot v7 (V031, stopped) |
 
-## Current Highest Version: V036
+## Current Highest Version: V037
 
 ## Dev Baseline
 
@@ -68,6 +68,7 @@ Individual migration scripts are no longer stored in the repo. The baseline dump
 | V034 | Add template_key to applicationsection for starter packages | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
 | V035 | Feature headline column and description widening | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
 | V036 | Proposal section table for composable proposal content | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
+| V037 | Add LOS/Enhancement scoping to proposal_section | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
 
 ## Notes
 
@@ -91,3 +92,4 @@ Individual migration scripts are no longer stored in the repo. The baseline dump
 - V034 adds nullable template_key VARCHAR(50) to applicationsection with a unique index scoped to (template_key, psp_id). Used for starter package duplicate detection. NULL values (manual/seeded sections) are unaffected by the unique constraint.
 - V035 adds nullable headline VARCHAR(200) to feature table for short punchy summary text. Widens description from VARCHAR(500) to VARCHAR(2000) for paragraph content. Part of the proposal customization feature (feature sales blurb upgrade).
 - V036 creates the proposal_section table for composable proposal content per PSP. Section types: TITLE, PRICING, FEATURES, CLOSING, CUSTOM. Supports HTML content with merge tokens, sort ordering, and active/inactive toggling.
+- V037 adds scope column (VARCHAR(10), default 'ALL') to proposal_section and creates proposalsectionlos/proposalsectionenhancement join tables. Enables CUSTOM sections to display only when specific services are proposed.

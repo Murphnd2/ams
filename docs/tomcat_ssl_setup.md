@@ -288,3 +288,47 @@ Check `catalina.out` for specific errors. Common issues:
 | Renewal script | `/opt/ssa/scripts/renew-ssl.sh` |
 | Renewal log | `/opt/ssa/logs/ssl-renewal.log` |
 | Certbot renewal config | `/etc/letsencrypt/renewal/yourdomain.com.conf` |
+
+# tomcat_ssl_setup.md — Append This Section
+
+Add this section after the existing "Troubleshooting" section in `docs/tomcat_ssl_setup.md`:
+
+---
+
+## Known Issues (Discovered March 2026)
+
+### APR/OpenSSL Native Library Conflict
+
+**Symptom:** Tomcat fails to start SSL with errors like `cannot create new ssl` or `OpenSSL library mismatch`.
+
+**Cause:** The `AprLifecycleListener` in `server.xml` tries to load the native APR/OpenSSL library. On some Ubuntu 24 installs, the system OpenSSL version is incompatible with the APR native library bundled or expected by Tomcat.
+
+**Fix:** Comment out or remove the `AprLifecycleListener` in `server.xml`:
+
+```xml
+<!-- Commented out: causes SSL failures on Ubuntu 24 with APR/OpenSSL mismatch
+<Listener className="org.apache.catalina.core.AprLifecycleListener" SSLEngine="on" />
+-->
+```
+
+This forces Tomcat to use the pure Java NIO SSL implementation (configured via the `Http11NioProtocol` connector in Step 5a), which is fully functional and does not depend on native libraries.
+
+**Impact:** None in practice. The NIO SSL connector handles all HTTPS traffic correctly. APR can provide marginal performance improvements at very high connection counts, but this is not relevant for AMS deployments.
+
+### Private Key File Permissions
+
+**Symptom:** Tomcat starts but SSL fails with `PEMFile` permission denied errors referencing `privkey.pem`.
+
+**Cause:** Let's Encrypt stores private keys in `/etc/letsencrypt/archive/` with restrictive permissions (readable only by root). The symlinks in `/etc/letsencrypt/live/` don't help if the underlying archive directory blocks access. Tomcat (running as the `tomcat` user) cannot read the key.
+
+**Fix:** Open permissions on the Let's Encrypt directories and key file:
+
+```bash
+sudo chmod 755 /etc/letsencrypt/live
+sudo chmod 755 /etc/letsencrypt/archive
+sudo chmod 644 /etc/letsencrypt/archive/yourdomain.com/privkey1.pem
+```
+
+**Note:** This fix must be re-applied after certificate renewals, as Certbot may create new key files with default restrictive permissions. Consider adding these `chmod` commands to the renewal script (`/opt/ssa/scripts/renew-ssl.sh`).
+
+**Alternative:** Instead of loosening permissions, copy the certs to Tomcat's conf directory (as described in Step 4) and ensure the copies are owned by the `tomcat` user. The renewal script already handles this.
