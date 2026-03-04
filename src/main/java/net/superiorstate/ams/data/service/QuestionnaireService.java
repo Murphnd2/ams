@@ -4,6 +4,8 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.NoResultException;
 import net.superiorstate.ams.model.activity.checklist.sequences.support.ServiceItem;
 import net.superiorstate.ams.model.activity.questionnaire.Questionnaire;
+import net.superiorstate.ams.model.activity.questionnaire.QuestionnaireField;
+import net.superiorstate.ams.model.activity.questionnaire.QuestionnaireFieldValue;
 import net.superiorstate.ams.model.activity.questionnaire.QuestionnaireInstance;
 import net.superiorstate.ams.model.activity.renewal.Renewal;
 import net.superiorstate.ams.model.activity.renewal.RenewalItem;
@@ -129,6 +131,58 @@ public abstract class QuestionnaireService {
         } catch (NoResultException e) {
             return new ArrayList<>();
         }
+    }
+
+    // ── GUID Lookup (for public form access) ──────────────────────────────────
+
+    /**
+     * Loads a QuestionnaireInstance by its public GUID, with questionnaire and
+     * field list eager-loaded. Returns null if not found.
+     */
+    public static QuestionnaireInstance getInstanceByGuid(EntityManager em, String guid) {
+        try {
+            List<QuestionnaireInstance> results = em.createQuery(
+                            "SELECT qi FROM QuestionnaireInstance qi " +
+                                    "JOIN FETCH qi.questionnaire q " +
+                                    "LEFT JOIN FETCH q.fieldList " +
+                                    "WHERE qi.instanceGuid = :guid",
+                            QuestionnaireInstance.class)
+                    .setParameter("guid", guid)
+                    .getResultList();
+            if (results == null || results.isEmpty()) return null;
+            QuestionnaireInstance qi = results.get(0);
+            // Re-sort fields (EclipseLink DISTINCT + JOIN FETCH can scramble @OrderBy)
+            if (qi.getQuestionnaire().getFieldList() != null) {
+                qi.getQuestionnaire().getFieldList().sort(java.util.Comparator.comparingInt(QuestionnaireField::getSortOrder));
+            }
+            return qi;
+        } catch (NoResultException e) {
+            return null;
+        }
+    }
+
+    /**
+     * Loads saved field values for a questionnaire instance as a Map keyed by fieldKey.
+     */
+    public static java.util.Map<String, String> getFieldValueMap(EntityManager em, QuestionnaireInstance instance) {
+        java.util.Map<String, String> map = new java.util.HashMap<>();
+        try {
+            List<QuestionnaireFieldValue> values = em.createQuery(
+                            "SELECT fv FROM QuestionnaireFieldValue fv " +
+                                    "JOIN FETCH fv.field " +
+                                    "WHERE fv.instance = :instance",
+                            QuestionnaireFieldValue.class)
+                    .setParameter("instance", instance)
+                    .getResultList();
+            if (values != null) {
+                for (QuestionnaireFieldValue fv : values) {
+                    map.put(fv.getField().getFieldKey(), fv.getFieldValue());
+                }
+            }
+        } catch (Exception e) {
+            System.out.println("[QuestionnaireService] getFieldValueMap error: " + e.getMessage());
+        }
+        return map;
     }
 
     // ── Scope Overlap Check ─────────────────────────────────────────────────
