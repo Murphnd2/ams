@@ -104,6 +104,7 @@
               <c:import url="/WEB-INF/view/a/activityDetail/columns/detail/detailAdditionalContacts25.jsp"></c:import>
               <c:import url="/WEB-INF/view/a/activityDetail/columns/detail/detailDetail25.jsp"></c:import>
               <c:import url="/WEB-INF/view/a/activityDetail/columns/detail/detailDocsLinks25.jsp"></c:import>
+              <c:import url="/WEB-INF/view/a/activityDetail/columns/detail/detailQuestionnaires25.jsp"></c:import>
               <c:import url="/WEB-INF/view/a/activityDetail/columns/detail/detailFooter25.jsp"></c:import>
             </div>
             <div class="panel-divider" id="dividerRight"></div>

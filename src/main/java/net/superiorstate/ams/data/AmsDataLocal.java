@@ -22,6 +22,7 @@ import net.superiorstate.ams.model.activity.checklist.tasks.ToDo;
 import net.superiorstate.ams.model.activity.checklist.tasks.ToDoOut;
 import net.superiorstate.ams.model.activity.note.Email;
 import net.superiorstate.ams.model.activity.note.Note;
+import net.superiorstate.ams.model.activity.questionnaire.QuestionnaireInstance;
 import net.superiorstate.ams.model.activity.renewal.Renewal;
 import net.superiorstate.ams.model.activity.renewal.RenewalEmployer;
 import net.superiorstate.ams.model.activity.renewal.RenewalItem;
@@ -31,6 +32,7 @@ import net.superiorstate.ams.model.general.*;
 import net.superiorstate.ams.model.sales.agency.Proposal;
 import net.superiorstate.ams.model.sales.application.ApplicationModule;
 import net.superiorstate.ams.data.dao.SalesDAO;
+import net.superiorstate.ams.data.service.QuestionnaireService;
 import net.superiorstate.ams.model.summit.archive.Benefit;
 import net.superiorstate.ams.model.summit.archive.Employee;
 import net.superiorstate.ams.model.summit.archive.Employer;
@@ -994,6 +996,7 @@ public class AmsDataLocal implements AutoCloseable {
         private List<ServiceItem> modsInSetup;
         private List<Proposal> opportunityProposals;
         private List<Proposal> allProspectProposals;
+        private List<QuestionnaireInstance> questionnaireInstances;
 
         public CurrentActivity(){};
 
@@ -1109,6 +1112,14 @@ public class AmsDataLocal implements AutoCloseable {
             this.allProspectProposals = allProspectProposals;
         }
 
+        public List<QuestionnaireInstance> getQuestionnaireInstances() {
+            return questionnaireInstances;
+        }
+
+        public void setQuestionnaireInstances(List<QuestionnaireInstance> questionnaireInstances) {
+            this.questionnaireInstances = questionnaireInstances;
+        }
+
         public void intializeActivity(EntityManager em, Long activityId){
             long start = System.currentTimeMillis();
             System.out.println("** INITIALIZATION OF ACTIVITY **");
@@ -1147,6 +1158,10 @@ public class AmsDataLocal implements AutoCloseable {
                 }
             }
             setPastActivities(fillPastActivities(em));
+
+            // Load attached questionnaire instances
+            setQuestionnaireInstances(QuestionnaireService.getInstancesForActivity(em, activityId));
+
             System.out.println("⏱️ intializeActivity took " + (System.currentTimeMillis() - start) + "ms");
         }
 

@@ -204,6 +204,7 @@
               <li><a class="dropdown-item" href="ProposalSettings"><i class="bi bi-sliders me-2"></i>Proposal Settings</a></li>
               <li><hr class="dropdown-divider"></li>
               <li><a class="dropdown-item" href="SequenceBuilder25"><i class="bi bi-list-check me-2"></i>Sequence Builder</a></li>
+              <li><a class="dropdown-item" href="QuestionnaireManager25"><i class="bi bi-ui-checks-grid me-2"></i>Questionnaire Manager</a></li>
               <c:if test="${applicationScope.global.useTimeclock}">
               <li><a class="dropdown-item" href="ReviewTimeCorrections"><i class="bi bi-clock-history me-2"></i>Time Corrections</a></li>
               </c:if>

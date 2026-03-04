@@ -10,6 +10,7 @@ import net.superiorstate.ams.data.dao.EmailDAO;
 import net.superiorstate.ams.data.dao.TicketQueryDAO;
 import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.data.resolver.PersonResolver;
+import net.superiorstate.ams.data.service.QuestionnaireService;
 import net.superiorstate.ams.model.activity.checklist.CheckList;
 import net.superiorstate.ams.model.activity.checklist.sequences.support.ActivityCategory;
 import net.superiorstate.ams.model.activity.checklist.sequences.support.ServiceItem;
@@ -190,6 +191,11 @@ public class CreateTicket25 extends HttpServlet {
             t.setCheckList(checkList);
             em.persist(t);
             em.getTransaction().commit();
+
+            // Auto-attach matching questionnaire instances
+            QuestionnaireService.attachMatchingQuestionnaires(em, t, "TICKET",
+                    getCurrentUser().getPsp().getId());
+
             return t;
 
         }

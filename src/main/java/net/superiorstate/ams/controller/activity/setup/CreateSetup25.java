@@ -12,6 +12,7 @@ import net.superiorstate.ams.data.AmsDataLocal;
 import net.superiorstate.ams.data.dao.ActivityDAO;
 import net.superiorstate.ams.data.dao.ApplicationTaskDAO;
 import net.superiorstate.ams.data.service.BpoTaskPushService;
+import net.superiorstate.ams.data.service.QuestionnaireService;
 import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.model.Activity25;
 import net.superiorstate.ams.model.Activity25u;
@@ -148,6 +149,10 @@ public class CreateSetup25 extends HttpServlet {
 
             // 7. Fill ToDo list from task sequences
             fillToDoList(em, setup, currentPerson);
+
+            // 7b. Auto-attach matching questionnaire instances
+            QuestionnaireService.attachMatchingQuestionnaires(em, setup, "SETUP",
+                    currentPerson.getPsp().getId());
 
             // 8. Update caches
             em.refresh(setup);

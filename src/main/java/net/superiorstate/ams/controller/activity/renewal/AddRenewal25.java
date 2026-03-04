@@ -12,6 +12,7 @@ import net.superiorstate.ams.data.AmsDataLocal;
 import net.superiorstate.ams.model.Activity25u;
 import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.data.service.BpoTaskPushService;
+import net.superiorstate.ams.data.service.QuestionnaireService;
 import net.superiorstate.ams.data.service.RenewalService;
 import net.superiorstate.ams.model.activity.renewal.Renewal;
 import net.superiorstate.ams.model.general.Person;
@@ -57,6 +58,10 @@ public class AddRenewal25 extends HttpServlet {
             RenewalService.createCheckListForRenewal(em, renewal, currentPerson);
             createRenewalItems(request, em, renewal);
             assignPrimaryContact(em, renewal);
+
+            // Auto-attach matching questionnaire instances
+            QuestionnaireService.attachMatchingQuestionnaires(em, renewal, "RENEWAL",
+                    currentPerson.getPsp().getId());
 
             // Push sourced tasks to BPO vendors (non-fatal, after all transactions committed)
             if (renewal.getCheckList() != null) {
