@@ -15,7 +15,7 @@ public class QuestionnaireField implements Comparable<QuestionnaireField> {
     @Column(name = "field_id")
     private Long id;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "questionnaire_id", nullable = false)
     private Questionnaire questionnaire;
 

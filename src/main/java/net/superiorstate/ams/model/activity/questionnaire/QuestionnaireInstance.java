@@ -17,15 +17,15 @@ public class QuestionnaireInstance {
     @Column(name = "instance_id")
     private Long id;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "questionnaire_id", nullable = false)
     private Questionnaire questionnaire;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "activity_id", nullable = false)
     private Assignee activity;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "todo_id")
     private ToDo todo;
 
@@ -50,18 +50,18 @@ public class QuestionnaireInstance {
     @Column(name = "date_reviewed")
     private Timestamp dateReviewed;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "reviewed_by_id")
     private Assignee reviewedBy;
 
     @Column(name = "date_reopened")
     private Timestamp dateReopened;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "reopened_by_id")
     private Assignee reopenedBy;
 
-    @OneToMany(mappedBy = "instance")
+    @OneToMany(mappedBy = "instance", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<QuestionnaireFieldValue> fieldValues;
 
     public QuestionnaireInstance() {}

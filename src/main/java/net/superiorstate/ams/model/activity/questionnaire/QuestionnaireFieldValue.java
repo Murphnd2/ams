@@ -11,11 +11,11 @@ public class QuestionnaireFieldValue {
     @Column(name = "field_value_id")
     private Long id;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "instance_id", nullable = false)
     private QuestionnaireInstance instance;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "field_id", nullable = false)
     private QuestionnaireField field;
 

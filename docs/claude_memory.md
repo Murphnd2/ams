@@ -16,7 +16,7 @@
 ## Current State
 - **Branch:** `refactor/modernize-architecture`
 - **Latest migration:** V039
-- **Session count:** 32
+- **Session count:** 33
 - V025-V037 applied to Demo PSP, BPO, and Master; V038 applied to Demo and BPO; V039 code-complete, not yet applied anywhere
 - Not yet applied to production or local dev
 - Master snapshot v8 taken 2026-03-04 (V037, fixed update.sh, fixed healthcheck.sh)
@@ -146,8 +146,10 @@
 - **Enhancement 4 (Sort order):** DelegatedToDo.sortOrder field (V038), pushed via BpoTaskPushService, BpoHome queries sort by dueDate → activityName → sortOrder
 - **Vendor-only reopen protection:** checklistBasic25.jsp completed section shows X icon (no reopen form) for `isSourced && !allowNonOwner` tasks
 
-## Questionnaire System (V039, Phase 1 — Session 32)
+## Questionnaire System (V039, Phases 1–6 — Sessions 32–33)
 - **4 entities** in `model/activity/questionnaire/`: Questionnaire, QuestionnaireField, QuestionnaireInstance, QuestionnaireFieldValue
+- **B2.1 entity conventions:** `fetch=LAZY` on all `@ManyToOne`, `cascade=ALL, orphanRemoval=true` on parent→child `@OneToMany`
+- **Convenience methods:** `Questionnaire.isNative()`, `Questionnaire.isScopedToServices()`, `QuestionnaireInstance.isExternal()`
 - **Dual-mode:** `external_url IS NULL` = native (AMS fields), `IS NOT NULL` = external (Jotform pointer)
 - **QuestionnaireField** uses BIGINT auto PK (not String PK like ApplicationField), `field_key` is regular column with unique index per questionnaire
 - **section_name** column on questionnaire_field for UI grouping (no section entity)
@@ -157,7 +159,19 @@
 - **DatabaseInitializer** hook after assignAllSectionsToLos, before createInitializationChecklist
 - **Merge tokens in external URLs:** `{erName}`, `{activityId}`, `{instanceGuid}` — resolved by `Questionnaire.resolveExternalUrl()`
 - **Design doc:** `docs/analysis/questionnaire_system_design.md` — 7 phases total
-- **Phase 1 complete:** schema, entities, seeds, loader. Next: Phase 2 (Admin UI in ServiceManager25)
+- **QuestionnaireService.java** (`data/service/`) — static utility (abstract class, follows RenewalService pattern):
+  - `attachMatchingQuestionnaires()` — auto-attach on activity creation, scope overlap check
+  - `getInstancesForActivity()` — load instances for activity detail card
+  - `getInstanceByGuid()` — GUID-based lookup for public form
+  - `getFieldsForQuestionnaire()` — direct field query (avoids EclipseLink nested JOIN FETCH)
+  - `getFieldValueMap()` — saved values as Map<String, String>
+  - `submitInstance()` — marks SUBMITTED, creates Note with "Waiting on Us" status + "Quick Action" reason
+- **QuestionnaireManagerAction.java** (`controller/activity/questionnaire/`) — admin CRUD for questionnaires+fields in ServiceManager25
+- **FillQuestionnaire.java** (`controller/activity/questionnaire/`) — public form at `/q/{guid}`, GET renders form, POST submits
+- **SaveQuestionnaireProgress.java** — AJAX auto-save at `/saveQuestionnaire`
+- **QuestionnaireInstanceAction.java** — PSP-side actions: review, reopen, detach, markComplete
+- **EclipseLink nested JOIN FETCH gotcha:** `LEFT JOIN FETCH q.fieldList` inside `JOIN FETCH qi.questionnaire q` is silently dropped — always load fields via separate direct query
+- **Phases 1–6 complete.** Next: Phase 7 (automation email tokens, completion gating)
 
 ## Reference
 - Full session archive: `docs/analysis/session_history_archive.md`

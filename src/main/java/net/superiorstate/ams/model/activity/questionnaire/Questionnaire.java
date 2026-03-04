@@ -18,7 +18,7 @@ public class Questionnaire implements Comparable<Questionnaire> {
     @Column(name = "questionnaire_id")
     private Long id;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "psp_id", nullable = false)
     private PSP psp;
 
@@ -61,8 +61,8 @@ public class Questionnaire implements Comparable<Questionnaire> {
             inverseJoinColumns = @JoinColumn(name = "purpose_id"))
     private List<ServiceItem> serviceItemList = new ArrayList<>();
 
-    @OneToMany(mappedBy = "questionnaire")
-    @OrderBy("sortOrder")
+    @OneToMany(mappedBy = "questionnaire", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("sortOrder ASC")
     private List<QuestionnaireField> fieldList;
 
     public Questionnaire() {}
@@ -70,6 +70,16 @@ public class Questionnaire implements Comparable<Questionnaire> {
     /** True if this questionnaire points to an external form (Jotform, etc.) */
     public boolean isExternal() {
         return externalUrl != null && !externalUrl.isBlank();
+    }
+
+    /** True if this questionnaire uses native AMS fields (no external URL). */
+    public boolean isNative() {
+        return externalUrl == null || externalUrl.isBlank();
+    }
+
+    /** True if any LOS, Enhancement, or ServiceItem scoping is defined. */
+    public boolean isScopedToServices() {
+        return !losList.isEmpty() || !enhancementList.isEmpty() || !serviceItemList.isEmpty();
     }
 
     /** Resolves merge tokens in the external URL. Returns null if not external. */

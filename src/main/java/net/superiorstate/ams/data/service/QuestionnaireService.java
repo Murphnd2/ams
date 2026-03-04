@@ -18,6 +18,14 @@ import net.superiorstate.ams.model.sales.application.ApplicationModule;
 import net.superiorstate.ams.model.sales.offering.Enhancement;
 import net.superiorstate.ams.model.sales.offering.LOS;
 
+import net.superiorstate.ams.model.activity.Activity;
+import net.superiorstate.ams.model.activity.note.ActivityStatus;
+import net.superiorstate.ams.model.activity.note.Note;
+import net.superiorstate.ams.model.activity.note.ReasonCreated;
+import net.superiorstate.ams.model.general.Person;
+
+import java.sql.Date;
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -143,22 +151,30 @@ public abstract class QuestionnaireService {
         try {
             List<QuestionnaireInstance> results = em.createQuery(
                             "SELECT qi FROM QuestionnaireInstance qi " +
-                                    "JOIN FETCH qi.questionnaire q " +
-                                    "LEFT JOIN FETCH q.fieldList " +
+                                    "JOIN FETCH qi.questionnaire " +
                                     "WHERE qi.instanceGuid = :guid",
                             QuestionnaireInstance.class)
                     .setParameter("guid", guid)
                     .getResultList();
             if (results == null || results.isEmpty()) return null;
-            QuestionnaireInstance qi = results.get(0);
-            // Re-sort fields (EclipseLink DISTINCT + JOIN FETCH can scramble @OrderBy)
-            if (qi.getQuestionnaire().getFieldList() != null) {
-                qi.getQuestionnaire().getFieldList().sort(java.util.Comparator.comparingInt(QuestionnaireField::getSortOrder));
-            }
-            return qi;
+            return results.get(0);
         } catch (NoResultException e) {
             return null;
         }
+    }
+
+    /**
+     * Loads non-suppressed fields for a questionnaire, sorted by sortOrder.
+     * Uses a direct query to avoid EclipseLink nested JOIN FETCH issues.
+     */
+    public static List<QuestionnaireField> getFieldsForQuestionnaire(EntityManager em, long questionnaireId) {
+        return em.createQuery(
+                        "SELECT f FROM QuestionnaireField f " +
+                                "WHERE f.questionnaire.id = :qId AND f.suppressed = false " +
+                                "ORDER BY f.sortOrder",
+                        QuestionnaireField.class)
+                .setParameter("qId", questionnaireId)
+                .getResultList();
     }
 
     /**
@@ -183,6 +199,74 @@ public abstract class QuestionnaireService {
             System.out.println("[QuestionnaireService] getFieldValueMap error: " + e.getMessage());
         }
         return map;
+    }
+
+    // ── Submit Instance ────────────────────────────────────────────────────
+
+    /**
+     * Marks a questionnaire instance as SUBMITTED, persists a completion note on the
+     * parent activity with "Waiting on Us" status, and returns the updated instance.
+     *
+     * Does NOT begin or commit a transaction — the calling servlet owns it.
+     *
+     * @param instanceId      questionnaire_instance PK to complete
+     * @param submitterName   display name from the form submission (nullable)
+     * @param submitterEmail  email from the form submission (nullable)
+     * @param em              active EntityManager — caller owns the transaction
+     * @param createdBy       Person to credit as note author (nullable — handle gracefully)
+     * @return the updated QuestionnaireInstance
+     */
+    public static QuestionnaireInstance submitInstance(
+            Long instanceId,
+            String submitterName,
+            String submitterEmail,
+            EntityManager em,
+            Person createdBy) {
+
+        // 1. Load instance
+        QuestionnaireInstance instance = em.find(QuestionnaireInstance.class, instanceId);
+        if (instance == null) {
+            throw new IllegalArgumentException("Instance not found: " + instanceId);
+        }
+
+        // 2. Set status + dateSubmitted
+        instance.setStatus("SUBMITTED");
+        instance.setDateSubmitted(new Timestamp(System.currentTimeMillis()));
+
+        // 3. Set submitter info if not blank
+        if (submitterName != null && !submitterName.isBlank()) {
+            instance.setSubmittedByName(submitterName.trim());
+        }
+        if (submitterEmail != null && !submitterEmail.isBlank()) {
+            instance.setSubmittedByEmail(submitterEmail.trim());
+        }
+
+        // 4. Load ActivityStatus id=3 ("Waiting on Us")
+        ActivityStatus waitingOnUs = em.find(ActivityStatus.class, 3);
+
+        // 5. Load ReasonCreated for "Quick Action"
+        List<ReasonCreated> rcList = em.createQuery(
+                        "SELECT r FROM ReasonCreated r WHERE r.description = 'Quick Action'",
+                        ReasonCreated.class)
+                .setMaxResults(1)
+                .getResultList();
+        ReasonCreated reasonCreated = rcList.isEmpty() ? null : rcList.get(0);
+
+        // 6. Build and persist Note
+        //    The instance's activity is an Assignee; load as Activity for the Note FK
+        Activity activity = em.find(Activity.class, instance.getActivity().getId());
+
+        Note note = new Note();
+        note.setActivity(activity);
+        note.setStatus(waitingOnUs);
+        note.setReasonCreated(reasonCreated);
+        note.setCreatedBy(createdBy);
+        note.setDetail("Questionnaire completed: " + instance.getQuestionnaire().getName());
+        note.setDateGenerated(new Date(System.currentTimeMillis()));
+        em.persist(note);
+
+        // 7. Return updated instance
+        return instance;
     }
 
     // ── Scope Overlap Check ─────────────────────────────────────────────────

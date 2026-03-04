@@ -25,17 +25,9 @@
             </c:otherwise>
           </c:choose>
 
-          <%-- Questionnaire name + mode badge --%>
+          <%-- Questionnaire name --%>
           <div class="flex-grow-1 text-truncate">
             <span>${qi.questionnaire.name}</span>
-            <c:choose>
-              <c:when test="${qi.external}">
-                <span class="badge ms-1" style="font-size: 0.65rem; background-color: #7952b3 !important; color: white;">EXTERNAL</span>
-              </c:when>
-              <c:otherwise>
-                <span class="badge text-bg-primary ms-1" style="font-size: 0.65rem;">NATIVE</span>
-              </c:otherwise>
-            </c:choose>
           </div>
 
           <%-- Status badge --%>
@@ -107,11 +99,11 @@
 
             <%-- Action dropdown (kebab menu) --%>
             <div class="dropdown">
-              <button class="btn btn-sm btn-outline-secondary border-0 p-0 px-1" type="button"
+              <button class="btn btn-sm btn-outline-secondary border-0 p-0 px-1 q-kebab" type="button"
                       data-bs-toggle="dropdown" aria-expanded="false" title="Actions">
                 <i class="bi bi-three-dots-vertical" style="font-size: 0.75rem;"></i>
               </button>
-              <ul class="dropdown-menu dropdown-menu-end" style="font-size: 0.82rem;">
+              <ul class="dropdown-menu dropdown-menu-end shadow" style="font-size: 0.82rem;">
 
                 <%-- Review (when SUBMITTED) --%>
                 <c:if test="${qi.status == 'SUBMITTED'}">
@@ -188,5 +180,9 @@ function qShowCopyToast() {
     toast.style.display = 'block';
     setTimeout(function() { toast.style.display = 'none'; }, 2000);
 }
+// Pre-init kebab dropdowns with fixed strategy to escape overflow container
+document.querySelectorAll('.q-kebab').forEach(function(el) {
+    new bootstrap.Dropdown(el, { popperConfig: { strategy: 'fixed' } });
+});
 </script>
 </c:if>

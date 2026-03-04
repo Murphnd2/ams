@@ -1,7 +1,7 @@
 # AMS Project Backlog
 
 **Created:** February 19, 2026
-**Last Updated:** March 3, 2026
+**Last Updated:** March 4, 2026
 **Reference:** `docs/ams_to_be_vision.md` for full project descriptions
 
 ---
@@ -82,6 +82,7 @@
 | T23 | Starter Packages | MED | ✅ Code complete | 8 JSON package templates for ApplicationSections. Needs V034 applied + browser testing. D-53. |
 | T24 | Proposal Customization | MED | ✅ Code complete | Composable section-based proposals, CKEditor 5, merge tokens. Needs V035-V036 applied + browser testing. D-54. |
 | T25 | Full-Height Dashboard Layouts | MED | ✅ Done | Both PSP and BPO dashboards use flex layouts with internal scroll columns. |
+| T26 | Questionnaire System | CONF | 🔨 Active | V039 schema + entities, admin UI in ServiceManager, auto-attach, activity detail card, native public form, B2.1 entity refinements. Phases 1–6 complete. Phase 7 (automation tokens, completion gating) remaining. D-55. |
 
 ---
 

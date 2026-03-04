@@ -53,10 +53,9 @@ public class SaveQuestionnaireProgress extends HttpServlet {
                 return;
             }
 
-            // Load non-suppressed fields
-            List<QuestionnaireField> fields = qi.getQuestionnaire().getFieldList();
-            if (fields == null) fields = List.of();
-            fields = fields.stream().filter(f -> !f.isSuppressed()).toList();
+            // Load non-suppressed fields via direct query
+            List<QuestionnaireField> fields = QuestionnaireService.getFieldsForQuestionnaire(
+                    em, qi.getQuestionnaire().getId());
 
             // Save values (single transaction)
             em.getTransaction().begin();

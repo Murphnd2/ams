@@ -1149,3 +1149,57 @@ Built the foundation for the Questionnaire system (Track B2): database schema, J
 
 ### Database Changes
 - **V039:** 4 entity tables + 3 join tables with unique indexes, FK cascades, and self-registration
+
+---
+
+## March 4, 2026 — Questionnaire System Phases 2–6 (Session 33)
+
+Built the Questionnaire admin UI (Phase 2), auto-attach service (Phase 3), activity detail card (Phase 4/5), native public form (Phase 6), and entity refinements per B2.1 spec.
+
+### Phase 2: Questionnaire Manager Admin UI
+- **QuestionnaireManagerAction.java** (new) — Full CRUD servlet for questionnaires and fields. Actions: create, edit, delete, addField, editField, deleteField, reorderField, updateScoping. Manages M:N scoping to LOS/Enhancement/ServiceItem.
+- **serviceManager25.jsp** — Added Questionnaires tab (5th tab) with questionnaire list, add/edit modals, field management panel, scoping checkboxes.
+- **ServiceManagerHome.java** — Loads questionnaires for current PSP into request attributes for the new tab.
+
+### Phase 3: Auto-Attach Service
+- **QuestionnaireService.java** (new) — Static utility class (`abstract`, follows RenewalService pattern):
+  - `attachMatchingQuestionnaires(em, activity, activityType, pspId)` — queries active questionnaires matching type + PSP, checks scope overlap (ServiceItem/LOS/Enhancement), creates instances for matches
+  - Scope helpers: `getActivityServiceItemIds()`, `getActivityLosIds()`, `getActivityEnhancementIds()` — extract scoping context from Ticket, Setup, or Renewal entities
+- **CreateChecklist25.java**, **AddRenewal25.java** — Hooked `QuestionnaireService.attachMatchingQuestionnaires()` after checklist/renewal creation
+- **CurrentActivity.java** — Added `questionnaireInstances` field (loaded via `QuestionnaireService.getInstancesForActivity()` during `intializeActivity()`)
+
+### Phase 4/5: Activity Detail Card
+- **detailQuestionnaires25.jsp** (new) — Questionnaires card in activity detail. Shows questionnaire name, status badges (color-coded), mode icons (native pencil / external link). Copy Link button, Open/View link, kebab dropdown with Review/Reopen/Mark Complete/Detach actions.
+- **activityDetail25.jsp** — Added `<c:import>` for detailQuestionnaires25.jsp in the detail column.
+
+### Phase 6: Native Public Form
+- **FillQuestionnaire.java** (new) — `@WebServlet("/q/*")`, public GUID-based form access:
+  - GET: loads instance by GUID, external → redirect with merge tokens, native → renders form with PSP branding
+  - POST: upserts field values, calls `QuestionnaireService.submitInstance()` for status + Note creation
+  - Fields loaded via direct JPQL query (avoids EclipseLink nested JOIN FETCH issue)
+- **SaveQuestionnaireProgress.java** (new) — `@WebServlet("/saveQuestionnaire")` with `@MultipartConfig`, AJAX auto-save (60s interval), upserts field values, transitions NOT_STARTED → IN_PROGRESS
+- **fillQuestionnaire.jsp** (new) — Standalone public page with PSP branding (header + accent bar), submitter name/email section, fields grouped by sectionName, renders 8 field types (TEXT, TEXTAREA, NUMBER, DATE, SELECT, RADIO, BOOLEAN, CHECKBOX), progress bar, auto-save JS, beforeunload dirty check, read-only mode for SUBMITTED/REVIEWED
+- **questionnaireConfirmation.jsp** (new) — PSP-branded confirmation page with check-circle icon, handles both fresh and "already submitted" cases
+- **QuestionnaireInstanceAction.java** (new) — `@WebServlet("/QuestionnaireInstanceAction")`, PSP-side actions: review (→REVIEWED), reopen (native→IN_PROGRESS, external→NOT_STARTED), detach (NOT_STARTED only), markComplete (external only→SUBMITTED). Refreshes session instances, forwards to ViewActivity25.
+
+### B2.1 Entity Refinements
+- **Questionnaire.java** — Added `fetch=LAZY` on psp, `cascade=ALL, orphanRemoval=true` on fieldList, `@OrderBy("sortOrder ASC")`, added `isNative()` and `isScopedToServices()` convenience methods
+- **QuestionnaireField.java** — Added `fetch=LAZY` on questionnaire
+- **QuestionnaireInstance.java** — Added `fetch=LAZY` on all 5 `@ManyToOne` (questionnaire, activity, todo, reviewedBy, reopenedBy), `cascade=ALL, orphanRemoval=true` on fieldValues
+- **QuestionnaireFieldValue.java** — Added `fetch=LAZY` on both `@ManyToOne` (instance, field)
+
+### QuestionnaireService Enhancements
+- `getInstanceByGuid(em, guid)` — loads instance by public GUID with questionnaire eager-loaded
+- `getFieldsForQuestionnaire(em, questionnaireId)` — direct query for non-suppressed fields sorted by sortOrder (avoids EclipseLink nested JOIN FETCH issue)
+- `getFieldValueMap(em, instance)` — loads saved field values as Map<String, String> keyed by fieldKey
+- `submitInstance(instanceId, submitterName, submitterEmail, em, createdBy)` — marks SUBMITTED, sets submitter info, creates Note on activity with ActivityStatus "Waiting on Us" (id=3) and ReasonCreated "Quick Action". Does not own transaction.
+
+### Bug Fixes
+- **Field display bug:** Native form fields not rendering — EclipseLink silently dropped nested `LEFT JOIN FETCH q.fieldList` inside `JOIN FETCH qi.questionnaire q`. Fixed by loading fields via separate direct JPQL query in all three servlets (FillQuestionnaire, SaveQuestionnaireProgress, and internally via `getFieldsForQuestionnaire()`).
+- **Kebab overflow:** Questionnaire card kebab menus clipped by card overflow. Fixed with `popperConfig: { strategy: 'fixed' }` pre-initialization (established pattern from Session 28).
+
+### Files Changed
+- **New (5):** FillQuestionnaire.java, SaveQuestionnaireProgress.java, fillQuestionnaire.jsp, questionnaireConfirmation.jsp, QuestionnaireInstanceAction.java
+- **Modified (6):** QuestionnaireService.java (GUID lookup, field query, field value map, submitInstance), Questionnaire.java, QuestionnaireField.java, QuestionnaireInstance.java, QuestionnaireFieldValue.java (B2.1 LAZY/cascade), detailQuestionnaires25.jsp (real actions replacing placeholders)
+
+No database changes (uses V039 from Session 32).

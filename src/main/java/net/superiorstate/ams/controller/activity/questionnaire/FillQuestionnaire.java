@@ -61,13 +61,11 @@ public class FillQuestionnaire extends HttpServlet {
                 return;
             }
 
-            // Native mode: render form
-            List<QuestionnaireField> fields = qi.getQuestionnaire().getFieldList();
-            if (fields == null) {
-                fields = List.of();
-            }
-            // Filter suppressed fields
-            fields = fields.stream().filter(f -> !f.isSuppressed()).toList();
+            // Native mode: load fields via direct query (avoids EclipseLink nested JOIN FETCH issue)
+            List<QuestionnaireField> fields = QuestionnaireService.getFieldsForQuestionnaire(
+                    em, qi.getQuestionnaire().getId());
+            System.out.println("[FillQ] Loaded " + fields.size() + " fields for questionnaire '"
+                    + qi.getQuestionnaire().getName() + "' (id=" + qi.getQuestionnaire().getId() + ")");
 
             // Load saved values
             Map<String, String> defaults = QuestionnaireService.getFieldValueMap(em, qi);
@@ -136,10 +134,9 @@ public class FillQuestionnaire extends HttpServlet {
                 return;
             }
 
-            // Load non-suppressed fields
-            List<QuestionnaireField> fields = qi.getQuestionnaire().getFieldList();
-            if (fields == null) fields = List.of();
-            fields = fields.stream().filter(f -> !f.isSuppressed()).toList();
+            // Load non-suppressed fields via direct query
+            List<QuestionnaireField> fields = QuestionnaireService.getFieldsForQuestionnaire(
+                    em, qi.getQuestionnaire().getId());
 
             // Save field values (single transaction)
             em.getTransaction().begin();
@@ -177,13 +174,9 @@ public class FillQuestionnaire extends HttpServlet {
             // Capture submitter info
             String submitterName = request.getParameter("_submitter_name");
             String submitterEmail = request.getParameter("_submitter_email");
-            if (submitterName != null && !submitterName.isBlank()) qi.setSubmittedByName(submitterName.trim());
-            if (submitterEmail != null && !submitterEmail.isBlank()) qi.setSubmittedByEmail(submitterEmail.trim());
 
-            // Update status
-            qi.setStatus("SUBMITTED");
-            qi.setDateSubmitted(Timestamp.from(Instant.now()));
-            em.persist(qi);
+            // Submit instance — sets status, submitter info, creates Note on activity
+            QuestionnaireService.submitInstance(qi.getId(), submitterName, submitterEmail, em, null);
             em.getTransaction().commit();
 
             // Set up confirmation page
