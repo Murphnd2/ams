@@ -10,7 +10,7 @@
       <c:choose>
         <c:when test="${webLink.linkType.id == 1}">
           <a class="btn btn-sm btn-outline-secondary w-100"
-             href="${pageContext.request.contextPath}/DownloadActivityDoc?fileId=${webLink.linkPath}"
+             href="${pageContext.request.contextPath}/ShowFileUpload?doc=${webLink.linkPath}"
              target="_blank">
             <i class="bi bi-download"></i> ${webLink.plainText.toUpperCase()}
           </a>
