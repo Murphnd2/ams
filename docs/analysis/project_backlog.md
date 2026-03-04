@@ -62,7 +62,7 @@
 | T3 | Data layer rename | HIGH | ✅ Done | All cryptic names replaced. |
 | T4 | Modal servlet analysis | MED | ✅ Done | All modals mapped to servlets. |
 | T5 | Sequence builder old page cleanup | LOW | 📋 Planned | Delete old builder JSPs/servlets after new builder proven. |
-| T6 | Database migration tracking | HIGH | ✅ Done | 36 versions tracked (V001–V036). V001-V024 on all environments, V025-V031 on demo/BPO/master, V032-V036 not yet applied. |
+| T6 | Database migration tracking | HIGH | ✅ Done | 37 versions tracked (V001–V037). V001-V024 on all environments, V025-V037 on Demo/BPO/Master. Not applied to production (V024) or local dev. |
 | T7 | Docs cleanup & consolidation | MED | ✅ Done | This audit. Session summaries consolidated. Obsolete docs flagged for deletion. |
 | T8 | Empty checklist / todo list handling | LOW | 💡 Backlog | Remove task-153 dummy workaround. Audit display chain for empty todo list safety. |
 | T9 | Refactor manual setup to dynamic LOS | CONF | 📋 Planned | `GenerateProp25` uses hardcoded `q1`–`q8` flags. Needs refactor to dynamic LOS from DB. |
@@ -117,11 +117,10 @@ Built and functional. Client-side JS filtering. Placeholder cards for Agent Pipe
 | Instance | URL | IP | Type | Schema | Status |
 |----------|-----|----|------|--------|--------|
 | Production PSP | https://superiorstate.biz | (production IP) | PSP | V024 | Running |
-| Demo PSP | https://demo.superiorstate.biz | 192.152.28.73 | PSP | V031 | Running, seeded with demo data |
-| BPO | https://bpo.superiorstate.biz | 158.222.102.168 (DHCP) | BPO | V031 | Running, initialized, partnered with Demo PSP |
-| Master | master.superiorstate.biz | 208.94.39.77 | Master image | V031 | Snapshot v7 taken, stopped |
+| Demo PSP | https://demo.superiorstate.biz | 192.152.28.73 | PSP | V037 | Running, seeded with demo data, release V0.37.0 |
+| BPO | https://bpo.superiorstate.biz | 158.222.102.168 (DHCP) | BPO | V037 | Running, initialized, partnered with Demo PSP, release V0.37.0 |
+| Master | master.superiorstate.biz | 208.94.39.77 | Master image | V037 | Snapshot v8 taken, stopped |
 
 **Migrations pending application:**
-- V032–V036: Not applied anywhere yet (code complete, in repo)
-- V025–V031: Applied to Demo/BPO/Master only; not on production or local dev
+- V025–V037: Applied to Demo/BPO/Master. Not applied to production (V024) or local dev.
 - Production intentionally isolated at V024 until conference demo infrastructure is proven

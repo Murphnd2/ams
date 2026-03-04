@@ -10,9 +10,9 @@
 
 Before deploying any PSP, ensure:
 
-- [ ] Master VM snapshot is current (`SSA-Master-Base-v7-2026-03-02` or newer)
+- [ ] Master VM snapshot is current (`SSA-Master-Base-v8-2026-03-04` or newer)
 - [ ] Latest release published to GitHub Releases (WAR + any migration SQL)
-- [ ] `schema_version` table is up to date on the master image (currently V031)
+- [ ] `schema_version` table is up to date on the master image (currently V037)
 - [ ] Health check script installed at `/opt/ssa/scripts/healthcheck.sh` on master image
 - [ ] PSP has provided: company name, contact info, email, domain name, SMTP credentials, Summit path, tax ID
 
@@ -285,16 +285,17 @@ When the master image needs updating (new schema baseline, script changes, infra
 10. Update this runbook's Pre-Deployment Prerequisites with the new snapshot name
 11. Update `docs/deployment_strategy.md` §2.2 with the new image version
 
-### Current Master Image: `SSA-Master-Base-v7-2026-03-02`
+### Current Master Image: `SSA-Master-Base-v8-2026-03-04`
 
-**What's on the v7 image:**
+**What's on the v8 image:**
 - Ubuntu 24.x LTS, Java 17, Tomcat 10, MySQL 8, Certbot
 - MySQL configured with `lower_case_table_names = 1` (required — EclipseLink generates uppercase table names, Linux MySQL defaults to case-sensitive)
 - `ams_app` MySQL user created with password matching `context.xml`
-- Schema at V031 with `schema_version` table populated (31 versions tracked)
+- Schema at V037 with `schema_version` table populated (37 versions tracked)
 - Full `ssa.properties` template with all keys including `SYSTEM_URL=` (PSP_ID=UNINITIALIZED)
 - Branding directory (`/var/lib/tomcat10/branding/`) with systemd write override
 - Scripts: backup.sh, update.sh, healthcheck.sh (reads from ssa.properties)
+- `update.sh` patched with INSERT IGNORE fix (prevents duplicate key on self-registering migrations)
 - Cron jobs: backup 2:00 AM, update 2:30 AM, health check 6:00 AM UTC
 - No WAR deployed (pulled via update.sh after cloning)
 
@@ -332,7 +333,7 @@ LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu mysql --socket=/var/run/mysqld/mysqld.
 | SSL renewal log | `/opt/ssa/logs/ssl-renewal.log` |
 | Current version | `/opt/ssa/current_version.txt` |
 | Wasabi bucket | `ssa-backups/<PSP_ID>/db/` |
-| Master snapshot | `SSA-Master-Base-v7-2026-03-02` |
+| Master snapshot | `SSA-Master-Base-v8-2026-03-04` |
 | Master VM SSH | `ssh root@master.superiorstate.biz` (208.94.39.77) |
 
 ---

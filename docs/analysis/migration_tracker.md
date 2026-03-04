@@ -2,7 +2,7 @@
 
 Tracks database schema versions across environments.
 
-**Last Updated:** March 3, 2026
+**Last Updated:** March 4, 2026
 
 ## Environments
 
@@ -12,9 +12,9 @@ Tracks database schema versions across environments.
 | Local (Home) | 127.0.0.1:3306 | beta_ssa | Home workstation |
 | Local (either) | 127.0.0.1:3306 | dev_ssa | Initialization testing (wiped regularly) |
 | Production | superiorstate.biz | beta_ssa | Live server |
-| Demo PSP | demo.superiorstate.biz | beta_ssa | Conference demo PSP (V031, seeded) |
-| BPO | bpo.superiorstate.biz | beta_ssa | BPO instance (V031, initialized) |
-| Master | master.superiorstate.biz | beta_ssa | Snapshot v7 (V031, stopped) |
+| Demo PSP | demo.superiorstate.biz | beta_ssa | Conference demo PSP (V037, seeded, release V0.37.0) |
+| BPO | bpo.superiorstate.biz | beta_ssa | BPO instance (V037, initialized, release V0.37.0) |
+| Master | master.superiorstate.biz | beta_ssa | Snapshot v8 (V037, stopped) |
 
 ## Current Highest Version: V037
 
@@ -63,12 +63,12 @@ Individual migration scripts are no longer stored in the repo. The baseline dump
 | V029 | Add is_active column to user table for user deactivation | ⬜ | ⬜ | ⬜ | ⬜ | ✅ | ✅ | ✅ |
 | V030 | BPO cross-system foundation: psp_clients, delegated_todo, API columns, todo_note GUID | ⬜ | ⬜ | ⬜ | ⬜ | ✅ | ✅ | ✅ |
 | V031 | ToDoNote cross-system: nullable todo_id/created_by_id, author_name column | ⬜ | ⬜ | ⬜ | ⬜ | ✅ | ✅ | ✅ |
-| V032 | Approved vendors registry table | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
-| V033 | ToDoNote attachments: todo_note_id FK on weblink | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
-| V034 | Add template_key to applicationsection for starter packages | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
-| V035 | Feature headline column and description widening | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
-| V036 | Proposal section table for composable proposal content | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
-| V037 | Add LOS/Enhancement scoping to proposal_section | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
+| V032 | Approved vendors registry table | ⬜ | ⬜ | ⬜ | ⬜ | ✅ | ✅ | ✅ |
+| V033 | ToDoNote attachments: todo_note_id FK on weblink | ⬜ | ⬜ | ⬜ | ⬜ | ✅ | ✅ | ✅ |
+| V034 | Add template_key to applicationsection for starter packages | ⬜ | ⬜ | ⬜ | ⬜ | ✅ | ✅ | ✅ |
+| V035 | Feature headline column and description widening | ⬜ | ⬜ | ⬜ | ⬜ | ✅ | ✅ | ✅ |
+| V036 | Proposal section table for composable proposal content | ⬜ | ⬜ | ⬜ | ⬜ | ✅ | ✅ | ✅ |
+| V037 | Add LOS/Enhancement scoping to proposal_section | ⬜ | ⬜ | ⬜ | ⬜ | ✅ | ✅ | ✅ |
 
 ## Notes
 
@@ -87,7 +87,7 @@ Individual migration scripts are no longer stored in the repo. The baseline dump
 - V031 makes todo_note.todo_id and todo_note.created_by_id nullable for cross-system notes where the originating entity doesn't exist locally. Adds author_name column for display when created_by is null.
 - V032 creates the approved_vendors table for a centralized BPO vendor directory. Table exists on all deployments (same WAR/schema), only populated on master.
 - V033 adds todo_note_id FK column to the weblink table, enabling file attachments on BPO task notes. Follows the same pattern as email_id FK for email attachments.
-- Demo PSP, BPO, and Master environments all provisioned from the V031 master snapshot `SSA-Master-Base-v7-2026-03-02`.
+- Demo PSP, BPO, and Master environments upgraded to V037 via release V0.37.0 on March 4, 2026. Master snapshot v8 (`SSA-Master-Base-v8-2026-03-04`).
 - Production remains at V024 and is intentionally isolated from conference demo infrastructure.
 - V034 adds nullable template_key VARCHAR(50) to applicationsection with a unique index scoped to (template_key, psp_id). Used for starter package duplicate detection. NULL values (manual/seeded sections) are unaffected by the unique constraint.
 - V035 adds nullable headline VARCHAR(200) to feature table for short punchy summary text. Widens description from VARCHAR(500) to VARCHAR(2000) for paragraph content. Part of the proposal customization feature (feature sales blurb upgrade).

@@ -16,10 +16,9 @@
 ## Current State
 - **Branch:** `feature/proposal-customization` (from `refactor/modernize-architecture`)
 - **Latest migration:** V037
-- **Session count:** 29
-- V025-V033 applied to Demo PSP, BPO, and Master only; not yet applied to production or local dev
-- V034 not yet applied anywhere (starter package template_key)
-- V035-V037 not yet applied anywhere (proposal customization + section scoping)
+- **Session count:** 30
+- V025-V037 applied to Demo PSP, BPO, and Master; not yet applied to production or local dev
+- Master snapshot v8 taken 2026-03-04 (V037, fixed update.sh, fixed healthcheck.sh)
 
 ## Database Migrations
 - Current highest version: **V037**

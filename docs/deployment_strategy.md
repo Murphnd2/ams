@@ -49,8 +49,8 @@ A "gold master" VM snapshot is maintained with the full stack pre-installed and 
 
 **Pre-installed on the master image:**
 
-- Empty beta_ssa database schema at V031 (all tables, views, stored procedures — no PSP data)
-- `schema_version` table populated with V001–V031 tracking records
+- Empty beta_ssa database schema at V037 (all tables, views, stored procedures — no PSP data)
+- `schema_version` table populated with V001–V037 tracking records
 - MySQL configured with `lower_case_table_names = 1` (required for EclipseLink compatibility on Linux)
 - `ams_app` MySQL user created with password matching `context.xml`
 - No WAR deployed (clones pull via GitHub Releases update script)
@@ -60,7 +60,7 @@ A "gold master" VM snapshot is maintained with the full stack pre-installed and 
 - Health check script (cron job) — see §7
 - Certbot installed (but not yet configured — requires DNS to be pointed first)
 
-**Current snapshot:** `SSA-Master-Base-v7-2026-03-02` (V031 schema, `lower_case_table_names=1`, no WAR)
+**Current snapshot:** `SSA-Master-Base-v8-2026-03-04` (V037 schema, `lower_case_table_names=1`, `update.sh` INSERT IGNORE fix, no WAR)
 
 **Master VPS:** 208.94.39.77 (`master.superiorstate.biz`)
 
@@ -445,9 +445,9 @@ Replace the entire §12 block in `docs/deployment_strategy.md` with:
 | Instance | URL | IP | Type | Schema | Status |
 |----------|-----|----|------|--------|--------|
 | Production PSP | https://superiorstate.biz | (production IP) | PSP | V024 | Running |
-| Demo PSP | https://demo.superiorstate.biz | 192.152.28.73 (static) | PSP | V031 | Running, seeded with demo data |
-| BPO | https://bpo.superiorstate.biz | 158.222.102.168 (DHCP) | BPO | V031 | Running, initialized, partnered with Demo PSP |
-| Master | master.superiorstate.biz | 208.94.39.77 | Master image | V031 | Snapshot v7 (`SSA-Master-Base-v7-2026-03-02`), stopped |
+| Demo PSP | https://demo.superiorstate.biz | 192.152.28.73 (static) | PSP | V037 | Running, seeded with demo data, release V0.37.0 |
+| BPO | https://bpo.superiorstate.biz | 158.222.102.168 (DHCP) | BPO | V037 | Running, initialized, partnered with Demo PSP, release V0.37.0 |
+| Master | master.superiorstate.biz | 208.94.39.77 | Master image | V037 | Snapshot v8 (`SSA-Master-Base-v8-2026-03-04`), stopped |
 
 **Notes:**
 - Demo PSP and BPO are partnered — cross-system BPO task delegation is functional between the two instances.

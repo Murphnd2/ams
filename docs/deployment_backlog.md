@@ -375,6 +375,38 @@ Fixed critical MySQL configuration issues discovered during BPO VPS standup. Cha
 
 ---
 
+### D-48: Apply V033 Migration (BPO Note Attachments) ✅
+
+**Completed:** March 4, 2026
+
+Applied to Demo, BPO, and Master via release V0.37.0 (demo/BPO already had V033 from v0.33.0 release; master applied manually).
+
+---
+
+### D-49: Update Healthcheck Script + Config on Master VPS Image ✅
+
+**Completed:** March 4, 2026
+
+Fixed healthcheck.sh deployed to master from repo. `ams_app` password verified matching across MySQL user, `context.xml`, and `ssa.properties`. Bundled into v8 snapshot.
+
+---
+
+### D-55: Fix update.sh Duplicate Insert Bug ✅
+
+**Completed:** March 4, 2026
+
+The `update.sh` script's post-migration `INSERT INTO schema_version` conflicted with the self-registering `INSERT IGNORE` inside each migration SQL file, causing `ERROR 1062 (Duplicate entry)` and aborting the update. Fixed by changing to `INSERT IGNORE INTO schema_version` on all three VPS boxes (demo, BPO, master). Must also be applied to the repo copy of the script and baked into the next master snapshot.
+
+---
+
+### D-56: Master VPS v8 Snapshot ✅
+
+**Completed:** March 4, 2026
+
+Snapshot: `SSA-Master-Base-v8-2026-03-04`. Changes from v7: schema upgraded V031→V037, `update.sh` INSERT IGNORE fix, fixed `healthcheck.sh` from repo, `ams_app` MySQL password realigned, blank schema dump updated to V037. Clean state: no WAR, logs cleared, PSP_ID=UNINITIALIZED, SYSTEM_URL blank, Tomcat stopped.
+
+---
+
 ## Open Items
 
 ### D-07: Externalize Database Connection
@@ -488,39 +520,6 @@ Additional vendors can be added via direct SQL on the master installation. A fut
 
 ---
 
-### D-48: Apply V033 Migration (BPO Note Attachments)
-
-**Priority:** MEDIUM — Required before deploying note attachment WAR
-**Status:** Not started
-
-Run `V033__todo_note_attachments.sql` on target environments to add `todo_note_id` FK column to weblink table. Required on any environment where BPO note attachments will be used (Demo PSP, BPO, Master). No data migration needed — column is nullable and only populated by new note+file submissions.
-
----
-
-### D-49: Update Healthcheck Script + Config on Master VPS Image
-
-**Priority:** HIGH — Bundle with next master image update/snapshot
-**Status:** Not started
-
-The healthcheck script on the master VPS image had multiple bugs causing false "Not initialized" and "Query failed" results on all cloned deployments. Fixed version is committed in the repo at `docs/scripts/healthcheck.sh` and deployed manually to demo and BPO.
-
-**Bugs fixed:** (1) MySQL Acronis library workaround missing, (2) used root instead of ams_app credentials, (3) SSL_PORT init check too specific, (4) SMTP config read from DB instead of ssa.properties, (5) set -e caused silent exits.
-
-**Action when updating master:**
-1. Copy `docs/scripts/healthcheck.sh` from the repo to `/opt/ssa/scripts/healthcheck.sh` on master
-2. `chmod +x /opt/ssa/scripts/healthcheck.sh`
-3. Verify `ssa.properties` has correct `DB_PASSWORD` matching the `ams_app` MySQL user password and matching `context.xml`
-4. Verify `ssa.properties` has correct `SYS_HEALTH_SMTP_PASSWORD` matching the SMTP2GO amsSystemHealth account
-5. Verify `context.xml` has the JNDI `<Resource>` block with correct `ams_app` password
-6. Take new snapshot
-
-**Critical note:** All three password locations must match for DB access to work:
-- MySQL user password (set via ALTER USER in MySQL shell)
-- `context.xml` password attribute (used by Tomcat JNDI for app DB connections)
-- `ssa.properties` DB_PASSWORD (used by healthcheck and backup scripts)
-
----
-
 ### D-50: Set Unique Hostnames on VPS Boxes
 
 **Priority:** LOW
@@ -574,7 +573,7 @@ Health reports show 250-300+ errors/day, mostly bots and scanners. Real errors g
 ### D-53: Starter Packages for Application Sections
 
 **Priority:** MEDIUM
-**Status:** Code complete — needs V034 migration applied and browser testing
+**Status:** Migrations applied to Demo/BPO/Master — pending browser testing
 
 **Prerequisite:** V034 migration (`template_key` column on `applicationsection`)
 
@@ -594,7 +593,7 @@ New "Load Starter Package" feature on the Service Manager page. PSP admins can l
 ### D-54: Proposal Customization — Apply V035+V036 and Browser Test
 
 **Priority:** MEDIUM
-**Status:** Code complete — needs V035+V036 applied and browser testing
+**Status:** Migrations applied to Demo/BPO/Master — pending browser testing
 
 **Prerequisites:** V035 + V036 migrations applied to target environment
 
