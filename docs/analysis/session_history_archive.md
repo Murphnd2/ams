@@ -2,7 +2,7 @@
 
 > **Purpose:** Consolidated historical record of all build sessions. For current project state, see `project_backlog.md`. For current architecture, see `application_flow.md` and `entity_reference.md`.
 >
-> **Last Updated:** March 3, 2026
+> **Last Updated:** March 4, 2026
 
 ---
 
@@ -1065,3 +1065,87 @@ Made the BPO Dashboard and PSP Dashboard fill the full viewport height on deskto
 - **Modified (3):** bpoHome25.jsp, pspDashboard25.jsp, toDoCurrentList25.jsp
 
 No database changes.
+
+---
+
+## March 4, 2026 — Proposal Section Scoping (Session 29)
+
+Added LOS/Enhancement scoping to CUSTOM proposal sections so they only render when relevant services are proposed.
+
+### V037 Migration
+- Added `scope VARCHAR(10) DEFAULT 'ALL'` to `proposal_section`
+- Created `proposalsectionlos` and `proposalsectionenhancement` join tables with composite PKs and ON DELETE CASCADE
+
+### Entity + Servlet
+- **ProposalSection.java** — Added `scope` field (ALL/SCOPED), `@ManyToMany` `losList` and `enhancementList` with `new ArrayList<>()` initializers
+- **ProposalSettings.java** — New `updateScope` POST case: receives scope radio + LOS/Enhancement checkbox arrays, clears and rebuilds join table entries
+- **ViewProposal.java** — Scope filtering: SCOPED sections only render when proposal's LOS/Enhancements overlap with section's scoping lists
+
+### JSP
+- **proposalSettings.jsp** — "Scoped" badge on section list, Display Scope card with radio toggle + checkbox grid on CUSTOM sections
+
+### Files Changed
+- **New (1):** V037 migration
+- **Modified (5):** ProposalSection.java, ProposalSettings.java, ViewProposal.java, proposalSettings.jsp, migration_tracker.md, schema_version_migration.sql
+
+---
+
+## March 4, 2026 — Proposal Feature Display Fix (Session 30)
+
+Fixed features not rendering on proposals. Root cause: feature loading used RateTable module IDs but Features attach to the direct-FK module.
+
+- **ViewProposal.java** — Resolves direct-FK modules per LOS/Enhancement; JOIN FETCH `sm.los` + `sm.enhancement`
+- **proposalFeatures.jsp** — LOS/Enhancement matching changed from M:N list to direct FK check
+
+---
+
+## March 4, 2026 — BPO/PSP Communication Fixes (Session 31, V038)
+
+Fixed 4 issues and added 2 enhancements to BPO/PSP cross-system task management.
+
+- **Issue 5 (Vendor-only auto-complete):** TaskCompletedCallbackApi auto-closes vendor-only tasks
+- **Issue 6 (Display state priority):** ToDoOut25.computeDisplayState() rewritten with correct priority chain
+- **Issue 1 (Session refresh):** UpdateTask25 calls computeAllDisplayStates() after save
+- **Issue 8 (Mutual exclusion):** Employee/vendor sourcing mutually exclusive in ManageTask25
+- **Enhancement 3 (PSP filter):** BPO dashboard PSP filter dropdown with sessionStorage persistence
+- **Enhancement 4 (Sort order):** V038 adds sort_order to delegated_todo for BPO ordering
+
+---
+
+## March 4, 2026 — Questionnaire System Phase 1 (Session 32, V039)
+
+Built the foundation for the Questionnaire system (Track B2): database schema, JPA entities, seed data, and DatabaseInitializer integration.
+
+### V039 Migration — 7 Tables
+- `questionnaire` — template definition with dual-mode (native fields vs external URL pointer to Jotform)
+- `questionnaire_field` — individual questions with `section_name` grouping column, BIGINT auto PK
+- `questionnaire_instance` — one filling per activity with UUID-based public access, status lifecycle (NOT_STARTED → IN_PROGRESS → SUBMITTED → REVIEWED, with REOPENED)
+- `questionnaire_field_value` — answers (TEXT), unique per instance+field
+- `questionnaire_los`, `questionnaire_enhancement`, `questionnaire_serviceitem` — M:N scoping join tables
+
+### JPA Entities (4 new)
+- Package: `net.superiorstate.ams.model.activity.questionnaire`
+- **Questionnaire.java** — `isExternal()`, `resolveExternalUrl(erName, activityId, instanceGuid)` merge token helper, M:N scoping to LOS/Enhancement/ServiceItem, Comparable by sortOrder
+- **QuestionnaireField.java** — BIGINT auto PK (not String PK like ApplicationField), `getSelectOptionsList()` pipe-split, `sectionName` for UI grouping
+- **QuestionnaireInstance.java** — `@PrePersist` UUID generation, Assignee FK for activity, ToDo FK for optional task gating, status lifecycle fields
+- **QuestionnaireFieldValue.java** — FK to instance + field, TEXT value
+
+### Seed Data
+- `src/main/resources/questionnaire/questionnaire_seeds.json` — 9 starter templates:
+  - 3 external (Jotform): Section 125 Eligibility, Section 105 Participation, COBRA Renewal (Jotform)
+  - 6 native: COBRA Renewal, FSA Testing, HSA Custodian, Debit Card Order, Bank Info, Renewal Confirmation
+- **QuestionnaireLoader.java** — Two-pass loader (persist then scope-link), duplicate detection via template_key, flattens JSON sections into fields with sequential sortOrder and sectionName
+
+### Integration
+- **DatabaseInitializer.java** — QuestionnaireLoader.loadQuestionnaires() called after assignAllSectionsToLos, before createInitializationChecklist (non-fatal try/catch)
+
+### Design Doc
+- `docs/analysis/questionnaire_system_design.md` — Full 7-phase design covering admin UI, public form servlet, auto-attach, activity detail integration, automation email tokens, and completion gating
+
+### Files Changed
+- **New (7):** V039 migration, Questionnaire.java, QuestionnaireField.java, QuestionnaireInstance.java, QuestionnaireFieldValue.java, QuestionnaireLoader.java, questionnaire_seeds.json
+- **Copied (1):** questionnaire_system_design.md
+- **Modified (3):** DatabaseInitializer.java, migration_tracker.md, schema_version_migration.sql
+
+### Database Changes
+- **V039:** 4 entity tables + 3 join tables with unique indexes, FK cascades, and self-registration

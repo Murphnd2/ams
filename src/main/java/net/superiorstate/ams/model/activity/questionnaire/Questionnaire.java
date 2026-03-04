@@ -1,0 +1,130 @@
+package net.superiorstate.ams.model.activity.questionnaire;
+
+import jakarta.persistence.*;
+import net.superiorstate.ams.model.activity.checklist.sequences.support.ServiceItem;
+import net.superiorstate.ams.model.general.PSP;
+import net.superiorstate.ams.model.sales.offering.Enhancement;
+import net.superiorstate.ams.model.sales.offering.LOS;
+
+import java.util.ArrayList;
+import java.util.List;
+
+@Entity
+@Table(name = "questionnaire")
+public class Questionnaire implements Comparable<Questionnaire> {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "questionnaire_id")
+    private Long id;
+
+    @ManyToOne
+    @JoinColumn(name = "psp_id", nullable = false)
+    private PSP psp;
+
+    @Column(name = "name", columnDefinition = "varchar(100)", nullable = false)
+    private String name;
+
+    @Column(name = "description", columnDefinition = "varchar(500)")
+    private String description;
+
+    @Column(name = "activity_type", columnDefinition = "varchar(20) DEFAULT 'ALL'", nullable = false)
+    private String activityType = "ALL";
+
+    @Column(name = "external_url", columnDefinition = "varchar(500)")
+    private String externalUrl;
+
+    @Column(name = "sort_order")
+    private int sortOrder;
+
+    @Column(name = "suppressed", columnDefinition = "TINYINT")
+    private boolean suppressed;
+
+    @Column(name = "template_key", columnDefinition = "varchar(50)")
+    private String templateKey;
+
+    @ManyToMany
+    @JoinTable(name = "questionnaire_los",
+            joinColumns = @JoinColumn(name = "questionnaire_id"),
+            inverseJoinColumns = @JoinColumn(name = "los_id"))
+    private List<LOS> losList = new ArrayList<>();
+
+    @ManyToMany
+    @JoinTable(name = "questionnaire_enhancement",
+            joinColumns = @JoinColumn(name = "questionnaire_id"),
+            inverseJoinColumns = @JoinColumn(name = "enhancement_id"))
+    private List<Enhancement> enhancementList = new ArrayList<>();
+
+    @ManyToMany
+    @JoinTable(name = "questionnaire_serviceitem",
+            joinColumns = @JoinColumn(name = "questionnaire_id"),
+            inverseJoinColumns = @JoinColumn(name = "purpose_id"))
+    private List<ServiceItem> serviceItemList = new ArrayList<>();
+
+    @OneToMany(mappedBy = "questionnaire")
+    @OrderBy("sortOrder")
+    private List<QuestionnaireField> fieldList;
+
+    public Questionnaire() {}
+
+    /** True if this questionnaire points to an external form (Jotform, etc.) */
+    public boolean isExternal() {
+        return externalUrl != null && !externalUrl.isBlank();
+    }
+
+    /** Resolves merge tokens in the external URL. Returns null if not external. */
+    public String resolveExternalUrl(String erName, Long activityId, String instanceGuid) {
+        if (!isExternal()) return null;
+        String resolved = externalUrl;
+        if (erName != null) resolved = resolved.replace("{erName}", erName);
+        if (activityId != null) resolved = resolved.replace("{activityId}", String.valueOf(activityId));
+        if (instanceGuid != null) resolved = resolved.replace("{instanceGuid}", instanceGuid);
+        return resolved;
+    }
+
+    @Override
+    public int compareTo(Questionnaire o) {
+        return Integer.compare(this.sortOrder, o.sortOrder);
+    }
+
+    // --- Getters and Setters ---
+
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
+
+    public PSP getPsp() { return psp; }
+    public void setPsp(PSP psp) { this.psp = psp; }
+
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
+
+    public String getDescription() { return description; }
+    public void setDescription(String description) { this.description = description; }
+
+    public String getActivityType() { return activityType; }
+    public void setActivityType(String activityType) { this.activityType = activityType; }
+
+    public String getExternalUrl() { return externalUrl; }
+    public void setExternalUrl(String externalUrl) { this.externalUrl = externalUrl; }
+
+    public int getSortOrder() { return sortOrder; }
+    public void setSortOrder(int sortOrder) { this.sortOrder = sortOrder; }
+
+    public boolean isSuppressed() { return suppressed; }
+    public void setSuppressed(boolean suppressed) { this.suppressed = suppressed; }
+
+    public String getTemplateKey() { return templateKey; }
+    public void setTemplateKey(String templateKey) { this.templateKey = templateKey; }
+
+    public List<LOS> getLosList() { return losList; }
+    public void setLosList(List<LOS> losList) { this.losList = losList; }
+
+    public List<Enhancement> getEnhancementList() { return enhancementList; }
+    public void setEnhancementList(List<Enhancement> enhancementList) { this.enhancementList = enhancementList; }
+
+    public List<ServiceItem> getServiceItemList() { return serviceItemList; }
+    public void setServiceItemList(List<ServiceItem> serviceItemList) { this.serviceItemList = serviceItemList; }
+
+    public List<QuestionnaireField> getFieldList() { return fieldList; }
+    public void setFieldList(List<QuestionnaireField> fieldList) { this.fieldList = fieldList; }
+}

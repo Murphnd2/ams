@@ -1,0 +1,649 @@
+{
+  "_metadata": {
+    "description": "Questionnaire seed data loaded by DatabaseInitializer. Each entry creates a Questionnaire and (for native mode) its QuestionnaireFields. External-mode entries have an external_url and no sections/fields.",
+    "source_forms": {
+      "cobra_renewal": "https://form.jotform.com/241552616097055 (122 submissions)",
+      "125_eligibility": "https://form.jotform.com/92684899657181 (2140 submissions)",
+      "105_participation": "https://form.jotform.com/240454860219153 (157 submissions)"
+    },
+    "conditional_logic": "FUTURE ITEM — Native-mode questionnaires do not support conditional field visibility in v1. Forms requiring conditional logic use external mode (Jotform URLs). The 125 Eligibility and 105 Participation forms have heavy conditional logic (business-structure-dependent instructional text, calculated fields, tutorial pages) that drives the external mode decision.",
+    "merge_tokens": {
+      "{erName}": "Employer name from activity's primary contact",
+      "{activityId}": "AMS activity ID (assignee.id)",
+      "{instanceGuid}": "QuestionnaireInstance UUID for submission correlation"
+    },
+    "generated": "2026-03-04"
+  },
+  "questionnaires": [
+    {
+      "template_key": "q_125_eligibility",
+      "name": "Section 125 Eligibility Testing",
+      "description": "Collects employee counts, business structure, affiliated business information, and benefit offering details required to perform Section 125 (Cafeteria Plan) eligibility testing. Determines regulated employee classification based on business type.",
+      "activity_type": "RENEWAL",
+      "external_url": "https://form.jotform.com/92684899657181?erName={erName}&ref={instanceGuid}",
+      "scoping": {
+        "los": ["POP/125"]
+      },
+      "sections": []
+    },
+    {
+      "template_key": "q_105_participation",
+      "name": "Section 105 Participation Test",
+      "description": "Collects employee headcount data, HCE identification, and plan participation details required for Section 105(h) nondiscrimination testing of self-insured health plans (HRA, MERP, etc.).",
+      "activity_type": "RENEWAL",
+      "external_url": "https://form.jotform.com/240454860219153?erName={erName}&ref={instanceGuid}",
+      "scoping": {
+        "los": ["HRA", "MERP"]
+      },
+      "sections": []
+    },
+    {
+      "template_key": "q_cobra_renewal_jf",
+      "name": "COBRA Renewal Questionnaire (Jotform)",
+      "description": "External Jotform version of the COBRA Renewal Questionnaire. Preserves original conditional logic for repeating plan blocks. PSPs can choose between this and the native version — suppress whichever is not used.",
+      "activity_type": "RENEWAL",
+      "external_url": "https://form.jotform.com/241552616097055?erName={erName}&ref={instanceGuid}",
+      "scoping": {
+        "enhancements": ["COBRA"]
+      },
+      "sections": []
+    },
+    {
+      "template_key": "q_cobra_renewal",
+      "name": "COBRA Renewal Questionnaire",
+      "description": "Collects renewal rate changes, open enrollment details, and plan information from employers for COBRA administration. Responses drive updated payment coupons and participant notifications.",
+      "activity_type": "RENEWAL",
+      "external_url": null,
+      "scoping": {
+        "enhancements": ["COBRA"]
+      },
+      "sections": [
+        {
+          "section_name": "Open Enrollment",
+          "section_description": "COBRA participants and qualified beneficiaries must be given notification about open enrollment, rate changes, and benefit changes.",
+          "fields": [
+            {
+              "field_key": "cobra_open_enrollment_allowed",
+              "label": "Are employees allowed to add / change coverage for your upcoming benefit renewal?",
+              "field_type": "RADIO",
+              "select_options": "YES|NO",
+              "is_required": true
+            },
+            {
+              "field_key": "cobra_benefits_changing",
+              "label": "Are any of your benefits changing?",
+              "field_type": "RADIO",
+              "select_options": "YES|NO",
+              "is_required": true
+            },
+            {
+              "field_key": "cobra_what_changes",
+              "label": "What will change with some/all of your renewing benefits?",
+              "field_type": "CHECKBOX",
+              "select_options": "The cost (monthly premium) of the benefit.|The design (deductible, coinsurance, copay, etc.).|New benefits are being added.|Some benefits are being dropped.",
+              "is_required": false,
+              "help_text": "Check all that apply. Only applicable if benefits are changing."
+            },
+            {
+              "field_key": "cobra_change_summary_created",
+              "label": "Have you created a summary of these changes for your employees?",
+              "field_type": "RADIO",
+              "select_options": "YES|NO",
+              "is_required": false
+            },
+            {
+              "field_key": "cobra_enrollment_forms",
+              "label": "Are there specific enrollment forms you are distributing to be completed prior to or during open enrollment?",
+              "field_type": "RADIO",
+              "select_options": "YES|NO",
+              "is_required": false
+            },
+            {
+              "field_key": "cobra_sending_oe_info",
+              "label": "Are you sending open enrollment information to active employees for this benefit renewal?",
+              "field_type": "RADIO",
+              "select_options": "YES|NO",
+              "is_required": false
+            }
+          ]
+        },
+        {
+          "section_name": "Plan #1",
+          "section_description": "Enter plan type, rate structure, and rate details for your first renewing benefit.",
+          "fields": [
+            {
+              "field_key": "cobra_plan1_name",
+              "label": "Plan Name",
+              "field_type": "TEXT",
+              "is_required": true
+            },
+            {
+              "field_key": "cobra_plan1_type",
+              "label": "Plan Type",
+              "field_type": "TEXT",
+              "is_required": true,
+              "help_text": "e.g., Medical, Dental, Vision, Life, etc."
+            },
+            {
+              "field_key": "cobra_plan1_rate_structure",
+              "label": "Rate Structure",
+              "field_type": "RADIO",
+              "select_options": "Individually Rated|Banded|Tiered (Employee, Family, etc..)",
+              "is_required": true
+            },
+            {
+              "field_key": "cobra_plan1_rates",
+              "label": "Tiered Rates",
+              "field_type": "TEXTAREA",
+              "is_required": false,
+              "help_text": "Enter each tier and its rate, e.g., Employee Only: $500, Employee+Spouse: $1100, Family: $1500"
+            },
+            {
+              "field_key": "cobra_plan1_rates_good_through",
+              "label": "Rates Good Through",
+              "field_type": "DATE",
+              "is_required": true
+            },
+            {
+              "field_key": "cobra_plan1_coverage_end",
+              "label": "When does coverage end after a qualifying event?",
+              "field_type": "TEXT",
+              "is_required": false,
+              "help_text": "e.g., End of the month, Last day employed, etc."
+            },
+            {
+              "field_key": "cobra_plan1_another_benefit",
+              "label": "Do you have another benefit renewing?",
+              "field_type": "RADIO",
+              "select_options": "YES|NO",
+              "is_required": true
+            }
+          ]
+        },
+        {
+          "section_name": "Plan #2",
+          "section_description": "Enter details for your second renewing benefit. Skip if not applicable.",
+          "fields": [
+            {
+              "field_key": "cobra_plan2_name",
+              "label": "Plan Name",
+              "field_type": "TEXT",
+              "is_required": false
+            },
+            {
+              "field_key": "cobra_plan2_type",
+              "label": "Plan Type",
+              "field_type": "TEXT",
+              "is_required": false
+            },
+            {
+              "field_key": "cobra_plan2_rate_structure",
+              "label": "Rate Structure",
+              "field_type": "RADIO",
+              "select_options": "Individually Rated|Banded|Tiered (Employee, Family, etc..)",
+              "is_required": false
+            },
+            {
+              "field_key": "cobra_plan2_rates",
+              "label": "Tiered Rates",
+              "field_type": "TEXTAREA",
+              "is_required": false
+            },
+            {
+              "field_key": "cobra_plan2_rates_good_through",
+              "label": "Rates Good Through",
+              "field_type": "DATE",
+              "is_required": false
+            },
+            {
+              "field_key": "cobra_plan2_coverage_end",
+              "label": "When does coverage end after a qualifying event?",
+              "field_type": "TEXT",
+              "is_required": false
+            },
+            {
+              "field_key": "cobra_plan2_another_benefit",
+              "label": "Do you have another benefit renewing?",
+              "field_type": "RADIO",
+              "select_options": "YES|NO",
+              "is_required": false
+            }
+          ]
+        },
+        {
+          "section_name": "Plan #3",
+          "section_description": "Enter details for your third renewing benefit. Skip if not applicable.",
+          "fields": [
+            {
+              "field_key": "cobra_plan3_name",
+              "label": "Plan Name",
+              "field_type": "TEXT",
+              "is_required": false
+            },
+            {
+              "field_key": "cobra_plan3_type",
+              "label": "Plan Type",
+              "field_type": "TEXT",
+              "is_required": false
+            },
+            {
+              "field_key": "cobra_plan3_rate_structure",
+              "label": "Rate Structure",
+              "field_type": "RADIO",
+              "select_options": "Individually Rated|Banded|Tiered (Employee, Family, etc..)",
+              "is_required": false
+            },
+            {
+              "field_key": "cobra_plan3_rates",
+              "label": "Tiered Rates",
+              "field_type": "TEXTAREA",
+              "is_required": false
+            },
+            {
+              "field_key": "cobra_plan3_rates_good_through",
+              "label": "Rates Good Through",
+              "field_type": "DATE",
+              "is_required": false
+            },
+            {
+              "field_key": "cobra_plan3_coverage_end",
+              "label": "When does coverage end after a qualifying event?",
+              "field_type": "TEXT",
+              "is_required": false
+            },
+            {
+              "field_key": "cobra_plan3_another_benefit",
+              "label": "Do you have another benefit renewing?",
+              "field_type": "RADIO",
+              "select_options": "YES|NO",
+              "is_required": false
+            }
+          ]
+        },
+        {
+          "section_name": "Plan #4",
+          "section_description": "Enter details for your fourth renewing benefit. Skip if not applicable.",
+          "fields": [
+            {
+              "field_key": "cobra_plan4_name",
+              "label": "Plan Name",
+              "field_type": "TEXT",
+              "is_required": false
+            },
+            {
+              "field_key": "cobra_plan4_type",
+              "label": "Plan Type",
+              "field_type": "TEXT",
+              "is_required": false
+            },
+            {
+              "field_key": "cobra_plan4_rate_structure",
+              "label": "Rate Structure",
+              "field_type": "RADIO",
+              "select_options": "Individually Rated|Banded|Tiered (Employee, Family, etc..)",
+              "is_required": false
+            },
+            {
+              "field_key": "cobra_plan4_rates",
+              "label": "Tiered Rates",
+              "field_type": "TEXTAREA",
+              "is_required": false
+            },
+            {
+              "field_key": "cobra_plan4_rates_good_through",
+              "label": "Rates Good Through",
+              "field_type": "DATE",
+              "is_required": false
+            },
+            {
+              "field_key": "cobra_plan4_coverage_end",
+              "label": "When does coverage end after a qualifying event?",
+              "field_type": "TEXT",
+              "is_required": false
+            },
+            {
+              "field_key": "cobra_plan4_another_benefit",
+              "label": "Do you have another benefit renewing?",
+              "field_type": "RADIO",
+              "select_options": "YES|NO",
+              "is_required": false
+            }
+          ]
+        },
+        {
+          "section_name": "Plan #5",
+          "section_description": "Enter details for your fifth renewing benefit. Skip if not applicable.",
+          "fields": [
+            {
+              "field_key": "cobra_plan5_name",
+              "label": "Plan Name",
+              "field_type": "TEXT",
+              "is_required": false
+            },
+            {
+              "field_key": "cobra_plan5_type",
+              "label": "Plan Type",
+              "field_type": "TEXT",
+              "is_required": false
+            },
+            {
+              "field_key": "cobra_plan5_rate_structure",
+              "label": "Rate Structure",
+              "field_type": "RADIO",
+              "select_options": "Individually Rated|Banded|Tiered (Employee, Family, etc..)",
+              "is_required": false
+            },
+            {
+              "field_key": "cobra_plan5_rates",
+              "label": "Tiered Rates",
+              "field_type": "TEXTAREA",
+              "is_required": false
+            },
+            {
+              "field_key": "cobra_plan5_rates_good_through",
+              "label": "Rates Good Through",
+              "field_type": "DATE",
+              "is_required": false
+            },
+            {
+              "field_key": "cobra_plan5_coverage_end",
+              "label": "When does coverage end after a qualifying event?",
+              "field_type": "TEXT",
+              "is_required": false
+            },
+            {
+              "field_key": "cobra_plan5_another_benefit",
+              "label": "Do you have another benefit renewing?",
+              "field_type": "RADIO",
+              "select_options": "YES|NO",
+              "is_required": false
+            }
+          ]
+        },
+        {
+          "section_name": "Plan #6",
+          "section_description": "Enter details for your sixth renewing benefit. Skip if not applicable.",
+          "fields": [
+            {
+              "field_key": "cobra_plan6_name",
+              "label": "Plan Name",
+              "field_type": "TEXT",
+              "is_required": false
+            },
+            {
+              "field_key": "cobra_plan6_type",
+              "label": "Plan Type",
+              "field_type": "TEXT",
+              "is_required": false
+            },
+            {
+              "field_key": "cobra_plan6_rate_structure",
+              "label": "Rate Structure",
+              "field_type": "RADIO",
+              "select_options": "Individually Rated|Banded|Tiered (Employee, Family, etc..)",
+              "is_required": false
+            },
+            {
+              "field_key": "cobra_plan6_rates",
+              "label": "Tiered Rates",
+              "field_type": "TEXTAREA",
+              "is_required": false
+            },
+            {
+              "field_key": "cobra_plan6_rates_good_through",
+              "label": "Rates Good Through",
+              "field_type": "DATE",
+              "is_required": false
+            },
+            {
+              "field_key": "cobra_plan6_coverage_end",
+              "label": "When does coverage end after a qualifying event?",
+              "field_type": "TEXT",
+              "is_required": false
+            }
+          ]
+        },
+        {
+          "section_name": "Final Information",
+          "section_description": null,
+          "fields": [
+            {
+              "field_key": "cobra_additional_info",
+              "label": "Please provide any additional information you may think important for us to know regarding your benefit renewal.",
+              "field_type": "TEXTAREA",
+              "is_required": false
+            },
+            {
+              "field_key": "cobra_attestation",
+              "label": "The rates and information provided are correct to the best of my knowledge.",
+              "field_type": "BOOLEAN",
+              "is_required": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "template_key": "q_fsa_testing",
+      "name": "FSA Compliance Testing",
+      "description": "Collects testing vendor, date, and results for annual FSA compliance testing.",
+      "activity_type": "SETUP",
+      "external_url": null,
+      "scoping": {
+        "los": ["FSA"]
+      },
+      "sections": [
+        {
+          "section_name": "Testing Details",
+          "section_description": null,
+          "fields": [
+            {
+              "field_key": "fsa_testing_vendor",
+              "label": "Testing Vendor",
+              "field_type": "TEXT",
+              "is_required": true
+            },
+            {
+              "field_key": "fsa_testing_date",
+              "label": "Testing Date",
+              "field_type": "DATE",
+              "is_required": true
+            },
+            {
+              "field_key": "fsa_pass_fail",
+              "label": "Pass / Fail",
+              "field_type": "RADIO",
+              "select_options": "Pass|Fail",
+              "is_required": true
+            },
+            {
+              "field_key": "fsa_results_summary",
+              "label": "Results Summary",
+              "field_type": "TEXTAREA",
+              "is_required": false,
+              "help_text": "Describe any findings, corrective actions, or notes."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "template_key": "q_hsa_custodian",
+      "name": "HSA Custodian Setup",
+      "description": "Collects custodian and bank details for HSA account setup.",
+      "activity_type": "SETUP",
+      "external_url": null,
+      "scoping": {
+        "los": ["HSA"]
+      },
+      "sections": [
+        {
+          "section_name": "Custodian Information",
+          "section_description": null,
+          "fields": [
+            {
+              "field_key": "hsa_custodian_name",
+              "label": "Custodian Name",
+              "field_type": "TEXT",
+              "is_required": true
+            },
+            {
+              "field_key": "hsa_account_number",
+              "label": "Account Number",
+              "field_type": "TEXT",
+              "is_required": true
+            },
+            {
+              "field_key": "hsa_routing_number",
+              "label": "Routing Number",
+              "field_type": "TEXT",
+              "is_required": true
+            },
+            {
+              "field_key": "hsa_funding_method",
+              "label": "Funding Method",
+              "field_type": "SELECT",
+              "select_options": "ACH|Wire Transfer|Check|Payroll Deduction",
+              "is_required": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "template_key": "q_debit_card",
+      "name": "Debit Card Order Form",
+      "description": "Collects debit card order details for new plan setups.",
+      "activity_type": "SETUP",
+      "external_url": null,
+      "scoping": {
+        "enhancements": ["Debit Cards"]
+      },
+      "sections": [
+        {
+          "section_name": "Order Details",
+          "section_description": null,
+          "fields": [
+            {
+              "field_key": "dc_quantity",
+              "label": "Quantity Needed",
+              "field_type": "NUMBER",
+              "is_required": true
+            },
+            {
+              "field_key": "dc_shipping_address",
+              "label": "Shipping Address",
+              "field_type": "TEXTAREA",
+              "is_required": true
+            },
+            {
+              "field_key": "dc_rush_order",
+              "label": "Rush Order",
+              "field_type": "BOOLEAN",
+              "is_required": true,
+              "help_text": "Select Yes for expedited shipping (additional fees may apply)."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "template_key": "q_bank_info",
+      "name": "Employer Bank Information",
+      "description": "Collects employer bank account details for benefit funding and premium remittance.",
+      "activity_type": "SETUP",
+      "external_url": null,
+      "scoping": {
+        "scope_all": true
+      },
+      "sections": [
+        {
+          "section_name": "Bank Account Details",
+          "section_description": null,
+          "fields": [
+            {
+              "field_key": "bank_name",
+              "label": "Bank Name",
+              "field_type": "TEXT",
+              "is_required": true
+            },
+            {
+              "field_key": "bank_routing_number",
+              "label": "Routing Number",
+              "field_type": "TEXT",
+              "is_required": true
+            },
+            {
+              "field_key": "bank_account_number",
+              "label": "Account Number",
+              "field_type": "TEXT",
+              "is_required": true
+            },
+            {
+              "field_key": "bank_account_type",
+              "label": "Account Type",
+              "field_type": "RADIO",
+              "select_options": "Checking|Savings",
+              "is_required": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "template_key": "q_renewal_confirm",
+      "name": "Renewal Confirmation",
+      "description": "Collects employer confirmation of plan year details and any requested changes for upcoming renewals.",
+      "activity_type": "RENEWAL",
+      "external_url": null,
+      "scoping": {
+        "scope_all": true
+      },
+      "sections": [
+        {
+          "section_name": "Plan Year Confirmation",
+          "section_description": null,
+          "fields": [
+            {
+              "field_key": "ren_plan_year_start",
+              "label": "Plan Year Start",
+              "field_type": "DATE",
+              "is_required": true
+            },
+            {
+              "field_key": "ren_plan_year_end",
+              "label": "Plan Year End",
+              "field_type": "DATE",
+              "is_required": true
+            },
+            {
+              "field_key": "ren_changes_requested",
+              "label": "Are any changes being requested for this renewal?",
+              "field_type": "BOOLEAN",
+              "is_required": true
+            },
+            {
+              "field_key": "ren_change_description",
+              "label": "Please describe the changes",
+              "field_type": "TEXTAREA",
+              "is_required": false,
+              "help_text": "Only required if changes are requested."
+            },
+            {
+              "field_key": "ren_authorized_by",
+              "label": "Authorized By",
+              "field_type": "TEXT",
+              "is_required": true
+            },
+            {
+              "field_key": "ren_authorized_title",
+              "label": "Title",
+              "field_type": "TEXT",
+              "is_required": false
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

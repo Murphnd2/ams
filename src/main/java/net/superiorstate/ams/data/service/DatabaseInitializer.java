@@ -645,6 +645,13 @@ public abstract class DatabaseInitializer {
         //  (The app does this automatically on LOS/Enhancement creation via Service Manager,
         //   but during initialization we must do it explicitly)
         assignAllSectionsToLosAndEnhancement(em, psp, losMain, enhMain);
+        // Seed baseline Questionnaire templates
+        try {
+            QuestionnaireLoader.LoadResult qResult = QuestionnaireLoader.loadQuestionnaires(em, psp);
+            System.out.println("QuestionnaireLoader: loaded=" + qResult.loaded() + " skipped=" + qResult.skipped());
+        } catch (Exception e) {
+            System.out.println("QuestionnaireLoader: Error during seed — " + e.getMessage());
+        }
         // Create Initialization Checklist
         createInitializationChecklist(em);
         // Set Note To Show Initialization Completed

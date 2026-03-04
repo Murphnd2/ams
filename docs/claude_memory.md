@@ -15,13 +15,14 @@
 
 ## Current State
 - **Branch:** `refactor/modernize-architecture`
-- **Latest migration:** V038
-- **Session count:** 31
-- V025-V037 applied to Demo PSP, BPO, and Master; V038 applied to Demo and BPO; not yet applied to production or local dev
+- **Latest migration:** V039
+- **Session count:** 32
+- V025-V037 applied to Demo PSP, BPO, and Master; V038 applied to Demo and BPO; V039 code-complete, not yet applied anywhere
+- Not yet applied to production or local dev
 - Master snapshot v8 taken 2026-03-04 (V037, fixed update.sh, fixed healthcheck.sh)
 
 ## Database Migrations
-- Current highest version: **V038**
+- Current highest version: **V039**
 - Migration tracker: `docs/analysis/migration_tracker.md`
 - Schema version SQL: `docs/schema_version_migration.sql`
 
@@ -144,6 +145,19 @@
 - **Enhancement 3 (PSP filter):** BPO dashboard PSP filter dropdown with sessionStorage persistence, filters both active and completed sections
 - **Enhancement 4 (Sort order):** DelegatedToDo.sortOrder field (V038), pushed via BpoTaskPushService, BpoHome queries sort by dueDate → activityName → sortOrder
 - **Vendor-only reopen protection:** checklistBasic25.jsp completed section shows X icon (no reopen form) for `isSourced && !allowNonOwner` tasks
+
+## Questionnaire System (V039, Phase 1 — Session 32)
+- **4 entities** in `model/activity/questionnaire/`: Questionnaire, QuestionnaireField, QuestionnaireInstance, QuestionnaireFieldValue
+- **Dual-mode:** `external_url IS NULL` = native (AMS fields), `IS NOT NULL` = external (Jotform pointer)
+- **QuestionnaireField** uses BIGINT auto PK (not String PK like ApplicationField), `field_key` is regular column with unique index per questionnaire
+- **section_name** column on questionnaire_field for UI grouping (no section entity)
+- **QuestionnaireLoader.java** in `data/service/` — reads `questionnaire_seeds.json`, pattern follows PackageLoader
+- **9 seed questionnaires:** 3 external (Jotform), 6 native — scoped by LOS/Enhancement/ServiceItem name lookup
+- **Scoping join tables:** questionnaire_los, questionnaire_enhancement, questionnaire_serviceitem
+- **DatabaseInitializer** hook after assignAllSectionsToLos, before createInitializationChecklist
+- **Merge tokens in external URLs:** `{erName}`, `{activityId}`, `{instanceGuid}` — resolved by `Questionnaire.resolveExternalUrl()`
+- **Design doc:** `docs/analysis/questionnaire_system_design.md` — 7 phases total
+- **Phase 1 complete:** schema, entities, seeds, loader. Next: Phase 2 (Admin UI in ServiceManager25)
 
 ## Reference
 - Full session archive: `docs/analysis/session_history_archive.md`
