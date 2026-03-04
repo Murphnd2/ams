@@ -86,7 +86,7 @@ public class BpoHome extends HttpServlet {
                 "WHERE d.status = 'ACTIVE' " +
                 "AND d.isCompleted = false " +
                 "AND (d.assignedTo.id = :userId OR d.assignedTo IS NULL) " +
-                "ORDER BY d.dueDate, d.taskName";
+                "ORDER BY d.dueDate, d.activityName, d.sortOrder";
         Query q = em.createQuery(jpql, DelegatedToDo.class);
         q.setParameter("userId", bpoUserId);
         try {
@@ -101,7 +101,7 @@ public class BpoHome extends HttpServlet {
         String jpql = "SELECT d FROM DelegatedToDo d " +
                 "WHERE d.status = 'ACTIVE' " +
                 "AND d.isCompleted = false " +
-                "ORDER BY d.dueDate, d.taskName";
+                "ORDER BY d.dueDate, d.activityName, d.sortOrder";
         Query q = em.createQuery(jpql, DelegatedToDo.class);
         try {
             return q.getResultList();
@@ -122,7 +122,7 @@ public class BpoHome extends HttpServlet {
                 "AND t.isComplete = false " +
                 "AND t.bpoCompleted = false " +
                 "AND (t.bpoAssignedTo.id = :userId OR t.bpoAssignedTo IS NULL) " +
-                "ORDER BY cl.dueDate, t.sortOrder";
+                "ORDER BY cl.dueDate, cl.fullName, t.sortOrder";
         Query q = em.createQuery(jpql);
         q.setParameter("userId", bpoUserId);
         try {
@@ -141,7 +141,7 @@ public class BpoHome extends HttpServlet {
                 "WHERE task.isSourced = true " +
                 "AND t.isComplete = false " +
                 "AND t.bpoCompleted = false " +
-                "ORDER BY cl.dueDate, t.sortOrder";
+                "ORDER BY cl.dueDate, cl.fullName, t.sortOrder";
         Query q = em.createQuery(jpql);
         try {
             return q.getResultList();

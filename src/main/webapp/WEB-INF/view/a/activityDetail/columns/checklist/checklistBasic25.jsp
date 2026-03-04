@@ -58,15 +58,20 @@
 
           <%-- Determine row class --%>
           <c:set var="rowClass" value="td-item"/>
-          <c:if test="${toDo.isTimeBlocked() || toDo.isWhoBlocked()}">
-            <c:set var="rowClass" value="td-item td-blocked"/>
-          </c:if>
-          <c:if test="${toDo.isDelegated()}">
-            <c:set var="rowClass" value="td-item td-delegated"/>
-          </c:if>
-          <c:if test="${toDo.isBpoCompleted() && !toDo.isComplete()}">
-            <c:set var="rowClass" value="td-item bpo-awaiting-verify"/>
-          </c:if>
+          <c:choose>
+            <c:when test="${toDo.isBpoCompleted() && !toDo.isComplete()}">
+              <c:set var="rowClass" value="td-item bpo-awaiting-verify"/>
+            </c:when>
+            <c:when test="${toDo.isSourced() && !toDo.isBpoCompleted()}">
+              <c:set var="rowClass" value="td-item td-blocked"/>
+            </c:when>
+            <c:when test="${toDo.isTimeBlocked() || toDo.isWhoBlocked()}">
+              <c:set var="rowClass" value="td-item td-blocked"/>
+            </c:when>
+            <c:when test="${toDo.isDelegated()}">
+              <c:set var="rowClass" value="td-item td-delegated"/>
+            </c:when>
+          </c:choose>
 
           <div class="${rowClass}">
             <div class="d-flex align-items-center">
@@ -196,12 +201,21 @@
               <div class="td-item td-closed">
                 <div class="d-flex align-items-center">
 
-                  <%-- Undo button --%>
-                  <form method="post" action="ReOpenToDo25" class="m-0 p-0" style="display:inline;">
-                    <button type="submit" class="td-btn undo ${isPast}" name="btnToDo" value="${toDo.getToDo().getId()}" title="Undo">
-                      <i class="bi bi-arrow-counterclockwise"></i>
-                    </button>
-                  </form>
+                  <%-- Undo button (hidden for vendor-only auto-closed tasks) --%>
+                  <c:choose>
+                    <c:when test="${toDo.isSourced() && !toDo.allowsNonOwner()}">
+                      <span class="td-btn state-icon pe-none" title="Auto-closed by BPO">
+                        <i class="bi bi-x-square-fill" style="font-size: 0.9rem;"></i>
+                      </span>
+                    </c:when>
+                    <c:otherwise>
+                      <form method="post" action="ReOpenToDo25" class="m-0 p-0" style="display:inline;">
+                        <button type="submit" class="td-btn undo ${isPast}" name="btnToDo" value="${toDo.getToDo().getId()}" title="Undo">
+                          <i class="bi bi-arrow-counterclockwise"></i>
+                        </button>
+                      </form>
+                    </c:otherwise>
+                  </c:choose>
 
                   <%-- Name (strike-through) --%>
                   <span class="td-closed-name flex-grow-1 mx-1">${toDo.getDescription()}</span>

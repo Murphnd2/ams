@@ -104,6 +104,11 @@ public class TaskReceiveApi extends HttpServlet {
                 dt.setInfoLink(getJsonString(t, "infoLink"));
                 dt.setStatus("ACTIVE");
 
+                String sortOrderStr = getJsonString(t, "sortOrder");
+                if (sortOrderStr != null) {
+                    try { dt.setSortOrder(Integer.parseInt(sortOrderStr)); } catch (NumberFormatException ignored) {}
+                }
+
                 String dueDateStr = getJsonString(t, "dueDate");
                 if (dueDateStr != null) {
                     try {

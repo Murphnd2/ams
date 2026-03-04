@@ -14,14 +14,14 @@
 - **selectOptions delimiter:** pipe-delimited (`|`), not comma — required by field rendering logic
 
 ## Current State
-- **Branch:** `feature/proposal-customization` (from `refactor/modernize-architecture`)
-- **Latest migration:** V037
-- **Session count:** 30
-- V025-V037 applied to Demo PSP, BPO, and Master; not yet applied to production or local dev
+- **Branch:** `refactor/modernize-architecture`
+- **Latest migration:** V038
+- **Session count:** 31
+- V025-V037 applied to Demo PSP, BPO, and Master; V038 applied to Demo and BPO; not yet applied to production or local dev
 - Master snapshot v8 taken 2026-03-04 (V037, fixed update.sh, fixed healthcheck.sh)
 
 ## Database Migrations
-- Current highest version: **V037**
+- Current highest version: **V038**
 - Migration tracker: `docs/analysis/migration_tracker.md`
 - Schema version SQL: `docs/schema_version_migration.sql`
 
@@ -135,6 +135,15 @@
 - **PSP Dashboard:** `.psp-dash-body` flex wrapper, `.psp-dash-col-left`/`.psp-dash-col-right` flex columns — removed inline `max-height` from `.dash-scroll` divs
 - **Both:** `@media (min-width: 992px)` only — mobile layout unchanged
 - **Dropdown clipping fix:** `toDoCurrentList25.jsp` — pre-init kebab dropdowns with `popperConfig: { strategy: 'fixed' }` so menus aren't clipped by `overflow-y: auto` scroll containers
+
+## BPO/PSP Communication Fixes (Session 31, V038)
+- **Issue 5 (Vendor-only auto-complete):** TaskCompletedCallbackApi detects `isSourced && !allowNonOwner`, auto-closes vendor-only tasks, differentiates note text
+- **Issue 6 (Display state priority):** ToDoOut25.computeDisplayState() rewritten — completed → position-blocked → sourced(BPO waiting) → sourced(BPO done/verify) → owner-blocked → delegated → default
+- **Issue 1 (Session refresh):** UpdateTask25 calls `computeAllDisplayStates()` after save to update checklist icons
+- **Issue 8 (Mutual exclusion):** Employee assignment and vendor sourcing are mutually exclusive in ManageTask25 (JS toggle + server-side enforcement — sourcing wins)
+- **Enhancement 3 (PSP filter):** BPO dashboard PSP filter dropdown with sessionStorage persistence, filters both active and completed sections
+- **Enhancement 4 (Sort order):** DelegatedToDo.sortOrder field (V038), pushed via BpoTaskPushService, BpoHome queries sort by dueDate → activityName → sortOrder
+- **Vendor-only reopen protection:** checklistBasic25.jsp completed section shows X icon (no reopen form) for `isSourced && !allowNonOwner` tasks
 
 ## Reference
 - Full session archive: `docs/analysis/session_history_archive.md`

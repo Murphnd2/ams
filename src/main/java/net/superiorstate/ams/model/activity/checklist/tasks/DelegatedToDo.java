@@ -73,6 +73,9 @@ public class DelegatedToDo {
     @Column(name="date_received", nullable=false)
     private Timestamp dateReceived;
 
+    @Column(name="sort_order")
+    private int sortOrder;
+
     public DelegatedToDo() {}
 
     @PrePersist
@@ -232,5 +235,13 @@ public class DelegatedToDo {
 
     public void setDateReceived(Timestamp dateReceived) {
         this.dateReceived = dateReceived;
+    }
+
+    public int getSortOrder() {
+        return sortOrder;
+    }
+
+    public void setSortOrder(int sortOrder) {
+        this.sortOrder = sortOrder;
     }
 }

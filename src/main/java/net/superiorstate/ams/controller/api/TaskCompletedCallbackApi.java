@@ -8,6 +8,7 @@ import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import net.superiorstate.ams.AppConfig;
+import net.superiorstate.ams.model.activity.checklist.tasks.Task;
 import net.superiorstate.ams.model.activity.checklist.tasks.ToDo;
 import net.superiorstate.ams.model.activity.checklist.tasks.ToDoNote;
 
@@ -87,13 +88,25 @@ public class TaskCompletedCallbackApi extends HttpServlet {
             todo.setBpoCompleted(true);
             todo.setBpoCompletedDate(Date.valueOf(LocalDate.now()));
             // bpoCompletedBy stays null since the BPO person doesn't exist locally
+
+            // Check if Vendor Only (sourced + !allowNonOwner) → auto-complete
+            Task task = todo.getTask();
+            boolean vendorOnly = task != null && task.isSourced() && !task.allowNonOwner();
+            String noteText;
+            if (vendorOnly) {
+                todo.setComplete(true);
+                todo.setDateCompleted(Date.valueOf(LocalDate.now()));
+                noteText = "Task completed by BPO (auto-closed — vendor only).";
+            } else {
+                noteText = "Task marked complete by BPO — awaiting PSP verification.";
+            }
             em.merge(todo);
 
             // Auto-add a completion note
             ToDoNote note = new ToDoNote();
             note.setToDo(todo);
             note.setTodoGuid(todoGuid);
-            note.setNoteText("Task marked complete by BPO.");
+            note.setNoteText(noteText);
             note.setSourceType("BPO");
             note.setAuthorName(completedByName);
             em.persist(note);
@@ -102,7 +115,8 @@ public class TaskCompletedCallbackApi extends HttpServlet {
 
             response.setStatus(HttpServletResponse.SC_OK);
             response.getWriter().write("{\"status\": \"OK\", \"message\": \"Task completion recorded.\"}");
-            System.out.println("[BPO-API] TaskCompletedCallbackApi: completion recorded for todoGuid=" + todoGuid);
+            System.out.println("[BPO-API] TaskCompletedCallbackApi: completion recorded for todoGuid=" + todoGuid
+                    + (vendorOnly ? " (vendor-only, auto-closed)" : " (awaiting PSP verification)"));
 
         } catch (Exception e) {
             if (em.getTransaction().isActive()) em.getTransaction().rollback();

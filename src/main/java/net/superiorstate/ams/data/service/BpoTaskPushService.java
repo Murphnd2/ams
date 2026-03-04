@@ -110,6 +110,8 @@ public class BpoTaskPushService {
                     taskMap.put("infoLink", todo.getTask().getInfoLink().getLinkPath());
                 }
 
+                taskMap.put("sortOrder", String.valueOf(todo.getSortOrder()));
+
                 taskList.add(taskMap);
             }
 

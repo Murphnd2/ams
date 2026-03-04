@@ -105,6 +105,10 @@
                 <div class="hdr-bar d-flex align-items-center justify-content-between">
                     <span><i class="bi bi-list-task me-2"></i>Delegated Tasks</span>
                     <div class="d-flex gap-2 align-items-center">
+                        <select id="pspFilter" class="form-select form-select-sm" onchange="filterByPsp()"
+                                style="font-size:0.7rem; padding:0.15rem 0.4rem; width:auto; min-width:100px; background-color:rgba(255,255,255,0.9); border:1px solid rgba(255,255,255,0.5);">
+                            <option value="">All PSPs</option>
+                        </select>
                         <form method="get" action="BpoHome" class="d-flex gap-1 m-0">
                             <button type="submit" name="viewMode" value="mine"
                                     class="btn btn-sm ${viewMode == 'mine' ? 'btn-light' : 'btn-outline-light'}"
@@ -159,6 +163,8 @@
                                              data-sort0="${dt.getTaskName()}"
                                              data-sort1="${dt.getPspClient().getPspName()}"
                                              data-sort2="${dt.getDueDate()}"
+                                             data-sort-order="${dt.getSortOrder()}"
+                                             data-activity-sort="${dt.getActivityName()}"
                                              data-todo-id="${dt.getId()}"
                                              data-todo-guid="${dt.getTodoGuid()}"
                                              data-cross-system="true"
@@ -227,6 +233,8 @@
                                              data-sort0="${todo.getTask().getPlainDescription()}"
                                              data-sort1="${pspName}"
                                              data-sort2="${dueDate}"
+                                             data-sort-order="${todo.getSortOrder()}"
+                                             data-activity-sort="${activityName}"
                                              data-todo-id="${todo.getId()}"
                                              data-cross-system="false"
                                              data-task-name="${todo.getTask().getPlainDescription()}"
@@ -627,7 +635,7 @@
     }
 </script>
 <script>
-    // Client-side column sorting
+    // Client-side column sorting — click header to toggle per-column
     let sortStates = [0, 0, 0]; // 0=none, 1=asc, -1=desc
     function sortTable(colIndex) {
         const list = document.getElementById('bpoToDoList');
@@ -646,6 +654,37 @@
 
         rows.forEach(row => list.appendChild(row));
     }
+
+    // Default sort: due date → activity name → sort order (numeric)
+    function applyDefaultSort() {
+        const list = document.getElementById('bpoToDoList');
+        const rows = Array.from(list.querySelectorAll('.bpo-todo-row'));
+        if (rows.length === 0) return;
+
+        rows.sort((a, b) => {
+            // 1. Due date ascending
+            const aDate = a.getAttribute('data-sort2') || '9999-12-31';
+            const bDate = b.getAttribute('data-sort2') || '9999-12-31';
+            const dateCmp = aDate.localeCompare(bDate);
+            if (dateCmp !== 0) return dateCmp;
+
+            // 2. Activity name alphabetical
+            const aAct = (a.getAttribute('data-activity-sort') || '').toLowerCase();
+            const bAct = (b.getAttribute('data-activity-sort') || '').toLowerCase();
+            const actCmp = aAct.localeCompare(bAct);
+            if (actCmp !== 0) return actCmp;
+
+            // 3. Sort order numeric within checklist
+            const aOrd = parseInt(a.getAttribute('data-sort-order') || '0', 10);
+            const bOrd = parseInt(b.getAttribute('data-sort-order') || '0', 10);
+            return aOrd - bOrd;
+        });
+
+        rows.forEach(row => list.appendChild(row));
+    }
+
+    // Apply default sort on page load
+    document.addEventListener('DOMContentLoaded', applyDefaultSort);
 </script>
 <script>
     var completedDays = 1;
@@ -681,7 +720,7 @@
                 }
                 let html = '';
                 items.forEach(item => {
-                    html += '<div style="border-left:4px solid #198754; border-radius:3px; padding:0.25rem 0.4rem; margin-bottom:0.2rem; background:#f8f9fa; opacity:0.75;">';
+                    html += '<div class="bpo-completed-row" data-psp-name="' + (item.pspName || '') + '" style="border-left:4px solid #198754; border-radius:3px; padding:0.25rem 0.4rem; margin-bottom:0.2rem; background:#f8f9fa; opacity:0.75;">';
                     html += '  <div class="d-flex align-items-center">';
                     html += '    <i class="bi bi-check-circle-fill text-success me-2" style="font-size:0.85rem;"></i>';
                     html += '    <div class="flex-grow-1" style="min-width:0;">';
@@ -693,11 +732,67 @@
                     html += '</div>';
                 });
                 container.innerHTML = html;
+                // Re-apply PSP filter to completed tasks
+                filterByPsp();
             })
             .catch(() => {
                 container.innerHTML = '<div class="text-center text-danger py-2" style="font-size:0.8rem;">Error loading tasks</div>';
             });
     }
+</script>
+
+<script>
+    // Enhancement 3: PSP filter dropdown
+    function initPspFilter() {
+        const rows = document.querySelectorAll('.bpo-todo-row');
+        const pspNames = new Set();
+        rows.forEach(r => {
+            const name = r.getAttribute('data-sort1');
+            if (name) pspNames.add(name);
+        });
+        const select = document.getElementById('pspFilter');
+        if (!select) return;
+        const sorted = Array.from(pspNames).sort();
+        sorted.forEach(name => {
+            const opt = document.createElement('option');
+            opt.value = name;
+            opt.textContent = name;
+            select.appendChild(opt);
+        });
+        // Restore from sessionStorage
+        const saved = sessionStorage.getItem('bpoPspFilter');
+        if (saved && pspNames.has(saved)) {
+            select.value = saved;
+            filterByPsp();
+        }
+    }
+
+    function filterByPsp() {
+        const select = document.getElementById('pspFilter');
+        if (!select) return;
+        const selected = select.value;
+        sessionStorage.setItem('bpoPspFilter', selected);
+
+        // Filter open task rows
+        document.querySelectorAll('.bpo-todo-row').forEach(row => {
+            if (!selected || row.getAttribute('data-sort1') === selected) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+
+        // Filter completed task rows (AJAX-loaded)
+        document.querySelectorAll('.bpo-completed-row').forEach(row => {
+            if (!selected || row.getAttribute('data-psp-name') === selected) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', initPspFilter);
 </script>
 </body>
 </html>

@@ -80,6 +80,12 @@ public class UpdateTask25 extends HttpServlet {
                     break;
                 }
             }
+            // Recompute display states so icons reflect the updated sourcing/owner state
+            ToDoOut25.computeAllDisplayStates(
+                    local.getCurrentActivity().getToDoList(),
+                    local.getCurrentPerson().getId(),
+                    local.isPspAdmin(),
+                    local.getCurrentActivity().getActivity().getAssignedTo().getId());
             if(delegationChanged()){
                 AmsDataGlobal global = (AmsDataGlobal) request.getServletContext().getAttribute("global");
                 global.setActivitiesWithDelegation(global.retrieveActivitiesWithDependencies(em));
@@ -202,6 +208,14 @@ public class UpdateTask25 extends HttpServlet {
 
         boolean hasOwner = owner != null && whoOwns != 0;
         boolean hasSource = bpoReg != null && isSourced != 0;
+
+        // Server-side mutual exclusion: task is either employee-assigned OR vendor-sourced
+        if (hasSource && hasOwner) {
+            hasOwner = false;
+            owner = null;
+            whoOwns = 0;
+        }
+
         boolean allowNonOwner = whoOwns != 2 && isSourced != 2;
 
 

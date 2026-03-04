@@ -90,9 +90,10 @@ public class ToDoOut25 {
         this.isDelegated = (hasOwner && !this.isMyTask) || (isSourced && bpoRegistration != null);
 
         this.isTimeBlocked = (openIndex > 0) && (!allowEarly || blockFuture);
-        this.isWhoBlocked = !this.isMyTask && !allowNonOwner && (hasOwner || isSourced) && !bpoCompleted;
+        // Who-blocked only applies to non-sourced tasks with an owner
+        this.isWhoBlocked = !isSourced && hasOwner && !this.isMyTask && !allowNonOwner;
 
-        boolean adminOverride = isAdmin;
+        boolean isVendorOnly = isSourced && !allowNonOwner;
 
         this.formServlet = "CloseToDo25";
         this.btnIcon = "square";
@@ -100,29 +101,48 @@ public class ToDoOut25 {
         this.rowCssClass = "";
         this.pointerEvents = "";
 
-        if (isWhoBlocked && isComplete) {
-            btnIcon = "x-square-fill"; formServlet = "ReOpenToDo25";
-            rowStyle = "text-decoration:line-through;"; rowCssClass = "fst-italic fw-lighter";
-            pointerEvents = "pe-none";
-        } else if (isComplete) {
+        // 1. Completed tasks
+        if (isComplete) {
             btnIcon = "x-square"; formServlet = "ReOpenToDo25";
             rowStyle = "text-decoration:line-through;"; rowCssClass = "fst-italic fw-lighter";
-        } else if (isWhoBlocked) {
-            btnIcon = "person-square";
-            pointerEvents = "pe-none";
-        } else if (isTimeBlocked) {
+            // Can't reopen: vendor-only auto-closed, or owner-blocked non-sourced tasks
+            if (isVendorOnly || isWhoBlocked) {
+                btnIcon = "x-square-fill";
+                pointerEvents = "pe-none";
+            }
+        }
+        // 2. Position-blocked (applies to ALL open tasks regardless of sourcing)
+        else if (isTimeBlocked) {
             btnIcon = "clock-fill";
             pointerEvents = "pe-none";
-        } else if (bpoCompleted && !isComplete) {
+        }
+        // 3. Sourced: BPO hasn't finished → outsourcing blocked
+        else if (isSourced && !bpoCompleted) {
+            btnIcon = "box-arrow-up-right";
+            pointerEvents = "pe-none";
+        }
+        // 4. Sourced: BPO finished, awaiting PSP action
+        else if (isSourced && bpoCompleted) {
             btnIcon = "check2-square";
             rowCssClass = "bpo-awaiting-verify";
-        } else if (isDelegated) {
+        }
+        // 5. Normal: owner-blocked
+        else if (isWhoBlocked) {
+            btnIcon = "person-square";
+            pointerEvents = "pe-none";
+        }
+        // 6. Delegated (has owner, not my task, but allowNonOwner)
+        else if (isDelegated) {
             btnIcon = "box-arrow-up-left";
-        } else if (!isMyActivity && !isMyTask) {
+        }
+        // 7. Not my activity, not my task
+        else if (!isMyActivity && !isMyTask) {
             btnIcon = "circle";
         }
+        // 8. Default: actionable (square)
 
-        if (adminOverride) {
+        // Admin override — always actionable
+        if (isAdmin) {
             pointerEvents = "";
         }
     }

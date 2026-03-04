@@ -352,10 +352,13 @@
   function toggleEE(){
     const none = document.getElementById('cb3a').checked;
     document.getElementById('eeDropDown').className = none ? 'd-none' : '';
-    // If setting employee, reset source to internal
+    // If setting employee, reset source to internal (mutual exclusion)
     if(!none){
-      document.getElementById('cb4a').checked = true;
-      document.getElementById('bpoDropDown').className = 'd-none';
+      const cb4a = document.getElementById('cb4a');
+      if (cb4a) {
+        cb4a.checked = true;
+        document.getElementById('bpoDropDown').className = 'd-none';
+      }
     }
   }
   function toggleBPO(){
