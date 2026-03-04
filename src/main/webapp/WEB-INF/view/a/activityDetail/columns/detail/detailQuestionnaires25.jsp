@@ -2,16 +2,52 @@
 <%@ taglib prefix="fn" uri="http://java.sun.com/jsp/jstl/functions" %>
 
 <c:set var="qInstances" value="${sessionScope.local.getCurrentActivity().getQuestionnaireInstances()}" />
+<c:set var="qAvailable" value="${sessionScope.local.getCurrentActivity().getAvailableQuestionnaires()}" />
 
-<c:if test="${not empty qInstances}">
+<c:if test="${not empty qInstances || not empty qAvailable}">
 <div class="card border-0 border-start border-3 mt-2 mb-2" style="border-color: var(--ssa-alt) !important;">
   <div class="card-body py-2 px-3">
     <div class="d-flex align-items-center justify-content-between mb-1">
       <span class="fw-semibold" style="color: var(--ssa-alt); font-size: 0.85rem;">
         <i class="bi bi-ui-checks-grid me-1"></i>Questionnaires
-        <span class="badge rounded-pill text-bg-secondary ms-1" style="font-size: 0.7rem;">${fn:length(qInstances)}</span>
+        <c:if test="${not empty qInstances}">
+          <span class="badge rounded-pill text-bg-secondary ms-1" style="font-size: 0.7rem;">${fn:length(qInstances)}</span>
+        </c:if>
       </span>
+      <%-- Attach dropdown --%>
+      <c:if test="${not empty qAvailable}">
+        <div class="dropdown">
+          <button class="btn btn-sm btn-outline-secondary border-0 p-0 px-1" type="button"
+                  data-bs-toggle="dropdown" aria-expanded="false" title="Attach questionnaire"
+                  id="qAttachBtn">
+            <i class="bi bi-plus-circle" style="font-size: 0.85rem;"></i>
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end shadow" style="font-size: 0.82rem; max-height: 250px; overflow-y: auto;">
+            <li><span class="dropdown-header">Attach Questionnaire</span></li>
+            <c:forEach var="qa" items="${qAvailable}">
+              <li>
+                <form method="post" action="${pageContext.request.contextPath}/QuestionnaireInstanceAction" class="d-inline">
+                  <input type="hidden" name="action" value="attach">
+                  <input type="hidden" name="questionnaireId" value="${qa.id}">
+                  <button type="submit" class="dropdown-item">
+                    <c:choose>
+                      <c:when test="${qa.external}">
+                        <i class="bi bi-box-arrow-up-right me-1" style="color: #7952b3; font-size: 0.75rem;"></i>
+                      </c:when>
+                      <c:otherwise>
+                        <i class="bi bi-ui-checks me-1" style="color: var(--ssa); font-size: 0.75rem;"></i>
+                      </c:otherwise>
+                    </c:choose>
+                    ${qa.name}
+                  </button>
+                </form>
+              </li>
+            </c:forEach>
+          </ul>
+        </div>
+      </c:if>
     </div>
+    <c:if test="${not empty qInstances}">
     <div class="overflow-auto" style="max-height: 200px;">
       <c:forEach var="qi" items="${qInstances}">
         <div class="d-flex align-items-center py-1 border-bottom" style="font-size: 0.82rem;">
@@ -54,6 +90,15 @@
 
           <%-- Action buttons --%>
           <div class="d-flex align-items-center ms-1 gap-0">
+
+            <%-- Email with questionnaire link --%>
+            <form method="post" action="${pageContext.request.contextPath}/QuestionnaireInstanceAction" class="d-inline">
+              <input type="hidden" name="instanceId" value="${qi.id}">
+              <input type="hidden" name="action" value="emailQuestionnaire">
+              <button type="submit" class="btn btn-sm btn-outline-secondary border-0 p-0 px-1" title="Email questionnaire link">
+                <i class="bi bi-envelope" style="font-size: 0.75rem;"></i>
+              </button>
+            </form>
 
             <%-- Copy Link (always available) --%>
             <c:choose>
@@ -127,7 +172,7 @@
                   </li>
                 </c:if>
 
-                <%-- Mark Complete — external only, when NOT_STARTED or IN_PROGRESS or REOPENED --%>
+                <%-- Mark Complete — external only, when NOT_STARTED or REOPENED --%>
                 <c:if test="${qi.external && (qi.status == 'NOT_STARTED' || qi.status == 'REOPENED')}">
                   <li>
                     <form method="post" action="${pageContext.request.contextPath}/QuestionnaireInstanceAction" class="d-inline">
@@ -155,6 +200,7 @@
         </div>
       </c:forEach>
     </div>
+    </c:if>
   </div>
 </div>
 
@@ -184,5 +230,10 @@ function qShowCopyToast() {
 document.querySelectorAll('.q-kebab').forEach(function(el) {
     new bootstrap.Dropdown(el, { popperConfig: { strategy: 'fixed' } });
 });
+// Pre-init attach dropdown with fixed strategy too
+var attachBtn = document.getElementById('qAttachBtn');
+if (attachBtn) {
+    new bootstrap.Dropdown(attachBtn, { popperConfig: { strategy: 'fixed' } });
+}
 </script>
 </c:if>

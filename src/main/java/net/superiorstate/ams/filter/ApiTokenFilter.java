@@ -34,6 +34,12 @@ public class ApiTokenFilter implements Filter {
             return;
         }
 
+        // Skip auth for Jotform questionnaire webhook
+        if (uri.endsWith("/api/v1/questionnaire/webhook")) {
+            chain.doFilter(request, response);
+            return;
+        }
+
         String authHeader = request.getHeader("Authorization");
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             sendUnauthorized(response);

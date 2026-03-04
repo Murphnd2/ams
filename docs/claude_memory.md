@@ -16,7 +16,7 @@
 ## Current State
 - **Branch:** `refactor/modernize-architecture`
 - **Latest migration:** V039
-- **Session count:** 33
+- **Session count:** 35
 - V025-V037 applied to Demo PSP, BPO, and Master; V038 applied to Demo and BPO; V039 code-complete, not yet applied anywhere
 - Not yet applied to production or local dev
 - Master snapshot v8 taken 2026-03-04 (V037, fixed update.sh, fixed healthcheck.sh)
@@ -146,7 +146,7 @@
 - **Enhancement 4 (Sort order):** DelegatedToDo.sortOrder field (V038), pushed via BpoTaskPushService, BpoHome queries sort by dueDate → activityName → sortOrder
 - **Vendor-only reopen protection:** checklistBasic25.jsp completed section shows X icon (no reopen form) for `isSourced && !allowNonOwner` tasks
 
-## Questionnaire System (V039, Phases 1–6 — Sessions 32–33)
+## Questionnaire System (V039, Phases 1–5 — Sessions 32–33)
 - **4 entities** in `model/activity/questionnaire/`: Questionnaire, QuestionnaireField, QuestionnaireInstance, QuestionnaireFieldValue
 - **B2.1 entity conventions:** `fetch=LAZY` on all `@ManyToOne`, `cascade=ALL, orphanRemoval=true` on parent→child `@OneToMany`
 - **Convenience methods:** `Questionnaire.isNative()`, `Questionnaire.isScopedToServices()`, `QuestionnaireInstance.isExternal()`
@@ -166,12 +166,22 @@
   - `getFieldsForQuestionnaire()` — direct field query (avoids EclipseLink nested JOIN FETCH)
   - `getFieldValueMap()` — saved values as Map<String, String>
   - `submitInstance()` — marks SUBMITTED, creates Note with "Waiting on Us" status + "Quick Action" reason
-- **QuestionnaireManagerAction.java** (`controller/activity/questionnaire/`) — admin CRUD for questionnaires+fields in ServiceManager25
+- **QuestionnaireManager25.java** (`controller/activity/setup/`) — standalone admin page at `/QuestionnaireManager25`
+- **QuestionnaireAction25.java** (`controller/activity/setup/`) — CRUD handler for questionnaires+fields
 - **FillQuestionnaire.java** (`controller/activity/questionnaire/`) — public form at `/q/{guid}`, GET renders form, POST submits
 - **SaveQuestionnaireProgress.java** — AJAX auto-save at `/saveQuestionnaire`
-- **QuestionnaireInstanceAction.java** — PSP-side actions: review, reopen, detach, markComplete
+- **QuestionnaireInstanceAction.java** — PSP-side actions: review, reopen, detach, markComplete, attach, emailQuestionnaire
+- **detailQuestionnaires25.jsp** — activity detail card with status badges, copy link, envelope email, kebab actions, "+" attach dropdown
+- **Email questionnaire:** envelope icon per instance → creates in-memory WebLink (linkType=2), sets subject "Questionnaire: <name>", preserves existing recipients from GoActivityDetail25, forwards to CreateEmail25
+- **Manual attach:** `getAvailableQuestionnaires()` in QuestionnaireService, `availableQuestionnaires` field in CurrentActivity
+- **QuestionnaireWebhookApi.java** (`controller/api/`) — public endpoint at `/api/v1/questionnaire/webhook`, bypasses ApiTokenFilter
+  - Parses Jotform `rawRequest` JSON, finds GUID via hidden `ref` field, calls `submitInstance()`
+  - Extracts submitter name/email from common Jotform field patterns
+  - Idempotent — ignores already SUBMITTED/REVIEWED instances
+- **Jotform hidden ref field** added to all 10 SSA forms — `{ref}` default value, backward compatible (forms work without GUID)
+- **Webhook URL config pending** — must be set manually per form: Jotform Settings → Integrations → Webhooks → `https://superiorstate.biz/api/v1/questionnaire/webhook`
 - **EclipseLink nested JOIN FETCH gotcha:** `LEFT JOIN FETCH q.fieldList` inside `JOIN FETCH qi.questionnaire q` is silently dropped — always load fields via separate direct query
-- **Phases 1–6 complete.** Next: Phase 7 (automation email tokens, completion gating)
+- **Phases 1–5 complete. Phase 6 (automation email token) tabled** into larger automation email design backlog item. Next: Phase 7 (completion gating)
 
 ## Reference
 - Full session archive: `docs/analysis/session_history_archive.md`

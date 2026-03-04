@@ -22,6 +22,7 @@ import net.superiorstate.ams.model.activity.checklist.tasks.ToDo;
 import net.superiorstate.ams.model.activity.checklist.tasks.ToDoOut;
 import net.superiorstate.ams.model.activity.note.Email;
 import net.superiorstate.ams.model.activity.note.Note;
+import net.superiorstate.ams.model.activity.questionnaire.Questionnaire;
 import net.superiorstate.ams.model.activity.questionnaire.QuestionnaireInstance;
 import net.superiorstate.ams.model.activity.renewal.Renewal;
 import net.superiorstate.ams.model.activity.renewal.RenewalEmployer;
@@ -997,6 +998,7 @@ public class AmsDataLocal implements AutoCloseable {
         private List<Proposal> opportunityProposals;
         private List<Proposal> allProspectProposals;
         private List<QuestionnaireInstance> questionnaireInstances;
+        private List<Questionnaire> availableQuestionnaires;
 
         public CurrentActivity(){};
 
@@ -1120,6 +1122,14 @@ public class AmsDataLocal implements AutoCloseable {
             this.questionnaireInstances = questionnaireInstances;
         }
 
+        public List<Questionnaire> getAvailableQuestionnaires() {
+            return availableQuestionnaires;
+        }
+
+        public void setAvailableQuestionnaires(List<Questionnaire> availableQuestionnaires) {
+            this.availableQuestionnaires = availableQuestionnaires;
+        }
+
         public void intializeActivity(EntityManager em, Long activityId){
             long start = System.currentTimeMillis();
             System.out.println("** INITIALIZATION OF ACTIVITY **");
@@ -1159,8 +1169,10 @@ public class AmsDataLocal implements AutoCloseable {
             }
             setPastActivities(fillPastActivities(em));
 
-            // Load attached questionnaire instances
+            // Load attached questionnaire instances + available for manual attach
             setQuestionnaireInstances(QuestionnaireService.getInstancesForActivity(em, activityId));
+            long pspId = getCurrentPerson().getPsp().getId();
+            setAvailableQuestionnaires(QuestionnaireService.getAvailableQuestionnaires(em, pspId, activityId));
 
             System.out.println("⏱️ intializeActivity took " + (System.currentTimeMillis() - start) + "ms");
         }

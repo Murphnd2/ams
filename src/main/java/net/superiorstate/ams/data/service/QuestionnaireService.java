@@ -269,6 +269,42 @@ public abstract class QuestionnaireService {
         return instance;
     }
 
+    // ── Available Questionnaires (for manual attach) ───────────────────────
+
+    /**
+     * Returns all active questionnaires for a PSP that are NOT already attached
+     * to the given activity. Used for the manual attach dropdown on activity detail.
+     */
+    public static List<Questionnaire> getAvailableQuestionnaires(EntityManager em, long pspId, long activityId) {
+        try {
+            // Get IDs of questionnaires already attached to this activity
+            List<Long> attachedIds = em.createQuery(
+                            "SELECT qi.questionnaire.id FROM QuestionnaireInstance qi " +
+                                    "WHERE qi.activity.id = :actId",
+                            Long.class)
+                    .setParameter("actId", activityId)
+                    .getResultList();
+
+            // Query all active questionnaires for this PSP, excluding already-attached
+            String jpql = "SELECT q FROM Questionnaire q WHERE q.psp.id = :pspId " +
+                    "AND q.suppressed = false ";
+            if (attachedIds != null && !attachedIds.isEmpty()) {
+                jpql += "AND q.id NOT IN :attachedIds ";
+            }
+            jpql += "ORDER BY q.sortOrder, q.name";
+
+            var query = em.createQuery(jpql, Questionnaire.class)
+                    .setParameter("pspId", pspId);
+            if (attachedIds != null && !attachedIds.isEmpty()) {
+                query.setParameter("attachedIds", attachedIds);
+            }
+            return query.getResultList();
+        } catch (Exception e) {
+            System.out.println("[QuestionnaireService] getAvailableQuestionnaires error: " + e.getMessage());
+            return new ArrayList<>();
+        }
+    }
+
     // ── Scope Overlap Check ─────────────────────────────────────────────────
 
     private static boolean hasScopeOverlap(Questionnaire q,
