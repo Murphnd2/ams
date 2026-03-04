@@ -82,7 +82,7 @@
 | T23 | Starter Packages | MED | ✅ Code complete | 8 JSON package templates for ApplicationSections. Needs V034 applied + browser testing. D-53. |
 | T24 | Proposal Customization | MED | ✅ Code complete | Composable section-based proposals, CKEditor 5, merge tokens. Needs V035-V036 applied + browser testing. D-54. |
 | T25 | Full-Height Dashboard Layouts | MED | ✅ Done | Both PSP and BPO dashboards use flex layouts with internal scroll columns. |
-| T26 | Questionnaire System | CONF | 🔨 Active | V039 schema + entities, admin UI in ServiceManager, auto-attach, activity detail card, native public form, B2.1 entity refinements. Phases 1–6 complete. Phase 7 (automation tokens, completion gating) remaining. D-55. |
+| T26 | Questionnaire System | CONF | ✅ Code complete | V039 schema + entities, admin UI, auto-attach, activity detail card, native public form, manual attach, email shortcut, Jotform webhook. Phases 1–5 complete. Needs V039 applied + browser testing. D-55. |
 
 ---
 
@@ -96,6 +96,9 @@
 | 19 | Master Admin Dashboard | LOW | 💡 Backlog | D-14. Central management console for all PSP instances. |
 | 20 | Summit Data Converter Web Tool | LOW | 💡 Backlog | Automate monthly CSV-to-Summit-import-format process. |
 | 21 | Benefit Plan Document Generation | LOW | 💡 Backlog | 15 HTML templates across 5 lines of service. Standalone project, eventual AMS integration. |
+| 22 | Automation Email Token for Questionnaires | MED | 💡 Backlog | Phase 6: `<q>` token in automation emails auto-embeds questionnaire link. Part of larger automation email design improvements. |
+| 23 | Questionnaire Completion Gating | LOW | 💡 Backlog | Phase 7: optional `todo_id` linkage on QuestionnaireInstance — blocks task completion until questionnaire is SUBMITTED/REVIEWED. |
+| 24 | Shared Field Renderer Component | LOW | 💡 Backlog | Phase 8: extract reusable `fieldRenderer.jsp` from questionnaire and application form rendering. |
 
 ---
 

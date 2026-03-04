@@ -41,6 +41,7 @@ public class QuestionnaireInstanceAction extends HttpServlet {
 
         EntityManagerFactory emf = (EntityManagerFactory) getServletContext().getAttribute("emf");
         EntityManager em = emf.createEntityManager();
+        boolean forwardToEmail = false;
 
         try {
             AmsDataLocal local = (AmsDataLocal) request.getSession().getAttribute("local");
@@ -82,13 +83,8 @@ public class QuestionnaireInstanceAction extends HttpServlet {
                         request.getSession().setAttribute("local", local);
                     }
                 }
-                em.close();
-                RequestDispatcher dispatcher = getServletContext().getNamedDispatcher("CreateEmail25");
-                dispatcher.forward(request, response);
-                return;
-            }
-
-            if ("attach".equals(action)) {
+                forwardToEmail = true;
+            } else if ("attach".equals(action)) {
                 // Manual attach: create new instance for selected questionnaire
                 String qIdStr = request.getParameter("questionnaireId");
                 if (qIdStr != null) {
@@ -173,10 +169,15 @@ public class QuestionnaireInstanceAction extends HttpServlet {
             e.printStackTrace();
             if (em.getTransaction().isActive()) em.getTransaction().rollback();
         } finally {
-            em.close();
+            if (em.isOpen()) em.close();
         }
 
-        forwardToView(request, response);
+        if (forwardToEmail) {
+            RequestDispatcher dispatcher = getServletContext().getNamedDispatcher("CreateEmail25");
+            dispatcher.forward(request, response);
+        } else {
+            forwardToView(request, response);
+        }
     }
 
     @Override
