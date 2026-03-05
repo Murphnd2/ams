@@ -16,7 +16,7 @@ Tracks database schema versions across environments.
 | BPO | bpo.superiorstate.biz | beta_ssa | BPO instance (V038, initialized, release V0.37.0) |
 | Master | master.superiorstate.biz | beta_ssa | Snapshot v8 (V037, stopped) |
 
-## Current Highest Version: V039
+## Current Highest Version: V040
 
 ## Dev Baseline
 
@@ -71,6 +71,7 @@ Individual migration scripts are no longer stored in the repo. The baseline dump
 | V037 | Add LOS/Enhancement scoping to proposal_section | ⬜ | ⬜ | ⬜ | ⬜ | ✅ | ✅ | ✅ |
 | V038 | Add sort_order to delegated_todo for BPO ordering | ⬜ | ⬜ | ⬜ | ⬜ | ✅ | ✅ | ⬜ |
 | V039 | Questionnaire system: templates, fields, instances, values, scoping | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
+| V040 | Add recurring_series_id to delegated_todo for BPO recurring history | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
 
 ## Notes
 

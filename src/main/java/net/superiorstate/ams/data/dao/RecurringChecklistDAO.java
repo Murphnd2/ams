@@ -374,4 +374,29 @@ public abstract class RecurringChecklistDAO {
         DoW d = (DoW) q.getSingleResult();
         return d;
     }
+
+    /**
+     * Returns up to 6 most-recently-completed CheckList instances for a given
+     * RecurringTaskList, excluding the current (open) instance.
+     * Each CheckList is returned with its toDoList JOIN FETCHed.
+     */
+    public static List<CheckList> getPastCompletedInstances(EntityManager em, Long recurringTaskListId, Long excludeChecklistId) {
+        try {
+            return em.createQuery(
+                "SELECT DISTINCT c FROM CheckList c " +
+                "LEFT JOIN FETCH c.toDoList " +
+                "WHERE c.recurringTaskList.id = :rtlId " +
+                "AND c.isComplete = true " +
+                "AND c.id <> :excludeId " +
+                "ORDER BY c.dueDate DESC",
+                CheckList.class)
+                .setParameter("rtlId", recurringTaskListId)
+                .setParameter("excludeId", excludeChecklistId)
+                .setMaxResults(6)
+                .getResultList();
+        } catch (Exception e) {
+            System.out.println("[RecurringChecklistDAO] getPastCompletedInstances error: " + e.getMessage());
+            return new ArrayList<>();
+        }
+    }
 }

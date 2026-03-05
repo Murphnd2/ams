@@ -6,6 +6,7 @@ import net.superiorstate.ams.model.general.IrsLimit;
 import net.superiorstate.ams.model.general.PSP;
 import net.superiorstate.ams.model.general.Person;
 import net.superiorstate.ams.model.general.UserRole;
+import net.superiorstate.ams.model.activity.Opportunity;
 import net.superiorstate.ams.model.sales.agency.*;
 import net.superiorstate.ams.model.sales.offering.LOS;
 import net.superiorstate.ams.model.sales.offering.ModuleDetail;
@@ -407,6 +408,26 @@ public abstract class SalesDAO {
             map.computeIfAbsent((Long) row[0], k -> new ArrayList<>()).add((Long) row[1]);
         }
         return map;
+    }
+
+    public static List<Opportunity> getClosedOpportunitiesByAgency(EntityManager em, long agencyId) {
+        Query q = em.createQuery(
+                "SELECT DISTINCT o FROM Opportunity o " +
+                "LEFT JOIN FETCH o.prospect p " +
+                "WHERE o.agency.id = :agencyId AND o.stage IN ('WON', 'LOST') " +
+                "ORDER BY o.id DESC");
+        q.setParameter("agencyId", agencyId);
+        return (List<Opportunity>) q.getResultList();
+    }
+
+    public static List<Opportunity> getClosedOpportunitiesByAgent(EntityManager em, long agentId) {
+        Query q = em.createQuery(
+                "SELECT DISTINCT o FROM Opportunity o " +
+                "LEFT JOIN FETCH o.prospect p " +
+                "WHERE o.assignedTo.id = :agentId AND o.stage IN ('WON', 'LOST') " +
+                "ORDER BY o.id DESC");
+        q.setParameter("agentId", agentId);
+        return (List<Opportunity>) q.getResultList();
     }
 
     /** Returns a map of rateId → list of Enhancement ServiceItem IDs that have pricing in that rate. */

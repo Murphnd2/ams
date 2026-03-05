@@ -81,6 +81,7 @@ public class AgentHome extends HttpServlet {
                     opp.getProspect().getProposalList().size(); // trigger lazy load
                     for (var prop : opp.getProspect().getProposalList()) {
                         if (prop.getLosList() != null) prop.getLosList().size();
+                        if (prop.getApplication() != null) prop.getApplication().getStatus();
                     }
                 }
             }
@@ -109,6 +110,13 @@ public class AgentHome extends HttpServlet {
             request.setAttribute("wonCount", wonCount);
             request.setAttribute("lostCount", lostCount);
             request.setAttribute("pipelineValue", pipelineValue);
+
+            // Closed opportunities for lookup section
+            List<Opportunity> closedOpps = opportunities.stream()
+                    .filter(o -> "WON".equals(o.getStage()) || "LOST".equals(o.getStage()))
+                    .collect(Collectors.toList());
+            request.setAttribute("closedOpportunityList", closedOpps);
+            request.setAttribute("closedCount", (long) closedOpps.size());
 
             // Load prospects for "New Opportunity" modal
             List<Prospect> prospects;

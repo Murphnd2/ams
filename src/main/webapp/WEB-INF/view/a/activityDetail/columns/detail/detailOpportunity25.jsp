@@ -129,6 +129,18 @@
                         <i class="bi bi-file-earmark-plus" style="font-size: 0.85rem;"></i>
                     </a>
                 </c:if>
+                <c:set var="oppHasApp" value="false"/>
+                <c:if test="${not empty opportunityProposals}">
+                    <c:forEach var="xp" items="${opportunityProposals}">
+                        <c:if test="${xp.getApplication() != null}"><c:set var="oppHasApp" value="true"/></c:if>
+                    </c:forEach>
+                </c:if>
+                <c:if test="${oppHasApp}">
+                    <a href="ExportApplicationCsv?opportunityId=${opp.getId()}"
+                       class="btn btn-sm btn-outline-ssa border-0 p-0 px-1 me-1" title="Export Application CSV">
+                        <i class="bi bi-filetype-csv" style="font-size: 0.85rem;"></i>
+                    </a>
+                </c:if>
                 <button class="btn btn-sm btn-outline-ssa border-0 p-0 px-1 d-none" id="btnExpandProposals"
                         type="button" data-bs-toggle="modal" data-bs-target="#proposalsFullModal" title="View all proposals">
                     <i class="bi bi-arrows-fullscreen" style="font-size: 0.75rem;"></i>

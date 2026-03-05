@@ -109,6 +109,11 @@ public class TaskReceiveApi extends HttpServlet {
                     try { dt.setSortOrder(Integer.parseInt(sortOrderStr)); } catch (NumberFormatException ignored) {}
                 }
 
+                String recurringSeriesId = getJsonString(t, "recurringSeriesId");
+                if (recurringSeriesId != null && !recurringSeriesId.isBlank()) {
+                    dt.setRecurringSeriesId(recurringSeriesId);
+                }
+
                 String dueDateStr = getJsonString(t, "dueDate");
                 if (dueDateStr != null) {
                     try {

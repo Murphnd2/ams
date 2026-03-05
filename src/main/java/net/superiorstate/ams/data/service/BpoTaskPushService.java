@@ -112,6 +112,11 @@ public class BpoTaskPushService {
 
                 taskMap.put("sortOrder", String.valueOf(todo.getSortOrder()));
 
+                // Recurring series — push RTL id so BPO can correlate past runs
+                if (checklist.getRecurringTaskList() != null && checklist.getRecurringTaskList().getId() != null) {
+                    taskMap.put("recurringSeriesId", checklist.getRecurringTaskList().getId().toString());
+                }
+
                 taskList.add(taskMap);
             }
 

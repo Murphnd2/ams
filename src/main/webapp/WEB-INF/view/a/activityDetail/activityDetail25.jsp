@@ -93,8 +93,20 @@
 
         <c:choose>
           <c:when test="${sessionScope.local.getCurrentActivity().getActivity().getClass().getSimpleName().equals('CheckList')}">
-            <%-- CheckList: no center panel, single divider to right --%>
-            <div class="panel-divider" id="dividerLeft"></div>
+            <c:choose>
+              <c:when test="${sessionScope.local.getCurrentActivity().getActivity().recurringTaskList != null}">
+                <%-- Recurring CheckList: show center panel with history --%>
+                <div class="panel-divider" id="dividerLeft"></div>
+                <div id="panelCenter" class="d-flex flex-column" style="min-height:0;">
+                  <c:import url="/WEB-INF/view/a/checklistDetail/checklistHistory25.jsp"/>
+                </div>
+                <div class="panel-divider" id="dividerRight"></div>
+              </c:when>
+              <c:otherwise>
+                <%-- Non-recurring CheckList: no center panel --%>
+                <div class="panel-divider" id="dividerLeft"></div>
+              </c:otherwise>
+            </c:choose>
           </c:when>
           <c:otherwise>
             <div class="panel-divider" id="dividerLeft"></div>
@@ -166,12 +178,12 @@
     var divR = document.getElementById('dividerRight');
 
     var saved = localStorage.getItem('actDetailPanels');
-    if (saved) {
+    if (saved && center) {
       try {
         var w = JSON.parse(saved);
-        left.style.flex = '0 0 ' + w.left + 'px';
-        right.style.flex = '0 0 ' + w.right + 'px';
-        center.style.flex = '1 1 auto';
+        if (left) left.style.flex = '0 0 ' + w.left + 'px';
+        if (right) right.style.flex = '0 0 ' + w.right + 'px';
+        if (center) center.style.flex = '1 1 auto';
       } catch(e) {}
     }
 

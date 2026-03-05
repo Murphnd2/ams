@@ -76,6 +76,9 @@ public class DelegatedToDo {
     @Column(name="sort_order")
     private int sortOrder;
 
+    @Column(name = "recurring_series_id", length = 50)
+    private String recurringSeriesId;
+
     public DelegatedToDo() {}
 
     @PrePersist
@@ -243,5 +246,13 @@ public class DelegatedToDo {
 
     public void setSortOrder(int sortOrder) {
         this.sortOrder = sortOrder;
+    }
+
+    public String getRecurringSeriesId() {
+        return recurringSeriesId;
+    }
+
+    public void setRecurringSeriesId(String recurringSeriesId) {
+        this.recurringSeriesId = recurringSeriesId;
     }
 }

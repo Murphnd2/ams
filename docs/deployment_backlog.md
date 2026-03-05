@@ -1,6 +1,6 @@
 # Deployment Backlog
 
-**Last Updated:** March 3, 2026
+**Last Updated:** March 5, 2026
 **Reference:** See `docs/deployment_strategy.md` for full context on each item.
 
 Items are ordered by dependency (earlier items unblock later ones).
@@ -621,3 +621,25 @@ On existing installations, run one-time SQL to:
 3. Insert `PSP_HOME_AGENCY_ID` constant with the home agency's ID
 
 This aligns existing databases with the updated DatabaseInitializer behavior.
+
+---
+
+### D-57: Apply V040 + Recurring Checklist History
+
+**Priority:** MEDIUM
+**Status:** Code complete — needs V040 applied + browser testing
+
+**Prerequisite:** V040 migration (`recurring_series_id` + `recurring_cycle_number` on `delegated_todo`)
+
+Recurring checklist history tracking: each recurring cycle gets a UUID series ID and incrementing cycle number. PSP and BPO both get "View History" links showing past cycles with completion dates, completed-by names, and task counts. CSV export for application data also included (no migration needed).
+
+**Files:**
+- `V040__delegated_todo_recurring_series.sql` — migration
+- `DelegatedToDo.java` — new fields
+- `BpoTaskPushService.java` — series ID propagation
+- `RecurringChecklistDAO.java` — history query
+- `ViewRecurringHistory25.java`, `BpoRecurringHistory.java` — servlets
+- `checklistHistory25.jsp` — shared view
+- `ExportApplicationCsv.java` — CSV export servlet
+- `AgentHome.java`, `agentHome25.jsp` — closed opportunity lookup + export integration
+- `detailOpportunity25.jsp` — CSV export button

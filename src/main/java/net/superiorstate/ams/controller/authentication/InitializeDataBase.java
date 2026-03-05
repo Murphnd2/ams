@@ -2,6 +2,7 @@ package net.superiorstate.ams.controller.authentication;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
+import jakarta.persistence.Persistence;
 import jakarta.persistence.Query;
 import jakarta.servlet.*;
 import jakarta.servlet.http.*;
@@ -26,6 +27,10 @@ public class InitializeDataBase extends HttpServlet {
 
         // D-06: Prevent re-initialization
         EntityManagerFactory emf = (EntityManagerFactory) getServletContext().getAttribute("emf");
+        boolean emfWasNull = (emf == null);
+        if (emfWasNull) {
+            emf = Persistence.createEntityManagerFactory("ssaPU");
+        }
         EntityManager em = emf.createEntityManager();
         try {
             if (isAlreadyInitialized(em)) {
@@ -96,6 +101,11 @@ public class InitializeDataBase extends HttpServlet {
                         System.out.println("🎭 Demo tag detected: " + demoTag);
                         DatabaseInitializer.seedDemoData(em, demoTag);
                     }
+                }
+
+                // Store EMF on context if we created it ourselves (fresh DB path)
+                if (emfWasNull) {
+                    getServletContext().setAttribute("emf", emf);
                 }
 
                 // Load global data so a server restart is not required

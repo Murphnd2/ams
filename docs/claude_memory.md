@@ -14,15 +14,15 @@
 - **selectOptions delimiter:** pipe-delimited (`|`), not comma — required by field rendering logic
 
 ## Current State
-- **Branch:** `feature/proposal-customization`
-- **Latest migration:** V039
-- **Session count:** 38
-- V025-V037 applied to Demo PSP, BPO, and Master; V038 applied to Demo and BPO; V039 code-complete, not yet applied anywhere
+- **Branch:** `refactor/modernize-architecture`
+- **Latest migration:** V040
+- **Session count:** 39
+- V025-V037 applied to Demo PSP, BPO, and Master; V038 applied to Demo and BPO; V039-V040 code-complete, not yet applied anywhere
 - Not yet applied to production or local dev
 - Master snapshot v8 taken 2026-03-04 (V037, fixed update.sh, fixed healthcheck.sh)
 
 ## Database Migrations
-- Current highest version: **V039**
+- Current highest version: **V040**
 - Migration tracker: `docs/analysis/migration_tracker.md`
 - Schema version SQL: `docs/schema_version_migration.sql`
 
@@ -146,7 +146,7 @@
 - **Enhancement 4 (Sort order):** DelegatedToDo.sortOrder field (V038), pushed via BpoTaskPushService, BpoHome queries sort by dueDate → activityName → sortOrder
 - **Vendor-only reopen protection:** checklistBasic25.jsp completed section shows X icon (no reopen form) for `isSourced && !allowNonOwner` tasks
 
-## Questionnaire System (V039, Phases 1–5 — Sessions 32–33)
+## Questionnaire System (V039, Phases 1–6 — Sessions 32–33)
 - **4 entities** in `model/activity/questionnaire/`: Questionnaire, QuestionnaireField, QuestionnaireInstance, QuestionnaireFieldValue
 - **B2.1 entity conventions:** `fetch=LAZY` on all `@ManyToOne`, `cascade=ALL, orphanRemoval=true` on parent→child `@OneToMany`
 - **Convenience methods:** `Questionnaire.isNative()`, `Questionnaire.isScopedToServices()`, `QuestionnaireInstance.isExternal()`
@@ -181,7 +181,7 @@
 - **Jotform hidden ref field** added to all 10 SSA forms — `{ref}` default value, backward compatible (forms work without GUID)
 - **Webhook URL config pending** — must be set manually per form: Jotform Settings → Integrations → Webhooks → `https://superiorstate.biz/api/v1/questionnaire/webhook`
 - **EclipseLink nested JOIN FETCH gotcha:** `LEFT JOIN FETCH q.fieldList` inside `JOIN FETCH qi.questionnaire q` is silently dropped — always load fields via separate direct query
-- **Phases 1–5 complete. Phase 6 (automation email token) tabled** into larger automation email design backlog item. Next: Phase 7 (completion gating)
+- **Phases 1–6 complete.** Next: Phase 7 (completion gating)
 
 ## Demo Data Seeder (Session 36)
 - **DemoDataSeeder.java** (`data/service/`) — conference demo data for `demo.superiorstate.biz`
@@ -228,6 +228,23 @@
 - **detailOpportunity25.jsp** — unconditional rows with `<c:choose>` showing `—` when null (was conditional `<c:if>`)
 - **EclipseLink lazy loading fix** — `LEFT JOIN FETCH o.prospect p LEFT JOIN FETCH p.proposalList` + explicit `.size()` force-initialization loop for proposals and their LOS lists
 - **Proposal display** — stacked `.drawer-prop-row` (not inline pills), `.drawer-new-prop` dashed button on top, descending sort by ID
+
+## Recurring Checklist History (V040, Session 39)
+- **V040 migration:** `recurring_series_id` VARCHAR(36) + `recurring_cycle_number` INT on `delegated_todo`
+- **DelegatedToDo.java:** new `recurringSeriesId`, `recurringCycleNumber` fields
+- **BpoTaskPushService.java:** copies series ID + increments cycle number on recurring push
+- **RecurringChecklistDAO.java** (new): `getRecurringHistory()` — past cycles by series ID
+- **ViewRecurringHistory25.java** (PSP), **BpoRecurringHistory.java** (BPO): history servlets
+- **checklistHistory25.jsp** (shared): history table with `.audit-wrap` layout
+- **activityDetail25.jsp** + **bpoHome25.jsp**: "View History" links for recurring checklists
+- **D-57** in deployment_backlog — code complete, needs V040 applied + browser testing
+
+## Agent Pipeline: Closed Lookup + CSV Export (Session 39)
+- **Closed Opportunity Lookup:** collapsible section below Kanban board with WON/LOST table, client-side text/outcome/agent filters
+- **ExportApplicationCsv.java** (new): servlet at `/ExportApplicationCsv`, accepts `proposalId` or `opportunityId`, streams CSV with 14 metadata columns + dynamic ApplicationField columns
+- **Contact info fallback:** prospect.getContact() → opportunity.getPrimaryContact()
+- **Application entity PK note:** `Application.getId()` returns the proposal_id (Long), not auto-generated
+- **PSP.getId() returns Long** — use `long` not `int` when storing
 
 ## Reference
 - Full session archive: `docs/analysis/session_history_archive.md`

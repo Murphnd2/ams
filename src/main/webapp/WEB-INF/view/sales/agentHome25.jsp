@@ -145,6 +145,32 @@
             display: none; position: fixed; inset: 0; z-index: 199; background: rgba(0,0,0,0.15);
         }
         .drawer-overlay.show { display: block; }
+
+        /* ── Closed section ── */
+        .closed-toggle {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 0.35rem 1rem; background: #f1f3f5; border-top: 1px solid #dee2e6;
+            cursor: pointer; flex-shrink: 0; user-select: none;
+        }
+        .closed-toggle:hover { background: #e9ecef; }
+        .closed-toggle span { font-size: 0.8rem; font-weight: 600; color: #555; }
+        .closed-panel {
+            display: none; flex-shrink: 0; max-height: 300px; overflow: hidden;
+            flex-direction: column; border-top: 1px solid #dee2e6;
+        }
+        .closed-panel.open { display: flex; }
+        .closed-filters {
+            display: flex; align-items: center; gap: 0.5rem; padding: 0.4rem 1rem;
+            background: #f8f9fa; flex-shrink: 0; flex-wrap: wrap;
+        }
+        .closed-table-wrap { overflow-y: auto; flex: 1; min-height: 0; }
+        .closed-table-wrap table { margin-bottom: 0; }
+        .closed-table-wrap th {
+            position: sticky; top: 0; background: #f8f9fa; z-index: 1;
+            font-size: 0.72rem; text-transform: uppercase; color: #888; font-weight: 700;
+            padding: 0.3rem 0.5rem; border-bottom: 2px solid #dee2e6;
+        }
+        .closed-table-wrap td { font-size: 0.8rem; padding: 0.35rem 0.5rem; vertical-align: middle; }
     </style>
 </head>
 <body>
@@ -236,6 +262,118 @@
                             </div>
                         </div>
                     </c:forTokens>
+                </div>
+
+                <%-- ══ Closed Opportunities toggle + panel ══ --%>
+                <div class="closed-toggle" onclick="toggleClosed()">
+                    <span><i class="bi bi-archive me-1"></i>Closed Opportunities
+                        <span class="badge bg-secondary ms-1" style="font-size:0.65rem;">${closedCount}</span>
+                    </span>
+                    <i class="bi bi-chevron-down" id="closedChevron" style="font-size:0.75rem; color:#888; transition:transform 0.2s;"></i>
+                </div>
+
+                <div class="closed-panel" id="closedPanel">
+                    <div class="closed-filters">
+                        <input type="text" id="closedSearch" class="form-control form-control-sm"
+                               placeholder="Search prospect..." style="width:170px; font-size:0.78rem;" oninput="filterClosed()">
+                        <select id="closedOutcome" class="form-select form-select-sm" style="width:90px; font-size:0.78rem;" onchange="filterClosed()">
+                            <option value="">All</option>
+                            <option value="WON">Won</option>
+                            <option value="LOST">Lost</option>
+                        </select>
+                        <c:if test="${sessionScope.isAgencyAdmin && not empty agentList}">
+                            <select id="closedAgent" class="form-select form-select-sm" style="width:140px; font-size:0.78rem;" onchange="filterClosed()">
+                                <option value="">All Agents</option>
+                                <c:forEach var="ag" items="${agentList}">
+                                    <option value="${ag.getId()}">${ag.getFirstName()} ${ag.getLastName()}</option>
+                                </c:forEach>
+                            </select>
+                        </c:if>
+                    </div>
+                    <div class="closed-table-wrap">
+                        <table class="table table-sm table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Prospect</th>
+                                    <th>Outcome</th>
+                                    <c:if test="${sessionScope.isAgencyAdmin}"><th>Agent</th></c:if>
+                                    <th>Close Date</th>
+                                    <th>Proposals</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody id="closedTbody">
+                                <c:choose>
+                                    <c:when test="${not empty closedOpportunityList}">
+                                        <c:forEach var="copp" items="${closedOpportunityList}">
+                                            <tr class="closed-row"
+                                                data-name="${fn:toLowerCase(fn:escapeXml(copp.getFullName()))}"
+                                                data-stage="${copp.getStage()}"
+                                                data-agent-id="${copp.getAssignedTo() != null ? copp.getAssignedTo().getId() : 0}">
+                                                <td>
+                                                    <a href="ViewById?id=${copp.getId()}" class="text-decoration-none fw-semibold"
+                                                       style="color:var(--ssa); text-transform:capitalize;">
+                                                        ${fn:escapeXml(fn:toLowerCase(copp.getFullName()))}
+                                                    </a>
+                                                </td>
+                                                <td>
+                                                    <c:choose>
+                                                        <c:when test="${copp.getStage() == 'WON'}">
+                                                            <span class="badge" style="background:#dcfce7; color:#16a34a; font-size:0.7rem;">Won</span>
+                                                        </c:when>
+                                                        <c:otherwise>
+                                                            <span class="badge" style="background:#fee2e2; color:#dc2626; font-size:0.7rem;">Lost</span>
+                                                        </c:otherwise>
+                                                    </c:choose>
+                                                </td>
+                                                <c:if test="${sessionScope.isAgencyAdmin}">
+                                                    <td>${copp.getAssignedTo() != null ? copp.getAssignedTo().getFirstName() : ''} ${copp.getAssignedTo() != null ? copp.getAssignedTo().getLastName() : ''}</td>
+                                                </c:if>
+                                                <td>
+                                                    <c:choose>
+                                                        <c:when test="${copp.getExpectedCloseDate() != null}">
+                                                            <fmt:formatDate value="${copp.getExpectedCloseDate()}" pattern="M/d/yy"/>
+                                                        </c:when>
+                                                        <c:otherwise>&mdash;</c:otherwise>
+                                                    </c:choose>
+                                                </td>
+                                                <td>
+                                                    <c:set var="cpropCount" value="${copp.getProspect() != null && copp.getProspect().getProposalList() != null ? fn:length(copp.getProspect().getProposalList()) : 0}"/>
+                                                    <c:choose>
+                                                        <c:when test="${cpropCount > 0}">
+                                                            <span class="badge bg-light text-dark border" style="font-size:0.68rem;">${cpropCount}</span>
+                                                        </c:when>
+                                                        <c:otherwise>&mdash;</c:otherwise>
+                                                    </c:choose>
+                                                </td>
+                                                <td>
+                                                    <c:set var="cHasApp" value="false"/>
+                                                    <c:if test="${copp.getProspect() != null && copp.getProspect().getProposalList() != null}">
+                                                        <c:forEach var="cprop" items="${copp.getProspect().getProposalList()}">
+                                                            <c:if test="${cprop.getApplication() != null}">
+                                                                <c:set var="cHasApp" value="true"/>
+                                                            </c:if>
+                                                        </c:forEach>
+                                                    </c:if>
+                                                    <c:if test="${cHasApp}">
+                                                        <a href="ExportApplicationCsv?opportunityId=${copp.getId()}" title="Export Application CSV"
+                                                           class="text-decoration-none" style="color:var(--ssa);">
+                                                            <i class="bi bi-download" style="font-size:0.85rem;"></i>
+                                                        </a>
+                                                    </c:if>
+                                                </td>
+                                            </tr>
+                                        </c:forEach>
+                                    </c:when>
+                                    <c:otherwise>
+                                        <tr id="closedEmpty"><td colspan="6" class="text-center text-muted py-3" style="font-size:0.8rem;">
+                                            <i class="bi bi-check2-all me-1"></i>No closed opportunities yet.
+                                        </td></tr>
+                                    </c:otherwise>
+                                </c:choose>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
 
@@ -436,7 +574,8 @@ const OPPS = {
             <c:forEach var="prop" items="${opp.getProspect().getProposalList()}" varStatus="ps">
             { id: ${prop.getId()}, status: '${prop.getStatus()}',
               los: '<c:forEach var="los" items="${prop.getLosList()}" varStatus="ls">${fn:escapeXml(los.getShortText())}<c:if test="${!ls.last}">, </c:if></c:forEach>',
-              sourceId: ${prop.getSourceActivity() != null ? prop.getSourceActivity().getId() : 0}
+              sourceId: ${prop.getSourceActivity() != null ? prop.getSourceActivity().getId() : 0},
+              hasApp: ${prop.getApplication() != null}
             }<c:if test="${!ps.last}">,</c:if>
             </c:forEach>
             </c:if>
@@ -666,6 +805,46 @@ function showProspectMode(mode) {
     }
 }
 showProspectMode('new');
+
+/* ═══ Closed Opportunities toggle + filter ═══ */
+function toggleClosed() {
+    var panel = document.getElementById('closedPanel');
+    var chevron = document.getElementById('closedChevron');
+    if (panel.classList.contains('open')) {
+        panel.classList.remove('open');
+        chevron.style.transform = '';
+    } else {
+        panel.classList.add('open');
+        chevron.style.transform = 'rotate(180deg)';
+    }
+}
+
+function filterClosed() {
+    var search = (document.getElementById('closedSearch').value || '').toLowerCase();
+    var outcome = document.getElementById('closedOutcome').value;
+    var agentEl = document.getElementById('closedAgent');
+    var agentId = agentEl ? agentEl.value : '';
+
+    var rows = document.querySelectorAll('.closed-row');
+    var visibleCount = 0;
+    rows.forEach(function(row) {
+        var name = row.getAttribute('data-name') || '';
+        var stage = row.getAttribute('data-stage') || '';
+        var rowAgentId = row.getAttribute('data-agent-id') || '';
+
+        var show = true;
+        if (search && name.indexOf(search) === -1) show = false;
+        if (outcome && stage !== outcome) show = false;
+        if (agentId && rowAgentId !== agentId) show = false;
+
+        row.style.display = show ? '' : 'none';
+        if (show) visibleCount++;
+    });
+
+    // Show/hide empty row
+    var emptyRow = document.getElementById('closedEmpty');
+    if (emptyRow) emptyRow.style.display = (visibleCount === 0 && rows.length > 0) ? '' : 'none';
+}
 </script>
 </body>
 </html>

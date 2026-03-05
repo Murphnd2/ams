@@ -1306,3 +1306,53 @@ Three design specs implemented plus bug fixes for proposal display in the Kanban
 - **Modified (10):** reviewApplication.jsp, reviewApplications.jsp, ActivityLandingRow.java, ActivityLandingDao.java, activityList25.jsp, agentHome25.jsp, CreateOpportunity.java, UpdateOpportunityStage.java, AgentHome.java, detailOpportunity25.jsp
 
 No database changes.
+
+---
+
+## March 5, 2026 — Session 39: Recurring Checklist History + InitializeDataBase Fix + Agent Pipeline Enhancements
+
+Three feature areas implemented: recurring checklist history tracking (V040), a fresh-database NPE fix, and two agent pipeline enhancements (closed opportunity lookup + application CSV export).
+
+### Recurring Checklist History (V040)
+
+Full history tracking for recurring checklist series — tracks each cycle's completion with details.
+
+- **V040 migration** (`V040__delegated_todo_recurring_series.sql`) — Added `recurring_series_id` VARCHAR(36) and `recurring_cycle_number` INT to `delegated_todo` table. Index on `recurring_series_id`.
+- **DelegatedToDo.java** — Added `recurringSeriesId` (UUID string) and `recurringCycleNumber` (Integer) fields with JPA annotations.
+- **BpoTaskPushService.java** — Copies `recurringSeriesId` and `recurringCycleNumber` from source checklist's first task when pushing recurring instances. Increments cycle number for each new recurring cycle.
+- **RecurringChecklistDAO.java** (new) — DAO with `getRecurringHistory()` query: loads past cycles by series ID, returns cycle number, checklist name, completion date, completed-by person name, and task count per cycle.
+- **ViewRecurringHistory25.java** (new) — PSP-side servlet at `/ViewRecurringHistory25`, loads history for a given `seriesId` parameter, forwards to JSP.
+- **BpoRecurringHistory.java** (new) — BPO-side servlet at `/BpoRecurringHistory`, same pattern as PSP side.
+- **checklistHistory25.jsp** (new) — Shared JSP for both PSP and BPO, displays history table with cycle number, checklist name (linked), completion date, completed by, and task count. Uses `.audit-wrap` flex layout pattern.
+- **activityDetail25.jsp** — Added "View History" link button on recurring checklists, visible when `recurringSeriesId` is present on the first delegated task.
+- **bpoHome25.jsp** — Added "History" link in BPO checklist kebab menu for recurring checklists.
+- **TaskReceiveApi.java** — Sets `recurringSeriesId` and `recurringCycleNumber` on delegated tasks received via BPO push API.
+
+### InitializeDataBase NPE Fix
+
+- **InitializeDataBase.java** — Added null guard around `createApplicationSections()` call. On fresh databases, `AmsDataGlobal.losMap` may be empty before full initialization completes, causing NPE when the initializer tries to assign sections to LOS. Guard skips section assignment if LOS map is empty (sections get assigned on next startup after LOS data exists).
+
+### Agent Pipeline: Closed Opportunity Lookup
+
+Collapsible section below the Kanban board showing WON/LOST opportunities with client-side filtering.
+
+- **SalesDAO.java** — Added `getClosedOpportunitiesByAgency()` and `getClosedOpportunitiesByAgent()` static methods (for future reuse; current implementation filters from existing loaded list).
+- **AgentHome.java** — Added `prop.getApplication().getStatus()` to lazy-load touch loop. Added closed opportunity extraction via stream filter from already-loaded opportunities list. Sets `closedOpportunityList`, `closedCount` request attributes.
+- **agentHome25.jsp** — Added CSS for `.closed-toggle`, `.closed-panel`, `.closed-filters`, `.closed-table-wrap` with sticky headers. HTML: toggle bar with archive icon, count badge, chevron; collapsible panel with text search, WON/LOST dropdown, agent filter (admin only); table with Prospect (linked), Outcome badge (green WON/red LOST), Agent (admin only), Close Date, Proposals count, Export CSV icon. JS: `toggleClosed()` and `filterClosed()` functions. Added `hasApp` flag to OPPS JS data map.
+
+### Agent Pipeline: Application CSV Export
+
+New servlet for exporting application field data as CSV, integrated into both opportunity detail and agent pipeline pages.
+
+- **ExportApplicationCsv.java** (new) — Servlet at `/ExportApplicationCsv`, accepts `proposalId` or `opportunityId` via GET. Auth via AmsDataLocal session check. Loads proposals with applications, builds master field list from ApplicationField sorted by section/field sortOrder. Streams CSV with 14 metadata columns (Prospect Name, Contact First/Last/Email/Phone, Agency Name, Agent Name, Proposal ID/Status/Created Date, Application Status/Submitted Date, Services pipe-delimited, Rate Name) plus one column per ApplicationField. Contact info falls back from prospect contact to opportunity primary contact.
+- **detailOpportunity25.jsp** — Added `oppHasApp` check via JSTL forEach. Added conditional CSV export icon button (bi-filetype-csv) in proposals card header when any proposal has an application.
+
+### Bug Fix: PSP.getId() Returns Long
+
+- **ExportApplicationCsv.java** — Fixed `int pspId` to `long pspId` and updated `loadMasterFields()` parameter type to match. `PSP.getId()` returns `Long`, not `int`.
+
+### Files Changed
+- **New (6):** V040 migration, RecurringChecklistDAO.java, ViewRecurringHistory25.java, BpoRecurringHistory.java, checklistHistory25.jsp, ExportApplicationCsv.java
+- **Modified (10):** DelegatedToDo.java, BpoTaskPushService.java, TaskReceiveApi.java, activityDetail25.jsp, bpoHome25.jsp, InitializeDataBase.java, SalesDAO.java, AgentHome.java, agentHome25.jsp, detailOpportunity25.jsp
+
+Database changes: V040 (delegated_todo recurring series columns).

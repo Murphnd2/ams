@@ -59,4 +59,5 @@ INSERT IGNORE INTO schema_version (version, description, script_name) VALUES
 ('V036', 'Proposal section table for composable proposal content', 'V036__proposal_section_table.sql'),
 ('V037', 'Add LOS/Enhancement scoping to proposal_section', 'V037__proposal_section_scoping.sql'),
 ('V038', 'Add sort_order to delegated_todo for BPO ordering', 'V038__delegated_todo_sort_order.sql'),
-('V039', 'Questionnaire system: templates, fields, instances, values, scoping', 'V039__questionnaire_system.sql');
+('V039', 'Questionnaire system: templates, fields, instances, values, scoping', 'V039__questionnaire_system.sql'),
+('V040', 'Add recurring_series_id to delegated_todo for BPO recurring history', 'V040__delegated_todo_recurring_series.sql');

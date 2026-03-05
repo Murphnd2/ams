@@ -175,6 +175,8 @@
                                              data-goto="${dt.getGotoLink() != null ? dt.getGotoLink() : ''}"
                                              data-info="${dt.getInfoLink() != null ? dt.getInfoLink() : ''}"
                                              data-assigned-to="${dt.getAssignedTo() != null ? dt.getAssignedTo().getId() : '0'}"
+                                             data-recurring-series-id="${dt.getRecurringSeriesId() != null ? dt.getRecurringSeriesId() : ''}"
+                                             data-psp-client-id="${dt.getPspClient().getId()}"
                                              onclick="openBpoModal(this)"
                                              style="cursor:pointer;">
                                             <div class="col-5">
@@ -407,6 +409,16 @@
                         </div>
                     </div>
 
+                <%-- Past Runs (recurring tasks only) --%>
+                <div id="modalPastRunsSection" class="d-none mt-3">
+                    <hr style="margin:0.5rem 0;">
+                    <div style="font-size:0.78rem; font-weight:600; color:#0d5681; margin-bottom:0.4rem;">
+                        <i class="bi bi-clock-history me-1"></i>Past Runs
+                    </div>
+                    <div id="modalPastRunsLoading" class="text-muted fst-italic" style="font-size:0.78rem;">Loading...</div>
+                    <div id="modalPastRunsAccordion" class="accordion accordion-flush" style="display:none; font-size:0.78rem;"></div>
+                </div>
+
             </div>
             <div class="modal-footer justify-content-center border-0" style="padding:0.5rem 1rem;">
                 <form method="post" action="BpoCompleteTask" class="d-inline">
@@ -496,6 +508,65 @@
                 notesDiv.innerHTML = '<div class="text-center text-muted py-2" style="font-size:0.8rem;">Could not load notes</div>';
             });
 
+        // Past Runs — only for recurring cross-system tasks
+        const recurringSeriesId = row.dataset.recurringSeriesId || '';
+        const pspClientId = row.dataset.pspClientId || '';
+        const pastRunsSection = document.getElementById('modalPastRunsSection');
+        const pastRunsLoading = document.getElementById('modalPastRunsLoading');
+        const pastRunsAccordion = document.getElementById('modalPastRunsAccordion');
+
+        pastRunsSection.classList.add('d-none');
+        pastRunsLoading.style.display = 'block';
+        pastRunsAccordion.style.display = 'none';
+        pastRunsAccordion.innerHTML = '';
+
+        if (recurringSeriesId && recurringSeriesId !== '' && currentCrossSystem) {
+            pastRunsSection.classList.remove('d-none');
+            const histUrl = 'BpoRecurringHistory?recurringSeriesId=' + encodeURIComponent(recurringSeriesId)
+                + '&pspClientId=' + encodeURIComponent(pspClientId);
+
+            fetch(histUrl)
+                .then(r => r.json())
+                .then(runs => {
+                    pastRunsLoading.style.display = 'none';
+                    if (!runs || runs.length === 0) {
+                        pastRunsSection.classList.add('d-none');
+                        return;
+                    }
+                    pastRunsAccordion.style.display = 'block';
+                    runs.forEach(function(run, idx) {
+                        const colId = 'bpoPastRun' + idx;
+                        const dueLabel = run.dueDate || '\u2014';
+                        const doneBy = run.completedByName ? ' \u00b7 ' + run.completedByName : '';
+                        const noteCount = run.noteCount || 0;
+                        const noteBadge = noteCount > 0
+                            ? '<span class="badge ms-1" style="background:#0d5681;font-size:0.6rem;">' + noteCount + (noteCount === 1 ? ' note' : ' notes') + '</span>'
+                            : '';
+                        const item = document.createElement('div');
+                        item.className = 'accordion-item';
+                        item.style.cssText = 'border:1px solid #dee2e6;border-radius:3px;margin-bottom:0.25rem;';
+                        item.innerHTML =
+                            '<h2 class="accordion-header">' +
+                                '<button class="accordion-button collapsed py-1 px-2" type="button" ' +
+                                    'data-bs-toggle="collapse" data-bs-target="#' + colId + '" ' +
+                                    'style="font-size:0.75rem;background:#f8f9fa;" ' +
+                                    'onclick="loadPastRunNotes(\'' + colId + '\',\'' + (run.todoGuid || '') + '\')">' +
+                                    dueLabel + doneBy + noteBadge +
+                                '</button>' +
+                            '</h2>' +
+                            '<div id="' + colId + '" class="accordion-collapse collapse">' +
+                                '<div class="accordion-body p-2" id="' + colId + '_body">' +
+                                    '<div class="text-muted fst-italic" style="font-size:0.75rem;">Loading notes...</div>' +
+                                '</div>' +
+                            '</div>';
+                        pastRunsAccordion.appendChild(item);
+                    });
+                })
+                .catch(function() {
+                    pastRunsLoading.style.display = 'none';
+                });
+        }
+
         // Show modal
         new bootstrap.Modal(document.getElementById('bpoTaskModal')).show();
     }
@@ -536,6 +607,35 @@
             .catch(() => {})
             .finally(() => {
                 assignSelect.disabled = false;
+            });
+    }
+
+    function loadPastRunNotes(colId, todoGuid) {
+        const body = document.getElementById(colId + '_body');
+        if (!body || !todoGuid || body.dataset.loaded === 'true') return;
+        body.dataset.loaded = 'true';
+
+        fetch('BpoGetNotes?todoGuid=' + encodeURIComponent(todoGuid))
+            .then(r => r.json())
+            .then(notes => {
+                if (!notes || notes.length === 0) {
+                    body.innerHTML = '<div class="text-muted fst-italic" style="font-size:0.75rem;">No notes for this run.</div>';
+                    return;
+                }
+                let html = '';
+                notes.forEach(function(n) {
+                    const badgeColor = n.sourceType === 'BPO' ? '#0d5681' : '#6c757d';
+                    html += '<div class="mb-1 p-1 rounded" style="background:#f8f9fa;font-size:0.75rem;">';
+                    html += '<span class="badge me-1" style="background:' + badgeColor + ';font-size:0.6rem;">' + (n.sourceType || '') + '</span>';
+                    html += '<span style="color:#555;">' + (n.authorName || '') + '</span>';
+                    if (n.createdDate) html += '<span class="text-muted ms-1" style="font-size:0.68rem;">' + n.createdDate + '</span>';
+                    html += '<div style="color:#333;margin-top:2px;">' + (n.noteText || '') + '</div>';
+                    html += '</div>';
+                });
+                body.innerHTML = html;
+            })
+            .catch(function() {
+                body.innerHTML = '<div class="text-muted" style="font-size:0.75rem;">Could not load notes.</div>';
             });
     }
 
