@@ -6,12 +6,12 @@ import jakarta.persistence.NoResultException;
 import jakarta.persistence.Query;
 import net.superiorstate.ams.AppConfig;
 import net.superiorstate.ams.data.dao.*;
+import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.model.Activity25;
 import net.superiorstate.ams.model.Activity25p;
 import net.superiorstate.ams.model.Activity25u;
 import net.superiorstate.ams.model.Constant;
 import net.superiorstate.ams.controller.authentication.AuthenticateUser;
-import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.model.activity.checklist.sequences.support.ActivityCategory;
 import net.superiorstate.ams.model.activity.checklist.sequences.support.ServiceItem;
 import net.superiorstate.ams.model.activity.checklist.sequences.support.TaskFrequency;
@@ -98,6 +98,7 @@ public class AmsDataGlobal {
 
     private boolean chatbotEnabled;
     private boolean useTimeclock = true;
+    private String schemaVersion = "Unknown";
     private String brandingPath;
     private List<Activity25u> activitiesAllOpen;
     private List<Agency> agencies;
@@ -347,6 +348,16 @@ public class AmsDataGlobal {
         if (homeAgencyIdStr != null && !homeAgencyIdStr.isEmpty()) {
             this.pspHomeAgencyId = Long.parseLong(homeAgencyIdStr);
         }
+
+        // Schema version (latest applied migration)
+        try {
+            Object result = em.createNativeQuery(
+                "SELECT script_name FROM schema_version ORDER BY applied_on DESC LIMIT 1"
+            ).getSingleResult();
+            if (result != null) schemaVersion = result.toString();
+        } catch (Exception e) {
+            schemaVersion = "Unknown";
+        }
     }
 
     public String getConstantValue(EntityManager em, String constantName){
@@ -510,6 +521,7 @@ public class AmsDataGlobal {
 
     public boolean isChatbotEnabled() { return chatbotEnabled; }
     public boolean isUseTimeclock() { return useTimeclock; }
+    public String getSchemaVersion() { return schemaVersion; }
     public PSP getPsp() {
         return psp;
     }

@@ -195,28 +195,31 @@
               <i class="bi bi-gear"></i><span class="d-lg-none d-xl-inline ms-1">Admin</span>
             </button>
             <ul class="dropdown-menu dropdown-menu-end">
+
+              <%-- 1. Dashboard --%>
               <li><a class="dropdown-item" href="PspDashboardHome"><i class="bi bi-speedometer2 me-2"></i>Dashboard</a></li>
+
+              <%-- ── OUR BUSINESS ── --%>
               <li><hr class="dropdown-divider"></li>
-              <li><a class="dropdown-item" href="ServiceManagerHome"><i class="bi bi-diagram-3 me-2"></i>Service Manager</a></li>
-              <li><a class="dropdown-item" href="PspAdminHome"><i class="bi bi-cash-coin me-2"></i>Rate Manager</a></li>
-              <li><a class="dropdown-item" href="PspAgencyHome"><i class="bi bi-people-fill me-2"></i>Agency Manager</a></li>
-              <li><a class="dropdown-item" href="LibraryHome"><i class="bi bi-collection me-2"></i>Resource Library</a></li>
-              <li><a class="dropdown-item" href="ProposalSettings"><i class="bi bi-sliders me-2"></i>Proposal Settings</a></li>
+              <li><h6 class="dropdown-header" style="font-size:0.7rem; text-transform:uppercase; letter-spacing:0.05em; color:#6c757d;">Our Business</h6></li>
+              <li><a class="dropdown-item" href="ServiceManagerHome"><i class="bi bi-box-seam me-2"></i>What We Offer</a></li>
+              <li><a class="dropdown-item" href="PspAdminHome"><i class="bi bi-tag me-2"></i>What It Costs</a></li>
+              <li><a class="dropdown-item" href="PspAgencyHome"><i class="bi bi-people me-2"></i>Who Sells It</a></li>
+              <li><a class="dropdown-item" href="LibraryHome"><i class="bi bi-collection me-2"></i>Marketing Pieces</a></li>
+
+              <%-- ── BUSINESS EFFICIENCY ── --%>
               <li><hr class="dropdown-divider"></li>
-              <li><a class="dropdown-item" href="SequenceBuilder25"><i class="bi bi-list-check me-2"></i>Sequence Builder</a></li>
-              <li><a class="dropdown-item" href="QuestionnaireManager25"><i class="bi bi-ui-checks-grid me-2"></i>Questionnaire Manager</a></li>
-              <c:if test="${applicationScope.global.useTimeclock}">
-              <li><a class="dropdown-item" href="ReviewTimeCorrections"><i class="bi bi-clock-history me-2"></i>Time Corrections</a></li>
-              </c:if>
+              <li><h6 class="dropdown-header" style="font-size:0.7rem; text-transform:uppercase; letter-spacing:0.05em; color:#6c757d;">Business Efficiency</h6></li>
+              <li><a class="dropdown-item" href="SequenceBuilder25"><i class="bi bi-diagram-3 me-2"></i>How We Do Stuff</a></li>
+              <li><a class="dropdown-item" href="QuestionnaireManager25"><i class="bi bi-ui-checks-grid me-2"></i>How We Collect Info</a></li>
+              <li><button class="dropdown-item" type="button" data-bs-toggle="modal" data-bs-target="#userManagerModal"><i class="bi bi-person-gear me-2"></i>Who Can Do It</button></li>
+              <li><a class="dropdown-item" href="VendorManager"><i class="bi bi-building me-2"></i>Who Can Help Us</a></li>
+
+              <%-- ── SETTINGS / ABOUT ── --%>
               <li><hr class="dropdown-divider"></li>
-              <li><button class="dropdown-item" type="button" data-bs-toggle="modal" data-bs-target="#userManagerModal"><i class="bi bi-people-fill me-2"></i>User Manager</button></li>
-              <li><a class="dropdown-item" href="UploadPspBranding"><i class="bi bi-palette me-2"></i>Branding</a></li>
               <li><button class="dropdown-item" type="button" data-bs-toggle="modal" data-bs-target="#pspSettingsMod"><i class="bi bi-gear me-2"></i>Settings</button></li>
-              <li><a class="dropdown-item" href="BillingAction"><i class="bi bi-currency-dollar me-2"></i>Billing</a></li>
-              <li><a class="dropdown-item" href="SummitImport"><i class="bi bi-cloud-upload me-2"></i>Import Data</a></li>
-              <li><a class="dropdown-item" href="BenefitAudit"><i class="bi bi-calendar-check me-2"></i>Benefit Audit</a></li>
-              <li><hr class="dropdown-divider"></li>
-              <li><a class="dropdown-item" href="VendorManager"><i class="bi bi-diagram-3 me-2"></i>Vendor Management</a></li>
+              <li><button class="dropdown-item" type="button" data-bs-toggle="modal" data-bs-target="#aboutAmsModal"><i class="bi bi-info-circle me-2"></i>About AMS</button></li>
+
             </ul>
           </div>
         </c:if>
@@ -320,6 +323,38 @@
 <c:if test="${sessionScope.isPspAdmin}">
   <c:import url="/WEB-INF/view/a/general/smtpSettingsMod25.jsp"/>
   <c:import url="/WEB-INF/view/a/general/userManager25.jsp"/>
+
+  <%-- About AMS Modal --%>
+  <div class="modal fade" id="aboutAmsModal" tabindex="-1" aria-labelledby="aboutAmsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+      <div class="modal-content">
+        <div class="modal-header" style="background-color: #0d5681; color: white;">
+          <h5 class="modal-title" id="aboutAmsModalLabel">
+            <i class="bi bi-info-circle me-2"></i>About AMS
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body text-center py-4">
+          <div class="mb-3">
+            <i class="bi bi-building-check" style="font-size: 3rem; color: #0d5681;"></i>
+          </div>
+          <h5 class="fw-bold mb-1">AMS</h5>
+          <p class="text-muted mb-1" style="font-size:0.85rem;">Association Management System</p>
+          <p class="text-muted mb-3" style="font-size:0.8rem;">by Superior State Administrators</p>
+          <hr>
+          <p class="small text-muted mb-1">
+            Schema Version: <strong>${applicationScope.global.schemaVersion}</strong>
+          </p>
+          <p class="text-muted mt-3" style="font-size:0.75rem;">
+            &copy; <%= java.time.Year.now().getValue() %> Superior State Administrators.<br>All rights reserved.
+          </p>
+        </div>
+        <div class="modal-footer justify-content-center border-0 pt-0">
+          <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
 </c:if>
 
 <%-- Chatbot — PSP users only --%>

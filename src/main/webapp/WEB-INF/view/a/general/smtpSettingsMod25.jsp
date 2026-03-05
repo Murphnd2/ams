@@ -34,6 +34,12 @@
                   <i class="bi bi-toggles me-1"></i>Features
                 </button>
               </li>
+              <li class="nav-item" role="presentation">
+                <button class="nav-link" id="tab-tools" data-bs-toggle="tab" data-bs-target="#pane-tools"
+                        type="button" role="tab" aria-controls="pane-tools" aria-selected="false">
+                  <i class="bi bi-tools me-1"></i>Tools
+                </button>
+              </li>
             </ul>
 
             <div class="tab-content">
@@ -95,6 +101,61 @@
                            min="0" max="99" style="width:60px; text-align:center;">
                   </div>
                 </div>
+              </div>
+
+              <%-- ═══ TOOLS TAB ═══ --%>
+              <div class="tab-pane fade" id="pane-tools" role="tabpanel" aria-labelledby="tab-tools">
+                <div class="text-muted mb-3" style="font-size:0.78rem;">Quick access to administration tools.</div>
+
+                <a href="BillingAction" class="d-flex align-items-center justify-content-between p-3 rounded mb-2 text-decoration-none"
+                   style="background:#f8f9fb; border:1px solid #dee2e6; color:inherit;"
+                   onclick="bootstrap.Modal.getInstance(document.getElementById('pspSettingsMod')).hide();">
+                  <div>
+                    <div class="fw-semibold" style="font-size:0.85rem; color:#0d5681;"><i class="bi bi-currency-dollar me-1"></i>Billing</div>
+                    <div class="text-muted" style="font-size:0.75rem;">Monthly billing views and invoicing</div>
+                  </div>
+                  <i class="bi bi-chevron-right text-muted"></i>
+                </a>
+
+                <a href="UploadPspBranding" class="d-flex align-items-center justify-content-between p-3 rounded mb-2 text-decoration-none"
+                   style="background:#f8f9fb; border:1px solid #dee2e6; color:inherit;"
+                   onclick="bootstrap.Modal.getInstance(document.getElementById('pspSettingsMod')).hide();">
+                  <div>
+                    <div class="fw-semibold" style="font-size:0.85rem; color:#0d5681;"><i class="bi bi-palette me-1"></i>Branding</div>
+                    <div class="text-muted" style="font-size:0.75rem;">Logo and favicon customization</div>
+                  </div>
+                  <i class="bi bi-chevron-right text-muted"></i>
+                </a>
+
+                <a href="SummitImport" class="d-flex align-items-center justify-content-between p-3 rounded mb-2 text-decoration-none"
+                   style="background:#f8f9fb; border:1px solid #dee2e6; color:inherit;"
+                   onclick="bootstrap.Modal.getInstance(document.getElementById('pspSettingsMod')).hide();">
+                  <div>
+                    <div class="fw-semibold" style="font-size:0.85rem; color:#0d5681;"><i class="bi bi-cloud-upload me-1"></i>Import Data</div>
+                    <div class="text-muted" style="font-size:0.75rem;">Summit data import wizard</div>
+                  </div>
+                  <i class="bi bi-chevron-right text-muted"></i>
+                </a>
+
+                <a href="BenefitAudit" class="d-flex align-items-center justify-content-between p-3 rounded mb-2 text-decoration-none"
+                   style="background:#f8f9fb; border:1px solid #dee2e6; color:inherit;"
+                   onclick="bootstrap.Modal.getInstance(document.getElementById('pspSettingsMod')).hide();">
+                  <div>
+                    <div class="fw-semibold" style="font-size:0.85rem; color:#0d5681;"><i class="bi bi-calendar-check me-1"></i>Benefit Audit</div>
+                    <div class="text-muted" style="font-size:0.75rem;">Benefit renewal date review</div>
+                  </div>
+                  <i class="bi bi-chevron-right text-muted"></i>
+                </a>
+
+                <a href="ProposalSettings" class="d-flex align-items-center justify-content-between p-3 rounded mb-2 text-decoration-none"
+                   style="background:#f8f9fb; border:1px solid #dee2e6; color:inherit;"
+                   onclick="bootstrap.Modal.getInstance(document.getElementById('pspSettingsMod')).hide();">
+                  <div>
+                    <div class="fw-semibold" style="font-size:0.85rem; color:#0d5681;"><i class="bi bi-file-earmark-richtext me-1"></i>Proposal Settings</div>
+                    <div class="text-muted" style="font-size:0.75rem;">Proposal template and section editor</div>
+                  </div>
+                  <i class="bi bi-chevron-right text-muted"></i>
+                </a>
               </div>
             </div>
           </div>

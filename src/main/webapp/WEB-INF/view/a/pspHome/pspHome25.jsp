@@ -193,6 +193,7 @@
 <body>
 <div class="container-fluid">
   <c:import url="/WEB-INF/view/a/general/navbar25.jsp"></c:import>
+  <div style="height: 6px; background: #eef0f4;"></div>
   <div class="row home-zones-row">
     <c:if test="${applicationScope.global.useTimeclock}">
     <%-- ************************ T I M E C L O C K   C O L U M N ********************************************************* --%>

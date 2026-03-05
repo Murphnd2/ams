@@ -83,6 +83,7 @@
 
     /* CENTER panel: white = reference/data zone */
     .detail-panel-center { background: white; }
+    .detail-panel-center-stripe { height: 3px; background: var(--ssa); }
     /* Center section card headers */
     .detail-section-header {
       background: #f7f9fc; border-bottom: 1px solid #edf0f5;
@@ -135,7 +136,7 @@
       }
       .detail-panel-left .hdr-bar i, .detail-panel-right .hdr-bar i { color: white !important; }
       .detail-panel-left .hdr-bar button, .detail-panel-right .hdr-bar button { color: rgba(255,255,255,0.8) !important; }
-      .detail-panel-left-stripe, .detail-panel-right-stripe { display: none; }
+      .detail-panel-left-stripe, .detail-panel-center-stripe, .detail-panel-right-stripe { display: none; }
       .detail-crumb-bar { display: none; }
     }
 
@@ -258,6 +259,7 @@
           <c:otherwise>
             <div class="panel-divider" id="dividerLeft"></div>
             <div id="panelCenter" class="detail-panel-center">
+              <div class="detail-panel-center-stripe"></div>
               <c:import url="/WEB-INF/view/a/activityDetail/columns/detail/detailHeader25.jsp"></c:import>
               <%-- ② Inline status bar --%>
               <div class="detail-status-bar">
