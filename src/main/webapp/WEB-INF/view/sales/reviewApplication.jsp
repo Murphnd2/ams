@@ -24,45 +24,13 @@
     <c:set var="pageTitle" value="Review Application" scope="request"/>
     <c:set var="pageIcon" value="bi-clipboard-check" scope="request"/>
     <c:import url="/WEB-INF/view/a/general/navbar25.jsp"/>
-    <div class="row align-items-center py-2">
-        <div class="col">
-            <h5 class="mb-0 d-inline">${application.getProposal().getProspect().getName()}</h5>
-            <span class="text-muted ms-2">Proposal #${application.getProposal().getId()}</span>
-            <span class="ms-2">
-                <c:choose>
-                    <c:when test="${application.getStatus() == 'SUBMITTED'}">
-                        <span class="badge bg-warning text-dark status-badge">Submitted</span>
-                    </c:when>
-                    <c:when test="${application.getStatus() == 'UNDER_REVIEW'}">
-                        <span class="badge bg-info status-badge">Under Review</span>
-                    </c:when>
-                    <c:when test="${application.getStatus() == 'MORE_INFO'}">
-                        <span class="badge bg-secondary status-badge">More Info Needed</span>
-                    </c:when>
-                    <c:when test="${application.getStatus() == 'APPROVED'}">
-                        <span class="badge bg-success status-badge">Approved</span>
-                    </c:when>
-                    <c:when test="${application.getStatus() == 'DENIED'}">
-                        <span class="badge bg-danger status-badge">Denied</span>
-                    </c:when>
-                    <c:otherwise>
-                        <span class="badge bg-light text-dark status-badge">${application.getStatus()}</span>
-                    </c:otherwise>
-                </c:choose>
-            </span>
-        </div>
-        <div class="col-auto">
-            <a href="ReviewApplications" class="btn btn-sm btn-outline-secondary">
-                <i class="bi bi-arrow-left me-1"></i>Back to List
-            </a>
-        </div>
-    </div>
 
-    <%-- Header --%>
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h4 class="mb-1">${application.getProposal().getProspect().getName()}</h4>
-            <span class="text-muted">Proposal #${application.getProposal().getId()}</span>
+    <%-- Subheader --%>
+    <div class="hdr-bar mt-2 d-flex justify-content-between align-items-center">
+        <span>
+            <i class="bi bi-clipboard-check me-1"></i>
+            Application Review &mdash; ${application.getProposal().getProspect().getName()}
+            <small class="text-white-50 ms-2">Proposal #${application.getProposal().getId()}</small>
             <span class="ms-2">
                 <c:choose>
                     <c:when test="${application.getStatus() == 'SUBMITTED'}">
@@ -85,19 +53,19 @@
                     </c:otherwise>
                 </c:choose>
             </span>
-        </div>
+        </span>
         <div class="d-flex gap-2">
-            <a href="ReviewApplications" class="btn btn-outline-secondary btn-sm">
+            <a href="ReviewApplications" class="btn btn-sm btn-outline-light">
                 <i class="bi bi-arrow-left me-1"></i>Back to List
             </a>
             <c:choose>
                 <c:when test="${sessionScope.isAgent || sessionScope.isAgencyAdmin}">
-                    <a href="AgentHome" class="btn btn-outline-primary btn-sm">
+                    <a href="AgentHome" class="btn btn-sm btn-outline-light">
                         <i class="bi bi-kanban me-1"></i>Pipeline
                     </a>
                 </c:when>
                 <c:otherwise>
-                    <a href="ViewHome25" class="btn btn-outline-dark btn-sm">
+                    <a href="ViewHome25" class="btn btn-sm btn-outline-light">
                         <i class="bi bi-house me-1"></i>Home
                     </a>
                 </c:otherwise>

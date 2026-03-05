@@ -260,15 +260,9 @@
                     <div class="d-flex py-1 border-bottom"><span class="text-muted fw-semibold" style="min-width:100px;">Agent</span><span>${opp.getAssignedTo().getFirstName()} ${opp.getAssignedTo().getLastName()}</span></div>
                 </c:if>
                 <div class="d-flex py-1 border-bottom"><span class="text-muted fw-semibold" style="min-width:100px;">Managed By</span><span>${opp.getManagedBy() != null ? opp.getManagedBy().getFirstName().concat(' ').concat(opp.getManagedBy().getLastName()) : 'None'}</span></div>
-                <c:if test="${opp.getEstimatedEmployees() != null}">
-                    <div class="d-flex py-1 border-bottom"><span class="text-muted fw-semibold" style="min-width:100px;">Est. Employees</span><span>${opp.getEstimatedEmployees()}</span></div>
-                </c:if>
-                <c:if test="${opp.getEstimatedValue() != null}">
-                    <div class="d-flex py-1 border-bottom"><span class="text-muted fw-semibold" style="min-width:100px;">Est. Value</span><span>$<fmt:formatNumber value="${opp.getEstimatedValue()}" pattern="#,##0"/></span></div>
-                </c:if>
-                <c:if test="${opp.getExpectedCloseDate() != null}">
-                    <div class="d-flex py-1 border-bottom"><span class="text-muted fw-semibold" style="min-width:100px;">Expected Close</span><span><fmt:formatDate value="${opp.getExpectedCloseDate()}" pattern="M/d/yyyy"/></span></div>
-                </c:if>
+                <div class="d-flex py-1 border-bottom"><span class="text-muted fw-semibold" style="min-width:100px;">Est. Employees</span><span><c:choose><c:when test="${opp.getEstimatedEmployees() != null}">${opp.getEstimatedEmployees()}</c:when><c:otherwise>&mdash;</c:otherwise></c:choose></span></div>
+                <div class="d-flex py-1 border-bottom"><span class="text-muted fw-semibold" style="min-width:100px;">Est. Value</span><span><c:choose><c:when test="${opp.getEstimatedValue() != null}">$<fmt:formatNumber value="${opp.getEstimatedValue()}" pattern="#,##0"/></c:when><c:otherwise>&mdash;</c:otherwise></c:choose></span></div>
+                <div class="d-flex py-1 border-bottom"><span class="text-muted fw-semibold" style="min-width:100px;">Expected Close</span><span><c:choose><c:when test="${opp.getExpectedCloseDate() != null}"><fmt:formatDate value="${opp.getExpectedCloseDate()}" pattern="M/d/yyyy"/></c:when><c:otherwise>&mdash;</c:otherwise></c:choose></span></div>
             </div>
         </div>
     </div>

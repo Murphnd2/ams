@@ -75,6 +75,16 @@ public class AgentHome extends HttpServlet {
             }
             request.setAttribute("opportunities", opportunities);
 
+            // Force-initialize lazy collections while EM is open (needed for JSP rendering)
+            for (Opportunity opp : opportunities) {
+                if (opp.getProspect() != null && opp.getProspect().getProposalList() != null) {
+                    opp.getProspect().getProposalList().size(); // trigger lazy load
+                    for (var prop : opp.getProspect().getProposalList()) {
+                        if (prop.getLosList() != null) prop.getLosList().size();
+                    }
+                }
+            }
+
             // Group by stage for pipeline display
             Map<String, List<Opportunity>> pipelineMap = new LinkedHashMap<>();
             for (String stage : STAGE_ORDER) {
@@ -147,7 +157,10 @@ public class AgentHome extends HttpServlet {
 
     private List<Opportunity> getOpportunitiesByAgency(EntityManager em, long agencyId) {
         Query q = em.createQuery(
-                "SELECT o FROM Opportunity o WHERE o.agency.id = :agencyId ORDER BY o.stage, o.id DESC");
+                "SELECT DISTINCT o FROM Opportunity o " +
+                "LEFT JOIN FETCH o.prospect p " +
+                "LEFT JOIN FETCH p.proposalList " +
+                "WHERE o.agency.id = :agencyId ORDER BY o.stage, o.id DESC");
         q.setParameter("agencyId", agencyId);
         try {
             return (List<Opportunity>) q.getResultList();
@@ -158,7 +171,10 @@ public class AgentHome extends HttpServlet {
 
     private List<Opportunity> getOpportunitiesByAgent(EntityManager em, long agentId) {
         Query q = em.createQuery(
-                "SELECT o FROM Opportunity o WHERE o.assignedTo.id = :agentId ORDER BY o.stage, o.id DESC");
+                "SELECT DISTINCT o FROM Opportunity o " +
+                "LEFT JOIN FETCH o.prospect p " +
+                "LEFT JOIN FETCH p.proposalList " +
+                "WHERE o.assignedTo.id = :agentId ORDER BY o.stage, o.id DESC");
         q.setParameter("agentId", agentId);
         try {
             return (List<Opportunity>) q.getResultList();

@@ -103,6 +103,21 @@ public class CreateOpportunity extends HttpServlet {
             opp.setFullName(prospect.getName().trim().toUpperCase());
             opp.setDueDate(Date.valueOf(LocalDate.now().plusDays(30)));
             opp.setComplete(false);
+
+            // Optional pipeline fields
+            String eeParam = request.getParameter("estimatedEmployees");
+            if (eeParam != null && !eeParam.isBlank()) {
+                try { opp.setEstimatedEmployees(Integer.parseInt(eeParam.trim())); } catch (NumberFormatException ignored) {}
+            }
+            String valParam = request.getParameter("estimatedValue");
+            if (valParam != null && !valParam.isBlank()) {
+                try { opp.setEstimatedValue(Double.parseDouble(valParam.trim())); } catch (NumberFormatException ignored) {}
+            }
+            String closeDateParam = request.getParameter("expectedCloseDate");
+            if (closeDateParam != null && !closeDateParam.isBlank()) {
+                try { opp.setExpectedCloseDate(Date.valueOf(closeDateParam.trim())); } catch (IllegalArgumentException ignored) {}
+            }
+
             em.persist(opp);
             em.getTransaction().commit();
 

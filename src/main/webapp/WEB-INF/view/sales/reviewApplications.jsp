@@ -20,43 +20,25 @@
     <c:set var="pageTitle" value="Application Review" scope="request"/>
     <c:set var="pageIcon" value="bi-clipboard-check" scope="request"/>
     <c:import url="/WEB-INF/view/a/general/navbar25.jsp"/>
-    <div class="row align-items-center py-2">
-        <div class="col">
-            <span class="text-muted">Review submitted applications and manage new client setups</span>
-        </div>
-        <div class="col-auto d-flex gap-2">
-            <a href="GenerateProp25" class="btn btn-sm btn-outline-primary">
-                <i class="bi bi-building-add me-1"></i>Manual Setup
-            </a>
-        </div>
-    </div>
 
-
-    <%-- Header --%>
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h4 class="mb-1"><i class="bi bi-clipboard-check me-2"></i>Application Review</h4>
-            <span class="text-muted">Review submitted applications and manage new client setups</span>
-        </div>
+    <%-- Subheader --%>
+    <div class="hdr-bar mt-2 d-flex justify-content-between align-items-center">
+        <span>
+            <i class="bi bi-clipboard-check me-1"></i>Application Review
+            <small class="text-white-50 ms-2">Review submitted applications and manage new client setups</small>
+        </span>
         <div class="d-flex gap-2">
-            <a href="GenerateProp25" class="btn btn-outline-primary btn-sm">
+            <a href="GenerateProp25" class="btn btn-sm btn-outline-light">
                 <i class="bi bi-building-add me-1"></i>Manual Setup
             </a>
-            <a href="ProposalBuilder" class="btn btn-outline-secondary btn-sm">
+            <a href="ProposalBuilder" class="btn btn-sm btn-outline-light">
                 <i class="bi bi-plus-lg me-1"></i>New Proposal
             </a>
-            <c:choose>
-                <c:when test="${sessionScope.isAgent || sessionScope.isAgencyAdmin}">
-                    <a href="AgentHome" class="btn btn-outline-primary btn-sm">
-                        <i class="bi bi-kanban me-1"></i>Pipeline
-                    </a>
-                </c:when>
-                <c:otherwise>
-                    <a href="ViewHome25" class="btn btn-outline-dark btn-sm">
-                        <i class="bi bi-house me-1"></i>Home
-                    </a>
-                </c:otherwise>
-            </c:choose>
+            <c:if test="${sessionScope.isAgent || sessionScope.isAgencyAdmin}">
+                <a href="AgentHome" class="btn btn-sm btn-outline-light">
+                    <i class="bi bi-kanban me-1"></i>Pipeline
+                </a>
+            </c:if>
         </div>
     </div>
 

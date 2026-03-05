@@ -98,7 +98,8 @@
       delegatedToMe: ${row.delegatedToMe},
       dueBucket: ${row.dueBucket},
       ticketEmployer: <c:choose><c:when test="${not empty row.ticketEmployerNameLc}">'${fn:replace(row.ticketEmployerNameLc, "'", "\\'")}'</c:when><c:otherwise>null</c:otherwise></c:choose>,
-      oppStage: <c:choose><c:when test="${not empty row.opportunityStage}">'${row.opportunityStage}'</c:when><c:otherwise>null</c:otherwise></c:choose>
+      oppStage: <c:choose><c:when test="${not empty row.opportunityStage}">'${row.opportunityStage}'</c:when><c:otherwise>null</c:otherwise></c:choose>,
+      managedById: ${row.managedById != null ? row.managedById : 'null'}
     }<c:if test="${!s.last}">,</c:if>
     </c:forEach>
   ];
@@ -166,16 +167,23 @@
         (row.dtype === 'Renewal' && f.vRenewal) ||
         (row.dtype === 'Setup' && f.vSetup) ||
         (row.dtype === 'Ticket' && f.vTicket) ||
-        (row.dtype === 'Opportunity' && f.vOpp && CAN_SEE_OPPS);
+        (row.dtype === 'Opportunity' && f.vOpp && CAN_SEE_OPPS && row.managedById != null);
       if (!typeOk) return false;
 
-      // Ownership filter
+      // Ownership filter — for opportunities, managedById acts as effective owner
+      const effectiveOwner = (row.dtype === 'Opportunity' && row.managedById != null)
+        ? row.managedById
+        : row.assignedToId;
+
       if (f.ownership === 1) {
-        if (!(row.assignedToId === ME_PERSON_ID || row.delegatedToMe)) return false;
+        // My World: I own it (or manage it), or it's delegated to me
+        if (!(effectiveOwner === ME_PERSON_ID || row.delegatedToMe)) return false;
       } else if (f.ownership === 2) {
-        if (row.assignedToId !== ME_PERSON_ID) return false;
+        // I Own: assigned to me or I manage it
+        if (effectiveOwner !== ME_PERSON_ID) return false;
       } else if (f.ownership === 3) {
-        if (!(row.delegatedToMe && row.assignedToId !== ME_PERSON_ID)) return false;
+        // Helping On: delegated to me AND I don't own it
+        if (!(row.delegatedToMe && effectiveOwner !== ME_PERSON_ID)) return false;
       }
 
       // Attention filter

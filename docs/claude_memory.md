@@ -14,9 +14,9 @@
 - **selectOptions delimiter:** pipe-delimited (`|`), not comma — required by field rendering logic
 
 ## Current State
-- **Branch:** `refactor/modernize-architecture`
+- **Branch:** `feature/proposal-customization`
 - **Latest migration:** V039
-- **Session count:** 36
+- **Session count:** 38
 - V025-V037 applied to Demo PSP, BPO, and Master; V038 applied to Demo and BPO; V039 code-complete, not yet applied anywhere
 - Not yet applied to production or local dev
 - Master snapshot v8 taken 2026-03-04 (V037, fixed update.sh, fixed healthcheck.sh)
@@ -205,6 +205,29 @@
 ## Application Entity PK
 - **Application PK is `proposal_id`** (not auto-generated) — `@Id @OneToOne @JoinColumn(name="proposal_id")`
 - **ApplyForProposal.loadProposal()** must include `LEFT JOIN FETCH p.application` to avoid creating duplicate Applications when one already exists
+
+## Review Application Headers (Session 38)
+- **hdr-bar pattern** for review pages: `background: var(--ssa); color: #fff` single subheader replacing duplicate header blocks
+- **reviewApplication.jsp** — prospect name, proposal #, status badge, Back to List + Pipeline/Home buttons
+- **reviewApplications.jsp** — title, description, Manual Setup/New Proposal/Pipeline buttons
+
+## Opportunity Visibility on PSP Home (Session 38)
+- **ActivityLandingRow.managedById** — new Long field exposed through DAO → Row DTO → JSP/JS
+- **ActivityLandingDao** — `b.managed_by_id` added to outer SELECT (index [11])
+- **Type filter** — changed from `assigned_to_id = p.me OR managed_by_id = p.me` to `managed_by_id IS NOT NULL` (shows all PSP-managed opportunities)
+- **Ownership filter** — `effectiveOwner` logic: Opportunities use `managedById` when not null, all other types use `assignedToId`
+
+## Agent Home Kanban Redesign (Session 38)
+- **agentHome25.jsp** — full rewrite: horizontal Kanban board (6 active stage columns), stat strip, slide-out detail drawer (380px)
+- **Kanban cards** — company name, agent (agency admins only), value, employee count
+- **Drawer sections** — Details, Pipeline Data (inline-editable), Stage dropdown, Proposals (stacked rows, newest first, + New on top)
+- **OPPS data map** — JS object with all opportunity fields including nested proposals via JSTL forEach
+- **Inline field saving** — individual field AJAX saves via `UpdateOpportunityStage` with spinner → ✓ Saved → fade pattern
+- **CreateOpportunity.java** — reads `estimatedEmployees`, `estimatedValue`, `expectedCloseDate` before persist
+- **UpdateOpportunityStage.java** — added handlers for all 3 pipeline fields with blank-to-null clearing
+- **detailOpportunity25.jsp** — unconditional rows with `<c:choose>` showing `—` when null (was conditional `<c:if>`)
+- **EclipseLink lazy loading fix** — `LEFT JOIN FETCH o.prospect p LEFT JOIN FETCH p.proposalList` + explicit `.size()` force-initialization loop for proposals and their LOS lists
+- **Proposal display** — stacked `.drawer-prop-row` (not inline pills), `.drawer-new-prop` dashed button on top, descending sort by ID
 
 ## Reference
 - Full session archive: `docs/analysis/session_history_archive.md`

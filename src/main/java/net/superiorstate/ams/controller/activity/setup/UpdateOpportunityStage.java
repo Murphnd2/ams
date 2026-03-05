@@ -10,6 +10,7 @@ import net.superiorstate.ams.model.activity.Opportunity;
 import net.superiorstate.ams.model.general.Person;
 
 import java.io.IOException;
+import java.sql.Date;
 
 @WebServlet(name = "UpdateOpportunityStage", value = "/UpdateOpportunityStage")
 public class UpdateOpportunityStage extends HttpServlet {
@@ -44,6 +45,36 @@ public class UpdateOpportunityStage extends HttpServlet {
                     if (manager != null) {
                         opp.setManagedBy(manager);
                     }
+                }
+            }
+
+            // Update estimatedEmployees if provided
+            String eeParam = request.getParameter("estimatedEmployees");
+            if (eeParam != null) {
+                if (eeParam.isBlank()) {
+                    opp.setEstimatedEmployees(null);
+                } else {
+                    try { opp.setEstimatedEmployees(Integer.parseInt(eeParam.trim())); } catch (NumberFormatException ignored) {}
+                }
+            }
+
+            // Update estimatedValue if provided
+            String valParam = request.getParameter("estimatedValue");
+            if (valParam != null) {
+                if (valParam.isBlank()) {
+                    opp.setEstimatedValue(null);
+                } else {
+                    try { opp.setEstimatedValue(Double.parseDouble(valParam.trim())); } catch (NumberFormatException ignored) {}
+                }
+            }
+
+            // Update expectedCloseDate if provided
+            String closeDateParam = request.getParameter("expectedCloseDate");
+            if (closeDateParam != null) {
+                if (closeDateParam.isBlank()) {
+                    opp.setExpectedCloseDate(null);
+                } else {
+                    try { opp.setExpectedCloseDate(Date.valueOf(closeDateParam.trim())); } catch (IllegalArgumentException ignored) {}
                 }
             }
 

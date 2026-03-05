@@ -2,7 +2,7 @@
 
 > **Purpose:** Consolidated historical record of all build sessions. For current project state, see `project_backlog.md`. For current architecture, see `application_flow.md` and `entity_reference.md`.
 >
-> **Last Updated:** March 5, 2026
+> **Last Updated:** March 5, 2026 (Session 38)
 
 ---
 
@@ -1262,5 +1262,47 @@ Improved the Proposal Settings page so PSP admins can safely paste full styled H
 
 ### Files Changed
 - **Modified (3):** ProposalSettings.java, proposalSettings.jsp, viewProposal.jsp
+
+No database changes.
+
+---
+
+## March 5, 2026 — Session 38: Agent Home Kanban Redesign + Header & Visibility Fixes
+
+Three design specs implemented plus bug fixes for proposal display in the Kanban drawer.
+
+### Review Application Header Fixes
+- **reviewApplication.jsp** — Removed duplicate header blocks (small subheader row + large d-flex header). Replaced with single `hdr-bar` containing prospect name, proposal #, status badge, Back to List + Pipeline/Home buttons.
+- **reviewApplications.jsp** — Same pattern: single `hdr-bar` with title, description, Manual Setup/New Proposal/Pipeline buttons.
+
+### Opportunity Visibility on PSP Home Activity List
+- **ActivityLandingRow.java** — Added `managedById` Long field with constructor param and getter.
+- **ActivityLandingDao.java** — Added `b.managed_by_id` to outer SELECT (index [11]). Changed type filter from `assigned_to_id = p.me OR managed_by_id = p.me` to `managed_by_id IS NOT NULL` so all PSP-managed opportunities display. Added result extraction and constructor mapping.
+- **activityList25.jsp** — Exposed `managedById` in JS data array. Added null guard on type filter. Added `effectiveOwner` logic: Opportunities use `managedById` when not null for ownership filtering, all other types use `assignedToId`.
+
+### Agent Home Kanban Redesign (Full Rewrite)
+- **agentHome25.jsp** — Complete rewrite from stage-grouped list + right panel into horizontal Kanban board:
+  - 6 active stage columns (NEW, CONTACTED, QUALIFIED, PROPOSAL_SENT, NEGOTIATION, ON_HOLD) with independent vertical scroll
+  - Stat strip with computed counts (Active, Proposal Out, Negotiation, Won, Pipeline Value)
+  - Kanban cards with company name, agent name (agency admins), value, employee count
+  - Slide-out detail drawer (380px, right side, fixed position) with overlay
+  - Drawer sections: Details, Pipeline Data (inline-editable inputs), Stage dropdown, Proposals (stacked rows)
+  - OPPS JavaScript data map with all opportunity fields including nested proposals via JSTL forEach
+  - Stage color CSS variables, card selection styles, responsive column widths
+  - JS functions: `openDrawer()`, `closeDrawer()`, `saveField()`, `saveStage()`, `markLost()`, `updateCardFooter()`
+- **CreateOpportunity.java** — Added reading of `estimatedEmployees`, `estimatedValue`, `expectedCloseDate` before `em.persist(opp)`.
+- **UpdateOpportunityStage.java** — Added `import java.sql.Date`. Added handlers for all 3 pipeline fields with blank-to-null clearing pattern.
+- **detailOpportunity25.jsp** — Changed 3 conditional `<c:if>` blocks to unconditional rows with `<c:choose>` showing `—` when null.
+
+### Bug Fix: Proposals Not Showing in Kanban Drawer
+- **Root cause:** AgentHome JPQL queries didn't JOIN FETCH prospect's proposals, so lazy collection was uninitialized after EntityManager closed.
+- **AgentHome.java** — Added `LEFT JOIN FETCH o.prospect p LEFT JOIN FETCH p.proposalList` with DISTINCT to both query methods. Added explicit force-initialization loop: `opp.getProspect().getProposalList().size()` and `prop.getLosList().size()` while EM still open (EclipseLink nested JOIN FETCH workaround).
+
+### Bug Fix: Proposal Display Layout
+- **Problem:** Proposals showed inline as pills (`[#1356 (Created) FSA][+ New Proposal]`) next to each other.
+- **Fix:** Changed CSS from inline `.drawer-prop-pill` to block `.drawer-prop-row` (flex, full-width). Added `.drawer-new-prop` with dashed border for the New Proposal button on top. JS renders proposals sorted descending by ID (newest first). LOS display uses inline JSTL forEach with `los.getShortText()` (no `getLosListDisplay()` method exists on Proposal entity).
+
+### Files Changed
+- **Modified (10):** reviewApplication.jsp, reviewApplications.jsp, ActivityLandingRow.java, ActivityLandingDao.java, activityList25.jsp, agentHome25.jsp, CreateOpportunity.java, UpdateOpportunityStage.java, AgentHome.java, detailOpportunity25.jsp
 
 No database changes.
