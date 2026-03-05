@@ -417,10 +417,6 @@
                 <label class="form-label fw-semibold mb-0" style="font-size: 0.85rem;">Email</label>
                 <input type="email" name="contactEmail" class="form-control form-control-sm">
               </div>
-              <div class="mb-2">
-                <label class="form-label fw-semibold mb-0" style="font-size: 0.85rem;">Contact Phone</label>
-                <input type="text" name="contactPhone" class="form-control form-control-sm">
-              </div>
             </div>
           </div>
         </div>

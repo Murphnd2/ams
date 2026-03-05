@@ -113,6 +113,10 @@ public class ProposalBuilder extends HttpServlet {
             json.append("}");
             request.setAttribute("rateLosMapJson", json.toString());
 
+            // Support both parameter names for pre-selection (read early for auto-expand logic)
+            String selectedProspect = request.getParameter("prospectId");
+            if (selectedProspect == null) selectedProspect = request.getParameter("selectedProspect");
+
             // ── Load prospects — role-based scoping ──
             List<Prospect> prospectList;
             boolean canExpand = false;  // whether the user can toggle to see more prospects
@@ -176,8 +180,28 @@ public class ProposalBuilder extends HttpServlet {
                 prospectList = new ArrayList<>();
             }
 
+            // If a prospect is pre-selected but not in the default list, auto-expand
+            boolean autoExpand = false;
+            if (selectedProspect != null && !selectedProspect.isEmpty()) {
+                long selId;
+                try { selId = Long.parseLong(selectedProspect); } catch (NumberFormatException e) { selId = -1; }
+                boolean found = false;
+                for (Prospect p : prospectList) {
+                    if (p.getId().equals(selId)) { found = true; break; }
+                }
+                if (!found && canExpand) {
+                    // Switch to the expanded list so the selected prospect is visible
+                    List<Prospect> allProspects = (List<Prospect>) request.getAttribute("allProspects");
+                    if (allProspects != null) {
+                        prospectList = allProspects;
+                        autoExpand = true;
+                    }
+                }
+            }
+
             request.setAttribute("prospectList", prospectList);
             request.setAttribute("canExpand", canExpand);
+            request.setAttribute("autoExpand", autoExpand);
 
             // ── Load agent list for New Prospect modal ──
             // PSP Admin: needs agency dropdown + agent sub-dropdown (agents loaded per agency via JS, but seed with first agency)
@@ -225,10 +249,48 @@ public class ProposalBuilder extends HttpServlet {
             // Pass current user ID for default selections
             request.setAttribute("currentUserId", local.getCurrentPerson().getId());
 
-            // Support both parameter names for pre-selection
-            String selectedProspect = request.getParameter("prospectId");
-            if (selectedProspect == null) selectedProspect = request.getParameter("selectedProspect");
             request.setAttribute("selectedProspect", selectedProspect);
+
+            // ── Build prospect→agencyIds and agency→rateIds JSON for client-side rate filtering ──
+            // Query DB directly (not global cache) to ensure newly-created prospects are included
+            List<Object[]> prospectAgencyRows = SalesDAO.getProspectAgencyData(em);
+            Map<Long, String> pam = new HashMap<>();
+            Map<Long, List<Long>> tempPam = new HashMap<>();
+            for (Object[] row : prospectAgencyRows) {
+                tempPam.computeIfAbsent((Long) row[0], k -> new ArrayList<>()).add((Long) row[1]);
+            }
+            for (Map.Entry<Long, List<Long>> entry : tempPam.entrySet()) {
+                pam.put(entry.getKey(), entry.getValue().stream().map(String::valueOf).collect(Collectors.joining(",")));
+            }
+            Map<Long, List<Long>> arm = SalesDAO.getAgencyRateMap(em);
+
+            // prospectAgencyMap JSON: { "prospectId": "agencyId,agencyId", ... }
+            StringBuilder pamJson = new StringBuilder("{");
+            if (pam != null) {
+                boolean pFirst = true;
+                for (Map.Entry<Long, String> e : pam.entrySet()) {
+                    if (!pFirst) pamJson.append(",");
+                    pamJson.append("\"").append(e.getKey()).append("\":\"").append(e.getValue()).append("\"");
+                    pFirst = false;
+                }
+            }
+            pamJson.append("}");
+            request.setAttribute("prospectAgencyMapJson", pamJson.toString());
+
+            // agencyRateMap JSON: { "agencyId": [rateId, rateId], ... }
+            StringBuilder armJson = new StringBuilder("{");
+            if (arm != null) {
+                boolean aFirst = true;
+                for (Map.Entry<Long, List<Long>> e : arm.entrySet()) {
+                    if (!aFirst) armJson.append(",");
+                    armJson.append("\"").append(e.getKey()).append("\":[");
+                    armJson.append(e.getValue().stream().map(String::valueOf).collect(Collectors.joining(",")));
+                    armJson.append("]");
+                    aFirst = false;
+                }
+            }
+            armJson.append("}");
+            request.setAttribute("agencyRateMapJson", armJson.toString());
 
         } finally {
             em.close();

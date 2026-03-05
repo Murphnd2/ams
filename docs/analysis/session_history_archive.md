@@ -2,7 +2,7 @@
 
 > **Purpose:** Consolidated historical record of all build sessions. For current project state, see `project_backlog.md`. For current architecture, see `application_flow.md` and `entity_reference.md`.
 >
-> **Last Updated:** March 4, 2026
+> **Last Updated:** March 5, 2026
 
 ---
 
@@ -1203,3 +1203,39 @@ Built the Questionnaire admin UI (Phase 2), auto-attach service (Phase 3), activ
 - **Modified (6):** QuestionnaireService.java (GUID lookup, field query, field value map, submitInstance), Questionnaire.java, QuestionnaireField.java, QuestionnaireInstance.java, QuestionnaireFieldValue.java (B2.1 LAZY/cascade), detailQuestionnaires25.jsp (real actions replacing placeholders)
 
 No database changes (uses V039 from Session 32).
+
+---
+
+## March 5, 2026 — Session 36: Demo Data Seeder & Bug Fixes
+
+Completed the DemoDataSeeder implementation and fixed 11 bugs discovered during ReSeedDemoData testing. All fixes are code-level (no schema changes).
+
+### DemoDataSeeder Fixes
+- **Rewrote `seedAgencyAndProspects`** — previously tried to reference non-existent Agency 15 and sales agent. Now creates its own agency manager (Sarah Mitchell), Agency 15 (AccelVantage Benefits) via `DatabaseInitializer.createAgency`, sales agent (James Rivera / agent@pspdemo.com), assigns Demo Rate, creates 3 prospects.
+- **Removed `seedProposalDefaults` entirely** — was creating FEATURES/PRICING sections which blocked `ProposalSettings.initializeDefaults()` from auto-creating all 4 sections (TITLE, FEATURES, PRICING, CLOSING) with proper default HTML.
+
+### EclipseLink Cache Fixes
+- **L2 cache eviction in `DatabaseInitializer.createApplicationSections()`** — ApplicationSection entities cached with empty field lists during initial persist; subsequent field additions in separate transactions didn't update cache. Added `emf.getCache().evict(ApplicationSection.class)` after creating fields.
+- **Sequence cache reset in `DatabaseResetUtil.evictEntityCaches()`** — after `TRUNCATE` of SEQUENCE table, EclipseLink's in-memory sequence allocator retained stale pre-allocated IDs. Added `ServerSession.getSequencingControl().resetSequencing()` to prevent duplicate PK errors after DB reset.
+
+### Proposal Builder Rate Filtering
+- **ProposalBuilder.doGet()** now queries `SalesDAO.getProspectAgencyData()` and `SalesDAO.getAgencyRateMap()` directly from DB (not global cache) to ensure newly-created prospects have correct rate filtering.
+- **Client-side filtering:** Added `filterRatesByProspect()` JS function that resolves prospect → agency IDs → allowed rate IDs, shows/hides rate cards, auto-selects if only one rate visible.
+- **Auto-expand:** If pre-selected prospect (e.g., from ActivityDetail) isn't in the user's default scoped list, server auto-expands to the "all" list and sets `autoExpand=true` to reflect expanded toggle state in JSP.
+
+### Agency Manager Fixes
+- **Removed duplicate phone field** from Create Agency modal — kept agency phone, removed contact phone. Backend uses single phone for both Agency.phone and Person.phone.
+- **Auto-create user on agency creation** — `AgencyAction.createAgency` now creates a User for the primary contact with temp password, assigns Agency Admin (8) + Agent (2) roles, adds to agency agentList.
+
+### Application Form Fixes
+- **EMAIL field type rendering** — `applyForProposal.jsp` had no `<c:if>` block for fieldType "EMAIL", so the label rendered but no input control appeared. Added `<input type="email">` block.
+- **Duplicate Application PK error** — `ApplyForProposal.loadProposal()` was missing `LEFT JOIN FETCH p.application`, causing `proposal.getApplication()` to return null (lazy-loaded) even when an Application existed. Code then tried to INSERT a duplicate. Added the fetch join.
+
+### Other Fixes
+- **NPE on opportunity click** — `AmsDataLocal.intializeActivity()` called `getActivity().getClass()` without null check. Added null guard with early return.
+
+### Files Changed
+- **Modified (13):** AgencyAction.java, ApplyForProposal.java, ProposalBuilder.java, ReSeedDb.java, ReSeedDemoData.java, SeedDemoData.java, AmsDataLocal.java, DatabaseInitializer.java, DatabaseResetUtil.java, DemoDataSeeder.java, agencyManager25.jsp, applyForProposal.jsp, proposalBuilder.jsp
+- **New (7):** demo/imports/ (6 CSV files), demo/resources/ (6 files: 3 HTML + 3 PDF brochures)
+
+No database changes (no new migrations).

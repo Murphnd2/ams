@@ -84,6 +84,14 @@
                                        value="${defaults.containsKey(field.getFieldKey()) ? defaults.get(field.getFieldKey()) : ''}">
                             </c:if>
 
+                                <%-- EMAIL --%>
+                            <c:if test="${field.getFieldType() == 'EMAIL'}">
+                                <input type="email" class="form-control form-control-sm" id="${field.getFieldKey()}"
+                                       name="${field.getFieldKey()}" ${field.isRequired() ? 'required' : ''}
+                                       value="${defaults.containsKey(field.getFieldKey()) ? defaults.get(field.getFieldKey()) : ''}"
+                                       placeholder="name@example.com">
+                            </c:if>
+
                                 <%-- TEXTAREA --%>
                             <c:if test="${field.getFieldType() == 'TEXTAREA'}">
                 <textarea class="form-control form-control-sm" id="${field.getFieldKey()}"

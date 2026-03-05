@@ -67,7 +67,7 @@
                 <div class="row g-3 align-items-end">
                     <div class="col-md-6">
                         <label for="prospectId" class="form-label">Existing Prospect</label>
-                        <select class="form-select" name="prospectId" id="prospectId" onchange="updateSteps()">
+                        <select class="form-select" name="prospectId" id="prospectId" onchange="filterRatesByProspect(); updateSteps()">
                             <option value="" selected>-- Choose a prospect --</option>
                             <c:forEach var="prospect" items="${prospectList}">
                                 <option value="${prospect.getId()}" ${prospect.getId().toString().equals(selectedProspect) ? 'selected' : ''}>${prospect.getName()}</option>
@@ -111,7 +111,7 @@
             <div class="card-body" id="rateSection">
                 <div class="row g-2">
                     <c:forEach var="rate" items="${allRates}">
-                        <div class="col-md-4 col-sm-6">
+                        <div class="col-md-4 col-sm-6 rate-wrapper" data-rate-id="${rate.getId()}">
                             <div class="card rate-option p-3" onclick="selectRate(this, ${rate.getId()})">
                                 <div class="d-flex align-items-center">
                                     <i class="bi bi-circle me-2 rate-icon" style="font-size: 1.1rem;"></i>
@@ -260,9 +260,13 @@
     // ── Rate → available LOS IDs map (built server-side) ──
     const rateLosMap = ${rateLosMapJson};
 
+    // ── Prospect → agency IDs and agency → rate IDs (for rate filtering by prospect) ──
+    const prospectAgencyMap = ${prospectAgencyMapJson};
+    const agencyRateMap = ${agencyRateMapJson};
+
     let selectedRateId = null;
     let selectedLosIds = new Set();
-    let isExpanded = false;
+    let isExpanded = ${autoExpand != null && autoExpand ? 'true' : 'false'};
 
     // ── Expanded prospect data (for "Show All" toggle) ──
     <c:if test="${canExpand}">
@@ -330,6 +334,64 @@
         updateAgentDropdown();
     });
     </c:if>
+
+    function filterRatesByProspect() {
+        var prospectId = document.getElementById('prospectId').value;
+        var wrappers = document.querySelectorAll('.rate-wrapper');
+
+        if (!prospectId) {
+            // No prospect selected — show all rates
+            wrappers.forEach(function(w) { w.style.display = ''; });
+            return;
+        }
+
+        // Resolve prospect → agency IDs → allowed rate IDs
+        var agencyIds = prospectAgencyMap[prospectId];
+        var allowedRates = new Set();
+        if (agencyIds) {
+            agencyIds.split(',').forEach(function(aid) {
+                var rates = agencyRateMap[aid.trim()];
+                if (rates) rates.forEach(function(rid) { allowedRates.add(rid); });
+            });
+        }
+
+        if (allowedRates.size === 0) {
+            // No agency mapping found — show all rates (fallback for home agency prospects etc.)
+            wrappers.forEach(function(w) { w.style.display = ''; });
+            return;
+        }
+
+        // Show/hide rate cards
+        wrappers.forEach(function(w) {
+            var rateId = parseInt(w.dataset.rateId);
+            w.style.display = allowedRates.has(rateId) ? '' : 'none';
+        });
+
+        // If current selection is now hidden, deselect it
+        if (selectedRateId !== null && !allowedRates.has(selectedRateId)) {
+            selectedRateId = null;
+            document.getElementById('rateId').value = '';
+            document.querySelectorAll('.rate-option').forEach(function(card) {
+                card.classList.remove('selected');
+                card.querySelector('.rate-icon').className = 'bi bi-circle me-2 rate-icon';
+            });
+            // Reset LOS
+            selectedLosIds.clear();
+            document.querySelectorAll('.los-card').forEach(function(c) {
+                c.classList.remove('selected');
+                c.querySelector('.los-check').className = 'bi bi-square los-check me-2';
+            });
+            rebuildLosInputs();
+        }
+
+        // Auto-select if only one visible rate
+        var visibleWrappers = Array.from(wrappers).filter(function(w) { return w.style.display !== 'none'; });
+        if (visibleWrappers.length === 1) {
+            var card = visibleWrappers[0].querySelector('.rate-option');
+            var rid = parseInt(visibleWrappers[0].dataset.rateId);
+            selectRate(card, rid);
+        }
+    }
 
     function selectRate(el, rateId) {
         document.querySelectorAll('.rate-option').forEach(function(card) {
@@ -413,8 +475,18 @@
         document.getElementById('btnCreate').disabled = !(prospectOk && rateOk && losOk);
     }
 
-    // Auto-select rate if only one
+    // On load: filter rates by pre-selected prospect (if any), then auto-select rate
     document.addEventListener('DOMContentLoaded', function() {
+        // If server auto-expanded the prospect list, update toggle button appearance
+        if (isExpanded) {
+            var btn = document.getElementById('btnExpandProspects');
+            if (btn) {
+                btn.classList.remove('btn-outline-secondary');
+                btn.classList.add('btn-secondary');
+                btn.innerHTML = '<i class="bi bi-person me-1"></i>${isPspAdmin ? "My Agency" : "My Prospects"}';
+            }
+        }
+        filterRatesByProspect();
         <c:if test="${autoSelectedRateId != null}">
         var autoRate = document.querySelector('.rate-option');
         if (autoRate) selectRate(autoRate, ${autoSelectedRateId});

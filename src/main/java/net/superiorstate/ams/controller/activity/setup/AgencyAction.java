@@ -7,16 +7,17 @@ import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.AmsDataGlobal;
 import net.superiorstate.ams.data.AmsDataLocal;
+import net.superiorstate.ams.data.dao.AuthDAO;
 import net.superiorstate.ams.data.dao.SalesDAO;
 import net.superiorstate.ams.data.resolver.EntityLookup;
-import net.superiorstate.ams.model.general.Address;
-import net.superiorstate.ams.model.general.PSP;
-import net.superiorstate.ams.model.general.Person;
+import net.superiorstate.ams.data.service.DatabaseInitializer;
+import net.superiorstate.ams.model.general.*;
 import net.superiorstate.ams.model.sales.agency.*;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 @WebServlet(name = "AgencyAction", value = "/AgencyAction")
 public class AgencyAction extends HttpServlet {
@@ -42,7 +43,6 @@ public class AgencyAction extends HttpServlet {
                     String contactFirst = request.getParameter("contactFirst");
                     String contactLast = request.getParameter("contactLast");
                     String contactEmail = request.getParameter("contactEmail");
-                    String contactPhone = request.getParameter("contactPhone");
 
                     em.getTransaction().begin();
 
@@ -51,7 +51,8 @@ public class AgencyAction extends HttpServlet {
 
                     Agency agency = new Agency();
                     agency.setName(name.trim());
-                    agency.setPhone(phone != null ? phone.trim() : null);
+                    String trimmedPhone = phone != null ? phone.trim() : null;
+                    agency.setPhone(trimmedPhone);
                     agency.setTaxId(taxId != null ? taxId.trim() : null);
                     agency.setPsp(psp);
                     agency.setAddress(address);
@@ -64,7 +65,7 @@ public class AgencyAction extends HttpServlet {
                         contact.setFirstName(contactFirst.trim());
                         contact.setLastName(contactLast != null ? contactLast.trim() : null);
                         contact.setEmail(contactEmail != null ? contactEmail.trim() : null);
-                        contact.setPhone(contactPhone != null ? contactPhone.trim() : null);
+                        contact.setPhone(trimmedPhone);  // Use agency phone for contact too
                         contact.setFullName(contactFirst.trim() + " " + (contactLast != null ? contactLast.trim() : ""));
                         contact.setPsp(psp);
                         contact.setAddress(address);
@@ -77,6 +78,31 @@ public class AgencyAction extends HttpServlet {
 
                     em.getTransaction().commit();
                     agencyIdParam = agency.getId().toString();
+
+                    // Create user account for the agency manager (if email provided)
+                    Person contact = agency.getPrimaryContact();
+                    if (contact != null && contactEmail != null && !contactEmail.trim().isEmpty()) {
+                        String tempPw = UUID.randomUUID().toString();
+                        User managerUser = DatabaseInitializer.createUser(em, contact, contactEmail.trim(), tempPw);
+
+                        // Assign Agency Admin (8) and Agent (2) roles
+                        UserRole agencyAdminRole = AuthDAO.getUserRoleById(em, 8);
+                        UserRole agentRole = AuthDAO.getUserRoleById(em, 2);
+                        em.getTransaction().begin();
+                        managerUser.addUserToRole(agencyAdminRole);
+                        managerUser.addUserToRole(agentRole);
+                        em.persist(managerUser);
+                        em.getTransaction().commit();
+
+                        // Add manager to agency's agent list
+                        em.getTransaction().begin();
+                        agency.getAgentList().add(contact);
+                        em.merge(agency);
+                        em.getTransaction().commit();
+
+                        System.out.println("Created user for agency manager: " + contactEmail.trim()
+                                + " (Agency: " + agency.getName() + ")");
+                    }
                 }
 
                 case "editAgency" -> {

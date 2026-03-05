@@ -16,7 +16,7 @@
 ## Current State
 - **Branch:** `refactor/modernize-architecture`
 - **Latest migration:** V039
-- **Session count:** 35
+- **Session count:** 36
 - V025-V037 applied to Demo PSP, BPO, and Master; V038 applied to Demo and BPO; V039 code-complete, not yet applied anywhere
 - Not yet applied to production or local dev
 - Master snapshot v8 taken 2026-03-04 (V037, fixed update.sh, fixed healthcheck.sh)
@@ -63,10 +63,10 @@
 - **Cache pattern:** `aa_setupData` cached per modal open, cleared to `null` on `hidden.bs.modal`
 - **UI order (Opportunity):** Agency → Prospect toggle → Prospect/New fields → Submit
 
-## Agency Creation (WIP)
-- **Create Agency modal** expanded to two-column layout with Primary Contact / Agency Manager fields
-- **AgencyAction.createAgency** now creates Person and sets as both `primaryContact` + `manager` on Agency
-- **Status:** Form renders correctly, but backend function still not working as desired — needs debugging
+## Agency Creation
+- **Create Agency modal** two-column layout with Agency Info (name, phone, taxId) + Primary Contact (first, last, email)
+- **Single phone field** — agency phone used for both Agency.phone and Person.phone
+- **AgencyAction.createAgency** creates Person as `primaryContact` + `manager`, creates User with temp password, assigns Agency Admin (8) + Agent (2) roles, adds to agency agentList
 - **Files:** `AgencyAction.java` (createAgency case), `agencyManager25.jsp` (#addAgencyModal)
 
 ## Approved Vendors Registry (V032)
@@ -182,6 +182,29 @@
 - **Webhook URL config pending** — must be set manually per form: Jotform Settings → Integrations → Webhooks → `https://superiorstate.biz/api/v1/questionnaire/webhook`
 - **EclipseLink nested JOIN FETCH gotcha:** `LEFT JOIN FETCH q.fieldList` inside `JOIN FETCH qi.questionnaire q` is silently dropped — always load fields via separate direct query
 - **Phases 1–5 complete. Phase 6 (automation email token) tabled** into larger automation email design backlog item. Next: Phase 7 (completion gating)
+
+## Demo Data Seeder (Session 36)
+- **DemoDataSeeder.java** (`data/service/`) — conference demo data for `demo.superiorstate.biz`
+- **SeedDemoData** → `DemoDataSeeder.seedConferenceDemo(em)`, **ReSeedDemoData** extends ReSeedDb + re-seeds demo data
+- **seedAgencyAndProspects** creates Agency 15 (AccelVantage Benefits), agency manager (Sarah Mitchell), sales agent (James Rivera / agent@pspdemo.com), assigns Demo Rate, creates 3 prospects
+- **ProposalSettings.initializeDefaults()** auto-creates all 4 section types — DemoDataSeeder does NOT seed proposal sections
+- **EclipseLink L2 cache eviction** after `DatabaseInitializer.createApplicationSections()` — fixes fields not appearing in Service Manager / Application views
+- **EclipseLink sequence reset** in `DatabaseResetUtil.evictEntityCaches()` — `ServerSession.getSequencingControl().resetSequencing()` fixes duplicate PK errors after DB reset
+- **AmsDataLocal null guard** in `intializeActivity()` — prevents NPE when activity not found (e.g., after DB reset with stale caches)
+
+## Proposal Builder Rate Filtering (Session 36)
+- **ProposalBuilder.doGet()** queries `SalesDAO.getProspectAgencyData(em)` and `SalesDAO.getAgencyRateMap(em)` directly (not global cache) — ensures newly-created prospects are included
+- **Client-side filtering:** `filterRatesByProspect()` JS function resolves prospect → agency IDs → allowed rate IDs, shows/hides rate cards
+- **Auto-expand:** if pre-selected prospect not in default list, server switches to expanded "all" list and sets `autoExpand=true`
+- **Maps:** `prospectAgencyMapJson` (prospectId→"agencyId,agencyId"), `agencyRateMapJson` (agencyId→[rateIds])
+
+## Application Field Types
+- **EMAIL fieldType** must be handled in `applyForProposal.jsp` — renders as `<input type="email">` with placeholder
+- **reviewApplication.jsp** uses `<c:otherwise>` catch-all for unrecognized field types — EMAIL displays fine there
+
+## Application Entity PK
+- **Application PK is `proposal_id`** (not auto-generated) — `@Id @OneToOne @JoinColumn(name="proposal_id")`
+- **ApplyForProposal.loadProposal()** must include `LEFT JOIN FETCH p.application` to avoid creating duplicate Applications when one already exists
 
 ## Reference
 - Full session archive: `docs/analysis/session_history_archive.md`

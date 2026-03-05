@@ -257,7 +257,7 @@ public class ApplyForProposal extends HttpServlet {
     }
 
     private Proposal loadProposal(EntityManager em, String guid) {
-        Query q = em.createQuery("SELECT DISTINCT p FROM Proposal p LEFT JOIN FETCH p.losList WHERE p.applicationGUID = :guid");
+        Query q = em.createQuery("SELECT DISTINCT p FROM Proposal p LEFT JOIN FETCH p.losList LEFT JOIN FETCH p.application WHERE p.applicationGUID = :guid");
         q.setParameter("guid", guid);
         List<Proposal> results = q.getResultList();
         return results.isEmpty() ? null : results.get(0);

@@ -1,0 +1,2 @@
+EmployerPlan_ID,OrganizationID,PlanTypeID,PlanStatus,PlanName,PlanDescription,EffectiveDate,TerminationDate,CardEnabled
+-200,-200,3,Active,Meridian HRA,Meridian HRA,,,

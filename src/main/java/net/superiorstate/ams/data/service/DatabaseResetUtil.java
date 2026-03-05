@@ -13,6 +13,7 @@ import net.superiorstate.ams.model.general.Person;
 import net.superiorstate.ams.model.general.User;
 import net.superiorstate.ams.model.general.PSP;
 import net.superiorstate.ams.model.sales.agency.Agency;
+import org.eclipse.persistence.sessions.server.ServerSession;
 
 import java.io.PrintWriter;
 import java.util.List;
@@ -183,6 +184,16 @@ public abstract class DatabaseResetUtil {
             if (javaType != null) {
                 cache.evict(javaType);
             }
+        }
+
+        // Reset EclipseLink's in-memory sequence cache so auto-generated IDs
+        // re-read from the (now-truncated) SEQUENCE table instead of using
+        // stale pre-allocated values that collide with explicit IDs.
+        try {
+            ServerSession session = emf.unwrap(ServerSession.class);
+            session.getSequencingControl().resetSequencing();
+        } catch (Exception e) {
+            System.err.println("⚠ Could not reset sequence cache: " + e.getMessage());
         }
     }
 

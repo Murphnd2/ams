@@ -32,8 +32,9 @@ public class ReSeedDemoData extends ReSeedDb {
     @Override
     protected String getWarningMessage() {
         return "This will <strong>delete all data</strong>, re-initialize the database with your original "
-                + "setup values, and then seed conference demo data (5 employers, 16 employees, 12 benefits, "
-                + "10 activities, 3 demo user accounts). Your admin login credentials will be preserved.";
+                + "setup values, and then seed conference demo data (LOS/Enhancement setup, rate manager, "
+                + "resource library, sequences, employers, renewals, tickets, opportunities, and more). "
+                + "Your admin login credentials will be preserved.";
     }
 
     @Override
@@ -69,21 +70,6 @@ public class ReSeedDemoData extends ReSeedDb {
     protected void renderSuccessMessage(PrintWriter out) {
         out.println("<hr>");
         out.println("<div class='alert alert-success'><strong>Database reset + demo data seeded!</strong></div>");
-
-        out.println("<h5 class='mt-3'>Demo Login Credentials</h5>");
-        out.println("<table class='table table-sm table-bordered' style='max-width:600px;'>"
-                + "<thead class='table-light'><tr>"
-                + "<th>Name</th><th>Email / Username</th><th>Password</th><th>Role</th></tr></thead><tbody>"
-                + "<tr><td>Jennifer Martinez</td><td><code>jmartinez@superiorstate.net</code></td>"
-                + "<td><code>demo123</code></td><td>PSP User</td></tr>"
-                + "<tr><td>Alex Rivera</td><td><code>arivera@accelvantage.com</code></td>"
-                + "<td><code>demo123</code></td><td>BPO Admin</td></tr>"
-                + "<tr><td>Priya Sharma</td><td><code>psharma@accelvantage.com</code></td>"
-                + "<td><code>demo123</code></td><td>BPO User</td></tr>"
-                + "</tbody></table>");
-
-        out.println("<p class='mt-3'><strong>Tip:</strong> Run <code>/SeedBpoDemoData</code> next "
-                + "to source some checklist tasks to BPO for the vendor delegation demo.</p>");
         out.println("<p><a href='ViewHome25' class='btn btn-primary btn-sm'>Go to Home</a></p>");
     }
 }

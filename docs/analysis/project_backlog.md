@@ -1,7 +1,7 @@
 # AMS Project Backlog
 
 **Created:** February 19, 2026
-**Last Updated:** March 4, 2026
+**Last Updated:** March 5, 2026
 **Reference:** `docs/ams_to_be_vision.md` for full project descriptions
 
 ---
@@ -74,7 +74,7 @@
 | T15 | User filter presets | MED | ✅ Done | 3 configurable filter slots per user. V013. |
 | T16 | Client-side activity list filtering | MED | 💡 Backlog | Convert ViewHome25 center column to client-side JS filtering (same pattern as PspDashboard). |
 | T17 | ServiceItem Unification | HIGH | ✅ Done | TemplatePurpose → ServiceItem, TicketSubCategory eliminated. V020–V024. |
-| T18 | Demo Data Seeder (D-24) | CONF | ✅ Done | `SeedDemoData` + `ReSeedDemoData` servlets. |
+| T18 | Demo Data Seeder (D-24) | CONF | ✅ Done | `SeedDemoData` + `ReSeedDemoData` servlets. `DemoDataSeeder.java` refactored Session 36 — 11 bug fixes. |
 | T19 | Summit Import Wizard (D-35) | HIGH | ✅ Done | Multi-step CSV import for Plan Types, Employers, Employees, Benefits. V025-V026. |
 | T20 | BPO Cross-System Architecture | CONF | ✅ Done | Push/pull API, note sync, partnership management, vendor registry. V027-V033. |
 | T21 | User Manager | HIGH | ✅ Done | Modal-based user management: deactivate/reactivate, role assignment. V029. |

@@ -1134,6 +1134,10 @@ public class AmsDataLocal implements AutoCloseable {
             long start = System.currentTimeMillis();
             System.out.println("** INITIALIZATION OF ACTIVITY **");
             setActivity(EntityLookup.getActivityById(em,activityId));
+            if (getActivity() == null) {
+                System.err.println("⚠ intializeActivity: no Activity found for id=" + activityId);
+                return;
+            }
             if(getActivity().getClass().getSimpleName().equals("CheckList")){
                 CheckList c = (CheckList) getActivity();
                 setCheckList(c);

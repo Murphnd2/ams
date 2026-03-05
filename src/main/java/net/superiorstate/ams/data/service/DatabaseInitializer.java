@@ -581,60 +581,7 @@ public abstract class DatabaseInitializer {
         seedFilterPresets(em, user);
 
         // ── Demo Users ──────────────────────────────────────────────────
-        // Agency Manager + Outside Agency
-        Person agencyManagerPerson = createDemoPerson(em, "Agency", "Manager", "agency@pspdemo.com", psp, a);
-        Agency outsideAgency = createAgency(em, 15L, "Outside Agency", "", "", a, agencyManagerPerson, psp);
-        User agencyManagerUser = createUser(em, agencyManagerPerson, "agency@pspdemo.com", "demo123");
-        assignRoles(em, agencyManagerUser, ur8);  // Agency Admin
-        assignRoles(em, agencyManagerUser, ur2);  // Agent
-        seedFilterPresets(em, agencyManagerUser);
-
-        // Assign Standard Rate to Outside Agency
-        Agency outsideAgencyFull = SalesDAO.getAgencyFull(em, outsideAgency.getId());
-        outsideAgencyFull.addRate(rate);
-        em.getTransaction().begin();
-        em.merge(outsideAgencyFull);
-        em.getTransaction().commit();
-
-        // Sales Agent (assigned to Outside Agency)
-        Person salesAgentPerson = createDemoPerson(em, "Sales", "Agent", "agent@pspdemo.com", psp, a);
-        User salesAgentUser = createUser(em, salesAgentPerson, "agent@pspdemo.com", "demo123");
-        assignRoles(em, salesAgentUser, ur2);  // Agent
-        seedFilterPresets(em, salesAgentUser);
-        em.getTransaction().begin();
-        outsideAgency.getAgentList().add(salesAgentPerson);
-        em.merge(outsideAgency);
-        em.getTransaction().commit();
-
-        // PSP User
-        Person pspUserPerson = createDemoPerson(em, "PSP", "User", "user@pspdemo.com", psp, a);
-        User pspUserUser = createUser(em, pspUserPerson, "user@pspdemo.com", "demo123");
-        assignRoles(em, pspUserUser, ur1);  // PSP User
-        seedFilterPresets(em, pspUserUser);
-
-        // PSP Agent (PSP User + Agent, assigned to home agency)
-        Person pspAgentPerson = createDemoPerson(em, "PSP", "Agent", "pspagent@pspdemo.com", psp, a);
-        User pspAgentUser = createUser(em, pspAgentPerson, "pspagent@pspdemo.com", "demo123");
-        assignRoles(em, pspAgentUser, ur1);  // PSP User
-        assignRoles(em, pspAgentUser, ur2);  // Agent
-        seedFilterPresets(em, pspAgentUser);
-        Agency homeAgencyRefresh = SalesDAO.getAgencyFull(em, agency.getId());
-        em.getTransaction().begin();
-        homeAgencyRefresh.getAgentList().add(pspAgentPerson);
-        em.merge(homeAgencyRefresh);
-        em.getTransaction().commit();
-
-        // BPO Admin
-        Person bpoAdminPerson = createDemoPerson(em, "BPO", "Admin", "bpoadmin@pspdemo.com", psp, a);
-        User bpoAdminUser = createUser(em, bpoAdminPerson, "bpoadmin@pspdemo.com", "demo123");
-        assignRoles(em, bpoAdminUser, ur12);  // BPO Admin (102)
-        seedFilterPresets(em, bpoAdminUser);
-
-        // BPO User
-        Person bpoUserPerson = createDemoPerson(em, "BPO", "User", "bpouser@pspdemo.com", psp, a);
-        User bpoUserUser = createUser(em, bpoUserPerson, "bpouser@pspdemo.com", "demo123");
-        assignRoles(em, bpoUserUser, ur13);  // BPO User (103)
-        seedFilterPresets(em, bpoUserUser);
+        seedCoreDemoUsers(em);
 
         // Vendor users removed — configure via admin UI (future backlog item)
         // Add PSP Constants
@@ -654,16 +601,40 @@ public abstract class DatabaseInitializer {
         }
         // Create Initialization Checklist
         createInitializationChecklist(em);
-        // Set Note To Show Initialization Completed
-        setInitializationNote(em,p,rc,siTicket,as);
 
+    }
+
+    /**
+     * Creates the demo user accounts used for conference demonstrations.
+     * Only BPO users are seeded here — PSP-side demo users (agents, agency manager,
+     * outside agency) are created by DemoDataSeeder when conference demo data is loaded.
+     */
+    public static void seedCoreDemoUsers(EntityManager em) {
+        PSP psp = EntityLookup.getPspById(em, 4L);
+        Address a = psp.getAddress();
+
+        UserRole ur12 = EntityLookup.getUserRoleById(em, 102);
+        UserRole ur13 = EntityLookup.getUserRoleById(em, 103);
+
+        // BPO Admin
+        Person bpoAdminPerson = createDemoPerson(em, "BPO", "Admin", "bpoadmin@pspdemo.com", psp, a);
+        User bpoAdminUser = createUser(em, bpoAdminPerson, "bpoadmin@pspdemo.com", "demo123");
+        assignRoles(em, bpoAdminUser, ur12);  // BPO Admin (102)
+        seedFilterPresets(em, bpoAdminUser);
+
+        // BPO User
+        Person bpoUserPerson = createDemoPerson(em, "BPO", "User", "bpouser@pspdemo.com", psp, a);
+        User bpoUserUser = createUser(em, bpoUserPerson, "bpouser@pspdemo.com", "demo123");
+        assignRoles(em, bpoUserUser, ur13);  // BPO User (103)
+        seedFilterPresets(em, bpoUserUser);
     }
 
     public static void seedDemoData(EntityManager em, String demoTag) {
         System.out.println("🎭 seedDemoData called with tag: " + demoTag);
         switch (demoTag.toUpperCase()) {
-            // Future: case "DEMO_SALES": seedSalesDemo(em); break;
-            // Future: case "DEMO_FULL": seedFullDemo(em); break;
+            case "CONFERENCE_DEMO":
+                DemoDataSeeder.seedConferenceDemo(em);
+                break;
             default:
                 System.out.println("⚠️ Unknown demo tag: " + demoTag + " — skipping");
         }
@@ -836,7 +807,7 @@ public abstract class DatabaseInitializer {
         return "<a href=\"" + servletName + "\">" + description + "</a>";
     }
 
-    private static void createRequiredTaskList(EntityManager em, ServiceItem tp, PSP psp){
+    public static void createRequiredTaskList(EntityManager em, ServiceItem tp, PSP psp){
         em.getTransaction().begin();
         RequiredTaskList rtl = new RequiredTaskList();
         rtl.setPsp(psp);
@@ -916,7 +887,7 @@ public abstract class DatabaseInitializer {
             createConstant(em,"DAYS_SINCE_WARNING","7");
     }
 
-    private static void createConstant(EntityManager em, String name, String value){
+    public static void createConstant(EntityManager em, String name, String value){
         em.getTransaction().begin();
         Constant c = new Constant();
         c.setName(name);
@@ -1074,7 +1045,7 @@ public abstract class DatabaseInitializer {
         em.getTransaction().commit();
     }
 
-    private static void setTicketCategoryOnServiceItem(EntityManager em, ServiceItem si, TicketCategory tc){
+    public static void setTicketCategoryOnServiceItem(EntityManager em, ServiceItem si, TicketCategory tc){
         em.getTransaction().begin();
         si.setTicketCategory(tc);
         em.persist(si);
@@ -1226,7 +1197,7 @@ public abstract class DatabaseInitializer {
         em.getTransaction().commit();
     }
 
-    private static void assignAllSectionsToLosAndEnhancement(EntityManager em, PSP psp, LOS los, Enhancement enh) {
+    public static void assignAllSectionsToLosAndEnhancement(EntityManager em, PSP psp, LOS los, Enhancement enh) {
         List<ApplicationSection> sections = em.createQuery(
                 "SELECT s FROM ApplicationSection s WHERE s.psp.id = :pspId AND s.scope = 'ALL' AND s.suppressed = false",
                 ApplicationSection.class)
@@ -1237,14 +1208,14 @@ public abstract class DatabaseInitializer {
             em.getTransaction().begin();
             if (section.getLosList() == null) section.setLosList(new java.util.ArrayList<>());
             if (section.getEnhancementList() == null) section.setEnhancementList(new java.util.ArrayList<>());
-            section.getLosList().add(los);
-            section.getEnhancementList().add(enh);
+            if (!section.getLosList().contains(los)) section.getLosList().add(los);
+            if (!section.getEnhancementList().contains(enh)) section.getEnhancementList().add(enh);
             em.merge(section);
             em.getTransaction().commit();
         }
     }
 
-    private static Person createDemoPerson(EntityManager em, String firstName, String lastName, String email, PSP psp, Address address) {
+    public static Person createDemoPerson(EntityManager em, String firstName, String lastName, String email, PSP psp, Address address) {
         em.getTransaction().begin();
         Person p = new Person();
         p.setFirstName(firstName);
@@ -1493,7 +1464,7 @@ public abstract class DatabaseInitializer {
         return tp;
     }
 
-    private static ServiceItem setHasRequiredTasks(EntityManager em, ServiceItem si, boolean value){
+    public static ServiceItem setHasRequiredTasks(EntityManager em, ServiceItem si, boolean value){
         em.getTransaction().begin();
         si.setHasRequiredTasks(value);
         em.merge(si);
@@ -1689,6 +1660,10 @@ public abstract class DatabaseInitializer {
         createAppField(em, "address_city",    "City",                  "TEXT", true,  300, null, s3);
         createAppField(em, "address_state",   "State",                 "TEXT", true,  400, null, s3);
         createAppField(em, "address_zip",     "ZIP Code",              "TEXT", true,  500, null, s3);
+
+        // Evict L2 cache so subsequent queries see the newly-added fields
+        // (sections were cached with empty field lists during persist)
+        em.getEntityManagerFactory().getCache().evict(ApplicationSection.class);
     }
 
     private static ApplicationSection createAppSection(EntityManager em, Long id, String name,

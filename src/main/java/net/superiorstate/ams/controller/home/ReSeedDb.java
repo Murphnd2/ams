@@ -76,6 +76,12 @@ public class ReSeedDb extends HttpServlet {
         try {
             em = executeReset(em, out);
             renderSuccessMessage(out);
+
+            // Invalidate session so stale AmsDataLocal (cached checklists, activities,
+            // filters) is discarded.  The success page is already rendered above;
+            // when the user clicks "Go to Home", LoginFilter will require a fresh login
+            // which re-initializes all session-scoped data.
+            request.getSession().invalidate();
         } catch (Exception e) {
             if (em.isOpen() && em.getTransaction().isActive()) em.getTransaction().rollback();
             out.println("<div class='alert alert-danger'><strong>Error:</strong> "
