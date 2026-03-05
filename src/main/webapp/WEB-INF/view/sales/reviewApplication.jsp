@@ -25,6 +25,14 @@
     <c:set var="pageIcon" value="bi-clipboard-check" scope="request"/>
     <c:import url="/WEB-INF/view/a/general/navbar25.jsp"/>
 
+    <%-- Read-only banner for agents --%>
+    <c:if test="${isAgentView}">
+        <div class="alert alert-info d-flex align-items-center mb-3 mt-2" style="font-size:0.9rem;">
+            <i class="bi bi-eye me-2"></i>
+            <span>You are viewing this application in <strong>read-only mode</strong>. Review actions are handled by your PSP administrator.</span>
+        </div>
+    </c:if>
+
     <%-- Subheader --%>
     <div class="hdr-bar mt-2 d-flex justify-content-between align-items-center">
         <span>
@@ -55,6 +63,10 @@
             </span>
         </span>
         <div class="d-flex gap-2">
+            <a href="ReviewApplication?id=${application.getProposal().getId()}&action=exportCsv"
+               class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-download me-1"></i>Export CSV
+            </a>
             <a href="ReviewApplications" class="btn btn-sm btn-outline-light">
                 <i class="bi bi-arrow-left me-1"></i>Back to List
             </a>
@@ -111,8 +123,8 @@
         </div>
     </div>
 
-    <%-- Setup Link (if approved) --%>
-    <c:if test="${application.getSetup() != null}">
+    <%-- Setup Link (if approved) — hidden from agents --%>
+    <c:if test="${application.getSetup() != null && !hideSetupLink}">
     <div class="alert alert-success py-2">
         <i class="bi bi-building-check me-1"></i>
         Setup <strong>#${application.getSetup().getId()}</strong> created —
@@ -220,6 +232,58 @@
                 <%-- Benefit Plans (JSON) --%>
                 <div id="benefitPlansSection"></div>
 
+                <%-- PSP Review info block (visible to both PSP users and agents) --%>
+                <c:if test="${application.getReviewedBy() != null}">
+                    <div class="card mt-3">
+                        <div class="card-header hdr-bar">
+                            <i class="bi bi-person-check me-2"></i>PSP Review
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-2">
+                                <div class="col-md-4">
+                                    <span class="text-muted small">Reviewed By</span>
+                                    <div class="fw-semibold">
+                                        ${application.getReviewedBy().getFirstName()} ${application.getReviewedBy().getLastName()}
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <span class="text-muted small">Date Reviewed</span>
+                                    <div class="fw-semibold">
+                                        <fmt:formatDate value="${application.getDateReviewed()}" pattern="MM/dd/yyyy"/>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <span class="text-muted small">Status</span>
+                                    <div>
+                                        <c:choose>
+                                            <c:when test="${application.getStatus() == 'APPROVED'}">
+                                                <span class="badge bg-success">Approved</span>
+                                            </c:when>
+                                            <c:when test="${application.getStatus() == 'DENIED'}">
+                                                <span class="badge bg-danger">Denied</span>
+                                            </c:when>
+                                            <c:when test="${application.getStatus() == 'MORE_INFO'}">
+                                                <span class="badge bg-secondary">More Info Requested</span>
+                                            </c:when>
+                                            <c:otherwise>
+                                                <span class="badge bg-info">${application.getStatus()}</span>
+                                            </c:otherwise>
+                                        </c:choose>
+                                    </div>
+                                </div>
+                                <c:if test="${not empty application.getReviewNotes()}">
+                                    <div class="col-12 mt-2">
+                                        <span class="text-muted small">Notes</span>
+                                        <div class="border rounded p-2 bg-light" style="font-size:0.9rem;">
+                                            ${fn:escapeXml(application.getReviewNotes())}
+                                        </div>
+                                    </div>
+                                </c:if>
+                            </div>
+                        </div>
+                    </div>
+                </c:if>
+
             </div>
 
             <%-- Right Column: Actions --%>
@@ -236,7 +300,7 @@
                                     <i class="bi bi-check-circle" style="font-size: 2rem;"></i>
                                     <p class="mb-0 fw-semibold">Approved</p>
                                 </div>
-                                <c:if test="${application.getSetup() != null}">
+                                <c:if test="${application.getSetup() != null && !hideSetupLink}">
                                     <p class="text-muted small text-center">Setup #${application.getSetup().getId()} created</p>
                                 </c:if>
                             </c:when>
@@ -251,6 +315,7 @@
 
                             <%-- Actionable states: SUBMITTED, UNDER_REVIEW, MORE_INFO --%>
                             <c:otherwise>
+                                <c:if test="${canReview}">
                                 <%-- Mark as Under Review (if still SUBMITTED) --%>
                                 <c:if test="${application.getStatus() == 'SUBMITTED'}">
                                     <form method="post" action="ReviewApplication" class="mb-3">
@@ -264,9 +329,9 @@
 
                                 <%-- Review Notes --%>
                                 <div class="mb-3">
-                                    <label for="reviewNotes" class="form-label small fw-semibold">Review Notes</label>
-                                    <textarea class="form-control form-control-sm" id="reviewNotes" rows="3"
-                                              placeholder="Optional notes about this decision...">${application.getReviewNotes()}</textarea>
+                                    <label class="form-label fw-semibold">Review Notes <span class="text-muted fw-normal">(optional — visible to agent)</span></label>
+                                    <textarea name="reviewNotes" class="form-control form-control-sm" id="reviewNotes" rows="3"
+                                              placeholder="Add any notes for this review decision...">${application.getReviewNotes()}</textarea>
                                 </div>
 
                                 <%-- Approve --%>
@@ -300,6 +365,14 @@
                                         <i class="bi bi-x-circle me-1"></i>Deny
                                     </button>
                                 </form>
+                                </c:if><%-- /canReview --%>
+
+                                <c:if test="${!canReview}">
+                                    <div class="text-center text-muted">
+                                        <i class="bi bi-hourglass-split" style="font-size: 2rem;"></i>
+                                        <p class="mb-0 fw-semibold mt-1">${application.getStatus() == 'SUBMITTED' ? 'Awaiting Review' : application.getStatus() == 'UNDER_REVIEW' ? 'Under Review' : 'More Info Requested'}</p>
+                                    </div>
+                                </c:if>
                             </c:otherwise>
                         </c:choose>
                     </div>

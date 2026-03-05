@@ -15,14 +15,14 @@
 
 ## Current State
 - **Branch:** `refactor/modernize-architecture`
-- **Latest migration:** V040
-- **Session count:** 39
+- **Latest migration:** V041
+- **Session count:** 41
 - V025-V037 applied to Demo PSP, BPO, and Master; V038 applied to Demo and BPO; V039-V040 code-complete, not yet applied anywhere
 - Not yet applied to production or local dev
 - Master snapshot v8 taken 2026-03-04 (V037, fixed update.sh, fixed healthcheck.sh)
 
 ## Database Migrations
-- Current highest version: **V040**
+- Current highest version: **V041**
 - Migration tracker: `docs/analysis/migration_tracker.md`
 - Schema version SQL: `docs/schema_version_migration.sql`
 
@@ -245,6 +245,18 @@
 - **Contact info fallback:** prospect.getContact() → opportunity.getPrimaryContact()
 - **Application entity PK note:** `Application.getId()` returns the proposal_id (Long), not auto-generated
 - **PSP.getId() returns Long** — use `long` not `int` when storing
+
+## Application Visibility & Role Walls (V041, Session 41)
+- **V041 migration:** reviewed_by (BIGINT FK → assignee), review_notes (TEXT), date_reviewed (TIMESTAMP) on application table. Conditional DDL for idempotency.
+- **ApplicationsHome.java** (new): `/ApplicationsHome` servlet for PSP Users/Admins. Two queries (in-progress + pending review). Agency names pre-computed as `Map<Long, String>` because Person ↔ Agency is ManyToMany (no direct FK). Take Over sets `Opportunity.managedBy`.
+- **applicationsHome25.jsp** (new): `.audit-wrap` flex layout, two card tables with empty states
+- **ReviewApplication.java** mods: PSP Admin gate on doPost (403), agent access check, `canReview`/`isAgentView`/`hideSetupLink` attrs, CSV export, reviewer tracking on `more_info`
+- **reviewApplication.jsp** mods: read-only agent banner, gated review forms, reviewer info block, CSV export button
+- **navbar25.jsp**: Applications link after Renewals (PSP Users/Admins only)
+- **Key gotcha:** Person has `listOfAgenciesWithThisAgent` (ManyToMany), not `getAgency()` — can't JOIN FETCH directly in JPQL
+- **Key gotcha:** Application.reviewedBy FK must reference `assignee(id)` not `person(id)` (JPA inheritance, no person table)
+- **Key gotcha:** EntityManager must stay open during JSP forward — move forward() inside try block before em.close()
+- **D-58** in deployment_backlog — code complete, needs V041 applied + browser testing
 
 ## Reference
 - Full session archive: `docs/analysis/session_history_archive.md`

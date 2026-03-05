@@ -16,7 +16,7 @@ Tracks database schema versions across environments.
 | BPO | bpo.superiorstate.biz | beta_ssa | BPO instance (V038, initialized, release V0.37.0) |
 | Master | master.superiorstate.biz | beta_ssa | Snapshot v8 (V037, stopped) |
 
-## Current Highest Version: V040
+## Current Highest Version: V041
 
 ## Dev Baseline
 
@@ -72,6 +72,7 @@ Individual migration scripts are no longer stored in the repo. The baseline dump
 | V038 | Add sort_order to delegated_todo for BPO ordering | ⬜ | ⬜ | ⬜ | ⬜ | ✅ | ✅ | ⬜ |
 | V039 | Questionnaire system: templates, fields, instances, values, scoping | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
 | V040 | Add recurring_series_id to delegated_todo for BPO recurring history | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
+| V041 | Add reviewer tracking fields to application table | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
 
 ## Notes
 
@@ -98,3 +99,5 @@ Individual migration scripts are no longer stored in the repo. The baseline dump
 - V037 adds scope column (VARCHAR(10), default 'ALL') to proposal_section and creates proposalsectionlos/proposalsectionenhancement join tables. Enables CUSTOM sections to display only when specific services are proposed.
 - V038 adds sort_order INT DEFAULT 0 to delegated_todo. Stores the task's position within its source checklist, included in the BPO push payload from PSP. Enables BPO dashboard sorting by due date → activity name → sort order.
 - V039 creates questionnaire system foundation: questionnaire (template with native/external dual-mode), questionnaire_field (with section_name grouping), questionnaire_instance (per-activity filling with GUID), questionnaire_field_value (answers), and 3 scoping join tables (LOS, Enhancement, ServiceItem). Requires updated WAR with 4 new entity classes and QuestionnaireLoader service.
+- V040 adds recurring_series_id VARCHAR(36) and recurring_cycle_number INT to delegated_todo. Enables recurring checklist history tracking across BPO push cycles.
+- V041 adds reviewed_by (BIGINT FK → assignee), review_notes (TEXT), and date_reviewed (TIMESTAMP) to the application table. Uses conditional DDL (information_schema checks) since columns may already exist on some environments. Requires updated WAR with Application Visibility & Role Walls feature.

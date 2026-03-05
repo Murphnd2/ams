@@ -28,6 +28,7 @@ import net.superiorstate.ams.model.sales.application.*;
 import net.superiorstate.ams.model.sales.offering.LOS;
 
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.sql.Date;
@@ -56,20 +57,26 @@ public class ReviewApplication extends HttpServlet {
             return;
         }
 
+        Boolean isPspAdmin = Boolean.TRUE.equals(request.getSession().getAttribute("isPspAdmin"));
+        Boolean isPspUser = Boolean.TRUE.equals(request.getSession().getAttribute("isPspUser"));
+        Boolean isAgent = Boolean.TRUE.equals(request.getSession().getAttribute("isAgent"));
+
         EntityManagerFactory emf = (EntityManagerFactory) getServletContext().getAttribute("emf");
         EntityManager em = emf.createEntityManager();
 
         try {
             long proposalId = Long.parseLong(idParam);
 
-            // Load application with proposal, prospect, contact, LOS list
+            // Load application with proposal, prospect, contact, agent, LOS list
             Query aq = em.createQuery(
                     "SELECT a FROM Application a " +
                             "JOIN FETCH a.proposal p " +
                             "JOIN FETCH p.prospect pr " +
                             "JOIN FETCH pr.contact " +
+                            "LEFT JOIN FETCH pr.agent " +
                             "LEFT JOIN FETCH p.losList " +
                             "LEFT JOIN FETCH a.setup " +
+                            "LEFT JOIN FETCH a.reviewedBy " +
                             "WHERE a.proposal.id = :pid");
             aq.setParameter("pid", proposalId);
             Application application;
@@ -78,6 +85,15 @@ public class ReviewApplication extends HttpServlet {
             } catch (Exception e) {
                 response.sendRedirect("ReviewApplications?err=" + encode("Application not found"));
                 return;
+            }
+
+            // Agent access check: agent-only users can only view their own prospects
+            if (isAgent && !isPspAdmin && !isPspUser) {
+                Person prospectAgent = application.getProposal().getProspect().getAgent();
+                if (prospectAgent == null || prospectAgent.getId() != currentPerson.getId()) {
+                    response.sendError(HttpServletResponse.SC_FORBIDDEN, "Access denied");
+                    return;
+                }
             }
 
             // Load field values for this application
@@ -135,6 +151,33 @@ public class ReviewApplication extends HttpServlet {
                 }
             }
 
+            // CSV export action
+            String action = request.getParameter("action");
+            if ("exportCsv".equals(action)) {
+                response.setContentType("text/csv");
+                response.setHeader("Content-Disposition",
+                        "attachment; filename=\"application_" + proposalId + ".csv\"");
+                PrintWriter writer = response.getWriter();
+                writer.println("Field,Value");
+                for (ApplicationFieldValue fv : fieldValues) {
+                    String label = fv.getApplicationField().getLabel();
+                    String val = fv.getFieldValue() != null ? fv.getFieldValue() : "";
+                    writer.println(csvEscape(label) + "," + csvEscape(val));
+                }
+                writer.flush();
+                return;
+            }
+
+            // Role-based view flags
+            boolean canReview = Boolean.TRUE.equals(isPspAdmin);
+            request.setAttribute("canReview", canReview);
+            request.setAttribute("isAgentView", isAgent && !canReview);
+
+            // Gate setup link visibility — agents should not see setup info
+            if (isAgent && !isPspAdmin && !isPspUser) {
+                request.setAttribute("hideSetupLink", true);
+            }
+
             request.setAttribute("application", application);
             request.setAttribute("sections", sections);
             request.setAttribute("valueMap", valueMap);
@@ -160,6 +203,13 @@ public class ReviewApplication extends HttpServlet {
         Person currentPerson = (Person) request.getSession().getAttribute("currentPerson");
         if (currentPerson == null) {
             response.sendRedirect("Login");
+            return;
+        }
+
+        // Only PSP Admins may take review actions
+        Boolean isPspAdmin = Boolean.TRUE.equals(request.getSession().getAttribute("isPspAdmin"));
+        if (!Boolean.TRUE.equals(isPspAdmin)) {
+            response.sendError(HttpServletResponse.SC_FORBIDDEN, "PSP Admin access required for review actions");
             return;
         }
 
@@ -236,6 +286,8 @@ public class ReviewApplication extends HttpServlet {
                 case "more_info":
                     em.getTransaction().begin();
                     application.setStatus("MORE_INFO");
+                    application.setDateReviewed(Timestamp.from(Instant.now()));
+                    application.setReviewedBy(currentPerson);
                     if (reviewNotes != null && !reviewNotes.isBlank())
                         application.setReviewNotes(reviewNotes.trim());
                     em.merge(application);
@@ -403,6 +455,14 @@ public class ReviewApplication extends HttpServlet {
                 return "default";
             }
         }
+    }
+
+    private String csvEscape(String value) {
+        if (value == null) return "";
+        if (value.contains(",") || value.contains("\"") || value.contains("\n")) {
+            return "\"" + value.replace("\"", "\"\"") + "\"";
+        }
+        return value;
     }
 
     private String encode(String value) {

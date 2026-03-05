@@ -27,7 +27,7 @@ public class Application {
     @Column(name="date_reviewed")
     private Timestamp dateReviewed;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name="reviewed_by")
     private Person reviewedBy;
 

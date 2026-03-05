@@ -643,3 +643,22 @@ Recurring checklist history tracking: each recurring cycle gets a UUID series ID
 - `ExportApplicationCsv.java` — CSV export servlet
 - `AgentHome.java`, `agentHome25.jsp` — closed opportunity lookup + export integration
 - `detailOpportunity25.jsp` — CSV export button
+
+---
+
+### D-58: Apply V041 + Application Visibility & Role Walls
+
+**Priority:** MEDIUM
+**Status:** Code complete — needs V041 applied + browser testing
+
+**Prerequisite:** V041 migration (`reviewed_by`, `review_notes`, `date_reviewed` on application table)
+
+Application visibility and role-based review controls. PSP Users/Admins get a new Applications hub page showing all in-flight and submitted applications across the PSP. PSP Admins can take over unmanaged opportunities and perform review actions (approve/deny/request more info). Agents can view applications in read-only mode with CSV export. Review actions are hard-gated to PSP Admin role (403 on POST for non-admins).
+
+**Files:**
+- `V041__application_reviewer_fields.sql` — migration (conditional DDL)
+- `ApplicationsHome.java` — new hub servlet
+- `applicationsHome25.jsp` — new hub page
+- `ReviewApplication.java` — role gates, agent access check, CSV export
+- `reviewApplication.jsp` — conditional UI, read-only banner, reviewer info
+- `navbar25.jsp` — Applications nav link

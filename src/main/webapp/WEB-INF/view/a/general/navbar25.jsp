@@ -159,6 +159,9 @@
           <a class="nav-ghost" href="UpcomingRenewals">
             <i class="bi bi-calendar-check"></i><span class="d-lg-none d-xl-inline ms-1">Renewals</span>
           </a>
+          <a href="ApplicationsHome" class="nav-ghost ${pageTitle == 'Applications' ? 'active' : ''}">
+            <i class="bi bi-file-earmark-check me-1"></i><span class="d-lg-none d-xl-inline">Applications</span>
+          </a>
 
         </c:if>
 

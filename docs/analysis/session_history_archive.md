@@ -2,7 +2,7 @@
 
 > **Purpose:** Consolidated historical record of all build sessions. For current project state, see `project_backlog.md`. For current architecture, see `application_flow.md` and `entity_reference.md`.
 >
-> **Last Updated:** March 5, 2026 (Session 40)
+> **Last Updated:** March 5, 2026 (Session 41)
 
 ---
 
@@ -1406,3 +1406,34 @@ Converted 4 center-column cards from Bootstrap card pattern to unified `.detail-
 - **Modified (12 JSP):** activityDetail25.jsp, checklistBasic25.jsp, detailAddNote25.jsp, detailAdditionalContacts25.jsp, detailDocsLinks25.jsp, detailPrimaryContact25.jsp, detailQuestionnaires25.jsp, historyHeader.jsp, pspHome25.jsp, upcomingRenewals25.jsp, proposalBuilder.jsp, reviewApplications.jsp
 
 No database changes.
+
+---
+
+## March 5, 2026 — Session 41: Application Visibility & Role Walls (V041)
+
+Implemented role-based application visibility and review controls. PSP Users/Admins get a new Applications hub page; Agents can view applications in read-only mode. Review actions (approve/deny/more info) are gated to PSP Admins only.
+
+### V041 Migration
+- **`V041__application_reviewer_fields.sql`** — Adds `reviewed_by` (BIGINT FK → assignee), `review_notes` (TEXT), `date_reviewed` (TIMESTAMP) to application table. Uses conditional DDL via `information_schema.COLUMNS` checks for idempotency.
+
+### Applications Home Page (New)
+- **`ApplicationsHome.java`** — New servlet at `/ApplicationsHome` for PSP Users/Admins. Two JPQL queries: in-progress (status=IN_PROGRESS) and pending review (status=SUBMITTED, not yet APPROVED/DENIED). Pre-computes agency names via `Map<Long, String>` (Person → first agency from ManyToMany). Take Over action sets `Opportunity.managedBy` to current person.
+- **`applicationsHome25.jsp`** — Two-section card layout with `.audit-wrap` flex pattern. In Progress table (prospect, agency, agent, date, Take Over button). Awaiting Review table (linked prospect, agency, agent, date, Review button). Empty states with inbox icons.
+
+### Review Application Role Gates
+- **`ReviewApplication.java`** — Added PSP Admin gate on doPost (403 for non-admins). Agent access check: agent-only users can only view their own prospects. Added `canReview`, `isAgentView`, `hideSetupLink` request attributes. CSV export handler for `action=exportCsv`. Added reviewer identity tracking to `more_info` case.
+- **`reviewApplication.jsp`** — Read-only agent banner. CSV export button. All review forms wrapped in `<c:if test="${canReview}">`. Non-reviewer fallback with status text. Setup link gated behind `!hideSetupLink`. PSP Review info block showing reviewer name, date, status badge, and notes.
+
+### Navbar Update
+- **`navbar25.jsp`** — Added "Applications" link after "Renewals" in the PSP User/Admin nav section.
+
+### Key Technical Decisions
+- **Person ↔ Agency is ManyToMany** (not direct FK) — agency names resolved via `agent.getListOfAgenciesWithThisAgent()` in servlet, passed to JSP as a Map
+- **Application.reviewedBy** FK references `assignee(id)` (not `person`) due to JPA inheritance (Person extends Assignee, no standalone person table)
+- **EntityManager lifecycle** — forward() inside try block to keep EM open during JSP rendering for lazy-loaded relationships
+
+### Files
+- **New (2):** ApplicationsHome.java, applicationsHome25.jsp
+- **New (1 SQL):** V041__application_reviewer_fields.sql
+- **Modified (3):** ReviewApplication.java, reviewApplication.jsp, navbar25.jsp
+- **Modified (docs):** migration_tracker.md, schema_version_migration.sql, deployment_backlog.md, claude_memory.md
