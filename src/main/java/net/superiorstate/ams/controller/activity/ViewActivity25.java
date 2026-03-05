@@ -6,8 +6,11 @@ import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.AmsDataGlobal;
+import net.superiorstate.ams.data.AmsDataLocal;
 
 import java.io.IOException;
+import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 
 @WebServlet(name = "ViewActivity25", value = "/ViewActivity25")
 public class ViewActivity25 extends HttpServlet {
@@ -37,6 +40,15 @@ public class ViewActivity25 extends HttpServlet {
     }
 
     private void goToPage(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        // Compute daysUntilDue for breadcrumb + status bar urgency coloring
+        AmsDataLocal local = (AmsDataLocal) request.getSession().getAttribute("local");
+        if (local != null && local.getCurrentActivity() != null
+                && local.getCurrentActivity().getActivity() != null
+                && local.getCurrentActivity().getActivity().getDueDate() != null) {
+            LocalDate due = local.getCurrentActivity().getActivity().getDueDate().toLocalDate();
+            long days = ChronoUnit.DAYS.between(LocalDate.now(), due);
+            request.setAttribute("daysUntilDue", (int) days);
+        }
         RequestDispatcher dispatcher= request.getRequestDispatcher("/WEB-INF/view/a/activityDetail/activityDetail25.jsp");
         dispatcher.forward(request,response);
     }

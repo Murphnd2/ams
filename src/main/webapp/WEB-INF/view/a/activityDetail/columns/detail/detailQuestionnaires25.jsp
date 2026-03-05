@@ -5,15 +5,14 @@
 <c:set var="qAvailable" value="${sessionScope.local.getCurrentActivity().getAvailableQuestionnaires()}" />
 
 <c:if test="${not empty qInstances || not empty qAvailable}">
-<div class="card border-0 border-start border-3 mt-2 mb-2" style="border-color: var(--ssa-alt) !important;">
-  <div class="card-body py-2 px-3">
-    <div class="d-flex align-items-center justify-content-between mb-1">
-      <span class="fw-semibold" style="color: var(--ssa-alt); font-size: 0.85rem;">
-        <i class="bi bi-ui-checks-grid me-1"></i>Questionnaires
-        <c:if test="${not empty qInstances}">
-          <span class="badge rounded-pill text-bg-secondary ms-1" style="font-size: 0.7rem;">${fn:length(qInstances)}</span>
-        </c:if>
-      </span>
+<div class="detail-section-card">
+  <div class="detail-section-header">
+    <i class="bi bi-ui-checks-grid"></i>
+    Questionnaires
+    <c:if test="${not empty qInstances}">
+      <span class="badge rounded-pill text-bg-secondary ms-1" style="font-size: 0.7rem;">${fn:length(qInstances)}</span>
+    </c:if>
+    <span class="section-end">
       <%-- Attach dropdown --%>
       <c:if test="${not empty qAvailable}">
         <div class="dropdown">
@@ -46,7 +45,9 @@
           </ul>
         </div>
       </c:if>
-    </div>
+    </span>
+  </div>
+  <div class="py-2 px-3">
     <c:if test="${not empty qInstances}">
     <div class="overflow-auto" style="max-height: 200px;">
       <c:forEach var="qi" items="${qInstances}">

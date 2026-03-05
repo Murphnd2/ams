@@ -4,17 +4,18 @@
 <c:if test="${sessionScope.local.getCurrentActivity().getActivity().isComplete() == false}">
   <c:set var="isPast" value=""/>
 </c:if>
-<div class="card border-0 border-start border-3 mt-2 mb-2" style="border-color: var(--ssa) !important;">
-  <div class="card-body py-2 px-3">
-    <div class="d-flex align-items-center justify-content-between mb-1">
-      <span class="fw-semibold" style="color: var(--ssa); font-size: 0.85rem;">
-        <i class="bi bi-person-fill me-1"></i>Primary Contact
-      </span>
+<div class="detail-section-card">
+  <div class="detail-section-header">
+    <i class="bi bi-person-fill"></i>
+    Primary Contact
+    <span class="section-end">
       <button class="btn btn-sm btn-outline-ssa border-0 p-0 px-1 ${isPast}" type="button"
               data-bs-target="#modContactModal1" data-bs-toggle="modal" title="Edit contact">
         <i class="bi bi-pencil-square" style="font-size: 0.8rem;"></i>
       </button>
-    </div>
+    </span>
+  </div>
+  <div class="py-2 px-3">
     <div class="d-flex align-items-center flex-wrap" style="font-size: 0.9rem;">
       <span class="fw-bold text-dark text-capitalize me-2">
         <c:choose>

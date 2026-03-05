@@ -112,14 +112,17 @@
       font-size: 0.82rem;
       color: #6c757d;
     }
+    .ur-wrap { max-width: 1100px; margin: 0 auto; padding: 0 1rem; }
+    @media (max-width: 767.98px) { .ur-wrap { padding: 0 0.5rem; } }
   </style>
 </head>
 <body>
 <div class="container-fluid">
   <c:import url="/WEB-INF/view/a/general/navbar25.jsp"></c:import>
 
+  <div class="ur-wrap mt-3">
   <%-- Header Bar --%>
-  <div class="hdr-bar mt-2 mb-3">
+  <div class="hdr-bar mb-3">
     <i class="bi bi-calendar-check me-2"></i>Upcoming Renewals
   </div>
 
@@ -249,6 +252,7 @@
       </c:forEach>
     </c:otherwise>
   </c:choose>
+  </div><%-- /.ur-wrap --%>
 </div>
 
 <%-- Auto-scroll to expanded employer --%>

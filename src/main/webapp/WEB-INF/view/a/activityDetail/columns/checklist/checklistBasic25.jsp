@@ -60,10 +60,10 @@
           <c:set var="rowClass" value="td-item"/>
           <c:choose>
             <c:when test="${toDo.isBpoCompleted() && !toDo.isComplete()}">
-              <c:set var="rowClass" value="td-item bpo-awaiting-verify"/>
+              <c:set var="rowClass" value="td-item bpo-awaiting-verify sourced"/>
             </c:when>
             <c:when test="${toDo.isSourced() && !toDo.isBpoCompleted()}">
-              <c:set var="rowClass" value="td-item td-blocked"/>
+              <c:set var="rowClass" value="td-item td-blocked sourced"/>
             </c:when>
             <c:when test="${toDo.isTimeBlocked() || toDo.isWhoBlocked()}">
               <c:set var="rowClass" value="td-item td-blocked"/>
@@ -108,7 +108,10 @@
                   <a href="${toDo.getInfoLink().getLinkPath()}" target="_blank" class="td-info" title="Info"><i class="bi bi-question-circle-fill"></i></a>
                 </c:if>
                 <c:if test="${toDo.isBpoCompleted() && !toDo.isComplete()}">
-                  <span class="badge bg-warning text-dark" style="font-size: 0.6rem; margin-left: 0.3rem;">BPO Done - Verify</span>
+                  <span class="bpo-done-badge" style="margin-left: 0.3rem;">Done ✓</span>
+                </c:if>
+                <c:if test="${toDo.isSourced() && !toDo.isBpoCompleted()}">
+                  <span class="bpo-badge" style="margin-left: 0.3rem;">BPO</span>
                 </c:if>
                 <c:if test="${toDo.isSourced() && toDo.getBpoRegistration() != null}">
                   <span class="bpo-note-indicator" data-todo-id="${toDo.getToDo().getId()}"

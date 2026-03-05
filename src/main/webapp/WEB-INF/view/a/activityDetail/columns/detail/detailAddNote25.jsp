@@ -3,8 +3,8 @@
 <link href="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.snow.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js"></script>
 <style>
-  .note-dd select { font-size: 0.72rem; padding: 0.1rem 1.2rem 0.1rem 0.3rem; height: auto; border-color: rgba(255,255,255,0.4); background-color: transparent; color: white; }
-  .note-dd select:focus { background-color: white; color: #333; border-color: white; }
+  .note-dd select { font-size: 0.72rem; padding: 0.1rem 1.2rem 0.1rem 0.3rem; height: auto; border-color: #e5d5b0; background-color: transparent; color: #92400e; }
+  .note-dd select:focus { background-color: white; color: #333; border-color: #d97706; }
   .note-dd select option { color: #333; background: white; }
   #noteEditorWrap .ql-toolbar { padding: 3px 5px; border: none; border-bottom: 1px solid #dee2e6; }
   #noteEditorWrap .ql-toolbar button { width: 22px; height: 22px; padding: 1px; }
@@ -17,19 +17,17 @@
 <form method="post" action="AddNoteToActivity25" id="addNoteForm" class="mt-2 mb-0 flex-shrink-0">
   <div class="hdr-bar d-flex align-items-center justify-content-between">
     <div class="d-flex align-items-center">
-      <a class="text-white text-decoration-none d-flex align-items-center" role="button"
-         data-bs-toggle="collapse" data-bs-target="#addNoteBody" aria-expanded="true" aria-controls="addNoteBody">
+      <span class="d-flex align-items-center">
         <i class="bi bi-journal-plus me-1"></i>
         <span class="fw-semibold">Add Note</span>
-        <i class="bi bi-chevron-up ms-2" id="addNoteChevron" style="font-size: 0.65rem; transition: transform 0.2s;"></i>
-      </a>
+      </span>
     </div>
     <div class="d-flex align-items-center gap-2 note-dd">
       <c:import url="/WEB-INF/view/a/general/globalDropDowns/ddReasons25.jsp"></c:import>
       <c:import url="/WEB-INF/view/a/general/globalDropDowns/ddNoteStatus25.jsp"></c:import>
     </div>
   </div>
-  <div class="collapse show" id="addNoteBody">
+  <div id="addNoteBody">
     <div class="border border-top-0" style="border-radius: 0 0 6px 6px; border-color: #dee2e6 !important;">
       <div id="noteEditorWrap">
         <div id="noteQuill"></div>
@@ -113,18 +111,6 @@
       });
     }
 
-    // Chevron toggle — find the visible collapse
-    var collapseEl = target.closest('form').querySelector('#addNoteBody')
-            || document.getElementById('addNoteBody');
-    var chevron = target.closest('form').querySelector('#addNoteChevron')
-            || document.getElementById('addNoteChevron');
-    if (collapseEl && chevron) {
-      collapseEl.addEventListener('hide.bs.collapse', function () {
-        chevron.style.transform = 'rotate(180deg)';
-      });
-      collapseEl.addEventListener('show.bs.collapse', function () {
-        chevron.style.transform = 'rotate(0deg)';
-      });
-    }
+    // (Collapse toggle removed — editor always visible)
   });
 </script>

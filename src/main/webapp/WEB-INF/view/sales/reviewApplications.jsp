@@ -11,8 +11,25 @@
         .status-badge { font-size: 0.8rem; }
         .los-badge { font-size: 0.75rem; }
         .table-hover tbody tr { cursor: pointer; }
-        .filter-btn { cursor: pointer; user-select: none; }
-        .filter-btn.active { font-weight: 600; }
+        .ra-wrap { max-width: 1100px; margin: 0 auto; padding: 0 1rem; }
+        @media (max-width: 767.98px) { .ra-wrap { padding: 0 0.5rem; } }
+        .filter-pill {
+            background: transparent;
+            border: 1px solid var(--ssa);
+            color: var(--ssa);
+            border-radius: 20px;
+            padding: 0.2rem 0.85rem;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+        .filter-pill:hover {
+            background: rgba(13, 86, 129, 0.08);
+        }
+        .filter-pill.active {
+            background: var(--ssa);
+            color: white;
+        }
     </style>
 </head>
 <body>
@@ -21,12 +38,10 @@
     <c:set var="pageIcon" value="bi-clipboard-check" scope="request"/>
     <c:import url="/WEB-INF/view/a/general/navbar25.jsp"/>
 
-    <%-- Subheader --%>
-    <div class="hdr-bar mt-2 d-flex justify-content-between align-items-center">
-        <span>
-            <i class="bi bi-clipboard-check me-1"></i>Application Review
-            <small class="text-white-50 ms-2">Review submitted applications and manage new client setups</small>
-        </span>
+    <div class="ra-wrap mt-3">
+    <%-- Header Bar --%>
+    <div class="hdr-bar d-flex justify-content-between align-items-center mb-3">
+        <span><i class="bi bi-clipboard-check me-1"></i>Application Review</span>
         <div class="d-flex gap-2">
             <a href="GenerateProp25" class="btn btn-sm btn-outline-light">
                 <i class="bi bi-building-add me-1"></i>Manual Setup
@@ -56,36 +71,15 @@
         </div>
     </c:if>
 
-    <%-- Status Filter Buttons --%>
-    <div class="card mb-3">
-        <div class="card-body py-2">
-            <div class="d-flex flex-wrap gap-1">
-                <button type="button" class="btn btn-sm filter-btn ${isAll ? 'btn-dark' : 'btn-outline-secondary'}"
-                        data-status="ALL" onclick="toggleFilter(this)">
-                    All
-                </button>
-                <button type="button" class="btn btn-sm filter-btn ${fn:contains(selectedStatuses.toString(), 'SUBMITTED') && !isAll ? 'btn-warning' : 'btn-outline-warning'}"
-                        data-status="SUBMITTED" onclick="toggleFilter(this)">
-                    <i class="bi bi-inbox me-1"></i>Submitted
-                </button>
-                <button type="button" class="btn btn-sm filter-btn ${fn:contains(selectedStatuses.toString(), 'UNDER_REVIEW') && !isAll ? 'btn-info' : 'btn-outline-info'}"
-                        data-status="UNDER_REVIEW" onclick="toggleFilter(this)">
-                    <i class="bi bi-eye me-1"></i>Under Review
-                </button>
-                <button type="button" class="btn btn-sm filter-btn ${fn:contains(selectedStatuses.toString(), 'MORE_INFO') && !isAll ? 'btn-secondary' : 'btn-outline-secondary'}"
-                        data-status="MORE_INFO" onclick="toggleFilter(this)">
-                    <i class="bi bi-question-circle me-1"></i>More Info
-                </button>
-                <button type="button" class="btn btn-sm filter-btn ${fn:contains(selectedStatuses.toString(), 'APPROVED') && !isAll ? 'btn-success' : 'btn-outline-success'}"
-                        data-status="APPROVED" onclick="toggleFilter(this)">
-                    <i class="bi bi-check-circle me-1"></i>Approved
-                </button>
-                <button type="button" class="btn btn-sm filter-btn ${fn:contains(selectedStatuses.toString(), 'DENIED') && !isAll ? 'btn-danger' : 'btn-outline-danger'}"
-                        data-status="DENIED" onclick="toggleFilter(this)">
-                    <i class="bi bi-x-circle me-1"></i>Denied
-                </button>
-            </div>
-        </div>
+    <%-- Status Filter Pills --%>
+    <div class="d-flex flex-wrap gap-2 mb-3 align-items-center">
+        <span class="text-muted me-1" style="font-size:0.85rem;">Status:</span>
+        <button type="button" class="filter-pill ${isAll ? 'active' : ''}" data-status="ALL" onclick="toggleFilter(this)">All</button>
+        <button type="button" class="filter-pill ${fn:contains(selectedStatuses.toString(), 'SUBMITTED') && !isAll ? 'active' : ''}" data-status="SUBMITTED" onclick="toggleFilter(this)">Submitted</button>
+        <button type="button" class="filter-pill ${fn:contains(selectedStatuses.toString(), 'UNDER_REVIEW') && !isAll ? 'active' : ''}" data-status="UNDER_REVIEW" onclick="toggleFilter(this)">Under Review</button>
+        <button type="button" class="filter-pill ${fn:contains(selectedStatuses.toString(), 'MORE_INFO') && !isAll ? 'active' : ''}" data-status="MORE_INFO" onclick="toggleFilter(this)">More Info</button>
+        <button type="button" class="filter-pill ${fn:contains(selectedStatuses.toString(), 'APPROVED') && !isAll ? 'active' : ''}" data-status="APPROVED" onclick="toggleFilter(this)">Approved</button>
+        <button type="button" class="filter-pill ${fn:contains(selectedStatuses.toString(), 'DENIED') && !isAll ? 'active' : ''}" data-status="DENIED" onclick="toggleFilter(this)">Denied</button>
     </div>
 
     <%-- Applications Table --%>
@@ -180,6 +174,7 @@
         </div>
     </c:if>
 
+    </div><%-- /.ra-wrap --%>
 </div>
 
 <script>
@@ -189,16 +184,6 @@
     activeStatuses.add('${s}');
     </c:forEach>
     var isAll = ${isAll};
-
-    // Color map for active/inactive button classes
-    var colorMap = {
-        'ALL':          { on: 'btn-dark',      off: 'btn-outline-secondary' },
-        'SUBMITTED':    { on: 'btn-warning',    off: 'btn-outline-warning' },
-        'UNDER_REVIEW': { on: 'btn-info',       off: 'btn-outline-info' },
-        'MORE_INFO':    { on: 'btn-secondary',  off: 'btn-outline-secondary' },
-        'APPROVED':     { on: 'btn-success',    off: 'btn-outline-success' },
-        'DENIED':       { on: 'btn-danger',     off: 'btn-outline-danger' }
-    };
 
     function toggleFilter(btn) {
         var status = btn.dataset.status;

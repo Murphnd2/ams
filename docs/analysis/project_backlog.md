@@ -67,7 +67,7 @@
 | T8 | Empty checklist / todo list handling | LOW | 💡 Backlog | Remove task-153 dummy workaround. Audit display chain for empty todo list safety. |
 | T9 | Refactor manual setup to dynamic LOS | CONF | 📋 Planned | `GenerateProp25` uses hardcoded `q1`–`q8` flags. Needs refactor to dynamic LOS from DB. |
 | T10 | PspAgencyHome scoping | HIGH | 📋 Planned | Agency Manager should only see their own agency. Hide rate management for non-PSP users. |
-| T11 | Layout/appearance consolidation | MED | ✅ Done | Unified navbar, CSS, admin pages. |
+| T11 | Layout/appearance consolidation | MED | ✅ Done | Unified navbar, CSS, admin pages. Tonal zones on PSP Home + Activity Detail (Session 40). |
 | T12 | GUI modernization Track A | HIGH | ✅ Done | Activity Detail fully modernized (A1–A14, S4). Email view/history modernized. |
 | T13 | GUI modernization Track B | MED | 📋 Planned | Mobile responsiveness (S5), remaining pages. |
 | T14 | PSP branding system | MED | ✅ Done | Logo/favicon upload, external storage, dynamic JSP references. D-32 complete on production. |

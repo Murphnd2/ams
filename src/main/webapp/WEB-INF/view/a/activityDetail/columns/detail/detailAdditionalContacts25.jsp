@@ -4,17 +4,18 @@
     <c:set var="isPast" value=""/>
 </c:if>
 <c:set var="contacts" value="${sessionScope.local.getCurrentActivity().getAdditionalContacts()}"/>
-<div class="card border-0 border-start border-3 mt-2 mb-2" style="border-color: var(--ssa) !important;">
-    <div class="card-body py-2 px-3">
-        <div class="d-flex align-items-center justify-content-between mb-1">
-      <span class="fw-semibold" style="color: var(--ssa); font-size: 0.85rem;">
-        <i class="bi bi-people me-1"></i>Additional Contacts
-      </span>
+<div class="detail-section-card">
+    <div class="detail-section-header">
+        <i class="bi bi-people"></i>
+        Additional Contacts
+        <span class="section-end">
             <button type="button" class="btn btn-sm btn-outline-ssa border-0 p-0 px-1 ${isPast}"
                     data-bs-target="#addContactToActivity" data-bs-toggle="modal" title="Add contact">
                 <i class="bi bi-plus-circle" style="font-size: 0.85rem;"></i>
             </button>
-        </div>
+        </span>
+    </div>
+    <div class="py-2 px-3">
         <c:choose>
             <c:when test="${contacts == null || contacts.size() == 0}">
                 <div class="text-muted fst-italic" style="font-size: 0.82rem;">No additional contacts.</div>

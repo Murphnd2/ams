@@ -3,27 +3,26 @@
 <c:if test="${sessionScope.local.getCurrentActivity().getActivity().isComplete() == false}">
   <c:set var="isPast" value=""/>
 </c:if>
-<div class="card border-0 border-start border-3 mt-2 mb-2" style="border-color: var(--ssa-gray) !important;">
-  <div class="card-body py-2 px-3">
-    <div class="d-flex align-items-center justify-content-between mb-1">
-      <span class="fw-semibold" style="color: var(--ssa); font-size: 0.85rem;">
-        <i class="bi bi-folder2-open me-1"></i>Documents & Links
-      </span>
-      <div class="d-flex align-items-center gap-1">
-        <button class="btn btn-sm btn-outline-ssa border-0 p-0 px-1 d-none" id="btnExpandDocs"
-                type="button" data-bs-toggle="modal" data-bs-target="#docsFullModal" title="View all">
-          <i class="bi bi-arrows-fullscreen" style="font-size: 0.75rem;"></i>
-        </button>
-        <button type="button" class="btn btn-sm btn-outline-ssa border-0 p-0 px-1 ${isPast}"
-                data-bs-toggle="modal" data-bs-target="#addDocAct" title="Upload document">
-          <i class="bi bi-file-earmark-arrow-up" style="font-size: 0.85rem;"></i>
-        </button>
-        <button type="button" class="btn btn-sm btn-outline-ssa border-0 p-0 px-1 ${isPast}"
-                data-bs-toggle="modal" data-bs-target="#addUrlAct" title="Add link">
-          <i class="bi bi-link-45deg" style="font-size: 0.85rem;"></i>
-        </button>
-      </div>
-    </div>
+<div class="detail-section-card">
+  <div class="detail-section-header">
+    <i class="bi bi-folder2-open"></i>
+    Documents & Links
+    <span class="section-end d-flex align-items-center gap-1">
+      <button class="btn btn-sm btn-outline-ssa border-0 p-0 px-1 d-none" id="btnExpandDocs"
+              type="button" data-bs-toggle="modal" data-bs-target="#docsFullModal" title="View all">
+        <i class="bi bi-arrows-fullscreen" style="font-size: 0.75rem;"></i>
+      </button>
+      <button type="button" class="btn btn-sm btn-outline-ssa border-0 p-0 px-1 ${isPast}"
+              data-bs-toggle="modal" data-bs-target="#addDocAct" title="Upload document">
+        <i class="bi bi-file-earmark-arrow-up" style="font-size: 0.85rem;"></i>
+      </button>
+      <button type="button" class="btn btn-sm btn-outline-ssa border-0 p-0 px-1 ${isPast}"
+              data-bs-toggle="modal" data-bs-target="#addUrlAct" title="Add link">
+        <i class="bi bi-link-45deg" style="font-size: 0.85rem;"></i>
+      </button>
+    </span>
+  </div>
+  <div class="py-2 px-3">
     <c:choose>
       <c:when test="${empty sessionScope.local.getCurrentActivity().getActivity().getWebLinkList()}">
         <div class="text-muted fst-italic" style="font-size: 0.82rem;">No documents or links.</div>

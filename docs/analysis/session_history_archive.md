@@ -2,7 +2,7 @@
 
 > **Purpose:** Consolidated historical record of all build sessions. For current project state, see `project_backlog.md`. For current architecture, see `application_flow.md` and `entity_reference.md`.
 >
-> **Last Updated:** March 5, 2026 (Session 38)
+> **Last Updated:** March 5, 2026 (Session 40)
 
 ---
 
@@ -1356,3 +1356,53 @@ New servlet for exporting application field data as CSV, integrated into both op
 - **Modified (10):** DelegatedToDo.java, BpoTaskPushService.java, TaskReceiveApi.java, activityDetail25.jsp, bpoHome25.jsp, InitializeDataBase.java, SalesDAO.java, AgentHome.java, agentHome25.jsp, detailOpportunity25.jsp
 
 Database changes: V040 (delegated_todo recurring series columns).
+
+---
+
+## March 5, 2026 — Session 40: Tonal Zone Styling + Layout Modernization
+
+Applied three visual design prompts across multiple pages: layout/styling updates, PSP home tonal zones, and activity detail tonal zones.
+
+### Prompt 1: Layout & Styling Updates
+
+- **proposalBuilder.jsp** — Max-width wrapper, SSA brand colors, `.hdr-bar` header, filter pills
+- **upcomingRenewals25.jsp** — Same pattern: `.hdr-bar` header, brand colors, filter pills
+- **reviewApplications.jsp** — Same pattern: `.hdr-bar` header, brand colors, consistent layout
+
+### Prompt 2: PSP Home Tonal Zones
+
+- **pspHome25.jsp** — Three-column tonal color zones: amber timeclock (left), white activities (center), teal checklists (right). Responsive reset on mobile.
+
+### Prompt 3: Activity Detail Tonal Zones (9 changes)
+
+Major visual overhaul of the three-panel activity detail layout:
+
+1. **Page background** — `body { background-color: #eef0f4; }`
+2. **Breadcrumb bar** — Back navigation + activity name + overdue urgency indicator (days overdue in red). Computed via `daysUntilDue` request attribute added to `ViewActivity25.java`.
+3. **Three-panel tonal zones** — Steel blue-grey left (tasks, `#e8eef5`), white center (reference data), warm cream right (communication, `#fffdf7`). Custom `.hdr-bar` overrides per panel. Responsive reset to white + SSA blue on mobile.
+4. **Zone classes + stripe divs** — `.detail-panel-left`, `.detail-panel-center`, `.detail-panel-right` classes on panel elements. 3px accent stripes at panel tops.
+5. **Inline status bar** — Owner, due date (with urgency coloring), and assignee displayed below the detail header in the center panel.
+6. **Center column card reorder** — Header → status bar → primary contact → type-specific detail → questionnaires → docs/links → additional contacts → footer.
+7. **Note compose always visible** — Removed collapse toggle from Add Note card. Quill editor always shows.
+8. **BPO/sourced task badges** — `.sourced` class on BPO task rows, new `.bpo-badge` (blue) and `.bpo-done-badge` (green) replacing old Bootstrap badges.
+9. **Sticky history header** — `position: sticky; top: 0` on history section header.
+
+### Section Header Conversions (Center Column)
+
+Converted 4 center-column cards from Bootstrap card pattern to unified `.detail-section-card` + `.detail-section-header` pattern:
+- `detailPrimaryContact25.jsp`, `detailAdditionalContacts25.jsp`, `detailDocsLinks25.jsp`, `detailQuestionnaires25.jsp`
+
+### Bug Fix: Right Panel Wrapping
+
+- **Root cause:** Extra `</div>` in `detailAdditionalContacts25.jsp` introduced during card-to-section-card conversion. The extra close tag prematurely closed `#panelCenter`, pushing `dividerRight` and `#panelRight` outside the `#actLayout` flex container.
+- **Fix:** Removed the extra `</div>` to balance 3 opens with 3 closes.
+
+### Add Note Header Readability Fix
+
+- **detailAddNote25.jsp** — Removed `text-white` class from header text and changed `.note-dd select` styles from white text/borders (designed for dark blue `.hdr-bar`) to dark brown text (`#92400e`) with warm-toned borders (`#e5d5b0`) to match the right panel's amber theme.
+
+### Files Changed
+- **Modified (1 Java):** ViewActivity25.java (daysUntilDue request attribute)
+- **Modified (12 JSP):** activityDetail25.jsp, checklistBasic25.jsp, detailAddNote25.jsp, detailAdditionalContacts25.jsp, detailDocsLinks25.jsp, detailPrimaryContact25.jsp, detailQuestionnaires25.jsp, historyHeader.jsp, pspHome25.jsp, upcomingRenewals25.jsp, proposalBuilder.jsp, reviewApplications.jsp
+
+No database changes.

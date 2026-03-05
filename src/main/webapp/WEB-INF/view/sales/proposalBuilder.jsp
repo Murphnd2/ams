@@ -7,20 +7,26 @@
     <title>Proposal Builder</title>
     <style>
         .los-card { cursor: pointer; transition: all 0.2s ease; border: 2px solid #dee2e6; }
-        .los-card:hover { border-color: #0d6efd; box-shadow: 0 2px 8px rgba(13,110,253,0.15); }
-        .los-card.selected { border-color: #198754; background-color: #f0fdf4; }
-        .los-card.selected .los-check { color: #198754; }
+        .los-card:hover { border-color: var(--ssa); box-shadow: 0 2px 8px rgba(13,86,129,0.15); }
+        .los-card.selected { border-color: var(--ssa); background-color: #e8f1f8; }
+        .los-card.selected .los-check { color: var(--ssa); }
         .los-card.unavailable { display: none !important; }
         .los-check { font-size: 1.25rem; color: #dee2e6; }
         .step-badge { width: 32px; height: 32px; border-radius: 50%; display: inline-flex;
             align-items: center; justify-content: center; font-weight: 600; font-size: 0.875rem; }
-        .step-active { background-color: #0d6efd; color: white; }
+        .step-active { background-color: var(--ssa); color: white; }
         .step-complete { background-color: #198754; color: white; }
         .step-pending { background-color: #e9ecef; color: #6c757d; }
         .rate-option { cursor: pointer; transition: all 0.15s ease; }
         .rate-option:hover { background-color: #f8f9fa; }
-        .rate-option.selected { background-color: #e7f1ff; border-color: #0d6efd !important; }
+        .rate-option.selected { background-color: #e8f1f8; border-color: var(--ssa) !important; }
         .los-none-msg { display: none; color: #6c757d; font-style: italic; }
+        .pb-wrap { max-width: 960px; margin: 0 auto; padding: 0 1rem; }
+        @media (max-width: 767.98px) { .pb-wrap { padding: 0 0.5rem; } }
+        .ghost-back { background: none; border: none; color: white; font-size: 0.85rem;
+            text-decoration: none; display: inline-flex; align-items: center; gap: 4px;
+            padding: 2px 8px; border-radius: 4px; }
+        .ghost-back:hover { background: rgba(255,255,255,0.12); color: white; }
     </style>
 </head>
 <body>
@@ -29,23 +35,17 @@
     <c:set var="pageIcon" value="bi-file-earmark-plus" scope="request"/>
     <c:import url="/WEB-INF/view/a/general/navbar25.jsp"></c:import>
 
+    <div class="pb-wrap mt-3">
     <%-- Page Header --%>
-    <div class="row mt-3 mb-4">
-        <div class="col">
-            <h4 class="fw-bold"><i class="bi bi-file-earmark-text me-2"></i>Proposal Builder</h4>
-            <p class="text-muted mb-0">Create a new service proposal for a prospect</p>
-        </div>
-        <div class="col-auto">
+    <div class="hdr-bar d-flex align-items-center justify-content-between mb-3">
+        <span><i class="bi bi-file-earmark-plus me-2"></i>Proposal Builder</span>
+        <div>
             <c:choose>
                 <c:when test="${sessionScope.isAgent || sessionScope.isAgencyAdmin}">
-                    <a href="AgentHome" class="btn btn-outline-secondary btn-sm">
-                        <i class="bi bi-arrow-left me-1"></i>Back to Pipeline
-                    </a>
+                    <a href="AgentHome" class="ghost-back"><i class="bi bi-arrow-left me-1"></i>Back to Pipeline</a>
                 </c:when>
                 <c:otherwise>
-                    <a href="ViewHome25" class="btn btn-outline-secondary btn-sm">
-                        <i class="bi bi-arrow-left me-1"></i>Back to Dashboard
-                    </a>
+                    <a href="ViewHome25" class="ghost-back"><i class="bi bi-arrow-left me-1"></i>Back to Dashboard</a>
                 </c:otherwise>
             </c:choose>
         </div>
@@ -109,7 +109,7 @@
                 </div>
             </div>
             <div class="card-body" id="rateSection">
-                <div class="row g-2">
+                <div class="row g-2" id="rateCardGrid" style="display: none;">
                     <c:forEach var="rate" items="${allRates}">
                         <div class="col-md-4 col-sm-6 rate-wrapper" data-rate-id="${rate.getId()}">
                             <div class="card rate-option p-3" onclick="selectRate(this, ${rate.getId()})">
@@ -121,6 +121,7 @@
                         </div>
                     </c:forEach>
                 </div>
+                <p class="text-muted" id="rateSelectProspectMsg"><i class="bi bi-arrow-up-circle me-1"></i>Select a prospect above to see available rate packages.</p>
                 <input type="hidden" name="rateId" id="rateId" value="${autoSelectedRateId != null ? autoSelectedRateId : ''}">
             </div>
         </div>
@@ -168,6 +169,7 @@
             </div>
         </div>
     </form>
+    </div><%-- /.pb-wrap --%>
 </div>
 
 <%-- ═══════════════════════════════════════════════════════════════════ --%>
@@ -338,12 +340,19 @@
     function filterRatesByProspect() {
         var prospectId = document.getElementById('prospectId').value;
         var wrappers = document.querySelectorAll('.rate-wrapper');
+        var rateGrid = document.getElementById('rateCardGrid');
+        var rateMsg = document.getElementById('rateSelectProspectMsg');
 
         if (!prospectId) {
-            // No prospect selected — show all rates
-            wrappers.forEach(function(w) { w.style.display = ''; });
+            // No prospect selected — hide rate grid, show message
+            rateGrid.style.display = 'none';
+            rateMsg.style.display = '';
             return;
         }
+
+        // Prospect selected — show rate grid, hide message
+        rateGrid.style.display = '';
+        rateMsg.style.display = 'none';
 
         // Resolve prospect → agency IDs → allowed rate IDs
         var agencyIds = prospectAgencyMap[prospectId];
