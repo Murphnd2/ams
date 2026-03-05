@@ -172,25 +172,89 @@
                                         </form>
                                     </c:if>
 
-                                    <%-- CKEditor / HTML source toggle --%>
-                                    <div class="mb-2">
-                                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="toggleSource(${section.getId()})">
-                                            <i class="bi bi-code-slash me-1"></i>HTML Source
-                                        </button>
-                                    </div>
+                                    <%-- Editor: raw-only for TITLE/CLOSING, CKEditor-optional for CUSTOM --%>
+                                    <c:choose>
 
-                                    <form method="post" action="ProposalSettings" id="saveForm-${section.getId()}">
-                                        <input type="hidden" name="action" value="saveContent"/>
-                                        <input type="hidden" name="sectionId" value="${section.getId()}"/>
+                                        <%-- ── TITLE and CLOSING: always raw textarea, no CKEditor, with render preview ── --%>
+                                        <c:when test="${section.getSectionType() == 'TITLE' || section.getSectionType() == 'CLOSING'}">
 
-                                        <%-- CKEditor container --%>
-                                        <div id="ck-wrap-${section.getId()}">
-                                            <div id="ck-editor-${section.getId()}">${section.getHtmlContent()}</div>
-                                        </div>
+                                            <div class="mb-2 d-flex align-items-center gap-2 flex-wrap">
+                                                <%-- Toggle between Edit (textarea) and Preview (rendered HTML) --%>
+                                                <button type="button" class="btn btn-sm btn-outline-secondary"
+                                                        id="btn-edit-${section.getId()}"
+                                                        onclick="showRawMode(${section.getId()})" style="display:none;">
+                                                    <i class="bi bi-code-slash me-1"></i>Edit HTML
+                                                </button>
+                                                <button type="button" class="btn btn-sm btn-outline-secondary"
+                                                        id="btn-preview-${section.getId()}"
+                                                        onclick="showPreviewMode(${section.getId()})">
+                                                    <i class="bi bi-eye me-1"></i>Preview
+                                                </button>
+                                                <button type="button" class="btn btn-sm btn-outline-secondary"
+                                                        onclick="clearSection(${section.getId()})"
+                                                        title="Clear all content">
+                                                    <i class="bi bi-trash me-1"></i>Clear
+                                                </button>
+                                                <span class="text-muted" style="font-size:0.8rem;">
+                                                    <i class="bi bi-info-circle me-1"></i>Raw HTML mode — paste full HTML blocks directly.
+                                                </span>
+                                            </div>
 
-                                        <%-- Raw HTML source textarea (hidden by default) --%>
-                                        <textarea id="ck-source-${section.getId()}" name="htmlContent" class="form-control font-monospace" rows="12"
-                                                  style="display:none; font-size:0.85rem;">${fn:escapeXml(section.getHtmlContent())}</textarea>
+                                            <form method="post" action="ProposalSettings" id="saveForm-${section.getId()}">
+                                                <input type="hidden" name="action" value="saveContent"/>
+                                                <input type="hidden" name="sectionId" value="${section.getId()}"/>
+
+                                                <%-- Raw textarea (default visible) --%>
+                                                <textarea id="ck-source-${section.getId()}" name="htmlContent"
+                                                          class="form-control font-monospace" rows="22"
+                                                          style="font-size:0.82rem;" spellcheck="false"
+                                                          placeholder="Paste or type HTML here. Merge tokens like {{PROSPECT_NAME}} are supported. &lt;style&gt; blocks are allowed."
+                                                >${fn:escapeXml(section.getHtmlContent())}</textarea>
+
+                                                <%-- Render preview iframe (hidden by default) --%>
+                                                <iframe id="preview-frame-${section.getId()}"
+                                                        style="display:none; width:100%; border:1px solid #dee2e6; border-radius:0.375rem; background:#fff;"
+                                                        scrolling="yes" frameborder="0"></iframe>
+                                        </c:when>
+
+                                        <%-- ── CUSTOM: CKEditor with HTML source toggle ── --%>
+                                        <c:otherwise>
+
+                                            <div class="mb-2 d-flex align-items-center gap-2 flex-wrap">
+                                                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="toggleSource(${section.getId()})">
+                                                    <i class="bi bi-code-slash me-1"></i>HTML Source
+                                                </button>
+                                                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="pasteRawHtml(${section.getId()})"
+                                                        title="Switch to source mode, then press Ctrl+V to paste">
+                                                    <i class="bi bi-clipboard-plus me-1"></i>Paste HTML
+                                                </button>
+                                                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="clearSection(${section.getId()})"
+                                                        title="Clear all content">
+                                                    <i class="bi bi-trash me-1"></i>Clear
+                                                </button>
+                                                <span id="paste-tip-${section.getId()}" style="display:none; font-size:0.8rem; color:#6b7c93;">
+                                                    <i class="bi bi-arrow-left me-1"></i>Now press Ctrl+V
+                                                </span>
+                                            </div>
+
+                                            <form method="post" action="ProposalSettings" id="saveForm-${section.getId()}">
+                                                <input type="hidden" name="action" value="saveContent"/>
+                                                <input type="hidden" name="sectionId" value="${section.getId()}"/>
+
+                                                <%-- CKEditor container (CUSTOM only) --%>
+                                                <div id="ck-wrap-${section.getId()}">
+                                                    <div id="ck-editor-${section.getId()}">${section.getHtmlContent()}</div>
+                                                </div>
+
+                                                <%-- Raw HTML source textarea (hidden by default, CUSTOM only) --%>
+                                                <textarea id="ck-source-${section.getId()}" name="htmlContent"
+                                                          class="form-control font-monospace" rows="20"
+                                                          style="display:none; font-size:0.82rem;" spellcheck="false"
+                                                          placeholder="Paste or type HTML here. Merge tokens like {{PROSPECT_NAME}} are supported. &lt;style&gt; blocks are allowed."
+                                                >${fn:escapeXml(section.getHtmlContent())}</textarea>
+                                        </c:otherwise>
+
+                                    </c:choose>
 
                                         <div class="mt-2">
                                             <button type="button" class="btn btn-ssa" onclick="saveSection(${section.getId()})">
@@ -297,6 +361,11 @@
                                                 <code>{{PROPOSAL_ID}}</code> — Proposal ID<br>
                                             </div>
                                         </div>
+                                        <div class="mt-2 text-muted" style="font-size:0.8rem;">
+                                            <i class="bi bi-info-circle me-1"></i>
+                                            <code>&lt;style&gt;</code> blocks and inline <code>style=</code> attributes are supported.
+                                            Use the <strong>Paste HTML</strong> or <strong>HTML Source</strong> button to insert raw markup.
+                                        </div>
                                     </div>
                                 </c:when>
 
@@ -351,7 +420,7 @@
 </div>
 
 <script>
-    // ── CKEditor instances ──────────────────────────────────────────────
+    // ── CKEditor instances (CUSTOM sections only — TITLE/CLOSING use raw textarea) ──
     const editors = {};
     const sourceMode = {};
 
@@ -394,8 +463,9 @@
     // ── Save Section ────────────────────────────────────────────────────
     function saveSection(sectionId) {
         const source = document.getElementById('ck-source-' + sectionId);
-        // Sync CKEditor data to textarea if in WYSIWYG mode
-        if (!sourceMode[sectionId] && editors[sectionId]) {
+        // Only sync from CKEditor if a CKEditor instance exists for this section
+        // (TITLE/CLOSING sections are raw-only and have no CKEditor instance)
+        if (editors[sectionId] && !sourceMode[sectionId]) {
             source.value = editors[sectionId].getData();
         }
         document.getElementById('saveForm-' + sectionId).submit();
@@ -404,6 +474,82 @@
     // ── Toggle Scope Detail Panel ──────────────────────────────────────
     function toggleScopePanel(sectionId, show) {
         document.getElementById('scopeDetail-' + sectionId).style.display = show ? 'block' : 'none';
+    }
+
+    // ── Paste Raw HTML — switches to source mode and focuses textarea for manual paste ──
+    function pasteRawHtml(sectionId) {
+        // Switch to source mode if not already there
+        if (!sourceMode[sectionId]) {
+            toggleSource(sectionId);
+        }
+        const source = document.getElementById('ck-source-' + sectionId);
+        source.focus();
+        source.select();
+        // Show a brief inline tip instead of a blocking alert
+        const tip = document.getElementById('paste-tip-' + sectionId);
+        if (tip) {
+            tip.style.display = 'inline';
+            setTimeout(() => { tip.style.display = 'none'; }, 4000);
+        }
+    }
+
+    // ── Clear Section — wipes both CKEditor and source textarea ──
+    function clearSection(sectionId) {
+        if (!confirm('Clear all content for this section?')) return;
+        if (editors[sectionId]) {
+            editors[sectionId].setData('');
+        }
+        document.getElementById('ck-source-' + sectionId).value = '';
+    }
+
+    // ── Preview / Edit toggle for TITLE and CLOSING raw sections ────────
+    function showPreviewMode(sectionId) {
+        const textarea = document.getElementById('ck-source-' + sectionId);
+        const frame    = document.getElementById('preview-frame-' + sectionId);
+        const btnEdit  = document.getElementById('btn-edit-' + sectionId);
+        const btnPrev  = document.getElementById('btn-preview-' + sectionId);
+        if (!frame) return; // not a raw section
+
+        // Write the current textarea content into the iframe
+        const html = textarea.value;
+        const doc  = frame.contentDocument || frame.contentWindow.document;
+        doc.open();
+        doc.write(html);
+        doc.close();
+
+        // Auto-size the iframe to its content height (+ small buffer)
+        frame.onload = function () {
+            try {
+                frame.style.height = (frame.contentWindow.document.body.scrollHeight + 32) + 'px';
+            } catch (e) {
+                frame.style.height = '600px';
+            }
+        };
+        // Trigger onload if already loaded
+        try {
+            frame.style.height = (frame.contentWindow.document.body.scrollHeight + 32) + 'px';
+        } catch (e) {
+            frame.style.height = '600px';
+        }
+
+        textarea.style.display = 'none';
+        frame.style.display    = 'block';
+        btnEdit.style.display  = 'inline-flex';
+        btnPrev.style.display  = 'none';
+    }
+
+    function showRawMode(sectionId) {
+        const textarea = document.getElementById('ck-source-' + sectionId);
+        const frame    = document.getElementById('preview-frame-' + sectionId);
+        const btnEdit  = document.getElementById('btn-edit-' + sectionId);
+        const btnPrev  = document.getElementById('btn-preview-' + sectionId);
+        if (!frame) return;
+
+        textarea.style.display = '';
+        frame.style.display    = 'none';
+        btnEdit.style.display  = 'none';
+        btnPrev.style.display  = 'inline-flex';
+        textarea.focus();
     }
 
     // ── Select Section ──────────────────────────────────────────────────

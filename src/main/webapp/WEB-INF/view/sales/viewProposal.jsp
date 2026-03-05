@@ -41,6 +41,9 @@
       margin: 0 auto;
       padding: 2rem 1rem 4rem;
     }
+    .proposal-section {
+      margin-bottom: 1.5rem;
+    }
     .greeting-card {
       background: white;
       border-radius: 8px;

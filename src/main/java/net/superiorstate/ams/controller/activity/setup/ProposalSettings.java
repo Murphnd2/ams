@@ -38,11 +38,18 @@ public class ProposalSettings extends HttpServlet {
             "</div>";
 
     // Patterns for HTML sanitization
-    private static final Pattern SCRIPT_PATTERN = Pattern.compile("<script[^>]*>[\\s\\S]*?</script>", Pattern.CASE_INSENSITIVE);
-    private static final Pattern EVENT_HANDLER_PATTERN = Pattern.compile("\\s+on\\w+\\s*=\\s*\"[^\"]*\"", Pattern.CASE_INSENSITIVE);
-    private static final Pattern EVENT_HANDLER_SINGLE_PATTERN = Pattern.compile("\\s+on\\w+\\s*=\\s*'[^']*'", Pattern.CASE_INSENSITIVE);
-    private static final Pattern JS_PROTOCOL_PATTERN = Pattern.compile("(href|src)\\s*=\\s*\"\\s*javascript:[^\"]*\"", Pattern.CASE_INSENSITIVE);
-    private static final Pattern JS_PROTOCOL_SINGLE_PATTERN = Pattern.compile("(href|src)\\s*=\\s*'\\s*javascript:[^']*'", Pattern.CASE_INSENSITIVE);
+    // Note: <style> blocks are intentionally preserved — PSP admins are trusted users
+    // and <style> is required for rich cover-page HTML.
+    private static final Pattern SCRIPT_PATTERN =
+            Pattern.compile("<script[\\s\\S]*?>[\\s\\S]*?</script>", Pattern.CASE_INSENSITIVE);
+    private static final Pattern EVENT_HANDLER_PATTERN =
+            Pattern.compile("(?i)\\s*on[a-z]+\\s*=\\s*\"[^\"]*\"");
+    private static final Pattern EVENT_HANDLER_SINGLE_PATTERN =
+            Pattern.compile("(?i)\\s*on[a-z]+\\s*=\\s*'[^']*'");
+    private static final Pattern JS_PROTOCOL_PATTERN =
+            Pattern.compile("(?i)(href|src)\\s*=\\s*\"\\s*javascript:[^\"]*\"");
+    private static final Pattern JS_PROTOCOL_SINGLE_PATTERN =
+            Pattern.compile("(?i)(href|src)\\s*=\\s*'\\s*javascript:[^']*'");
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
@@ -343,8 +350,9 @@ public class ProposalSettings extends HttpServlet {
     }
 
     /**
-     * Basic HTML sanitization — strips script tags, event handlers, and javascript: protocols.
-     * This is a safety net for trusted PSP admin users, not a security boundary.
+     * HTML sanitization for trusted PSP admin users.
+     * Strips: <script> tags, on* event handlers, javascript: protocols.
+     * Preserves: <style> blocks, inline styles, CSS variables, merge tokens.
      */
     static String sanitizeHtml(String html) {
         if (html == null) return "";

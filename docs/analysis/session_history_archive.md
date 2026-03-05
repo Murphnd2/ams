@@ -1239,3 +1239,28 @@ Completed the DemoDataSeeder implementation and fixed 11 bugs discovered during 
 - **New (7):** demo/imports/ (6 CSV files), demo/resources/ (6 files: 3 HTML + 3 PDF brochures)
 
 No database changes (no new migrations).
+
+---
+
+## March 5, 2026 — Session 37: Proposal Settings Raw HTML Paste Support
+
+Improved the Proposal Settings page so PSP admins can safely paste full styled HTML blocks (with `<style>` tags, CSS variables, inline styles, and merge tokens) into TITLE and CLOSING sections without CKEditor mangling the markup.
+
+### ProposalSettings.java — Sanitizer Tightening
+- **Event handler regex fix:** Changed `\s+on\w+` to `\s*on[a-z]+` so `onclick=` at the very start of a tag body is caught (not just when preceded by whitespace)
+- **Script pattern fix:** Changed `<script[^>]*>` to `<script[\s\S]*?>` to match `<script>` tags with multi-line attributes
+- **`<style>` preservation documented:** Comment block explicitly notes that `<style>` blocks are intentionally preserved for trusted PSP admin users
+
+### proposalSettings.jsp — Split Editor by Section Type
+- **TITLE/CLOSING sections:** Raw textarea only (no CKEditor), with Preview/Edit HTML toggle. Preview renders in a sandboxed `<iframe>` with auto-height sizing. CKEditor never initializes (no `ck-editor-*` div rendered).
+- **CUSTOM sections:** Retain CKEditor WYSIWYG with HTML Source toggle, Paste HTML button (synchronous, shows "Now press Ctrl+V" tip), and Clear button.
+- **Shared Save/Clear:** Save button syncs from CKEditor only when a CKEditor instance exists. Clear wipes both CKEditor and textarea.
+- **Token reference panel:** Added note that `<style>` blocks and `style=` attributes are supported.
+
+### viewProposal.jsp — Section Spacing
+- Added `.proposal-section { margin-bottom: 1.5rem; }` to match existing `.los-card` and `.pricing-card` spacing.
+
+### Files Changed
+- **Modified (3):** ProposalSettings.java, proposalSettings.jsp, viewProposal.jsp
+
+No database changes.
