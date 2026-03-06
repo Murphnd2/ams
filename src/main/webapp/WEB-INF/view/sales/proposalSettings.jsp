@@ -6,7 +6,6 @@
 <head>
     <c:import url="/WEB-INF/view/css-js.jsp"/>
     <title>Proposal Settings</title>
-    <script src="https://cdn.ckeditor.com/ckeditor5/36.0.1/classic/ckeditor.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     <style>
         .section-card {
@@ -49,10 +48,6 @@
         .token-ref code {
             color: var(--ssa);
             font-weight: 600;
-        }
-
-        .ck-editor__editable {
-            min-height: 250px;
         }
 
         /* Ghost handle for sortable */
@@ -175,8 +170,8 @@
                                     <%-- Editor: raw-only for TITLE/CLOSING, CKEditor-optional for CUSTOM --%>
                                     <c:choose>
 
-                                        <%-- ── TITLE and CLOSING: always raw textarea, no CKEditor, with render preview ── --%>
-                                        <c:when test="${section.getSectionType() == 'TITLE' || section.getSectionType() == 'CLOSING'}">
+                                        <%-- ── TITLE, CLOSING, CUSTOM: raw textarea with render preview ── --%>
+                                        <c:when test="${section.getSectionType() == 'TITLE' || section.getSectionType() == 'CLOSING' || section.getSectionType() == 'CUSTOM'}">
 
                                             <div class="mb-2 d-flex align-items-center gap-2 flex-wrap">
                                                 <%-- Toggle between Edit (textarea) and Preview (rendered HTML) --%>
@@ -216,43 +211,6 @@
                                                         style="display:none; width:100%; border:1px solid #dee2e6; border-radius:0.375rem; background:#fff;"
                                                         scrolling="yes" frameborder="0"></iframe>
                                         </c:when>
-
-                                        <%-- ── CUSTOM: CKEditor with HTML source toggle ── --%>
-                                        <c:otherwise>
-
-                                            <div class="mb-2 d-flex align-items-center gap-2 flex-wrap">
-                                                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="toggleSource(${section.getId()})">
-                                                    <i class="bi bi-code-slash me-1"></i>HTML Source
-                                                </button>
-                                                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="pasteRawHtml(${section.getId()})"
-                                                        title="Switch to source mode, then press Ctrl+V to paste">
-                                                    <i class="bi bi-clipboard-plus me-1"></i>Paste HTML
-                                                </button>
-                                                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="clearSection(${section.getId()})"
-                                                        title="Clear all content">
-                                                    <i class="bi bi-trash me-1"></i>Clear
-                                                </button>
-                                                <span id="paste-tip-${section.getId()}" style="display:none; font-size:0.8rem; color:#6b7c93;">
-                                                    <i class="bi bi-arrow-left me-1"></i>Now press Ctrl+V
-                                                </span>
-                                            </div>
-
-                                            <form method="post" action="ProposalSettings" id="saveForm-${section.getId()}">
-                                                <input type="hidden" name="action" value="saveContent"/>
-                                                <input type="hidden" name="sectionId" value="${section.getId()}"/>
-
-                                                <%-- CKEditor container (CUSTOM only) --%>
-                                                <div id="ck-wrap-${section.getId()}">
-                                                    <div id="ck-editor-${section.getId()}">${section.getHtmlContent()}</div>
-                                                </div>
-
-                                                <%-- Raw HTML source textarea (hidden by default, CUSTOM only) --%>
-                                                <textarea id="ck-source-${section.getId()}" name="htmlContent"
-                                                          class="form-control font-monospace" rows="20"
-                                                          style="display:none; font-size:0.82rem;" spellcheck="false"
-                                                          placeholder="Paste or type HTML here. Merge tokens like {{PROSPECT_NAME}} are supported. &lt;style&gt; blocks are allowed."
-                                                >${fn:escapeXml(section.getHtmlContent())}</textarea>
-                                        </c:otherwise>
 
                                     </c:choose>
 
@@ -420,54 +378,8 @@
 </div>
 
 <script>
-    // ── CKEditor instances (CUSTOM sections only — TITLE/CLOSING use raw textarea) ──
-    const editors = {};
-    const sourceMode = {};
-
-    document.querySelectorAll('[id^="ck-editor-"]').forEach(el => {
-        const sectionId = el.id.replace('ck-editor-', '');
-        ClassicEditor
-            .create(el, {
-                toolbar: ['bold', 'italic', 'underline', 'link', '|', 'bulletedList', 'numberedList', '|', 'heading', 'alignment']
-            })
-            .then(editor => {
-                editors[sectionId] = editor;
-            })
-            .catch(err => console.error('CKEditor init error:', err));
-    });
-
-    // ── Toggle HTML Source ──────────────────────────────────────────────
-    function toggleSource(sectionId) {
-        const ckWrap = document.getElementById('ck-wrap-' + sectionId);
-        const source = document.getElementById('ck-source-' + sectionId);
-
-        if (sourceMode[sectionId]) {
-            // Switching back to CKEditor
-            if (editors[sectionId]) {
-                editors[sectionId].setData(source.value);
-            }
-            ckWrap.style.display = '';
-            source.style.display = 'none';
-            sourceMode[sectionId] = false;
-        } else {
-            // Switching to source view
-            if (editors[sectionId]) {
-                source.value = editors[sectionId].getData();
-            }
-            ckWrap.style.display = 'none';
-            source.style.display = '';
-            sourceMode[sectionId] = true;
-        }
-    }
-
     // ── Save Section ────────────────────────────────────────────────────
     function saveSection(sectionId) {
-        const source = document.getElementById('ck-source-' + sectionId);
-        // Only sync from CKEditor if a CKEditor instance exists for this section
-        // (TITLE/CLOSING sections are raw-only and have no CKEditor instance)
-        if (editors[sectionId] && !sourceMode[sectionId]) {
-            source.value = editors[sectionId].getData();
-        }
         document.getElementById('saveForm-' + sectionId).submit();
     }
 
@@ -476,29 +388,9 @@
         document.getElementById('scopeDetail-' + sectionId).style.display = show ? 'block' : 'none';
     }
 
-    // ── Paste Raw HTML — switches to source mode and focuses textarea for manual paste ──
-    function pasteRawHtml(sectionId) {
-        // Switch to source mode if not already there
-        if (!sourceMode[sectionId]) {
-            toggleSource(sectionId);
-        }
-        const source = document.getElementById('ck-source-' + sectionId);
-        source.focus();
-        source.select();
-        // Show a brief inline tip instead of a blocking alert
-        const tip = document.getElementById('paste-tip-' + sectionId);
-        if (tip) {
-            tip.style.display = 'inline';
-            setTimeout(() => { tip.style.display = 'none'; }, 4000);
-        }
-    }
-
-    // ── Clear Section — wipes both CKEditor and source textarea ──
+    // ── Clear Section ────────────────────────────────────────────────────
     function clearSection(sectionId) {
         if (!confirm('Clear all content for this section?')) return;
-        if (editors[sectionId]) {
-            editors[sectionId].setData('');
-        }
         document.getElementById('ck-source-' + sectionId).value = '';
     }
 

@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Proposal Page Preview</title>
+<style>
+  body { margin:0; padding:20px; background:#f8f9fa; font-family:sans-serif; }
+  .page-frame { width:900px; margin:0 auto 40px; background:#f8f9fa; position:relative; }
+  h2 { text-align:center; color:#333; margin:30px 0 10px; }
+  .measurements { text-align:center; color:#666; font-size:14px; margin-bottom:10px; font-family:monospace; }
+</style>
+</head>
+<body>
+<h2>Page 3 — FSA Overview</h2>
+<div class="measurements" id="m3">loading...</div>
+<div class="page-frame" id="frame3"></div>
+
+<h2>Page 4 — Four Types</h2>
+<div class="measurements" id="m4">loading...</div>
+<div class="page-frame" id="frame4"></div>
+
+<script>
+async function loadPage(url, frameId, mId) {
+  const resp = await fetch(url);
+  const html = await resp.text();
+  const frame = document.getElementById(frameId);
+  frame.innerHTML = html;
+  document.fonts.ready.then(() => {
+    setTimeout(() => {
+      const card = frame.querySelector('.card-inset');
+      if (!card) return;
+      const cardH = card.scrollHeight;
+      const cardInches = (cardH / 96).toFixed(2);
+      // Target: 11in page - 1in top margin - 0.5in bottom margin - 0.5in outer padding top - card padding ~2.5rem
+      // The card min-height is calc(11in - 1.5in) = 9.5in = 912px
+      const target = 912;
+      const diff = cardH - target;
+      const status = diff > 0 ? 'OVERFLOW +' + (diff/96).toFixed(2) + 'in' : diff < -20 ? 'SHORT ' + (diff/96).toFixed(2) + 'in' : 'GOOD FIT';
+      document.getElementById(mId).textContent =
+        `Card height: ${cardH}px (${cardInches}in) | Target: ${target}px (9.50in) | ${status} (${diff}px)`;
+    }, 800);
+  });
+}
+loadPage('proposal-fsa-page3.html', 'frame3', 'm3');
+loadPage('proposal-fsa-page4.html', 'frame4', 'm4');
+</script>
+</body>
+</html>

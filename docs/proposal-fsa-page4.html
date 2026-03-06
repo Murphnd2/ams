@@ -1,0 +1,75 @@
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Source+Sans+3:ital,wght@0,400;0,600;0,700;1,400&display=swap');
+  .fsa4 { --s:1; --navy:#1B2A4A; --navy-lt:#243B5C; --teal:#2A7F8E; --teal-bg:#1E5F6B; --white:#fff; --off:#D0D8E4; --muted:#A0ADBF; font-family:'Source Sans 3','Liberation Sans',Helvetica,Arial,sans-serif; -webkit-font-smoothing:antialiased; }
+  .fsa4 .card-inset { background:var(--navy); border-radius:12px; padding:calc(2.5rem * var(--s)) calc(2.75rem * var(--s)) calc(2.25rem * var(--s)); color:var(--white); min-height:calc(11in - 1.5in); box-sizing:border-box; display:flex; flex-direction:column; }
+  .fsa4 h1 { font-weight:700; font-size:calc(22pt * var(--s)); color:var(--white); line-height:1.15; margin:0 0 calc(0.75rem * var(--s)) 0; }
+  .fsa4 .body { font-size:calc(10pt * var(--s)); line-height:1.5; color:var(--off); margin:0 0 calc(1rem * var(--s)) 0; }
+  .fsa4 .grid { display:grid; grid-template-columns:1fr 1fr; gap:calc(0.9rem * var(--s)); flex:1; }
+  .fsa4 .card { background:var(--navy-lt); border-radius:8px; padding:calc(1.1rem * var(--s)) calc(1.15rem * var(--s)); border-top:3px solid var(--teal); display:flex; flex-direction:column; }
+  .fsa4 .card-icon { text-align:center; margin-bottom:calc(0.35rem * var(--s)); }
+  .fsa4 .card-icon span { display:inline-flex; align-items:center; justify-content:center; width:calc(38px * var(--s)); height:calc(38px * var(--s)); border-radius:50%; background:rgba(42,127,142,0.2); font-size:calc(17px * var(--s)); color:var(--teal); }
+  .fsa4 .card-title { font-weight:700; font-size:calc(11.5pt * var(--s)); color:var(--white); margin:0 0 calc(0.3rem * var(--s)) 0; }
+  .fsa4 .card-body { font-size:calc(9pt * var(--s)); line-height:1.4; color:var(--off); margin:0 0 calc(0.3rem * var(--s)) 0; }
+  .fsa4 .card ul { margin:calc(0.2rem * var(--s)) 0 0; padding-left:calc(1rem * var(--s)); }
+  .fsa4 .card ul li { font-size:calc(8.5pt * var(--s)); line-height:1.35; color:var(--off); margin-bottom:calc(0.1rem * var(--s)); }
+  .fsa4 .card ul li strong { font-weight:700; color:var(--white); }
+  .fsa4 .callout { background:var(--teal-bg); border-radius:6px; padding:calc(0.85rem * var(--s)) calc(1.1rem * var(--s)); margin-top:calc(1rem * var(--s)); }
+  .fsa4 .callout p { font-size:calc(9.5pt * var(--s)); line-height:1.45; color:var(--off); margin:0; }
+  .fsa4 .callout strong { font-weight:700; color:var(--white); }
+  @media print { .fsa4 .card-inset { min-height:auto; } }
+  @media (max-width:700px) { .fsa4 .grid { grid-template-columns:1fr; } .fsa4 .card-inset { padding:1.25rem; min-height:auto; } }
+</style>
+<div class="fsa4" style="page-break-before:always; padding:0.5in 0;">
+  <div class="card-inset">
+    <h1>Four Types of FSAs &mdash; Each Designed for a Different Need</h1>
+    <p class="body">Superior State administers all four FSA types, giving you the flexibility to offer the right benefit for your workforce &mdash; whether your employees need help with medical costs, childcare, dental and vision, or individual insurance premiums.</p>
+    <div class="grid">
+      <div class="card">
+        <div class="card-icon"><span>&#128172;</span></div>
+        <div class="card-title">Healthcare FSA</div>
+        <div class="card-body">The most widely used FSA type. Employees set aside pre-tax dollars for qualified medical, dental, and vision expenses not covered by insurance &mdash; copays, deductibles, prescriptions, eyeglasses, orthodontia, physical therapy, mental health services, and hundreds of OTC products.</div>
+        <ul>
+          <li><strong>2026 limit:</strong> $3,400 per employee</li>
+          <li>Full annual election available on day one</li>
+          <li>No health plan enrollment required</li>
+          <li>Employer may also contribute to accounts</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-icon"><span>&#128106;</span></div>
+        <div class="card-title">Dependent Care FSA (DCAP)</div>
+        <div class="card-body">Helps working parents and caregivers pay for daycare, preschool, before/after school programs, summer day camps, and elder care expenses.</div>
+        <ul>
+          <li><strong>2026 limit:</strong> $7,500 ($3,750 if married filing separately)</li>
+          <li><strong>NEW FOR 2026:</strong> 50% increase under the One Big Beautiful Bill Act</li>
+          <li>Funds available as contributed, not upfront</li>
+          <li>Eligible: children under 13, or dependents incapable of self-care</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-icon"><span>&#128065;</span></div>
+        <div class="card-title">Limited Purpose FSA (LPFSA)</div>
+        <div class="card-body">A specialized FSA for employees who have a Health Savings Account (HSA). Covers dental and vision expenses only, preserving HSA eligibility &mdash; essential for any employer offering an HDHP.</div>
+        <ul>
+          <li><strong>2026 limit:</strong> $3,400 per employee</li>
+          <li>Carryover up to $680 if plan allows</li>
+          <li>Eligible: eye exams, glasses, contacts, dental, LASIK, braces</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-icon"><span>&#128153;</span></div>
+        <div class="card-title">Individual Premium Reimbursement FSA</div>
+        <div class="card-body">Allows employees to reimburse individually purchased health-related insurance premiums &mdash; dental, vision, critical illness, cancer, hospital indemnity, accident, disability. Not major medical.</div>
+        <ul>
+          <li>Separate election &mdash; not subject to the $3,400 limit</li>
+          <li>Employees can participate in both simultaneously</li>
+          <li>Strictly use-it-or-lose-it &mdash; no carryover or grace period</li>
+          <li>Ideal when employer doesn&rsquo;t offer group supplemental coverage</li>
+        </ul>
+      </div>
+    </div>
+    <div class="callout">
+      <p><strong>Why it matters for small employers:</strong> Many small employers don&rsquo;t offer group dental, vision, or supplemental coverage. Employees often purchase these policies individually with after-tax dollars. The Individual Premium Reimbursement FSA gives them a way to pay those premiums pre-tax &mdash; saving hundreds per year at no cost to you.</p>
+    </div>
+  </div>
+</div>

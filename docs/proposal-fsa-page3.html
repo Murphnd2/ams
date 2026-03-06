@@ -1,0 +1,58 @@
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Source+Sans+3:ital,wght@0,400;0,600;0,700;1,400&display=swap');
+  .fsa3 { --s:1; --navy:#1B2A4A; --navy-lt:#243B5C; --teal:#2A7F8E; --teal-bg:#1E5F6B; --white:#fff; --off:#D0D8E4; --muted:#A0ADBF; font-family:'Source Sans 3','Liberation Sans',Helvetica,Arial,sans-serif; -webkit-font-smoothing:antialiased; }
+  .fsa3 .card-inset { background:var(--navy); border-radius:12px; padding:calc(2.5rem * var(--s)) calc(2.75rem * var(--s)) calc(2.25rem * var(--s)); color:var(--white); min-height:calc(11in - 1.5in); box-sizing:border-box; display:flex; flex-direction:column; }
+  .fsa3 h1 { font-weight:700; font-size:calc(26pt * var(--s)); color:var(--white); line-height:1.1; margin:0 0 calc(4px * var(--s)) 0; }
+  .fsa3 .subtitle { font-weight:700; font-size:calc(19pt * var(--s)); color:var(--off); line-height:1.15; margin:0 0 calc(1.5rem * var(--s)) 0; }
+  .fsa3 .body { font-size:calc(11.5pt * var(--s)); line-height:1.65; color:var(--off); margin:0 0 calc(1.5rem * var(--s)) 0; }
+  .fsa3 .body strong { font-weight:700; color:var(--white); }
+  .fsa3 .two-col { display:grid; grid-template-columns:1fr 1fr; gap:calc(1.15rem * var(--s)); margin:0 0 calc(1.5rem * var(--s)) 0; }
+  .fsa3 .info-box { background:var(--navy-lt); border-radius:8px; padding:calc(1.25rem * var(--s)) calc(1.35rem * var(--s)); }
+  .fsa3 .info-box h3 { font-weight:700; font-size:calc(12.5pt * var(--s)); color:var(--white); margin:0 0 calc(0.55rem * var(--s)) 0; }
+  .fsa3 .info-box p { font-size:calc(10pt * var(--s)); line-height:1.55; color:var(--off); margin:0 0 calc(0.5rem * var(--s)) 0; }
+  .fsa3 .info-box p:last-child { margin-bottom:0; }
+  .fsa3 .info-box strong { font-weight:700; color:var(--white); }
+  .fsa3 .stats { display:grid; grid-template-columns:1fr 1fr 1fr; gap:calc(1.5rem * var(--s)); text-align:center; flex:1; align-content:center; }
+  .fsa3 .stat .ring { width:calc(120px * var(--s)); height:calc(120px * var(--s)); border-radius:50%; border:calc(6px * var(--s)) solid var(--navy-lt); border-top-color:var(--teal); display:flex; align-items:center; justify-content:center; margin:0 auto calc(0.65rem * var(--s)); }
+  .fsa3 .stat .num { font-weight:700; font-size:calc(20pt * var(--s)); color:var(--white); line-height:1; }
+  .fsa3 .stat .label { font-weight:700; font-size:calc(10.5pt * var(--s)); color:var(--white); margin-bottom:calc(0.25rem * var(--s)); }
+  .fsa3 .stat .desc { font-size:calc(9pt * var(--s)); line-height:1.4; color:var(--muted); }
+  @media print { .fsa3 .card-inset { min-height:auto; } }
+  @media (max-width:700px) { .fsa3 .two-col, .fsa3 .stats { grid-template-columns:1fr; } .fsa3 .card-inset { padding:1.25rem; min-height:auto; } }
+</style>
+<div class="fsa3" style="page-break-before:always; padding:0.5in 0;">
+  <div class="card-inset">
+    <h1>Flexible Spending Accounts</h1>
+    <div class="subtitle">The Benefit That Pays for Itself</div>
+    <p class="body">Most employees are already spending money on healthcare &mdash; copays, prescriptions, glasses, dental work, daycare. A Flexible Spending Account lets them pay for those expenses with <strong>pre-tax dollars</strong>, which means more take-home pay on every paycheck. And because pre-tax contributions reduce your payroll tax obligation as the employer, <strong>you save money too</strong>.</p>
+    <div class="two-col">
+      <div class="info-box">
+        <h3>How the Savings Stack Up</h3>
+        <p>For every dollar an employee contributes to an FSA, they save roughly <strong>20&ndash;30%</strong> in combined federal income tax, state income tax, and FICA/Medicare taxes.</p>
+        <p>On the employer side, you save <strong>7.65%</strong> in FICA/Medicare matching on every pre-tax dollar. For a company with 20 employees averaging $2,000 each in FSA contributions, that&rsquo;s <strong>over $3,000 a year</strong> in employer payroll tax savings &mdash; with zero additional cost to offer the benefit.</p>
+      </div>
+      <div class="info-box">
+        <h3>Powered by Section 125</h3>
+        <p>An FSA is established under a <strong>Section 125 Cafeteria Plan</strong> &mdash; the IRS framework that makes pre-tax benefits possible.</p>
+        <p>Superior State handles the plan document, the compliance, the claims, and the debit cards. <strong>You just offer the benefit</strong> and let your employees start saving.</p>
+      </div>
+    </div>
+    <div class="stats">
+      <div class="stat">
+        <div class="ring"><span class="num">20&ndash;30%</span></div>
+        <div class="label">Employee Tax Savings</div>
+        <div class="desc">Combined federal, state, and FICA savings on every FSA dollar</div>
+      </div>
+      <div class="stat">
+        <div class="ring"><span class="num">7.65%</span></div>
+        <div class="label">Employer FICA Savings</div>
+        <div class="desc">Direct payroll tax reduction on every pre-tax dollar contributed</div>
+      </div>
+      <div class="stat">
+        <div class="ring"><span class="num">$3,000+</span></div>
+        <div class="label">Annual Employer Savings</div>
+        <div class="desc">Estimated savings for a 20-person company at $2,000 avg. contribution</div>
+      </div>
+    </div>
+  </div>
+</div>
