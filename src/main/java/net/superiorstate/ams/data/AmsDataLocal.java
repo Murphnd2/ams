@@ -13,6 +13,7 @@ import net.superiorstate.ams.model.*;
 import net.superiorstate.ams.data.util.Validator;
 import net.superiorstate.ams.data.dao.RecurringChecklistDAO;
 import net.superiorstate.ams.data.dao.PersonDAO;
+import net.superiorstate.ams.data.service.BpoTaskPushService;
 import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.model.activity.Activity;
 import net.superiorstate.ams.model.activity.checklist.CheckList;
@@ -580,6 +581,7 @@ public class AmsDataLocal implements AutoCloseable {
                     UpcomingSequence us = RecurringChecklistDAO.getUpcomingSequence(em,c.getRecurringTaskList());
                     if(us!=null){
                         CheckList c1 = RecurringChecklistDAO.createNewRecurringChecklist(em,us, getCurrentPerson());
+                        BpoTaskPushService.pushDelegatedTasks(em, c1);
                         Query q = em.createQuery("SELECT c FROM Checklist25 c WHERE c.activity.id = :id");
                         q.setParameter("id",c1.getId());
                         Checklist25 c25 = (Checklist25) q.getSingleResult();
@@ -721,6 +723,7 @@ public class AmsDataLocal implements AutoCloseable {
                     UpcomingSequence us = RecurringChecklistDAO.getUpcomingSequence(em,c.getRecurringTaskList());
                     if(us!=null){
                         CheckList c1 = RecurringChecklistDAO.createNewRecurringChecklist(em,us, getCurrentPerson());
+                        BpoTaskPushService.pushDelegatedTasks(em, c1);
                         Query q = em.createQuery("SELECT c FROM Checklist25 c WHERE c.activity.id = :id");
                         q.setParameter("id",c1.getId());
                         Checklist25 c25 = (Checklist25) q.getSingleResult();

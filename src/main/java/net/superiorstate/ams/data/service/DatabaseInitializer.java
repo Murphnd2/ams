@@ -1,6 +1,7 @@
 package net.superiorstate.ams.data.service;
 
 import jakarta.persistence.EntityManager;
+import jakarta.persistence.EntityManagerFactory;
 import jakarta.persistence.NoResultException;
 import jakarta.persistence.Query;
 import jakarta.servlet.http.HttpServletRequest;
@@ -629,11 +630,11 @@ public abstract class DatabaseInitializer {
         seedFilterPresets(em, bpoUserUser);
     }
 
-    public static void seedDemoData(EntityManager em, String demoTag) {
+    public static void seedDemoData(EntityManager em, EntityManagerFactory emf, String demoTag) {
         System.out.println("🎭 seedDemoData called with tag: " + demoTag);
         switch (demoTag.toUpperCase()) {
             case "CONFERENCE_DEMO":
-                DemoDataSeeder.seedConferenceDemo(em);
+                DemoDataSeeder.seedConferenceDemo(em, emf);
                 break;
             default:
                 System.out.println("⚠️ Unknown demo tag: " + demoTag + " — skipping");
@@ -1123,6 +1124,13 @@ public abstract class DatabaseInitializer {
     }
 
     private static void seedFilterPresets(EntityManager em, User user) {
+        // Idempotency guard — skip if presets already exist for this user
+        Long existing = em.createQuery(
+                "SELECT COUNT(p) FROM UserFilterPreset p WHERE p.user = :user", Long.class)
+                .setParameter("user", user)
+                .getSingleResult();
+        if (existing > 0) return;
+
         em.getTransaction().begin();
 
         UserFilterPreset p1 = new UserFilterPreset();

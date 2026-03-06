@@ -154,7 +154,8 @@ public class ReSeedDb extends HttpServlet {
 
     protected boolean isAdmin(HttpServletRequest request) {
         Boolean isPspAdmin = (Boolean) request.getSession().getAttribute("isPspAdmin");
-        return isPspAdmin != null && isPspAdmin;
+        Boolean isBpoAdmin = (Boolean) request.getSession().getAttribute("isBpoAdmin");
+        return Boolean.TRUE.equals(isPspAdmin) || Boolean.TRUE.equals(isBpoAdmin);
     }
 
     // ═══════════════════════════════════════════════════════════════

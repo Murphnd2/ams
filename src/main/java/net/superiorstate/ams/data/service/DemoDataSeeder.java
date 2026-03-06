@@ -1,6 +1,7 @@
 package net.superiorstate.ams.data.service;
 
 import jakarta.persistence.EntityManager;
+import jakarta.persistence.EntityManagerFactory;
 import jakarta.persistence.Query;
 import net.superiorstate.ams.data.dao.SalesDAO;
 import net.superiorstate.ams.data.resolver.EntityLookup;
@@ -55,7 +56,13 @@ public abstract class DemoDataSeeder {
     //  ENTRY POINT
     // ═══════════════════════════════════════════════════════════════
 
-    public static void seedConferenceDemo(EntityManager em) {
+    public static void seedConferenceDemo(EntityManager em, EntityManagerFactory emf) {
+        // Full L2 cache eviction — critical when running after ReSeedDb
+        // to prevent stale SINGLE_TABLE discriminator mappings
+        if (emf != null) {
+            DatabaseResetUtil.evictEntityCaches(emf);
+        }
+
         System.out.println("🎭 DemoDataSeeder: starting CONFERENCE_DEMO seed...");
 
         PSP psp = EntityLookup.getPspById(em, 4L);

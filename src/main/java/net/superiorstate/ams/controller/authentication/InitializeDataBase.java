@@ -99,7 +99,7 @@ public class InitializeDataBase extends HttpServlet {
                     // Run optional demo seeder if tag was provided (PSP only)
                     if (demoTag != null && !demoTag.isBlank()) {
                         System.out.println("🎭 Demo tag detected: " + demoTag);
-                        DatabaseInitializer.seedDemoData(em, demoTag);
+                        DatabaseInitializer.seedDemoData(em, emf, demoTag);
                     }
                 }
 

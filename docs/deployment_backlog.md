@@ -1,6 +1,6 @@
 # Deployment Backlog
 
-**Last Updated:** March 5, 2026
+**Last Updated:** March 16, 2026
 **Reference:** See `docs/deployment_strategy.md` for full context on each item.
 
 Items are ordered by dependency (earlier items unblock later ones).
@@ -662,3 +662,23 @@ Application visibility and role-based review controls. PSP Users/Admins get a ne
 - `ReviewApplication.java` — role gates, agent access check, CSV export
 - `reviewApplication.jsp` — conditional UI, read-only banner, reviewer info
 - `navbar25.jsp` — Applications nav link
+
+---
+
+### D-59: BPO Deployment Fixes + Recurring Task Push
+
+**Priority:** HIGH — Fixes critical bugs discovered during demo/BPO VPS testing
+**Status:** Code complete — no migration needed, deploy WAR to all instances
+
+Five fixes bundled together (no schema changes):
+1. **EclipseLink L2 cache corruption:** `DemoDataSeeder.seedConferenceDemo()` evicts L2 cache before entity lookups to prevent stale SINGLE_TABLE discriminator mappings after ReSeedDb
+2. **BPO Admin 403 on admin servlets:** `ReSeedDb.isAdmin()`, `SeedDemoData`, `SeedBpoDemoData` now accept both `isPspAdmin` and `isBpoAdmin`
+3. **seedFilterPresets duplicate key:** Idempotency guard in `DatabaseInitializer.seedFilterPresets()` — skips if presets already exist
+4. **PartnershipApproveApi cache refresh:** Refreshes `AmsDataGlobal` after BPO approval so vendor sourcing appears in ManageTask25 without Tomcat restart
+5. **Recurring checklist BPO push:** `BpoTaskPushService.pushDelegatedTasks()` called after `createNewRecurringChecklist()` at all 3 call sites
+
+**Files:**
+- `DemoDataSeeder.java`, `DatabaseInitializer.java`, `InitializeDataBase.java`
+- `SeedDemoData.java`, `ReSeedDemoData.java`, `ReSeedDb.java`, `SeedBpoDemoData.java`
+- `PartnershipApproveApi.java`
+- `CloseActivity25.java`, `AmsDataLocal.java`

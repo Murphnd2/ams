@@ -13,6 +13,7 @@ import net.superiorstate.ams.model.Checklist25;
 import net.superiorstate.ams.model.Checklist25u;
 import net.superiorstate.ams.data.dao.RecurringChecklistDAO;
 import net.superiorstate.ams.data.resolver.EntityLookup;
+import net.superiorstate.ams.data.service.BpoTaskPushService;
 import net.superiorstate.ams.model.activity.Activity;
 import net.superiorstate.ams.model.activity.checklist.CheckList;
 import net.superiorstate.ams.model.activity.checklist.sequences.RecurringTaskList;
@@ -131,6 +132,7 @@ public class CloseActivity25 extends HttpServlet {
                         : local.getCurrentPerson();
 
                 CheckList newChecklist = RecurringChecklistDAO.createNewRecurringChecklist(em, us, owner);
+                BpoTaskPushService.pushDelegatedTasks(em, newChecklist);
                 Checklist25 newChecklist25 = (Checklist25) em.createQuery(
                                 "SELECT c FROM Checklist25 c WHERE c.activity.id = :id")
                         .setParameter("id", newChecklist.getId())

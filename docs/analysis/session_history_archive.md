@@ -2,7 +2,7 @@
 
 > **Purpose:** Consolidated historical record of all build sessions. For current project state, see `project_backlog.md`. For current architecture, see `application_flow.md` and `entity_reference.md`.
 >
-> **Last Updated:** March 13, 2026 (Session 43)
+> **Last Updated:** March 16, 2026 (Session 44)
 
 ---
 
@@ -1491,3 +1491,34 @@ Simplified questionnaire scoping from 3 independent M:N dimensions (LOS, Enhance
 - **Modified (1 JSP):** questionnaireManager25.jsp
 
 No database changes (DB join tables questionnaire_los and questionnaire_enhancement retained but unused).
+
+---
+
+## March 16, 2026 — Session 44: BPO Deployment Fixes + Recurring Task Push
+
+### Issue 1: EclipseLink L2 Cache Corruption on ReSeedDb → SeedDemoData
+Running SeedDemoData after ReSeedDb caused `DescriptorException` — stale SINGLE_TABLE discriminator mappings in the L2 cache mapped Person fields onto Setup/Activity objects. Fixed by adding `EntityManagerFactory` parameter to `DemoDataSeeder.seedConferenceDemo()` and calling `DatabaseResetUtil.evictEntityCaches(emf)` at the top before any entity lookups. EMF threaded through all callers: SeedDemoData, ReSeedDemoData, DatabaseInitializer, InitializeDataBase.
+
+### Issue 2: BPO Admin 403 on Admin Servlets
+BPO Admin (role 102) got 403 Forbidden on `/ReSeedDb`, `/SeedDemoData`, `/SeedBpoDemoData` because auth guards only checked `isPspAdmin`. Fixed `ReSeedDb.isAdmin()` to accept both `isPspAdmin` and `isBpoAdmin`. Updated SeedDemoData and SeedBpoDemoData auth guards similarly.
+
+### Issue 3: seedFilterPresets Duplicate Key on ReSeedDb
+`seedFilterPresets` in DatabaseInitializer threw `Duplicate entry '104-1' for user_filter_preset.uq_user_slot` on BPO instance. Added idempotency guard — COUNT query before inserting, skips if presets already exist for user.
+
+### Fix: PartnershipApproveApi Global Cache Refresh
+After BPO accepts a partnership request, `AmsDataGlobal.activeBpoRegistrations` was stale — ManageTask25 vendor sourcing section wouldn't appear until Tomcat restart. Added `global.initializeGlobalData()` call after approval commit in PartnershipApproveApi.
+
+### Fix: Recurring Checklist BPO Task Push
+When a recurring checklist spawns its next cycle, sourced tasks were not pushed to the BPO vendor. `RecurringChecklistDAO.createNewRecurringChecklist()` creates new ToDos referencing the same Tasks (with `isSourced=true`), but no push happened. Added `BpoTaskPushService.pushDelegatedTasks()` at all 3 call sites: CloseActivity25, AmsDataLocal CHECK_CLOSE, AmsDataLocal CLOSE_CHECK.
+
+### Files Modified
+- `DemoDataSeeder.java` — EMF param + L2 cache eviction
+- `DatabaseInitializer.java` — EMF param on seedDemoData + idempotent seedFilterPresets
+- `InitializeDataBase.java` — pass EMF to seedDemoData
+- `SeedDemoData.java` — pass EMF + BPO auth guard
+- `ReSeedDemoData.java` — pass EMF
+- `ReSeedDb.java` — BPO auth guard in isAdmin()
+- `SeedBpoDemoData.java` — added auth guard
+- `PartnershipApproveApi.java` — global cache refresh after approval
+- `CloseActivity25.java` — BPO push on recurring spawn
+- `AmsDataLocal.java` — BPO push on recurring spawn (2 cases)

@@ -7,6 +7,7 @@ import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import net.superiorstate.ams.AppConfig;
+import net.superiorstate.ams.data.AmsDataGlobal;
 import net.superiorstate.ams.data.util.ApiClient;
 import net.superiorstate.ams.model.general.BpoRegistration;
 
@@ -70,6 +71,14 @@ public class PartnershipApproveApi extends HttpServlet {
             reg.setDateApproved(Date.valueOf(LocalDate.now()));
             em.merge(reg);
             em.getTransaction().commit();
+
+            // Refresh global BPO registrations cache so ManageTask25 vendor sourcing appears immediately
+            AmsDataGlobal global = (AmsDataGlobal) getServletContext().getAttribute("global");
+            if (global != null) {
+                EntityManager refreshEm = emf.createEntityManager();
+                try { global.initializeGlobalData(refreshEm); }
+                finally { refreshEm.close(); }
+            }
 
             response.setStatus(HttpServletResponse.SC_OK);
             response.getWriter().write("{\"status\": \"APPROVED\", \"message\": \"Partnership approved and tokens exchanged.\"}");

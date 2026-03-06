@@ -190,7 +190,9 @@
 
 ## Demo Data Seeder (Session 36)
 - **DemoDataSeeder.java** (`data/service/`) — conference demo data for `demo.superiorstate.biz`
-- **SeedDemoData** → `DemoDataSeeder.seedConferenceDemo(em)`, **ReSeedDemoData** extends ReSeedDb + re-seeds demo data
+- **SeedDemoData** → `DemoDataSeeder.seedConferenceDemo(em, emf)`, **ReSeedDemoData** extends ReSeedDb + re-seeds demo data
+- **L2 cache eviction** required at top of `seedConferenceDemo()` — prevents SINGLE_TABLE discriminator corruption after ReSeedDb
+- **seedFilterPresets** has idempotency guard (COUNT before INSERT) — prevents duplicate key on re-init
 - **seedAgencyAndProspects** creates Agency 15 (AccelVantage Benefits), agency manager (Sarah Mitchell), sales agent (James Rivera / agent@pspdemo.com), assigns Demo Rate, creates 3 prospects
 - **ProposalSettings.initializeDefaults()** auto-creates all 4 section types — DemoDataSeeder does NOT seed proposal sections
 - **EclipseLink L2 cache eviction** after `DatabaseInitializer.createApplicationSections()` — fixes fields not appearing in Service Manager / Application views
@@ -267,6 +269,15 @@
 - UserManager FormData→URLSearchParams fix (5 POST calls)
 - Use Friendly Names toggle (Settings Features tab, all 8 menu items conditional)
 - DemoDataSeeder sequence collision fix (DatabaseResetUtil.syncAssigneeSequence)
+
+## Session 44 (2026-03-16) — BPO Deployment Fixes + Recurring Task Push
+- EclipseLink L2 cache corruption fix: DemoDataSeeder.seedConferenceDemo() now takes EMF, evicts L2 cache first
+- BPO Admin 403 fix: ReSeedDb.isAdmin(), SeedDemoData, SeedBpoDemoData accept isBpoAdmin
+- seedFilterPresets idempotency guard (COUNT before INSERT)
+- PartnershipApproveApi: refreshes AmsDataGlobal after BPO approval (fixes ManageTask25 vendor sourcing visibility)
+- Recurring checklist BPO push: pushDelegatedTasks() at all 3 createNewRecurringChecklist call sites (CloseActivity25, AmsDataLocal x2)
+- PspClient.autoAcceptTasks: toggle exists but not wired — all tasks land as ACTIVE (future project)
+- D-59 in deployment_backlog — code complete, no migration needed
 
 ## Reference
 - Full session archive: `docs/analysis/session_history_archive.md`

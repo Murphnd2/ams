@@ -20,7 +20,7 @@ import java.io.PrintWriter;
  * Conference Demo Data Seeder
  *
  * Creates purpose-built demo data for live demonstrations at demo.superiorstate.biz.
- * Delegates all seeding logic to {@link DemoDataSeeder#seedConferenceDemo(EntityManager)}.
+ * Delegates all seeding logic to {@link DemoDataSeeder#seedConferenceDemo(EntityManager, EntityManagerFactory)}.
  *
  * Idempotent: checks DEMO_DATA_SEEDED constant before running.
  * Access: requires authenticated PSP Admin session.
@@ -32,10 +32,11 @@ public class SeedDemoData extends HttpServlet {
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
 
-        // PSP Admin guard
+        // Admin guard — PSP Admin or BPO Admin
         Boolean isPspAdmin = (Boolean) request.getSession().getAttribute("isPspAdmin");
-        if (isPspAdmin == null || !isPspAdmin) {
-            response.sendError(HttpServletResponse.SC_FORBIDDEN, "PSP Admin access required");
+        Boolean isBpoAdmin = (Boolean) request.getSession().getAttribute("isBpoAdmin");
+        if (!Boolean.TRUE.equals(isPspAdmin) && !Boolean.TRUE.equals(isBpoAdmin)) {
+            response.sendError(HttpServletResponse.SC_FORBIDDEN, "Admin access required");
             return;
         }
 
@@ -64,7 +65,7 @@ public class SeedDemoData extends HttpServlet {
             DatabaseResetUtil.syncAssigneeSequence(emf, out);
             em = emf.createEntityManager();
 
-            seedAllDemoData(em, out);
+            seedAllDemoData(em, emf, out);
 
             // Reload global data so new users/service items appear in dropdowns
             AmsDataGlobal global = (AmsDataGlobal) getServletContext().getAttribute("global");
@@ -95,8 +96,8 @@ public class SeedDemoData extends HttpServlet {
      * Core seeding logic — callable from both the doGet flow and ReSeedDemoData.
      * Delegates to DemoDataSeeder for all demo entity creation.
      */
-    public void seedAllDemoData(EntityManager em, PrintWriter out) {
-        DemoDataSeeder.seedConferenceDemo(em);
+    public void seedAllDemoData(EntityManager em, EntityManagerFactory emf, PrintWriter out) {
+        DemoDataSeeder.seedConferenceDemo(em, emf);
     }
 
     // ═══════════════════════════════════════════════════════════════

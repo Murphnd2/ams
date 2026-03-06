@@ -28,6 +28,14 @@ public class SeedBpoDemoData extends HttpServlet {
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        // Admin guard — PSP Admin or BPO Admin
+        Boolean isPspAdmin = (Boolean) request.getSession().getAttribute("isPspAdmin");
+        Boolean isBpoAdmin = (Boolean) request.getSession().getAttribute("isBpoAdmin");
+        if (!Boolean.TRUE.equals(isPspAdmin) && !Boolean.TRUE.equals(isBpoAdmin)) {
+            response.sendError(HttpServletResponse.SC_FORBIDDEN, "Admin access required");
+            return;
+        }
+
         response.setContentType("text/html");
         PrintWriter out = response.getWriter();
         out.println("<html><head><title>BPO Demo Seeder</title></head><body>");

@@ -61,7 +61,7 @@ public class ReSeedDemoData extends ReSeedDb {
 
         out.println("<h5 class='mt-3' style='color:#0d5681;'>Seeding Demo Data</h5>");
         SeedDemoData seeder = new SeedDemoData();
-        seeder.seedAllDemoData(seedEm, out);
+        seeder.seedAllDemoData(seedEm, emf, out);
 
         // Reload global data so new BPO users/service items appear in dropdowns
         AmsDataGlobal global = (AmsDataGlobal) getServletContext().getAttribute("global");
