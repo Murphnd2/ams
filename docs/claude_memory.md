@@ -16,7 +16,7 @@
 ## Current State
 - **Branch:** `refactor/modernize-architecture`
 - **Latest migration:** V041
-- **Session count:** 41
+- **Session count:** 42
 - V025-V037 applied to Demo PSP, BPO, and Master; V038 applied to Demo and BPO; V039-V040 code-complete, not yet applied anywhere
 - Not yet applied to production or local dev
 - Master snapshot v8 taken 2026-03-04 (V037, fixed update.sh, fixed healthcheck.sh)
@@ -257,6 +257,11 @@
 - **Key gotcha:** Application.reviewedBy FK must reference `assignee(id)` not `person(id)` (JPA inheritance, no person table)
 - **Key gotcha:** EntityManager must stay open during JSP forward — move forward() inside try block before em.close()
 - **D-58** in deployment_backlog — code complete, needs V041 applied + browser testing
+
+## Session 42 (2026-03-09)
+- UserManager FormData→URLSearchParams fix (5 POST calls)
+- Use Friendly Names toggle (Settings Features tab, all 8 menu items conditional)
+- DemoDataSeeder sequence collision fix (DatabaseResetUtil.syncAssigneeSequence)
 
 ## Reference
 - Full session archive: `docs/analysis/session_history_archive.md`

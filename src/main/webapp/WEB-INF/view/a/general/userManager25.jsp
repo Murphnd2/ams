@@ -472,11 +472,11 @@ function umOpenDeactivateModal(personId, name) {
 
 function umDoDeactivate() {
   document.getElementById('umConfirmDeactivateBtn').disabled = true;
-  var form = new FormData();
-  form.append('action', 'deactivate');
-  form.append('personId', umDeacPersonId);
-  form.append('targetPersonId', document.getElementById('umDeacTarget').value);
-  fetch('UserManager', { method: 'POST', body: form })
+  var params = new URLSearchParams();
+  params.append('action', 'deactivate');
+  params.append('personId', umDeacPersonId);
+  params.append('targetPersonId', document.getElementById('umDeacTarget').value);
+  fetch('UserManager', { method: 'POST', body: params })
     .then(function(r) { return r.json(); })
     .then(function(data) {
       if (data.success) {
@@ -498,10 +498,10 @@ function umDoDeactivate() {
 
 function umConfirmReactivate(personId, name) {
   if (!confirm('Reactivate ' + name + '?')) return;
-  var form = new FormData();
-  form.append('action', 'reactivate');
-  form.append('personId', personId);
-  fetch('UserManager', { method: 'POST', body: form })
+  var params = new URLSearchParams();
+  params.append('action', 'reactivate');
+  params.append('personId', personId);
+  fetch('UserManager', { method: 'POST', body: params })
     .then(function(r) { return r.json(); })
     .then(function(data) {
       if (data.success) location.reload();
@@ -516,10 +516,10 @@ function umConfirmReactivate(personId, name) {
 
 function umConfirmAddAgent(personId, name) {
   if (!confirm('Add Agent role to ' + name + '?\n\nThey will be added to the PSP home agency.')) return;
-  var form = new FormData();
-  form.append('action', 'addAgentRole');
-  form.append('personId', personId);
-  fetch('UserManager', { method: 'POST', body: form })
+  var params = new URLSearchParams();
+  params.append('action', 'addAgentRole');
+  params.append('personId', personId);
+  fetch('UserManager', { method: 'POST', body: params })
     .then(function(r) { return r.json(); })
     .then(function(data) {
       if (data.success) location.reload();
@@ -563,11 +563,11 @@ function umOpenRemoveAgentModal(personId, name) {
 
 function umDoRemoveAgent() {
   document.getElementById('umConfirmRemoveAgentBtn').disabled = true;
-  var form = new FormData();
-  form.append('action', 'removeAgentRole');
-  form.append('personId', umRaPersonId);
-  form.append('targetPersonId', document.getElementById('umRaTarget').value);
-  fetch('UserManager', { method: 'POST', body: form })
+  var params = new URLSearchParams();
+  params.append('action', 'removeAgentRole');
+  params.append('personId', umRaPersonId);
+  params.append('targetPersonId', document.getElementById('umRaTarget').value);
+  fetch('UserManager', { method: 'POST', body: params })
     .then(function(r) { return r.json(); })
     .then(function(data) {
       if (data.success) {
@@ -589,10 +589,10 @@ function umDoRemoveAgent() {
 
 function umConfirmAddPspUser(personId, name) {
   if (!confirm('Add PSP User role to ' + name + '?')) return;
-  var form = new FormData();
-  form.append('action', 'addPspUserRole');
-  form.append('personId', personId);
-  fetch('UserManager', { method: 'POST', body: form })
+  var params = new URLSearchParams();
+  params.append('action', 'addPspUserRole');
+  params.append('personId', personId);
+  fetch('UserManager', { method: 'POST', body: params })
     .then(function(r) { return r.json(); })
     .then(function(data) {
       if (data.success) location.reload();

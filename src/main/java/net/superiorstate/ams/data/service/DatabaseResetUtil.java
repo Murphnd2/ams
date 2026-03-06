@@ -279,6 +279,56 @@ public abstract class DatabaseResetUtil {
     }
 
     // ═══════════════════════════════════════════════════════════════
+    //  SEQUENCE SYNC
+    // ═══════════════════════════════════════════════════════════════
+
+    /**
+     * Ensures the SEQUENCE table counter is above the max ASSIGNEE ID.
+     * DatabaseInitializer uses explicit IDs (Person 104, CheckList 29, Ticket 99)
+     * that bypass the sequence generator.  Without this sync, auto-generated IDs
+     * may collide with existing rows of a different DTYPE in the shared ASSIGNEE table.
+     *
+     * Also resets EclipseLink's in-memory sequence cache so the next allocation
+     * reads the updated SEQUENCE table.
+     *
+     * @param emf the EntityManagerFactory (for sequence reset)
+     * @param out optional PrintWriter for logging
+     */
+    public static void syncAssigneeSequence(EntityManagerFactory emf, PrintWriter out) {
+        EntityManager em = emf.createEntityManager();
+        try {
+            Object maxId = em.createNativeQuery(
+                    "SELECT COALESCE(MAX(id), 0) FROM ASSIGNEE").getSingleResult();
+            long maxAssigneeId = ((Number) maxId).longValue();
+            long newSeqVal = maxAssigneeId + 50;
+
+            em.getTransaction().begin();
+            em.createNativeQuery(
+                    "UPDATE SEQUENCE SET SEQ_COUNT = ?1 WHERE SEQ_COUNT < ?2")
+                    .setParameter(1, newSeqVal)
+                    .setParameter(2, newSeqVal)
+                    .executeUpdate();
+            em.createNativeQuery(
+                    "INSERT IGNORE INTO SEQUENCE (SEQ_NAME, SEQ_COUNT) VALUES ('SEQ_GEN', ?1)")
+                    .setParameter(1, newSeqVal)
+                    .executeUpdate();
+            em.getTransaction().commit();
+
+            log(out, "Synced SEQUENCE past max ASSIGNEE id " + maxAssigneeId + " → " + newSeqVal);
+        } finally {
+            em.close();
+        }
+
+        // Reset in-memory sequence cache so EclipseLink re-reads from the table
+        try {
+            ServerSession session = emf.unwrap(ServerSession.class);
+            session.getSequencingControl().resetSequencing();
+        } catch (Exception e) {
+            log(out, "Warning: could not reset sequence cache: " + e.getMessage());
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════
     //  HELPERS
     // ═══════════════════════════════════════════════════════════════
 

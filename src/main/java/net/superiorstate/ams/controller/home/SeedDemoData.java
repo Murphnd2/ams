@@ -9,6 +9,7 @@ import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import net.superiorstate.ams.data.AmsDataGlobal;
+import net.superiorstate.ams.data.service.DatabaseResetUtil;
 import net.superiorstate.ams.data.service.DemoDataSeeder;
 import net.superiorstate.ams.model.Constant;
 
@@ -58,6 +59,11 @@ public class SeedDemoData extends HttpServlet {
                 return;
             }
 
+            // Sync SEQUENCE table past max ASSIGNEE ID and reset in-memory cache
+            em.close();
+            DatabaseResetUtil.syncAssigneeSequence(emf, out);
+            em = emf.createEntityManager();
+
             seedAllDemoData(em, out);
 
             // Reload global data so new users/service items appear in dropdowns
@@ -70,12 +76,16 @@ public class SeedDemoData extends HttpServlet {
 
             out.println("<p><a href='ViewHome25' class='btn btn-primary btn-sm'>Go to Home</a></p>");
 
+            // Invalidate session so stale AmsDataLocal (cached activities, checklists)
+            // is discarded.  LoginFilter will require a fresh login on next page load.
+            request.getSession().invalidate();
+
         } catch (Exception e) {
-            if (em.getTransaction().isActive()) em.getTransaction().rollback();
+            if (em.isOpen() && em.getTransaction().isActive()) em.getTransaction().rollback();
             out.println("<div class='alert alert-danger'><strong>Error:</strong> " + escapeHtml(e.getMessage()) + "</div>");
             e.printStackTrace();
         } finally {
-            em.close();
+            if (em.isOpen()) em.close();
         }
 
         out.println("</body></html>");

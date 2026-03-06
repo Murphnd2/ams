@@ -4,6 +4,7 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
 import jakarta.servlet.annotation.WebServlet;
 import net.superiorstate.ams.data.AmsDataGlobal;
+import net.superiorstate.ams.data.service.DatabaseResetUtil;
 
 import java.io.PrintWriter;
 
@@ -49,10 +50,13 @@ public class ReSeedDemoData extends ReSeedDb {
         EntityManager initEm = super.executeReset(em, out);
         initEm.close();
 
-        // Create another fresh EM for demo seeding — the init EM has managed
-        // entities (Person 104, CheckList 29, Ticket 99) whose cross-references
-        // confuse EclipseLink when new Activity subclasses are persisted.
+        // Sync SEQUENCE table past max ASSIGNEE ID — init uses explicit IDs that
+        // bypass the sequence generator, so auto-generated IDs can collide.
         EntityManagerFactory emf = (EntityManagerFactory) getServletContext().getAttribute("emf");
+        DatabaseResetUtil.syncAssigneeSequence(emf, out);
+
+        // Fresh EM for demo seeding (init EM had managed entities that confuse
+        // EclipseLink when new Activity subclasses are persisted).
         EntityManager seedEm = emf.createEntityManager();
 
         out.println("<h5 class='mt-3' style='color:#0d5681;'>Seeding Demo Data</h5>");

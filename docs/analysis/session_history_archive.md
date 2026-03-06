@@ -2,7 +2,7 @@
 
 > **Purpose:** Consolidated historical record of all build sessions. For current project state, see `project_backlog.md`. For current architecture, see `application_flow.md` and `entity_reference.md`.
 >
-> **Last Updated:** March 5, 2026 (Session 41)
+> **Last Updated:** March 9, 2026 (Session 42)
 
 ---
 
@@ -1437,3 +1437,30 @@ Implemented role-based application visibility and review controls. PSP Users/Adm
 - **New (1 SQL):** V041__application_reviewer_fields.sql
 - **Modified (3):** ReviewApplication.java, reviewApplication.jsp, navbar25.jsp
 - **Modified (docs):** migration_tracker.md, schema_version_migration.sql, deployment_backlog.md, claude_memory.md
+
+---
+
+## March 9, 2026 — Session 42: UserManager Fix + Friendly Names Toggle + Sequence Collision Fix
+
+### UserManager FormData Fix
+- **Root cause:** All 5 AJAX POST calls in `userManager25.jsp` used `FormData`, which sends `multipart/form-data`. The `UserManager` servlet lacks `@MultipartConfig`, so `request.getParameter()` returned null — causing "Missing action" error on every action (deactivate, reactivate, +agent, -agent, +pspUser).
+- **Fix:** Replaced all 5 `FormData` usages with `URLSearchParams` (sends `application/x-www-form-urlencoded`).
+
+### Use Friendly Names Toggle
+- Added Settings toggle on Features tab to switch Admin menu labels between friendly names ("Services: What We Offer") and formal names ("Service Manager"). Defaults ON.
+- **USE_FRIENDLY_NAMES** constant seeded by `DatabaseInitializer`, cached in `AmsDataGlobal.useFriendlyNames`
+- **UpdatePspSettings** handles the toggle POST
+- **navbar25.jsp** uses `<c:choose>` with `${applicationScope.global.useFriendlyNames}` for 8 menu items
+
+### DemoDataSeeder Sequence Collision Fix
+- **Root cause:** `DatabaseInitializer` uses explicit IDs (Person 104, CheckList 29, Ticket 99) in the shared ASSIGNEE table that bypass EclipseLink's sequence generator. When `SeedDemoData` runs after `ReSeedDb`, auto-generated IDs collide with those explicit IDs, causing `EclipseLink DescriptorException`.
+- **Fix:** Added `DatabaseResetUtil.syncAssigneeSequence()` — syncs the SEQUENCE table past the max ASSIGNEE ID and resets EclipseLink's in-memory sequence cache. Called by both `SeedDemoData` and `ReSeedDemoData`.
+- Added session invalidation to `SeedDemoData` so seeded data appears immediately without manual logout.
+
+### Files
+- **Modified (1 JSP):** userManager25.jsp
+- **Modified (4 Java):** AmsDataGlobal.java, UpdatePspSettings.java, DatabaseInitializer.java, DatabaseResetUtil.java
+- **Modified (2 JSP):** smtpSettingsMod25.jsp, navbar25.jsp
+- **Modified (1 Java):** SeedDemoData.java
+
+No database changes.
