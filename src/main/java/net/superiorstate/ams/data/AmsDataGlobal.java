@@ -98,6 +98,7 @@ public class AmsDataGlobal {
 
     private boolean chatbotEnabled;
     private boolean useTimeclock = true;
+    private boolean useFriendlyNames = true;
     private String schemaVersion = "Unknown";
     private String brandingPath;
     private List<Activity25u> activitiesAllOpen;
@@ -277,6 +278,11 @@ public class AmsDataGlobal {
             String utc = getConstantValue(em, "USE_TIMECLOCK");
             this.useTimeclock = !"false".equalsIgnoreCase(utc);
         } catch (Exception e) { this.useTimeclock = true; }
+
+        try {
+            String ufn = getConstantValue(em, "USE_FRIENDLY_NAMES");
+            this.useFriendlyNames = !"false".equalsIgnoreCase(ufn);
+        } catch (Exception e) { this.useFriendlyNames = true; }
 
         String smtpPassword;
         try{
@@ -521,6 +527,7 @@ public class AmsDataGlobal {
 
     public boolean isChatbotEnabled() { return chatbotEnabled; }
     public boolean isUseTimeclock() { return useTimeclock; }
+    public boolean isUseFriendlyNames() { return useFriendlyNames; }
     public String getSchemaVersion() { return schemaVersion; }
     public PSP getPsp() {
         return psp;

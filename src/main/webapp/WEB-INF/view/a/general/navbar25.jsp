@@ -205,18 +205,18 @@
               <%-- ── OUR BUSINESS ── --%>
               <li><hr class="dropdown-divider"></li>
               <li><h6 class="dropdown-header" style="font-size:0.7rem; text-transform:uppercase; letter-spacing:0.05em; color:#6c757d;">Our Business</h6></li>
-              <li><a class="dropdown-item" href="ServiceManagerHome"><i class="bi bi-box-seam me-2"></i>What We Offer</a></li>
-              <li><a class="dropdown-item" href="PspAdminHome"><i class="bi bi-tag me-2"></i>What It Costs</a></li>
-              <li><a class="dropdown-item" href="PspAgencyHome"><i class="bi bi-people me-2"></i>Who Sells It</a></li>
-              <li><a class="dropdown-item" href="LibraryHome"><i class="bi bi-collection me-2"></i>Marketing Pieces</a></li>
+              <li><a class="dropdown-item" href="ServiceManagerHome"><i class="bi bi-box-seam me-2"></i><c:choose><c:when test="${applicationScope.global.useFriendlyNames}">Services: What We Offer</c:when><c:otherwise>Service Manager</c:otherwise></c:choose></a></li>
+              <li><a class="dropdown-item" href="PspAdminHome"><i class="bi bi-tag me-2"></i><c:choose><c:when test="${applicationScope.global.useFriendlyNames}">Rates: What It Costs</c:when><c:otherwise>Rate Manager</c:otherwise></c:choose></a></li>
+              <li><a class="dropdown-item" href="PspAgencyHome"><i class="bi bi-people me-2"></i><c:choose><c:when test="${applicationScope.global.useFriendlyNames}">Agencies: Who Sells It</c:when><c:otherwise>Agency Manager</c:otherwise></c:choose></a></li>
+              <li><a class="dropdown-item" href="LibraryHome"><i class="bi bi-collection me-2"></i><c:choose><c:when test="${applicationScope.global.useFriendlyNames}">Library: Marketing Pieces</c:when><c:otherwise>Document Library</c:otherwise></c:choose></a></li>
 
               <%-- ── BUSINESS EFFICIENCY ── --%>
               <li><hr class="dropdown-divider"></li>
               <li><h6 class="dropdown-header" style="font-size:0.7rem; text-transform:uppercase; letter-spacing:0.05em; color:#6c757d;">Business Efficiency</h6></li>
-              <li><a class="dropdown-item" href="SequenceBuilder25"><i class="bi bi-diagram-3 me-2"></i>How We Do Stuff</a></li>
-              <li><a class="dropdown-item" href="QuestionnaireManager25"><i class="bi bi-ui-checks-grid me-2"></i>How We Collect Info</a></li>
-              <li><button class="dropdown-item" type="button" data-bs-toggle="modal" data-bs-target="#userManagerModal"><i class="bi bi-person-gear me-2"></i>Who Can Do It</button></li>
-              <li><a class="dropdown-item" href="VendorManager"><i class="bi bi-building me-2"></i>Who Can Help Us</a></li>
+              <li><a class="dropdown-item" href="SequenceBuilder25"><i class="bi bi-diagram-3 me-2"></i><c:choose><c:when test="${applicationScope.global.useFriendlyNames}">Sequences: How We Do Stuff</c:when><c:otherwise>Sequence Manager</c:otherwise></c:choose></a></li>
+              <li><a class="dropdown-item" href="QuestionnaireManager25"><i class="bi bi-ui-checks-grid me-2"></i><c:choose><c:when test="${applicationScope.global.useFriendlyNames}">Questionnaires: How We Collect Info</c:when><c:otherwise>Questionnaire Manager</c:otherwise></c:choose></a></li>
+              <li><button class="dropdown-item" type="button" data-bs-toggle="modal" data-bs-target="#userManagerModal"><i class="bi bi-person-gear me-2"></i><c:choose><c:when test="${applicationScope.global.useFriendlyNames}">Users: Who Can Do It</c:when><c:otherwise>User Manager</c:otherwise></c:choose></button></li>
+              <li><a class="dropdown-item" href="VendorManager"><i class="bi bi-building me-2"></i><c:choose><c:when test="${applicationScope.global.useFriendlyNames}">Vendors: Who Can Help Us</c:when><c:otherwise>Vendor Manager</c:otherwise></c:choose></a></li>
 
               <%-- ── SETTINGS / ABOUT ── --%>
               <li><hr class="dropdown-divider"></li>

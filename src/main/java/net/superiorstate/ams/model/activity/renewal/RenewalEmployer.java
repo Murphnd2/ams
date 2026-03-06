@@ -1,14 +1,18 @@
 package net.superiorstate.ams.model.activity.renewal;
 
+import net.superiorstate.ams.model.summit.archive.Benefit;
 import net.superiorstate.ams.model.summit.archive.Employer;
 import org.jetbrains.annotations.NotNull;
 
 import java.sql.Date;
+import java.util.ArrayList;
+import java.util.List;
 
 public class RenewalEmployer implements Comparable<RenewalEmployer> {
     private Employer employer;
     private Date lastRenewed;
     private Integer stage;
+    private List<Benefit> benefits = new ArrayList<>();
 
     public RenewalEmployer(){}
 
@@ -34,6 +38,14 @@ public class RenewalEmployer implements Comparable<RenewalEmployer> {
 
     public void setStage(Integer stage) {
         this.stage = stage;
+    }
+
+    public List<Benefit> getBenefits() {
+        return benefits;
+    }
+
+    public void setBenefits(List<Benefit> benefits) {
+        this.benefits = benefits;
     }
 
     @Override

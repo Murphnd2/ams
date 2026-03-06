@@ -85,9 +85,6 @@ public class CreateOpportunity extends HttpServlet {
                 agent = (prospect.getAgent() != null) ? prospect.getAgent() : currentUser;
             }
 
-            // Determine if this is an outside-agency creation (PSP admin creating for someone else)
-            boolean isOutsideAgency = !agent.getId().equals(currentUser.getId());
-
             // Create Opportunity
             em.getTransaction().begin();
             Opportunity opp = new Opportunity();
@@ -96,9 +93,8 @@ public class CreateOpportunity extends HttpServlet {
             opp.setStage("NEW");
             opp.setAssignedTo(agent);                          // Agent owns the work
             opp.setLoggedBy(currentUser);                      // PSP admin created it
-            if (isOutsideAgency) {
-                opp.setManagedBy(currentUser);                 // PSP admin maintains oversight
-            }
+            // managedBy = creator if different from agent (PSP admin oversight), otherwise agent self-manages
+            opp.setManagedBy(agent.getId().equals(currentUser.getId()) ? agent : currentUser);
             opp.setPrimaryContact(prospect.getContact());
             opp.setFullName(prospect.getName().trim().toUpperCase());
             opp.setDueDate(Date.valueOf(LocalDate.now().plusDays(30)));

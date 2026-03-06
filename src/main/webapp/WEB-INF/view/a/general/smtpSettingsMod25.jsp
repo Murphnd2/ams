@@ -101,6 +101,17 @@
                            min="0" max="99" style="width:60px; text-align:center;">
                   </div>
                 </div>
+                <div class="mb-3">
+                  <div class="d-flex align-items-center justify-content-between p-3 rounded" style="background:#f8f9fb; border:1px solid #dee2e6;">
+                    <div>
+                      <div class="fw-semibold" style="font-size:0.85rem;"><i class="bi bi-tag me-1"></i>Use Friendly Names</div>
+                      <div class="text-muted" style="font-size:0.75rem;">Show descriptive labels in Admin menu. When off, shows formal names.</div>
+                    </div>
+                    <div class="form-check form-switch ms-3">
+                      <input class="form-check-input" type="checkbox" role="switch" name="useFriendlyNames" id="useFriendlyNames" style="width:2.5em; height:1.25em;">
+                    </div>
+                  </div>
+                </div>
               </div>
 
               <%-- ═══ TOOLS TAB ═══ --%>
@@ -189,6 +200,7 @@
         document.getElementById('smtpFrom').value = data.SMTP_FROM || '';
         document.getElementById('emailFooterText').value = data.EMAIL_FOOTER_TEXT || '';
         document.getElementById('useTimeclock').checked = (data.USE_TIMECLOCK !== 'false');
+        document.getElementById('useFriendlyNames').checked = (data.USE_FRIENDLY_NAMES !== 'false');
         document.getElementById('daysSinceWarning').value = data.DAYS_SINCE_WARNING || '7';
         document.getElementById('settingsLoading').style.display = 'none';
         document.getElementById('settingsFields').style.display = '';

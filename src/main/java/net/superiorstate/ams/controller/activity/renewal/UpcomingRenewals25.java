@@ -16,12 +16,9 @@ import net.superiorstate.ams.model.summit.archive.Benefit;
 import net.superiorstate.ams.model.summit.archive.Employer;
 
 import java.io.IOException;
-import java.sql.Date;
-import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
-import java.util.stream.Collectors;
 
 @WebServlet(name = "UpcomingRenewals25", value = "/UpcomingRenewals")
 public class UpcomingRenewals25 extends HttpServlet {
@@ -58,16 +55,14 @@ public class UpcomingRenewals25 extends HttpServlet {
         }
 
         String action = request.getParameter("action");
-        if ("selectEmployer".equals(action)) {
-            handleSelectEmployer(request, response);
-        } else if ("startRenewal".equals(action)) {
+        if ("startRenewal".equals(action)) {
             handleStartRenewal(request, response);
         } else {
             response.sendRedirect("UpcomingRenewals");
         }
     }
 
-    private void handleSelectEmployer(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+    private void handleStartRenewal(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         EntityManagerFactory emf = (EntityManagerFactory) getServletContext().getAttribute("emf");
         EntityManager em = emf.createEntityManager();
         try {
@@ -78,58 +73,28 @@ public class UpcomingRenewals25 extends HttpServlet {
                 return;
             }
 
+            // Set session state required by AddRenewal25
             List<Benefit> benefitList = RenewalService.getBenefitsByEmployerSortedForRenewal(em, employer);
             request.getSession().setAttribute("currentEmployer", employer);
             request.getSession().setAttribute("benefitsForRenewalList", benefitList);
 
-            LinkedHashMap<String, List<RenewalEmployer>> renewalsByMonth = buildRenewalsByMonth(em);
-            request.setAttribute("renewalsByMonth", renewalsByMonth);
-            request.setAttribute("expandedEmployerId", employer.getId());
-            request.setAttribute("benefitsForDisplay", benefitList);
-            request.setAttribute("pageTitle", "Upcoming Renewals");
-            request.setAttribute("pageIcon", "bi-calendar-check");
-            request.getRequestDispatcher("/WEB-INF/view/a/renew/upcomingRenewals25.jsp").forward(request, response);
+            RequestDispatcher dispatcher = getServletContext().getNamedDispatcher("AddRenewal25");
+            dispatcher.forward(request, response);
         } finally {
             em.close();
         }
     }
 
-    private void handleStartRenewal(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-        RequestDispatcher dispatcher = getServletContext().getNamedDispatcher("AddRenewal25");
-        dispatcher.forward(request, response);
-    }
-
     /**
-     * Builds a LinkedHashMap grouping RenewalEmployer DTOs by month label.
-     * Order: OVERDUE first, then chronological months.
+     * Builds a LinkedHashMap grouping RenewalEmployer DTOs (with benefits) by month label.
+     * Order: OVERDUE first, then chronological months. Uses 2 DB queries total.
      */
     private LinkedHashMap<String, List<RenewalEmployer>> buildRenewalsByMonth(EntityManager em) {
-        List<RenewalEmployer> allRenewals = RenewalQueryDAO.getEmployerRenewals(em);
+        List<RenewalEmployer> allRenewals = RenewalQueryDAO.getEmployerRenewalsWithBenefits(em);
         if (allRenewals == null || allRenewals.isEmpty()) {
             return new LinkedHashMap<>();
         }
 
-        // Bulk query: get earliest upcoming benefit date per employer
-        LocalDate cutoffLd = LocalDate.now().withDayOfMonth(1).plusMonths(3);
-        Date cutoff = Date.valueOf(cutoffLd);
-        @SuppressWarnings("unchecked")
-        List<Object[]> rows = em.createQuery(
-                "SELECT b.employer.id, MIN(b.nextRenewalDue) FROM Benefit b " +
-                "WHERE b.isActive = true AND b.nextRenewalDue IS NOT NULL AND b.nextRenewalDue < :cutoff " +
-                "GROUP BY b.employer.id")
-                .setParameter("cutoff", cutoff)
-                .getResultList();
-
-        Map<Integer, LocalDate> earliestByEmployer = new HashMap<>();
-        for (Object[] row : rows) {
-            Integer empId = (Integer) row[0];
-            Date earliest = (Date) row[1];
-            if (earliest != null) {
-                earliestByEmployer.put(empId, earliest.toLocalDate());
-            }
-        }
-
-        // Build grouped map: OVERDUE first, then by YearMonth
         LinkedHashMap<String, List<RenewalEmployer>> result = new LinkedHashMap<>();
         TreeMap<YearMonth, List<RenewalEmployer>> monthGroups = new TreeMap<>();
 
@@ -137,20 +102,17 @@ public class UpcomingRenewals25 extends HttpServlet {
             if (re.getStage() == 0) {
                 result.computeIfAbsent("OVERDUE", k -> new ArrayList<>()).add(re);
             } else {
-                int empId = re.getEmployer().getId();
-                LocalDate earliest = earliestByEmployer.get(empId);
+                // Month from earliest benefit (first in the sorted list)
                 YearMonth ym;
-                if (earliest != null) {
-                    ym = YearMonth.from(earliest);
+                if (!re.getBenefits().isEmpty()) {
+                    ym = YearMonth.from(re.getBenefits().get(0).getNextRenewalDue().toLocalDate());
                 } else {
-                    // Fallback: use current month + stage offset
                     ym = YearMonth.now().plusMonths(re.getStage() - 1);
                 }
                 monthGroups.computeIfAbsent(ym, k -> new ArrayList<>()).add(re);
             }
         }
 
-        // Append month groups in chronological order
         for (Map.Entry<YearMonth, List<RenewalEmployer>> entry : monthGroups.entrySet()) {
             String label = entry.getKey().format(MONTH_FORMATTER);
             result.put(label, entry.getValue());

@@ -28,7 +28,7 @@ public class UpdatePspSettings extends HttpServlet {
     };
 
     private static final String[] FEATURE_KEYS = {
-            "USE_TIMECLOCK"
+            "USE_TIMECLOCK", "USE_FRIENDLY_NAMES"
     };
 
     @Override
@@ -109,6 +109,8 @@ public class UpdatePspSettings extends HttpServlet {
             // Feature settings
             String useTimeclock = request.getParameter("useTimeclock");
             upsertConstant(em, "USE_TIMECLOCK", "on".equals(useTimeclock) ? "true" : "false");
+            String useFriendlyNames = request.getParameter("useFriendlyNames");
+            upsertConstant(em, "USE_FRIENDLY_NAMES", "on".equals(useFriendlyNames) ? "true" : "false");
 
             // Numeric settings
             String dswParam = request.getParameter("daysSinceWarning");

@@ -314,7 +314,7 @@ WHERE 1 = 1
     OR (p.incSetup = 1 AND b.dtype = 'Setup')
     OR (p.incTicket = 1 AND b.dtype = 'Ticket')
     OR (p.incOpportunity = 1 AND b.dtype = 'Opportunity'
-        AND b.managed_by_id IS NOT NULL)
+        AND (b.assigned_to_id = p.me OR b.managed_by_id = p.me))
   )
 
   /* ── Attention filter ── */

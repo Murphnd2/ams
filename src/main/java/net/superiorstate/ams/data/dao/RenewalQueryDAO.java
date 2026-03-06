@@ -12,9 +12,7 @@ import net.superiorstate.ams.model.summit.archive.Employer;
 
 import java.sql.Date;
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 
 public abstract class RenewalQueryDAO {
 
@@ -26,7 +24,7 @@ public abstract class RenewalQueryDAO {
     }
 
     private static List<Benefit> getUpcomingBenefits(EntityManager em){
-        Query q = em.createQuery("Select b FROM Benefit b WHERE b.nextRenewalDue < :cutoff AND b.isActive=true order by b.employer.id,b.nextRenewalDue");
+        Query q = em.createQuery("Select b FROM Benefit b JOIN FETCH b.planType WHERE b.nextRenewalDue < :cutoff AND b.isActive=true order by b.employer.id,b.nextRenewalDue");
         q.setParameter("cutoff",getCutoff());
         List<Benefit> benefitList;
         try{
@@ -98,6 +96,69 @@ public abstract class RenewalQueryDAO {
             re.setLastRenewed(b.getLastRenewed());
             fullList.add(re);
         }
+        Collections.sort(fullList);
+        return fullList;
+    }
+
+    /**
+     * Returns employer renewals with benefits pre-loaded (2 queries total).
+     * Each RenewalEmployer carries its sorted benefit list for client-side rendering.
+     */
+    public static List<RenewalEmployer> getEmployerRenewalsWithBenefits(EntityManager em) {
+        List<Benefit> fullBenefitList = getUpcomingBenefits(em);
+        if (fullBenefitList == null || fullBenefitList.isEmpty())
+            return new ArrayList<>();
+
+        List<Benefit> renewalBenefitList = getBenefitsInActiveRenewals(em);
+
+        // Filter out benefits already in active renewals
+        List<Benefit> benefitList;
+        if (!renewalBenefitList.isEmpty()) {
+            Set<Integer> renewalBenefitIds = new HashSet<>();
+            for (Benefit b : renewalBenefitList) {
+                renewalBenefitIds.add(b.getId());
+            }
+            benefitList = new ArrayList<>();
+            for (Benefit b : fullBenefitList) {
+                if (!renewalBenefitIds.contains(b.getId()))
+                    benefitList.add(b);
+            }
+        } else {
+            benefitList = fullBenefitList;
+        }
+
+        // Group benefits by employer (query already ordered by employer.id, nextRenewalDue)
+        LocalDate todayLd = LocalDate.now();
+        LocalDate thisMonthLd = LocalDate.of(todayLd.getYear(), todayLd.getMonthValue(), 1);
+        Date thisMonth = Date.valueOf(thisMonthLd);
+        Date nextMonth = Date.valueOf(thisMonthLd.plusMonths(1L));
+
+        Map<Integer, RenewalEmployer> employerMap = new LinkedHashMap<>();
+        for (Benefit b : benefitList) {
+            Employer er = b.getEmployer();
+            RenewalEmployer re = employerMap.get(er.getId());
+            if (re == null) {
+                re = new RenewalEmployer();
+                re.setEmployer(er);
+                // Stage based on earliest benefit (first encountered due to query ordering)
+                Date renewalDateCheck = Date.valueOf(LocalDate.of(
+                        b.getNextRenewalDue().toLocalDate().getYear(),
+                        b.getNextRenewalDue().toLocalDate().getMonthValue(), 1));
+                if (renewalDateCheck.compareTo(thisMonth) < 0)
+                    re.setStage(0);
+                else if (renewalDateCheck.compareTo(nextMonth) < 0)
+                    re.setStage(1);
+                else if (renewalDateCheck.compareTo(nextMonth) == 0)
+                    re.setStage(2);
+                else
+                    re.setStage(3);
+                re.setLastRenewed(b.getLastRenewed());
+                employerMap.put(er.getId(), re);
+            }
+            re.getBenefits().add(b);
+        }
+
+        List<RenewalEmployer> fullList = new ArrayList<>(employerMap.values());
         Collections.sort(fullList);
         return fullList;
     }

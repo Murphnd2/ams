@@ -128,7 +128,6 @@
 
   <c:choose>
     <c:when test="${empty renewalsByMonth}">
-      <%-- Empty State --%>
       <div class="empty-state">
         <i class="bi bi-check-circle d-block"></i>
         <h5>No Upcoming Renewals</h5>
@@ -161,90 +160,68 @@
         <%-- Employer Cards --%>
         <c:forEach var="re" items="${employers}">
           <c:set var="emp" value="${re.employer}" />
-          <c:set var="isExpanded" value="${not empty expandedEmployerId && expandedEmployerId == emp.id}" />
           <c:set var="stageClass" value="stage-future" />
           <c:if test="${re.stage == 0}"><c:set var="stageClass" value="stage-overdue" /></c:if>
           <c:if test="${re.stage == 1}"><c:set var="stageClass" value="stage-this-month" /></c:if>
 
           <div class="renewal-card ${stageClass}" id="employer-${emp.id}">
-            <c:choose>
-              <c:when test="${isExpanded}">
-                <%-- ═══ EXPANDED STATE ═══ --%>
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                  <div>
-                    <span class="employer-name">${emp.employerName}</span>
-                    <span class="employer-meta ms-2">
-                      <c:if test="${not empty re.lastRenewed}">
-                        Last renewed: <fmt:formatDate value="${re.lastRenewed}" pattern="MM/dd/yyyy" />
-                      </c:if>
-                    </span>
-                  </div>
-                  <form method="post" action="UpcomingRenewals" class="d-inline">
-                    <input type="hidden" name="action" value="collapse" />
-                    <a href="UpcomingRenewals" class="btn-ghost">
-                      <i class="bi bi-chevron-up me-1"></i>Collapse
-                    </a>
-                  </form>
-                </div>
+            <%-- Header row (always visible) --%>
+            <div class="d-flex justify-content-between align-items-center">
+              <div>
+                <span class="employer-name">${emp.employerName}</span>
+                <span class="employer-meta ms-2">
+                  <c:if test="${not empty re.lastRenewed}">
+                    Last: <fmt:formatDate value="${re.lastRenewed}" pattern="MM/dd/yyyy" />
+                  </c:if>
+                </span>
+              </div>
+              <button type="button" class="btn-ssa ur-toggle-btn"
+                      style="padding: 0.3rem 0.75rem; font-size: 0.82rem;"
+                      data-employer-id="${emp.id}">
+                <i class="bi bi-chevron-down me-1"></i><span>View</span>
+              </button>
+            </div>
 
-                <%-- Benefit Checkboxes --%>
-                <form method="post" action="UpcomingRenewals">
-                  <input type="hidden" name="action" value="startRenewal" />
-                  <div class="border rounded" style="border-color: #dee2e6 !important;">
-                    <c:forEach var="benefit" items="${benefitsForDisplay}">
-                      <c:set var="isUrgent" value="${benefit.flagBenefitForRenewal()}" />
-                      <div class="benefit-row ${isUrgent ? 'flag-urgent' : ''}">
-                        <div class="form-check me-3">
-                          <input class="form-check-input" type="checkbox"
-                                 name="btnBen${benefit.id}" value="on"
-                                 id="chk-${benefit.id}"
-                                 ${isUrgent ? 'checked' : ''} />
-                        </div>
-                        <span class="benefit-code me-2">(${benefit.planType.code})</span>
-                        <span class="flex-grow-1">${benefit.planDescription}</span>
-                        <span class="text-end" style="min-width: 100px; font-size: 0.82rem;">
-                          <c:if test="${not empty benefit.nextRenewalDue}">
-                            <fmt:formatDate value="${benefit.nextRenewalDue}" pattern="MM/dd/yyyy" />
-                          </c:if>
-                        </span>
+            <%-- Benefits section (hidden by default, toggled by JS) --%>
+            <div class="ur-benefits-section" id="benefits-${emp.id}" style="display: none;">
+              <hr class="my-2">
+              <form method="post" action="UpcomingRenewals">
+                <input type="hidden" name="action" value="startRenewal" />
+                <input type="hidden" name="employerId" value="${emp.id}" />
+                <div class="border rounded" style="border-color: #dee2e6 !important;">
+                  <c:forEach var="benefit" items="${re.benefits}">
+                    <c:set var="isUrgent" value="${benefit.flagBenefitForRenewal()}" />
+                    <div class="benefit-row ${isUrgent ? 'flag-urgent' : ''}">
+                      <div class="form-check me-3">
+                        <input class="form-check-input" type="checkbox"
+                               name="btnBen${benefit.id}" value="on"
+                               id="chk-${benefit.id}"
+                               ${isUrgent ? 'checked' : ''} />
                       </div>
-                    </c:forEach>
-                    <c:if test="${empty benefitsForDisplay}">
-                      <div class="text-muted text-center py-3" style="font-size: 0.88rem;">
-                        No benefits available for renewal.
-                      </div>
-                    </c:if>
-                  </div>
-                  <c:if test="${not empty benefitsForDisplay}">
-                    <div class="mt-2 d-flex justify-content-end">
-                      <button type="submit" class="btn btn-ssa">
-                        <i class="bi bi-arrow-repeat me-1"></i>Start Renewal for Selected Benefits
-                      </button>
+                      <span class="benefit-code me-2">(${benefit.planType.code})</span>
+                      <span class="flex-grow-1">${benefit.planDescription}</span>
+                      <span class="text-end" style="min-width: 100px; font-size: 0.82rem;">
+                        <c:if test="${not empty benefit.nextRenewalDue}">
+                          <fmt:formatDate value="${benefit.nextRenewalDue}" pattern="MM/dd/yyyy" />
+                        </c:if>
+                      </span>
+                    </div>
+                  </c:forEach>
+                  <c:if test="${empty re.benefits}">
+                    <div class="text-muted text-center py-3" style="font-size: 0.88rem;">
+                      No benefits available for renewal.
                     </div>
                   </c:if>
-                </form>
-              </c:when>
-              <c:otherwise>
-                <%-- ═══ COLLAPSED STATE ═══ --%>
-                <div class="d-flex justify-content-between align-items-center">
-                  <div>
-                    <span class="employer-name">${emp.employerName}</span>
-                    <span class="employer-meta ms-2">
-                      <c:if test="${not empty re.lastRenewed}">
-                        Last: <fmt:formatDate value="${re.lastRenewed}" pattern="MM/dd/yyyy" />
-                      </c:if>
-                    </span>
-                  </div>
-                  <form method="post" action="UpcomingRenewals" class="d-inline">
-                    <input type="hidden" name="action" value="selectEmployer" />
-                    <input type="hidden" name="employerId" value="${emp.id}" />
-                    <button type="submit" class="btn-ssa" style="padding: 0.3rem 0.75rem; font-size: 0.82rem;">
-                      <i class="bi bi-chevron-down me-1"></i>View
-                    </button>
-                  </form>
                 </div>
-              </c:otherwise>
-            </c:choose>
+                <c:if test="${not empty re.benefits}">
+                  <div class="mt-2 d-flex justify-content-end">
+                    <button type="submit" class="btn btn-ssa">
+                      <i class="bi bi-arrow-repeat me-1"></i>Start Renewal for Selected Benefits
+                    </button>
+                  </div>
+                </c:if>
+              </form>
+            </div>
           </div>
         </c:forEach>
 
@@ -255,16 +232,47 @@
   </div><%-- /.ur-wrap --%>
 </div>
 
-<%-- Auto-scroll to expanded employer --%>
-<c:if test="${not empty expandedEmployerId}">
 <script>
-  document.addEventListener('DOMContentLoaded', function() {
-    var el = document.getElementById('employer-${expandedEmployerId}');
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('.ur-toggle-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var empId = this.getAttribute('data-employer-id');
+      var section = document.getElementById('benefits-' + empId);
+      var icon = this.querySelector('i');
+      var label = this.querySelector('span');
+
+      if (section.style.display === 'none') {
+        // Collapse any currently expanded card (accordion)
+        document.querySelectorAll('.ur-benefits-section').forEach(function(s) {
+          if (s.id !== 'benefits-' + empId && s.style.display !== 'none') {
+            s.style.display = 'none';
+            var otherId = s.id.replace('benefits-', '');
+            var otherBtn = document.querySelector('[data-employer-id="' + otherId + '"]');
+            if (otherBtn) {
+              otherBtn.querySelector('i').className = 'bi bi-chevron-down me-1';
+              otherBtn.querySelector('span').textContent = 'View';
+              otherBtn.className = otherBtn.className.replace('btn-ghost', 'btn-ssa');
+            }
+          }
+        });
+
+        // Expand this card
+        section.style.display = 'block';
+        icon.className = 'bi bi-chevron-up me-1';
+        label.textContent = 'Collapse';
+        this.className = this.className.replace('btn-ssa', 'btn-ghost');
+
+        this.closest('.renewal-card').scrollIntoView({ behavior: 'smooth', block: 'center' });
+      } else {
+        // Collapse this card
+        section.style.display = 'none';
+        icon.className = 'bi bi-chevron-down me-1';
+        label.textContent = 'View';
+        this.className = this.className.replace('btn-ghost', 'btn-ssa');
+      }
+    });
   });
+});
 </script>
-</c:if>
 </body>
 </html>

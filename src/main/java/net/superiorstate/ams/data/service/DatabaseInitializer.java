@@ -850,6 +850,8 @@ public abstract class DatabaseInitializer {
             createConstant(em,"EMAIL_FOOTER_TEXT",getPspName());
         if(getConstantByName(em,"USE_TIMECLOCK")==null)
             createConstant(em,"USE_TIMECLOCK","true");
+        if(getConstantByName(em,"USE_FRIENDLY_NAMES")==null)
+            createConstant(em,"USE_FRIENDLY_NAMES","true");
         if(getConstantByName(em,"DAYS_SINCE_WARNING")==null)
             createConstant(em,"DAYS_SINCE_WARNING","7");
         if(getConstantByName(em,"MASTER_REGISTRY_URL")==null)
