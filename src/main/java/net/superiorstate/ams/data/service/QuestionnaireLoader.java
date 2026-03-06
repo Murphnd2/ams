@@ -4,11 +4,10 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.TypedQuery;
+import net.superiorstate.ams.model.activity.checklist.sequences.support.ServiceItem;
 import net.superiorstate.ams.model.activity.questionnaire.Questionnaire;
 import net.superiorstate.ams.model.activity.questionnaire.QuestionnaireField;
 import net.superiorstate.ams.model.general.PSP;
-import net.superiorstate.ams.model.sales.offering.Enhancement;
-import net.superiorstate.ams.model.sales.offering.LOS;
 
 import java.io.InputStream;
 import java.util.ArrayList;
@@ -156,69 +155,41 @@ public class QuestionnaireLoader {
     private record ScopingWork(Questionnaire questionnaire, JsonNode scopingNode) {}
 
     /**
-     * Links a questionnaire to LOS/Enhancement based on its scoping definition.
-     * Looks up LOS by shortText or description. Enhancement by shortText or description.
-     * scope_all links to ALL active LOS and Enhancement for this PSP.
+     * Links a questionnaire to ServiceItems based on its scoping definition.
+     * Looks up ServiceItem by code or description.
+     * scope_all links to ALL active ServiceItems for this PSP.
      */
     private static void linkScoping(EntityManager em, Questionnaire q, JsonNode scoping, PSP psp) {
-        // scope_all: link to all active LOS + Enhancement
+        // scope_all: link to all active ServiceItems
         if (scoping.has("scope_all") && scoping.get("scope_all").asBoolean()) {
-            List<LOS> allLos = em.createQuery(
-                            "SELECT l FROM LOS l WHERE l.psp.id = :pspId AND l.suppressed = false", LOS.class)
-                    .setParameter("pspId", psp.getId())
+            List<ServiceItem> allSi = em.createQuery(
+                            "SELECT si FROM ServiceItem si WHERE si.psp.id = :pspId AND si.suppressed = false",
+                            ServiceItem.class)
+                    .setParameter("pspId", (int) (long) psp.getId())
                     .getResultList();
-            List<Enhancement> allEnh = em.createQuery(
-                            "SELECT e FROM Enhancement e WHERE e.psp.id = :pspId AND e.suppressed = false", Enhancement.class)
-                    .setParameter("pspId", psp.getId())
-                    .getResultList();
-            for (LOS l : allLos) {
-                if (!q.getLosList().contains(l)) q.getLosList().add(l);
-            }
-            for (Enhancement e : allEnh) {
-                if (!q.getEnhancementList().contains(e)) q.getEnhancementList().add(e);
+            for (ServiceItem si : allSi) {
+                if (!q.getServiceItemList().contains(si)) q.getServiceItemList().add(si);
             }
             return;
         }
 
-        // LOS scoping by name
-        JsonNode losNames = scoping.get("los");
-        if (losNames != null && losNames.isArray()) {
-            for (JsonNode losName : losNames) {
-                String name = losName.asText();
-                List<LOS> matches = em.createQuery(
-                                "SELECT l FROM LOS l WHERE l.psp.id = :pspId AND l.suppressed = false " +
-                                        "AND (l.shortText = :name OR l.description = :name)", LOS.class)
-                        .setParameter("pspId", psp.getId())
+        // ServiceItem scoping by code or description
+        JsonNode siNames = scoping.get("service_items");
+        if (siNames != null && siNames.isArray()) {
+            for (JsonNode siName : siNames) {
+                String name = siName.asText();
+                List<ServiceItem> matches = em.createQuery(
+                                "SELECT si FROM ServiceItem si WHERE si.psp.id = :pspId AND si.suppressed = false " +
+                                        "AND (si.code = :name OR si.description = :name)", ServiceItem.class)
+                        .setParameter("pspId", (int) (long) psp.getId())
                         .setParameter("name", name)
                         .getResultList();
                 if (matches.isEmpty()) {
-                    System.out.println("QuestionnaireLoader: No LOS match for '" + name + "' on PSP " + psp.getId() +
-                            " — scoping will be applied when PSP configures this LOS");
+                    System.out.println("QuestionnaireLoader: No ServiceItem match for '" + name + "' on PSP " + psp.getId() +
+                            " — scoping will be applied when PSP configures this ServiceItem");
                 } else {
-                    for (LOS l : matches) {
-                        if (!q.getLosList().contains(l)) q.getLosList().add(l);
-                    }
-                }
-            }
-        }
-
-        // Enhancement scoping by name
-        JsonNode enhNames = scoping.get("enhancements");
-        if (enhNames != null && enhNames.isArray()) {
-            for (JsonNode enhName : enhNames) {
-                String name = enhName.asText();
-                List<Enhancement> matches = em.createQuery(
-                                "SELECT e FROM Enhancement e WHERE e.psp.id = :pspId AND e.suppressed = false " +
-                                        "AND (e.shortText = :name OR e.description = :name)", Enhancement.class)
-                        .setParameter("pspId", psp.getId())
-                        .setParameter("name", name)
-                        .getResultList();
-                if (matches.isEmpty()) {
-                    System.out.println("QuestionnaireLoader: No Enhancement match for '" + name + "' on PSP " + psp.getId() +
-                            " — scoping will be applied when PSP configures this Enhancement");
-                } else {
-                    for (Enhancement e : matches) {
-                        if (!q.getEnhancementList().contains(e)) q.getEnhancementList().add(e);
+                    for (ServiceItem si : matches) {
+                        if (!q.getServiceItemList().contains(si)) q.getServiceItemList().add(si);
                     }
                 }
             }

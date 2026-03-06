@@ -1,53 +1,14 @@
 {
   "_metadata": {
     "description": "Questionnaire seed data loaded by DatabaseInitializer. Each entry creates a Questionnaire and (for native mode) its QuestionnaireFields. External-mode entries have an external_url and no sections/fields.",
-    "source_forms": {
-      "cobra_renewal": "https://form.jotform.com/241552616097055 (122 submissions)",
-      "125_eligibility": "https://form.jotform.com/92684899657181 (2140 submissions)",
-      "105_participation": "https://form.jotform.com/240454860219153 (157 submissions)"
-    },
-    "conditional_logic": "FUTURE ITEM — Native-mode questionnaires do not support conditional field visibility in v1. Forms requiring conditional logic use external mode (Jotform URLs). The 125 Eligibility and 105 Participation forms have heavy conditional logic (business-structure-dependent instructional text, calculated fields, tutorial pages) that drives the external mode decision.",
     "merge_tokens": {
       "{erName}": "Employer name from activity's primary contact",
       "{activityId}": "AMS activity ID (assignee.id)",
       "{instanceGuid}": "QuestionnaireInstance UUID for submission correlation"
     },
-    "generated": "2026-03-04"
+    "generated": "2026-03-06"
   },
   "questionnaires": [
-    {
-      "template_key": "q_125_eligibility",
-      "name": "Section 125 Eligibility Testing",
-      "description": "Collects employee counts, business structure, affiliated business information, and benefit offering details required to perform Section 125 (Cafeteria Plan) eligibility testing. Determines regulated employee classification based on business type.",
-      "activity_type": "RENEWAL",
-      "external_url": "https://form.jotform.com/92684899657181?erName={erName}&ref={instanceGuid}",
-      "scoping": {
-        "los": ["POP/125"]
-      },
-      "sections": []
-    },
-    {
-      "template_key": "q_105_participation",
-      "name": "Section 105 Participation Test",
-      "description": "Collects employee headcount data, HCE identification, and plan participation details required for Section 105(h) nondiscrimination testing of self-insured health plans (HRA, MERP, etc.).",
-      "activity_type": "RENEWAL",
-      "external_url": "https://form.jotform.com/240454860219153?erName={erName}&ref={instanceGuid}",
-      "scoping": {
-        "los": ["HRA", "MERP"]
-      },
-      "sections": []
-    },
-    {
-      "template_key": "q_cobra_renewal_jf",
-      "name": "COBRA Renewal Questionnaire (Jotform)",
-      "description": "External Jotform version of the COBRA Renewal Questionnaire. Preserves original conditional logic for repeating plan blocks. PSPs can choose between this and the native version — suppress whichever is not used.",
-      "activity_type": "RENEWAL",
-      "external_url": "https://form.jotform.com/241552616097055?erName={erName}&ref={instanceGuid}",
-      "scoping": {
-        "enhancements": ["COBRA"]
-      },
-      "sections": []
-    },
     {
       "template_key": "q_cobra_renewal",
       "name": "COBRA Renewal Questionnaire",
@@ -55,7 +16,7 @@
       "activity_type": "RENEWAL",
       "external_url": null,
       "scoping": {
-        "enhancements": ["COBRA"]
+        "service_items": ["COBRA"]
       },
       "sections": [
         {
@@ -418,228 +379,6 @@
               "label": "The rates and information provided are correct to the best of my knowledge.",
               "field_type": "BOOLEAN",
               "is_required": true
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "template_key": "q_fsa_testing",
-      "name": "FSA Compliance Testing",
-      "description": "Collects testing vendor, date, and results for annual FSA compliance testing.",
-      "activity_type": "SETUP",
-      "external_url": null,
-      "scoping": {
-        "los": ["FSA"]
-      },
-      "sections": [
-        {
-          "section_name": "Testing Details",
-          "section_description": null,
-          "fields": [
-            {
-              "field_key": "fsa_testing_vendor",
-              "label": "Testing Vendor",
-              "field_type": "TEXT",
-              "is_required": true
-            },
-            {
-              "field_key": "fsa_testing_date",
-              "label": "Testing Date",
-              "field_type": "DATE",
-              "is_required": true
-            },
-            {
-              "field_key": "fsa_pass_fail",
-              "label": "Pass / Fail",
-              "field_type": "RADIO",
-              "select_options": "Pass|Fail",
-              "is_required": true
-            },
-            {
-              "field_key": "fsa_results_summary",
-              "label": "Results Summary",
-              "field_type": "TEXTAREA",
-              "is_required": false,
-              "help_text": "Describe any findings, corrective actions, or notes."
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "template_key": "q_hsa_custodian",
-      "name": "HSA Custodian Setup",
-      "description": "Collects custodian and bank details for HSA account setup.",
-      "activity_type": "SETUP",
-      "external_url": null,
-      "scoping": {
-        "los": ["HSA"]
-      },
-      "sections": [
-        {
-          "section_name": "Custodian Information",
-          "section_description": null,
-          "fields": [
-            {
-              "field_key": "hsa_custodian_name",
-              "label": "Custodian Name",
-              "field_type": "TEXT",
-              "is_required": true
-            },
-            {
-              "field_key": "hsa_account_number",
-              "label": "Account Number",
-              "field_type": "TEXT",
-              "is_required": true
-            },
-            {
-              "field_key": "hsa_routing_number",
-              "label": "Routing Number",
-              "field_type": "TEXT",
-              "is_required": true
-            },
-            {
-              "field_key": "hsa_funding_method",
-              "label": "Funding Method",
-              "field_type": "SELECT",
-              "select_options": "ACH|Wire Transfer|Check|Payroll Deduction",
-              "is_required": true
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "template_key": "q_debit_card",
-      "name": "Debit Card Order Form",
-      "description": "Collects debit card order details for new plan setups.",
-      "activity_type": "SETUP",
-      "external_url": null,
-      "scoping": {
-        "enhancements": ["Debit Cards"]
-      },
-      "sections": [
-        {
-          "section_name": "Order Details",
-          "section_description": null,
-          "fields": [
-            {
-              "field_key": "dc_quantity",
-              "label": "Quantity Needed",
-              "field_type": "NUMBER",
-              "is_required": true
-            },
-            {
-              "field_key": "dc_shipping_address",
-              "label": "Shipping Address",
-              "field_type": "TEXTAREA",
-              "is_required": true
-            },
-            {
-              "field_key": "dc_rush_order",
-              "label": "Rush Order",
-              "field_type": "BOOLEAN",
-              "is_required": true,
-              "help_text": "Select Yes for expedited shipping (additional fees may apply)."
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "template_key": "q_bank_info",
-      "name": "Employer Bank Information",
-      "description": "Collects employer bank account details for benefit funding and premium remittance.",
-      "activity_type": "SETUP",
-      "external_url": null,
-      "scoping": {
-        "scope_all": true
-      },
-      "sections": [
-        {
-          "section_name": "Bank Account Details",
-          "section_description": null,
-          "fields": [
-            {
-              "field_key": "bank_name",
-              "label": "Bank Name",
-              "field_type": "TEXT",
-              "is_required": true
-            },
-            {
-              "field_key": "bank_routing_number",
-              "label": "Routing Number",
-              "field_type": "TEXT",
-              "is_required": true
-            },
-            {
-              "field_key": "bank_account_number",
-              "label": "Account Number",
-              "field_type": "TEXT",
-              "is_required": true
-            },
-            {
-              "field_key": "bank_account_type",
-              "label": "Account Type",
-              "field_type": "RADIO",
-              "select_options": "Checking|Savings",
-              "is_required": true
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "template_key": "q_renewal_confirm",
-      "name": "Renewal Confirmation",
-      "description": "Collects employer confirmation of plan year details and any requested changes for upcoming renewals.",
-      "activity_type": "RENEWAL",
-      "external_url": null,
-      "scoping": {
-        "scope_all": true
-      },
-      "sections": [
-        {
-          "section_name": "Plan Year Confirmation",
-          "section_description": null,
-          "fields": [
-            {
-              "field_key": "ren_plan_year_start",
-              "label": "Plan Year Start",
-              "field_type": "DATE",
-              "is_required": true
-            },
-            {
-              "field_key": "ren_plan_year_end",
-              "label": "Plan Year End",
-              "field_type": "DATE",
-              "is_required": true
-            },
-            {
-              "field_key": "ren_changes_requested",
-              "label": "Are any changes being requested for this renewal?",
-              "field_type": "BOOLEAN",
-              "is_required": true
-            },
-            {
-              "field_key": "ren_change_description",
-              "label": "Please describe the changes",
-              "field_type": "TEXTAREA",
-              "is_required": false,
-              "help_text": "Only required if changes are requested."
-            },
-            {
-              "field_key": "ren_authorized_by",
-              "label": "Authorized By",
-              "field_type": "TEXT",
-              "is_required": true
-            },
-            {
-              "field_key": "ren_authorized_title",
-              "label": "Title",
-              "field_type": "TEXT",
-              "is_required": false
             }
           ]
         }

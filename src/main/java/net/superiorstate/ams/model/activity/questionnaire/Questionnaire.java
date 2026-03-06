@@ -3,8 +3,6 @@ package net.superiorstate.ams.model.activity.questionnaire;
 import jakarta.persistence.*;
 import net.superiorstate.ams.model.activity.checklist.sequences.support.ServiceItem;
 import net.superiorstate.ams.model.general.PSP;
-import net.superiorstate.ams.model.sales.offering.Enhancement;
-import net.superiorstate.ams.model.sales.offering.LOS;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -44,18 +42,6 @@ public class Questionnaire implements Comparable<Questionnaire> {
     private String templateKey;
 
     @ManyToMany
-    @JoinTable(name = "questionnaire_los",
-            joinColumns = @JoinColumn(name = "questionnaire_id"),
-            inverseJoinColumns = @JoinColumn(name = "los_id"))
-    private List<LOS> losList = new ArrayList<>();
-
-    @ManyToMany
-    @JoinTable(name = "questionnaire_enhancement",
-            joinColumns = @JoinColumn(name = "questionnaire_id"),
-            inverseJoinColumns = @JoinColumn(name = "enhancement_id"))
-    private List<Enhancement> enhancementList = new ArrayList<>();
-
-    @ManyToMany
     @JoinTable(name = "questionnaire_serviceitem",
             joinColumns = @JoinColumn(name = "questionnaire_id"),
             inverseJoinColumns = @JoinColumn(name = "purpose_id"))
@@ -77,9 +63,9 @@ public class Questionnaire implements Comparable<Questionnaire> {
         return externalUrl == null || externalUrl.isBlank();
     }
 
-    /** True if any LOS, Enhancement, or ServiceItem scoping is defined. */
+    /** True if any ServiceItem scoping is defined. */
     public boolean isScopedToServices() {
-        return !losList.isEmpty() || !enhancementList.isEmpty() || !serviceItemList.isEmpty();
+        return !serviceItemList.isEmpty();
     }
 
     /** Resolves merge tokens in the external URL. Returns null if not external. */
@@ -125,12 +111,6 @@ public class Questionnaire implements Comparable<Questionnaire> {
 
     public String getTemplateKey() { return templateKey; }
     public void setTemplateKey(String templateKey) { this.templateKey = templateKey; }
-
-    public List<LOS> getLosList() { return losList; }
-    public void setLosList(List<LOS> losList) { this.losList = losList; }
-
-    public List<Enhancement> getEnhancementList() { return enhancementList; }
-    public void setEnhancementList(List<Enhancement> enhancementList) { this.enhancementList = enhancementList; }
 
     public List<ServiceItem> getServiceItemList() { return serviceItemList; }
     public void setServiceItemList(List<ServiceItem> serviceItemList) { this.serviceItemList = serviceItemList; }

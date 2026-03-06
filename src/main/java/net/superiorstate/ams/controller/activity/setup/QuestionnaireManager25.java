@@ -10,8 +10,6 @@ import net.superiorstate.ams.data.AmsDataLocal;
 import net.superiorstate.ams.model.activity.checklist.sequences.support.ServiceItem;
 import net.superiorstate.ams.model.activity.questionnaire.Questionnaire;
 import net.superiorstate.ams.model.activity.questionnaire.QuestionnaireField;
-import net.superiorstate.ams.model.sales.offering.Enhancement;
-import net.superiorstate.ams.model.sales.offering.LOS;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -55,9 +53,7 @@ public class QuestionnaireManager25 extends HttpServlet {
                 if (selected != null) {
                     request.setAttribute("selectedQuestionnaire", selected);
 
-                    // Load all active LOS, Enhancements, ServiceItems for scoping checkboxes
-                    request.setAttribute("allLos", getActiveLos(em, pspId));
-                    request.setAttribute("allEnhancements", getActiveEnhancements(em, pspId));
+                    // Load all active ServiceItems (with category) for scoping checkboxes
                     request.setAttribute("allServiceItems", getActiveServiceItems(em, pspId));
                 }
             }
@@ -103,9 +99,7 @@ public class QuestionnaireManager25 extends HttpServlet {
                     .getResultList();
             q.setFieldList(fields);
 
-            // Force-load scoping collections
-            q.getLosList().size();
-            q.getEnhancementList().size();
+            // Force-load ServiceItem scoping collection
             q.getServiceItemList().size();
 
             return q;
@@ -115,34 +109,12 @@ public class QuestionnaireManager25 extends HttpServlet {
         }
     }
 
-    private List<LOS> getActiveLos(EntityManager em, long pspId) {
-        try {
-            return em.createQuery(
-                    "SELECT l FROM LOS l WHERE l.psp.id = :pspId AND l.suppressed = false ORDER BY l.sortOrder",
-                    LOS.class)
-                    .setParameter("pspId", pspId)
-                    .getResultList();
-        } catch (NoResultException e) {
-            return new ArrayList<>();
-        }
-    }
-
-    private List<Enhancement> getActiveEnhancements(EntityManager em, long pspId) {
-        try {
-            return em.createQuery(
-                    "SELECT e FROM Enhancement e WHERE e.psp.id = :pspId AND e.suppressed = false ORDER BY e.sortOrder",
-                    Enhancement.class)
-                    .setParameter("pspId", pspId)
-                    .getResultList();
-        } catch (NoResultException e) {
-            return new ArrayList<>();
-        }
-    }
-
     private List<ServiceItem> getActiveServiceItems(EntityManager em, long pspId) {
         try {
             return em.createQuery(
-                    "SELECT si FROM ServiceItem si WHERE si.psp.id = :pspId AND si.suppressed = false ORDER BY si.description",
+                    "SELECT si FROM ServiceItem si LEFT JOIN FETCH si.activityCategory " +
+                            "WHERE si.psp.id = :pspId AND si.suppressed = false " +
+                            "ORDER BY si.activityCategory.id, si.description",
                     ServiceItem.class)
                     .setParameter("pspId", (int) pspId)
                     .getResultList();

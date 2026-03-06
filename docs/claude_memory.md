@@ -16,8 +16,8 @@
 ## Current State
 - **Branch:** `refactor/modernize-architecture`
 - **Latest migration:** V041
-- **Session count:** 42
-- V025-V037 applied to Demo PSP, BPO, and Master; V038 applied to Demo and BPO; V039-V040 code-complete, not yet applied anywhere
+- **Session count:** 43
+- V025-V037 applied to Demo PSP, BPO, and Master; V038 applied to Demo and BPO; V039-V041 code-complete, not yet applied anywhere
 - Not yet applied to production or local dev
 - Master snapshot v8 taken 2026-03-04 (V037, fixed update.sh, fixed healthcheck.sh)
 
@@ -146,7 +146,7 @@
 - **Enhancement 4 (Sort order):** DelegatedToDo.sortOrder field (V038), pushed via BpoTaskPushService, BpoHome queries sort by dueDate → activityName → sortOrder
 - **Vendor-only reopen protection:** checklistBasic25.jsp completed section shows X icon (no reopen form) for `isSourced && !allowNonOwner` tasks
 
-## Questionnaire System (V039, Phases 1–6 — Sessions 32–33)
+## Questionnaire System (V039, Phases 1–6 — Sessions 32–33, Scoping Simplification — Session 43)
 - **4 entities** in `model/activity/questionnaire/`: Questionnaire, QuestionnaireField, QuestionnaireInstance, QuestionnaireFieldValue
 - **B2.1 entity conventions:** `fetch=LAZY` on all `@ManyToOne`, `cascade=ALL, orphanRemoval=true` on parent→child `@OneToMany`
 - **Convenience methods:** `Questionnaire.isNative()`, `Questionnaire.isScopedToServices()`, `QuestionnaireInstance.isExternal()`
@@ -154,20 +154,25 @@
 - **QuestionnaireField** uses BIGINT auto PK (not String PK like ApplicationField), `field_key` is regular column with unique index per questionnaire
 - **section_name** column on questionnaire_field for UI grouping (no section entity)
 - **QuestionnaireLoader.java** in `data/service/` — reads `questionnaire_seeds.json`, pattern follows PackageLoader
-- **9 seed questionnaires:** 3 external (Jotform), 6 native — scoped by LOS/Enhancement/ServiceItem name lookup
-- **Scoping join tables:** questionnaire_los, questionnaire_enhancement, questionnaire_serviceitem
+- **1 seed questionnaire:** COBRA Renewal (native) — scoped to COBRA ServiceItem by code/description lookup
+- **Scoping:** ServiceItem-only via `questionnaire_serviceitem` join table (LOS/Enhancement M:N mappings removed from entity, DB tables retained)
+- **Auto-attach:** `QuestionnaireService.attachMatchingQuestionnaires()` checks `activity_type` match + ServiceItem overlap only
 - **DatabaseInitializer** hook after assignAllSectionsToLos, before createInitializationChecklist
 - **Merge tokens in external URLs:** `{erName}`, `{activityId}`, `{instanceGuid}` — resolved by `Questionnaire.resolveExternalUrl()`
 - **Design doc:** `docs/analysis/questionnaire_system_design.md` — 7 phases total
 - **QuestionnaireService.java** (`data/service/`) — static utility (abstract class, follows RenewalService pattern):
-  - `attachMatchingQuestionnaires()` — auto-attach on activity creation, scope overlap check
+  - `attachMatchingQuestionnaires()` — auto-attach on activity creation, activityType + ServiceItem overlap
   - `getInstancesForActivity()` — load instances for activity detail card
   - `getInstanceByGuid()` — GUID-based lookup for public form
   - `getFieldsForQuestionnaire()` — direct field query (avoids EclipseLink nested JOIN FETCH)
   - `getFieldValueMap()` — saved values as Map<String, String>
   - `submitInstance()` — marks SUBMITTED, creates Note with "Waiting on Us" status + "Quick Action" reason
 - **QuestionnaireManager25.java** (`controller/activity/setup/`) — standalone admin page at `/QuestionnaireManager25`
-- **QuestionnaireAction25.java** (`controller/activity/setup/`) — CRUD handler for questionnaires+fields
+  - Full-height flex layout: left panel (questionnaire list) + right panel (details/scoping/fields)
+  - Right panel: `.right-panel` flex column, `.cards-wrap` holds 3 cards, Fields card is `.card-flex` (flex-grow with scrollable body)
+  - Details and Scoping cards are collapsible (Bootstrap collapse with chevron rotation)
+  - Scoping card: 3-column layout (Setup | Renewal | Ticket) by ActivityCategory group_id, sticky column headers above scrollable checkboxes
+- **QuestionnaireAction25.java** (`controller/activity/setup/`) — CRUD handler for questionnaires+fields, `updateScope` handles ServiceItem-only
 - **FillQuestionnaire.java** (`controller/activity/questionnaire/`) — public form at `/q/{guid}`, GET renders form, POST submits
 - **SaveQuestionnaireProgress.java** — AJAX auto-save at `/saveQuestionnaire`
 - **QuestionnaireInstanceAction.java** — PSP-side actions: review, reopen, detach, markComplete, attach, emailQuestionnaire

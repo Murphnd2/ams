@@ -2,7 +2,7 @@
 
 > **Purpose:** Consolidated historical record of all build sessions. For current project state, see `project_backlog.md`. For current architecture, see `application_flow.md` and `entity_reference.md`.
 >
-> **Last Updated:** March 9, 2026 (Session 42)
+> **Last Updated:** March 13, 2026 (Session 43)
 
 ---
 
@@ -1464,3 +1464,30 @@ Implemented role-based application visibility and review controls. PSP Users/Adm
 - **Modified (1 Java):** SeedDemoData.java
 
 No database changes.
+
+---
+
+## March 13, 2026 — Session 43: Questionnaire Scoping Simplification
+
+### ServiceItem-Only Scoping
+Simplified questionnaire scoping from 3 independent M:N dimensions (LOS, Enhancement, ServiceItem) to **ServiceItem-only assignment**. Since LOS and Enhancement each already have a FK to ServiceItem, ServiceItem scoping subsumes both.
+
+- **Questionnaire entity:** Removed `losList` and `enhancementList` M:N mappings (DB join tables retained, not used)
+- **QuestionnaireService:** Simplified `attachMatchingQuestionnaires()` — removed LOS/Enhancement ID gathering and overlap checks, `hasScopeOverlap()` only checks ServiceItem intersection
+- **QuestionnaireAction25:** `updateScope` case handles only `serviceItemIds[]` (removed LOS/Enhancement clear+re-add)
+- **QuestionnaireManager25:** Removed `getActiveLos()`/`getActiveEnhancements()` methods, JOIN FETCH `si.activityCategory` for grouping
+- **QuestionnaireLoader + seeds:** Stripped to COBRA Renewal native only, scoping changed from Enhancement to ServiceItem lookup by code/description
+
+### Questionnaire Manager UI Redesign
+- **Full-height layout:** Right panel uses flex column (`height: calc(100vh - 80px)`) — no page-level scroll
+- **Collapsible cards:** Details and Scoping cards use Bootstrap collapse with chevron rotation
+- **3-column scoping:** ServiceItem checkboxes in Setup | Renewal | Ticket columns by ActivityCategory group_id (1=Renewal, 2=Setup, 3=Ticket), sticky headers above scrollable checkbox area
+- **Fields card flex-grow:** `.card-flex` class — fills remaining viewport space, card-body scrolls internally, hdr-bar always visible
+- **Generic chevron rotation:** Single JS handler using `data-collapse-target` attribute on `.collapse-chevron` elements
+
+### Files
+- **Modified (5 Java):** Questionnaire.java, QuestionnaireService.java, QuestionnaireAction25.java, QuestionnaireManager25.java, QuestionnaireLoader.java
+- **Modified (1 JSON):** questionnaire_seeds.json
+- **Modified (1 JSP):** questionnaireManager25.jsp
+
+No database changes (DB join tables questionnaire_los and questionnaire_enhancement retained but unused).

@@ -10,8 +10,6 @@ import net.superiorstate.ams.model.activity.checklist.sequences.support.ServiceI
 import net.superiorstate.ams.model.activity.questionnaire.Questionnaire;
 import net.superiorstate.ams.model.activity.questionnaire.QuestionnaireField;
 import net.superiorstate.ams.model.general.PSP;
-import net.superiorstate.ams.model.sales.offering.Enhancement;
-import net.superiorstate.ams.model.sales.offering.LOS;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -144,37 +142,12 @@ public class QuestionnaireAction25 extends HttpServlet {
                     long qId = Long.parseLong(qIdParam);
                     Questionnaire q = em.find(Questionnaire.class, qId);
                     if (q != null && q.getPsp().getId().equals(psp.getId())) {
-                        // Force-init collections
-                        if (q.getLosList() == null) q.setLosList(new ArrayList<>());
-                        if (q.getEnhancementList() == null) q.setEnhancementList(new ArrayList<>());
                         if (q.getServiceItemList() == null) q.setServiceItemList(new ArrayList<>());
 
                         em.getTransaction().begin();
 
-                        // Clear existing
-                        q.getLosList().clear();
-                        q.getEnhancementList().clear();
                         q.getServiceItemList().clear();
 
-                        // Re-add selected LOS
-                        String[] losIds = request.getParameterValues("losIds");
-                        if (losIds != null) {
-                            for (String id : losIds) {
-                                LOS los = em.find(LOS.class, Long.parseLong(id));
-                                if (los != null) q.getLosList().add(los);
-                            }
-                        }
-
-                        // Re-add selected Enhancements
-                        String[] enhIds = request.getParameterValues("enhIds");
-                        if (enhIds != null) {
-                            for (String id : enhIds) {
-                                Enhancement enh = em.find(Enhancement.class, Long.parseLong(id));
-                                if (enh != null) q.getEnhancementList().add(enh);
-                            }
-                        }
-
-                        // Re-add selected ServiceItems
                         String[] siIds = request.getParameterValues("serviceItemIds");
                         if (siIds != null) {
                             for (String id : siIds) {

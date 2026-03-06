@@ -27,10 +27,13 @@
         .q-panel { background: #fff; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); display: flex; flex-direction: column; height: calc(100vh - 80px); }
         .q-panel-header { background: var(--ssa); color: #fff; padding: 12px 16px; border-radius: 8px 8px 0 0; font-weight: 600; font-size: 0.95rem; flex-shrink: 0; }
         .q-list-scroll { flex: 1 1 0; min-height: 80px; overflow-y: auto; }
-        .detail-scroll { overflow-y: auto; }
-        @media (min-width: 992px) {
-            .detail-scroll { max-height: calc(100vh - 120px); }
-        }
+        .right-panel { display: flex; flex-direction: column; height: calc(100vh - 80px); overflow: hidden; }
+        .cards-wrap { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; gap: 0.5rem; overflow: hidden; }
+        .cards-wrap > .card { flex-shrink: 0; }
+        .cards-wrap > .card.card-flex { flex: 1 1 0; min-height: 120px; display: flex; flex-direction: column; }
+        .card-flex > .card-body { flex: 1 1 0; min-height: 0; overflow-y: auto; }
+        .collapse-chevron { transition: transform 0.2s; }
+        .collapse-chevron.open { transform: rotate(180deg); }
         .filter-tabs .btn { font-size: 0.78rem; padding: 4px 8px; }
         .filter-tabs .btn.active-filter { background: var(--ssa); color: #fff; border-color: var(--ssa); }
         .suppress-toggle { font-size: 0.75rem; cursor: pointer; user-select: none; }
@@ -134,9 +137,10 @@
 
             <c:choose>
                 <c:when test="${not empty selectedQuestionnaire}">
+                    <div class="right-panel">
 
                     <%-- Header Bar --%>
-                    <h5 class="mb-2 px-3 py-2 rounded d-flex align-items-center" style="background-color: #87a948; color: white;">
+                    <h5 class="mb-1 px-3 py-2 rounded d-flex align-items-center flex-shrink-0" style="background-color: #87a948; color: white;">
                         <i class="bi bi-ui-checks-grid me-1"></i>
                         ${selectedQuestionnaire.getName()}
                         <span class="badge ${selectedQuestionnaire.isExternal() ? 'mode-external' : 'mode-native'} ms-2" style="font-size:0.7rem;">
@@ -156,11 +160,16 @@
                         </form>
                     </h5>
 
-                    <div class="detail-scroll">
+                    <div class="cards-wrap">
 
-                        <%-- Info Card --%>
-                        <div class="card mb-3">
-                            <div class="hdr-bar"><i class="bi bi-info-circle me-1"></i>Details</div>
+                        <%-- Info Card (collapsible) --%>
+                        <div class="card">
+                            <div class="hdr-bar d-flex justify-content-between align-items-center"
+                                 style="cursor:pointer;" data-bs-toggle="collapse" data-bs-target="#detailsBody" aria-expanded="true">
+                                <span><i class="bi bi-info-circle me-1"></i>Details</span>
+                                <i class="bi bi-chevron-down collapse-chevron open" data-collapse-target="detailsBody"></i>
+                            </div>
+                            <div class="collapse show" id="detailsBody">
                             <div class="card-body py-2 px-3">
                                 <c:if test="${not empty selectedQuestionnaire.getDescription()}">
                                     <div class="row">
@@ -216,78 +225,111 @@
                                     </div>
                                 </c:if>
                             </div>
+                            </div> <%-- /collapse detailsBody --%>
                         </div>
 
-                        <%-- Scoping Card --%>
-                        <div class="card mb-3">
-                            <div class="hdr-bar"><i class="bi bi-funnel me-1"></i>Scoping</div>
-                            <div class="card-body py-2 px-3">
-                                <form method="post" action="QuestionnaireAction25">
-                                    <input type="hidden" name="action" value="updateScope"/>
-                                    <input type="hidden" name="qId" value="${selectedQuestionnaire.getId()}"/>
+                        <%-- Scoping Card (collapsible) --%>
+                        <div class="card">
+                            <div class="hdr-bar d-flex justify-content-between align-items-center"
+                                 style="cursor:pointer;" data-bs-toggle="collapse" data-bs-target="#scopeBody" aria-expanded="true">
+                                <span><i class="bi bi-funnel me-1"></i>Service Item Scoping</span>
+                                <i class="bi bi-chevron-down collapse-chevron open" data-collapse-target="scopeBody"></i>
+                            </div>
+                            <div class="collapse show" id="scopeBody">
+                                <div class="card-body py-2 px-3">
+                                    <form method="post" action="QuestionnaireAction25" id="scopeForm">
+                                        <input type="hidden" name="action" value="updateScope"/>
+                                        <input type="hidden" name="qId" value="${selectedQuestionnaire.getId()}"/>
 
-                                    <%-- LOS Checkboxes --%>
-                                    <c:if test="${not empty allLos}">
-                                        <div class="mb-3">
-                                            <label class="form-label fw-semibold" style="font-size:0.9rem;">Lines of Service</label>
-                                            <c:forEach var="los" items="${allLos}">
-                                                <div class="form-check">
-                                                    <input class="form-check-input" type="checkbox" name="losIds"
-                                                           value="${los.getId()}" id="qLos-${los.getId()}"
-                                                           <c:forEach var="linked" items="${selectedQuestionnaire.getLosList()}">
-                                                               <c:if test="${linked.getId() == los.getId()}">checked</c:if>
-                                                           </c:forEach>>
-                                                    <label class="form-check-label" for="qLos-${los.getId()}">${los.getDescription()}</label>
+                                        <c:if test="${not empty allServiceItems}">
+                                            <%-- Column headers (outside scroll area so they stay visible) --%>
+                                            <div class="row g-2 mb-1">
+                                                <div class="col-lg-4 col-md-4 col-12">
+                                                    <label class="form-label fw-semibold mb-0" style="font-size:0.85rem; color:var(--ssa);">
+                                                        <i class="bi bi-folder2 me-1"></i>Setup
+                                                    </label>
                                                 </div>
-                                            </c:forEach>
-                                        </div>
-                                    </c:if>
-
-                                    <%-- Enhancement Checkboxes --%>
-                                    <c:if test="${not empty allEnhancements}">
-                                        <div class="mb-3">
-                                            <label class="form-label fw-semibold" style="font-size:0.9rem;">Enhancements</label>
-                                            <c:forEach var="enh" items="${allEnhancements}">
-                                                <div class="form-check">
-                                                    <input class="form-check-input" type="checkbox" name="enhIds"
-                                                           value="${enh.getId()}" id="qEnh-${enh.getId()}"
-                                                           <c:forEach var="linked" items="${selectedQuestionnaire.getEnhancementList()}">
-                                                               <c:if test="${linked.getId() == enh.getId()}">checked</c:if>
-                                                           </c:forEach>>
-                                                    <label class="form-check-label" for="qEnh-${enh.getId()}">${enh.getDescription()}</label>
+                                                <div class="col-lg-4 col-md-4 col-12">
+                                                    <label class="form-label fw-semibold mb-0" style="font-size:0.85rem; color:var(--ssa);">
+                                                        <i class="bi bi-folder2 me-1"></i>Renewal
+                                                    </label>
                                                 </div>
-                                            </c:forEach>
-                                        </div>
-                                    </c:if>
-
-                                    <%-- ServiceItem Checkboxes --%>
-                                    <c:if test="${not empty allServiceItems}">
-                                        <div class="mb-3">
-                                            <label class="form-label fw-semibold" style="font-size:0.9rem;">Service Items</label>
-                                            <c:forEach var="si" items="${allServiceItems}">
-                                                <div class="form-check">
-                                                    <input class="form-check-input" type="checkbox" name="serviceItemIds"
-                                                           value="${si.getId()}" id="qSi-${si.getId()}"
-                                                           <c:forEach var="linked" items="${selectedQuestionnaire.getServiceItemList()}">
-                                                               <c:if test="${linked.getId() == si.getId()}">checked</c:if>
-                                                           </c:forEach>>
-                                                    <label class="form-check-label" for="qSi-${si.getId()}">${si.getDescription()}</label>
+                                                <div class="col-lg-4 col-md-4 col-12">
+                                                    <label class="form-label fw-semibold mb-0" style="font-size:0.85rem; color:var(--ssa);">
+                                                        <i class="bi bi-folder2 me-1"></i>Ticket
+                                                    </label>
                                                 </div>
-                                            </c:forEach>
-                                        </div>
-                                    </c:if>
+                                            </div>
+                                            <%-- Scrollable checkbox area --%>
+                                            <div style="max-height: 220px; overflow-y: auto; overflow-x: hidden;">
+                                                <div class="row g-2">
+                                                    <%-- Setup column (group_id=2) --%>
+                                                    <div class="col-lg-4 col-md-4 col-12">
+                                                        <c:forEach var="si" items="${allServiceItems}">
+                                                            <c:if test="${si.getActivityCategory() != null && si.getActivityCategory().getId() == 2}">
+                                                                <div class="form-check" style="font-size:0.85rem;">
+                                                                    <input class="form-check-input" type="checkbox" name="serviceItemIds"
+                                                                           value="${si.getId()}" id="qSi-${si.getId()}"
+                                                                           <c:forEach var="linked" items="${selectedQuestionnaire.getServiceItemList()}">
+                                                                               <c:if test="${linked.getId() == si.getId()}">checked</c:if>
+                                                                           </c:forEach>>
+                                                                    <label class="form-check-label" for="qSi-${si.getId()}">${si.getDescription()}</label>
+                                                                </div>
+                                                            </c:if>
+                                                        </c:forEach>
+                                                    </div>
+                                                    <%-- Renewal column (group_id=1) --%>
+                                                    <div class="col-lg-4 col-md-4 col-12">
+                                                        <c:forEach var="si" items="${allServiceItems}">
+                                                            <c:if test="${si.getActivityCategory() != null && si.getActivityCategory().getId() == 1}">
+                                                                <div class="form-check" style="font-size:0.85rem;">
+                                                                    <input class="form-check-input" type="checkbox" name="serviceItemIds"
+                                                                           value="${si.getId()}" id="qSi-${si.getId()}"
+                                                                           <c:forEach var="linked" items="${selectedQuestionnaire.getServiceItemList()}">
+                                                                               <c:if test="${linked.getId() == si.getId()}">checked</c:if>
+                                                                           </c:forEach>>
+                                                                    <label class="form-check-label" for="qSi-${si.getId()}">${si.getDescription()}</label>
+                                                                </div>
+                                                            </c:if>
+                                                        </c:forEach>
+                                                    </div>
+                                                    <%-- Ticket column (group_id=3) --%>
+                                                    <div class="col-lg-4 col-md-4 col-12">
+                                                        <c:forEach var="si" items="${allServiceItems}">
+                                                            <c:if test="${si.getActivityCategory() != null && si.getActivityCategory().getId() == 3}">
+                                                                <div class="form-check" style="font-size:0.85rem;">
+                                                                    <input class="form-check-input" type="checkbox" name="serviceItemIds"
+                                                                           value="${si.getId()}" id="qSi-${si.getId()}"
+                                                                           <c:forEach var="linked" items="${selectedQuestionnaire.getServiceItemList()}">
+                                                                               <c:if test="${linked.getId() == si.getId()}">checked</c:if>
+                                                                           </c:forEach>>
+                                                                    <label class="form-check-label" for="qSi-${si.getId()}">${si.getDescription()}</label>
+                                                                </div>
+                                                            </c:if>
+                                                        </c:forEach>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </c:if>
+                                        <c:if test="${empty allServiceItems}">
+                                            <span class="text-muted" style="font-size:0.85rem;">No service items configured</span>
+                                        </c:if>
 
-                                    <button type="submit" class="btn btn-sm btn-outline-primary">
-                                        <i class="bi bi-check-lg me-1"></i>Save Scope
-                                    </button>
-                                </form>
+                                        <div class="mt-2 d-flex align-items-center gap-2">
+                                            <button type="submit" class="btn btn-sm btn-outline-primary">
+                                                <i class="bi bi-check-lg me-1"></i>Save Scope
+                                            </button>
+                                            <small class="text-muted">No items checked = applies to all activities of this type</small>
+                                        </div>
+                                    </form>
+                                </div>
                             </div>
                         </div>
 
                         <%-- Fields Card (Native mode only) --%>
                         <c:if test="${!selectedQuestionnaire.isExternal()}">
-                            <div class="card mb-3">
-                                <div class="hdr-bar d-flex justify-content-between align-items-center">
+                            <div class="card card-flex">
+                                <div class="hdr-bar d-flex justify-content-between align-items-center" style="flex-shrink:0;">
                                     <span><i class="bi bi-input-cursor-text me-1"></i>Fields (${fn:length(selectedQuestionnaire.getFieldList())})</span>
                                     <div>
                                         <button type="button" class="btn btn-sm btn-outline-light" title="Show/hide suppressed fields" onclick="toggleFieldSuppressed()">
@@ -368,6 +410,7 @@
                         </c:if>
 
                     </div>
+                    </div> <%-- /right-panel --%>
                 </c:when>
 
                 <%-- Empty State --%>
@@ -675,6 +718,18 @@
         document.getElementById('editOptsGroup').style.display =
             ['SELECT','RADIO','CHECKBOX'].includes(type) ? 'block' : 'none';
     }
+
+    /* ── Collapse chevron rotation (generic) ── */
+    (function() {
+        document.querySelectorAll('.collapse-chevron').forEach(chev => {
+            const targetId = chev.dataset.collapseTarget;
+            const el = document.getElementById(targetId);
+            if (el) {
+                el.addEventListener('show.bs.collapse', () => chev.classList.add('open'));
+                el.addEventListener('hide.bs.collapse', () => chev.classList.remove('open'));
+            }
+        });
+    })();
 
     /* ── Open Edit Field Modal ── */
     function openEditField(id, key, label, type, options, helpText, sectionName, required) {

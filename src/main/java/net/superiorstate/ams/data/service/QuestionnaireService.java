@@ -12,11 +12,8 @@ import net.superiorstate.ams.model.activity.renewal.RenewalItem;
 import net.superiorstate.ams.model.activity.ticket.Ticket;
 import net.superiorstate.ams.model.activity.ticket.setup.Setup;
 import net.superiorstate.ams.model.general.Assignee;
-import net.superiorstate.ams.model.sales.agency.Proposal;
 import net.superiorstate.ams.model.sales.application.Application;
 import net.superiorstate.ams.model.sales.application.ApplicationModule;
-import net.superiorstate.ams.model.sales.offering.Enhancement;
-import net.superiorstate.ams.model.sales.offering.LOS;
 
 import net.superiorstate.ams.model.activity.Activity;
 import net.superiorstate.ams.model.activity.note.ActivityStatus;
@@ -71,28 +68,18 @@ public abstract class QuestionnaireService {
             System.out.println("[QS] candidates found: " + (candidates == null ? 0 : candidates.size()));
             if (candidates == null || candidates.isEmpty()) return created;
 
-            // 2. Gather the activity's scoping context
+            // 2. Gather the activity's ServiceItem IDs
             Set<Long> activitySiIds = getActivityServiceItemIds(em, activity);
-            Set<Long> activityLosIds = getActivityLosIds(em, activity);
-            Set<Long> activityEnhIds = getActivityEnhancementIds(em, activity);
-            System.out.println("[QS] activity context: siIds=" + activitySiIds
-                    + " losIds=" + activityLosIds + " enhIds=" + activityEnhIds);
+            System.out.println("[QS] activity context: siIds=" + activitySiIds);
 
-            // 3. For each candidate, check scope overlap → create instance if match
+            // 3. For each candidate, check ServiceItem scope overlap → create instance if match
             for (Questionnaire q : candidates) {
-                // Force-load scoping collections
-                if (q.getLosList() == null) q.setLosList(new ArrayList<>());
-                else q.getLosList().size();
-                if (q.getEnhancementList() == null) q.setEnhancementList(new ArrayList<>());
-                else q.getEnhancementList().size();
+                // Force-load scoping collection
                 if (q.getServiceItemList() == null) q.setServiceItemList(new ArrayList<>());
                 else q.getServiceItemList().size();
 
-                boolean isGlobal = q.getLosList().isEmpty()
-                        && q.getEnhancementList().isEmpty()
-                        && q.getServiceItemList().isEmpty();
-
-                boolean scopeMatch = hasScopeOverlap(q, activitySiIds, activityLosIds, activityEnhIds);
+                boolean isGlobal = q.getServiceItemList().isEmpty();
+                boolean scopeMatch = hasScopeOverlap(q, activitySiIds);
                 System.out.println("[QS]   checking '" + q.getName() + "' (type=" + q.getActivityType()
                         + " global=" + isGlobal + " scopeMatch=" + scopeMatch
                         + " siScope=" + q.getServiceItemList().stream().map(si -> String.valueOf(si.getId())).toList()
@@ -307,27 +294,18 @@ public abstract class QuestionnaireService {
 
     // ── Scope Overlap Check ─────────────────────────────────────────────────
 
-    private static boolean hasScopeOverlap(Questionnaire q,
-                                           Set<Long> actSiIds, Set<Long> actLosIds, Set<Long> actEnhIds) {
-        // Check ServiceItem overlap
+    private static boolean hasScopeOverlap(Questionnaire q, Set<Long> actSiIds) {
         for (ServiceItem si : q.getServiceItemList()) {
             if (actSiIds.contains((long) si.getId())) return true;
-        }
-        // Check LOS overlap
-        for (LOS los : q.getLosList()) {
-            if (actLosIds.contains(los.getId())) return true;
-        }
-        // Check Enhancement overlap
-        for (Enhancement enh : q.getEnhancementList()) {
-            if (actEnhIds.contains(enh.getId())) return true;
         }
         return false;
     }
 
-    // ── Activity Context Helpers ─────────────────────────────────────────────
+    // ── Activity Context Helper ──────────────────────────────────────────────
 
     /**
      * Returns the Set of ServiceItem IDs relevant to the given activity.
+     * Ticket: direct FK. Setup: ApplicationModule list. Renewal: RenewalItem → Benefit → PlanType.
      */
     private static Set<Long> getActivityServiceItemIds(EntityManager em, Assignee activity) {
         Set<Long> ids = new HashSet<>();
@@ -358,69 +336,6 @@ public abstract class QuestionnaireService {
             }
         } catch (Exception e) {
             System.out.println("[QuestionnaireService] getActivityServiceItemIds error: " + e.getMessage());
-        }
-        return ids;
-    }
-
-    /**
-     * Returns the Set of LOS IDs relevant to the given activity.
-     * Only Setup activities have direct LOS associations.
-     */
-    private static Set<Long> getActivityLosIds(EntityManager em, Assignee activity) {
-        Set<Long> ids = new HashSet<>();
-        try {
-            if (activity instanceof Setup setup) {
-                Application app = setup.getApplication();
-                if (app != null) {
-                    Proposal proposal = app.getProposal();
-                    if (proposal != null && proposal.getLosList() != null) {
-                        for (LOS los : proposal.getLosList()) {
-                            ids.add(los.getId());
-                        }
-                    }
-                }
-            }
-        } catch (Exception e) {
-            System.out.println("[QuestionnaireService] getActivityLosIds error: " + e.getMessage());
-        }
-        return ids;
-    }
-
-    /**
-     * Returns the Set of Enhancement IDs relevant to the given activity.
-     * Setup: derive from ApplicationModules that link to Enhancements via ServiceItem.
-     * For now, we check if any LOS's Enhancement has a matching ServiceItem in the application modules.
-     */
-    private static Set<Long> getActivityEnhancementIds(EntityManager em, Assignee activity) {
-        Set<Long> ids = new HashSet<>();
-        try {
-            if (activity instanceof Setup setup) {
-                // Get ServiceItem IDs from application modules
-                Set<Long> siIds = new HashSet<>();
-                Application app = setup.getApplication();
-                if (app != null && app.getApplicationModuleList() != null) {
-                    for (ApplicationModule am : app.getApplicationModuleList()) {
-                        if (am.getServiceItem() != null) {
-                            siIds.add((long) am.getServiceItem().getId());
-                        }
-                    }
-                }
-                // Find Enhancements whose ServiceItem is in the module list
-                if (!siIds.isEmpty()) {
-                    List<Enhancement> enhancements = em.createQuery(
-                                    "SELECT e FROM Enhancement e WHERE e.serviceItem.id IN :siIds",
-                                    Enhancement.class)
-                            .setParameter("siIds", siIds.stream().map(Long::intValue).toList())
-                            .getResultList();
-                    if (enhancements != null) {
-                        for (Enhancement e : enhancements) {
-                            ids.add(e.getId());
-                        }
-                    }
-                }
-            }
-        } catch (Exception e) {
-            System.out.println("[QuestionnaireService] getActivityEnhancementIds error: " + e.getMessage());
         }
         return ids;
     }
