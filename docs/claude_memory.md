@@ -16,7 +16,7 @@
 ## Current State
 - **Branch:** `refactor/modernize-architecture`
 - **Latest migration:** V041
-- **Session count:** 43
+- **Session count:** 44
 - V025-V037 applied to Demo PSP, BPO, and Master; V038 applied to Demo and BPO; V039-V041 code-complete, not yet applied anywhere
 - Not yet applied to production or local dev
 - Master snapshot v8 taken 2026-03-04 (V037, fixed update.sh, fixed healthcheck.sh)
@@ -294,6 +294,15 @@
 - **Settings UI:** Two `<input type="color">` pickers with hex text sync in smtpSettingsMod25.jsp Features tab
 - **Marketing prompt:** `docs/custom-landing-page-prompt.md` — external guide for Claude marketing project on writing landing page HTML
 - **D-60** in deployment_backlog — code complete, needs V043 applied + browser testing
+
+## Session 47 (2026-03-06) — Legacy TPO Redirect + Hardcoded URL Fixes
+- **LegacyTpoRedirect.java:** Catches `/tpo` and `/tpo/*` URLs from old superiorstate.net IIS site, forwards to legacyTpo.jsp
+- **legacyTpo.jsp:** Friendly "Our Site Has Been Updated" notice page, public (no auth), uses PSP branding
+- **LoginFilter.java:** Added `path.startsWith("/tpo")` to allowedPath bypass
+- **Hardcoded URL audit:** Replaced `superiorstate.biz` in SendProposal.java, ProposalDetail.java, proposalDetail.jsp with `AmsDataGlobal.getWebPath()`
+- **PSP entity has no phone/email** — removed invalid EL references from legacyTpo.jsp
+- **DNS/SSL migration:** superiorstate.net now points to same Linux box, Nginx + certbot configured
+- **Backlog #26:** Legacy TPO Path → Opportunity Creation (extract full path for old quote/prospect lookup)
 
 ## Reference
 - Full session archive: `docs/analysis/session_history_archive.md`

@@ -64,7 +64,7 @@
             <h6 class="text-muted mb-1">Proposal Link</h6>
             <div class="input-group">
                 <input type="text" class="form-control guid-link" id="guidLink" size="70"
-                       value="https://superiorstate.biz/proposal/${proposal.getApplicationGUID()}" readonly>
+                       value="${applicationScope.global.webPath}proposal/${proposal.getApplicationGUID()}" readonly>
                 <button class="btn btn-outline-secondary" type="button" onclick="copyLink()">
                     <i class="bi bi-clipboard me-1"></i>Copy
                 </button>

@@ -100,6 +100,7 @@
 | 23 | Questionnaire Completion Gating | LOW | 💡 Backlog | Phase 7: optional `todo_id` linkage on QuestionnaireInstance — blocks task completion until questionnaire is SUBMITTED/REVIEWED. |
 | 24 | Shared Field Renderer Component | LOW | 💡 Backlog | Phase 8: extract reusable `fieldRenderer.jsp` from questionnaire and application form rendering. |
 | 25 | Proposal Content Page Skill | MED | ✅ Done | Claude Code skill (`.claude/skills/proposal-content-page/`) generates styled HTML blocks for proposal custom pages. Dark navy card-inset pattern, `--s` scale factor, scoped CSS, print-ready layout. Reference examples in `docs/proposal-fsa-page*.html`. Useful for building content library and proposal inserts. |
+| 26 | Legacy TPO Path → Opportunity Creation | MED | 💡 Backlog | When `/tpo/*` path is hit, auto-create an Opportunity for the agency manager. Extract the full original path sought (e.g. `/tpo/quote/12345`) so previous quote/prospect info can be looked up from the old superiorstate.net IIS site. Currently `/tpo/*` shows a static "site updated" notice page (`LegacyTpoRedirect`). |
 
 ---
 

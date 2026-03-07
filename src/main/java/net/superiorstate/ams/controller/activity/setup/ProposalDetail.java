@@ -6,6 +6,7 @@ import jakarta.persistence.Query;
 import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
+import net.superiorstate.ams.data.AmsDataGlobal;
 import net.superiorstate.ams.data.AmsDataLocal;
 import net.superiorstate.ams.data.dao.EmailDAO;
 import net.superiorstate.ams.data.dao.SalesDAO;
@@ -67,7 +68,8 @@ public class ProposalDetail extends HttpServlet {
                 String toEmail = contact.getEmail();
                 String fromEmail = sender.getEmail();
 
-                String proposalLink = "https://superiorstate.biz/proposal/" + proposal.getApplicationGUID();
+                AmsDataGlobal global = (AmsDataGlobal) getServletContext().getAttribute("global");
+                String proposalLink = global.getWebPath() + "proposal/" + proposal.getApplicationGUID();
                 String prospectName = contact.getFirstName() != null ? contact.getFirstName() : "there";
 
                 String bodyHtml = "<p>Hi " + prospectName + ",</p>"
