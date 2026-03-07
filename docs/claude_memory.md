@@ -279,6 +279,22 @@
 - PspClient.autoAcceptTasks: toggle exists but not wired — all tasks land as ACTIVE (future project)
 - D-59 in deployment_backlog — code complete, no migration needed
 
+## Custom Landing Page System (V043, Sessions 45–46)
+- **V043 migration:** `text_value TEXT` nullable column on `constant` table for storing large HTML content
+- **Constant.java:** new `textValue` field (separate from `value` VARCHAR)
+- **login.java:** routing logic — if `USE_CUSTOM_LANDING=true` and HTML content exists, forward to `customLanding25.jsp`; otherwise forward to legacy `Landing25`
+- **customLanding25.jsp:** wrapper page with fixed header, login modal, IntersectionObserver for scroll animations
+- **Custom landing HTML stored in** `CUSTOM_LANDING_HTML` constant's `textValue` column, saved/loaded via `UpdatePspSettings`
+- **sanitizeHtml():** Strips `<script>`, `on*` handlers, `javascript:` protocols. Preserves `<style>` blocks intentionally.
+- **Wrapper IntersectionObserver:** Elements with `.ss-fade` or `.fade-in` get `.ss-visible`/`.visible` added on scroll into view. Smooth scroll for anchor links.
+- **CSS-only animations:** Hero uses `@keyframes` (no JS needed). `<script>` blocks in content are stripped on save — use CSS animations + wrapper observer only.
+- **RequestQuote.java:** Public servlet at `/RequestQuote`, collects prospect info (name, contact, company, employees, services, notes), creates Opportunity
+- **requestQuote25.jsp:** Card-based form with dynamic header colors from AmsDataGlobal
+- **Configurable header colors:** `LANDING_HEADER_COLOR` (default `#0d5681`) and `LANDING_HEADER_TEXT_COLOR` (default `#ffffff`) — stored as constants, loaded in AmsDataGlobal, used in customLanding25.jsp and requestQuote25.jsp
+- **Settings UI:** Two `<input type="color">` pickers with hex text sync in smtpSettingsMod25.jsp Features tab
+- **Marketing prompt:** `docs/custom-landing-page-prompt.md` — external guide for Claude marketing project on writing landing page HTML
+- **D-60** in deployment_backlog — code complete, needs V043 applied + browser testing
+
 ## Reference
 - Full session archive: `docs/analysis/session_history_archive.md`
 - Deployment backlog: `docs/deployment_backlog.md`

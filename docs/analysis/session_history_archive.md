@@ -2,7 +2,7 @@
 
 > **Purpose:** Consolidated historical record of all build sessions. For current project state, see `project_backlog.md`. For current architecture, see `application_flow.md` and `entity_reference.md`.
 >
-> **Last Updated:** March 16, 2026 (Session 44)
+> **Last Updated:** March 20, 2026 (Session 46)
 
 ---
 
@@ -1522,3 +1522,59 @@ When a recurring checklist spawns its next cycle, sourced tasks were not pushed 
 - `PartnershipApproveApi.java` — global cache refresh after approval
 - `CloseActivity25.java` — BPO push on recurring spawn
 - `AmsDataLocal.java` — BPO push on recurring spawn (2 cases)
+
+---
+
+## March 18–20, 2026 — Custom Landing Page & Request a Quote (Sessions 45–46)
+
+Custom landing page system for PSPs, public Request a Quote form, and configurable header bar colors.
+
+### V043 Migration
+Added `text_value TEXT` nullable column to the `constant` table for storing large HTML content (landing page HTML). `Constant.java` entity updated with `textValue` field.
+
+### Custom Landing Page
+- **login.java** routing: checks `USE_CUSTOM_LANDING` flag and `CUSTOM_LANDING_HTML` content; if both exist, renders custom landing; otherwise falls back to legacy `Landing25` page
+- **customLanding25.jsp** wrapper: fixed header bar (logo + Login button), `landing-body` div receives admin-authored HTML, login modal, IntersectionObserver for scroll animations, smooth scroll for anchor links
+- **UpdatePspSettings.java** saves landing HTML via AJAX `action=saveLandingHtml`, sanitizes (strips `<script>`, `on*` handlers, `javascript:` protocols), stores in `CUSTOM_LANDING_HTML` constant's `textValue`
+- **smtpSettingsMod25.jsp** Features tab: custom landing toggle + CodeMirror HTML editor panel for authoring content
+
+### Request a Quote
+- **RequestQuote.java** servlet at `/RequestQuote` — public (bypasses LoginFilter), creates Person + Opportunity from form data
+- **requestQuote25.jsp** — standalone card-based form collecting name, contact preference, company, employees, services of interest, notes
+- Notes use `<br>` (not `\n`) in `buildNoteText()` for proper display in AMS UI
+
+### Invisible Sections Fix
+Landing page `.ss-fade` elements (services, differentiator, CTA sections) invisible because `sanitizeHtml()` stripped the IntersectionObserver `<script>`. Fixed by moving the observer into the wrapper JSP where it's not subject to sanitization.
+
+### Configurable Header Colors
+- **LANDING_HEADER_COLOR** and **LANDING_HEADER_TEXT_COLOR** constants (defaults `#0d5681` / `#ffffff`)
+- Loaded in `AmsDataGlobal.setConstants()`, used in `customLanding25.jsp` and `requestQuote25.jsp` via EL expressions
+- **Settings UI:** two `<input type="color">` pickers with hex text input sync in Features tab
+- No migration needed — constants upserted on first save via `upsertConstant()`
+
+### Marketing Prompt Doc
+Created `docs/custom-landing-page-prompt.md` — comprehensive guide for external Claude marketing project on how to author HTML content for the custom landing page (wrapper constraints, RequestQuote integration, design guidelines, animation system).
+
+### Files Created
+- `docs/custom-landing-page-prompt.md` — marketing prompt for landing page HTML authoring
+- `docs/sample-landing-content.html` — reference landing page HTML
+- `docs/migrations/V043__custom_landing_page.sql` — text_value column on constant table
+- `src/main/java/net/superiorstate/ams/controller/market/RequestQuote.java` — public quote form servlet
+- `src/main/webapp/WEB-INF/view/authentication/customLanding25.jsp` — landing page wrapper
+- `src/main/webapp/WEB-INF/view/market/requestQuote25.jsp` — quote form JSP
+- `src/main/webapp/images/logo_alt.png`, `logo_base.png` — logo variants
+
+### Files Modified
+- `login.java` — custom landing routing logic
+- `LoginFilter.java` — whitelist `/RequestQuote`
+- `AuthenticateUser.java` — redirect to custom landing after login error
+- `LogOut.java` — redirect to custom landing on logout
+- `Constant.java` — `textValue` field + getter/setter
+- `AmsDataGlobal.java` — landing HTML cache, header color fields/getters
+- `DatabaseInitializer.java` — seed `USE_CUSTOM_LANDING` constant
+- `Opportunity.java` — field addition
+- `UpdatePspSettings.java` — color constants GET/POST, landing HTML AJAX save, HTML sanitizer
+- `smtpSettingsMod25.jsp` — color pickers, landing HTML editor
+- `requestQuote25.jsp` — dynamic header colors
+- `customLanding25.jsp` — dynamic header colors, IntersectionObserver
+- `TaskReceiveApi.java`, `BpoRecurringHistory.java` — unrelated modifications

@@ -16,6 +16,9 @@ public class Constant {
     @Column(name="note")
     private String note;
 
+    @Column(name="text_value", columnDefinition = "text")
+    private String textValue;
+
     public Constant(){}
 
     public String getName() {
@@ -40,5 +43,13 @@ public class Constant {
 
     public void setNote(String note) {
         this.note = note;
+    }
+
+    public String getTextValue() {
+        return textValue;
+    }
+
+    public void setTextValue(String textValue) {
+        this.textValue = textValue;
     }
 }

@@ -99,6 +99,10 @@ public class AmsDataGlobal {
     private boolean chatbotEnabled;
     private boolean useTimeclock = true;
     private boolean useFriendlyNames = true;
+    private boolean useCustomLanding = false;
+    private String customLandingHtml;
+    private String landingHeaderColor = "#0d5681";
+    private String landingHeaderTextColor = "#ffffff";
     private String schemaVersion = "Unknown";
     private String brandingPath;
     private List<Activity25u> activitiesAllOpen;
@@ -283,6 +287,26 @@ public class AmsDataGlobal {
             String ufn = getConstantValue(em, "USE_FRIENDLY_NAMES");
             this.useFriendlyNames = !"false".equalsIgnoreCase(ufn);
         } catch (Exception e) { this.useFriendlyNames = true; }
+
+        try {
+            String ucl = getConstantValue(em, "USE_CUSTOM_LANDING");
+            this.useCustomLanding = "true".equalsIgnoreCase(ucl);
+        } catch (Exception e) { this.useCustomLanding = false; }
+
+        try {
+            Constant clc = AppConstantDAO.getConstant(em, "CUSTOM_LANDING_HTML");
+            this.customLandingHtml = (clc != null) ? clc.getTextValue() : null;
+        } catch (Exception e) { this.customLandingHtml = null; }
+
+        try {
+            String lhc = getConstantValue(em, "LANDING_HEADER_COLOR");
+            this.landingHeaderColor = (lhc != null && !lhc.isBlank()) ? lhc : "#0d5681";
+        } catch (Exception e) { this.landingHeaderColor = "#0d5681"; }
+
+        try {
+            String lhtc = getConstantValue(em, "LANDING_HEADER_TEXT_COLOR");
+            this.landingHeaderTextColor = (lhtc != null && !lhtc.isBlank()) ? lhtc : "#ffffff";
+        } catch (Exception e) { this.landingHeaderTextColor = "#ffffff"; }
 
         String smtpPassword;
         try{
@@ -528,6 +552,10 @@ public class AmsDataGlobal {
     public boolean isChatbotEnabled() { return chatbotEnabled; }
     public boolean isUseTimeclock() { return useTimeclock; }
     public boolean isUseFriendlyNames() { return useFriendlyNames; }
+    public boolean isUseCustomLanding() { return useCustomLanding; }
+    public String getCustomLandingHtml() { return customLandingHtml; }
+    public String getLandingHeaderColor() { return landingHeaderColor; }
+    public String getLandingHeaderTextColor() { return landingHeaderTextColor; }
     public String getSchemaVersion() { return schemaVersion; }
     public PSP getPsp() {
         return psp;

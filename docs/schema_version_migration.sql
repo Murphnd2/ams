@@ -62,4 +62,5 @@ INSERT IGNORE INTO schema_version (version, description, script_name) VALUES
 ('V039', 'Questionnaire system: templates, fields, instances, values, scoping', 'V039__questionnaire_system.sql'),
 ('V040', 'Add recurring_series_id to delegated_todo for BPO recurring history', 'V040__delegated_todo_recurring_series.sql'),
 ('V041', 'Add reviewer tracking fields to application table', 'V041__application_reviewer_fields.sql'),
-('V042', 'BPO pending approval workflow - status PENDING support', 'V042__delegated_todo_pending_status.sql');
+('V042', 'BPO pending approval workflow - status PENDING support', 'V042__delegated_todo_pending_status.sql'),
+('V043', 'Add text_value column to constant for custom landing page HTML', 'V043__custom_landing_page.sql');

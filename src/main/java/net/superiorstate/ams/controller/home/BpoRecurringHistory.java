@@ -55,7 +55,8 @@ public class BpoRecurringHistory extends HttpServlet {
 
         try {
             // Fetch up to 6 most-recent completed delegated todos for this series + client
-            List<DelegatedToDo> past = em.createQuery(
+            // Bypass L2 cache to ensure freshly-completed tasks are visible
+            var query = em.createQuery(
                 "SELECT d FROM DelegatedToDo d " +
                 "WHERE d.recurringSeriesId = :seriesId " +
                 "AND d.pspClient.id = :clientId " +
@@ -64,8 +65,12 @@ public class BpoRecurringHistory extends HttpServlet {
                 DelegatedToDo.class)
                 .setParameter("seriesId", recurringSeriesId)
                 .setParameter("clientId", pspClientId)
-                .setMaxResults(6)
-                .getResultList();
+                .setMaxResults(6);
+            query.setHint("jakarta.persistence.cache.storeMode", "REFRESH");
+            List<DelegatedToDo> past = query.getResultList();
+
+            System.out.println("[BPO] RecurringHistory: seriesId=" + recurringSeriesId
+                + " clientId=" + pspClientId + " found=" + past.size());
 
             response.setContentType("application/json");
             StringBuilder json = new StringBuilder("[");

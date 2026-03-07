@@ -102,8 +102,6 @@ public class TaskReceiveApi extends HttpServlet {
                 dt.setEmployerName(getJsonString(t, "employerName"));
                 dt.setGotoLink(getJsonString(t, "gotoLink"));
                 dt.setInfoLink(getJsonString(t, "infoLink"));
-                dt.setStatus(pspClient.isAutoAcceptTasks() ? "ACTIVE" : "PENDING");
-
                 String sortOrderStr = getJsonString(t, "sortOrder");
                 if (sortOrderStr != null) {
                     try { dt.setSortOrder(Integer.parseInt(sortOrderStr)); } catch (NumberFormatException ignored) {}
@@ -112,6 +110,24 @@ public class TaskReceiveApi extends HttpServlet {
                 String recurringSeriesId = getJsonString(t, "recurringSeriesId");
                 if (recurringSeriesId != null && !recurringSeriesId.isBlank()) {
                     dt.setRecurringSeriesId(recurringSeriesId);
+                }
+
+                // Determine status: auto-accept if toggle is ON, or if this is a
+                // recurring task that was previously accepted for this PSP
+                if (pspClient.isAutoAcceptTasks()) {
+                    dt.setStatus("ACTIVE");
+                } else if (recurringSeriesId != null && !recurringSeriesId.isBlank()) {
+                    long priorAccepted = (Long) em.createQuery(
+                            "SELECT COUNT(d) FROM DelegatedToDo d " +
+                            "WHERE d.recurringSeriesId = :seriesId " +
+                            "AND d.pspClient.id = :clientId " +
+                            "AND d.status <> 'PENDING'")
+                        .setParameter("seriesId", recurringSeriesId)
+                        .setParameter("clientId", pspClient.getId())
+                        .getSingleResult();
+                    dt.setStatus(priorAccepted > 0 ? "ACTIVE" : "PENDING");
+                } else {
+                    dt.setStatus("PENDING");
                 }
 
                 String dueDateStr = getJsonString(t, "dueDate");

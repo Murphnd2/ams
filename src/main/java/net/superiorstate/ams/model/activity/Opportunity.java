@@ -104,6 +104,7 @@ public class Opportunity extends Activity {
     public void setManagedBy(Person managedBy) {
         this.managedBy = managedBy;
     }
+
     @Override
     public String getFullName() {
         if (this.getProspect() != null)

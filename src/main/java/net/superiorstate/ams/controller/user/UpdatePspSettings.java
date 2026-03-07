@@ -13,12 +13,14 @@ import net.superiorstate.ams.model.Constant;
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.util.regex.Pattern;
 
 /**
  * PSP Settings — Admin modal for viewing/updating SMTP and feature configuration.
  *
  * GET  → Returns current settings as JSON (AJAX, called when modal opens)
  * POST → Updates constants in DB, reloads global cache, redirects home
+ *        Also handles AJAX action=saveLandingHtml for custom landing page content.
  */
 @WebServlet(name = "UpdatePspSettings", value = "/UpdatePspSettings")
 public class UpdatePspSettings extends HttpServlet {
@@ -28,8 +30,21 @@ public class UpdatePspSettings extends HttpServlet {
     };
 
     private static final String[] FEATURE_KEYS = {
-            "USE_TIMECLOCK", "USE_FRIENDLY_NAMES"
+            "USE_TIMECLOCK", "USE_FRIENDLY_NAMES", "USE_CUSTOM_LANDING"
     };
+
+    // HTML sanitization patterns — strips scripts, event handlers, javascript: protocols.
+    // Intentionally preserves <style> blocks for rich landing page HTML.
+    private static final Pattern SCRIPT_PATTERN =
+            Pattern.compile("<script[\\s\\S]*?>[\\s\\S]*?</script>", Pattern.CASE_INSENSITIVE);
+    private static final Pattern EVENT_HANDLER_PATTERN =
+            Pattern.compile("(?i)\\s*on[a-z]+\\s*=\\s*\"[^\"]*\"");
+    private static final Pattern EVENT_HANDLER_SINGLE_PATTERN =
+            Pattern.compile("(?i)\\s*on[a-z]+\\s*=\\s*'[^']*'");
+    private static final Pattern JS_PROTOCOL_PATTERN =
+            Pattern.compile("(?i)(href|src)\\s*=\\s*\"\\s*javascript:[^\"]*\"");
+    private static final Pattern JS_PROTOCOL_SINGLE_PATTERN =
+            Pattern.compile("(?i)(href|src)\\s*=\\s*'\\s*javascript:[^']*'");
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
@@ -62,7 +77,7 @@ public class UpdatePspSettings extends HttpServlet {
             // Feature settings
             for (int i = 0; i < FEATURE_KEYS.length; i++) {
                 String val = AppConstantDAO.getConstantValue(em, FEATURE_KEYS[i]);
-                if (val == null) val = "true";
+                if (val == null) val = "USE_CUSTOM_LANDING".equals(FEATURE_KEYS[i]) ? "false" : "true";
                 json.append("\"").append(FEATURE_KEYS[i]).append("\":\"")
                     .append(escapeJson(val)).append("\"");
                 json.append(",");
@@ -71,7 +86,21 @@ public class UpdatePspSettings extends HttpServlet {
             // Numeric settings
             String dsw = AppConstantDAO.getConstantValue(em, "DAYS_SINCE_WARNING");
             if (dsw == null) dsw = "7";
-            json.append("\"DAYS_SINCE_WARNING\":\"").append(escapeJson(dsw)).append("\"");
+            json.append("\"DAYS_SINCE_WARNING\":\"").append(escapeJson(dsw)).append("\",");
+
+            // Landing page color settings
+            String lhc = AppConstantDAO.getConstantValue(em, "LANDING_HEADER_COLOR");
+            if (lhc == null || lhc.isBlank()) lhc = "#0d5681";
+            json.append("\"LANDING_HEADER_COLOR\":\"").append(escapeJson(lhc)).append("\",");
+
+            String lhtc = AppConstantDAO.getConstantValue(em, "LANDING_HEADER_TEXT_COLOR");
+            if (lhtc == null || lhtc.isBlank()) lhtc = "#ffffff";
+            json.append("\"LANDING_HEADER_TEXT_COLOR\":\"").append(escapeJson(lhtc)).append("\",");
+
+            // Landing page HTML content (from text_value column)
+            Constant clc = AppConstantDAO.getConstant(em, "CUSTOM_LANDING_HTML");
+            String landingHtml = (clc != null && clc.getTextValue() != null) ? clc.getTextValue() : "";
+            json.append("\"CUSTOM_LANDING_HTML\":\"").append(escapeJson(landingHtml)).append("\"");
 
             json.append("}");
             out.print(json);
@@ -87,6 +116,13 @@ public class UpdatePspSettings extends HttpServlet {
 
         if (!isPspAdmin(request)) {
             response.sendRedirect("ViewHome25");
+            return;
+        }
+
+        // Check for AJAX action (landing page HTML save)
+        String action = request.getParameter("action");
+        if ("saveLandingHtml".equals(action)) {
+            saveLandingHtml(request, response);
             return;
         }
 
@@ -111,6 +147,14 @@ public class UpdatePspSettings extends HttpServlet {
             upsertConstant(em, "USE_TIMECLOCK", "on".equals(useTimeclock) ? "true" : "false");
             String useFriendlyNames = request.getParameter("useFriendlyNames");
             upsertConstant(em, "USE_FRIENDLY_NAMES", "on".equals(useFriendlyNames) ? "true" : "false");
+            String useCustomLanding = request.getParameter("useCustomLanding");
+            upsertConstant(em, "USE_CUSTOM_LANDING", "on".equals(useCustomLanding) ? "true" : "false");
+
+            // Landing page color settings
+            String headerColor = request.getParameter("landingHeaderColor");
+            upsertConstant(em, "LANDING_HEADER_COLOR", headerColor != null && !headerColor.isBlank() ? headerColor.trim() : "#0d5681");
+            String headerTextColor = request.getParameter("landingHeaderTextColor");
+            upsertConstant(em, "LANDING_HEADER_TEXT_COLOR", headerTextColor != null && !headerTextColor.isBlank() ? headerTextColor.trim() : "#ffffff");
 
             // Numeric settings
             String dswParam = request.getParameter("daysSinceWarning");
@@ -138,6 +182,49 @@ public class UpdatePspSettings extends HttpServlet {
         }
 
         response.sendRedirect("ViewHome25");
+    }
+
+    /**
+     * AJAX handler: saves custom landing page HTML into the CUSTOM_LANDING_HTML constant's text_value column.
+     */
+    private void saveLandingHtml(HttpServletRequest request, HttpServletResponse response) throws IOException {
+        EntityManagerFactory emf = (EntityManagerFactory) getServletContext().getAttribute("emf");
+        EntityManager em = emf.createEntityManager();
+
+        try {
+            String htmlContent = request.getParameter("landingHtml");
+            String sanitized = sanitizeHtml(htmlContent);
+
+            em.getTransaction().begin();
+            Constant c = AppConstantDAO.getConstant(em, "CUSTOM_LANDING_HTML");
+            if (c != null) {
+                c.setTextValue(sanitized);
+                em.merge(c);
+            } else {
+                c = new Constant();
+                c.setName("CUSTOM_LANDING_HTML");
+                c.setValue("");
+                c.setTextValue(sanitized);
+                em.persist(c);
+            }
+            em.getTransaction().commit();
+
+            // Reload global cache
+            AmsDataGlobal global = (AmsDataGlobal) getServletContext().getAttribute("global");
+            if (global != null) {
+                global.initializeGlobalData(em);
+            }
+
+            response.setContentType("application/json");
+            response.getWriter().print("{\"status\":\"ok\"}");
+        } catch (Exception e) {
+            if (em.getTransaction().isActive()) em.getTransaction().rollback();
+            e.printStackTrace();
+            response.setContentType("application/json");
+            response.getWriter().print("{\"status\":\"error\"}");
+        } finally {
+            em.close();
+        }
     }
 
     /**
@@ -169,5 +256,21 @@ public class UpdatePspSettings extends HttpServlet {
                 .replace("\n", "\\n")
                 .replace("\r", "\\r")
                 .replace("\t", "\\t");
+    }
+
+    /**
+     * HTML sanitization for trusted PSP admin users.
+     * Strips: <script> tags, on* event handlers, javascript: protocols.
+     * Preserves: <style> blocks, inline styles, CSS variables.
+     */
+    static String sanitizeHtml(String html) {
+        if (html == null) return "";
+        String result = html;
+        result = SCRIPT_PATTERN.matcher(result).replaceAll("");
+        result = EVENT_HANDLER_PATTERN.matcher(result).replaceAll("");
+        result = EVENT_HANDLER_SINGLE_PATTERN.matcher(result).replaceAll("");
+        result = JS_PROTOCOL_PATTERN.matcher(result).replaceAll("$1=\"\"");
+        result = JS_PROTOCOL_SINGLE_PATTERN.matcher(result).replaceAll("$1=''");
+        return result;
     }
 }

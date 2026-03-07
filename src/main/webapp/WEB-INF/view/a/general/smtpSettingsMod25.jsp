@@ -112,6 +112,69 @@
                     </div>
                   </div>
                 </div>
+                <%-- Custom Landing Page toggle --%>
+                <div class="mb-3">
+                  <div class="d-flex align-items-center justify-content-between p-3 rounded" style="background:#f8f9fb; border:1px solid #dee2e6;">
+                    <div>
+                      <div class="fw-semibold" style="font-size:0.85rem;"><i class="bi bi-house-door me-1"></i>Custom Landing Page</div>
+                      <div class="text-muted" style="font-size:0.75rem;">Show a branded landing page instead of the plain login screen.</div>
+                    </div>
+                    <div class="form-check form-switch ms-3">
+                      <input class="form-check-input" type="checkbox" role="switch" name="useCustomLanding" id="useCustomLanding" style="width:2.5em; height:1.25em;"
+                             onchange="document.getElementById('landingEditorPanel').style.display = this.checked ? '' : 'none';">
+                    </div>
+                  </div>
+                </div>
+                <%-- Landing page settings (collapsed when toggle is off) --%>
+                <div id="landingEditorPanel" style="display:none;" class="mb-3">
+                  <%-- Header color pickers --%>
+                  <div class="p-3 rounded mb-2" style="background:#f8f9fb; border:1px solid #dee2e6;">
+                    <label class="form-label fw-semibold m-0 mb-2" style="font-size:0.82rem;"><i class="bi bi-palette me-1"></i>Header Bar Colors</label>
+                    <div class="row g-2">
+                      <div class="col-6">
+                        <label class="form-label text-muted m-0" style="font-size:0.75rem;">Background</label>
+                        <div class="d-flex align-items-center gap-2">
+                          <input type="color" name="landingHeaderColor" id="landingHeaderColor" value="#0d5681"
+                                 class="form-control form-control-sm p-0 border-0" style="width:36px; height:36px; cursor:pointer;">
+                          <input type="text" id="landingHeaderColorHex" class="form-control form-control-sm" style="width:90px; font-size:0.78rem; font-family:monospace;"
+                                 value="#0d5681" maxlength="7"
+                                 oninput="var v=this.value; if(/^#[0-9a-fA-F]{6}$/.test(v)) document.getElementById('landingHeaderColor').value=v;"
+                                 onchange="var v=this.value; if(/^#[0-9a-fA-F]{6}$/.test(v)) document.getElementById('landingHeaderColor').value=v;">
+                        </div>
+                      </div>
+                      <div class="col-6">
+                        <label class="form-label text-muted m-0" style="font-size:0.75rem;">Text / Button</label>
+                        <div class="d-flex align-items-center gap-2">
+                          <input type="color" name="landingHeaderTextColor" id="landingHeaderTextColor" value="#ffffff"
+                                 class="form-control form-control-sm p-0 border-0" style="width:36px; height:36px; cursor:pointer;">
+                          <input type="text" id="landingHeaderTextColorHex" class="form-control form-control-sm" style="width:90px; font-size:0.78rem; font-family:monospace;"
+                                 value="#ffffff" maxlength="7"
+                                 oninput="var v=this.value; if(/^#[0-9a-fA-F]{6}$/.test(v)) document.getElementById('landingHeaderTextColor').value=v;"
+                                 onchange="var v=this.value; if(/^#[0-9a-fA-F]{6}$/.test(v)) document.getElementById('landingHeaderTextColor').value=v;">
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <%-- Landing page HTML editor --%>
+                  <div class="p-3 rounded" style="background:#f8f9fb; border:1px solid #dee2e6;">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                      <label class="form-label fw-semibold m-0" style="font-size:0.82rem;">Landing Page HTML</label>
+                      <div>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="toggleLandingPreview()">
+                          <i class="bi bi-eye me-1"></i><span id="landingPreviewLabel">Preview</span>
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-primary ms-1" onclick="saveLandingHtml()">
+                          <i class="bi bi-floppy me-1"></i>Save HTML
+                        </button>
+                      </div>
+                    </div>
+                    <textarea id="landingHtmlEditor" class="form-control" rows="12"
+                              style="font-family: 'Courier New', monospace; font-size:0.78rem; display:block;"
+                              placeholder="Paste your landing page HTML here..."></textarea>
+                    <iframe id="landingHtmlPreview" style="width:100%; height:300px; border:1px solid #dee2e6; border-radius:4px; display:none; background:#fff;"></iframe>
+                    <div id="landingHtmlStatus" class="mt-1" style="font-size:0.75rem;"></div>
+                  </div>
+                </div>
               </div>
 
               <%-- ═══ TOOLS TAB ═══ --%>
@@ -201,6 +264,15 @@
         document.getElementById('emailFooterText').value = data.EMAIL_FOOTER_TEXT || '';
         document.getElementById('useTimeclock').checked = (data.USE_TIMECLOCK !== 'false');
         document.getElementById('useFriendlyNames').checked = (data.USE_FRIENDLY_NAMES !== 'false');
+        document.getElementById('useCustomLanding').checked = (data.USE_CUSTOM_LANDING === 'true');
+        document.getElementById('landingHtmlEditor').value = data.CUSTOM_LANDING_HTML || '';
+        document.getElementById('landingEditorPanel').style.display = (data.USE_CUSTOM_LANDING === 'true') ? '' : 'none';
+        var hc = data.LANDING_HEADER_COLOR || '#0d5681';
+        var htc = data.LANDING_HEADER_TEXT_COLOR || '#ffffff';
+        document.getElementById('landingHeaderColor').value = hc;
+        document.getElementById('landingHeaderColorHex').value = hc;
+        document.getElementById('landingHeaderTextColor').value = htc;
+        document.getElementById('landingHeaderTextColorHex').value = htc;
         document.getElementById('daysSinceWarning').value = data.DAYS_SINCE_WARNING || '7';
         document.getElementById('settingsLoading').style.display = 'none';
         document.getElementById('settingsFields').style.display = '';
@@ -210,6 +282,14 @@
         document.getElementById('settingsLoading').style.display = 'none';
         document.getElementById('settingsError').style.display = '';
       });
+  });
+
+  // Sync color picker → hex text input
+  document.getElementById('landingHeaderColor').addEventListener('input', function() {
+    document.getElementById('landingHeaderColorHex').value = this.value;
+  });
+  document.getElementById('landingHeaderTextColor').addEventListener('input', function() {
+    document.getElementById('landingHeaderTextColorHex').value = this.value;
   });
 
   // Toggle password visibility
@@ -223,5 +303,46 @@
       pw.type = 'password';
       icon.className = 'bi bi-eye';
     }
+  }
+
+  // Landing page HTML preview toggle
+  function toggleLandingPreview() {
+    var editor = document.getElementById('landingHtmlEditor');
+    var preview = document.getElementById('landingHtmlPreview');
+    var label = document.getElementById('landingPreviewLabel');
+    if (editor.style.display !== 'none') {
+      preview.srcdoc = editor.value;
+      editor.style.display = 'none';
+      preview.style.display = 'block';
+      label.textContent = 'Edit HTML';
+    } else {
+      editor.style.display = 'block';
+      preview.style.display = 'none';
+      label.textContent = 'Preview';
+    }
+  }
+
+  // Save landing HTML via AJAX (separate from main form save)
+  function saveLandingHtml() {
+    var html = document.getElementById('landingHtmlEditor').value;
+    var status = document.getElementById('landingHtmlStatus');
+    status.innerHTML = '<span class="text-muted"><i class="bi bi-arrow-repeat"></i> Saving...</span>';
+    fetch('UpdatePspSettings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: 'action=saveLandingHtml&landingHtml=' + encodeURIComponent(html)
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.status === 'ok') {
+        status.innerHTML = '<span class="text-success"><i class="bi bi-check-circle"></i> Saved.</span>';
+      } else {
+        status.innerHTML = '<span class="text-danger"><i class="bi bi-x-circle"></i> Save failed.</span>';
+      }
+      setTimeout(function() { status.innerHTML = ''; }, 3000);
+    })
+    .catch(function() {
+      status.innerHTML = '<span class="text-danger"><i class="bi bi-x-circle"></i> Save failed.</span>';
+    });
   }
 </script>

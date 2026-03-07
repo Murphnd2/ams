@@ -1,0 +1,265 @@
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Source+Sans+3:ital,wght@0,300;0,400;0,600;0,700;1,400&display=swap');
+  .hra105 {
+    --s: 1;
+    --navy: #1B2A4A;
+    --navy-lt: #243B5C;
+    --navy-text: #232F3E;
+    --teal: #2A7F8E;
+    --body: #3D4A5C;
+    --muted: #6B7A8D;
+    --white: #ffffff;
+    --border: #DDE2EA;
+    --light-bg: #F4F6FA;
+    font-family: 'Source Sans 3', 'Liberation Sans', Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .hra105 .card-inset {
+    background: var(--white);
+    border-radius: 12px;
+    padding: calc(2.25rem * var(--s)) calc(2.5rem * var(--s)) calc(2rem * var(--s));
+    color: var(--navy-text);
+    min-height: calc(11in - 1.5in);
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* --- Title --- */
+  .hra105 h1 {
+    font-size: calc(26pt * var(--s));
+    font-weight: 700;
+    color: var(--navy);
+    margin: 0 0 calc(1.1rem * var(--s)) 0;
+    line-height: 1.15;
+  }
+
+  /* --- Row grids --- */
+  .hra105 .row-2col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: calc(0.75rem * var(--s));
+    margin-bottom: calc(0.75rem * var(--s));
+  }
+  .hra105 .row-3col {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: calc(0.75rem * var(--s));
+    flex: 1;
+  }
+
+  /* --- Plan card --- */
+  .hra105 .plan-card {
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* Card header — dark navy band */
+  .hra105 .plan-header {
+    background: var(--navy);
+    padding: calc(0.65rem * var(--s)) calc(0.95rem * var(--s));
+    display: flex;
+    align-items: center;
+    gap: calc(0.45rem * var(--s));
+  }
+  .hra105 .plan-header svg {
+    width: calc(16px * var(--s));
+    height: calc(16px * var(--s));
+    color: var(--white);
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.6;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    flex-shrink: 0;
+    opacity: 0.7;
+  }
+  .hra105 .plan-tag {
+    font-size: calc(7.5pt * var(--s));
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.75);
+  }
+
+  /* Card body */
+  .hra105 .plan-body {
+    padding: calc(0.85rem * var(--s)) calc(0.95rem * var(--s));
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+  }
+  .hra105 .plan-body h3 {
+    font-size: calc(11pt * var(--s));
+    font-weight: 700;
+    color: var(--navy);
+    margin: 0 0 calc(0.3rem * var(--s)) 0;
+    line-height: 1.2;
+  }
+  .hra105 .plan-body .desc {
+    font-size: calc(8.5pt * var(--s));
+    line-height: 1.6;
+    color: var(--body);
+    margin: 0 0 calc(0.55rem * var(--s)) 0;
+  }
+  .hra105 .plan-body .desc strong {
+    font-weight: 700;
+    color: var(--navy);
+  }
+
+  /* Key rules heading */
+  .hra105 .rules-label {
+    font-size: calc(9pt * var(--s));
+    font-weight: 700;
+    color: var(--teal);
+    margin: 0 0 calc(0.25rem * var(--s)) 0;
+    padding-top: calc(0.35rem * var(--s));
+    border-top: 1.5px solid var(--border);
+  }
+
+  /* Bullet list */
+  .hra105 .plan-body ul {
+    margin: 0;
+    padding: 0 0 0 calc(1rem * var(--s));
+    list-style: disc;
+  }
+  .hra105 .plan-body li {
+    font-size: calc(7.5pt * var(--s));
+    line-height: 1.5;
+    color: var(--body);
+    margin-bottom: calc(0.15rem * var(--s));
+  }
+  .hra105 .plan-body li strong {
+    font-weight: 700;
+    color: var(--navy);
+  }
+
+  @media print {
+    .hra105 .card-inset { min-height: auto; }
+  }
+  @media (max-width: 700px) {
+    .hra105 .card-inset { padding: calc(1.5rem * var(--s)); }
+    .hra105 .row-2col { grid-template-columns: 1fr; }
+    .hra105 .row-3col { grid-template-columns: 1fr; }
+  }
+</style>
+<div class="hra105" style="page-break-before:always; padding:0.5in 0;">
+  <div class="card-inset">
+
+    <h1>Types of Section 105 / HRA Plans</h1>
+
+    <!-- === ROW 1: Traditional HRA + ICHRA === -->
+    <div class="row-2col">
+
+      <!-- Traditional HRA -->
+      <div class="plan-card">
+        <div class="plan-header">
+          <svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="18" rx="2"/><line x1="2" y1="9" x2="22" y2="9"/><line x1="10" y1="3" x2="10" y2="21"/></svg>
+          <span class="plan-tag">Traditional HRA</span>
+        </div>
+        <div class="plan-body">
+          <h3>The Original Reimbursement Model</h3>
+          <p class="desc">The employer sets aside a defined amount for each employee. Employees submit claims for reimbursement. Unused funds carry over year to year based on plan design — building a balance that encourages employees to become more thoughtful healthcare consumers.</p>
+          <p class="rules-label">Key Rules</p>
+          <ul>
+            <li>Must integrate with a group health plan satisfying ACA requirements</li>
+            <li>Employer-funded only — no employee contributions</li>
+            <li>All employees treated uniformly (special rules for age and family size)</li>
+            <li>Cannot reimburse individual health insurance premiums</li>
+            <li>No IRS contribution limit — employer decides the amount</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- ICHRA -->
+      <div class="plan-card">
+        <div class="plan-header">
+          <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          <span class="plan-tag">ICHRA</span>
+        </div>
+        <div class="plan-body">
+          <h3>Individual Coverage HRA</h3>
+          <p class="desc">Flips the traditional model — instead of offering group insurance and adding an HRA, the employer funds an HRA and employees purchase their own individual coverage. Employer reimburses premiums and optionally other qualified medical expenses.</p>
+          <p class="rules-label">Key Rules</p>
+          <ul>
+            <li>Cannot offer group insurance and ICHRA to the same employee class</li>
+            <li>Employees may be divided into classes with different contribution amounts</li>
+            <li>Employees must be enrolled in individual health coverage</li>
+            <li>Medicare-enrolled employees can participate</li>
+            <li>No IRS limit on contributions</li>
+          </ul>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- === ROW 2: MERP + QSEHRA + EBHRA === -->
+    <div class="row-3col">
+
+      <!-- MERP (moved to far left) -->
+      <div class="plan-card">
+        <div class="plan-header">
+          <svg viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+          <span class="plan-tag">MERP</span>
+        </div>
+        <div class="plan-body">
+          <h3>Medical Expense Reimbursement Plan</h3>
+          <p class="desc">Built on the same Section 105 foundation as an HRA, but the strategy is fundamentally different. Cost-savings driven — a plan design tool that helps employers reduce overall health plan spending by taking on manageable, predictable risk. <strong>Premium savings of 40–50% are common.</strong></p>
+          <p class="rules-label">Key Rules</p>
+          <ul>
+            <li>No carryover — use-it-or-lose-it by design</li>
+            <li>Employee cost sharing possible via Section 125 cafeteria plan</li>
+            <li>Multiple benefit tiers possible from a single underlying policy</li>
+            <li>Integrates with high-deductible group plan</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- QSEHRA -->
+      <div class="plan-card">
+        <div class="plan-header">
+          <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+          <span class="plan-tag">QSEHRA</span>
+        </div>
+        <div class="plan-body">
+          <h3>Qualified Small Employer HRA</h3>
+          <p class="desc">Created specifically for small employers who don't offer group insurance. A simple, compliant way to help employees pay for individual coverage and medical expenses.</p>
+          <p class="rules-label">Key Rules</p>
+          <ul>
+            <li><strong>2026 IRS Limits:</strong> $6,450 self-only / $13,100 family</li>
+            <li>Fewer than 50 FT employees required</li>
+            <li>Cannot offer any group health plan</li>
+            <li>All eligible employees offered same terms</li>
+            <li>Written notice required 90 days before plan year</li>
+            <li>Reimbursements may reduce premium tax credit</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- EBHRA -->
+      <div class="plan-card">
+        <div class="plan-header">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
+          <span class="plan-tag">EBHRA</span>
+        </div>
+        <div class="plan-body">
+          <h3>Excepted Benefit HRA</h3>
+          <p class="desc">Supplements — not replaces — a group health plan. Covers excepted benefits like dental, vision, COBRA continuation, and short-term insurance. Employees don't have to be enrolled in the group plan to participate.</p>
+          <p class="rules-label">Key Rules</p>
+          <ul>
+            <li><strong>2026 IRS Limit:</strong> $2,200 per employee</li>
+            <li>Must offer group plan; enrollment not required for EBHRA eligibility</li>
+            <li>Cannot reimburse major medical premiums or Medicare</li>
+            <li>Carryover allowed — doesn't count against next year's limit</li>
+            <li>Does not disqualify HSA eligibility</li>
+          </ul>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+</div>

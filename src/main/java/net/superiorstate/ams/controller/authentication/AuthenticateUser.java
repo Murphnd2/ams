@@ -44,9 +44,8 @@ public class AuthenticateUser extends HttpServlet {
     }
 
     private void displayLoginFailure(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-        request.setAttribute("errorMessage", "Invalid username or password");
-        RequestDispatcher dispatcher = request.getRequestDispatcher("/index.jsp");
-        dispatcher.forward(request, response);
+        request.getSession().setAttribute("loginError", "Invalid username or password");
+        response.sendRedirect("login");
     }
 
     private void goToPage(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {

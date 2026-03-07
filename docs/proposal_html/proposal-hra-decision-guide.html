@@ -1,0 +1,234 @@
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Source+Sans+3:ital,wght@0,300;0,400;0,600;0,700;1,400&display=swap');
+  .hra4 {
+    --s: 1;
+    --navy: #1B2A4A;
+    --navy-text: #232F3E;
+    --teal: #2A7F8E;
+    --body: #3D4A5C;
+    --muted: #6B7A8D;
+    --white: #ffffff;
+    --light-bg: #F4F6FA;
+    --border: #DDE2EA;
+    --bubble-1: #1B2A4A;
+    --bubble-2: #2C4470;
+    --bubble-3: #3D5E9A;
+    --bubble-4: #4E78C4;
+    --bubble-5: #6A8FD8;
+    font-family: 'Source Sans 3', 'Liberation Sans', Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .hra4 .card-inset {
+    background: var(--white);
+    border-radius: 12px;
+    padding: calc(2.25rem * var(--s)) calc(2.5rem * var(--s)) calc(2rem * var(--s));
+    color: var(--navy-text);
+    min-height: calc(11in - 1.5in);
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* --- Title --- */
+  .hra4 h1 {
+    font-size: calc(26pt * var(--s));
+    font-weight: 700;
+    color: var(--navy);
+    margin: 0 0 calc(0.35rem * var(--s)) 0;
+    line-height: 1.15;
+  }
+  .hra4 .intro {
+    font-size: calc(9pt * var(--s));
+    line-height: 1.65;
+    color: var(--body);
+    margin: 0 0 calc(1.1rem * var(--s)) 0;
+    max-width: 96%;
+  }
+
+  /* --- Scenario cards grid: 3 top, 2 bottom --- */
+  .hra4 .scenarios-top {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: calc(0.65rem * var(--s));
+    margin-bottom: calc(0.65rem * var(--s));
+  }
+  .hra4 .scenarios-bottom {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: calc(0.65rem * var(--s));
+    margin-bottom: calc(1.25rem * var(--s));
+  }
+
+  .hra4 .s-card {
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    padding: calc(0.85rem * var(--s)) calc(0.95rem * var(--s));
+    display: flex;
+    flex-direction: column;
+  }
+  .hra4 .s-icon {
+    color: var(--muted);
+    margin-bottom: calc(0.35rem * var(--s));
+  }
+  .hra4 .s-icon svg {
+    width: calc(18px * var(--s));
+    height: calc(18px * var(--s));
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.6;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  .hra4 .s-card .quote {
+    font-size: calc(9pt * var(--s));
+    font-weight: 700;
+    color: var(--navy);
+    line-height: 1.35;
+    margin: 0 0 calc(0.35rem * var(--s)) 0;
+  }
+  .hra4 .s-card .answer {
+    font-size: calc(8pt * var(--s));
+    line-height: 1.55;
+    color: var(--body);
+    margin: 0;
+  }
+  .hra4 .s-card .answer strong {
+    color: var(--teal);
+    font-weight: 700;
+  }
+
+  /* --- Bubble diagram --- */
+  .hra4 .bubbles-wrap {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    min-height: calc(280px * var(--s));
+  }
+  .hra4 .bubbles {
+    position: relative;
+    width: calc(520px * var(--s));
+    height: calc(260px * var(--s));
+  }
+  .hra4 .bubble {
+    position: absolute;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    color: var(--white);
+    text-align: center;
+    line-height: 1.2;
+  }
+  .hra4 .bubble-merp {
+    width: calc(135px * var(--s));
+    height: calc(135px * var(--s));
+    background: var(--bubble-1);
+    top: 0;
+    left: calc(115px * var(--s));
+    font-size: calc(12pt * var(--s));
+    z-index: 5;
+  }
+  .hra4 .bubble-ichra {
+    width: calc(150px * var(--s));
+    height: calc(150px * var(--s));
+    background: var(--bubble-2);
+    top: calc(30px * var(--s));
+    left: calc(210px * var(--s));
+    font-size: calc(12pt * var(--s));
+    z-index: 4;
+  }
+  .hra4 .bubble-trad {
+    width: calc(170px * var(--s));
+    height: calc(170px * var(--s));
+    background: var(--bubble-3);
+    top: calc(75px * var(--s));
+    left: calc(30px * var(--s));
+    font-size: calc(11pt * var(--s));
+    z-index: 3;
+  }
+  .hra4 .bubble-qsehra {
+    width: calc(140px * var(--s));
+    height: calc(140px * var(--s));
+    background: var(--bubble-4);
+    top: calc(70px * var(--s));
+    left: calc(345px * var(--s));
+    font-size: calc(11pt * var(--s));
+    z-index: 2;
+  }
+  .hra4 .bubble-ebhra {
+    width: calc(120px * var(--s));
+    height: calc(120px * var(--s));
+    background: var(--bubble-5);
+    top: calc(140px * var(--s));
+    left: calc(215px * var(--s));
+    font-size: calc(11pt * var(--s));
+    z-index: 1;
+  }
+
+  @media print {
+    .hra4 .card-inset { min-height: auto; }
+  }
+  @media (max-width: 700px) {
+    .hra4 .card-inset { padding: calc(1.5rem * var(--s)); }
+    .hra4 .scenarios-top { grid-template-columns: 1fr; }
+    .hra4 .scenarios-bottom { grid-template-columns: 1fr; }
+    .hra4 .bubbles-wrap { min-height: calc(200px * var(--s)); }
+    .hra4 .bubbles { transform: scale(0.65); transform-origin: center center; }
+  }
+</style>
+<div class="hra4" style="page-break-before:always; padding:0.5in 0;">
+  <div class="card-inset">
+
+    <h1>HRA Decision Guide</h1>
+    <p class="intro">Use the scenarios below to identify which plan type fits your situation. Not sure? Superior State can walk you through the options and help you design the plan that fits your workforce and budget.</p>
+
+    <!-- Top row: 3 scenario cards -->
+    <div class="scenarios-top">
+      <div class="s-card">
+        <span class="s-icon"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2Z"/></svg></span>
+        <p class="quote">"We offer a group health plan and want to help employees with out-of-pocket costs."</p>
+        <p class="answer">→ <strong>Traditional HRA</strong> (consumer-driven, with carryover) or <strong>MERP</strong> (cost-savings-driven, no carryover)</p>
+      </div>
+      <div class="s-card">
+        <span class="s-icon"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2Z"/></svg></span>
+        <p class="quote">"We want to reduce our group plan premiums without cutting employee benefits."</p>
+        <p class="answer">→ <strong>MERP</strong> — purchase a high-deductible plan and fund the gap. Premium savings of 40–50% are common.</p>
+      </div>
+      <div class="s-card">
+        <span class="s-icon"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2Z"/></svg></span>
+        <p class="quote">"We don't want to manage a group plan. We'd rather fund employees' individual coverage."</p>
+        <p class="answer">→ <strong>ICHRA</strong> (any employer size) or <strong>QSEHRA</strong> (fewer than 50 employees)</p>
+      </div>
+    </div>
+
+    <!-- Bottom row: 2 scenario cards -->
+    <div class="scenarios-bottom">
+      <div class="s-card">
+        <span class="s-icon"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2Z"/></svg></span>
+        <p class="quote">"We already offer a group plan and want to add dental/vision dollars for all employees."</p>
+        <p class="answer">→ <strong>EBHRA</strong> — supplements the group plan; employees don't have to enroll to participate.</p>
+      </div>
+      <div class="s-card">
+        <span class="s-icon"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2Z"/></svg></span>
+        <p class="quote">"We're considering self-insurance but the complexity concerns us."</p>
+        <p class="answer">→ <strong>MERP</strong> — achieves similar risk-versus-reward with lower admin costs and a simpler structure.</p>
+      </div>
+      <div></div>
+    </div>
+
+    <!-- Bubble diagram -->
+    <div class="bubbles-wrap">
+      <div class="bubbles">
+        <div class="bubble bubble-merp">MERP</div>
+        <div class="bubble bubble-ichra">ICHRA</div>
+        <div class="bubble bubble-trad">Traditional<br>HRA</div>
+        <div class="bubble bubble-qsehra">QSEHRA</div>
+        <div class="bubble bubble-ebhra">EBHRA</div>
+      </div>
+    </div>
+
+  </div>
+</div>

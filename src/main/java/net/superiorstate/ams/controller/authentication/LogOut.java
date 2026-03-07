@@ -25,8 +25,7 @@ public class LogOut extends HttpServlet {
     }
     private void goToPage(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         logOutUser(request);
-        RequestDispatcher dispatcher= request.getRequestDispatcher("/index.jsp");
-        dispatcher.forward(request,response);
+        response.sendRedirect("login");
     }
 
     private void logOutUser(HttpServletRequest request){
