@@ -1,0 +1,293 @@
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Source+Sans+3:ital,wght@0,300;0,400;0,600;0,700;1,400&display=swap');
+  .hsa3 {
+    --s: 1;
+    --navy: #1B2A4A;
+    --navy-text: #232F3E;
+    --teal: #2A7F8E;
+    --teal-dark: #1E6872;
+    --teal-bg: #1A3A4A;
+    --white: #ffffff;
+    --light-bg: #F4F6FA;
+    --border: #DDE2EA;
+    --muted: #6B7A8D;
+    --body: #3D4A5C;
+    font-family: 'Source Sans 3', 'Liberation Sans', Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .hsa3 .card-inset {
+    background: var(--white);
+    border-radius: 12px;
+    padding: calc(2.5rem * var(--s)) calc(2.75rem * var(--s)) calc(2rem * var(--s));
+    color: var(--navy-text);
+    min-height: calc(11in - 1.5in);
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+  }
+  .hsa3 .section-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: calc(0.35rem * var(--s));
+    font-size: calc(8pt * var(--s));
+    font-weight: 600;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: calc(0.5rem * var(--s));
+  }
+  .hsa3 .section-tag svg {
+    width: calc(13px * var(--s));
+    height: calc(13px * var(--s));
+  }
+  .hsa3 h1 {
+    font-size: calc(26pt * var(--s));
+    font-weight: 700;
+    color: var(--navy);
+    margin: 0 0 calc(0.15rem * var(--s)) 0;
+    line-height: 1.15;
+  }
+  .hsa3 .subtitle {
+    font-size: calc(14pt * var(--s));
+    font-weight: 300;
+    font-style: italic;
+    color: var(--teal);
+    margin: 0 0 calc(0.5rem * var(--s)) 0;
+  }
+  .hsa3 .intro {
+    font-size: calc(9.5pt * var(--s));
+    line-height: 1.65;
+    color: var(--body);
+    margin: 0 0 calc(1.25rem * var(--s)) 0;
+    max-width: 95%;
+  }
+  .hsa3 .features-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: calc(0.85rem * var(--s));
+    margin-bottom: calc(1.15rem * var(--s));
+  }
+  .hsa3 .feat-card {
+    background: var(--white);
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    padding: calc(1rem * var(--s)) calc(1.15rem * var(--s));
+    display: flex;
+    flex-direction: column;
+  }
+  .hsa3 .feat-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: calc(32px * var(--s));
+    height: calc(32px * var(--s));
+    margin-bottom: calc(0.45rem * var(--s));
+  }
+  .hsa3 .feat-icon svg {
+    width: calc(26px * var(--s));
+    height: calc(26px * var(--s));
+    color: var(--teal);
+  }
+  .hsa3 .feat-card h3 {
+    font-size: calc(10.5pt * var(--s));
+    font-weight: 700;
+    color: var(--navy);
+    margin: 0 0 calc(0.3rem * var(--s)) 0;
+  }
+  .hsa3 .feat-card p {
+    font-size: calc(8.5pt * var(--s));
+    line-height: 1.55;
+    color: var(--body);
+    margin: 0;
+  }
+  .hsa3 .bottom-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: calc(0.85rem * var(--s));
+    flex: 1;
+    align-content: start;
+  }
+  .hsa3 .tax-box {
+    background: var(--teal-bg);
+    border-radius: 10px;
+    padding: calc(1.25rem * var(--s)) calc(1.3rem * var(--s));
+    color: var(--white);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+  .hsa3 .tax-box h3 {
+    font-size: calc(12pt * var(--s));
+    font-weight: 700;
+    color: var(--white);
+    margin: 0 0 calc(0.75rem * var(--s)) 0;
+  }
+  .hsa3 .tax-steps {
+    display: flex;
+    flex-direction: column;
+    gap: calc(0.6rem * var(--s));
+  }
+  .hsa3 .tax-step {
+    display: flex;
+    align-items: center;
+    gap: calc(0.7rem * var(--s));
+  }
+  .hsa3 .step-num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: calc(34px * var(--s));
+    height: calc(34px * var(--s));
+    min-width: calc(34px * var(--s));
+    border-radius: 50%;
+    background: rgba(255,255,255,0.12);
+    border: 2px solid rgba(255,255,255,0.25);
+    color: var(--white);
+    font-size: calc(14pt * var(--s));
+    font-weight: 700;
+  }
+  .hsa3 .step-text {
+    display: flex;
+    flex-direction: column;
+  }
+  .hsa3 .step-label {
+    font-size: calc(10pt * var(--s));
+    font-weight: 700;
+    color: var(--white);
+    line-height: 1.2;
+  }
+  .hsa3 .step-desc {
+    font-size: calc(8.5pt * var(--s));
+    color: rgba(255,255,255,0.7);
+    line-height: 1.35;
+  }
+  .hsa3 .service-box {
+    background: var(--light-bg);
+    border-radius: 10px;
+    padding: calc(1.25rem * var(--s)) calc(1.3rem * var(--s));
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+  .hsa3 .service-box h3 {
+    font-size: calc(12pt * var(--s));
+    font-weight: 700;
+    color: var(--navy);
+    margin: 0 0 calc(0.45rem * var(--s)) 0;
+    text-decoration: underline;
+    text-decoration-color: var(--teal);
+    text-underline-offset: 3px;
+  }
+  .hsa3 .service-box p {
+    font-size: calc(8.5pt * var(--s));
+    line-height: 1.6;
+    color: var(--body);
+    margin: 0 0 calc(0.55rem * var(--s)) 0;
+  }
+  .hsa3 .service-quote {
+    font-size: calc(9pt * var(--s));
+    font-style: italic;
+    color: var(--navy);
+    border-left: 3px solid var(--teal);
+    padding-left: calc(0.75rem * var(--s));
+    margin: calc(0.25rem * var(--s)) 0 0 0;
+    line-height: 1.5;
+    font-weight: 600;
+  }
+  .hsa3 .service-closer {
+    font-size: calc(8.5pt * var(--s));
+    color: var(--body);
+    margin: calc(0.55rem * var(--s)) 0 0 0;
+    line-height: 1.55;
+  }
+  @media print {
+    .hsa3 .card-inset { min-height: auto; }
+  }
+  @media (max-width: 700px) {
+    .hsa3 .card-inset { padding: calc(1.5rem * var(--s)); }
+    .hsa3 .features-grid { grid-template-columns: 1fr; }
+    .hsa3 .bottom-row { grid-template-columns: 1fr; }
+  }
+</style>
+<div class="hsa3" style="page-break-before:always; padding:0.5in 0;">
+  <div class="card-inset">
+
+    <span class="section-tag">
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 10 8 14 16 6"/></svg>
+      THE SOLUTION
+    </span>
+
+    <h1>HSAToday Through Superior State</h1>
+    <p class="subtitle">Independent. Complete. Built for This.</p>
+    <p class="intro">HSAToday is a purpose-built HSA platform — not a carrier add-on and not a bank account. It stays with your employees regardless of which health plan you offer.</p>
+
+    <div class="features-grid">
+      <div class="feat-card">
+        <span class="feat-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/></svg>
+        </span>
+        <h3>Independent of Your Health Plan</h3>
+        <p>Works with any qualified HDHP from any carrier. Switch carriers at renewal without touching employees' HSA accounts. No account migrations, no balance transfers, no disruption. Employees keep one HSA for their entire career.</p>
+      </div>
+      <div class="feat-card">
+        <span class="feat-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10Z"/></svg>
+        </span>
+        <h3>Built for HSA Compliance</h3>
+        <p>ClaimsVault — patented digital receipt storage for the life of the account. Form 8889 automation for annual HSA tax filing. Contribution tracking that catches excess contributions before they become a tax problem.</p>
+      </div>
+      <div class="feat-card">
+        <span class="feat-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+        </span>
+        <h3>FDIC Savings + Real Investments</h3>
+        <p>Cash balances held in FDIC-insured savings. Once employees reach the balance threshold, they can invest in managed models or individual funds. Investment earnings grow tax-free. Triple tax advantage at full power.</p>
+      </div>
+      <div class="feat-card">
+        <span class="feat-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        </span>
+        <h3>Backed by Local, Personal Service</h3>
+        <p>When employers or employees have a question, they reach Superior State — an experienced administrator who knows their plan. Same-day support, not a carrier call center or a bank teller reading from a script.</p>
+      </div>
+    </div>
+
+    <div class="bottom-row">
+      <div class="tax-box">
+        <h3>Triple Tax Advantage — At Full Power</h3>
+        <div class="tax-steps">
+          <div class="tax-step">
+            <span class="step-num">1</span>
+            <span class="step-text">
+              <span class="step-label">Tax-Free In</span>
+              <span class="step-desc">Contributions reduce taxable income</span>
+            </span>
+          </div>
+          <div class="tax-step">
+            <span class="step-num">2</span>
+            <span class="step-text">
+              <span class="step-label">Tax-Free Growth</span>
+              <span class="step-desc">Investment earnings accumulate tax-free</span>
+            </span>
+          </div>
+          <div class="tax-step">
+            <span class="step-num">3</span>
+            <span class="step-text">
+              <span class="step-label">Tax-Free Out</span>
+              <span class="step-desc">Qualified withdrawals are never taxed</span>
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div class="service-box">
+        <h3>Why Personal Service Is the Differentiator</h3>
+        <p>When an employee calls a carrier's HSA line, they reach a call center agent reading from a script. When they call a bank, they reach a teller who doesn't know what Form 8889 is.</p>
+        <p>When they call Superior State, they reach <strong>someone who knows their employer's plan, knows HSA compliance, and can answer the question on the spot.</strong></p>
+        <p class="service-quote">"Same-day support from people who know HSA compliance inside and out — not a 1-800 number."</p>
+        <p class="service-closer">For small employers, this isn't a nice-to-have. It's the difference between an HSA program that works and one that creates more problems than it solves.</p>
+      </div>
+    </div>
+
+  </div>
+</div>

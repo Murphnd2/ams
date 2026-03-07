@@ -60,6 +60,9 @@ public class BpoCompleteTask extends HttpServlet {
                 assignTask(request);
             }
             response.setStatus(200);
+        } else if ("accept".equals(action)) {
+            acceptTasksCrossSystem(request);
+            response.setStatus(200);
         }
     }
 
@@ -266,6 +269,45 @@ public class BpoCompleteTask extends HttpServlet {
 
             em.merge(dt);
             em.getTransaction().commit();
+        } catch (Exception e) {
+            if (em.getTransaction().isActive()) em.getTransaction().rollback();
+            e.printStackTrace();
+        } finally {
+            em.close();
+        }
+    }
+
+    private void acceptTasksCrossSystem(HttpServletRequest request) {
+        EntityManagerFactory emf = (EntityManagerFactory) getServletContext().getAttribute("emf");
+        EntityManager em = emf.createEntityManager();
+
+        try {
+            String todoIdsParam = request.getParameter("todoIds");
+            String assigneeIdStr = request.getParameter("assigneeId");
+            if (todoIdsParam == null || todoIdsParam.isBlank()) return;
+
+            Person assignee = null;
+            if (assigneeIdStr != null && !assigneeIdStr.isEmpty() && !"0".equals(assigneeIdStr)) {
+                assignee = em.find(Person.class, Long.parseLong(assigneeIdStr));
+            }
+
+            em.getTransaction().begin();
+
+            for (String idStr : todoIdsParam.split(",")) {
+                long dtId = Long.parseLong(idStr.trim());
+                DelegatedToDo dt = em.find(DelegatedToDo.class, dtId);
+                if (dt == null || !"PENDING".equals(dt.getStatus())) continue;
+
+                dt.setStatus("ACTIVE");
+                if (assignee != null) {
+                    dt.setAssignedTo(assignee);
+                }
+                em.merge(dt);
+            }
+
+            em.getTransaction().commit();
+            System.out.println("[BPO] Accepted tasks: " + todoIdsParam +
+                    (assignee != null ? " assigned to " + assignee.getFullName() : ""));
         } catch (Exception e) {
             if (em.getTransaction().isActive()) em.getTransaction().rollback();
             e.printStackTrace();

@@ -1,0 +1,354 @@
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+  .cobra5 {
+    --s: 1;
+    --navy: #1B2A4A;
+    --navy-lt: #2D3E5E;
+    --teal: #2A7F8E;
+    --bg: #ffffff;
+    --bg-soft: #F4F5F8;
+    --bg-teal: #EAF5F7;
+    --border: #E2E5EB;
+    --text: #1B2A4A;
+    --text-md: #3D4F6F;
+    --text-lt: #6B7A94;
+    font-family: 'Inter', 'Source Sans 3', Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .cobra5 .card-inset {
+    background: var(--bg);
+    border-radius: 12px;
+    padding: calc(2.5rem * var(--s)) calc(2.75rem * var(--s)) calc(2rem * var(--s));
+    color: var(--text);
+    min-height: calc(11in - 1.5in);
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── Tag pill ── */
+  .cobra5 .tag {
+    display: inline-flex;
+    align-items: center;
+    gap: calc(0.35rem * var(--s));
+    font-size: calc(7pt * var(--s));
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-md);
+    background: var(--bg-soft);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: calc(0.25rem * var(--s)) calc(0.65rem * var(--s));
+    margin-bottom: calc(0.65rem * var(--s));
+    width: fit-content;
+  }
+  .cobra5 .tag svg {
+    width: calc(12px * var(--s));
+    height: calc(12px * var(--s));
+    stroke: var(--text-lt);
+    fill: none;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  /* ── Title ── */
+  .cobra5 h1 {
+    font-size: calc(26pt * var(--s));
+    font-weight: 800;
+    margin: 0 0 calc(0.4rem * var(--s)) 0;
+    line-height: 1.12;
+    color: var(--text);
+  }
+  .cobra5 .subtitle {
+    font-size: calc(10pt * var(--s));
+    color: var(--text-lt);
+    line-height: 1.6;
+    margin: 0 0 calc(1.3rem * var(--s)) 0;
+    max-width: 94%;
+  }
+
+  /* ── Divider ── */
+  .cobra5 .divider {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 0 0 calc(1.2rem * var(--s)) 0;
+  }
+
+  /* ── 2x2 Service Cards ── */
+  .cobra5 .services-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: calc(0.85rem * var(--s)) calc(1.5rem * var(--s));
+    margin-bottom: calc(1.3rem * var(--s));
+  }
+  .cobra5 .svc-card {
+    display: flex;
+    flex-direction: column;
+  }
+  .cobra5 .svc-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: calc(36px * var(--s));
+    height: calc(36px * var(--s));
+    border-radius: 8px;
+    background: var(--navy);
+    margin-bottom: calc(0.5rem * var(--s));
+  }
+  .cobra5 .svc-icon svg {
+    width: calc(18px * var(--s));
+    height: calc(18px * var(--s));
+    color: #fff;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  .cobra5 .svc-card h3 {
+    font-size: calc(11pt * var(--s));
+    font-weight: 700;
+    margin: 0 0 calc(0.25rem * var(--s)) 0;
+    color: var(--text);
+  }
+  .cobra5 .svc-card p {
+    font-size: calc(8.5pt * var(--s));
+    line-height: 1.55;
+    color: var(--text-lt);
+    margin: 0;
+  }
+
+  /* ── Bottom divider ── */
+  .cobra5 .divider-2 {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 0 0 calc(1.1rem * var(--s)) 0;
+  }
+
+  /* ── Bottom split ── */
+  .cobra5 .bottom-split {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: calc(1.1rem * var(--s));
+    flex: 1;
+    align-content: start;
+  }
+
+  /* ── Left: dark navy card (matches Gamma) ── */
+  .cobra5 .why-box {
+    background: var(--navy);
+    border-radius: 10px;
+    padding: calc(1.15rem * var(--s)) calc(1.25rem * var(--s));
+    color: #fff;
+    display: flex;
+    flex-direction: column;
+  }
+  .cobra5 .why-box h3 {
+    font-size: calc(12pt * var(--s));
+    font-weight: 700;
+    color: var(--teal);
+    margin: 0 0 calc(0.45rem * var(--s)) 0;
+  }
+  .cobra5 .why-box .lead {
+    font-size: calc(8.5pt * var(--s));
+    color: #C8D0DE;
+    line-height: 1.55;
+    margin: 0 0 calc(0.55rem * var(--s)) 0;
+  }
+  .cobra5 .why-box ul {
+    margin: 0 0 calc(0.6rem * var(--s)) 0;
+    padding-left: calc(1rem * var(--s));
+    list-style: none;
+  }
+  .cobra5 .why-box ul li {
+    font-size: calc(8.5pt * var(--s));
+    color: #C8D0DE;
+    line-height: 1.45;
+    margin-bottom: calc(0.3rem * var(--s));
+    position: relative;
+    padding-left: calc(0.15rem * var(--s));
+  }
+  .cobra5 .why-box ul li::before {
+    content: '';
+    position: absolute;
+    left: calc(-0.8rem * var(--s));
+    top: 0.4em;
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--teal);
+  }
+  .cobra5 .why-box .closer {
+    font-size: calc(8.5pt * var(--s));
+    font-style: italic;
+    color: #8D9BB3;
+    margin: 0;
+    line-height: 1.45;
+  }
+
+  /* ── Right column ── */
+  .cobra5 .right-col {
+    display: flex;
+    flex-direction: column;
+    gap: calc(0.7rem * var(--s));
+  }
+
+  .cobra5 .integration-box h3 {
+    font-size: calc(11pt * var(--s));
+    font-weight: 700;
+    color: var(--text);
+    margin: 0 0 calc(0.2rem * var(--s)) 0;
+  }
+  .cobra5 .integration-box p {
+    font-size: calc(8.5pt * var(--s));
+    color: var(--text-lt);
+    line-height: 1.55;
+    margin: 0;
+  }
+
+  /* ── Steps with teal top-border ── */
+  .cobra5 .steps {
+    display: flex;
+    flex-direction: column;
+    gap: calc(0.6rem * var(--s));
+  }
+  .cobra5 .step {
+    border-top: 2px solid var(--teal);
+    padding-top: calc(0.55rem * var(--s));
+  }
+  .cobra5 .step-num {
+    font-size: calc(8pt * var(--s));
+    font-weight: 600;
+    color: var(--text-lt);
+    margin-bottom: calc(0.1rem * var(--s));
+  }
+  .cobra5 .step h4 {
+    font-size: calc(10.5pt * var(--s));
+    font-weight: 700;
+    color: var(--text);
+    margin: 0 0 calc(0.15rem * var(--s)) 0;
+  }
+  .cobra5 .step p {
+    font-size: calc(8.5pt * var(--s));
+    color: var(--text-lt);
+    line-height: 1.5;
+    margin: 0;
+  }
+
+  /* ── Print & Responsive ── */
+  @media print {
+    .cobra5 .card-inset { min-height: auto; }
+  }
+  @media (max-width: 700px) {
+    .cobra5 .card-inset { padding: calc(1.5rem * var(--s)); }
+    .cobra5 .services-grid { grid-template-columns: 1fr; }
+    .cobra5 .bottom-split { grid-template-columns: 1fr; }
+  }
+</style>
+
+<div class="cobra5" style="page-break-before:always; padding:0.5in 0;">
+  <div class="card-inset">
+
+    <!-- Tag -->
+    <div class="tag">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      OUR SERVICES
+    </div>
+
+    <!-- Title -->
+    <h1>Full-Service COBRA Administration</h1>
+    <p class="subtitle">Superior State manages every step of the COBRA process — from initial enrollment notices through final termination documentation. You report the qualifying event; we handle everything from there.</p>
+
+    <hr class="divider">
+
+    <!-- 2x2 Service Cards -->
+    <div class="services-grid">
+
+      <div class="svc-card">
+        <div class="svc-icon">
+          <svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        </div>
+        <h3>Notice Distribution</h3>
+        <p>Initial COBRA rights notices provided to employees and dependents upon enrollment, plus timely election notices with proof of mailing for every qualifying event.</p>
+      </div>
+
+      <div class="svc-card">
+        <div class="svc-icon">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        </div>
+        <h3>Deadline Monitoring</h3>
+        <p>We track who elects, who declines, and all critical deadlines — so nothing falls through the cracks and your compliance record stays clean.</p>
+      </div>
+
+      <div class="svc-card">
+        <div class="svc-icon">
+          <svg viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+        </div>
+        <h3>Premium Billing &amp; Collection</h3>
+        <p>Monthly invoicing and payment tracking for COBRA participants, including grace period enforcement and late payment management.</p>
+      </div>
+
+      <div class="svc-card">
+        <div class="svc-icon">
+          <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        </div>
+        <h3>Record Keeping &amp; Audit Trail</h3>
+        <p>Complete compliance documentation for every qualifying event — ready for DOL or IRS audit at any time.</p>
+      </div>
+
+    </div>
+
+    <hr class="divider-2">
+
+    <!-- Bottom Split -->
+    <div class="bottom-split">
+
+      <!-- Left: dark navy card -->
+      <div class="why-box">
+        <h3>Why Not Handle It In-House?</h3>
+        <p class="lead">Many small employers try to manage COBRA internally — until they realize the cost of a mistake. COBRA compliance requires:</p>
+        <ul>
+          <li>Tracking multiple qualifying events with overlapping deadlines</li>
+          <li>Preparing legally compliant notices</li>
+          <li>Collecting premiums from former employees</li>
+          <li>Maintaining documentation that can withstand an audit</li>
+        </ul>
+        <p class="closer">For a small HR team already stretched thin, COBRA is a prime candidate for outsourcing.</p>
+      </div>
+
+      <!-- Right: Integration + Steps -->
+      <div class="right-col">
+
+        <div class="integration-box">
+          <h3>Also Included: Seamless Integration</h3>
+          <p>With importing capabilities, COBRA-eligible individuals are automatically activated in our system when coverage terminates — no manual handoff required.</p>
+        </div>
+
+        <div class="steps">
+          <div class="step">
+            <div class="step-num">01</div>
+            <h4>You Report the Event</h4>
+            <p>Notify Superior State of the qualifying event within your 30-day window.</p>
+          </div>
+          <div class="step">
+            <div class="step-num">02</div>
+            <h4>We Take It From There</h4>
+            <p>Notices, tracking, billing, and documentation — all handled by our team.</p>
+          </div>
+          <div class="step">
+            <div class="step-num">03</div>
+            <h4>You Stay Compliant</h4>
+            <p>Full audit trail maintained. Zero compliance gaps. Peace of mind.</p>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+</div>

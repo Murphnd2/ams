@@ -1,0 +1,279 @@
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Source+Sans+3:ital,wght@0,300;0,400;0,600;0,700;1,400&display=swap');
+  .lsa2 {
+    --s: 1;
+    --navy: #1B2A4A;
+    --navy-text: #232F3E;
+    --body: #3D4A5C;
+    --muted: #6B7A8D;
+    --white: #ffffff;
+    --lav: #E8EAFB;
+    --lav-light: #F0F1FA;
+    --accent: #5B63D3;
+    --border: #DDE2EA;
+    font-family: 'Source Sans 3', 'Liberation Sans', Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .lsa2 .card-inset {
+    background: var(--white);
+    border-radius: 12px;
+    padding: calc(2.25rem * var(--s)) calc(2.5rem * var(--s)) calc(1.75rem * var(--s));
+    color: var(--navy-text);
+    min-height: calc(11in - 1.5in);
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* --- Section tag pill --- */
+  .lsa2 .section-tag {
+    display: inline-block;
+    font-size: calc(7.5pt * var(--s));
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    border: 1.5px solid var(--border);
+    border-radius: 4px;
+    padding: calc(0.2rem * var(--s)) calc(0.6rem * var(--s));
+    margin-bottom: calc(0.45rem * var(--s));
+  }
+
+  /* --- Headings --- */
+  .lsa2 h2 {
+    font-size: calc(20pt * var(--s));
+    font-weight: 700;
+    color: var(--navy);
+    margin: 0 0 calc(0.35rem * var(--s)) 0;
+    line-height: 1.15;
+  }
+  .lsa2 .section-intro {
+    font-size: calc(9pt * var(--s));
+    line-height: 1.65;
+    color: var(--body);
+    margin: 0 0 calc(0.85rem * var(--s)) 0;
+    max-width: 96%;
+  }
+
+  /* --- 3-column category cards --- */
+  .lsa2 .cat-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: calc(0.65rem * var(--s));
+    margin-bottom: calc(1.25rem * var(--s));
+  }
+  .lsa2 .cat-card {
+    background: var(--white);
+    border-radius: 8px;
+    padding: calc(0.85rem * var(--s)) calc(0.95rem * var(--s));
+    display: flex;
+    flex-direction: column;
+  }
+  .lsa2 .cat-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: calc(0.4rem * var(--s));
+    color: var(--accent);
+  }
+  .lsa2 .cat-icon svg {
+    width: calc(22px * var(--s));
+    height: calc(22px * var(--s));
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  .lsa2 .cat-card h3 {
+    font-size: calc(10pt * var(--s));
+    font-weight: 700;
+    color: var(--navy);
+    margin: 0 0 calc(0.3rem * var(--s)) 0;
+  }
+  .lsa2 .cat-card ul {
+    margin: 0;
+    padding: 0 0 0 calc(1rem * var(--s));
+    list-style: disc;
+  }
+  .lsa2 .cat-card li {
+    font-size: calc(8pt * var(--s));
+    line-height: 1.5;
+    color: var(--body);
+    margin-bottom: calc(0.2rem * var(--s));
+  }
+
+  /* --- Divider --- */
+  .lsa2 .divider {
+    border: none;
+    border-top: 1.5px solid var(--border);
+    margin: 0 0 calc(0.85rem * var(--s)) 0;
+  }
+
+  /* --- "Why" section tag --- */
+  .lsa2 .section-tag-2 {
+    display: inline-block;
+    font-size: calc(7.5pt * var(--s));
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    border: 1.5px solid var(--border);
+    border-radius: 4px;
+    padding: calc(0.2rem * var(--s)) calc(0.6rem * var(--s));
+    margin-bottom: calc(0.4rem * var(--s));
+  }
+
+  /* --- Reason rows (lavender bars with icon) --- */
+  .lsa2 .reasons {
+    display: flex;
+    flex-direction: column;
+    gap: calc(0.45rem * var(--s));
+    flex: 1;
+  }
+  .lsa2 .reason {
+    background: var(--lav);
+    border-radius: 8px;
+    padding: calc(0.6rem * var(--s)) calc(0.85rem * var(--s));
+    display: flex;
+    align-items: flex-start;
+    gap: calc(0.6rem * var(--s));
+  }
+  .lsa2 .reason-icon {
+    flex-shrink: 0;
+    margin-top: calc(0.15rem * var(--s));
+    color: var(--muted);
+  }
+  .lsa2 .reason-icon svg {
+    width: calc(18px * var(--s));
+    height: calc(18px * var(--s));
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.6;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  .lsa2 .reason-text h3 {
+    font-size: calc(9.5pt * var(--s));
+    font-weight: 700;
+    color: var(--navy);
+    margin: 0 0 calc(0.1rem * var(--s)) 0;
+    line-height: 1.25;
+  }
+  .lsa2 .reason-text p {
+    font-size: calc(8pt * var(--s));
+    line-height: 1.55;
+    color: var(--body);
+    margin: 0;
+  }
+
+  @media print {
+    .lsa2 .card-inset { min-height: auto; }
+  }
+  @media (max-width: 700px) {
+    .lsa2 .card-inset { padding: calc(1.5rem * var(--s)); }
+    .lsa2 .cat-grid { grid-template-columns: 1fr; }
+  }
+</style>
+<div class="lsa2" style="page-break-before:always; padding:0.5in 0;">
+  <div class="card-inset">
+
+    <!-- === SECTION 1: What Can an LSA Cover === -->
+    <span class="section-tag">✦ Fully Customizable</span>
+    <h2>What Can an LSA Cover?</h2>
+    <p class="section-intro">The employer decides which categories qualify. These are some of the most popular options — but every plan is unique. Superior State can help you design the right mix for your workforce.</p>
+
+    <div class="cat-grid">
+      <div class="cat-card">
+        <span class="cat-icon">
+          <svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/><path d="M12 2v2"/><circle cx="6" cy="13" r="1" fill="currentColor" stroke="none"/><circle cx="18" cy="13" r="1" fill="currentColor" stroke="none"/></svg>
+        </span>
+        <h3>Physical Wellness</h3>
+        <ul>
+          <li>Gym, health club, and fitness studio memberships</li>
+          <li>Exercise and athletic equipment</li>
+          <li>Personal trainers and fitness classes</li>
+          <li>Park passes, race entry fees, and recreational sports leagues</li>
+        </ul>
+      </div>
+      <div class="cat-card">
+        <span class="cat-icon">
+          <svg viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+        </span>
+        <h3>Financial &amp; Professional Wellness</h3>
+        <ul>
+          <li>Financial advisor and planning services</li>
+          <li>Remote work setup (internet, furniture, equipment)</li>
+          <li>Personal development classes (art, cooking, music, professional skills)</li>
+        </ul>
+      </div>
+      <div class="cat-card">
+        <span class="cat-icon">
+          <svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78Z"/></svg>
+        </span>
+        <h3>Personal &amp; Family Wellness</h3>
+        <ul>
+          <li>Meditation classes and wellness apps</li>
+          <li>Pet care (walkers, daycare, grooming)</li>
+          <li>Travel and camping (airfare, lodging, equipment, park fees)</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- === Divider === -->
+    <hr class="divider">
+
+    <!-- === SECTION 2: Why Small Employers Love LSAs === -->
+    <span class="section-tag-2">☆ Why It Works</span>
+    <h2 style="margin-bottom:calc(0.6rem * var(--s));">Why Small Employers Love LSAs</h2>
+
+    <div class="reasons">
+      <div class="reason">
+        <span class="reason-icon">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/></svg>
+        </span>
+        <div class="reason-text">
+          <h3>Employees Notice It</h3>
+          <p>LSAs cover things employees actually spend money on — gym memberships, fitness gear, pet care, personal development. It feels personal in a way that a health plan deductible never will.</p>
+        </div>
+      </div>
+      <div class="reason">
+        <span class="reason-icon">
+          <svg viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+        </span>
+        <div class="reason-text">
+          <h3>It's Affordable</h3>
+          <p>At $500–$1,000 per employee, an LSA costs a fraction of a health plan enhancement. With a use-it-or-lose-it design, unused funds come back to the employer.</p>
+        </div>
+      </div>
+      <div class="reason">
+        <span class="reason-icon">
+          <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+        </span>
+        <div class="reason-text">
+          <h3>It's Flexible</h3>
+          <p>The employer controls the categories, the budget, and the plan design. There's no one-size-fits-all — you build it around what your employees value.</p>
+        </div>
+      </div>
+      <div class="reason">
+        <span class="reason-icon">
+          <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+        </span>
+        <div class="reason-text">
+          <h3>It's Simple</h3>
+          <p>No IRS limits to track. No nondiscrimination testing. No plan document updates every time the IRS publishes new numbers. Minimal administrative overhead.</p>
+        </div>
+      </div>
+      <div class="reason">
+        <span class="reason-icon">
+          <svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+        </span>
+        <div class="reason-text">
+          <h3>It Helps You Compete</h3>
+          <p>Large employers are adding LSAs at a rapid pace. Offering one signals that your company invests in employee wellbeing — without the cost structure of a large-employer benefits program.</p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>

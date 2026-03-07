@@ -22,6 +22,10 @@
         .bpo-badge-status { font-size: 0.7rem; padding: 0.15rem 0.5rem; border-radius: 10px; }
         .bpo-badge-unassigned { background: #fff3cd; color: #856404; }
         .bpo-badge-assigned { background: #d4edda; color: #155724; }
+        .bpo-badge-pending { background: #f8d7da; color: #842029; }
+        .pending-check { width: 16px; height: 16px; cursor: pointer; accent-color: #0d5681; }
+        .pending-toolbar { background: #fff3cd; padding: 0.4rem 0.75rem; border-bottom: 1px solid #dee2e6; display: flex; align-items: center; gap: 0.5rem; font-size: 0.78rem; }
+        .pending-count-badge { background: #dc3545; color: white; font-size: 0.6rem; padding: 0.1rem 0.4rem; border-radius: 8px; margin-left: 0.25rem; }
         .due-overdue { color: #dc3545; font-weight: 600; }
         .due-today { color: #fd7e14; font-weight: 600; }
         .due-future { color: #6c757d; }
@@ -110,6 +114,13 @@
                             <option value="">All PSPs</option>
                         </select>
                         <form method="get" action="BpoHome" class="d-flex gap-1 m-0">
+                            <c:if test="${sessionScope.isBpoAdmin}">
+                                <button type="submit" name="viewMode" value="pending"
+                                        class="btn btn-sm ${viewMode == 'pending' ? 'btn-light' : 'btn-outline-light'}"
+                                        style="font-size:0.7rem; padding:0.15rem 0.5rem;">
+                                    Pending<c:if test="${pendingCount != null && pendingCount > 0}"><span class="pending-count-badge">${pendingCount}</span></c:if>
+                                </button>
+                            </c:if>
                             <button type="submit" name="viewMode" value="mine"
                                     class="btn btn-sm ${viewMode == 'mine' ? 'btn-light' : 'btn-outline-light'}"
                                     style="font-size:0.7rem; padding:0.15rem 0.5rem;">
@@ -145,6 +156,95 @@
 
                         <%-- ═══ CROSS-SYSTEM MODE: DelegatedToDo ═══ --%>
                         <c:when test="${crossSystemMode}">
+
+                          <%-- === PENDING APPROVAL VIEW (BPO Admin only) === --%>
+                          <c:if test="${viewMode == 'pending' && sessionScope.isBpoAdmin}">
+                            <div class="pending-toolbar">
+                                <input type="checkbox" class="pending-check" id="pendingSelectAll" onclick="toggleSelectAllPending(this)" title="Select all">
+                                <span id="pendingSelectedCount" style="font-weight:500;">0 selected</span>
+                                <div class="ms-auto d-flex gap-1 align-items-center">
+                                    <select id="pendingAssignTo" class="form-select form-select-sm" style="font-size:0.7rem; padding:0.15rem 0.4rem; width:auto; min-width:120px;">
+                                        <option value="0">-- No Assignment --</option>
+                                        <c:forEach var="bpo" items="${applicationScope.global.getBpoUsers()}">
+                                            <option value="${bpo.getId()}">${bpo.getFirstName()} ${bpo.getLastName()}</option>
+                                        </c:forEach>
+                                    </select>
+                                    <button type="button" class="btn btn-sm btn-success" onclick="acceptSelectedPending()" style="font-size:0.7rem; padding:0.15rem 0.5rem; white-space:nowrap;">
+                                        <i class="bi bi-check-lg me-1"></i>Accept Selected
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-success" onclick="acceptAllPending()" style="font-size:0.7rem; padding:0.15rem 0.5rem; white-space:nowrap;">
+                                        Accept All
+                                    </button>
+                                </div>
+                            </div>
+                            <c:choose>
+                                <c:when test="${not empty pendingToDos}">
+                                    <c:forEach var="dt" items="${pendingToDos}">
+                                        <c:choose>
+                                            <c:when test="${dt.getDueDate() != null && dt.getDueDate() < Date.valueOf(LocalDate.now())}">
+                                                <c:set var="dueClass" value="due-overdue"/>
+                                            </c:when>
+                                            <c:when test="${dt.getDueDate() != null && dt.getDueDate() == Date.valueOf(LocalDate.now())}">
+                                                <c:set var="dueClass" value="due-today"/>
+                                            </c:when>
+                                            <c:otherwise>
+                                                <c:set var="dueClass" value="due-future"/>
+                                            </c:otherwise>
+                                        </c:choose>
+                                        <div class="bpo-todo-row row g-0 px-3 align-items-center pending-row"
+                                             data-sort0="${dt.getTaskName()}"
+                                             data-sort1="${dt.getPspClient().getPspName()}"
+                                             data-sort2="${dt.getDueDate()}"
+                                             data-sort-order="${dt.getSortOrder()}"
+                                             data-activity-sort="${dt.getActivityName()}"
+                                             data-todo-id="${dt.getId()}"
+                                             data-todo-guid="${dt.getTodoGuid()}"
+                                             data-cross-system="true"
+                                             data-pending="true"
+                                             data-task-name="${dt.getTaskName()}"
+                                             data-psp-name="${dt.getPspClient().getPspName()}"
+                                             data-activity-name="${dt.getActivityName()}"
+                                             data-due-date="<fmt:formatDate value='${dt.getDueDate()}' pattern='MM/dd/yyyy'/>"
+                                             data-goto="${dt.getGotoLink() != null ? dt.getGotoLink() : ''}"
+                                             data-info="${dt.getInfoLink() != null ? dt.getInfoLink() : ''}"
+                                             data-assigned-to="0"
+                                             data-recurring-series-id="${dt.getRecurringSeriesId() != null ? dt.getRecurringSeriesId() : ''}"
+                                             data-psp-client-id="${dt.getPspClient().getId()}"
+                                             style="cursor:pointer;">
+                                            <div class="col-auto pe-2" onclick="event.stopPropagation();">
+                                                <input type="checkbox" class="pending-check pending-row-check" value="${dt.getId()}" onclick="updatePendingCount()">
+                                            </div>
+                                            <div class="col" onclick="openBpoModal(this.closest('.bpo-todo-row'))">
+                                                <div class="row g-0 align-items-center">
+                                                    <div class="col-5">
+                                                        <div style="font-size:0.85rem; font-weight:500;">${dt.getTaskName()}</div>
+                                                        <span style="font-size:0.7rem; color:#6c757d;">${dt.getActivityName()}</span>
+                                                    </div>
+                                                    <div class="col-3">
+                                                        <span class="bpo-badge-psp">${dt.getPspClient().getPspName()}</span>
+                                                    </div>
+                                                    <div class="col-2 ${dueClass}" style="font-size:0.85rem;">
+                                                        <fmt:formatDate value="${dt.getDueDate()}" pattern="MM/dd/yyyy"/>
+                                                    </div>
+                                                    <div class="col-2 text-end">
+                                                        <span class="bpo-badge-status bpo-badge-pending">Pending</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </c:forEach>
+                                </c:when>
+                                <c:otherwise>
+                                    <div class="text-center text-muted fst-italic py-4" style="font-size:0.85rem;">
+                                        <i class="bi bi-inbox" style="font-size:1.5rem; display:block; margin-bottom:0.3rem; color:#c8c8c8;"></i>
+                                        No pending tasks
+                                    </div>
+                                </c:otherwise>
+                            </c:choose>
+                          </c:if>
+
+                          <%-- === ACTIVE TASKS VIEW (My Tasks / All Open) === --%>
+                          <c:if test="${viewMode != 'pending'}">
                             <c:choose>
                                 <c:when test="${not empty delegatedToDos}">
                                     <c:forEach var="dt" items="${delegatedToDos}">
@@ -209,6 +309,7 @@
                                     </div>
                                 </c:otherwise>
                             </c:choose>
+                          </c:if>
                         </c:when>
 
                         <%-- ═══ CO-LOCATED MODE: local ToDo ═══ --%>
@@ -421,7 +522,14 @@
 
             </div>
             <div class="modal-footer justify-content-center border-0" style="padding:0.5rem 1rem;">
-                <form method="post" action="BpoCompleteTask" class="d-inline">
+                <%-- Accept button (pending tasks only, BPO Admin) --%>
+                <c:if test="${sessionScope.isBpoAdmin}">
+                    <button type="button" class="ssa-action save" id="modalAcceptBtn" style="display:none;" onclick="acceptFromModal()">
+                        <i class="bi bi-check2-circle me-1"></i>Accept
+                    </button>
+                    <span id="modalAcceptSep" class="ssa-action-sep" style="display:none;">|</span>
+                </c:if>
+                <form method="post" action="BpoCompleteTask" class="d-inline" id="modalCompleteForm">
                     <input type="hidden" name="action" value="complete">
                     <input type="hidden" name="todoId" id="modalCompleteToDoId" value="">
                     <input type="hidden" name="todoGuid" id="modalCompleteTodoGuid" value="">
@@ -439,6 +547,7 @@
 <script>
     var currentCrossSystem = false;
     var currentTodoGuid = '';
+    var currentIsPending = false;
 
     function openBpoModal(row) {
         const todoId = row.dataset.todoId;
@@ -451,6 +560,19 @@
         const assignedTo = row.dataset.assignedTo || '0';
         currentCrossSystem = row.dataset.crossSystem === 'true';
         currentTodoGuid = row.dataset.todoGuid || '';
+        currentIsPending = row.dataset.pending === 'true';
+
+        // Show/hide Accept vs Complete based on pending state
+        const acceptBtn = document.getElementById('modalAcceptBtn');
+        const acceptSep = document.getElementById('modalAcceptSep');
+        const completeForm = document.getElementById('modalCompleteForm');
+        if (acceptBtn) {
+            acceptBtn.style.display = currentIsPending ? '' : 'none';
+            acceptSep.style.display = currentIsPending ? '' : 'none';
+        }
+        if (completeForm) {
+            completeForm.style.display = currentIsPending ? 'none' : '';
+        }
 
         // Populate fields
         document.getElementById('modalTaskName').textContent = taskName;
@@ -699,6 +821,91 @@
         document.getElementById('modalNoteFile').value = '';
         document.getElementById('modalFileLabel').textContent = '';
         document.getElementById('modalFileClear').style.display = 'none';
+    }
+
+    // ═══ PENDING TASK ACCEPTANCE ═══
+
+    function toggleSelectAllPending(master) {
+        document.querySelectorAll('.pending-row-check').forEach(cb => { cb.checked = master.checked; });
+        updatePendingCount();
+    }
+
+    function updatePendingCount() {
+        const checked = document.querySelectorAll('.pending-row-check:checked');
+        const label = document.getElementById('pendingSelectedCount');
+        if (label) label.textContent = checked.length + ' selected';
+    }
+
+    function getSelectedPendingIds() {
+        return Array.from(document.querySelectorAll('.pending-row-check:checked')).map(cb => cb.value);
+    }
+
+    function acceptSelectedPending() {
+        const ids = getSelectedPendingIds();
+        if (ids.length === 0) return;
+        const assigneeId = document.getElementById('pendingAssignTo')?.value || '0';
+        doAcceptTasks(ids, assigneeId);
+    }
+
+    function acceptAllPending() {
+        const ids = Array.from(document.querySelectorAll('.pending-row-check')).map(cb => cb.value);
+        if (ids.length === 0) return;
+        const assigneeId = document.getElementById('pendingAssignTo')?.value || '0';
+        doAcceptTasks(ids, assigneeId);
+    }
+
+    function acceptFromModal() {
+        const todoId = document.getElementById('modalCompleteToDoId').value;
+        if (!todoId) return;
+        const assignSelect = document.getElementById('modalAssignTo');
+        const assigneeId = assignSelect ? assignSelect.value : '0';
+        doAcceptTasks([todoId], assigneeId, function() {
+            bootstrap.Modal.getInstance(document.getElementById('bpoTaskModal'))?.hide();
+        });
+    }
+
+    function doAcceptTasks(ids, assigneeId, callback) {
+        let body = 'action=accept&todoIds=' + ids.join(',');
+        if (assigneeId && assigneeId !== '0') body += '&assigneeId=' + assigneeId;
+
+        fetch('BpoCompleteTask', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: body
+        })
+        .then(r => {
+            if (r.ok) {
+                // Remove accepted rows from DOM
+                ids.forEach(id => {
+                    const row = document.querySelector('.pending-row[data-todo-id="' + id + '"]');
+                    if (row) row.remove();
+                });
+                updatePendingCount();
+                // Update the pending count badge in the tab
+                const remaining = document.querySelectorAll('.pending-row').length;
+                const badge = document.querySelector('.pending-count-badge');
+                if (badge) {
+                    if (remaining > 0) {
+                        badge.textContent = remaining;
+                    } else {
+                        badge.remove();
+                    }
+                }
+                // Show empty state if no rows left
+                if (remaining === 0) {
+                    const list = document.getElementById('bpoToDoList');
+                    const toolbar = document.querySelector('.pending-toolbar');
+                    if (toolbar) toolbar.style.display = 'none';
+                    const emptyDiv = document.createElement('div');
+                    emptyDiv.className = 'text-center text-muted fst-italic py-4';
+                    emptyDiv.style.fontSize = '0.85rem';
+                    emptyDiv.innerHTML = '<i class="bi bi-inbox" style="font-size:1.5rem; display:block; margin-bottom:0.3rem; color:#c8c8c8;"></i>No pending tasks';
+                    list.appendChild(emptyDiv);
+                }
+                if (callback) callback();
+            }
+        })
+        .catch(() => {});
     }
 
     function renderNotes(notes) {

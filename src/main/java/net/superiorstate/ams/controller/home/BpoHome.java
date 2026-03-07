@@ -45,6 +45,7 @@ public class BpoHome extends HttpServlet {
         try {
             AmsDataLocal local = (AmsDataLocal) request.getSession().getAttribute("local");
             Person currentUser = local.getCurrentPerson();
+            Boolean isBpoAdmin = (Boolean) request.getSession().getAttribute("isBpoAdmin");
 
             String viewMode = request.getParameter("viewMode");
             if (viewMode == null) viewMode = "mine";
@@ -53,14 +54,24 @@ public class BpoHome extends HttpServlet {
             request.setAttribute("crossSystemMode", crossSystemMode);
 
             if (crossSystemMode) {
-                // Cross-system BPO: query DelegatedToDo from remote PSPs
-                List<DelegatedToDo> delegatedToDos;
-                if ("all".equals(viewMode)) {
-                    delegatedToDos = getAllDelegatedToDos(em);
-                } else {
-                    delegatedToDos = getMyDelegatedToDos(em, currentUser.getId());
+                // Always compute pending count for the badge (BPO Admin sees it)
+                if (Boolean.TRUE.equals(isBpoAdmin)) {
+                    long pendingCount = getPendingCount(em);
+                    request.setAttribute("pendingCount", pendingCount);
                 }
-                request.setAttribute("delegatedToDos", delegatedToDos);
+
+                // Cross-system BPO: query DelegatedToDo from remote PSPs
+                if ("pending".equals(viewMode) && Boolean.TRUE.equals(isBpoAdmin)) {
+                    List<DelegatedToDo> pendingToDos = getPendingDelegatedToDos(em);
+                    request.setAttribute("pendingToDos", pendingToDos);
+                } else if ("all".equals(viewMode)) {
+                    List<DelegatedToDo> delegatedToDos = getAllDelegatedToDos(em);
+                    request.setAttribute("delegatedToDos", delegatedToDos);
+                } else {
+                    viewMode = "mine"; // Normalize if non-admin tried "pending"
+                    List<DelegatedToDo> delegatedToDos = getMyDelegatedToDos(em, currentUser.getId());
+                    request.setAttribute("delegatedToDos", delegatedToDos);
+                }
             } else {
                 // Co-located BPO: query local ToDo with sourced tasks
                 List<Object[]> bpoToDos;
@@ -80,6 +91,31 @@ public class BpoHome extends HttpServlet {
     }
 
     // --- Cross-system DelegatedToDo queries ---
+
+    private long getPendingCount(EntityManager em) {
+        String jpql = "SELECT COUNT(d) FROM DelegatedToDo d " +
+                "WHERE d.status = 'PENDING' AND d.isCompleted = false";
+        try {
+            return (Long) em.createQuery(jpql).getSingleResult();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return 0;
+        }
+    }
+
+    private List<DelegatedToDo> getPendingDelegatedToDos(EntityManager em) {
+        String jpql = "SELECT d FROM DelegatedToDo d " +
+                "WHERE d.status = 'PENDING' " +
+                "AND d.isCompleted = false " +
+                "ORDER BY d.dateReceived DESC, d.activityName, d.sortOrder";
+        Query q = em.createQuery(jpql, DelegatedToDo.class);
+        try {
+            return q.getResultList();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return new ArrayList<>();
+        }
+    }
 
     private List<DelegatedToDo> getMyDelegatedToDos(EntityManager em, Long bpoUserId) {
         String jpql = "SELECT d FROM DelegatedToDo d " +

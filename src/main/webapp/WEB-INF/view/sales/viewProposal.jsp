@@ -126,6 +126,24 @@
       padding: 2rem 0;
       border-top: 1px solid #e9ecef;
     }
+
+    /* ── Print: each proposal section starts on a new page ── */
+    @media print {
+      .proposal-section {
+        break-before: page;
+        padding-top: 1.5rem;
+      }
+      .proposal-section:first-child {
+        break-before: auto;
+        padding-top: 0;
+      }
+      .los-card, .pricing-card, .greeting-card {
+        break-inside: avoid;
+      }
+      .proposal-footer {
+        break-before: auto;
+      }
+    }
   </style>
 </head>
 <body>
@@ -152,10 +170,14 @@
           </div>
         </c:when>
         <c:when test="${section.getSectionType() == 'FEATURES'}">
-          <%@ include file="proposalFeatures.jsp" %>
+          <div class="proposal-section features-section">
+            <%@ include file="proposalFeatures.jsp" %>
+          </div>
         </c:when>
         <c:when test="${section.getSectionType() == 'PRICING'}">
-          <%@ include file="proposalPricing.jsp" %>
+          <div class="proposal-section pricing-section">
+            <%@ include file="proposalPricing.jsp" %>
+          </div>
         </c:when>
         <c:when test="${section.getSectionType() == 'CLOSING'}">
           <div class="proposal-section closing-section">
@@ -175,28 +197,36 @@
   <c:otherwise>
 
   <%-- Greeting --%>
-  <div class="greeting-card">
-    <h4 class="mb-2" style="color: var(--psp-primary);">
-      Hello<c:if test="${proposal.getProspect().getContact().getFirstName() != null}">, ${proposal.getProspect().getContact().getFirstName()}</c:if>!
-    </h4>
-    <p class="mb-1">
-      We've prepared a customized benefits administration proposal for
-      <strong>${proposal.getProspect().getName()}</strong>.
-    </p>
-    <p class="text-muted mb-0">
-      Below you'll find the services we recommend, along with features and pricing details.
-    </p>
+  <div class="proposal-section">
+    <div class="greeting-card">
+      <h4 class="mb-2" style="color: var(--psp-primary);">
+        Hello<c:if test="${proposal.getProspect().getContact().getFirstName() != null}">, ${proposal.getProspect().getContact().getFirstName()}</c:if>!
+      </h4>
+      <p class="mb-1">
+        We've prepared a customized benefits administration proposal for
+        <strong>${proposal.getProspect().getName()}</strong>.
+      </p>
+      <p class="text-muted mb-0">
+        Below you'll find the services we recommend, along with features and pricing details.
+      </p>
+    </div>
   </div>
 
-  <%@ include file="proposalFeatures.jsp" %>
-  <%@ include file="proposalPricing.jsp" %>
+  <div class="proposal-section">
+    <%@ include file="proposalFeatures.jsp" %>
+  </div>
+  <div class="proposal-section">
+    <%@ include file="proposalPricing.jsp" %>
+  </div>
 
   <%-- Apply Now --%>
-  <div class="apply-section">
-    <p class="text-muted mb-3">Ready to get started? Click below to begin your application.</p>
-    <a href="${pageContext.request.contextPath}/apply/${proposal.getApplicationGUID()}" class="btn btn-apply">
-      <i class="bi bi-pencil-square me-2"></i>Apply Now
-    </a>
+  <div class="proposal-section">
+    <div class="apply-section">
+      <p class="text-muted mb-3">Ready to get started? Click below to begin your application.</p>
+      <a href="${pageContext.request.contextPath}/apply/${proposal.getApplicationGUID()}" class="btn btn-apply">
+        <i class="bi bi-pencil-square me-2"></i>Apply Now
+      </a>
+    </div>
   </div>
 
   </c:otherwise>

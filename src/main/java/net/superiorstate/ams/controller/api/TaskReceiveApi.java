@@ -102,7 +102,7 @@ public class TaskReceiveApi extends HttpServlet {
                 dt.setEmployerName(getJsonString(t, "employerName"));
                 dt.setGotoLink(getJsonString(t, "gotoLink"));
                 dt.setInfoLink(getJsonString(t, "infoLink"));
-                dt.setStatus("ACTIVE");
+                dt.setStatus(pspClient.isAutoAcceptTasks() ? "ACTIVE" : "PENDING");
 
                 String sortOrderStr = getJsonString(t, "sortOrder");
                 if (sortOrderStr != null) {
