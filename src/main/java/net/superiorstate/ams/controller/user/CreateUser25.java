@@ -251,9 +251,11 @@ public class CreateUser25 extends HttpServlet {
         Person p = new Person();
         p.setPsp(psp);
         p.setEmail(email.trim().toLowerCase());
-        p.setFirstName(firstName.trim().toUpperCase());
-        p.setLastName(lastName.trim().toUpperCase());
-        p.setFullName(firstName.trim().toUpperCase() + " " + lastName.trim().toUpperCase());
+        String capFirst = capitalCase(firstName);
+        String capLast = capitalCase(lastName);
+        p.setFirstName(capFirst);
+        p.setLastName(capLast);
+        p.setFullName(capFirst + " " + capLast);
         p.setAddress(admin.getAddress());
         em.persist(p);
         em.getTransaction().commit();
@@ -348,5 +350,12 @@ public class CreateUser25 extends HttpServlet {
         if (hasPspRole) {
             // addUser refreshes the internal user list
         }
+    }
+
+    /** Capitalize first letter, lowercase the rest. e.g. "KEVIN" → "Kevin" */
+    private String capitalCase(String s) {
+        if (s == null || s.isBlank()) return s;
+        String t = s.trim().toLowerCase();
+        return t.substring(0, 1).toUpperCase() + t.substring(1);
     }
 }

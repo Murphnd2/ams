@@ -2,7 +2,7 @@
 
 > **Purpose:** Consolidated historical record of all build sessions. For current project state, see `project_backlog.md`. For current architecture, see `application_flow.md` and `entity_reference.md`.
 >
-> **Last Updated:** March 20, 2026 (Session 46)
+> **Last Updated:** March 22, 2026 (Session 47)
 
 ---
 
@@ -1578,3 +1578,27 @@ Created `docs/custom-landing-page-prompt.md` — comprehensive guide for externa
 - `requestQuote25.jsp` — dynamic header colors
 - `customLanding25.jsp` — dynamic header colors, IntersectionObserver
 - `TaskReceiveApi.java`, `BpoRecurringHistory.java` — unrelated modifications
+
+## March 22, 2026 — Agent Role Scoping & User Creation Fixes (Session 47)
+
+Bug fixes for agent-only user access controls and user creation name formatting.
+
+### ReviewApplications Agent Scoping
+- **ReviewApplications.java** query now adds `AND pr.agent.id = :agentId` when the logged-in user is agent-only (not PSP User/Admin), restricting the application list to their own prospects. Previously showed all PSP applications regardless of role.
+
+### User Manager Reassignment Filtering
+- **UserManager.java** GET now includes `agencyIds` array per user in JSON response, queried from the agency-agent join table
+- **userManager25.jsp** `umBuildTargetDropdown()` now filters reassignment candidates by role:
+  - Deactivating a PSP User/Admin → only shows other PSP User (1) or PSP Admin (5) users
+  - Deactivating an agent-only user → only shows other agents assigned to the same agency
+- Previously showed all active users regardless of role or agency
+
+### Create User Name Normalization
+- **CreateUser25.java** `createPerson()` now normalizes names to capital case (e.g. "KEVIN" → "Kevin") instead of forcing all-uppercase via `toUpperCase()`
+- Added `capitalCase()` helper method: trims, lowercases, then capitalizes first letter
+
+### Files Modified
+- `ReviewApplications.java` — agent-scoped JPQL query
+- `UserManager.java` — agencyIds in JSON, import consolidation
+- `userManager25.jsp` — role-aware reassignment dropdown
+- `CreateUser25.java` — capital case name normalization
