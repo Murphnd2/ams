@@ -170,9 +170,11 @@
           </div>
         </c:when>
         <c:when test="${section.getSectionType() == 'FEATURES'}">
+          <c:if test="${not empty features}">
           <div class="proposal-section features-section">
             <%@ include file="proposalFeatures.jsp" %>
           </div>
+          </c:if>
         </c:when>
         <c:when test="${section.getSectionType() == 'PRICING'}">
           <div class="proposal-section pricing-section">
@@ -212,9 +214,11 @@
     </div>
   </div>
 
+  <c:if test="${not empty features}">
   <div class="proposal-section">
     <%@ include file="proposalFeatures.jsp" %>
   </div>
+  </c:if>
   <div class="proposal-section">
     <%@ include file="proposalPricing.jsp" %>
   </div>

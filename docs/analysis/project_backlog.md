@@ -29,7 +29,7 @@
 | # | Feature | Priority | Status | Spec Doc | Notes |
 |---|---------|----------|--------|----------|-------|
 | 1 | Users and Roles Enhancement | CONF | ✅ Done | `ams_to_be_vision.md` §1 | Agent + Agency Manager roles built. Invitation system complete. BPO roles built. User Manager modal (V029). SSO future (D-31). |
-| 2 | Sales Portal | CONF | ✅ Done | `sales_pipeline_reference.md` | Full pipeline built and tested end-to-end. Proposal customization added (V035-V036). Raw HTML paste support for TITLE/CLOSING sections (Session 37). Application Visibility & Role Walls (V041, Session 41). AI Page Builder for custom proposal pages (Session 50). |
+| 2 | Sales Portal | CONF | ✅ Done | `sales_pipeline_reference.md` | Full pipeline built and tested end-to-end. Proposal customization added (V035-V036). Raw HTML paste support for TITLE/CLOSING sections (Session 37). Application Visibility & Role Walls (V041, Session 41). AI Page Builder for custom proposal pages (Session 50). Agency-scoped TITLE/CLOSING overrides (V044, Session 51). |
 | 3 | Sales / Marketing Library | CONF | ✅ Done | `session_history_archive.md` (Feb 21) | Resource Library UI, Wasabi upload/download, category management, feature linking to proposals. |
 | 4 | Sequence Template Overhaul | CONF | ✅ Done | `session_history_archive.md` (Feb 19) | New drag-and-drop builder complete. Old pages preserved for cleanup. |
 | 5 | Third-Party Vendor Task Outsourcing (BPO) | CONF | ✅ Done | `bpo_feature_session_history.md` | Full cross-system architecture: push/pull API, note sync, file attachments (V033), vendor registry (V032), partnership management. Co-located and federated modes both working. |
@@ -102,6 +102,7 @@
 | 23 | Questionnaire Completion Gating | LOW | 💡 Backlog | Phase 7: optional `todo_id` linkage on QuestionnaireInstance — blocks task completion until questionnaire is SUBMITTED/REVIEWED. |
 | 24 | Shared Field Renderer Component | LOW | 💡 Backlog | Phase 8: extract reusable `fieldRenderer.jsp` from questionnaire and application form rendering. |
 | 25 | Proposal Content Page Skill | MED | ✅ Done | Claude Code skill (`.claude/skills/proposal-content-page/`) generates styled HTML blocks for proposal custom pages. Dark navy card-inset pattern, `--s` scale factor, scoped CSS, print-ready layout. Reference examples in `docs/proposal-fsa-page*.html`. Useful for building content library and proposal inserts. |
+| 29 | Agency-Scoped Proposal Sections | MED | ✅ Code complete | V044 adds agency_id FK to proposal_section. TITLE/CLOSING pages can be overridden per-agency. ProposalSettings Agency Overrides card. ViewProposal resolves agency chain. Full-height flex layout with collapsible editor. Needs V044 applied + browser testing. Session 51. |
 | 26 | Legacy TPO Path → Opportunity Creation | MED | 💡 Backlog | When `/tpo/*` path is hit, auto-create an Opportunity for the agency manager. Extract the full original path sought (e.g. `/tpo/quote/12345`) so previous quote/prospect info can be looked up from the old superiorstate.net IIS site. Currently `/tpo/*` shows a static "site updated" notice page (`LegacyTpoRedirect`). |
 
 ---

@@ -10,6 +10,7 @@ import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.dao.AppConstantDAO;
 import net.superiorstate.ams.data.dao.SalesDAO;
 import net.superiorstate.ams.data.dao.StorageDAO;
+import net.superiorstate.ams.model.sales.agency.Agency;
 import net.superiorstate.ams.model.sales.agency.Proposal;
 import net.superiorstate.ams.model.sales.agency.RateTable;
 import net.superiorstate.ams.model.sales.offering.Enhancement;
@@ -179,10 +180,11 @@ public class ViewProposal extends HttpServlet {
                         .setParameter("pspId", psp.getId())
                         .getResultList();
 
-                // Force-init M:N collections for scope filtering
+                // Force-init M:N collections and agency for scope/override filtering
                 for (ProposalSection s : sections) {
                     if (s.getLosList() != null) s.getLosList().size();
                     if (s.getEnhancementList() != null) s.getEnhancementList().size();
+                    if (s.getAgency() != null) s.getAgency().getId();
                 }
 
                 // Scope filtering — remove SCOPED sections that don't match the proposal
@@ -229,6 +231,57 @@ public class ViewProposal extends HttpServlet {
                     }
                 }
                 sections = filteredSections;
+
+                // Agency override for TITLE and CLOSING
+                Agency proposalAgency = null;
+                Person agent = proposal.getProspect().getAgent();
+                if (agent != null) {
+                    List<Agency> agentAgencies = em.createQuery(
+                            "SELECT a FROM Agency a JOIN a.agentList al WHERE al.id = :agentId AND a.psp.id = :pspId",
+                            Agency.class)
+                            .setParameter("agentId", agent.getId())
+                            .setParameter("pspId", psp.getId())
+                            .getResultList();
+                    if (!agentAgencies.isEmpty()) {
+                        proposalAgency = agentAgencies.get(0);
+                    }
+                }
+
+                if (proposalAgency != null) {
+                    // Separate agency-scoped and default TITLE/CLOSING
+                    Map<String, ProposalSection> agencyScopedByType = new HashMap<>();
+                    for (ProposalSection s : sections) {
+                        String t = s.getSectionType();
+                        if (("TITLE".equals(t) || "CLOSING".equals(t))
+                                && s.getAgency() != null && s.getAgency().getId().equals(proposalAgency.getId())) {
+                            agencyScopedByType.put(t, s);
+                        }
+                    }
+
+                    // Replace defaults with agency-scoped versions where they exist
+                    List<ProposalSection> finalSections = new ArrayList<>();
+                    for (ProposalSection s : sections) {
+                        String t = s.getSectionType();
+                        if ("TITLE".equals(t) || "CLOSING".equals(t)) {
+                            if (s.getAgency() == null && agencyScopedByType.containsKey(t)) {
+                                continue; // skip default — agency override will be used
+                            }
+                            if (s.getAgency() != null && !s.getAgency().getId().equals(proposalAgency.getId())) {
+                                continue; // skip agency-scoped sections for OTHER agencies
+                            }
+                        }
+                        finalSections.add(s);
+                    }
+                    sections = finalSections;
+                } else {
+                    // No agency resolved — strip all agency-scoped TITLE/CLOSING, keep only defaults
+                    sections = sections.stream()
+                            .filter(s -> {
+                                String t = s.getSectionType();
+                                return !("TITLE".equals(t) || "CLOSING".equals(t)) || s.getAgency() == null;
+                            })
+                            .collect(java.util.stream.Collectors.toList());
+                }
 
                 if (!sections.isEmpty()) {
                     // Build token replacement map

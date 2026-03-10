@@ -6,6 +6,7 @@ import net.superiorstate.ams.model.general.PSP;
 import java.util.List;
 
 @Entity
+@Table(name = "serviceitem")
 public class ModuleDetail {
     @Id
     @GeneratedValue

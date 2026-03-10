@@ -2,6 +2,7 @@ package net.superiorstate.ams.model.sales.offering;
 
 import jakarta.persistence.*;
 import net.superiorstate.ams.model.general.PSP;
+import net.superiorstate.ams.model.sales.agency.Agency;
 
 import java.sql.Timestamp;
 import java.util.ArrayList;
@@ -19,6 +20,10 @@ public class ProposalSection {
     @ManyToOne
     @JoinColumn(name = "psp_id", nullable = false)
     private PSP psp;
+
+    @ManyToOne
+    @JoinColumn(name = "agency_id")
+    private Agency agency;
 
     @Column(name = "section_type", columnDefinition = "varchar(20)", nullable = false)
     private String sectionType;
@@ -72,6 +77,14 @@ public class ProposalSection {
 
     public void setPsp(PSP psp) {
         this.psp = psp;
+    }
+
+    public Agency getAgency() {
+        return agency;
+    }
+
+    public void setAgency(Agency agency) {
+        this.agency = agency;
     }
 
     public String getSectionType() {

@@ -56,7 +56,7 @@ src/main/java/net/superiorstate/ams/
 All schema changes MUST follow versioned migration conventions:
 
 1. **Every schema change gets a versioned script:** `V{NNN}__{description}.sql`
-2. Check `docs/analysis/migration_tracker.md` for the current highest version (currently **V042**)
+2. Check `docs/analysis/migration_tracker.md` for the current highest version (currently **V044**)
 3. **Scripts self-register:** Every migration must include:
    ```sql
    INSERT IGNORE INTO schema_version (version, description, script_name, applied_on)
@@ -91,7 +91,7 @@ Active work: `feature/proposal-customization` (branched from `refactor/modernize
 - End every response with: **Next action: ...**
 
 ## Reference Documentation
-- `docs/analysis/migration_tracker.md` — DB version tracking (V042 current)
+- `docs/analysis/migration_tracker.md` — DB version tracking (V044 current)
 - `docs/analysis/session_history_archive.md` — build session history (30 sessions)
 - `docs/analysis/project_backlog.md` — feature status and priorities
 - `docs/analysis/activity_detail_transition_plan.md` — activity detail page plan (Track A complete)

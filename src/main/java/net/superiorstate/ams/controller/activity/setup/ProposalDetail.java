@@ -6,7 +6,6 @@ import jakarta.persistence.Query;
 import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
-import net.superiorstate.ams.data.AmsDataGlobal;
 import net.superiorstate.ams.data.AmsDataLocal;
 import net.superiorstate.ams.data.dao.EmailDAO;
 import net.superiorstate.ams.data.dao.SalesDAO;
@@ -37,8 +36,16 @@ public class ProposalDetail extends HttpServlet {
 
             List<RateTable> pricing = SalesDAO.getPricing(em, proposal);
 
+            // Build proposal link dynamically from request (adapts to any host/port/context)
+            String baseUrl = request.getScheme() + "://" + request.getServerName();
+            int port = request.getServerPort();
+            if (port != 80 && port != 443) baseUrl += ":" + port;
+            baseUrl += request.getContextPath() + "/";
+            String proposalLink = baseUrl + "proposal/" + proposal.getApplicationGUID();
+
             request.setAttribute("proposal", proposal);
             request.setAttribute("pricing", pricing);
+            request.setAttribute("proposalLink", proposalLink);
 
         } finally {
             em.close();
@@ -68,8 +75,11 @@ public class ProposalDetail extends HttpServlet {
                 String toEmail = contact.getEmail();
                 String fromEmail = sender.getEmail();
 
-                AmsDataGlobal global = (AmsDataGlobal) getServletContext().getAttribute("global");
-                String proposalLink = global.getWebPath() + "proposal/" + proposal.getApplicationGUID();
+                String baseUrl = request.getScheme() + "://" + request.getServerName();
+                int port = request.getServerPort();
+                if (port != 80 && port != 443) baseUrl += ":" + port;
+                baseUrl += request.getContextPath() + "/";
+                String proposalLink = baseUrl + "proposal/" + proposal.getApplicationGUID();
                 String prospectName = contact.getFirstName() != null ? contact.getFirstName() : "there";
 
                 String bodyHtml = "<p>Hi " + prospectName + ",</p>"

@@ -314,6 +314,17 @@
 - **DNS/SSL migration:** superiorstate.net now points to same Linux box, Nginx + certbot configured
 - **Backlog #26:** Legacy TPO Path → Opportunity Creation (extract full path for old quote/prospect lookup)
 
+## Session 51 (2026-03-10) — Agency-Scoped Proposal Sections & Full-Height Layout
+- **V044 migration:** `agency_id` nullable FK on `proposal_section`, unique index `(psp_id, agency_id, section_type)`
+- **ProposalSection.java:** nullable `Agency` field with `@ManyToOne @JoinColumn`
+- **ProposalSettings.java:** `agencyList` in GET; `createAgencySection` clones default content; `deleteAgencySection`; relaxed `toggleActive` for agency-scoped
+- **ViewProposal.java:** Agency resolution chain: Proposal → Prospect → Agent join table → Agency; TITLE/CLOSING override lookup
+- **proposalSettings.jsp full-height layout:** `.ps-page` flex wrapper (`calc(100vh - 64px)`), `.ps-left` sticky header + scrollable list, `.ps-right` flex column, `.ps-editor-body` collapsible via chevron toggle, `.ps-bottom-card` (Agency Overrides / Display Scope) fills remaining height with own scrollbar
+- **Merge Tokens modal:** `#mergeTokensModal` — moved from inline block to Bootstrap modal, triggered by `{}` header button
+- **Preview iframe fix:** `PREVIEW_MIN_HEIGHT` (440px) + `setTimeout` defer prevents tiny preview box
+- **Bug fixes:** proposal URL, features visibility, ModuleDetail @Table
+- **Git sync:** Pulled `948aadb` from other workstation (AI Builder), resolved `proposalFeatures.jsp` conflict
+
 ## Reference
 - Full session archive: `docs/analysis/session_history_archive.md`
 - Deployment backlog: `docs/deployment_backlog.md`

@@ -37,17 +37,47 @@
         }
         .section-card .section-toggle { font-size: 0.85rem; }
 
-        .editor-panel { min-height: 400px; }
-        .token-ref {
-            background: #f8f9fa;
-            border: 1px solid #dee2e6;
-            border-radius: 0.375rem;
-            padding: 0.75rem;
-            font-size: 0.85rem;
+        /* ── Full-height flex layout (no page scroll) ──────────── */
+        .ps-page { display: flex; flex-direction: column; height: calc(100vh - 64px); overflow: hidden; }
+        .ps-page .alert { flex-shrink: 0; }
+        .ps-row { flex: 1; min-height: 0; display: flex; gap: 1rem; padding: 0.75rem; }
+
+        /* Left column — sticky header, scrollable card list */
+        .ps-left { width: 33.33%; display: flex; flex-direction: column; min-height: 0; }
+        .ps-left > .card { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+        .ps-left .card-body { flex: 1; overflow-y: auto; min-height: 0; }
+
+        /* Right column — flex column, editor collapses, bottom card fills */
+        .ps-right { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+        .editor-panel { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+        .editor-panel > .card { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+        .ps-editor-body { overflow-y: auto; min-height: 0; transition: max-height 0.3s ease, padding 0.3s ease, opacity 0.2s ease; }
+        .ps-editor-body.collapsed { max-height: 0 !important; padding-top: 0 !important; padding-bottom: 0 !important; overflow: hidden; opacity: 0; }
+        .ps-bottom-card { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+        .ps-bottom-card > .card { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+        .ps-bottom-card > .card > .card-body { flex: 1; overflow-y: auto; min-height: 0; }
+
+        /* Collapse toggle chevron */
+        .ps-collapse-toggle { cursor: pointer; transition: transform 0.3s; }
+        .ps-collapse-toggle.collapsed { transform: rotate(-90deg); }
+
+        /* Merge tokens modal */
+        #mergeTokensModal code { color: var(--ssa); font-weight: 600; }
+        #mergeTokensModal .modal-body { font-size: 0.88rem; }
+
+        /* Agency-scoped section cards */
+        .section-card.agency-scoped {
+            margin-left: 1.5rem;
+            border-left: 3px solid var(--ssa);
+            font-size: 0.88rem;
         }
-        .token-ref code {
+        .agency-badge {
+            font-size: 0.68rem;
+            padding: 0.1rem 0.35rem;
+            border-radius: 0.25rem;
+            background-color: #e8f0fe;
             color: var(--ssa);
-            font-weight: 600;
+            white-space: nowrap;
         }
 
         /* Ghost handle for sortable */
@@ -149,6 +179,7 @@
 <c:import url="/WEB-INF/view/a/general/navbar25.jsp"/>
 
 <%-- Flash message --%>
+<div class="ps-page">
 <c:if test="${not empty sessionScope.flashMessage}">
     <div class="alert alert-success alert-dismissible fade show mx-3 mt-2 mb-0" role="alert" style="font-size:0.85rem;">
         <i class="bi bi-check-circle me-1"></i>${sessionScope.flashMessage}
@@ -157,11 +188,10 @@
     <c:remove var="flashMessage" scope="session"/>
 </c:if>
 
-<div class="container-fluid px-3 py-3">
-    <div class="row g-3">
+<div class="ps-row">
 
-        <%-- Left Panel: Section List (col-4) --%>
-        <div class="col-4">
+        <%-- Left Panel: Section List --%>
+        <div class="ps-left">
             <div class="card">
                 <div class="hdr-bar d-flex justify-content-between align-items-center">
                     <span><i class="bi bi-list-ul me-1"></i>Proposal Sections</span>
@@ -171,13 +201,14 @@
                 </div>
                 <div class="card-body p-2" id="sectionList">
                     <c:forEach var="section" items="${sections}" varStatus="loop">
-                        <div class="section-card ${section.getId() == param.sectionId || (empty param.sectionId && loop.first) ? 'active' : ''} ${section.getSectionType() == 'TITLE' || section.getSectionType() == 'CLOSING' ? 'pinned' : ''}"
+                        <div class="section-card ${section.getId() == param.sectionId || (empty param.sectionId && loop.first) ? 'active' : ''} ${section.getSectionType() == 'TITLE' || section.getSectionType() == 'CLOSING' ? 'pinned' : ''} ${section.getAgency() != null ? 'agency-scoped' : ''}"
                              data-id="${section.getId()}" data-type="${section.getSectionType()}"
                              onclick="selectSection(${section.getId()})">
 
                             <i class="bi bi-grip-vertical drag-handle"></i>
 
                             <c:choose>
+                                <c:when test="${section.getAgency() != null}"><i class="bi bi-building" style="color: var(--ssa);"></i></c:when>
                                 <c:when test="${section.getSectionType() == 'TITLE'}"><i class="bi bi-file-earmark-text" style="color: var(--ssa);"></i></c:when>
                                 <c:when test="${section.getSectionType() == 'FEATURES'}"><i class="bi bi-check2-square" style="color: var(--ssa-alt);"></i></c:when>
                                 <c:when test="${section.getSectionType() == 'PRICING'}"><i class="bi bi-tag" style="color: var(--ssa-alt);"></i></c:when>
@@ -188,6 +219,9 @@
                             <div class="section-info">
                                 <div class="section-title">${section.getTitle()}</div>
                                 <span class="section-badge bg-light text-dark">${section.getSectionType()}</span>
+                                <c:if test="${section.getAgency() != null}">
+                                    <span class="agency-badge"><i class="bi bi-building me-1"></i>${section.getAgency().getName()}</span>
+                                </c:if>
                                 <c:if test="${!section.isActive()}">
                                     <span class="section-badge bg-warning text-dark">Inactive</span>
                                 </c:if>
@@ -201,15 +235,16 @@
             </div>
         </div>
 
-        <%-- Right Panel: Section Editor (col-8) --%>
-        <div class="col-8">
+        <%-- Right Panel: Section Editor --%>
+        <div class="ps-right">
             <c:forEach var="section" items="${sections}" varStatus="loop">
                 <div class="editor-panel" id="editor-${section.getId()}"
-                     style="display: ${section.getId() == param.sectionId || (empty param.sectionId && loop.first) ? 'block' : 'none'};">
+                     style="display: ${section.getId() == param.sectionId || (empty param.sectionId && loop.first) ? 'flex' : 'none'};">
 
                     <div class="card">
-                        <div class="hdr-bar d-flex justify-content-between align-items-center">
-                            <span>
+                        <div class="hdr-bar d-flex justify-content-between align-items-center" style="flex-shrink:0;">
+                            <span style="cursor:pointer;" onclick="toggleEditorBody(${section.getId()})">
+                                <i class="bi bi-chevron-down ps-collapse-toggle me-1" id="collapse-icon-${section.getId()}"></i>
                                 <c:choose>
                                     <c:when test="${section.getSectionType() == 'CUSTOM'}">
                                         <i class="bi bi-file-code me-1"></i>${section.getTitle()}
@@ -220,8 +255,14 @@
                                 </c:choose>
                             </span>
                             <div class="d-flex align-items-center gap-2">
-                                <%-- Active/Inactive toggle (not for TITLE/CLOSING) --%>
-                                <c:if test="${section.getSectionType() != 'TITLE' && section.getSectionType() != 'CLOSING'}">
+                                <%-- Merge Tokens helper (TITLE/CLOSING/CUSTOM only) --%>
+                                <c:if test="${section.getSectionType() == 'TITLE' || section.getSectionType() == 'CLOSING' || section.getSectionType() == 'CUSTOM'}">
+                                    <button type="button" class="btn btn-sm btn-outline-light" data-bs-toggle="modal" data-bs-target="#mergeTokensModal" title="Merge Tokens">
+                                        <i class="bi bi-braces"></i>
+                                    </button>
+                                </c:if>
+                                <%-- Active/Inactive toggle (not for default TITLE/CLOSING; allowed for agency-scoped) --%>
+                                <c:if test="${(section.getSectionType() != 'TITLE' && section.getSectionType() != 'CLOSING') || section.getAgency() != null}">
                                     <form method="post" action="ProposalSettings" class="d-inline">
                                         <input type="hidden" name="action" value="toggleActive"/>
                                         <input type="hidden" name="sectionId" value="${section.getId()}"/>
@@ -238,9 +279,17 @@
                                         <button type="submit" class="btn btn-sm btn-outline-light" title="Delete"><i class="bi bi-trash"></i></button>
                                     </form>
                                 </c:if>
+                                <%-- Delete button (agency-scoped TITLE/CLOSING) --%>
+                                <c:if test="${(section.getSectionType() == 'TITLE' || section.getSectionType() == 'CLOSING') && section.getAgency() != null}">
+                                    <form method="post" action="ProposalSettings" class="d-inline" onsubmit="return confirm('Delete this agency override?');">
+                                        <input type="hidden" name="action" value="deleteAgencySection"/>
+                                        <input type="hidden" name="sectionId" value="${section.getId()}"/>
+                                        <button type="submit" class="btn btn-sm btn-outline-light" title="Delete override"><i class="bi bi-trash"></i></button>
+                                    </form>
+                                </c:if>
                             </div>
                         </div>
-                        <div class="card-body">
+                        <div class="card-body ps-editor-body" id="editorBody-${section.getId()}">
 
                             <c:choose>
                                 <%-- TITLE, CLOSING, CUSTOM — editable HTML content --%>
@@ -339,110 +388,6 @@
                                         </div>
                                     </form>
 
-                                    <%-- Display Scope (CUSTOM sections only) --%>
-                                    <c:if test="${section.getSectionType() == 'CUSTOM'}">
-                                      <div class="card mt-3">
-                                        <div class="card-header py-2" style="background-color: var(--ssa); color: white;">
-                                          <h6 class="mb-0 fw-semibold"><i class="bi bi-funnel me-2"></i>Display Scope</h6>
-                                        </div>
-                                        <div class="card-body">
-                                          <form method="post" action="ProposalSettings" id="scopeForm-${section.getId()}">
-                                            <input type="hidden" name="action" value="updateScope"/>
-                                            <input type="hidden" name="sectionId" value="${section.getId()}"/>
-
-                                            <div class="form-check mb-2">
-                                              <input class="form-check-input" type="radio" name="scope" value="ALL"
-                                                     id="scopeAll-${section.getId()}"
-                                                     ${section.getScope() != 'SCOPED' ? 'checked' : ''}
-                                                     onchange="toggleScopePanel(${section.getId()}, false)">
-                                              <label class="form-check-label" for="scopeAll-${section.getId()}">
-                                                Show on <strong>all</strong> proposals
-                                              </label>
-                                            </div>
-                                            <div class="form-check mb-3">
-                                              <input class="form-check-input" type="radio" name="scope" value="SCOPED"
-                                                     id="scopeScoped-${section.getId()}"
-                                                     ${section.getScope() == 'SCOPED' ? 'checked' : ''}
-                                                     onchange="toggleScopePanel(${section.getId()}, true)">
-                                              <label class="form-check-label" for="scopeScoped-${section.getId()}">
-                                                Show only when <strong>specific services</strong> are proposed
-                                              </label>
-                                            </div>
-
-                                            <div id="scopeDetail-${section.getId()}"
-                                                 style="display: ${section.getScope() == 'SCOPED' ? 'block' : 'none'};">
-                                              <p class="text-muted" style="font-size: 0.85rem;">
-                                                This page appears on proposals that include at least one of the selected services.
-                                              </p>
-
-                                              <%-- LOS Checkboxes --%>
-                                              <div class="mb-3">
-                                                <label class="form-label fw-semibold" style="font-size: 0.9rem;">Lines of Service</label>
-                                                <c:forEach var="los" items="${allLos}">
-                                                  <div class="form-check">
-                                                    <input class="form-check-input" type="checkbox" name="losIds"
-                                                           value="${los.getId()}" id="psLos-${section.getId()}-${los.getId()}"
-                                                           <c:forEach var="linked" items="${section.getLosList()}">
-                                                             <c:if test="${linked.getId() == los.getId()}">checked</c:if>
-                                                           </c:forEach>>
-                                                    <label class="form-check-label" for="psLos-${section.getId()}-${los.getId()}"
-                                                           style="font-size: 0.85rem;">${los.getDescription()}</label>
-                                                  </div>
-                                                </c:forEach>
-                                              </div>
-
-                                              <%-- Enhancement Checkboxes --%>
-                                              <c:if test="${not empty allEnhancements}">
-                                                <div class="mb-3">
-                                                  <label class="form-label fw-semibold" style="font-size: 0.9rem;">Enhancements</label>
-                                                  <c:forEach var="enh" items="${allEnhancements}">
-                                                    <div class="form-check">
-                                                      <input class="form-check-input" type="checkbox" name="enhIds"
-                                                             value="${enh.getId()}" id="psEnh-${section.getId()}-${enh.getId()}"
-                                                             <c:forEach var="linked" items="${section.getEnhancementList()}">
-                                                               <c:if test="${linked.getId() == enh.getId()}">checked</c:if>
-                                                             </c:forEach>>
-                                                      <label class="form-check-label" for="psEnh-${section.getId()}-${enh.getId()}"
-                                                             style="font-size: 0.85rem;">${enh.getDescription()}</label>
-                                                    </div>
-                                                  </c:forEach>
-                                                </div>
-                                              </c:if>
-                                            </div>
-
-                                            <button type="submit" class="btn btn-sm btn-outline-ssa">
-                                              <i class="bi bi-check-lg me-1"></i>Save Scope
-                                            </button>
-                                          </form>
-                                        </div>
-                                      </div>
-                                    </c:if>
-
-                                    <%-- Available Tokens reference --%>
-                                    <div class="token-ref mt-3">
-                                        <div class="fw-semibold mb-2"><i class="bi bi-braces me-1"></i>Available Merge Tokens</div>
-                                        <div class="row">
-                                            <div class="col-6">
-                                                <code>{{PROSPECT_NAME}}</code> — Prospect name<br>
-                                                <code>{{AGENT_NAME}}</code> — Agent full name<br>
-                                                <code>{{AGENT_EMAIL}}</code> — Agent email<br>
-                                                <code>{{AGENCY_NAME}}</code> — Agency name<br>
-                                                <code>{{PSP_NAME}}</code> — PSP full name<br>
-                                            </div>
-                                            <div class="col-6">
-                                                <code>{{DATE_CREATED}}</code> — Proposal date<br>
-                                                <code>{{PRIMARY_COLOR}}</code> — Brand primary color<br>
-                                                <code>{{ACCENT_COLOR}}</code> — Brand accent color<br>
-                                                <code>{{APPLY_BUTTON}}</code> — Apply Now button<br>
-                                                <code>{{PROPOSAL_ID}}</code> — Proposal ID<br>
-                                            </div>
-                                        </div>
-                                        <div class="mt-2 text-muted" style="font-size:0.8rem;">
-                                            <i class="bi bi-info-circle me-1"></i>
-                                            <code>&lt;style&gt;</code> blocks and inline <code>style=</code> attributes are supported.
-                                            Use the <strong>Paste HTML</strong> or <strong>HTML Source</strong> button to insert raw markup.
-                                        </div>
-                                    </div>
                                 </c:when>
 
                                 <%-- PRICING and FEATURES — read-only info --%>
@@ -461,13 +406,196 @@
                                     </div>
                                 </c:otherwise>
                             </c:choose>
+                        </div><%-- /ps-editor-body --%>
 
-                        </div>
-                    </div>
-                </div>
+                        <%-- ── Bottom card: Display Scope (CUSTOM) or Agency Overrides (TITLE/CLOSING) ── --%>
+                        <c:if test="${section.getSectionType() == 'CUSTOM'}">
+                          <div class="ps-bottom-card">
+                            <div class="card" style="border-top: 1px solid #dee2e6; border-radius: 0;">
+                              <div class="card-header py-2" style="background-color: var(--ssa); color: white; flex-shrink: 0;">
+                                <h6 class="mb-0 fw-semibold"><i class="bi bi-funnel me-2"></i>Display Scope</h6>
+                              </div>
+                              <div class="card-body">
+                                <form method="post" action="ProposalSettings" id="scopeForm-${section.getId()}">
+                                  <input type="hidden" name="action" value="updateScope"/>
+                                  <input type="hidden" name="sectionId" value="${section.getId()}"/>
+
+                                  <div class="form-check mb-2">
+                                    <input class="form-check-input" type="radio" name="scope" value="ALL"
+                                           id="scopeAll-${section.getId()}"
+                                           ${section.getScope() != 'SCOPED' ? 'checked' : ''}
+                                           onchange="toggleScopePanel(${section.getId()}, false)">
+                                    <label class="form-check-label" for="scopeAll-${section.getId()}">
+                                      Show on <strong>all</strong> proposals
+                                    </label>
+                                  </div>
+                                  <div class="form-check mb-3">
+                                    <input class="form-check-input" type="radio" name="scope" value="SCOPED"
+                                           id="scopeScoped-${section.getId()}"
+                                           ${section.getScope() == 'SCOPED' ? 'checked' : ''}
+                                           onchange="toggleScopePanel(${section.getId()}, true)">
+                                    <label class="form-check-label" for="scopeScoped-${section.getId()}">
+                                      Show only when <strong>specific services</strong> are proposed
+                                    </label>
+                                  </div>
+
+                                  <div id="scopeDetail-${section.getId()}"
+                                       style="display: ${section.getScope() == 'SCOPED' ? 'block' : 'none'};">
+                                    <p class="text-muted" style="font-size: 0.85rem;">
+                                      This page appears on proposals that include at least one of the selected services.
+                                    </p>
+
+                                    <%-- LOS Checkboxes --%>
+                                    <div class="mb-3">
+                                      <label class="form-label fw-semibold" style="font-size: 0.9rem;">Lines of Service</label>
+                                      <c:forEach var="los" items="${allLos}">
+                                        <div class="form-check">
+                                          <input class="form-check-input" type="checkbox" name="losIds"
+                                                 value="${los.getId()}" id="psLos-${section.getId()}-${los.getId()}"
+                                                 <c:forEach var="linked" items="${section.getLosList()}">
+                                                   <c:if test="${linked.getId() == los.getId()}">checked</c:if>
+                                                 </c:forEach>>
+                                          <label class="form-check-label" for="psLos-${section.getId()}-${los.getId()}"
+                                                 style="font-size: 0.85rem;">${los.getDescription()}</label>
+                                        </div>
+                                      </c:forEach>
+                                    </div>
+
+                                    <%-- Enhancement Checkboxes --%>
+                                    <c:if test="${not empty allEnhancements}">
+                                      <div class="mb-3">
+                                        <label class="form-label fw-semibold" style="font-size: 0.9rem;">Enhancements</label>
+                                        <c:forEach var="enh" items="${allEnhancements}">
+                                          <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" name="enhIds"
+                                                   value="${enh.getId()}" id="psEnh-${section.getId()}-${enh.getId()}"
+                                                   <c:forEach var="linked" items="${section.getEnhancementList()}">
+                                                     <c:if test="${linked.getId() == enh.getId()}">checked</c:if>
+                                                   </c:forEach>>
+                                            <label class="form-check-label" for="psEnh-${section.getId()}-${enh.getId()}"
+                                                   style="font-size: 0.85rem;">${enh.getDescription()}</label>
+                                          </div>
+                                        </c:forEach>
+                                      </div>
+                                    </c:if>
+                                  </div>
+
+                                  <button type="submit" class="btn btn-sm btn-outline-ssa">
+                                    <i class="bi bi-check-lg me-1"></i>Save Scope
+                                  </button>
+                                </form>
+                              </div>
+                            </div>
+                          </div>
+                        </c:if>
+
+                        <%-- Agency Overrides card (default TITLE/CLOSING only) --%>
+                        <c:if test="${(section.getSectionType() == 'TITLE' || section.getSectionType() == 'CLOSING') && section.getAgency() == null}">
+                          <div class="ps-bottom-card">
+                            <div class="card" style="border-top: 1px solid #dee2e6; border-radius: 0;">
+                              <div class="card-header py-2" style="background-color: var(--ssa); color: white; flex-shrink: 0;">
+                                <h6 class="mb-0 fw-semibold"><i class="bi bi-building me-2"></i>Agency Overrides</h6>
+                              </div>
+                              <div class="card-body">
+                                <p class="text-muted mb-2" style="font-size:0.85rem;">
+                                  Agencies with a custom <strong>${fn:toLowerCase(section.getSectionType())}</strong> page.
+                                  Others will see the default above.
+                                </p>
+
+                                <%-- List existing agency overrides for this section type --%>
+                                <c:set var="hasOverrides" value="false"/>
+                                <c:forEach var="s" items="${sections}">
+                                  <c:if test="${s.getSectionType() == section.getSectionType() && s.getAgency() != null}">
+                                    <c:set var="hasOverrides" value="true"/>
+                                    <div class="d-flex align-items-center gap-2 mb-2 ps-2" style="border-left: 3px solid var(--ssa);">
+                                      <i class="bi bi-building text-muted"></i>
+                                      <a href="#" onclick="selectSection(${s.getId()}); return false;" class="text-decoration-none fw-semibold" style="font-size:0.9rem;">
+                                        ${s.getAgency().getName()}
+                                      </a>
+                                      <c:if test="${!s.isActive()}">
+                                        <span class="badge bg-warning text-dark" style="font-size:0.7rem;">Inactive</span>
+                                      </c:if>
+                                      <form method="post" action="ProposalSettings" class="d-inline ms-auto" onsubmit="return confirm('Delete this agency override?');">
+                                        <input type="hidden" name="action" value="deleteAgencySection"/>
+                                        <input type="hidden" name="sectionId" value="${s.getId()}"/>
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete override">
+                                          <i class="bi bi-trash"></i>
+                                        </button>
+                                      </form>
+                                    </div>
+                                  </c:if>
+                                </c:forEach>
+                                <c:if test="${hasOverrides != 'true'}">
+                                  <p class="text-muted fst-italic mb-2" style="font-size:0.85rem;">No agency overrides yet.</p>
+                                </c:if>
+
+                                <%-- Create new agency override --%>
+                                <c:if test="${not empty agencyList}">
+                                  <form method="post" action="ProposalSettings" class="d-flex align-items-center gap-2 mt-3 pt-2" style="border-top: 1px solid #dee2e6;">
+                                    <input type="hidden" name="action" value="createAgencySection"/>
+                                    <input type="hidden" name="sectionType" value="${section.getSectionType()}"/>
+                                    <select name="agencyId" class="form-select form-select-sm" style="max-width: 250px;" required>
+                                      <option value="" disabled selected>Select agency...</option>
+                                      <c:forEach var="ag" items="${agencyList}">
+                                        <c:set var="agHasOverride" value="false"/>
+                                        <c:forEach var="s" items="${sections}">
+                                          <c:if test="${s.getSectionType() == section.getSectionType() && s.getAgency() != null && s.getAgency().getId() == ag.getId()}">
+                                            <c:set var="agHasOverride" value="true"/>
+                                          </c:if>
+                                        </c:forEach>
+                                        <c:if test="${agHasOverride != 'true'}">
+                                          <option value="${ag.getId()}">${ag.getName()}</option>
+                                        </c:if>
+                                      </c:forEach>
+                                    </select>
+                                    <button type="submit" class="btn btn-sm btn-outline-ssa">
+                                      <i class="bi bi-plus-lg me-1"></i>Create Override
+                                    </button>
+                                  </form>
+                                </c:if>
+                              </div>
+                            </div>
+                          </div>
+                        </c:if>
+
+                    </div><%-- /card --%>
+                </div><%-- /editor-panel --%>
             </c:forEach>
         </div>
 
+</div>
+</div>
+
+<%-- Merge Tokens Modal --%>
+<div class="modal fade" id="mergeTokensModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header py-2" style="background-color: var(--ssa); color: white;">
+                <h6 class="modal-title fw-semibold"><i class="bi bi-braces me-2"></i>Available Merge Tokens</h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-6">
+                        <code>{{PROSPECT_NAME}}</code> — Prospect name<br>
+                        <code>{{AGENT_NAME}}</code> — Agent full name<br>
+                        <code>{{AGENT_EMAIL}}</code> — Agent email<br>
+                        <code>{{AGENCY_NAME}}</code> — Agency name<br>
+                        <code>{{PSP_NAME}}</code> — PSP full name<br>
+                    </div>
+                    <div class="col-6">
+                        <code>{{DATE_CREATED}}</code> — Proposal date<br>
+                        <code>{{APPLY_BUTTON}}</code> — Apply Now button<br>
+                        <code>{{PROPOSAL_ID}}</code> — Proposal ID<br>
+                    </div>
+                </div>
+                <div class="mt-3 text-muted" style="font-size:0.8rem;">
+                    <i class="bi bi-info-circle me-1"></i>
+                    <code>&lt;style&gt;</code> blocks and inline <code>style=</code> attributes are supported.
+                    Paste or type HTML directly in the editor.
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -513,6 +641,8 @@
     }
 
     // ── Preview / Edit toggle for TITLE and CLOSING raw sections ────────
+    const PREVIEW_MIN_HEIGHT = 440; // match textarea rows="22" (~440px)
+
     function showPreviewMode(sectionId) {
         const textarea = document.getElementById('ck-source-' + sectionId);
         const frame    = document.getElementById('preview-frame-' + sectionId);
@@ -527,25 +657,23 @@
         doc.write(html);
         doc.close();
 
-        // Auto-size the iframe to its content height (+ small buffer)
-        frame.onload = function () {
-            try {
-                frame.style.height = (frame.contentWindow.document.body.scrollHeight + 32) + 'px';
-            } catch (e) {
-                frame.style.height = '600px';
-            }
-        };
-        // Trigger onload if already loaded
-        try {
-            frame.style.height = (frame.contentWindow.document.body.scrollHeight + 32) + 'px';
-        } catch (e) {
-            frame.style.height = '600px';
-        }
+        // Start with minimum height to prevent tiny box
+        frame.style.height = PREVIEW_MIN_HEIGHT + 'px';
 
         textarea.style.display = 'none';
         frame.style.display    = 'block';
         btnEdit.style.display  = 'inline-flex';
         btnPrev.style.display  = 'none';
+
+        // Auto-size after content renders (defer to let browser layout)
+        setTimeout(function() {
+            try {
+                const contentHeight = frame.contentWindow.document.body.scrollHeight + 32;
+                frame.style.height = Math.max(contentHeight, PREVIEW_MIN_HEIGHT) + 'px';
+            } catch (e) {
+                frame.style.height = '600px';
+            }
+        }, 50);
     }
 
     function showRawMode(sectionId) {
@@ -562,6 +690,15 @@
         textarea.focus();
     }
 
+    // ── Toggle editor body collapse ─────────────────────────────────────
+    function toggleEditorBody(sectionId) {
+        const body = document.getElementById('editorBody-' + sectionId);
+        const icon = document.getElementById('collapse-icon-' + sectionId);
+        if (!body) return;
+        body.classList.toggle('collapsed');
+        if (icon) icon.classList.toggle('collapsed');
+    }
+
     // ── Select Section ──────────────────────────────────────────────────
     function selectSection(sectionId) {
         // Update left panel selection
@@ -571,7 +708,7 @@
         // Show/hide editor panels
         document.querySelectorAll('.editor-panel').forEach(p => p.style.display = 'none');
         const panel = document.getElementById('editor-' + sectionId);
-        if (panel) panel.style.display = 'block';
+        if (panel) panel.style.display = 'flex';
     }
 
     // ── Drag-and-Drop Reorder ───────────────────────────────────────────

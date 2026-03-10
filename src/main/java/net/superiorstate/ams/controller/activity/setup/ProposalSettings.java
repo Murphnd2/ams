@@ -7,6 +7,7 @@ import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.AmsDataLocal;
 import net.superiorstate.ams.model.general.PSP;
+import net.superiorstate.ams.model.sales.agency.Agency;
 import net.superiorstate.ams.model.sales.offering.Enhancement;
 import net.superiorstate.ams.model.sales.offering.LOS;
 import net.superiorstate.ams.model.sales.offering.ProposalSection;
@@ -67,10 +68,11 @@ public class ProposalSettings extends HttpServlet {
                 sections = loadSections(em, psp);
             }
 
-            // Force-init M:N collections while EM is open
+            // Force-init M:N collections and agency while EM is open
             for (ProposalSection s : sections) {
                 if (s.getLosList() != null) s.getLosList().size();
                 if (s.getEnhancementList() != null) s.getEnhancementList().size();
+                if (s.getAgency() != null) s.getAgency().getId();
             }
 
             // Load LOS and Enhancement lists for scope checkboxes
@@ -81,9 +83,16 @@ public class ProposalSettings extends HttpServlet {
                     "SELECT e FROM Enhancement e WHERE e.psp.id = :pspId AND e.suppressed = false ORDER BY e.sortOrder", Enhancement.class)
                     .setParameter("pspId", psp.getId().longValue()).getResultList();
 
+            // Load agencies for agency override dropdowns
+            List<Agency> agencies = em.createQuery(
+                    "SELECT a FROM Agency a WHERE a.psp.id = :pspId ORDER BY a.name", Agency.class)
+                    .setParameter("pspId", psp.getId())
+                    .getResultList();
+
             request.setAttribute("sections", sections);
             request.setAttribute("allLos", allLos);
             request.setAttribute("allEnhancements", allEnhancements);
+            request.setAttribute("agencyList", agencies);
             request.setAttribute("pageTitle", "Proposal Settings");
             request.setAttribute("pageIcon", "bi-file-earmark-text");
 
@@ -221,8 +230,9 @@ public class ProposalSettings extends HttpServlet {
                     ProposalSection section = em.find(ProposalSection.class, sectionId);
                     if (section != null && section.getPsp().getId().equals(psp.getId())) {
                         String type = section.getSectionType();
-                        // Don't allow deactivating TITLE or CLOSING
-                        if (!"TITLE".equals(type) && !"CLOSING".equals(type)) {
+                        // Allow toggle for: CUSTOM, FEATURES, PRICING, or agency-scoped TITLE/CLOSING
+                        boolean isDefaultTitleClosing = ("TITLE".equals(type) || "CLOSING".equals(type)) && section.getAgency() == null;
+                        if (!isDefaultTitleClosing) {
                             em.getTransaction().begin();
                             section.setActive(!section.isActive());
                             em.merge(section);
@@ -242,6 +252,69 @@ public class ProposalSettings extends HttpServlet {
                         section.setTitle(title.trim());
                         em.merge(section);
                         em.getTransaction().commit();
+                    }
+                }
+
+                case "createAgencySection" -> {
+                    String type = request.getParameter("sectionType"); // "TITLE" or "CLOSING"
+                    long agencyId = Long.parseLong(request.getParameter("agencyId"));
+
+                    if ("TITLE".equals(type) || "CLOSING".equals(type)) {
+                        Agency agency = em.find(Agency.class, agencyId);
+                        if (agency != null) {
+                            // Check if one already exists for this agency + type
+                            List<ProposalSection> existing = em.createQuery(
+                                    "SELECT s FROM ProposalSection s WHERE s.psp.id = :pspId AND s.agency.id = :agencyId AND s.sectionType = :type",
+                                    ProposalSection.class)
+                                    .setParameter("pspId", psp.getId())
+                                    .setParameter("agencyId", agencyId)
+                                    .setParameter("type", type)
+                                    .getResultList();
+
+                            if (existing.isEmpty()) {
+                                // Find the default section of this type to copy content from
+                                List<ProposalSection> defaults = em.createQuery(
+                                        "SELECT s FROM ProposalSection s WHERE s.psp.id = :pspId AND s.agency IS NULL AND s.sectionType = :type",
+                                        ProposalSection.class)
+                                        .setParameter("pspId", psp.getId())
+                                        .setParameter("type", type)
+                                        .getResultList();
+
+                                String defaultHtml = "";
+                                int sortOrder = "TITLE".equals(type) ? 1 : 999;
+                                if (!defaults.isEmpty()) {
+                                    defaultHtml = defaults.get(0).getHtmlContent() != null ? defaults.get(0).getHtmlContent() : "";
+                                    sortOrder = defaults.get(0).getSortOrder();
+                                }
+
+                                em.getTransaction().begin();
+                                ProposalSection section = new ProposalSection();
+                                section.setPsp(psp);
+                                section.setAgency(agency);
+                                section.setSectionType(type);
+                                section.setTitle(type.substring(0, 1) + type.substring(1).toLowerCase() + " \u2014 " + agency.getName());
+                                section.setHtmlContent(defaultHtml);
+                                section.setSortOrder(sortOrder);
+                                section.setActive(true);
+                                section.setScope("ALL");
+                                em.persist(section);
+                                em.getTransaction().commit();
+                                request.getSession().setAttribute("flashMessage", "Agency override created.");
+                            }
+                        }
+                    }
+                }
+
+                case "deleteAgencySection" -> {
+                    long sectionId = Long.parseLong(request.getParameter("sectionId"));
+                    ProposalSection section = em.find(ProposalSection.class, sectionId);
+                    if (section != null && section.getPsp().getId().equals(psp.getId())
+                            && section.getAgency() != null
+                            && ("TITLE".equals(section.getSectionType()) || "CLOSING".equals(section.getSectionType()))) {
+                        em.getTransaction().begin();
+                        em.remove(section);
+                        em.getTransaction().commit();
+                        request.getSession().setAttribute("flashMessage", "Agency override deleted.");
                     }
                 }
 

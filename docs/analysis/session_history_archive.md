@@ -2,7 +2,7 @@
 
 > **Purpose:** Consolidated historical record of all build sessions. For current project state, see `project_backlog.md`. For current architecture, see `application_flow.md` and `entity_reference.md`.
 >
-> **Last Updated:** March 10, 2026 (Session 50)
+> **Last Updated:** March 10, 2026 (Session 51)
 
 ---
 
@@ -1707,3 +1707,46 @@ Built an inline AI assistant for generating styled HTML content blocks for propo
 - `proposalPricing.jsp` — rendering updates
 - `ApplyForProposal.java` — JOIN FETCH fix
 - `ReviewApplication.java` — review updates
+
+---
+
+## March 10, 2026 — Session 51: Agency-Scoped Proposal Sections, Proposal Settings Full-Height Layout
+
+### Agency-Scoped TITLE/CLOSING Overrides (V044)
+- **V044 migration** — `agency_id` nullable FK on `proposal_section`, unique index on `(psp_id, agency_id, section_type)`
+- **ProposalSection.java** — added nullable `Agency` field with `@ManyToOne @JoinColumn`
+- **ProposalSettings.java** — `doGet` passes `agencyList` to JSP; POST actions: `createAgencySection` (clones default content), `deleteAgencySection`; relaxed `toggleActive` to allow agency-scoped TITLE/CLOSING
+- **ViewProposal.java** — agency resolution chain (Proposal → Prospect → Agent → Agency), TITLE/CLOSING override lookup by agency + section type
+- **proposalSettings.jsp** — Agency Overrides card on default TITLE/CLOSING sections: lists existing overrides with delete buttons, create dropdown filtered to agencies without overrides
+
+### Proposal Settings Full-Height Flex Layout (No Page Scroll)
+- **`.ps-page`** outer wrapper — `height: calc(100vh - 64px)`, flex column, no overflow
+- **Left column (`.ps-left`)** — sticky header, card-body scrolls independently
+- **Right column (`.ps-right`)** — flex column; editor panel fills space
+- **Collapsible editor body** — chevron toggle on section header bar collapses/expands the editor area with CSS transition (max-height, opacity, padding)
+- **Bottom cards fill remaining height** — Agency Overrides (TITLE/CLOSING) and Display Scope (CUSTOM) wrapped in `.ps-bottom-card` with `flex: 1` and scrollable card-body; expand when editor is collapsed
+- **Merge Tokens modal** — moved inline token-ref block into `#mergeTokensModal` Bootstrap modal, triggered by `{}` button on section header bar
+- **Preview iframe fix** — `PREVIEW_MIN_HEIGHT` constant (440px) prevents tiny preview box; `setTimeout` defer for content layout before auto-sizing
+
+### Bug Fixes
+- **Proposal URL malformed** — `ProposalDetail.java`, `SendProposal.java`, `proposalDetail.jsp` URL construction fixed
+- **Features visibility** — `proposalFeatures.jsp` skip-card guard for LOS/Enhancement sections with no features; `viewProposal.jsp` guard
+- **ModuleDetail.java** — added missing `@Table` annotation
+
+### Git Sync
+- Pulled commit `948aadb` (Proposal AI Builder, Session 50) from other workstation
+- Stash + pull + pop strategy; resolved one conflict in `proposalFeatures.jsp` (variable naming)
+- `ProposalSettings.java` and `proposalSettings.jsp` auto-merged cleanly (AI builder + agency overrides coexist)
+
+### Files Created
+- `docs/migrations/V044__proposal_section_agency_scoping.sql`
+
+### Files Modified
+- `ProposalSection.java` — agency FK field
+- `ProposalSettings.java` — agency list, createAgencySection, deleteAgencySection
+- `ViewProposal.java` — agency resolution, TITLE/CLOSING override logic
+- `proposalSettings.jsp` — full-height flex layout, collapsible editor, merge tokens modal, agency overrides UI, preview min-height fix
+- `ProposalDetail.java`, `SendProposal.java`, `proposalDetail.jsp` — URL fix
+- `proposalFeatures.jsp` — features visibility guard
+- `viewProposal.jsp` — features visibility guard
+- `ModuleDetail.java` — @Table annotation
