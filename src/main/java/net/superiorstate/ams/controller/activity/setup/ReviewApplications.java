@@ -27,6 +27,11 @@ public class ReviewApplications extends HttpServlet {
             return;
         }
 
+        boolean isPspAdmin = Boolean.TRUE.equals(request.getSession().getAttribute("isPspAdmin"));
+        boolean isPspUser = Boolean.TRUE.equals(request.getSession().getAttribute("isPspUser"));
+        boolean isAgent = Boolean.TRUE.equals(request.getSession().getAttribute("isAgent"));
+        boolean agentOnly = isAgent && !isPspAdmin && !isPspUser;
+
         EntityManagerFactory emf = (EntityManagerFactory) getServletContext().getAttribute("emf");
         EntityManager em = emf.createEntityManager();
 
@@ -49,15 +54,20 @@ public class ReviewApplications extends HttpServlet {
                 }
             }
 
-            Query q = em.createQuery(
-                    "SELECT a FROM Application a " +
-                            "JOIN FETCH a.proposal p " +
-                            "JOIN FETCH p.prospect pr " +
-                            "JOIN FETCH pr.contact " +
-                            "LEFT JOIN FETCH p.losList " +
-                            "WHERE a.status IN :statuses " +
-                            "ORDER BY a.dateSubmitted DESC");
+            // Agent-only users see only their own prospects' applications
+            String jpql = "SELECT a FROM Application a " +
+                    "JOIN FETCH a.proposal p " +
+                    "JOIN FETCH p.prospect pr " +
+                    "JOIN FETCH pr.contact " +
+                    "LEFT JOIN FETCH p.losList " +
+                    "WHERE a.status IN :statuses " +
+                    (agentOnly ? "AND pr.agent.id = :agentId " : "") +
+                    "ORDER BY a.dateSubmitted DESC";
+            Query q = em.createQuery(jpql);
             q.setParameter("statuses", selectedStatuses);
+            if (agentOnly) {
+                q.setParameter("agentId", currentPerson.getId());
+            }
             List<Application> applications = q.getResultList();
 
             request.setAttribute("applications", applications);
