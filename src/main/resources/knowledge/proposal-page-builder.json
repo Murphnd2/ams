@@ -1,0 +1,179 @@
+{
+  "chunks": [
+    {
+      "title": "What Are Proposal Custom Pages",
+      "section": "Concepts",
+      "category": "overview",
+      "keywords": ["proposal", "custom", "page", "section", "html", "block"],
+      "content": "Proposal custom pages are self-contained HTML blocks that render inside viewProposal.jsp. Each block sits inside a <div class=\"proposal-section custom-section\"> container, on a #f8f9fa light gray background, within a max-width: 900px centered container. Each custom page is a standalone HTML fragment with its own <style> block. The server renders the HTML unescaped, so whatever you generate appears exactly as written. There are 4 default section types (TITLE, FEATURES, PRICING, CLOSING) plus unlimited CUSTOM pages. TITLE, CLOSING, and CUSTOM sections accept raw HTML with <style> blocks and merge tokens."
+    },
+    {
+      "title": "The Rendering Context",
+      "section": "Concepts",
+      "category": "rendering",
+      "keywords": ["render", "viewer", "bootstrap", "background", "container", "sanitize"],
+      "content": "The proposal viewer (viewProposal.jsp) uses Bootstrap 5. The page background is #f8f9fa, the main container is max-width: 900px centered. Each section renders inside <div class=\"proposal-section\">. The server sanitizes HTML before storing it: it strips <script> tags entirely, removes all on* event handlers (onclick, onload, onerror, etc.), and removes javascript: protocol links. However, <style> blocks are intentionally preserved — this is how we deliver CSS for styled pages. Never use <script>, event handlers, or javascript: links in your output."
+    },
+    {
+      "title": "Merge Tokens Available",
+      "section": "Concepts",
+      "category": "tokens",
+      "keywords": ["token", "merge", "prospect", "agent", "color", "brand", "button", "apply"],
+      "content": "The following merge tokens are replaced server-side with real values before rendering:\n\n{{PROSPECT_NAME}} — Company or prospect name\n{{AGENT_NAME}} — Sales agent's full name\n{{AGENT_EMAIL}} — Sales agent's email address\n{{AGENCY_NAME}} — Agency name\n{{PSP_NAME}} — PSP company full name\n{{DATE_CREATED}} — Proposal creation date (formatted as 'March 10, 2026')\n{{PRIMARY_COLOR}} — PSP brand primary color (hex value like #2B5F8A)\n{{ACCENT_COLOR}} — PSP brand accent color (hex value like #7AB648)\n{{APPLY_BUTTON}} — Renders a fully styled Apply Now button with link\n{{PROPOSAL_ID}} — The proposal's database ID\n\n{{PRIMARY_COLOR}} and {{ACCENT_COLOR}} can be used inside CSS custom properties to make pages automatically brand-adaptive. Example: --primary: {{PRIMARY_COLOR}}; --accent: {{ACCENT_COLOR}};"
+    },
+    {
+      "title": "HTML Block Skeleton",
+      "section": "Structural Pattern",
+      "category": "structure",
+      "keywords": ["skeleton", "structure", "html", "style", "import", "prefix", "fragment"],
+      "content": "Every proposal page must follow this exact skeleton:\n\n1. Start with a <style> block containing ALL CSS\n2. Use @import inside <style> for Google Fonts (never <link> tags)\n3. All CSS selectors scoped under a unique class prefix (e.g., .about1, .cobra2, .fsa3)\n4. Outer <div class=\"PREFIX\"> with style=\"page-break-before:always; padding:0.5in 0;\"\n5. Inner <div class=\"card-inset\"> that is the visual card\n6. No <html>, <head>, or <body> wrappers — it's a fragment only\n\nExample skeleton:\n<style>\n  @import url('https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700&display=swap');\n  .about1 { --s:1; --navy:#1B2A4A; font-family:'Source Sans 3',sans-serif; }\n  .about1 .card-inset { background:var(--navy); border-radius:12px; min-height:calc(11in - 1.5in); display:flex; flex-direction:column; padding:calc(2.5rem * var(--s)); color:#fff; box-sizing:border-box; }\n</style>\n<div class=\"about1\" style=\"page-break-before:always; padding:0.5in 0;\">\n  <div class=\"card-inset\"><!-- content --></div>\n</div>"
+    },
+    {
+      "title": "The Card-Inset Pattern",
+      "section": "Structural Pattern",
+      "category": "card-inset",
+      "keywords": ["card", "inset", "flex", "column", "min-height", "rounded", "print"],
+      "content": "The .card-inset is a rounded rectangle that fills the page. Key CSS properties:\n- background: var(--navy) (or adapted color)\n- border-radius: 12px\n- min-height: calc(11in - 1.5in) — fills the printable area\n- display: flex; flex-direction: column — enables flex layout\n- padding: calc(2.5rem * var(--s)) calc(2.75rem * var(--s)) calc(2.25rem * var(--s))\n- color: var(--white) (or adapted color)\n- box-sizing: border-box\n\nOne child element gets flex:1 to fill remaining vertical space (usually a grid or stats section).\n\nRequired media queries:\n@media print { .PREFIX .card-inset { min-height:auto; } }\n@media (max-width:700px) { /* collapse grids to single-column, reduce padding */ }"
+    },
+    {
+      "title": "CSS Scoping Rules",
+      "section": "Structural Pattern",
+      "category": "css",
+      "keywords": ["scope", "prefix", "css", "selector", "collision", "bootstrap"],
+      "content": "Every CSS selector must start with the unique prefix class to prevent collisions with Bootstrap and other proposal sections. Pick a short, unique prefix per block — examples: .cobra1, .fsa3, .about2, .title1, .close1.\n\nCRITICAL: Do NOT use Bootstrap class names as your own class names — even when scoped. The viewer loads Bootstrap 5 which applies base styles to .card, .btn, .container, .row, .col, etc. Using these names causes style bleed (e.g., Bootstrap .card sets background-color:#fff and border which override your dark backgrounds). Use unique names: .tile, .info-box, .panel, .block, .service-tile, etc.\n\nExample of proper scoping:\n.cobra1 h1 { ... }  /* Good — scoped */\n.cobra1 .tile { ... }  /* Good — unique name */\nh1 { ... }  /* BAD — affects entire page */\n.cobra1 .card { ... }  /* BAD — Bootstrap .card base styles still apply */\n.card { ... }  /* BAD — collides with Bootstrap */"
+    },
+    {
+      "title": "The Scale Factor --s",
+      "section": "Structural Pattern",
+      "category": "scale",
+      "keywords": ["scale", "factor", "calc", "resize", "proportional"],
+      "content": "Define --s:1 on the prefix class. Every font-size, padding, margin, gap, and icon dimension uses calc(value * var(--s)). This lets the user scale the entire page proportionally by changing one number.\n\nExample: --s:1.05 scales everything up 5%, --s:0.95 shrinks 5%.\n\nWhat to scale with var(--s): font-size, padding, margin, gap, icon width/height.\nWhat NOT to scale: min-height (physical page dimension), border-radius (aesthetic), unitless line-height multipliers, border-top accent widths.\n\nExample usage:\n.prefix h1 { font-size: calc(24pt * var(--s)); margin: 0 0 calc(0.5rem * var(--s)) 0; }\n.prefix .body { font-size: calc(11pt * var(--s)); line-height: 1.6; }"
+    },
+    {
+      "title": "Responsive Rules",
+      "section": "Structural Pattern",
+      "category": "responsive",
+      "keywords": ["responsive", "media", "print", "mobile", "breakpoint"],
+      "content": "Every proposal page block must include two media queries:\n\n1. @media print { .PREFIX .card-inset { min-height: auto; } } — relaxes the fixed height for printing so content flows naturally.\n\n2. @media (max-width: 700px) { } — collapses grid layouts to single column, reduces padding, adjusts font sizes for mobile viewing. Example:\n@media (max-width:700px) {\n  .PREFIX .card-inset { padding: calc(1.5rem * var(--s)); }\n  .PREFIX .grid { grid-template-columns: 1fr; }\n  .PREFIX .two-col { grid-template-columns: 1fr; }\n}"
+    },
+    {
+      "title": "Style Adaptation from Source Material",
+      "section": "Style Adaptation",
+      "category": "style",
+      "keywords": ["style", "adapt", "color", "font", "brand", "visual", "design", "theme"],
+      "content": "CRITICAL: When the user provides reference content (a description, a brochure URL, existing HTML, or style direction), you must analyze the source's visual language BEFORE generating any CSS.\n\nIdentify these elements from the source:\n- Background color preference (light vs dark vs colored)\n- Font family and weight distribution\n- Heading scale and hierarchy\n- Color palette (extract actual hex values where possible)\n- Icon style (outlined vs filled, round vs square containers)\n- Card/box shapes (border-radius, shadows, borders vs fills)\n- Spacing density (airy vs compact)\n- Whether accent colors appear as backgrounds, borders, or text\n\nThe card-inset is the STRUCTURAL foundation, but its background, color, font-family, border-radius, and accent colors should ALL adapt to match the user's intent.\n\nThe default dark navy palette (#1B2A4A with teal #2A7F8E accents) is a FALLBACK — not mandatory. If the user wants white/light, use white. If they want corporate blue, use corporate blue. If they provide a Gamma deck with pink accents, use pink accents."
+    },
+    {
+      "title": "Color Palette Customization",
+      "section": "Style Adaptation",
+      "category": "color",
+      "keywords": ["color", "palette", "primary", "accent", "brand", "adaptive", "hex"],
+      "content": "The default palette works for generic pages: navy #1B2A4A, lighter navy #243B5C, teal #2A7F8E, teal background #1E5F6B. But the AI should ask about or detect the desired color scheme.\n\nUsing merge tokens for brand-adaptive styling:\n--primary: {{PRIMARY_COLOR}};\n--accent: {{ACCENT_COLOR}};\n\nThis makes pages automatically match any PSP's configured brand colors without hardcoding.\n\nWhen to hardcode colors:\n- User specifies exact hex values\n- Creating a one-off design with specific colors\n- User wants a universal look regardless of PSP brand\n\nWhen to use merge tokens:\n- User says 'use our brand colors' or 'match our branding'\n- Creating reusable templates that work across multiple PSPs\n- User wants the page to auto-adapt to their configured colors"
+    },
+    {
+      "title": "Font Selection",
+      "section": "Style Adaptation",
+      "category": "font",
+      "keywords": ["font", "family", "import", "google", "typography"],
+      "content": "Default font is Source Sans 3 via @import inside the <style> block. The AI can suggest different fonts based on content type:\n\nProfessional/corporate: Inter, Lato, Source Sans 3\nElegant/upscale: Playfair Display (headings) + Source Sans 3 (body)\nModern/clean: DM Sans (matches the main AMS UI)\nFriendly/approachable: DM Sans, Nunito\n\nAlways use @import inside the <style> block for Google Fonts. Never use <link> tags — they won't work reliably in the proposal viewer.\n\nExample: @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');"
+    },
+    {
+      "title": "Two-Column Info Boxes Layout",
+      "section": "Layout Patterns",
+      "category": "layout",
+      "keywords": ["grid", "column", "info", "box", "two", "layout"],
+      "content": "Two-column info boxes use CSS grid for side-by-side content blocks. Good for feature comparisons, service highlights, contact details.\n\nCSS pattern:\n.PREFIX .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: calc(1rem * var(--s)); }\n.PREFIX .info-box { background: var(--navy-lt); border-radius: 8px; padding: calc(1.15rem * var(--s)) calc(1.25rem * var(--s)); }\n.PREFIX .info-box h3 { font-size: calc(12pt * var(--s)); font-weight: 700; margin: 0 0 calc(0.4rem * var(--s)) 0; }\n.PREFIX .info-box p { font-size: calc(10pt * var(--s)); line-height: 1.55; margin: 0; }\n\nCollapses to single column at 700px via the responsive media query."
+    },
+    {
+      "title": "Card Grid Layout (2x2 or 3-col)",
+      "section": "Layout Patterns",
+      "category": "layout",
+      "keywords": ["card", "grid", "2x2", "three", "column", "service"],
+      "content": "Card grids display service breakdowns or plan comparisons. Each card has a colored top border accent.\n\nCSS pattern:\n.PREFIX .grid { display: grid; grid-template-columns: 1fr 1fr; gap: calc(0.85rem * var(--s)); flex: 1; align-content: center; }\n.PREFIX .card { background: var(--navy-lt); border-radius: 8px; padding: calc(1rem * var(--s)) calc(1.15rem * var(--s)); border-top: 3px solid var(--teal); display: flex; flex-direction: column; }\n\nFor 3-column: grid-template-columns: repeat(3, 1fr);\nFor 2x2 with flex fill: the .grid gets flex:1 so it stretches to fill remaining card-inset space, and align-content:center keeps items vertically centered."
+    },
+    {
+      "title": "Stat Rings / Metrics Layout",
+      "section": "Layout Patterns",
+      "category": "layout",
+      "keywords": ["stat", "ring", "metric", "circle", "percentage", "number"],
+      "content": "Circular stat indicators using CSS border trick. Good for compliance rates, savings percentages, coverage stats.\n\nCSS pattern:\n.PREFIX .stats { display: flex; justify-content: space-around; padding: calc(1.5rem * var(--s)) 0; }\n.PREFIX .stat { text-align: center; }\n.PREFIX .stat .ring { width: 100px; height: 100px; border-radius: 50%; border: 5px solid var(--navy-lt); border-top-color: var(--teal); display: flex; align-items: center; justify-content: center; margin: 0 auto calc(0.5rem * var(--s)); }\n.PREFIX .stat .ring span { font-size: calc(18pt * var(--s)); font-weight: 700; }\n.PREFIX .stat .label { font-size: calc(9pt * var(--s)); color: var(--off); }"
+    },
+    {
+      "title": "Callout Box Layout",
+      "section": "Layout Patterns",
+      "category": "layout",
+      "keywords": ["callout", "highlight", "quote", "cta", "accent"],
+      "content": "Accent-colored box for key quotes, highlights, or calls to action.\n\nCSS pattern:\n.PREFIX .callout { background: var(--teal-bg); border-radius: 6px; padding: calc(0.75rem * var(--s)) calc(1rem * var(--s)); margin-top: calc(0.75rem * var(--s)); }\n.PREFIX .callout p { font-size: calc(10pt * var(--s)); line-height: 1.55; margin: 0; color: var(--off); }\n.PREFIX .callout strong { color: var(--white); }\n\nCan also be used with a left border accent:\n.PREFIX .callout-bar { border-left: 3px solid var(--teal); padding-left: calc(1rem * var(--s)); }"
+    },
+    {
+      "title": "Full-Page Size Budget",
+      "section": "Layout Patterns",
+      "category": "sizing",
+      "keywords": ["size", "height", "budget", "fit", "page", "fill"],
+      "content": "Target card-inset height: 912px (9.5 inches at 96dpi, from 11in page minus 1.5in padding).\n\nPage budget math:\n- Total card height: ~912px\n- Card padding top+bottom: ~76px → ~836px usable\n- Title + subtitle: ~60-80px\n- Body paragraph: ~40-60px\n- Remaining: ~700px for info boxes, grids, stats, callouts\n\nText-heavy content → use smaller fonts (9-10pt body, 8.5pt bullets)\nSparse content → use larger fonts (11-12pt body, 19-20pt subtitle)\n\nPut flex:1 on one expandable section so it stretches to fill remaining space. Use align-content:center on grid layouts so content centers vertically within the flex area."
+    },
+    {
+      "title": "Title Page Design",
+      "section": "Section Type Guidance",
+      "category": "title",
+      "keywords": ["title", "cover", "first", "page", "opening"],
+      "content": "The TITLE section is the first thing the prospect sees. It should include:\n- PSP name (use {{PSP_NAME}} token)\n- A headline like 'Benefits Administration Proposal' or custom title\n- Prospect name via {{PROSPECT_NAME}}\n- Agent info via {{AGENT_NAME}} and optionally {{AGENT_EMAIL}}\n- Date via {{DATE_CREATED}}\n\nTitle pages can range from minimal/elegant (centered text, lots of whitespace) to graphic-heavy (colored backgrounds, accent shapes, grid layout). The card-inset pattern works well for both — adjust colors, font sizes, and spacing density.\n\nBrand-adaptive title pages use {{PRIMARY_COLOR}} and {{ACCENT_COLOR}} in CSS variables so they automatically match any PSP's branding."
+    },
+    {
+      "title": "Closing Page Design",
+      "section": "Section Type Guidance",
+      "category": "closing",
+      "keywords": ["closing", "cta", "apply", "button", "contact", "end"],
+      "content": "The CLOSING section wraps up the proposal with a call to action. It should include:\n- CTA language encouraging the prospect to apply\n- {{APPLY_BUTTON}} token which renders a styled Apply Now button with the correct link\n- Agent contact info via {{AGENT_NAME}}, {{AGENT_EMAIL}} tokens\n- Optionally: disclaimers, next-steps timeline, or a brief 'what happens next' section\n\nThe APPLY_BUTTON token renders a full <a> element with inline styling, so just place it where you want the button to appear. The button uses the PSP's accent color automatically."
+    },
+    {
+      "title": "Custom Page Design",
+      "section": "Section Type Guidance",
+      "category": "custom",
+      "keywords": ["custom", "about", "cobra", "fsa", "hsa", "ichra", "overview", "service"],
+      "content": "CUSTOM sections appear between FEATURES/PRICING and CLOSING. Common uses:\n- 'About Us' company overview page\n- Specific benefit line explanations (COBRA administration, FSA/HSA, ICHRA, Transit/Parking)\n- Compliance highlights and regulatory overview\n- Case studies or testimonials\n- Team bios or contact directory\n- Service process timeline (how onboarding works)\n\nEach custom page is completely standalone — it has its own <style> block and scoped prefix. Multiple custom pages can be added to a single proposal, and each can have different styling if desired.\n\nCustom pages support scope filtering: they can be set to show on ALL proposals or only when specific Lines of Service or Enhancements are included in the proposal."
+    },
+    {
+      "title": "Example: Dark Navy About Us Page",
+      "section": "Examples",
+      "category": "example",
+      "keywords": ["example", "dark", "navy", "about", "company", "overview"],
+      "content": "A dark navy About Us page with teal accents uses the default palette. Structure:\n- Title: 'About {{PSP_NAME}}' at 24pt\n- Subtitle: company tagline at 14pt\n- Body paragraph: brief company description at 10.5pt\n- 2x2 card grid with icon circles: each card has a teal icon, heading, and description\n- Callout box at bottom: key differentiator or quote\n- Stats row (optional): 3-4 stat rings showing years in business, clients served, etc.\n\nThe .grid section gets flex:1 to fill remaining vertical space. Cards use border-top: 3px solid var(--teal) for accent. Icon circles use background: rgba(42,127,142,0.2) with teal text color."
+    },
+    {
+      "title": "Example: Light/White COBRA Overview Page",
+      "section": "Examples",
+      "category": "example",
+      "keywords": ["example", "light", "white", "cobra", "service", "clean"],
+      "content": "A clean white COBRA overview page adapts the card-inset to light theme:\n\n.cobra1 { --s:1; --primary: {{PRIMARY_COLOR}}; --accent: {{ACCENT_COLOR}}; --bg: #ffffff; --text: #333333; --muted: #6c757d; --card-bg: #f0f4f8; font-family: 'Source Sans 3', sans-serif; }\n.cobra1 .card-inset { background: var(--bg); color: var(--text); border-radius: 12px; border: 1px solid #dee2e6; }\n\nStructure: title with colored accent bar, intro paragraph, 2-column info boxes describing COBRA services, a bullet list of compliance features, and a callout box with regulatory note.\n\nThis demonstrates that the card-inset can be white — just change the background and color variables. The accent color comes from {{PRIMARY_COLOR}} for brand-adaptive styling."
+    },
+    {
+      "title": "Example: Brand-Adaptive Title Page",
+      "section": "Examples",
+      "category": "example",
+      "keywords": ["example", "brand", "adaptive", "title", "cover", "primary", "accent"],
+      "content": "A brand-adaptive title page uses merge tokens in CSS variables so it automatically matches any PSP's brand colors:\n\n.title1 { --s:1; --primary: {{PRIMARY_COLOR}}; --accent: {{ACCENT_COLOR}}; --white: #fff; font-family: 'Source Sans 3', sans-serif; }\n.title1 .card-inset { background: var(--primary); color: var(--white); }\n.title1 .accent-line { height: 4px; background: var(--accent); border-radius: 2px; width: 80px; margin: 1rem auto; }\n\nStructure: centered layout with {{PSP_NAME}} as main heading, accent divider line, 'Benefits Administration Proposal' subtitle, {{PROSPECT_NAME}} in a slightly smaller weight, agent info block at bottom with {{AGENT_NAME}} and {{DATE_CREATED}}.\n\nBecause colors come from merge tokens, this same HTML works for every PSP without modification."
+    },
+    {
+      "title": "Common Mistakes to Avoid",
+      "section": "Practical Guidance",
+      "category": "mistakes",
+      "keywords": ["mistake", "error", "avoid", "wrong", "bug", "broken"],
+      "content": "Common mistakes when building proposal pages:\n\n1. MISSING THE WRAPPER DIV — The #1 most critical mistake. The HTML body MUST be wrapped in <div class=\"PREFIX\"> where PREFIX matches your CSS scope class. Without this wrapper, NO CSS selectors match and the page renders as unstyled plain text. Correct: <style>.about1 .card-inset{...}</style> <div class=\"about1\"><div class=\"card-inset\">...</div></div>. WRONG: <style>.about1 .card-inset{...}</style> <div class=\"card-inset\">...</div> (missing wrapper!)\n2. Using Bootstrap class names (.card, .btn, .row, .col, .container) as your own class names — Bootstrap base styles bleed through even when scoped. Use .tile, .panel, .info-box, .block instead.\n3. Using <script> tags — stripped by the server sanitizer\n4. Using <link> for stylesheets — use @import inside <style> instead\n5. Wrapping in <html>, <head>, <body> — the block is a fragment, not a full page\n6. Forgetting page-break-before:always on the outer div — needed for print pagination\n7. Forgetting to scope all selectors with the prefix class — unscoped CSS affects the entire proposal\n8. Forgetting the @media print rule to relax min-height\n9. Using onclick or other event handlers — stripped by sanitizer\n10. Hardcoding colors when the user wants brand-adaptive styling — use {{PRIMARY_COLOR}} and {{ACCENT_COLOR}} merge tokens"
+    },
+    {
+      "title": "Building a Page Step by Step",
+      "section": "Practical Guidance",
+      "category": "workflow",
+      "keywords": ["build", "create", "workflow", "step", "process", "how"],
+      "content": "The question-based workflow for building a proposal page:\n\n1. What is this page about? (About Us, COBRA overview, FSA details, title page, closing page, etc.)\n2. What section type? (TITLE for cover page, CLOSING for final page, CUSTOM for everything else)\n3. What style/color scheme? (dark navy default, light/white, specific brand colors, match a reference)\n4. What content to include? (specific text, bullet points, stats, team info, etc.)\n5. Any merge tokens needed? (prospect name, agent info, brand colors, apply button)\n\nThen generate the HTML block following the card-inset skeleton, apply the chosen style, fill with content, and output in a code block.\n\nAfter generating, explain what you built and offer to adjust colors, font sizes, layout, or content."
+    },
+    {
+      "title": "Font Sizing Guide",
+      "section": "Practical Guidance",
+      "category": "sizing",
+      "keywords": ["font", "size", "point", "heading", "body", "text"],
+      "content": "Calibrated font sizes for the 900px container. Pick sizes based on content density:\n\n- Page title: 22-26pt, weight 700\n- Subtitle: 19-20pt, weight 700, slightly muted color\n- Section heading: 12-13pt, weight 700\n- Body text: 10-12pt, line-height 1.5-1.7\n- Info box text: 10-10.5pt, line-height 1.55\n- Card body text: 9-10pt, line-height 1.4-1.5\n- Bullet items: 8.5-9.5pt, line-height 1.35-1.45\n- Callout text: 9.5-10.5pt\n- Badges/tags: 7-8pt\n\nAll font sizes should use calc(Xpt * var(--s)) for the scale factor. Text-heavy pages should use sizes at the lower end of each range."
+    }
+  ]
+}

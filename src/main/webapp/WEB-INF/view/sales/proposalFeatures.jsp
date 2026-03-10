@@ -1,33 +1,36 @@
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 <%-- Proposal Features: LOS cards + Enhancement cards. Included from viewProposal.jsp --%>
 
-<%-- Lines of Service with Features --%>
+<%-- Lines of Service with Features (skip card if no features exist) --%>
 <c:forEach var="los" items="${proposal.getLosList()}">
-  <div class="los-card">
-    <div class="los-card-header">
-      <i class="bi bi-check-circle me-2"></i>${los.getDescription()}
-    </div>
-    <div class="los-card-body">
-      <c:set var="hasFeatures" value="false"/>
-      <c:forEach var="feature" items="${features}">
-        <c:if test="${not empty feature.getServiceModule().getLos() && feature.getServiceModule().getLos().getId() == los.getId()}">
-          <c:set var="hasFeatures" value="true"/>
-          <div class="feature-item">
-            <i class="bi bi-check2"></i>
-            <div>
-              <c:if test="${not empty feature.getHeadline()}">
-                <div class="fw-semibold">${feature.getHeadline()}</div>
-              </c:if>
-              <span class="${not empty feature.getHeadline() ? 'text-muted' : ''}">${renderedFeatures[feature.getId()]}</span>
+  <c:set var="hasLosFeatures" value="false"/>
+  <c:forEach var="feature" items="${features}">
+    <c:if test="${not empty feature.getServiceModule().getLos() && feature.getServiceModule().getLos().getId() == los.getId()}">
+      <c:set var="hasLosFeatures" value="true"/>
+    </c:if>
+  </c:forEach>
+  <c:if test="${hasLosFeatures == 'true'}">
+    <div class="los-card">
+      <div class="los-card-header">
+        <i class="bi bi-check-circle me-2"></i>${los.getDescription()}
+      </div>
+      <div class="los-card-body">
+        <c:forEach var="feature" items="${features}">
+          <c:if test="${not empty feature.getServiceModule().getLos() && feature.getServiceModule().getLos().getId() == los.getId()}">
+            <div class="feature-item">
+              <i class="bi bi-check2"></i>
+              <div>
+                <c:if test="${not empty feature.getHeadline()}">
+                  <div class="fw-semibold">${feature.getHeadline()}</div>
+                </c:if>
+                <span class="${not empty feature.getHeadline() ? 'text-muted' : ''}">${renderedFeatures[feature.getId()]}</span>
+              </div>
             </div>
-          </div>
-        </c:if>
-      </c:forEach>
-      <c:if test="${hasFeatures == 'false'}">
-        <p class="text-muted mb-0">Full-service administration included.</p>
-      </c:if>
+          </c:if>
+        </c:forEach>
+      </div>
     </div>
-  </div>
+  </c:if>
 </c:forEach>
 
 <%-- Enhancement Feature Cards --%>

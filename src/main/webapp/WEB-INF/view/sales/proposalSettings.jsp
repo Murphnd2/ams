@@ -53,6 +53,96 @@
         /* Ghost handle for sortable */
         .sortable-ghost { opacity: 0.4; }
         .sortable-chosen { background-color: #e8f0fe; }
+
+        /* ── AI Builder Panel ───────────────────────────────────── */
+        .ps-ai-panel {
+            border: 1px solid var(--ssa, #0d5681);
+            border-radius: 6px;
+            background: #fff;
+            display: flex;
+            flex-direction: column;
+            max-height: 480px;
+            overflow: hidden;
+            margin-top: 0.75rem;
+        }
+        .ps-ai-header {
+            background: linear-gradient(135deg, #0d5681, #1a7ab5);
+            color: #fff;
+            padding: 0.5rem 0.75rem;
+            font-size: 0.82rem;
+            font-weight: 600;
+            flex-shrink: 0;
+        }
+        .ps-ai-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0.75rem;
+            font-size: 0.8rem;
+            background: #f8f9fa;
+            min-height: 100px;
+        }
+        .ps-ai-input {
+            padding: 0.5rem;
+            border-top: 1px solid #dee2e6;
+            flex-shrink: 0;
+        }
+        .ps-ai-msg { margin-bottom: 0.5rem; }
+        .ps-ai-msg.user .ps-ai-bubble {
+            background: var(--ssa, #0d5681);
+            color: #fff;
+            border-radius: 8px 8px 2px 8px;
+            padding: 0.4rem 0.65rem;
+            margin-left: 20%;
+            font-size: 0.78rem;
+        }
+        .ps-ai-msg.assistant .ps-ai-bubble {
+            background: #fff;
+            border: 1px solid #dee2e6;
+            border-radius: 8px 8px 8px 2px;
+            padding: 0.4rem 0.65rem;
+            margin-right: 10%;
+            font-size: 0.78rem;
+        }
+        .ps-ai-canvas {
+            background: #1e1e2e;
+            color: #cdd6f4;
+            font-family: monospace;
+            font-size: 0.72rem;
+            padding: 0.5rem;
+            border-radius: 4px;
+            margin-top: 0.35rem;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+        .ps-ai-canvas-actions {
+            display: flex;
+            gap: 0.35rem;
+            margin-top: 0.35rem;
+        }
+        .ps-ai-canvas-actions .btn { font-size: 0.68rem; padding: 0.15rem 0.5rem; }
+        .ps-ai-canvas-tabs {
+            display: flex;
+            border-bottom: 1px solid #dee2e6;
+        }
+        .ps-ai-canvas-tabs button {
+            flex: 1;
+            border: none;
+            background: #f0f0f0;
+            padding: 0.25rem;
+            font-size: 0.72rem;
+            cursor: pointer;
+        }
+        .ps-ai-canvas-tabs button.active {
+            background: #fff;
+            font-weight: 600;
+            border-bottom: 2px solid var(--ssa, #0d5681);
+        }
+        .ps-ai-canvas-wrapper {
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            margin-top: 0.35rem;
+            overflow: hidden;
+        }
     </style>
 </head>
 <body>
@@ -190,6 +280,10 @@
                                                         title="Clear all content">
                                                     <i class="bi bi-trash me-1"></i>Clear
                                                 </button>
+                                                <button type="button" class="btn btn-sm btn-ssa"
+                                                        onclick="openProposalAiBuilder(${section.getId()}, '${section.getSectionType()}')">
+                                                    <i class="bi bi-robot me-1"></i>Build with AI
+                                                </button>
                                                 <span class="text-muted" style="font-size:0.8rem;">
                                                     <i class="bi bi-info-circle me-1"></i>Raw HTML mode — paste full HTML blocks directly.
                                                 </span>
@@ -213,6 +307,30 @@
                                         </c:when>
 
                                     </c:choose>
+
+                                        <%-- AI Builder Panel --%>
+                                        <div id="aiBuilderPanel-${section.getId()}" class="ps-ai-panel" style="display:none;">
+                                            <div class="ps-ai-header d-flex justify-content-between align-items-center">
+                                                <span><i class="bi bi-robot me-1"></i>AI Page Builder &mdash; ${section.getTitle()}</span>
+                                                <button type="button" class="btn-close btn-close-white btn-sm"
+                                                        onclick="closeProposalAiBuilder(${section.getId()})"></button>
+                                            </div>
+                                            <div id="aiMessages-${section.getId()}" class="ps-ai-messages">
+                                                <div class="ps-ai-welcome text-muted small text-center" style="margin-top:30px;">
+                                                    <i class="bi bi-lightbulb me-1"></i>
+                                                    Describe the page you want &mdash; style, colors, content &mdash; and I'll generate the HTML.
+                                                </div>
+                                            </div>
+                                            <div class="ps-ai-input d-flex gap-2">
+                                                <input type="text" id="aiInput-${section.getId()}" class="form-control form-control-sm"
+                                                       placeholder="e.g. Create a dark navy About Us page with our team highlights..."
+                                                       onkeydown="if(event.key==='Enter'){event.preventDefault();sendProposalAiQuestion(${section.getId()}, '${section.getSectionType()}')}">
+                                                <button type="button" class="btn btn-sm btn-ssa"
+                                                        onclick="sendProposalAiQuestion(${section.getId()}, '${section.getSectionType()}')">
+                                                    <i class="bi bi-send"></i>
+                                                </button>
+                                            </div>
+                                        </div>
 
                                         <div class="mt-2">
                                             <button type="button" class="btn btn-ssa" onclick="saveSection(${section.getId()})">
@@ -481,6 +599,175 @@
             });
         }
     });
+
+    // ── AI Page Builder ─────────────────────────────────────────────────
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    function openProposalAiBuilder(sectionId, sectionType) {
+        document.getElementById('aiBuilderPanel-' + sectionId).style.display = 'flex';
+        document.getElementById('aiInput-' + sectionId).focus();
+    }
+
+    function closeProposalAiBuilder(sectionId) {
+        document.getElementById('aiBuilderPanel-' + sectionId).style.display = 'none';
+    }
+
+    function sendProposalAiQuestion(sectionId, sectionType) {
+        const input = document.getElementById('aiInput-' + sectionId);
+        const question = input.value.trim();
+        if (!question) return;
+        input.value = '';
+
+        const messagesDiv = document.getElementById('aiMessages-' + sectionId);
+
+        // Clear welcome
+        const welcome = messagesDiv.querySelector('.ps-ai-welcome');
+        if (welcome) welcome.remove();
+
+        // Show user message
+        messagesDiv.innerHTML += '<div class="ps-ai-msg user"><div class="ps-ai-bubble">' + escapeHtml(question) + '</div></div>';
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+
+        // Loading indicator
+        const loadId = 'ps-loading-' + Date.now();
+        messagesDiv.innerHTML += '<div class="ps-ai-msg assistant" id="' + loadId + '"><div class="ps-ai-bubble"><i class="bi bi-hourglass-split me-1"></i>Generating...</div></div>';
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+
+        fetch('ProposalAiBuilder', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                question: question,
+                sectionId: '' + sectionId,
+                sectionType: sectionType
+            })
+        })
+        .then(r => r.json())
+        .then(data => {
+            document.getElementById(loadId).remove();
+            let html = '<div class="ps-ai-msg assistant"><div class="ps-ai-bubble">';
+            html += formatProposalAiResponse(data.answer, sectionId);
+            html += '</div></div>';
+            messagesDiv.innerHTML += html;
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        })
+        .catch(err => {
+            document.getElementById(loadId).remove();
+            messagesDiv.innerHTML += '<div class="ps-ai-msg assistant"><div class="ps-ai-bubble text-danger">Error: ' + escapeHtml(err.message) + '</div></div>';
+        });
+    }
+
+    function formatProposalAiResponse(text, sectionId) {
+        const codeBlockRegex = /```[\s\S]*?```/g;
+        let result = text;
+        let idx = 0;
+        const canvasBlocks = [];  // store generated HTML blocks separately
+
+        result = result.replace(codeBlockRegex, function(match) {
+            const code = match.replace(/```\w*\n?/g, '').replace(/```$/g, '').trim();
+            const canvasId = 'ps-canvas-' + sectionId + '-' + Date.now() + '-' + (idx);
+            const placeholder = '@@CANVAS_BLOCK_' + (idx++) + '@@';
+
+            // Build the dual-view canvas (code + iframe preview)
+            let html = '<div class="ps-ai-canvas-wrapper">';
+
+            // Tab bar
+            html += '<div class="ps-ai-canvas-tabs">';
+            html += '<button type="button" class="active" onclick="showCanvasTab(this,\'' + canvasId + '\',\'code\')">Code</button>';
+            html += '<button type="button" onclick="showCanvasTab(this,\'' + canvasId + '\',\'preview\')">Preview</button>';
+            html += '</div>';
+
+            // Code view
+            html += '<div id="' + canvasId + '-code" class="ps-ai-canvas" style="display:block; max-height:200px; overflow-y:auto;">' + escapeHtml(code) + '</div>';
+
+            // Preview iframe
+            html += '<div id="' + canvasId + '-preview" style="display:none;">';
+            html += '<iframe id="' + canvasId + '-iframe" style="width:100%; min-height:250px; border:none; background:#f8f9fa;" sandbox="allow-same-origin"></iframe>';
+            html += '</div>';
+
+            // Store raw code in a JS data store (NOT in innerHTML where <br> replacement can corrupt it)
+            html += '<div id="' + canvasId + '-raw" style="display:none;" data-raw-code></div>';
+
+            // Action buttons — type="button" prevents form submission
+            html += '<div class="ps-ai-canvas-actions">';
+            html += '<button type="button" class="btn btn-sm btn-ssa" onclick="insertIntoSectionEditor(' + sectionId + ',\'' + canvasId + '\')">';
+            html += '<i class="bi bi-box-arrow-in-down me-1"></i>Insert into Editor</button>';
+            html += '<button type="button" class="btn btn-sm btn-outline-secondary" onclick="copyCanvasRaw(\'' + canvasId + '\')">';
+            html += '<i class="bi bi-clipboard me-1"></i>Copy</button>';
+            html += '</div>';
+
+            html += '</div>';
+
+            // Write the preview iframe content after a tick (so the DOM exists)
+            // Also store the raw code via textContent (immune to <br> replacement)
+            setTimeout(function() {
+                // Store raw code safely via textContent
+                const rawDiv = document.getElementById(canvasId + '-raw');
+                if (rawDiv) rawDiv.textContent = code;
+
+                const iframe = document.getElementById(canvasId + '-iframe');
+                if (iframe) {
+                    const doc = iframe.contentDocument || iframe.contentWindow.document;
+                    doc.open();
+                    doc.write('<body style="margin:0; background:#f8f9fa; display:flex; justify-content:center; padding:10px;"><div style="max-width:900px; width:100%;">' + code + '</div></body>');
+                    doc.close();
+                    // Auto-height
+                    setTimeout(function() {
+                        try { iframe.style.height = (doc.body.scrollHeight + 20) + 'px'; } catch(e) {}
+                    }, 100);
+                }
+            }, 50);
+
+            canvasBlocks.push(html);
+            return placeholder;
+        });
+
+        // Apply <br> conversion ONLY to prose text (placeholders are single-line tokens)
+        result = result.replace(/\n/g, '<br>');
+
+        // Restore canvas blocks (their HTML is NOT affected by <br> replacement)
+        for (let i = 0; i < canvasBlocks.length; i++) {
+            result = result.replace('@@CANVAS_BLOCK_' + i + '@@', canvasBlocks[i]);
+        }
+
+        return result;
+    }
+
+    function showCanvasTab(btn, canvasId, tab) {
+        // Toggle tab active state
+        btn.parentElement.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        // Toggle views
+        document.getElementById(canvasId + '-code').style.display = tab === 'code' ? 'block' : 'none';
+        document.getElementById(canvasId + '-preview').style.display = tab === 'preview' ? 'block' : 'none';
+    }
+
+    function insertIntoSectionEditor(sectionId, canvasId) {
+        const rawDiv = document.getElementById(canvasId + '-raw');
+        if (!rawDiv) return;
+        // textContent holds the pristine code (no <br> corruption)
+        const code = rawDiv.textContent;
+
+        const textarea = document.getElementById('ck-source-' + sectionId);
+        textarea.value = code;
+        textarea.style.transition = 'background 0.3s';
+        textarea.style.background = '#d4edda';
+        setTimeout(() => { textarea.style.background = ''; }, 1000);
+
+        // Switch to edit mode if in preview
+        showRawMode(sectionId);
+    }
+
+    function copyCanvasRaw(canvasId) {
+        const rawDiv = document.getElementById(canvasId + '-raw');
+        if (!rawDiv) return;
+        navigator.clipboard.writeText(rawDiv.textContent);
+    }
 </script>
 </body>
 </html>

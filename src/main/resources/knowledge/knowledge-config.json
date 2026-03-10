@@ -41,6 +41,13 @@
       "label": "Automation Email Builder",
       "keywords": ["automation", "email", "template", "auto", "tag", "ii", "checklist", "task", "sbj", "sig", "close", "build", "create"],
       "enabled": true
+    },
+    {
+      "id": "proposal_page_builder",
+      "file": "proposal-page-builder.json",
+      "label": "Proposal Page Builder",
+      "enabled": true,
+      "keywords": ["proposal", "page", "section", "custom", "html", "title", "closing", "cover", "design", "style", "card", "content", "brochure"]
     }
   ]
 }

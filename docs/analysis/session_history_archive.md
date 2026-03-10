@@ -2,7 +2,7 @@
 
 > **Purpose:** Consolidated historical record of all build sessions. For current project state, see `project_backlog.md`. For current architecture, see `application_flow.md` and `entity_reference.md`.
 >
-> **Last Updated:** March 24, 2026 (Session 48)
+> **Last Updated:** March 10, 2026 (Session 50)
 
 ---
 
@@ -1659,3 +1659,51 @@ Three bare `return;` statements in SendAutoFinal25 produced an empty HTTP respon
 
 ### Files Modified
 - `SendAutoFinal25.java` — eliminated all silent `return;` paths, added error logging and transaction rollback
+
+## March 10, 2026 — Proposal AI Page Builder + Bug Fixes (Session 50)
+
+Built an inline AI assistant for generating styled HTML content blocks for proposal custom pages. Follows the `AutomationAiBuilder` pattern (Session 48) — multi-turn conversation, knowledge base context injection, code canvas with insert/copy.
+
+### Proposal AI Page Builder
+- **ProposalAiBuilder.java** — new servlet at `/ProposalAiBuilder`, PSP Admin only, uses Claude Sonnet (`claude-sonnet-4-20250514`, 4096 max tokens). Specialized system prompt covering the card-inset pattern, scoped CSS, merge tokens, wrapper div requirement, Bootstrap collision avoidance. Searches only `proposal_page_builder` KB.
+- **proposal-page-builder.json** — new 24-chunk knowledge base covering concepts (rendering context, merge tokens), structural patterns (skeleton, card-inset, CSS scoping, scale factor, responsive rules), style adaptation (colors, fonts, source material), layout patterns (two-column, card grid, stat rings, callout), section type guidance (title/closing/custom), examples (dark navy, light/white, brand-adaptive), and practical guidance (mistakes, workflow, font sizing).
+- **knowledge-config.json** — registered `proposal_page_builder` KB
+- **ClaudeApiService.java** — added `ask(systemPrompt, messages, model, maxTokens)` overload for explicit model/token control. Increased timeout from 30s to 60s.
+- **proposalSettings.jsp** — added `.ps-ai-*` CSS classes, "Build with AI" button on TITLE/CLOSING/CUSTOM section toolbars, inline AI chat panel with messages area and input field, JavaScript functions: `openProposalAiBuilder`, `sendProposalAiQuestion`, `formatProposalAiResponse` (code canvas with dual Code/Preview tabs, Insert into Editor, Copy), `insertIntoSectionEditor`, `copyCanvasRaw`
+
+### Proposal AI Builder Bug Fixes
+- **Model 404 fix:** Changed from non-existent `claude-sonnet-4-5-20250514` to valid `claude-sonnet-4-20250514`
+- **Form submission on Enter:** AI input field inside `<form>` triggered form POST on Enter. Fixed with `event.preventDefault()` in onkeydown handler.
+- **Form submission on Insert/Copy buttons:** Dynamically generated `<button>` elements defaulted to `type="submit"` inside form. Fixed by adding `type="button"` to all generated buttons.
+- **`<br>` code corruption:** `\n` → `<br>` replacement in `formatProposalAiResponse` corrupted HTML code stored in hidden elements. Fixed with placeholder pattern — code blocks replaced with `@@CANVAS_BLOCK_N@@` tokens before `<br>` conversion, then restored afterward. Raw code stored via `textContent` on a `<div>` (set in setTimeout), immune to innerHTML manipulation.
+- **Missing CSS wrapper div:** AI generated CSS scoped under `.about1` but HTML lacked the `<div class="about1">` wrapper, so zero CSS selectors matched. Fixed system prompt with explicit correct/wrong examples and HTML structure template. Updated KB "Common Mistakes" chunk (wrapper = #1 mistake) and "CSS Scoping Rules" chunk.
+- **Bootstrap `.card` collision:** AI used `.card` class name which collides with Bootstrap 5's `.card { background-color: #fff }`. Updated system prompt rule #7 and KB to ban Bootstrap class names even when scoped.
+
+### ProposalSettings Focus Preservation
+- **ProposalSettings.java** — POST redirect now includes `?sectionId=X` to preserve which section was active after save. `createCustom` redirects to new section ID, `deleteCustom` clears to default.
+
+### Proposal Viewer Rendering Fixes
+- **ViewProposal.java** — fixed feature loading to use direct-FK modules per LOS/Enhancement; JOIN FETCH for lazy-load safety
+- **proposalFeatures.jsp** — LOS matching via direct FK
+- **proposalPricing.jsp** — rendering updates
+- **ApplyForProposal.java** — `LEFT JOIN FETCH p.application` for lazy-load safety
+- **ReviewApplication.java** — application review updates
+
+### Skill File
+- `.claude/skills/proposal-content-page/SKILL.md` — installed Claude Code skill definition for generating proposal page HTML blocks
+
+### Files Created
+- `ProposalAiBuilder.java` — AI builder servlet
+- `proposal-page-builder.json` — 24-chunk knowledge base
+- `.claude/skills/proposal-content-page/SKILL.md` — Claude Code skill
+
+### Files Modified
+- `ProposalSettings.java` — POST redirect with sectionId, focus preservation
+- `ClaudeApiService.java` — model/maxTokens overload, timeout increase
+- `knowledge-config.json` — new KB entry
+- `proposalSettings.jsp` — AI builder panel, CSS, JS functions, bug fixes
+- `ViewProposal.java` — feature loading fix
+- `proposalFeatures.jsp` — LOS matching fix
+- `proposalPricing.jsp` — rendering updates
+- `ApplyForProposal.java` — JOIN FETCH fix
+- `ReviewApplication.java` — review updates

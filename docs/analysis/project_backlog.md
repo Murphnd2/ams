@@ -1,7 +1,7 @@
 # AMS Project Backlog
 
 **Created:** February 19, 2026
-**Last Updated:** March 24, 2026
+**Last Updated:** March 10, 2026
 **Reference:** `docs/ams_to_be_vision.md` for full project descriptions
 
 ---
@@ -29,7 +29,7 @@
 | # | Feature | Priority | Status | Spec Doc | Notes |
 |---|---------|----------|--------|----------|-------|
 | 1 | Users and Roles Enhancement | CONF | ✅ Done | `ams_to_be_vision.md` §1 | Agent + Agency Manager roles built. Invitation system complete. BPO roles built. User Manager modal (V029). SSO future (D-31). |
-| 2 | Sales Portal | CONF | ✅ Done | `sales_pipeline_reference.md` | Full pipeline built and tested end-to-end. Proposal customization added (V035-V036). Raw HTML paste support for TITLE/CLOSING sections (Session 37). Application Visibility & Role Walls (V041, Session 41). |
+| 2 | Sales Portal | CONF | ✅ Done | `sales_pipeline_reference.md` | Full pipeline built and tested end-to-end. Proposal customization added (V035-V036). Raw HTML paste support for TITLE/CLOSING sections (Session 37). Application Visibility & Role Walls (V041, Session 41). AI Page Builder for custom proposal pages (Session 50). |
 | 3 | Sales / Marketing Library | CONF | ✅ Done | `session_history_archive.md` (Feb 21) | Resource Library UI, Wasabi upload/download, category management, feature linking to proposals. |
 | 4 | Sequence Template Overhaul | CONF | ✅ Done | `session_history_archive.md` (Feb 19) | New drag-and-drop builder complete. Old pages preserved for cleanup. |
 | 5 | Third-Party Vendor Task Outsourcing (BPO) | CONF | ✅ Done | `bpo_feature_session_history.md` | Full cross-system architecture: push/pull API, note sync, file attachments (V033), vendor registry (V032), partnership management. Co-located and federated modes both working. |
@@ -98,6 +98,7 @@
 | 21 | Benefit Plan Document Generation | LOW | 💡 Backlog | 15 HTML templates across 5 lines of service. Standalone project, eventual AMS integration. |
 | 22 | Automation Email Token for Questionnaires | MED | 💡 Backlog | Phase 6: `<q>` token in automation emails auto-embeds questionnaire link. Part of larger automation email design improvements. |
 | 27 | AI Email Builder | MED | ✅ Done | Inline AI assistant for building automation email templates. Dedicated KB (20 chunks), multi-turn conversation, code canvas with insert/copy. Smart `<<#erName>>` resolution across all activity types with input fallback. Recipient-less activity safeguard (TO email prompt). Session 48. |
+| 28 | Proposal AI Page Builder | MED | ✅ Done | Inline AI assistant for generating styled HTML proposal pages. Claude Sonnet, 24-chunk KB, dual Code/Preview canvas, Insert into Editor. Card-inset pattern with scoped CSS, merge tokens, scale factor. Session 50. |
 | 23 | Questionnaire Completion Gating | LOW | 💡 Backlog | Phase 7: optional `todo_id` linkage on QuestionnaireInstance — blocks task completion until questionnaire is SUBMITTED/REVIEWED. |
 | 24 | Shared Field Renderer Component | LOW | 💡 Backlog | Phase 8: extract reusable `fieldRenderer.jsp` from questionnaire and application form rendering. |
 | 25 | Proposal Content Page Skill | MED | ✅ Done | Claude Code skill (`.claude/skills/proposal-content-page/`) generates styled HTML blocks for proposal custom pages. Dark navy card-inset pattern, `--s` scale factor, scoped CSS, print-ready layout. Reference examples in `docs/proposal-fsa-page*.html`. Useful for building content library and proposal inserts. |

@@ -102,6 +102,7 @@ public class ProposalSettings extends HttpServlet {
         PSP psp = local.getCurrentPerson().getPsp();
 
         String action = request.getParameter("action");
+        String redirectSectionId = request.getParameter("sectionId"); // preserve focus after redirect
 
         try {
             switch (action) {
@@ -151,6 +152,7 @@ public class ProposalSettings extends HttpServlet {
                             }
                         }
                         em.getTransaction().commit();
+                        redirectSectionId = String.valueOf(custom.getId());
                         request.getSession().setAttribute("flashMessage", "Custom page created.");
                     }
                 }
@@ -162,6 +164,7 @@ public class ProposalSettings extends HttpServlet {
                         em.getTransaction().begin();
                         em.remove(section);
                         em.getTransaction().commit();
+                        redirectSectionId = null; // deleted — fall back to first section
                         request.getSession().setAttribute("flashMessage", "Custom page deleted.");
                     }
                 }
@@ -294,7 +297,10 @@ public class ProposalSettings extends HttpServlet {
             if (em.isOpen()) em.close();
         }
 
-        response.sendRedirect("ProposalSettings");
+        String redirectUrl = redirectSectionId != null
+                ? "ProposalSettings?sectionId=" + redirectSectionId
+                : "ProposalSettings";
+        response.sendRedirect(redirectUrl);
     }
 
     private List<ProposalSection> loadSections(EntityManager em, PSP psp) {

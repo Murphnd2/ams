@@ -119,10 +119,18 @@ public class ReviewApplication extends HttpServlet {
                     "SELECT DISTINCT s FROM ApplicationSection s " +
                             "LEFT JOIN FETCH s.fieldList f " +
                             "LEFT JOIN s.losList los " +
-                            "WHERE s.scope = 'ALL' OR los.id IN :losIds " +
+                            "WHERE s.suppressed = false AND (s.scope = 'ALL' OR los.id IN :losIds) " +
                             "ORDER BY s.sortOrder");
             sq.setParameter("losIds", losIds);
             List<ApplicationSection> sections = sq.getResultList();
+
+            // Remove suppressed fields and re-sort (EclipseLink DISTINCT can scramble @OrderBy)
+            for (ApplicationSection sec : sections) {
+                if (sec.getFieldList() != null) {
+                    sec.getFieldList().removeIf(ApplicationField::isSuppressed);
+                    sec.getFieldList().sort(java.util.Comparator.comparingInt(ApplicationField::getSortOrder));
+                }
+            }
 
             // Generate pre-signed download URLs for any rate sheet storage keys in JSON plans
             String pspName = getPspName(em);

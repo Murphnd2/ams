@@ -45,18 +45,20 @@ public class ApplyForProposal extends HttpServlet {
                     .map(LOS::getId).collect(Collectors.toList());
 
             // Load matching sections: scope=ALL, or scope=LOS with overlapping LOSs
+            // Exclude suppressed sections and fields
             Query sq = em.createQuery(
                     "SELECT DISTINCT s FROM ApplicationSection s " +
                             "LEFT JOIN FETCH s.fieldList " +
                             "LEFT JOIN s.losList los " +
-                            "WHERE s.scope = 'ALL' OR los.id IN :losIds " +
+                            "WHERE s.suppressed = false AND (s.scope = 'ALL' OR los.id IN :losIds) " +
                             "ORDER BY s.sortOrder");
             sq.setParameter("losIds", losIds);
             List<ApplicationSection> sections = sq.getResultList();
 
-            // EclipseLink DISTINCT + JOIN FETCH can scramble @OrderBy — re-sort fields
+            // EclipseLink DISTINCT + JOIN FETCH can scramble @OrderBy — re-sort and remove suppressed fields
             for (ApplicationSection sec : sections) {
                 if (sec.getFieldList() != null) {
+                    sec.getFieldList().removeIf(ApplicationField::isSuppressed);
                     sec.getFieldList().sort(java.util.Comparator.comparingInt(ApplicationField::getSortOrder));
                 }
             }
@@ -180,7 +182,8 @@ public class ApplyForProposal extends HttpServlet {
                     "SELECT DISTINCT f FROM ApplicationField f " +
                             "JOIN f.applicationSection s " +
                             "LEFT JOIN s.losList los " +
-                            "WHERE s.scope = 'ALL' OR los.id IN :losIds");
+                            "WHERE f.suppressed = false AND s.suppressed = false " +
+                            "AND (s.scope = 'ALL' OR los.id IN :losIds)");
             fq.setParameter("losIds", losIds);
             List<ApplicationField> fields = fq.getResultList();
 

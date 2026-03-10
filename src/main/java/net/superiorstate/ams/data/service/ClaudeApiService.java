@@ -30,7 +30,7 @@ public class ClaudeApiService {
     private static final String API_VERSION = "2023-06-01";
     private static final String DEFAULT_MODEL = "claude-haiku-4-5-20251001";
     private static final int DEFAULT_MAX_TOKENS = 1024;
-    private static final int TIMEOUT_SECONDS = 30;
+    private static final int TIMEOUT_SECONDS = 60;
 
     private static final Gson gson = new Gson();
     private static final HttpClient httpClient = HttpClient.newBuilder()
@@ -100,6 +100,20 @@ public class ClaudeApiService {
      * @return Claude's response text, or an error message if the call fails
      */
     public static String ask(String systemPrompt, List<Map<String, String>> messages) {
+        return ask(systemPrompt, messages, DEFAULT_MODEL, DEFAULT_MAX_TOKENS);
+    }
+
+    /**
+     * Multi-turn variant with explicit model and max_tokens override.
+     * Use this for tasks requiring a more capable model (e.g., Sonnet for HTML generation).
+     *
+     * @param systemPrompt the system prompt
+     * @param messages     list of maps with "role" and "content" keys
+     * @param model        the Anthropic model ID (e.g., "claude-sonnet-4-5-20250514")
+     * @param maxTokens    maximum tokens in the response
+     * @return Claude's response text, or an error message if the call fails
+     */
+    public static String ask(String systemPrompt, List<Map<String, String>> messages, String model, int maxTokens) {
         String apiKey = AppConfig.get("ANTHROPIC_API_KEY");
         if (apiKey == null || apiKey.isBlank() || "FILL_ME_IN".equals(apiKey)) {
             log.error("ANTHROPIC_API_KEY not configured in ssa.properties");
@@ -108,8 +122,8 @@ public class ClaudeApiService {
 
         try {
             JsonObject body = new JsonObject();
-            body.addProperty("model", DEFAULT_MODEL);
-            body.addProperty("max_tokens", DEFAULT_MAX_TOKENS);
+            body.addProperty("model", model);
+            body.addProperty("max_tokens", maxTokens);
             body.addProperty("system", systemPrompt);
 
             JsonArray msgArray = new JsonArray();

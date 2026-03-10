@@ -1,6 +1,6 @@
 # Deployment Backlog
 
-**Last Updated:** March 16, 2026
+**Last Updated:** March 10, 2026
 **Reference:** See `docs/deployment_strategy.md` for full context on each item.
 
 Items are ordered by dependency (earlier items unblock later ones).
@@ -662,6 +662,26 @@ Application visibility and role-based review controls. PSP Users/Admins get a ne
 - `ReviewApplication.java` — role gates, agent access check, CSV export
 - `reviewApplication.jsp` — conditional UI, read-only banner, reviewer info
 - `navbar25.jsp` — Applications nav link
+
+---
+
+### D-60: Proposal AI Page Builder
+
+**Priority:** MEDIUM
+**Status:** Code complete — no migration needed, deploy WAR
+
+Inline AI assistant for building styled HTML proposal custom pages. Adds "Build with AI" button to TITLE/CLOSING/CUSTOM section editors in Proposal Settings. Uses Claude Sonnet with 24-chunk knowledge base covering the card-inset pattern, scoped CSS, merge tokens, and layout patterns. Multi-turn conversation with code canvas (dual Code/Preview tabs, Insert into Editor, Copy). Requires CLAUDE_API_KEY in ssa.properties (already configured on all environments from D-48+).
+
+**Prerequisites:** V035+V036 applied (D-54), CLAUDE_API_KEY in ssa.properties
+
+**Files:**
+- `ProposalAiBuilder.java` (new servlet)
+- `proposal-page-builder.json` (new KB)
+- `knowledge-config.json` (updated)
+- `ClaudeApiService.java` (new overload, timeout increase)
+- `ProposalSettings.java` (redirect fix)
+- `proposalSettings.jsp` (AI panel, bug fixes)
+- `.claude/skills/proposal-content-page/SKILL.md` (dev-only skill)
 
 ---
 

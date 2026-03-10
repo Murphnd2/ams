@@ -342,8 +342,11 @@ public class ViewProposal extends HttpServlet {
         // Prospect
         tokens.put("PROSPECT_NAME", proposal.getProspect().getName() != null ? proposal.getProspect().getName() : "");
 
-        // Agent (createdBy)
-        Person agent = proposal.getCreatedBy();
+        // Agent — prefer prospect's assigned agent, fall back to proposal creator
+        Person agent = proposal.getProspect().getAgent();
+        if (agent == null) {
+            agent = proposal.getCreatedBy();
+        }
         if (agent != null) {
             String agentName = (agent.getFirstName() != null ? agent.getFirstName() : "") +
                     " " + (agent.getLastName() != null ? agent.getLastName() : "");
@@ -354,8 +357,13 @@ public class ViewProposal extends HttpServlet {
             tokens.put("AGENT_EMAIL", "");
         }
 
-        // Agency/PSP
-        tokens.put("AGENCY_NAME", psp.getFullName() != null ? psp.getFullName() : "");
+        // Agency — use agent's first agency, fall back to PSP name
+        String agencyName = psp.getFullName() != null ? psp.getFullName() : "";
+        if (agent != null && agent.getListOfAgenciesWithThisAgent() != null
+                && !agent.getListOfAgenciesWithThisAgent().isEmpty()) {
+            agencyName = agent.getListOfAgenciesWithThisAgent().get(0).getName();
+        }
+        tokens.put("AGENCY_NAME", agencyName);
         tokens.put("PSP_NAME", psp.getFullName() != null ? psp.getFullName() : "");
 
         // Date
