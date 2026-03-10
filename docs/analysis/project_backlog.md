@@ -1,7 +1,7 @@
 # AMS Project Backlog
 
 **Created:** February 19, 2026
-**Last Updated:** March 5, 2026
+**Last Updated:** March 24, 2026
 **Reference:** `docs/ams_to_be_vision.md` for full project descriptions
 
 ---
@@ -97,6 +97,7 @@
 | 20 | Summit Data Converter Web Tool | LOW | 💡 Backlog | Automate monthly CSV-to-Summit-import-format process. |
 | 21 | Benefit Plan Document Generation | LOW | 💡 Backlog | 15 HTML templates across 5 lines of service. Standalone project, eventual AMS integration. |
 | 22 | Automation Email Token for Questionnaires | MED | 💡 Backlog | Phase 6: `<q>` token in automation emails auto-embeds questionnaire link. Part of larger automation email design improvements. |
+| 27 | AI Email Builder | MED | ✅ Done | Inline AI assistant for building automation email templates. Dedicated KB (20 chunks), multi-turn conversation, code canvas with insert/copy. Smart `<<#erName>>` resolution across all activity types with input fallback. Recipient-less activity safeguard (TO email prompt). Session 48. |
 | 23 | Questionnaire Completion Gating | LOW | 💡 Backlog | Phase 7: optional `todo_id` linkage on QuestionnaireInstance — blocks task completion until questionnaire is SUBMITTED/REVIEWED. |
 | 24 | Shared Field Renderer Component | LOW | 💡 Backlog | Phase 8: extract reusable `fieldRenderer.jsp` from questionnaire and application form rendering. |
 | 25 | Proposal Content Page Skill | MED | ✅ Done | Claude Code skill (`.claude/skills/proposal-content-page/`) generates styled HTML blocks for proposal custom pages. Dark navy card-inset pattern, `--s` scale factor, scoped CSS, print-ready layout. Reference examples in `docs/proposal-fsa-page*.html`. Useful for building content library and proposal inserts. |

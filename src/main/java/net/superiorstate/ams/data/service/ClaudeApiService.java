@@ -13,6 +13,8 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Sends requests to the Anthropic Messages API and returns the response text.
@@ -86,6 +88,61 @@ public class ClaudeApiService {
 
         } catch (Exception e) {
             log.error("Error calling Claude API", e);
+            return "Sorry, something went wrong. Please try again.";
+        }
+    }
+
+    /**
+     * Multi-turn variant: sends a full conversation history to Claude.
+     *
+     * @param systemPrompt the system prompt
+     * @param messages     list of maps with "role" and "content" keys
+     * @return Claude's response text, or an error message if the call fails
+     */
+    public static String ask(String systemPrompt, List<Map<String, String>> messages) {
+        String apiKey = AppConfig.get("ANTHROPIC_API_KEY");
+        if (apiKey == null || apiKey.isBlank() || "FILL_ME_IN".equals(apiKey)) {
+            log.error("ANTHROPIC_API_KEY not configured in ssa.properties");
+            return "The AI assistant is not configured. Please contact an administrator.";
+        }
+
+        try {
+            JsonObject body = new JsonObject();
+            body.addProperty("model", DEFAULT_MODEL);
+            body.addProperty("max_tokens", DEFAULT_MAX_TOKENS);
+            body.addProperty("system", systemPrompt);
+
+            JsonArray msgArray = new JsonArray();
+            for (Map<String, String> m : messages) {
+                JsonObject msg = new JsonObject();
+                msg.addProperty("role", m.get("role"));
+                msg.addProperty("content", m.get("content"));
+                msgArray.add(msg);
+            }
+            body.add("messages", msgArray);
+
+            String json = gson.toJson(body);
+
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(API_URL))
+                    .header("Content-Type", "application/json")
+                    .header("x-api-key", apiKey)
+                    .header("anthropic-version", API_VERSION)
+                    .timeout(Duration.ofSeconds(TIMEOUT_SECONDS))
+                    .POST(HttpRequest.BodyPublishers.ofString(json))
+                    .build();
+
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+
+            if (response.statusCode() == 200) {
+                return extractResponseText(response.body());
+            } else {
+                log.error("Claude API returned status {}: {}", response.statusCode(), response.body());
+                return "Sorry, I'm having trouble connecting right now. Please try again in a moment.";
+            }
+
+        } catch (Exception e) {
+            log.error("Error calling Claude API (multi-turn)", e);
             return "Sorry, something went wrong. Please try again.";
         }
     }

@@ -25,11 +25,23 @@
                 <span class="input-group-text">
                     ${fn:escapeXml(input.replaceAll('<[^>]*>', ''))}
                 </span>
-                <input type="text"
-                       class="form-control"
-                       name="aInput-${loop.index}"
-                       id="aInput-${loop.index}"
-                       required>
+                <c:choose>
+                  <c:when test="${sessionScope.a1inputTypes[loop.index] == 'TO'}">
+                    <input type="email"
+                           class="form-control"
+                           name="aInput-${loop.index}"
+                           id="aInput-${loop.index}"
+                           placeholder="recipient@example.com"
+                           required>
+                  </c:when>
+                  <c:otherwise>
+                    <input type="text"
+                           class="form-control"
+                           name="aInput-${loop.index}"
+                           id="aInput-${loop.index}"
+                           required>
+                  </c:otherwise>
+                </c:choose>
               </div>
             </div>
           </div>

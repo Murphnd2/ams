@@ -2,7 +2,7 @@
 
 > **Purpose:** Consolidated historical record of all build sessions. For current project state, see `project_backlog.md`. For current architecture, see `application_flow.md` and `entity_reference.md`.
 >
-> **Last Updated:** March 22, 2026 (Session 47)
+> **Last Updated:** March 24, 2026 (Session 48)
 
 ---
 
@@ -1602,3 +1602,40 @@ Bug fixes for agent-only user access controls and user creation name formatting.
 - `UserManager.java` — agencyIds in JSON, import consolidation
 - `userManager25.jsp` — role-aware reassignment dropdown
 - `CreateUser25.java` — capital case name normalization
+
+## March 24, 2026 — AI Email Builder & Smart Automation Tags (Session 48)
+
+Added an AI-powered "Build with AI" panel for automation email templates, plus smart fallback behavior for `<<#erName>>` and recipient-less activities.
+
+### AI Email Builder (Phase 2)
+- **automation-email-builder.json** — new 20-chunk knowledge base covering the full automation tag language, examples, best practices, and processing flow
+- **knowledge-config.json** — registered the new `automation_email_builder` KB (admin-only)
+- **AutomationAiBuilder.java** — new servlet at `/AutomationAiBuilder`, PSP Admin only, specialized system prompt with full tag reference, multi-turn conversation via session history (`aiBuilderHistory`, max 10 turns), searches only `automation_email_builder` KB
+- **ClaudeApiService.java** — added multi-turn `ask(systemPrompt, List<Map<String,String>> messages)` overload
+- **KnowledgeSearchService.java** — clarifying comment on admin-only KB list
+- **taskManager25.jsp** — redesigned right column with 3-zone layout: toolbar (Build with AI / Tags / Preview), editor textarea, collapsible AI builder panel with chat UI. Code blocks render as dark canvas with "Insert into Editor" and "Copy" buttons
+- **UpdateTask25.java** — clears `aiBuilderHistory` session attribute on save/cancel
+
+### Smart `<<#erName>>` Resolution
+- **AutomationHelper.resolveErName()** — new method resolving employer/prospect name across all activity types: Renewal → employer, Ticket → contact→employee→employer, Setup → application→proposal→prospect, Opportunity → prospect, CheckList → delegates to parent. Returns null on any failure.
+- **SendAuto25.java** — resolves `<<#erName>>` BEFORE input extraction. If name resolves, bakes it into the template. If null, swaps to `<ii>Employer Name</ii>` which becomes a manual input field.
+
+### Recipient-Less Activity Safeguard
+- **SendAuto25.java** — checks for valid primary contact email before input extraction. If no valid recipient exists (standalone checklist/personal task), injects `<ii><to></ii>` as first input field. New "TO" type in `getLabelType()`.
+- **autoInputScreen25.jsp** — TO inputs render with `type="email"` and placeholder for browser validation
+- **SendAutoFinal25.java** — extracts TO email separately (not embedded in body), validates via `Validator.isValidEmail()`, finds or creates Person record, adds as first recipient
+
+### Files Created
+- `AutomationAiBuilder.java` — AI builder servlet
+- `automation-email-builder.json` — AI builder knowledge base
+
+### Files Modified
+- `SendAuto25.java` — smart tag resolution, recipient check, TO input injection
+- `SendAutoFinal25.java` — TO email extraction, validation, recipient creation
+- `AutomationHelper.java` — `resolveErName()` method
+- `ClaudeApiService.java` — multi-turn ask() overload
+- `KnowledgeSearchService.java` — comment
+- `knowledge-config.json` — new KB entry
+- `taskManager25.jsp` — 3-zone layout, AI builder UI
+- `autoInputScreen25.jsp` — email type input for TO
+- `UpdateTask25.java` — session cleanup

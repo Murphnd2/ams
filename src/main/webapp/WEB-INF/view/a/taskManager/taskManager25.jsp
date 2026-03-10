@@ -25,8 +25,9 @@
       .tm-col-left .tm-card { flex: 1; overflow-y: auto; }
       .tm-col-right { display: flex; flex-direction: column; }
       .tm-col-right .tm-card { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
-      .tm-col-right .tm-card .tm-auto-body { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
-      .tm-col-right .tm-card .tm-auto-body textarea { flex: 1; resize: none; }
+      .tm-col-right .tm-card .tm-auto-body { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-height: 0; }
+      .tm-col-right .tm-card .tm-auto-body textarea { flex: 1; resize: none; min-height: 120px; }
+      .tm-col-right .tm-card .tm-auto-body .tm-ai-panel { flex: 1 1 250px; min-height: 0; max-height: none; }
     }
 
     /* Tag reference overlay — positioned over left column, below header */
@@ -42,6 +43,72 @@
     }
 
     /* Ghost footer buttons — now using global .ssa-action from css-js.jsp */
+
+    /* AI Builder Panel */
+    .tm-ai-panel {
+      border: 1px solid var(--ssa, #0d5681);
+      border-radius: 6px;
+      background: #fff;
+      display: flex;
+      flex-direction: column;
+      min-height: 250px;
+      overflow: hidden;
+      margin-top: 0.5rem;
+    }
+    .tm-ai-header {
+      background: linear-gradient(135deg, #0d5681, #1a7ab5);
+      color: #fff;
+      padding: 0.5rem 0.75rem;
+      font-size: 0.82rem;
+      font-weight: 600;
+      flex-shrink: 0;
+    }
+    .tm-ai-messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 0.75rem;
+      font-size: 0.8rem;
+      background: #f8f9fa;
+      min-height: 120px;
+    }
+    .tm-ai-input {
+      padding: 0.5rem;
+      border-top: 1px solid #dee2e6;
+      flex-shrink: 0;
+    }
+    .tm-ai-msg { margin-bottom: 0.75rem; }
+    .tm-ai-msg.user { text-align: right; }
+    .tm-ai-msg.user .tm-ai-bubble {
+      background: var(--ssa, #0d5681); color: #fff;
+      display: inline-block; padding: 0.4rem 0.65rem; border-radius: 8px;
+      max-width: 85%; text-align: left; font-size: 0.78rem;
+    }
+    .tm-ai-msg.assistant .tm-ai-bubble {
+      background: #e9ecef; color: #333;
+      display: inline-block; padding: 0.4rem 0.65rem; border-radius: 8px;
+      max-width: 90%; text-align: left; font-size: 0.78rem;
+    }
+    .tm-ai-canvas {
+      background: #1e1e2e;
+      color: #cdd6f4;
+      font-family: monospace;
+      font-size: 0.72rem;
+      padding: 0.5rem;
+      border-radius: 4px;
+      margin-top: 0.35rem;
+      white-space: pre-wrap;
+      word-break: break-word;
+      position: relative;
+    }
+    .tm-ai-canvas-actions {
+      display: flex;
+      gap: 0.35rem;
+      margin-top: 0.35rem;
+    }
+    .tm-ai-canvas-actions .btn {
+      font-size: 0.68rem;
+      padding: 0.15rem 0.5rem;
+    }
   </style>
 </head>
 <body>
@@ -276,19 +343,54 @@
                 <div class="tm-label"><i class="bi bi-lightning-charge me-1"></i>Email Automation</div>
                 <div class="tm-hint mb-2">Attach a template email that can be sent when this task is active.</div>
 
+                <%-- Zone 1: Template Toolbar --%>
+                <div class="d-flex align-items-center gap-2 mb-2 flex-shrink-0">
+                  <button type="button" class="btn btn-sm btn-ssa" id="btnBuildWithAI" onclick="openAiBuilder()">
+                    <i class="bi bi-robot me-1"></i>Build with AI
+                  </button>
+                  <button type="button" class="btn btn-sm btn-outline-secondary" onclick="document.getElementById('tagOverlay').classList.toggle('show')" style="font-size:0.68rem;">
+                    <i class="bi bi-question-circle me-1"></i>Tags
+                  </button>
+                  <c:if test="${toDo.getTask().getAutomation() != null}">
+                    <a href="PreviewAutomation?aeId=${toDo.getTask().getAutomation().getId()}" target="_blank" class="btn btn-sm btn-outline-secondary" style="font-size:0.68rem;">
+                      <i class="bi bi-eye me-1"></i>Preview
+                    </a>
+                  </c:if>
+                </div>
+
+                <%-- Zone 2: Template Editor --%>
                 <div class="mb-2 flex-shrink-0">
                   <label class="form-label tm-hint fw-semibold mb-0">Display Statement</label>
                   <input type="text" class="form-control form-control-sm" name="autoName" value="${toDo.getTask().getAutomationText()}" placeholder="e.g. Send enrollment confirmation to employer">
                 </div>
 
                 <div class="mb-0 flex-grow-1 d-flex flex-column" style="min-height:0;">
-                  <div class="d-flex justify-content-between align-items-center mb-1 flex-shrink-0">
-                    <label class="form-label tm-hint fw-semibold mb-0">Email Template</label>
-                    <button class="btn btn-sm btn-outline-secondary" type="button" onclick="document.getElementById('tagOverlay').classList.toggle('show')" style="font-size:0.68rem; padding:0.1rem 0.35rem;">
-                      <i class="bi bi-question-circle me-1"></i>Tag Reference
+                  <label class="form-label tm-hint fw-semibold mb-1">Email Template</label>
+                  <textarea class="form-control flex-grow-1" name="autoText" rows="6" style="font-family: monospace; font-size: 0.78rem; min-height: 150px;"><c:if test="${toDo.getTask().getAutomation()!=null}">${toDo.getTask().getAutomation().getHtmlContent()}</c:if></textarea>
+                </div>
+
+                <%-- Zone 3: AI Builder Panel (collapsible) --%>
+                <div id="aiBuilderPanel" class="tm-ai-panel" style="display:none;">
+                  <div class="tm-ai-header d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-robot me-1"></i>AI Email Builder</span>
+                    <button type="button" class="btn-close btn-close-white btn-sm" onclick="closeAiBuilder()"></button>
+                  </div>
+
+                  <div id="aiMessages" class="tm-ai-messages">
+                    <div class="tm-ai-welcome text-muted small text-center" style="margin-top:40px;">
+                      <i class="bi bi-lightbulb me-1"></i>
+                      Describe the email you want to build and I'll create the template code.
+                    </div>
+                  </div>
+
+                  <div class="tm-ai-input d-flex gap-2">
+                    <input type="text" id="aiQuestionInput" class="form-control form-control-sm"
+                           placeholder="e.g. Send census request with upload link, CC the broker..."
+                           onkeydown="if(event.key==='Enter'){event.preventDefault();sendAiQuestion();}">
+                    <button type="button" class="btn btn-sm btn-ssa" onclick="sendAiQuestion()">
+                      <i class="bi bi-send"></i>
                     </button>
                   </div>
-                  <textarea class="form-control flex-grow-1" name="autoText" rows="6" style="font-family: monospace; font-size: 0.78rem; min-height: 150px;"><c:if test="${toDo.getTask().getAutomation()!=null}">${toDo.getTask().getAutomation().getHtmlContent()}</c:if></textarea>
                 </div>
               </div>
 
@@ -383,6 +485,110 @@
     el.className = on ? 'form-control form-control-sm tm-url' : 'form-control form-control-sm tm-url d-none';
     el.required = on;
     if(!on) el.value = '';
+  }
+
+  /* ── AI Builder ── */
+  function openAiBuilder() {
+    document.getElementById('aiBuilderPanel').style.display = 'flex';
+    document.getElementById('aiQuestionInput').focus();
+  }
+  function closeAiBuilder() {
+    document.getElementById('aiBuilderPanel').style.display = 'none';
+  }
+
+  function sendAiQuestion() {
+    const input = document.getElementById('aiQuestionInput');
+    const question = input.value.trim();
+    if (!question) return;
+    input.value = '';
+
+    const messagesDiv = document.getElementById('aiMessages');
+
+    // Clear welcome message
+    const welcome = messagesDiv.querySelector('.tm-ai-welcome');
+    if (welcome) welcome.remove();
+
+    // Show user message
+    messagesDiv.innerHTML += '<div class="tm-ai-msg user"><div class="tm-ai-bubble">' + escapeHtml(question) + '</div></div>';
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+
+    // Show loading
+    const loadingId = 'ai-loading-' + Date.now();
+    messagesDiv.innerHTML += '<div class="tm-ai-msg assistant" id="' + loadingId + '"><div class="tm-ai-bubble"><i class="bi bi-hourglass-split me-1"></i>Thinking...</div></div>';
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+
+    // Call the automation builder endpoint
+    fetch('AutomationAiBuilder', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        question: question,
+        taskId: document.querySelector('input[name="taskId"]').value
+      })
+    })
+    .then(r => r.json())
+    .then(data => {
+      const loading = document.getElementById(loadingId);
+      if (loading) loading.remove();
+
+      let html = '<div class="tm-ai-msg assistant"><div class="tm-ai-bubble">';
+      html += formatAiResponse(data.answer);
+      html += '</div></div>';
+
+      messagesDiv.innerHTML += html;
+      messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    })
+    .catch(err => {
+      const loading = document.getElementById(loadingId);
+      if (loading) loading.remove();
+      messagesDiv.innerHTML += '<div class="tm-ai-msg assistant"><div class="tm-ai-bubble text-danger">Error: ' + err.message + '</div></div>';
+    });
+  }
+
+  function formatAiResponse(text) {
+    const codeBlockRegex = /```[\s\S]*?```/g;
+    let result = text;
+    let codeIndex = 0;
+
+    result = result.replace(codeBlockRegex, function(match) {
+      const code = match.replace(/```\w*\n?/g, '').replace(/```$/g, '').trim();
+      const canvasId = 'ai-canvas-' + Date.now() + '-' + (codeIndex++);
+      return '</div><div class="tm-ai-canvas" id="' + canvasId + '">' + escapeHtml(code) + '</div>' +
+             '<div class="tm-ai-canvas-actions">' +
+             '<button type="button" class="btn btn-sm btn-ssa" onclick="insertIntoEditor(\'' + canvasId + '\')">' +
+             '<i class="bi bi-box-arrow-in-down me-1"></i>Insert into Editor</button>' +
+             '<button type="button" class="btn btn-sm btn-outline-secondary" onclick="copyCanvas(\'' + canvasId + '\')">' +
+             '<i class="bi bi-clipboard me-1"></i>Copy</button>' +
+             '</div><div>';
+    });
+
+    // Basic markdown formatting for non-code content
+    result = result.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    result = result.replace(/\n/g, '<br>');
+    return result;
+  }
+
+  function insertIntoEditor(canvasId) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+    const code = canvas.textContent;
+    const textarea = document.querySelector('textarea[name="autoText"]');
+    textarea.value = code;
+    textarea.style.transition = 'background 0.3s';
+    textarea.style.background = '#d4edda';
+    setTimeout(function() { textarea.style.background = ''; }, 1000);
+  }
+
+  function copyCanvas(canvasId) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+    navigator.clipboard.writeText(canvas.textContent);
+  }
+
+  function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
   }
 </script>
 </body>

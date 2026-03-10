@@ -34,6 +34,13 @@
       "label": "Backup & Recovery Procedures",
       "keywords": ["backup", "restore", "recovery", "rclone", "wasabi", "s3", "mysql", "dump", "windows server backup"],
       "enabled": true
+    },
+    {
+      "id": "automation_email_builder",
+      "file": "automation-email-builder.json",
+      "label": "Automation Email Builder",
+      "keywords": ["automation", "email", "template", "auto", "tag", "ii", "checklist", "task", "sbj", "sig", "close", "build", "create"],
+      "enabled": true
     }
   ]
 }

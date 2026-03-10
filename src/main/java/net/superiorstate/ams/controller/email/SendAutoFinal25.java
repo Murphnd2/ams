@@ -7,11 +7,13 @@ import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.AmsDataLocal;
 import net.superiorstate.ams.data.util.AutomationHelper;
+import net.superiorstate.ams.data.util.Validator;
 import net.superiorstate.ams.data.dao.EmailDAO;
 import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.model.activity.Activity;
 import net.superiorstate.ams.model.activity.note.Email;
 import net.superiorstate.ams.model.general.Automation;
+import net.superiorstate.ams.model.general.Person;
 import net.superiorstate.ams.model.summit.archive.Employer;
 import net.superiorstate.ams.data.util.AutoSafe;
 import jakarta.mail.MessagingException;
@@ -67,12 +69,22 @@ public class SendAutoFinal25 extends HttpServlet {
         // ──────────────────────────────────────────────────────
         // Safe input processing – only allow expected indices
         // ──────────────────────────────────────────────────────
-        if (inputCount > 0) {
+        // Extract TO email (if injected by SendAuto25) — goes to recipient, not body
+        @SuppressWarnings("unchecked")
+        List<String> inputTypes = (List<String>) request.getSession().getAttribute("a1inputTypes");
+        String toEmail = null;
+        if (inputCount > 0 && inputTypes != null) {
             for (int i = 0; i < inputCount; i++) {
-                String rawValue = request.getParameter("aInput-" + i);
-                String safeValue = AutoSafe.getInput(rawValue, inputCount - 1, i);
-
-                remainingText = remainingText.replace("<[{" + i + "}]>", safeValue);
+                if ("TO".equals(inputTypes.get(i))) {
+                    toEmail = request.getParameter("aInput-" + i);
+                    if (toEmail != null) toEmail = toEmail.trim();
+                    // Remove placeholder from body — TO email is used as recipient, not content
+                    remainingText = remainingText.replace("<[{" + i + "}]>", "");
+                } else {
+                    String rawValue = request.getParameter("aInput-" + i);
+                    String safeValue = AutoSafe.getInput(rawValue, inputCount - 1, i);
+                    remainingText = remainingText.replace("<[{" + i + "}]>", safeValue);
+                }
             }
         }
         // Remove any leftover placeholders (user left blank)
@@ -109,6 +121,24 @@ public class SendAutoFinal25 extends HttpServlet {
         local.getCurrentEmail().setBody(subjectBodyList.get(1));
         local.getCurrentEmail().setAttachments(new ArrayList<>());
         local.getCurrentEmail().setRecipientList(AutomationHelper.getRecipientList(em, local, ccListString));
+
+        // If a TO email was provided (no primary contact scenario), add it as recipient
+        if (toEmail != null && !toEmail.isBlank() && Validator.isValidEmail(toEmail)) {
+            Person toPerson = EmailDAO.getPersonByEmail(em, toEmail, local.getCurrentPerson().getPsp());
+            if (toPerson == null) {
+                em.getTransaction().begin();
+                toPerson = new Person();
+                toPerson.setEmail(toEmail);
+                toPerson.setFirstName("NEW");
+                toPerson.setLastName("PERSON");
+                toPerson.setPsp(local.getCurrentPerson().getPsp());
+                em.persist(toPerson);
+                em.getTransaction().commit();
+            }
+            // Add to front of recipient list
+            local.getCurrentEmail().getRecipientList().add(0, toPerson);
+        }
+
         String userSignature = "<p> " + local.getCurrentPerson().getFirstName() + " " + local.getCurrentPerson().getLastName() + "<br/>";
         userSignature += local.getCurrentPerson().getPsp().getFullName() + "</p>";
 

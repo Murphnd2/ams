@@ -95,6 +95,8 @@ public class UpdateTask25 extends HttpServlet {
             }
             request.getSession().setAttribute("local",local);
         }
+        // Clear AI builder conversation history to free memory
+        request.getSession().removeAttribute("aiBuilderHistory");
         em.close();
     }
 

@@ -307,7 +307,8 @@ public class KnowledgeSearchService {
             if (isAdmin) {
                 eligible.add(cfg.id);
             } else {
-                // Non-admin users get summit and summit_videos only
+                // Non-admin users get summit and summit_videos only.
+                // Admin-only KBs: wave, business_continuity, backup_recovery, automation_email_builder
                 if ("summit".equals(cfg.id) || "summit_videos".equals(cfg.id)) {
                     eligible.add(cfg.id);
                 }

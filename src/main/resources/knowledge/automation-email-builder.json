@@ -1,0 +1,150 @@
+{
+  "metadata": {
+    "name": "Automation Email Builder",
+    "version": "1.0",
+    "description": "Knowledge base for building automation email templates using the AMS tag language. Covers all input tags, variable tags, template structure, examples, and best practices.",
+    "lastUpdated": "2026-03-10"
+  },
+  "chunks": [
+    {
+      "title": "What Are Automation Emails",
+      "section": "Overview",
+      "category": "concepts",
+      "keywords": ["automation", "email", "template", "checklist", "task", "attach", "send", "what is", "overview", "how does it work"],
+      "content": "Automation emails are template emails attached to checklist tasks. When a user clicks the automation button on a checklist task, the system renders the template, prompts the user to fill in any input fields, and sends the email to the activity's contacts.\n\nHow it works:\n1. A PSP Admin creates a template using the tag language and attaches it to a checklist task.\n2. When a user processes the checklist and reaches that task, they click the lightning bolt icon.\n3. The system parses the template: it extracts input fields for the user to fill in, resolves variable tags with real data (employer name, activity type), and prepares the email.\n4. If the template has input fields, the user sees a form to fill them in. If not, the email sends automatically.\n5. The email goes to the activity's primary contact (and any CC recipients), and optionally auto-closes the activity.\n\nTemplates are reusable across all activities that use the same checklist. The template code is stored in the Automation entity and processed at send time."
+    },
+    {
+      "title": "Tag Language Overview",
+      "section": "Overview",
+      "category": "concepts",
+      "keywords": ["tag", "tags", "language", "syntax", "all tags", "list", "reference", "what tags", "available"],
+      "content": "The automation email template language has two categories of tags:\n\nINPUT TAGS — These create fields that the user fills in at send time:\n- <ii>Label</ii> — Text input field. The label between the tags becomes the field label.\n- <ii><l>Label</ii> — Link/URL input field. The value is auto-wrapped in a clickable <a> tag.\n- <ii><cc></ii> — CC recipient field. Semicolon-separated email addresses. Does not appear in the email body.\n\nVARIABLE TAGS — These auto-insert system data at send time:\n- <<#erName>> — The employer name from the current activity (works for Renewals and Tickets).\n- <<#activityType>> — The activity type (Renewal, Setup, Ticket, etc.).\n- <<sig>> — The sender's email signature block (name + company).\n- <<close>> — Auto-closes the activity after the email is sent. This is invisible in the email.\n\nSTRUCTURE TAG:\n- <sbj>Subject Text</sbj> — Defines the email subject line. Must be the first line of the template.\n\nAll tags are case-sensitive and must be typed exactly as shown."
+    },
+    {
+      "title": "Text Input Tag",
+      "section": "Input Tags",
+      "category": "tags",
+      "keywords": ["ii", "input", "text input", "field", "label", "user input", "fill in", "prompt", "text field", "form field"],
+      "content": "The text input tag creates a text field that the user fills in at send time.\n\nSyntax: <ii>Label Text</ii>\n\nThe text between <ii> and </ii> becomes the field label shown to the user. At send time, the user types a value, and that value replaces the entire <ii>...</ii> tag in the email body.\n\nExamples:\n\nTemplate code:\nPlease provide the following: <ii>Document Name</ii>\n\nAt send time, user sees a field labeled \"Document Name\" and types \"W-2 Form\".\nFinal email reads: Please provide the following: W-2 Form\n\nAnother example:\nYour <ii>Plan Type</ii> plan for <<#erName>> is ready for review.\n\nAt send time, user fills in \"HSA\" and the employer name auto-fills.\nFinal email reads: Your HSA plan for Acme Corp is ready for review.\n\nYou can have multiple text input tags in one template. Each creates a separate field on the input form. They are numbered in order of appearance (first <ii> = field 1, second = field 2, etc.)."
+    },
+    {
+      "title": "Link Input Tag",
+      "section": "Input Tags",
+      "category": "tags",
+      "keywords": ["link", "url", "href", "portal", "upload", "website", "clickable", "anchor", "l tag", "link input"],
+      "content": "The link input tag creates a URL input field. The value the user enters is automatically wrapped in a clickable <a> tag in the final email.\n\nSyntax: <ii><l>Label Text</ii>\n\nThe <l> modifier inside the <ii> tag tells the system this input is a link. At send time, if the user enters \"https://example.com/upload\", the final email will contain a clickable hyperlink.\n\nExample:\n\nTemplate code:\nPlease upload your census file here: <ii><l>Upload Link</ii>\n\nAt send time, user enters: https://portal.example.com/upload/abc123\nFinal email reads: Please upload your census file here: https://portal.example.com/upload/abc123\n(where the URL is a clickable link)\n\nUse the link input tag whenever the user needs to paste a URL that recipients should be able to click. Common uses:\n- Portal upload links\n- Document download links\n- Survey or form links\n- Website references\n\nDo NOT use a regular text input for URLs — the link tag ensures the URL is clickable in the email."
+    },
+    {
+      "title": "CC Recipient Tag",
+      "section": "Input Tags",
+      "category": "tags",
+      "keywords": ["cc", "carbon copy", "recipient", "copy", "broker", "additional", "semicolon", "cc tag", "send copy"],
+      "content": "The CC recipient tag creates a field where the user can enter additional email recipients. These addresses receive a copy of the email but the CC field does NOT appear in the email body.\n\nSyntax: <ii><cc></ii>\n\nAt send time, the user enters one or more email addresses separated by semicolons.\n\nExample:\n\nTemplate code:\nHello, your <<#activityType>> for <<#erName>> is complete.\n<<sig>>\n<ii><cc></ii>\n\nAt send time, user enters in the CC field: broker@agency.com;manager@agency.com\nThe email sends to the activity's primary contact AND copies broker@agency.com and manager@agency.com.\n\nRules:\n- Only ONE <ii><cc></ii> tag per template.\n- Place it after the signature tag, near the end of the template.\n- Multiple email addresses must be separated by semicolons (;).\n- The CC field content never appears in the email body — it only adds recipients.\n- If a CC email address is not already in the system, a new contact record is created automatically."
+    },
+    {
+      "title": "Employer Name Variable",
+      "section": "Variable Tags",
+      "category": "tags",
+      "keywords": ["erName", "employer", "company", "client", "name", "employer name", "company name", "auto fill", "variable"],
+      "content": "The employer name variable automatically inserts the employer or prospect name from the current activity.\n\nSyntax: <<#erName>>\n\nThis tag is smart: it resolves the name from whatever activity type is in context. If the system can find the name, it auto-fills it. If it cannot, the tag automatically becomes a manual input field so the user can type the name at send time.\n\nResolution by activity type:\n- Renewal: employer name (direct)\n- Ticket: employer name via the contact's employee record\n- Setup: prospect name via the application and proposal\n- Opportunity: prospect name (direct)\n- CheckList: delegates to the parent activity (renewal, setup, or ticket)\n\nIf any step in the chain is null (e.g., a ticket contact who is not an employee), the tag becomes <ii>Employer Name</ii> — a text input the user fills in manually.\n\nExamples:\n\nIn the subject:\n<sbj>Census Request for <<#erName>></sbj>\nBecomes: Census Request for Acme Corporation (auto-filled)\nOr prompts: Census Request for [user types name] (manual fallback)\n\nIn the body:\nHello, we are preparing the renewal for <<#erName>>.\nBecomes: Hello, we are preparing the renewal for Acme Corporation.\n\nImportant notes:\n- Safe to use in any template regardless of activity type.\n- The tag is case-sensitive: <<#erName>> (not <<#ername>> or <<#ErName>>).\n- Do NOT use <<#erName>> inside the <sbj> tag if you want the fallback input to work — input tags are not allowed in subject lines. Use <<#erName>> in subjects only when the name is expected to resolve (e.g., Renewal templates)."
+    },
+    {
+      "title": "Activity Type Variable",
+      "section": "Variable Tags",
+      "category": "tags",
+      "keywords": ["activityType", "activity", "type", "renewal", "ticket", "setup", "opportunity", "activity type variable"],
+      "content": "The activity type variable automatically inserts the type of the current activity.\n\nSyntax: <<#activityType>>\n\nThis tag is replaced at send time with the activity's class name: Renewal, Ticket, Setup, or Opportunity.\n\nExample:\n\nTemplate code:\n<sbj><<#activityType>> Update for <<#erName>></sbj>\nYour <<#activityType>> is progressing. We will follow up shortly.\n\nFor a Renewal activity with employer \"Acme Corp\":\nSubject: Renewal Update for Acme Corp\nBody: Your Renewal is progressing. We will follow up shortly.\n\nThis tag works in both the subject line and the email body. It is useful for templates shared across different activity types, so the email automatically reflects what kind of activity it relates to."
+    },
+    {
+      "title": "Signature Tag",
+      "section": "Variable Tags",
+      "category": "tags",
+      "keywords": ["sig", "signature", "sign", "name", "sender", "from", "closing", "sign off"],
+      "content": "The signature tag inserts the sender's email signature at the specified position.\n\nSyntax: <<sig>>\n\nThe signature includes the sender's first name, last name, and their PSP company name. It is rendered as a formatted block at the end of the email body.\n\nExample:\n\nTemplate code:\nHello, please find the attached documents for <<#erName>>.\n\nThank you,\n<<sig>>\n\nFinal email:\nHello, please find the attached documents for Acme Corp.\n\nThank you,\nJohn Smith\nSuperior State Administrators, Inc.\n\nRules:\n- Only ONE <<sig>> per template.\n- Place it near the end of the email body, before any CC tag and before <<close>>.\n- The tag is completely removed from the template at processing time and the signature is appended to the final email.\n- If you omit <<sig>>, no signature is added to the email."
+    },
+    {
+      "title": "Auto-Close Tag",
+      "section": "Variable Tags",
+      "category": "tags",
+      "keywords": ["close", "auto close", "auto-close", "complete", "finish", "done", "close activity", "automatic close"],
+      "content": "The auto-close tag tells the system to automatically close the activity after the email is sent.\n\nSyntax: <<close>>\n\nThis tag produces NO visible output in the email. It is a behavioral flag — when present in the template, the system closes the activity immediately after the email sends successfully.\n\nExample:\n\nTemplate code:\n<sbj><<#activityType>> Complete for <<#erName>></sbj>\nYour <<#activityType>> has been completed. No further action is needed.\n<<sig>>\n<<close>>\n\nThe email sends normally, and then the activity is automatically marked as closed.\n\nRules:\n- Only ONE <<close>> per template.\n- Place it as the LAST element in the template (after sig, after CC).\n- It does not appear in the email — recipients never see it.\n- Use this for final notification emails where sending the email means the work is done.\n- Do NOT use <<close>> for mid-process emails where the activity should remain open for further work."
+    },
+    {
+      "title": "Subject Line Tag",
+      "section": "Structure",
+      "category": "tags",
+      "keywords": ["sbj", "subject", "subject line", "email subject", "title", "heading", "subject tag"],
+      "content": "The subject line tag defines the email subject. It must be the first line of the template.\n\nSyntax: <sbj>Subject Text Here</sbj>\n\nThe text between <sbj> and </sbj> becomes the email subject line. Variable tags like <<#erName>> and <<#activityType>> work inside the subject tag.\n\nExample:\n\n<sbj>Census Request for <<#erName>> — <<#activityType>></sbj>\nHello, we need your updated census data...\n\nResult:\nSubject: Census Request for Acme Corp — Renewal\nBody: Hello, we need your updated census data...\n\nRules:\n- The <sbj>...</sbj> tag must be on the FIRST line of the template.\n- Variable tags (<<#erName>>, <<#activityType>>) work inside the subject.\n- Input tags (<ii>...</ii>) do NOT work inside the subject. Never put input fields in the subject line.\n- If you omit the subject tag entirely, the automation display name is used as the subject.\n- Only ONE subject tag per template."
+    },
+    {
+      "title": "Template Structure and Ordering Rules",
+      "section": "Structure",
+      "category": "best-practices",
+      "keywords": ["structure", "order", "ordering", "layout", "format", "arrangement", "template structure", "correct order"],
+      "content": "Every automation email template must follow this structure order:\n\n1. SUBJECT LINE (optional, must be first if present):\n   <sbj>Your Subject Here</sbj>\n\n2. EMAIL BODY (required):\n   The main content of the email. Can include:\n   - Plain text\n   - Text input tags: <ii>Label</ii>\n   - Link input tags: <ii><l>Label</ii>\n   - Variable tags: <<#erName>>, <<#activityType>>\n   - Line breaks: <nl> for single line break, <br/> for paragraph break\n\n3. SIGNATURE (optional, one per template):\n   <<sig>>\n\n4. CC RECIPIENTS (optional, one per template):\n   <ii><cc></ii>\n\n5. AUTO-CLOSE (optional, must be last if present):\n   <<close>>\n\nExample of a complete template with all elements:\n\n<sbj><<#activityType>> Update for <<#erName>></sbj>\nHello,<nl>We are processing your <<#activityType>>. Please provide the following:<nl><ii>Required Document</ii><nl>Upload here: <ii><l>Upload Link</ii><nl>Thank you,\n<<sig>>\n<ii><cc></ii>\n<<close>>\n\nThis order matters because the system processes tags in sequence. Placing tags out of order may cause unexpected behavior."
+    },
+    {
+      "title": "Example: Simple Notification Email",
+      "section": "Examples",
+      "category": "examples",
+      "keywords": ["example", "simple", "notification", "no input", "basic", "notify", "announcement"],
+      "content": "This example shows a simple notification email with no user inputs — just variables, a signature, and auto-close.\n\nUse case: Notify the employer contact that their renewal is complete.\n\nTemplate code:\n<sbj><<#activityType>> Complete for <<#erName>></sbj>\nHello,<nl><nl>Your <<#activityType>> for <<#erName>> has been completed successfully. All documents have been processed and no further action is required on your part.<nl><nl>If you have any questions, please don't hesitate to reach out.\n<<sig>>\n<<close>>\n\nWhat happens at send time:\n- No input form is shown (no <ii> tags) — the email sends immediately after clicking the automation button.\n- <<#erName>> is replaced with the employer name (e.g., \"Acme Corporation\").\n- <<#activityType>> is replaced with \"Renewal\".\n- <<sig>> adds the sender's signature.\n- <<close>> auto-closes the activity after sending.\n\nFinal email:\nSubject: Renewal Complete for Acme Corporation\nBody: Hello,\n\nYour Renewal for Acme Corporation has been completed successfully. All documents have been processed and no further action is required on your part.\n\nIf you have any questions, please don't hesitate to reach out.\nJohn Smith\nSuperior State Administrators, Inc."
+    },
+    {
+      "title": "Example: Census Request with Link and CC",
+      "section": "Examples",
+      "category": "examples",
+      "keywords": ["example", "census", "link", "cc", "upload", "broker", "request", "complex"],
+      "content": "This example shows a census request email with a link input, a text input, CC recipients, and variable tags.\n\nUse case: Ask the employer to upload their census data, with a copy to the broker.\n\nTemplate code:\n<sbj>Census Request for <<#erName>></sbj>\nHello,<nl><nl>We are preparing your <<#activityType>> for <<#erName>>. Please upload your current employee census using the link below:<nl><nl><ii><l>Census Upload Link</ii><nl><nl>Please have the census submitted by <ii>Due Date</ii>.<nl><nl>Thank you for your prompt attention to this matter.\n<<sig>>\n<ii><cc></ii>\n\nWhat happens at send time:\n- User sees 3 input fields:\n  1. \"Census Upload Link\" (link type — value becomes clickable)\n  2. \"Due Date\" (text type — value inserted as plain text)\n  3. \"CC\" (email addresses, semicolon-separated)\n- The user fills in the upload URL, the due date, and optionally CCs the broker.\n\nFinal email (example):\nSubject: Census Request for Acme Corporation\nBody: Hello,\n\nWe are preparing your Renewal for Acme Corporation. Please upload your current employee census using the link below:\n\nhttps://portal.example.com/upload/abc123 (clickable link)\n\nPlease have the census submitted by March 15, 2026.\n\nThank you for your prompt attention to this matter.\nJohn Smith\nSuperior State Administrators, Inc.\n\n(CC sent to: broker@agency.com)"
+    },
+    {
+      "title": "Example: Document Request with Multiple Inputs",
+      "section": "Examples",
+      "category": "examples",
+      "keywords": ["example", "document", "multiple", "inputs", "several", "fields", "request documents"],
+      "content": "This example shows a template with multiple text input fields for requesting various documents.\n\nUse case: Request specific documents from the employer, where the document names change each time.\n\nTemplate code:\n<sbj>Document Request — <<#erName>></sbj>\nHello,<nl><nl>As part of your <<#activityType>> for <<#erName>>, we need the following documents:<nl><nl>1. <ii>Document 1</ii><nl>2. <ii>Document 2</ii><nl>3. <ii>Document 3</ii><nl><nl>Please send these at your earliest convenience. If you have questions about any of the items listed, feel free to reply to this email.\n<<sig>>\n\nWhat happens at send time:\n- User sees 3 text input fields: Document 1, Document 2, Document 3.\n- User types the specific document names needed for this employer.\n\nFinal email (example):\nSubject: Document Request — Acme Corporation\nBody: Hello,\n\nAs part of your Renewal for Acme Corporation, we need the following documents:\n\n1. Updated employee census\n2. Current rate sheet\n3. Plan summary document\n\nPlease send these at your earliest convenience. If you have questions about any of the items listed, feel free to reply to this email.\nJohn Smith\nSuperior State Administrators, Inc.\n\nNote: This template does not auto-close the activity because the work is not done until the documents are received."
+    },
+    {
+      "title": "Example: Auto-Close Completion Notice",
+      "section": "Examples",
+      "category": "examples",
+      "keywords": ["example", "auto close", "complete", "completion", "finish", "done", "close and send"],
+      "content": "This example shows the send-and-close pattern — an email that automatically closes the activity after sending.\n\nUse case: Final notification that the work is done. Sending this email is the last step.\n\nTemplate code:\n<sbj><<#activityType>> Finalized — <<#erName>></sbj>\nHello,<nl><nl>We are pleased to confirm that your <<#activityType>> for <<#erName>> has been finalized. All changes are now in effect.<nl><nl>Summary of what was completed: <ii>Completion Summary</ii><nl><nl>If you need any assistance going forward, please don't hesitate to contact us.\n<<sig>>\n<<close>>\n\nWhat happens at send time:\n- User sees 1 input field: \"Completion Summary\" where they describe what was done.\n- After filling in and sending, the email goes out AND the activity is closed.\n\nThe <<close>> tag is perfect for final-step emails. The activity auto-closes so the user doesn't have to manually close it after sending."
+    },
+    {
+      "title": "Common Mistakes to Avoid",
+      "section": "Best Practices",
+      "category": "best-practices",
+      "keywords": ["mistake", "error", "wrong", "problem", "issue", "common error", "avoid", "pitfall", "troubleshoot", "fix"],
+      "content": "Common mistakes when building automation email templates:\n\n1. MISSING CLOSING TAGS: Every <ii> must have a matching </ii>. Every <sbj> must have </sbj>. Unclosed tags cause parsing errors.\n   Wrong: <ii>Document Name\n   Right: <ii>Document Name</ii>\n\n2. INPUT TAGS IN SUBJECT: Never put <ii> input tags inside <sbj> subject tags. The subject cannot have user-filled fields.\n   Wrong: <sbj>Request for <ii>Item</ii></sbj>\n   Right: <sbj>Request for <<#erName>></sbj>\n\n3. MULTIPLE CC TAGS: Only one <ii><cc></ii> per template. If you need multiple CC groups, list them all semicolon-separated in the single CC field.\n   Wrong: <ii><cc></ii> <ii><cc></ii>\n   Right: <ii><cc></ii> (user enters: email1@x.com;email2@x.com)\n\n4. MULTIPLE SIGNATURE TAGS: Only one <<sig>> per template.\n   Wrong: <<sig>> ... <<sig>>\n   Right: <<sig>> (just once, near the end)\n\n5. WRONG TAG ORDER: Subject must be first, close must be last. Sig before CC.\n   Wrong: <<close>> then <<sig>>\n   Right: <<sig>> then <ii><cc></ii> then <<close>>\n\n6. HTML IN TEMPLATES: Do not use raw HTML tags like <b>, <p>, or <div>. Use <nl> for line breaks and <br/> for paragraph breaks instead. The system handles HTML formatting.\n\n7. FORGETTING <<sig>>: If you want the sender's name on the email, you must include <<sig>>. It is not added automatically."
+    },
+    {
+      "title": "When to Auto-Close vs Leave Open",
+      "section": "Best Practices",
+      "category": "best-practices",
+      "keywords": ["auto close", "close", "open", "when", "decision", "should I close", "leave open", "keep open"],
+      "content": "Use <<close>> (auto-close) when:\n- The email is a FINAL notification — no more work to do after sending.\n- Examples: completion notices, finalization confirmations, wrap-up emails.\n- The act of sending the email IS the last step in the process.\n\nDo NOT use <<close>> when:\n- You expect a response or follow-up action after sending.\n- The email is a REQUEST for information (census, documents, etc.) — you need the activity to stay open to track the response.\n- The email is a mid-process update — more tasks remain on the checklist.\n- The email is a first contact or introduction.\n\nDecision guide:\n- Ask yourself: \"After this email sends, is the work done?\"\n- If YES → include <<close>>\n- If NO → omit <<close>>\n\nExamples:\n- Census request email → NO <<close>> (waiting for census upload)\n- Document request → NO <<close>> (waiting for documents)\n- Renewal complete notice → YES <<close>> (work is done)\n- Setup finalized confirmation → YES <<close>> (work is done)\n- Mid-renewal status update → NO <<close>> (more work to do)"
+    },
+    {
+      "title": "When to Use Link vs Text Input",
+      "section": "Best Practices",
+      "category": "best-practices",
+      "keywords": ["link", "text", "input", "which", "choose", "url", "when to use", "difference", "link vs text"],
+      "content": "Use a LINK input (<ii><l>Label</ii>) when:\n- The value will be a URL that recipients need to click.\n- Examples: upload portal links, survey links, document download links, website references.\n- The system automatically wraps the URL in a clickable <a> tag so recipients can click it.\n\nUse a TEXT input (<ii>Label</ii>) when:\n- The value is plain text — a name, a date, a description, a number.\n- Examples: document names, due dates, plan types, amounts, instructions.\n- The value is inserted as-is into the email body.\n\nDecision guide:\n- Is the user pasting a URL? → Use <ii><l>Label</ii>\n- Is the user typing words, dates, or numbers? → Use <ii>Label</ii>\n\nExamples:\n- \"Upload your census here: ___\" → <ii><l>Census Upload Link</ii> (URL)\n- \"Please submit by ___\" → <ii>Due Date</ii> (text)\n- \"Access your portal: ___\" → <ii><l>Portal Link</ii> (URL)\n- \"Plan type: ___\" → <ii>Plan Type</ii> (text)\n- \"Download the form: ___\" → <ii><l>Form Download Link</ii> (URL)"
+    },
+    {
+      "title": "How the System Processes Templates at Send Time",
+      "section": "Technical Reference",
+      "category": "technical",
+      "keywords": ["process", "runtime", "send time", "how it works", "processing", "flow", "parse", "render", "system"],
+      "content": "This is the internal processing flow when a user clicks the automation button on a checklist task:\n\n1. LOAD: The system loads the Automation entity and its template content.\n\n2. EXTRACT FLAGS: The system scans for <<close>> and <<sig>> flags, records their presence, and strips them from the template text.\n\n3. EXTRACT INPUTS: The system finds all <ii>...</ii> blocks. For each one:\n   - It extracts the label text.\n   - It determines the input type (text, link, or CC) based on whether <l> or <cc> is inside.\n   - It replaces the <ii>...</ii> block with a numbered placeholder.\n\n4. USER INPUT FORM: If there are input fields, the user sees a form with labeled fields. If there are no inputs, the email proceeds directly.\n\n5. REPLACE PLACEHOLDERS: User-entered values replace the numbered placeholders. Link-type values get wrapped in clickable <a> tags. CC values are extracted to the recipient list.\n\n6. RESOLVE VARIABLES: <<#erName>> is replaced with the employer name. <<#activityType>> is replaced with the activity type.\n\n7. FORMAT: Line break tags (<nl>, <br/>) are converted to HTML formatting.\n\n8. EXTRACT SUBJECT: If <sbj>...</sbj> is present, the subject is extracted. Otherwise the automation name is used.\n\n9. BUILD RECIPIENTS: The primary contact + additional contacts + CC addresses form the recipient list.\n\n10. SEND: The email is sent via SMTP, recorded as a note on the activity, and if <<close>> was flagged, the activity is closed."
+    },
+    {
+      "title": "Building a Template Step by Step",
+      "section": "Workflow",
+      "category": "workflow",
+      "keywords": ["build", "create", "make", "new", "template", "step by step", "guide", "walk through", "how to build", "help me"],
+      "content": "When a user asks you to build an automation email template, follow this workflow:\n\n1. UNDERSTAND THE PURPOSE: Ask what the email is about. What is the user trying to communicate?\n\n2. IDENTIFY THE RECIPIENTS: Who receives this email? Do they need to CC anyone (broker, manager)?\n\n3. IDENTIFY VARIABLE CONTENT: What information changes each time this email is sent? Each variable piece of information becomes an input tag. If it is a URL, use a link input. If it is text, use a text input.\n\n4. DETERMINE AUTO-CLOSE: Should the activity close after this email sends? If this is a final notification, yes. If work continues after sending, no.\n\n5. DETERMINE SIGNATURE: Should the sender's name and company appear at the end? Almost always yes.\n\n6. BUILD THE TEMPLATE:\n   - Start with <sbj>Subject Line</sbj> using variable tags as needed.\n   - Write the email body with input tags where variable content goes.\n   - Add <<sig>> near the end.\n   - Add <ii><cc></ii> if CC is needed.\n   - Add <<close>> at the very end if auto-close is desired.\n\n7. REVIEW: Check that all tags are properly closed, the order is correct, and no input tags are inside the subject.\n\nSkip questions that are obvious from the user's description. For example, if they say 'send a census request with an upload link and CC the broker,' you already know: it needs a link input for the upload URL, a CC tag for the broker, and should NOT auto-close (waiting for census response)."
+    }
+  ]
+}

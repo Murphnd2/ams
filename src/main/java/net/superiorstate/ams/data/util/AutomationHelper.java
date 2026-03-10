@@ -7,8 +7,11 @@ import jakarta.servlet.http.HttpServletRequest;
 import net.superiorstate.ams.data.AmsDataLocal;
 import net.superiorstate.ams.data.dao.EmailDAO;
 import net.superiorstate.ams.model.activity.Activity;
+import net.superiorstate.ams.model.activity.Opportunity;
+import net.superiorstate.ams.model.activity.checklist.CheckList;
 import net.superiorstate.ams.model.activity.renewal.Renewal;
 import net.superiorstate.ams.model.activity.ticket.Ticket;
+import net.superiorstate.ams.model.activity.ticket.setup.Setup;
 import net.superiorstate.ams.model.general.Person;
 import net.superiorstate.ams.model.general.WebLink;
 import net.superiorstate.ams.model.summit.archive.Employer;
@@ -175,6 +178,47 @@ public abstract class AutomationHelper {
         }
         return null;
     }
+    /**
+     * Resolves the employer/prospect name for any activity type.
+     * Returns the name string if found, or null if resolution fails at any point.
+     *
+     * Resolution chain by type:
+     *   Renewal     → employer.getEmployerName()
+     *   Ticket      → contact.getEmployee().getEmployer().getEmployerName()
+     *   Setup       → application.getProposal().getProspect().getName()
+     *   Opportunity → prospect.getName()
+     *   CheckList   → delegates to parent activity (renewal/ticket/setup)
+     */
+    public static String resolveErName(EntityManager em, Activity a) {
+        try {
+            if (a instanceof Renewal r) {
+                if (r.getEmployer() != null)
+                    return r.getEmployer().getEmployerName();
+            } else if (a instanceof Ticket t) {
+                if (t.getPrimaryContact() != null
+                        && t.getPrimaryContact().getEmployee() != null
+                        && t.getPrimaryContact().getEmployee().getEmployer() != null)
+                    return t.getPrimaryContact().getEmployee().getEmployer().getEmployerName();
+            } else if (a instanceof Setup s) {
+                if (s.getApplication() != null
+                        && s.getApplication().getProposal() != null
+                        && s.getApplication().getProposal().getProspect() != null)
+                    return s.getApplication().getProposal().getProspect().getName();
+            } else if (a instanceof Opportunity o) {
+                if (o.getProspect() != null)
+                    return o.getProspect().getName();
+            } else if (a instanceof CheckList cl) {
+                // Delegate to the parent activity
+                if (cl.getRenewal() != null) return resolveErName(em, cl.getRenewal());
+                if (cl.getSetup() != null) return resolveErName(em, cl.getSetup());
+                if (cl.getTicket() != null) return resolveErName(em, cl.getTicket());
+            }
+        } catch (Exception e) {
+            // Any unexpected null or lazy-load failure — fall through to null
+        }
+        return null;
+    }
+
     public static String processInputs(HttpServletRequest request, String remainingText){
         StringBuilder processedText = new StringBuilder();
         int j = 0;
