@@ -19,9 +19,7 @@ import net.superiorstate.ams.model.sales.agency.Agency;
 
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 /**
  * User Manager — PSP Admin modal for creating and managing users.
@@ -71,6 +69,19 @@ public class UserManager extends HttpServlet {
                 }
             }
 
+            // Build map of personId -> agencyIds for reassignment filtering
+            Map<Long, Set<Long>> personAgencyMap = new HashMap<>();
+            @SuppressWarnings("unchecked")
+            List<Object[]> agencyAgents = em.createQuery(
+                    "SELECT ag.id, a.id FROM Agency a JOIN a.agentList ag WHERE a.psp.id = :pspId")
+                    .setParameter("pspId", 4L)
+                    .getResultList();
+            for (Object[] row : agencyAgents) {
+                long agentPersonId = (long) row[0];
+                long agencyId = (long) row[1];
+                personAgencyMap.computeIfAbsent(agentPersonId, k -> new HashSet<>()).add(agencyId);
+            }
+
             // Build JSON response
             StringBuilder sb = new StringBuilder();
             sb.append("{\"homeAgencyId\":").append(homeAgencyId);
@@ -114,6 +125,17 @@ public class UserManager extends HttpServlet {
                         sb.append("{\"id\":").append(r.getId());
                         sb.append(",\"desc\":\"").append(escapeJson(r.getDescription())).append("\"}");
                     }
+                }
+                sb.append("]");
+
+                // Agency memberships for reassignment filtering
+                Set<Long> agIds = personAgencyMap.getOrDefault(pid, Set.of());
+                sb.append(",\"agencyIds\":[");
+                boolean firstAg = true;
+                for (Long agId : agIds) {
+                    if (!firstAg) sb.append(",");
+                    firstAg = false;
+                    sb.append(agId);
                 }
                 sb.append("]");
 

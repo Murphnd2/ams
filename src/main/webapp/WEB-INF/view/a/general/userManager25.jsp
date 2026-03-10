@@ -420,16 +420,60 @@ document.getElementById('umUserSearch').addEventListener('input', function() {
   }
 });
 
-// ── Build active user dropdown for reassignment ──
+// ── Build active user dropdown for reassignment (role-aware) ──
 function umBuildTargetDropdown(selectId, excludePersonId) {
   var sel = document.getElementById(selectId);
   sel.innerHTML = '';
   if (!umUserData) return;
   var users = umUserData.users || [];
+
+  // Find the user being deactivated to determine their role profile
+  var targetUser = null;
+  for (var i = 0; i < users.length; i++) {
+    if (users[i].personId === excludePersonId) { targetUser = users[i]; break; }
+  }
+
+  // Determine filter mode based on the deactivated user's roles
+  var hasPspRole = false;  // has PSP User (1) or PSP Admin (5)
+  var isAgentOnly = false; // has Agent (2) but NOT role 1 or 5
+  if (targetUser) {
+    for (var j = 0; j < targetUser.roles.length; j++) {
+      var rid = targetUser.roles[j].id;
+      if (rid === 1 || rid === 5) hasPspRole = true;
+    }
+    if (!hasPspRole) {
+      for (var j = 0; j < targetUser.roles.length; j++) {
+        if (targetUser.roles[j].id === 2) { isAgentOnly = true; break; }
+      }
+    }
+  }
+
   for (var i = 0; i < users.length; i++) {
     var u = users[i];
     if (!u.active) continue;
     if (u.personId === excludePersonId) continue;
+
+    if (hasPspRole) {
+      // PSP user: only show other PSP User (1) or PSP Admin (5) users
+      var candidateHasPsp = false;
+      for (var j = 0; j < u.roles.length; j++) {
+        if (u.roles[j].id === 1 || u.roles[j].id === 5) { candidateHasPsp = true; break; }
+      }
+      if (!candidateHasPsp) continue;
+    } else if (isAgentOnly && targetUser.agencyIds) {
+      // Agent-only: only show other agents in the same agency
+      var hasSharedAgency = false;
+      if (u.agencyIds) {
+        for (var a = 0; a < targetUser.agencyIds.length; a++) {
+          for (var b = 0; b < u.agencyIds.length; b++) {
+            if (targetUser.agencyIds[a] === u.agencyIds[b]) { hasSharedAgency = true; break; }
+          }
+          if (hasSharedAgency) break;
+        }
+      }
+      if (!hasSharedAgency) continue;
+    }
+
     var opt = document.createElement('option');
     opt.value = u.personId;
     opt.textContent = u.name;
