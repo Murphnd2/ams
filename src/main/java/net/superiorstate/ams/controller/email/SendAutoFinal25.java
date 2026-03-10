@@ -158,42 +158,55 @@ public class SendAutoFinal25 extends HttpServlet {
             em.persist(email);
             em.getTransaction().commit();
         } catch (Exception exception) {
-            return;
-        }
-        System.out.println("=========== CREATED EMAIL =========================");
-        //Send Email Message
-        boolean emailSent = true;
-        try {
-            EmailDAO.sendEmail(email, em);
-            System.out.println("SENT");
-            System.out.println(local.getCurrentEmail().getRecipientList().get(0).getEmail());
-        } catch (Exception exception) {
-            emailSent = false;
+            System.out.println("ERROR: Failed to create email entity");
             exception.printStackTrace();
+            if (em.getTransaction().isActive()) em.getTransaction().rollback();
+            // email stays null — send/update skipped below
         }
 
-        if(!emailSent)
-            return;
-        System.out.println("=========== EMAIL SENT =========================");
+        if (email != null) {
+            System.out.println("=========== CREATED EMAIL =========================");
+            //Send Email Message
+            boolean emailSent = true;
+            try {
+                EmailDAO.sendEmail(email, em);
+                System.out.println("SENT");
+                System.out.println(local.getCurrentEmail().getRecipientList().get(0).getEmail());
+            } catch (Exception exception) {
+                emailSent = false;
+                System.out.println("ERROR: Failed to send email");
+                exception.printStackTrace();
+            }
 
-        // If Email is Sent, append email to activity
-        Activity a1 = EntityLookup.getActivityById(em, a.getId());
-        if (a1 == null)
-            return;
-        if (a1.getNoteList() == null)
-            a1.setNoteList(new ArrayList<>());
-        em.getTransaction().begin();
-        a1.getNoteList().add(email);
-        em.persist(a1);
-        em.getTransaction().commit();
+            if (emailSent) {
+                System.out.println("=========== EMAIL SENT =========================");
+                // Append email to activity
+                try {
+                    Activity a1 = EntityLookup.getActivityById(em, a.getId());
+                    if (a1 != null) {
+                        if (a1.getNoteList() == null)
+                            a1.setNoteList(new ArrayList<>());
+                        em.getTransaction().begin();
+                        a1.getNoteList().add(email);
+                        em.persist(a1);
+                        em.getTransaction().commit();
+                    }
 
-        if(local.getCurrentActivity().getActivity() != null)
-            local.respondToActivityUpdate(em,"NOTE",email);
+                    if (local.getCurrentActivity().getActivity() != null)
+                        local.respondToActivityUpdate(em, "NOTE", email);
 
-        if(shouldClose) {
-            local.respondToActivityUpdate(em, "AUTO_CLOSE", automation);
+                    if (shouldClose) {
+                        local.respondToActivityUpdate(em, "AUTO_CLOSE", automation);
+                    }
+                } catch (Exception exception) {
+                    System.out.println("ERROR: Failed to update activity with email");
+                    exception.printStackTrace();
+                    if (em.getTransaction().isActive()) em.getTransaction().rollback();
+                }
+            }
         }
-        // Clear Cache
+
+        // Always clean up and redirect — never leave a white screen
         local.getCurrentEmail().setSubject("");
         local.getCurrentEmail().setBody("");
         local.getCurrentEmail().setAttachments(new ArrayList<>());

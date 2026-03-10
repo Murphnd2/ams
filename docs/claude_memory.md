@@ -295,6 +295,16 @@
 - **Marketing prompt:** `docs/custom-landing-page-prompt.md` — external guide for Claude marketing project on writing landing page HTML
 - **D-60** in deployment_backlog — code complete, needs V043 applied + browser testing
 
+## Session 48 (2026-03-24) — AI Email Builder & Smart Automation Tags
+- **AI Email Builder:** `AutomationAiBuilder.java` servlet, `automation-email-builder.json` KB (20 chunks), multi-turn ClaudeApiService, 3-zone taskManager25.jsp layout
+- **Smart `<<#erName>>`:** `AutomationHelper.resolveErName()` covers all activity types; SendAuto25 resolves before input extraction, falls back to `<ii>Employer Name</ii>` input
+- **Recipient-less safeguard:** SendAuto25 injects `<ii><to></ii>` when no valid primary contact; autoInputScreen25.jsp `type="email"`; SendAutoFinal25 extracts TO, validates, creates/finds Person
+
+## Session 49 (2026-03-10) — SendAutoFinal25 White Screen Fix
+- **Bug:** Bare `return;` statements in SendAutoFinal25 caused white screen when email create/send/update failed (no logging, no redirect)
+- **Fix:** Restructured so method always forwards to ViewActivity25; email creation catch logs + rolls back; email send failure logs + skips update; activity update wrapped in try/catch; cache cleanup is unconditional
+- **Pattern note:** Never use bare `return;` in servlet action methods — always redirect/forward so user gets a response
+
 ## Session 47 (2026-03-06) — Legacy TPO Redirect + Hardcoded URL Fixes
 - **LegacyTpoRedirect.java:** Catches `/tpo` and `/tpo/*` URLs from old superiorstate.net IIS site, forwards to legacyTpo.jsp
 - **legacyTpo.jsp:** Friendly "Our Site Has Been Updated" notice page, public (no auth), uses PSP branding

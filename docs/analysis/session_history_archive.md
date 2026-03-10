@@ -1639,3 +1639,23 @@ Added an AI-powered "Build with AI" panel for automation email templates, plus s
 - `taskManager25.jsp` — 3-zone layout, AI builder UI
 - `autoInputScreen25.jsp` — email type input for TO
 - `UpdateTask25.java` — session cleanup
+
+## March 10, 2026 — SendAutoFinal25 White Screen Fix (Session 49)
+
+Fixed a white screen bug in `SendAutoFinal25` that occurred when sending automation emails from standalone checklists (personal tasks) with no primary contact.
+
+### Root Cause
+Three bare `return;` statements in SendAutoFinal25 produced an empty HTTP response (white screen) when any step in the email creation/send/update pipeline failed:
+1. Email entity persist catch block — `catch (Exception) { return; }` (no logging, no rollback)
+2. Email send failure — `if (!emailSent) return;`
+3. Activity lookup failure — `if (a1 == null) return;`
+
+### Fix
+- Restructured error handling so the method **always** cleans up and forwards to `ViewActivity25`, regardless of which step fails
+- Email creation catch block now logs the exception (`exception.printStackTrace()`), rolls back the active transaction, and lets `email` stay null so downstream send/update are skipped
+- Email send failure now logs and skips the activity update but continues to cleanup/redirect
+- Activity update block wrapped in its own try/catch with logging and rollback
+- Cache cleanup and `forward(request, response)` to ViewActivity25 are unconditional at the end
+
+### Files Modified
+- `SendAutoFinal25.java` — eliminated all silent `return;` paths, added error logging and transaction rollback
