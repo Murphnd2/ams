@@ -2,7 +2,7 @@
 
 > **Purpose:** Consolidated historical record of all build sessions. For current project state, see `project_backlog.md`. For current architecture, see `application_flow.md` and `entity_reference.md`.
 >
-> **Last Updated:** March 10, 2026 (Session 52)
+> **Last Updated:** March 11, 2026 (Session 54)
 
 ---
 
@@ -1800,3 +1800,57 @@ Built an inline AI assistant for generating styled HTML content blocks for propo
 
 ### Database Changes
 - **V045:** `selected_los_ids VARCHAR(500)` and `selected_enhancement_ids VARCHAR(500)` on `application`
+
+---
+
+## March 11, 2026 — Session 54: Extensible Chatbot Skill System
+
+### V046 Migration — Chatbot Skill Table
+- **V046__chatbot_skill_table.sql** — `chatbot_skill` table with FK to `assignee(id)`, index on `(psp_id, is_active)`, self-registers in `schema_version`
+- Fields: skill_name, description, system_prompt (TEXT), trigger_keywords, accepts_file_upload, accepted_mime_types, model, max_tokens, is_active, admin_only, sort_order
+
+### ChatbotSkill Entity + DAO
+- **ChatbotSkill.java** — JPA entity in `model/general/` with helper methods: `acceptsMimeType()` (checks comma-separated MIME list), `getTriggerKeywordSet()` (parses keywords to lowercase Set)
+- **ChatbotSkillDAO.java** — static methods: `getActiveSkills()`, `getAllSkills()`, `findMatchingSkill()` with scoring (file MIME match = 10 base + keyword bonus, text-only requires >= 2 keyword hits)
+
+### ClaudeApiService Structured Content Support
+- **ClaudeApiService.java** — three new overloads for document content blocks:
+  - `askWithContent(systemPrompt, JsonArray contentBlocks, model, maxTokens)` — sends content as JsonArray (document + text blocks)
+  - `askWithContent(systemPrompt, contentBlocks)` — convenience with defaults
+  - `askWithStructuredMessages(systemPrompt, messages, model, maxTokens)` — multi-turn with mixed content types
+
+### ChatAssistant Unified Endpoint
+- **ChatAssistant.java** — rewritten with `@MultipartConfig`, accepts both JSON and multipart/form-data
+- Skill matching: loads active skills for PSP, filters admin-only for non-admins, matches via `ChatbotSkillDAO.findMatchingSkill()`
+- `executeSkill()` — file-accepting skills: base64-encode file → document content block → `askWithContent()`; text-only skills: `ask()` with skill system prompt
+- `executeKBSearch()` — extracted existing KB/ticket search as fallback when no skill matches
+
+### Skill Manager Admin UI
+- **SkillManager.java** — CRUD servlet at `/SkillManager`, PSP Admin only, PRG pattern for create/update/delete/toggle
+- **skillManager25.jsp** — card grid with all skills, create/edit modal with all fields, toggle active/inactive, delete with confirmation
+- `window._skillData[skillId]` pattern for safe server-to-JS data transfer
+
+### Chat Assistant JSP Updates
+- **chatAssistant25.jsp** — unified endpoint (`ChatAssistant` instead of `AchFileUpload`), broadened file accept (`.pdf,.xlsx,.csv,.txt`), generic file icon, `chatFile` part name
+- **navbar25.jsp** — added "Chatbot Skills" link under Business Efficiency
+
+### Files Created
+- `docs/migrations/V046__chatbot_skill_table.sql`
+- `src/main/java/net/superiorstate/ams/model/general/ChatbotSkill.java`
+- `src/main/java/net/superiorstate/ams/data/dao/ChatbotSkillDAO.java`
+- `src/main/java/net/superiorstate/ams/controller/assistant/SkillManager.java`
+- `src/main/webapp/WEB-INF/view/a/assistant/skillManager25.jsp`
+
+### Files Modified
+- `ClaudeApiService.java` — structured content block overloads
+- `ChatAssistant.java` — unified multipart/JSON endpoint with skill matching
+- `chatAssistant25.jsp` — broadened file support, unified endpoint
+- `navbar25.jsp` — Chatbot Skills nav link
+- `migration_tracker.md` — V046 row
+- `schema_version_migration.sql` — V046 insert
+
+### Files Deleted
+- `AchFileUpload.java` — replaced by unified ChatAssistant endpoint
+
+### Database Changes
+- **V046:** `chatbot_skill` table with 13 columns, FK to assignee, composite index on (psp_id, is_active)

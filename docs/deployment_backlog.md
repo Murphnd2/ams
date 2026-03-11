@@ -1,6 +1,6 @@
 # Deployment Backlog
 
-**Last Updated:** March 10, 2026
+**Last Updated:** March 11, 2026
 **Reference:** See `docs/deployment_strategy.md` for full context on each item.
 
 Items are ordered by dependency (earlier items unblock later ones).
@@ -682,6 +682,26 @@ Inline AI assistant for building styled HTML proposal custom pages. Adds "Build 
 - `ProposalSettings.java` (redirect fix)
 - `proposalSettings.jsp` (AI panel, bug fixes)
 - `.claude/skills/proposal-content-page/SKILL.md` (dev-only skill)
+
+---
+
+### D-61: Apply V046 + Chatbot Skill System
+
+**Priority:** MEDIUM — New feature, no dependencies on existing data
+**Status:** Code complete — needs V046 applied + skill creation via UI
+
+Deploy steps:
+1. Apply `docs/migrations/V046__chatbot_skill_table.sql` to target databases
+2. Deploy WAR
+3. Navigate to Skill Manager (Business Efficiency → Chatbot Skills)
+4. Create ACH Report Analyzer skill with system prompt from session notes
+
+**Files (new):**
+- `V046__chatbot_skill_table.sql`, `ChatbotSkill.java`, `ChatbotSkillDAO.java`
+- `SkillManager.java`, `skillManager25.jsp`
+
+**Files (modified):**
+- `ClaudeApiService.java`, `ChatAssistant.java`, `chatAssistant25.jsp`, `navbar25.jsp`
 
 ---
 
