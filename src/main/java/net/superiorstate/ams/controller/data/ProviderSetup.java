@@ -2,7 +2,6 @@ package net.superiorstate.ams.controller.data;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
-import jakarta.persistence.PersistenceUnit;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.MultipartConfig;
 import jakarta.servlet.annotation.WebServlet;
@@ -33,9 +32,6 @@ import java.util.List;
 @MultipartConfig(maxFileSize = 1024 * 1024 * 10, maxRequestSize = 1024 * 1024 * 20)
 public class ProviderSetup extends HttpServlet {
 
-    @PersistenceUnit(unitName = "ssaPU")
-    private EntityManagerFactory emf;
-
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
@@ -47,6 +43,7 @@ public class ProviderSetup extends HttpServlet {
         String action = request.getParameter("action");
         if (action == null) action = "list";
 
+        EntityManagerFactory emf = (EntityManagerFactory) getServletContext().getAttribute("emf");
         EntityManager em = emf.createEntityManager();
         try {
             long pspId = getPspId(request);
@@ -130,6 +127,7 @@ public class ProviderSetup extends HttpServlet {
         }
 
         String action = request.getParameter("action");
+        EntityManagerFactory emf = (EntityManagerFactory) getServletContext().getAttribute("emf");
         EntityManager em = emf.createEntityManager();
         try {
             long pspId = getPspId(request);

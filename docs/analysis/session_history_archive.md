@@ -2,7 +2,7 @@
 
 > **Purpose:** Consolidated historical record of all build sessions. For current project state, see `project_backlog.md`. For current architecture, see `application_flow.md` and `entity_reference.md`.
 >
-> **Last Updated:** March 11, 2026 (Session 55)
+> **Last Updated:** March 11, 2026 (Session 58)
 
 ---
 
@@ -1921,3 +1921,112 @@ Built an inline AI assistant for generating styled HTML content blocks for propo
 
 ### Database Changes
 - **V047:** `composite_task_order` table with 5 columns, 3 FKs, unique composite index on (psp_id, group_id, task_id)
+
+---
+
+## March 11, 2026 — Sessions 56–57: Universal Import System
+
+Built a provider-agnostic data import system replacing the hardcoded Summit import pipeline. Configuration-driven column mappings allow any TPA platform (DataPath Summit, WEX, Alegeus, Employee Navigator, etc.) to be connected to AMS. Implemented across 6 phases in 2 sessions.
+
+### V048 Migration — Universal Import Tables
+- **V048__universal_import_system.sql** — 5 tables: `import_provider` (TPA registry), `import_file_type` (file definitions per provider), `import_field_mapping` (column→canonical mappings), `import_plan_type_mapping` (provider plan codes → AMS plan types), `import_run_log` (execution history)
+- Seeds 17 universal plan type codes (FSA, HRA, HSA, DCA, COBRA, LPFSA, MRA, PBA, PKG, TRN, DNS, VSN, LIF, STD, LTD, MED, GEN)
+- Self-registers in `schema_version`
+
+### Phase 1: JPA Entities (5 new)
+- **ImportProvider.java** — TPA platform registry with providerCode, providerName, description, active flag
+- **ImportFileType.java** — File definitions per provider: fileLabel, fileKey, targetEntity (PLAN_TYPE/EMPLOYER/EMPLOYEE/BENEFIT), fileFormat (CSV/TSV/EXCEL), required flag, sortOrder
+- **ImportFieldMapping.java** — Column-to-canonical-field mappings: sourceColumn (CSV header), canonicalField (AMS-standard name), transformRule (UPPERCASE/LOWERCASE/DATE:pattern/MAP:k=v/BOOLEAN/INT)
+- **ImportPlanTypeMapping.java** — Provider plan codes → AMS plan types, nullable provider_id for universal defaults
+- **ImportRunLog.java** — Execution history with per-entity insert/update/skip/error counters, serviceItemsCreated, warnings/errors TEXT, status (RUNNING/COMPLETED/FAILED)
+
+### Phase 2: UniversalImportService
+- **UniversalImportService.java** — Core import engine in `data/service/`, 4 main methods:
+  - `importPlanTypes()` — Upsert plan types with canonical field mapping and transform rules
+  - `importEmployers()` — Upsert employers by external organization ID
+  - `importEmployees()` — Upsert employees by participant ID + organization ID, creates Person records
+  - `importBenefits()` — Upsert benefits with CDH/COBRA source type detection, auto-creates ServiceItems
+- Universal file parsing: CSV, TSV, Excel support via Apache POI
+- Transform rules: UPPERCASE, LOWERCASE, DATE:pattern, MAP:k=v, BOOLEAN:truthy, INT
+- Import order: Plan Types → Employers → Employees → Benefits
+- Returns ImportResult per entity with insert/update/skip/error counts and warnings
+
+### Phase 3: ProviderSetup Servlet + 5 JSPs
+- **ProviderSetup.java** — CRUD servlet for provider registry, file types, column mappings, plan type mappings
+- **providerList.jsp** — Provider listing with Active/Inactive badges, Quick Setup: DataPath Summit button
+- **providerEdit.jsp** — Provider create/edit form (name, code, description, active toggle)
+- **fileTypeEdit.jsp** — File type CRUD with format/entity/required configuration
+- **fieldMappingEdit.jsp** — Column mapping editor with auto-detect upload, canonical field dropdowns by entity type, transform rule support
+- **planTypeMappingEdit.jsp** — Universal defaults display + provider-specific plan type mapping CRUD
+
+### Phase 4: UniversalImport Wizard Servlet + 4 JSPs
+- **UniversalImport.java** — 4-step wizard with session state management, file upload handling, import execution
+  - Session keys: UI_PROVIDER_ID, UI_TEMP_DIR, UI_UPLOADED_FILES, UI_UPLOAD_SUMMARY, UI_RESULTS
+  - Creates ImportRunLog per execution, groups files by target entity, ordered execution, AmsDataGlobal reload
+- **step1Provider.jsp** — Provider dropdown with step indicator badges
+- **step2Upload.jsp** — Dynamic file upload cards from provider's file types
+- **step3Configure.jsp** — Upload summary with headers/row counts, renewal months config
+- **step4Results.jsp** — Per-entity result cards with insert/update/skip/error dot indicators
+
+### Phase 5: DataPath Summit Seed Configuration (superseded by Session 58)
+- **SummitProviderSeeder.java** — Idempotent seeder creating pre-configured "DataPath Summit" provider (now unused — Summit uses dedicated redirect)
+  - 7 file types: Plan Types (EXCEL), Employer J1 (CSV), Participant Contact J2 (CSV), Participant Status J3 (CSV), Benefits CDH J4 (CSV), Benefit Plan Years J5 (CSV), Benefits COBRA J7 (CSV)
+  - All column mappings matching existing SummitImportService field names
+
+### Phase 6: Import History View
+- **ImportHistory.java** — Simple servlet querying ImportRunLog by PSP, max 100 results
+- **importHistory.jsp** — Table with status badges, per-entity stats, service items created, expandable warnings/errors
+- **navbar25.jsp** — "Data Import" section with 3 links: Import Providers, Universal Import, Import History
+
+### Files Created
+- `docs/migrations/V048__universal_import_system.sql`
+- `src/main/java/net/superiorstate/ams/model/imports/ImportProvider.java`
+- `src/main/java/net/superiorstate/ams/model/imports/ImportFileType.java`
+- `src/main/java/net/superiorstate/ams/model/imports/ImportFieldMapping.java`
+- `src/main/java/net/superiorstate/ams/model/imports/ImportPlanTypeMapping.java`
+- `src/main/java/net/superiorstate/ams/model/imports/ImportRunLog.java`
+- `src/main/java/net/superiorstate/ams/data/service/UniversalImportService.java`
+- `src/main/java/net/superiorstate/ams/data/service/SummitProviderSeeder.java`
+- `src/main/java/net/superiorstate/ams/controller/data/ProviderSetup.java`
+- `src/main/java/net/superiorstate/ams/controller/data/UniversalImport.java`
+- `src/main/java/net/superiorstate/ams/controller/data/ImportHistory.java`
+- `src/main/webapp/WEB-INF/view/a/general/providerSetup/providerList.jsp`
+- `src/main/webapp/WEB-INF/view/a/general/providerSetup/providerEdit.jsp`
+- `src/main/webapp/WEB-INF/view/a/general/providerSetup/fileTypeEdit.jsp`
+- `src/main/webapp/WEB-INF/view/a/general/providerSetup/fieldMappingEdit.jsp`
+- `src/main/webapp/WEB-INF/view/a/general/providerSetup/planTypeMappingEdit.jsp`
+- `src/main/webapp/WEB-INF/view/a/general/universalImport/step1Provider.jsp`
+- `src/main/webapp/WEB-INF/view/a/general/universalImport/step2Upload.jsp`
+- `src/main/webapp/WEB-INF/view/a/general/universalImport/step3Configure.jsp`
+- `src/main/webapp/WEB-INF/view/a/general/universalImport/step4Results.jsp`
+- `src/main/webapp/WEB-INF/view/a/general/universalImport/importHistory.jsp`
+
+### Files Modified
+- `navbar25.jsp` — Data Import section (Import Providers, Universal Import, Import History)
+
+### Database Changes
+- **V048:** 5 tables (`import_provider`, `import_file_type`, `import_field_mapping`, `import_plan_type_mapping`, `import_run_log`) + 17 universal plan type seed rows
+
+---
+
+## March 11, 2026 — Session 58: Universal Import Runtime Fixes + Summit Redirect
+
+Tested Universal Import system in browser and resolved runtime issues. Made architectural decision: Summit import keeps its dedicated wizard; Universal Import wizard lists Summit as a redirect option.
+
+### Runtime Fixes
+- **EMF null NPE** on all 3 new servlets (ProviderSetup, UniversalImport, ImportHistory): replaced `@PersistenceUnit` annotation with `getServletContext().getAttribute("emf")` pattern matching project convention
+- **providerList.jsp layout**: widened container from 900px to 1100px, added `white-space: nowrap` on Actions td
+- **SummitProviderSeeder**: added missing J5 (Benefit Plan Years) file type with 2 column mappings, bumped J7 to sort order 7
+
+### Summit Redirect Architecture
+- **Decision:** Summit's 7-file import with custom J5 plan-year enrichment logic is too specialized for generic column mapping. Summit uses its dedicated `SummitImportWizard` servlet; Universal Import handles all other providers.
+- **step1Provider.jsp** — "DataPath (Summit)" hardcoded as first dropdown option (value `SUMMIT_REDIRECT`), form always renders regardless of configured providers
+- **UniversalImport.java** — `handleSelectProvider()` detects `SUMMIT_REDIRECT` and redirects to `SummitImport`
+- **ProviderSetup.java** — removed `seedSummit` POST action and `SummitProviderSeeder` import
+- **providerList.jsp** — removed "Quick Setup: DataPath Summit" button from empty state
+
+### Files Modified
+- `ProviderSetup.java`, `UniversalImport.java`, `ImportHistory.java` — EMF injection fix
+- `step1Provider.jsp` — Summit redirect option + always-render form
+- `providerList.jsp` — removed Summit seed button, widened layout
+- `SummitProviderSeeder.java` — added J5 file type (file retained but unused)

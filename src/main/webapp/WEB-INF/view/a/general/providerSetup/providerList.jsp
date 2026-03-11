@@ -7,7 +7,7 @@
 </head>
 <body>
 <c:import url="/WEB-INF/view/a/general/navbar25.jsp"/>
-<div class="container-fluid px-4 py-3" style="max-width: 900px;">
+<div class="container-fluid px-4 py-3" style="max-width: 1100px;">
     <div class="d-flex align-items-center justify-content-between mb-3">
         <h4 class="mb-0" style="color: var(--ssa);"><i class="bi bi-plug"></i> Import Providers</h4>
         <a href="ProviderSetup?action=edit" class="ssa-action primary">
@@ -51,7 +51,7 @@
                                 <c:otherwise><span class="badge bg-secondary">Inactive</span></c:otherwise>
                             </c:choose>
                         </td>
-                        <td class="text-end">
+                        <td class="text-end" style="white-space: nowrap;">
                             <a href="ProviderSetup?action=edit&id=${p.id}" class="ssa-action primary" style="font-size:0.85rem;">Edit</a>
                             <a href="ProviderSetup?action=files&id=${p.id}" class="ssa-action primary" style="font-size:0.85rem;">File Types</a>
                             <a href="ProviderSetup?action=planTypes&id=${p.id}" class="ssa-action primary" style="font-size:0.85rem;">Plan Types</a>

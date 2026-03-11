@@ -67,4 +67,5 @@ INSERT IGNORE INTO schema_version (version, description, script_name) VALUES
 ('V044', 'Add agency scoping to proposal_section for TITLE/CLOSING overrides', 'V044__proposal_section_agency_scoping.sql'),
 ('V045', 'Application selected LOS and Enhancement IDs', 'V045__application_selected_services.sql'),
 ('V046', 'Chatbot skill table for extensible AI assistant capabilities', 'V046__chatbot_skill_table.sql'),
-('V047', 'Composite task order table for cross-sequence ordering', 'V047__composite_task_order.sql');
+('V047', 'Composite task order table for cross-sequence ordering', 'V047__composite_task_order.sql'),
+('V048', 'Universal import system tables and seed data', 'V048__universal_import_system.sql');

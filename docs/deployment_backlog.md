@@ -722,6 +722,39 @@ Cross-sequence composite task ordering for multi-LOS/Enhancement setups. PSP adm
 
 ---
 
+### D-63: Apply V048 + Universal Import System
+
+**Priority:** MEDIUM — New feature, no dependencies on existing data
+**Status:** Code complete — needs V048 applied + browser testing
+
+**Prerequisite:** V048 migration (universal import system tables + seed data)
+
+Provider-agnostic data import system for non-Summit TPA platforms. Configuration-driven column mappings allow any TPA platform (WEX, Alegeus, Employee Navigator, etc.) to be connected. 4-step import wizard (Select Provider → Upload Files → Review & Configure → Results). Import history tracking via ImportRunLog. Summit uses dedicated redirect to existing SummitImportWizard.
+
+**Deploy steps:**
+1. Apply `docs/migrations/V048__universal_import_system.sql` to target databases
+2. Deploy WAR
+3. Navigate to Universal Import — "DataPath (Summit)" redirects to existing Summit wizard; other providers follow universal flow
+4. Optionally configure new providers via Import Providers admin page
+5. Test full import flow via Universal Import wizard
+
+**Files (new):**
+- `V048__universal_import_system.sql` — migration (5 tables + seed data)
+- `ImportProvider.java`, `ImportFileType.java`, `ImportFieldMapping.java`, `ImportPlanTypeMapping.java`, `ImportRunLog.java` — 5 JPA entities in `model/imports/`
+- `UniversalImportService.java` — import engine in `data/service/`
+- `ProviderSetup.java` — provider CRUD servlet in `controller/data/`
+- `UniversalImport.java` — 4-step wizard servlet in `controller/data/`
+- `ImportHistory.java` — history viewer servlet in `controller/data/`
+- `SummitProviderSeeder.java` — Summit seeder in `data/service/` (unused — Summit uses dedicated redirect)
+- 5 ProviderSetup JSPs in `view/a/general/providerSetup/` (providerList, providerEdit, fileTypeEdit, fieldMappingEdit, planTypeMappingEdit)
+- 4 UniversalImport JSPs in `view/a/general/universalImport/` (step1Provider, step2Upload, step3Configure, step4Results)
+- `importHistory.jsp` — import history page
+
+**Files (modified):**
+- `navbar25.jsp` — Data Import section with 3 links (Import Providers, Universal Import, Import History)
+
+---
+
 ### D-59: BPO Deployment Fixes + Recurring Task Push
 
 **Priority:** HIGH — Fixes critical bugs discovered during demo/BPO VPS testing

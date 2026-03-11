@@ -219,6 +219,13 @@
               <li><a class="dropdown-item" href="VendorManager"><i class="bi bi-building me-2"></i><c:choose><c:when test="${applicationScope.global.useFriendlyNames}">Vendors: Who Can Help Us</c:when><c:otherwise>Vendor Manager</c:otherwise></c:choose></a></li>
               <li><a class="dropdown-item" href="SkillManager"><i class="bi bi-robot me-2"></i>Chatbot Skills</a></li>
 
+              <%-- ── DATA IMPORT ── --%>
+              <li><hr class="dropdown-divider"></li>
+              <li><h6 class="dropdown-header" style="font-size:0.7rem; text-transform:uppercase; letter-spacing:0.05em; color:#6c757d;">Data Import</h6></li>
+              <li><a class="dropdown-item" href="ProviderSetup"><i class="bi bi-plug me-2"></i>Import Providers</a></li>
+              <li><a class="dropdown-item" href="UniversalImport"><i class="bi bi-cloud-upload me-2"></i>Universal Import</a></li>
+              <li><a class="dropdown-item" href="ImportHistory"><i class="bi bi-clock-history me-2"></i>Import History</a></li>
+
               <%-- ── SETTINGS / ABOUT ── --%>
               <li><hr class="dropdown-divider"></li>
               <li><button class="dropdown-item" type="button" data-bs-toggle="modal" data-bs-target="#pspSettingsMod"><i class="bi bi-gear me-2"></i>Settings</button></li>
