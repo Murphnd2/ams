@@ -407,6 +407,20 @@ Snapshot: `SSA-Master-Base-v8-2026-03-04`. Changes from v7: schema upgraded V031
 
 ---
 
+### D-58: Self-Service Anthropic API Key Management
+
+**Priority:** HIGH — Required before multi-PSP deployment (prevents company key leaking to other installs)
+**Status:** Code complete, needs browser testing
+
+Self-service AI key management via Settings modal. AI features start OFF on fresh installs. PSP admins enable by entering a valid Anthropic API key (validated against Anthropic API before saving). Key stored in DB `constant` table (checked first), `ssa.properties` fallback for dev. Chatbot admin-only by default; "Show chatbot to all users" toggle available. No DB migration — constant rows created dynamically. "AI Setup Guide" skill seeded on init.
+
+**Deployment notes:**
+- Remove `CHATBOT_ENABLED` from ssa.properties (no longer used)
+- Remove `ANTHROPIC_API_KEY` from ssa.properties on production/deployed installs (admins enter via UI)
+- Keep `ANTHROPIC_API_KEY` in dev ssa.properties for convenience (fallback still works)
+
+---
+
 ## Open Items
 
 ### D-07: Externalize Database Connection

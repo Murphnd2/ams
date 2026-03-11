@@ -97,6 +97,7 @@ public class AmsDataGlobal {
     private String favicon;
 
     private boolean chatbotEnabled;
+    private boolean chatbotAllUsers = false;
     private boolean useTimeclock = true;
     private boolean useFriendlyNames = true;
     private boolean useCustomLanding = false;
@@ -278,7 +279,25 @@ public class AmsDataGlobal {
 
         setSavePath(AppConfig.get("SAVE_PATH", "/var/lib/tomcat10/data/"));
         setBrandingPath(AppConfig.get("BRANDING_PATH", System.getProperty("catalina.base") + "/branding/"));
-        this.chatbotEnabled = "true".equalsIgnoreCase(AppConfig.get("CHATBOT_ENABLED", "false"));
+        // Resolve ANTHROPIC_API_KEY: DB constant first, ssa.properties fallback
+        try {
+            String dbApiKey = getConstantValue(em, "ANTHROPIC_API_KEY");
+            if (dbApiKey != null && !dbApiKey.isEmpty()) {
+                // DB has an explicit value (real key or empty-string to disable)
+                AppConfig.setAnthropicApiKey(dbApiKey);
+            } else {
+                // No DB constant — let AppConfig fall through to ssa.properties
+                AppConfig.setAnthropicApiKey(null);
+            }
+        } catch (Exception e) {
+            AppConfig.setAnthropicApiKey(null);
+        }
+        this.chatbotEnabled = AppConfig.hasAnthropicApiKey();
+
+        try {
+            String cau = getConstantValue(em, "CHATBOT_ALL_USERS");
+            this.chatbotAllUsers = "true".equalsIgnoreCase(cau);
+        } catch (Exception e) { this.chatbotAllUsers = false; }
 
         try {
             String utc = getConstantValue(em, "USE_TIMECLOCK");
@@ -552,6 +571,7 @@ public class AmsDataGlobal {
     }
 
     public boolean isChatbotEnabled() { return chatbotEnabled; }
+    public boolean isChatbotAllUsers() { return chatbotAllUsers; }
     public boolean isUseTimeclock() { return useTimeclock; }
     public boolean isUseFriendlyNames() { return useFriendlyNames; }
     public boolean isUseCustomLanding() { return useCustomLanding; }

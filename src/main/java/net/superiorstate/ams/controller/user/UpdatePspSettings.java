@@ -7,8 +7,10 @@ import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import net.superiorstate.ams.AppConfig;
 import net.superiorstate.ams.data.AmsDataGlobal;
 import net.superiorstate.ams.data.dao.AppConstantDAO;
+import net.superiorstate.ams.data.service.ClaudeApiService;
 import net.superiorstate.ams.model.Constant;
 
 import java.io.IOException;
@@ -30,7 +32,7 @@ public class UpdatePspSettings extends HttpServlet {
     };
 
     private static final String[] FEATURE_KEYS = {
-            "USE_TIMECLOCK", "USE_FRIENDLY_NAMES", "USE_CUSTOM_LANDING"
+            "USE_TIMECLOCK", "USE_FRIENDLY_NAMES", "USE_CUSTOM_LANDING", "CHATBOT_ALL_USERS"
     };
 
     // HTML sanitization patterns — strips scripts, event handlers, javascript: protocols.
@@ -77,7 +79,9 @@ public class UpdatePspSettings extends HttpServlet {
             // Feature settings
             for (int i = 0; i < FEATURE_KEYS.length; i++) {
                 String val = AppConstantDAO.getConstantValue(em, FEATURE_KEYS[i]);
-                if (val == null) val = "USE_CUSTOM_LANDING".equals(FEATURE_KEYS[i]) ? "false" : "true";
+                if (val == null) {
+                    val = ("USE_CUSTOM_LANDING".equals(FEATURE_KEYS[i]) || "CHATBOT_ALL_USERS".equals(FEATURE_KEYS[i])) ? "false" : "true";
+                }
                 json.append("\"").append(FEATURE_KEYS[i]).append("\":\"")
                     .append(escapeJson(val)).append("\"");
                 json.append(",");
@@ -100,7 +104,24 @@ public class UpdatePspSettings extends HttpServlet {
             // Landing page HTML content (from text_value column)
             Constant clc = AppConstantDAO.getConstant(em, "CUSTOM_LANDING_HTML");
             String landingHtml = (clc != null && clc.getTextValue() != null) ? clc.getTextValue() : "";
-            json.append("\"CUSTOM_LANDING_HTML\":\"").append(escapeJson(landingHtml)).append("\"");
+            json.append("\"CUSTOM_LANDING_HTML\":\"").append(escapeJson(landingHtml)).append("\",");
+
+            // AI API key status (never send full key)
+            String dbApiKey = AppConstantDAO.getConstantValue(em, "ANTHROPIC_API_KEY");
+            String keySource = "none";
+            String keyHint = "";
+            if (dbApiKey != null && !dbApiKey.isBlank()) {
+                keySource = "database";
+                keyHint = dbApiKey.length() > 4 ? "..." + dbApiKey.substring(dbApiKey.length() - 4) : "****";
+            } else {
+                String propsKey = AppConfig.get("ANTHROPIC_API_KEY");
+                if (propsKey != null && !propsKey.isBlank() && !"FILL_ME_IN".equals(propsKey)) {
+                    keySource = "properties";
+                    keyHint = propsKey.length() > 4 ? "..." + propsKey.substring(propsKey.length() - 4) : "****";
+                }
+            }
+            json.append("\"AI_KEY_SOURCE\":\"").append(escapeJson(keySource)).append("\",");
+            json.append("\"AI_KEY_HINT\":\"").append(escapeJson(keyHint)).append("\"");
 
             json.append("}");
             out.print(json);
@@ -119,10 +140,18 @@ public class UpdatePspSettings extends HttpServlet {
             return;
         }
 
-        // Check for AJAX action (landing page HTML save)
+        // Check for AJAX actions
         String action = request.getParameter("action");
         if ("saveLandingHtml".equals(action)) {
             saveLandingHtml(request, response);
+            return;
+        }
+        if ("saveApiKey".equals(action)) {
+            saveApiKey(request, response);
+            return;
+        }
+        if ("removeApiKey".equals(action)) {
+            removeApiKey(request, response);
             return;
         }
 
@@ -149,6 +178,8 @@ public class UpdatePspSettings extends HttpServlet {
             upsertConstant(em, "USE_FRIENDLY_NAMES", "on".equals(useFriendlyNames) ? "true" : "false");
             String useCustomLanding = request.getParameter("useCustomLanding");
             upsertConstant(em, "USE_CUSTOM_LANDING", "on".equals(useCustomLanding) ? "true" : "false");
+            String chatbotAllUsers = request.getParameter("chatbotAllUsers");
+            upsertConstant(em, "CHATBOT_ALL_USERS", "on".equals(chatbotAllUsers) ? "true" : "false");
 
             // Landing page color settings
             String headerColor = request.getParameter("landingHeaderColor");
@@ -225,6 +256,84 @@ public class UpdatePspSettings extends HttpServlet {
         } finally {
             em.close();
         }
+    }
+
+    /**
+     * AJAX handler: validates an Anthropic API key, then saves it to the DB constants table.
+     */
+    private void saveApiKey(HttpServletRequest request, HttpServletResponse response) throws IOException {
+        EntityManagerFactory emf = (EntityManagerFactory) getServletContext().getAttribute("emf");
+        EntityManager em = emf.createEntityManager();
+        try {
+            String apiKey = request.getParameter("apiKey");
+            if (apiKey == null || apiKey.isBlank()) {
+                sendJsonResponse(response, "error", "No API key provided");
+                return;
+            }
+            apiKey = apiKey.trim();
+
+            // Validate against Anthropic API
+            String error = ClaudeApiService.validateApiKey(apiKey);
+            if (error != null) {
+                sendJsonResponse(response, "error", error);
+                return;
+            }
+
+            // Save to DB
+            em.getTransaction().begin();
+            upsertConstant(em, "ANTHROPIC_API_KEY", apiKey);
+            em.getTransaction().commit();
+
+            // Update cached key and reload global
+            AppConfig.setAnthropicApiKey(apiKey);
+            AmsDataGlobal global = (AmsDataGlobal) getServletContext().getAttribute("global");
+            if (global != null) {
+                global.initializeGlobalData(em);
+            }
+
+            String hint = apiKey.length() > 4 ? "..." + apiKey.substring(apiKey.length() - 4) : "****";
+            response.setContentType("application/json");
+            response.getWriter().print("{\"status\":\"ok\",\"hint\":\"" + escapeJson(hint) + "\"}");
+        } catch (Exception e) {
+            if (em.getTransaction().isActive()) em.getTransaction().rollback();
+            e.printStackTrace();
+            sendJsonResponse(response, "error", "Save failed");
+        } finally {
+            em.close();
+        }
+    }
+
+    /**
+     * AJAX handler: removes the API key by setting the DB constant to empty string.
+     * This explicitly overrides any ssa.properties fallback.
+     */
+    private void removeApiKey(HttpServletRequest request, HttpServletResponse response) throws IOException {
+        EntityManagerFactory emf = (EntityManagerFactory) getServletContext().getAttribute("emf");
+        EntityManager em = emf.createEntityManager();
+        try {
+            em.getTransaction().begin();
+            upsertConstant(em, "ANTHROPIC_API_KEY", "");
+            em.getTransaction().commit();
+
+            AppConfig.setAnthropicApiKey("");
+            AmsDataGlobal global = (AmsDataGlobal) getServletContext().getAttribute("global");
+            if (global != null) {
+                global.initializeGlobalData(em);
+            }
+
+            sendJsonResponse(response, "ok", "API key removed");
+        } catch (Exception e) {
+            if (em.getTransaction().isActive()) em.getTransaction().rollback();
+            e.printStackTrace();
+            sendJsonResponse(response, "error", "Remove failed");
+        } finally {
+            em.close();
+        }
+    }
+
+    private void sendJsonResponse(HttpServletResponse response, String status, String message) throws IOException {
+        response.setContentType("application/json");
+        response.getWriter().print("{\"status\":\"" + escapeJson(status) + "\",\"message\":\"" + escapeJson(message) + "\"}");
     }
 
     /**

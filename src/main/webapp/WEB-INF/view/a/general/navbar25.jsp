@@ -368,7 +368,7 @@
   </div>
 </c:if>
 
-<%-- Chatbot — PSP users only --%>
-<c:if test="${(sessionScope.isPspUser || sessionScope.isPspAdmin) && applicationScope.global.chatbotEnabled}">
+<%-- Chatbot — admins always; standard users only when chatbotAllUsers is on --%>
+<c:if test="${applicationScope.global.chatbotEnabled && (sessionScope.isPspAdmin || (sessionScope.isPspUser && applicationScope.global.chatbotAllUsers))}">
   <c:import url="/WEB-INF/view/a/general/chatAssistant25.jsp"/>
 </c:if>

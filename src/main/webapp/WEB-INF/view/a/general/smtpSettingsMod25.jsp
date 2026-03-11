@@ -175,6 +175,51 @@
                     <div id="landingHtmlStatus" class="mt-1" style="font-size:0.75rem;"></div>
                   </div>
                 </div>
+                <%-- ═══ AI ASSISTANT ═══ --%>
+                <hr class="my-3">
+                <div class="mb-3">
+                  <div class="p-3 rounded" style="background:#f8f9fb; border:1px solid #dee2e6;">
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                      <div>
+                        <div class="fw-semibold" style="font-size:0.85rem;">
+                          <i class="bi bi-robot me-1"></i>AI Assistant
+                        </div>
+                        <div class="text-muted" style="font-size:0.75rem;">
+                          Enter your Anthropic API key to enable AI-powered features.
+                          <span id="aiKeySourceBadge"></span>
+                        </div>
+                      </div>
+                      <span id="aiKeyStatus"></span>
+                    </div>
+                    <div class="input-group input-group-sm mb-2">
+                      <input type="password" id="aiApiKeyInput" class="form-control form-control-sm"
+                             placeholder="sk-ant-api03-..." autocomplete="off">
+                      <button class="btn btn-outline-secondary" type="button" onclick="toggleAiKeyVisibility()">
+                        <i class="bi bi-eye" id="aiKeyPwIcon"></i>
+                      </button>
+                    </div>
+                    <div class="d-flex gap-2">
+                      <button type="button" class="btn btn-sm btn-outline-primary" id="aiKeySaveBtn" onclick="validateAndSaveAiKey()">
+                        <i class="bi bi-check-circle me-1"></i>Validate & Save
+                      </button>
+                      <button type="button" class="btn btn-sm btn-outline-danger" id="aiKeyRemoveBtn"
+                              style="display:none;" onclick="removeAiKey()">
+                        <i class="bi bi-trash me-1"></i>Remove Key
+                      </button>
+                    </div>
+                    <div id="aiKeyMessage" class="mt-2" style="font-size:0.75rem;"></div>
+                    <hr class="my-2">
+                    <div class="form-check form-switch">
+                      <input class="form-check-input" type="checkbox" id="chatbotAllUsers" name="chatbotAllUsers">
+                      <label class="form-check-label" for="chatbotAllUsers" style="font-size:0.8rem;">
+                        Show chatbot to all users
+                      </label>
+                      <div class="text-muted" style="font-size:0.72rem;">
+                        When off, only PSP Admins can see the AI chatbot. Other AI features (proposal builder, automation) are always admin-only.
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
 
               <%-- ═══ TOOLS TAB ═══ --%>
@@ -274,6 +319,30 @@
         document.getElementById('landingHeaderTextColor').value = htc;
         document.getElementById('landingHeaderTextColorHex').value = htc;
         document.getElementById('daysSinceWarning').value = data.DAYS_SINCE_WARNING || '7';
+        // AI key status
+        var aiSource = data.AI_KEY_SOURCE || 'none';
+        var aiHint = data.AI_KEY_HINT || '';
+        var statusEl = document.getElementById('aiKeyStatus');
+        var sourceBadge = document.getElementById('aiKeySourceBadge');
+        var removeBtn = document.getElementById('aiKeyRemoveBtn');
+        document.getElementById('aiApiKeyInput').value = '';
+        document.getElementById('aiApiKeyInput').placeholder =
+            aiSource !== 'none' ? 'Current key: ' + aiHint : 'sk-ant-api03-...';
+        if (aiSource === 'database') {
+            statusEl.innerHTML = '<span class="badge bg-success" style="font-size:0.7rem;">Active</span>';
+            sourceBadge.innerHTML = '';
+            removeBtn.style.display = '';
+        } else if (aiSource === 'properties') {
+            statusEl.innerHTML = '<span class="badge bg-info" style="font-size:0.7rem;">Active (config file)</span>';
+            sourceBadge.innerHTML = '<br><span style="font-size:0.7rem;" class="text-info">Using server config file.</span>';
+            removeBtn.style.display = 'none';
+        } else {
+            statusEl.innerHTML = '<span class="badge bg-secondary" style="font-size:0.7rem;">Not Configured</span>';
+            sourceBadge.innerHTML = '';
+            removeBtn.style.display = 'none';
+        }
+        document.getElementById('aiKeyMessage').innerHTML = '';
+        document.getElementById('chatbotAllUsers').checked = (data.CHATBOT_ALL_USERS === 'true');
         document.getElementById('settingsLoading').style.display = 'none';
         document.getElementById('settingsFields').style.display = '';
         document.getElementById('settingsSaveBtn').disabled = false;
@@ -345,4 +414,80 @@
       status.innerHTML = '<span class="text-danger"><i class="bi bi-x-circle"></i> Save failed.</span>';
     });
   }
+
+  // ── AI Key Management ──
+
+  function toggleAiKeyVisibility() {
+    var inp = document.getElementById('aiApiKeyInput');
+    var icon = document.getElementById('aiKeyPwIcon');
+    if (inp.type === 'password') { inp.type = 'text'; icon.className = 'bi bi-eye-slash'; }
+    else { inp.type = 'password'; icon.className = 'bi bi-eye'; }
+  }
+
+  function validateAndSaveAiKey() {
+    var key = document.getElementById('aiApiKeyInput').value.trim();
+    if (!key) { showAiMsg('warning', 'Please enter an API key.'); return; }
+    showAiMsg('muted', '<span class="ai-spin-icon"></span> Validating...');
+    document.getElementById('aiKeySaveBtn').disabled = true;
+    fetch('UpdatePspSettings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: 'action=saveApiKey&apiKey=' + encodeURIComponent(key)
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      document.getElementById('aiKeySaveBtn').disabled = false;
+      if (data.status === 'ok') {
+        showAiMsg('success', '<i class="bi bi-check-circle"></i> Key validated and saved. AI features are now active.');
+        document.getElementById('aiKeyStatus').innerHTML =
+            '<span class="badge bg-success" style="font-size:0.7rem;">Active</span>';
+        document.getElementById('aiApiKeyInput').value = '';
+        document.getElementById('aiApiKeyInput').placeholder = 'Current key: ' + data.hint;
+        document.getElementById('aiKeyRemoveBtn').style.display = '';
+        document.getElementById('aiKeySourceBadge').innerHTML = '';
+      } else {
+        showAiMsg('danger', '<i class="bi bi-x-circle"></i> ' + (data.message || 'Validation failed.'));
+      }
+    })
+    .catch(function() {
+      document.getElementById('aiKeySaveBtn').disabled = false;
+      showAiMsg('danger', '<i class="bi bi-x-circle"></i> Request failed.');
+    });
+  }
+
+  function removeAiKey() {
+    if (!confirm('Remove the AI API key? AI features will be disabled.')) return;
+    showAiMsg('muted', '<span class="ai-spin-icon"></span> Removing...');
+    fetch('UpdatePspSettings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: 'action=removeApiKey'
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.status === 'ok') {
+        showAiMsg('success', '<i class="bi bi-check-circle"></i> Key removed. AI features disabled.');
+        document.getElementById('aiKeyStatus').innerHTML =
+            '<span class="badge bg-secondary" style="font-size:0.7rem;">Not Configured</span>';
+        document.getElementById('aiApiKeyInput').placeholder = 'sk-ant-api03-...';
+        document.getElementById('aiKeyRemoveBtn').style.display = 'none';
+      } else {
+        showAiMsg('danger', '<i class="bi bi-x-circle"></i> ' + (data.message || 'Remove failed.'));
+      }
+    })
+    .catch(function() {
+      showAiMsg('danger', '<i class="bi bi-x-circle"></i> Request failed.');
+    });
+  }
+
+  function showAiMsg(cls, html) {
+    var el = document.getElementById('aiKeyMessage');
+    el.innerHTML = '<span class="text-' + cls + '">' + html + '</span>';
+    if (cls === 'success') setTimeout(function() { el.innerHTML = ''; }, 5000);
+  }
 </script>
+<style>
+  .ai-spin-icon { display: inline-block; width: 12px; height: 12px; border: 2px solid #6c757d;
+    border-top-color: transparent; border-radius: 50%; animation: aiSpin 0.8s linear infinite; }
+  @keyframes aiSpin { 100% { transform: rotate(360deg); } }
+</style>

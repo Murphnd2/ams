@@ -2,7 +2,7 @@
 
 > **Purpose:** Consolidated historical record of all build sessions. For current project state, see `project_backlog.md`. For current architecture, see `application_flow.md` and `entity_reference.md`.
 >
-> **Last Updated:** March 11, 2026 (Session 58)
+> **Last Updated:** March 11, 2026 (Session 59)
 
 ---
 
@@ -2030,3 +2030,41 @@ Tested Universal Import system in browser and resolved runtime issues. Made arch
 - `step1Provider.jsp` — Summit redirect option + always-render form
 - `providerList.jsp` — removed Summit seed button, widened layout
 - `SummitProviderSeeder.java` — added J5 file type (file retained but unused)
+
+---
+
+## Session 59 — Self-Service Anthropic API Key Management (March 11, 2026)
+
+### Overview
+Decoupled the company Anthropic API key from `ssa.properties` so each PSP install can manage its own AI activation. AI features start OFF on fresh installs; PSP admins enable them by entering a valid Anthropic API key through the Settings UI. Added admin-only chatbot visibility toggle.
+
+### Key Decisions
+- **Hybrid key resolution:** DB `constant` table checked first, `ssa.properties` fallback for dev convenience
+- **No separate toggle:** `chatbotEnabled` derived from whether a valid API key resolves (no `CHATBOT_ENABLED` property)
+- **Admin-only default:** Chatbot visible only to PSP Admins unless "Show chatbot to all users" is enabled
+- **No DB migration needed:** Constant rows created dynamically on first save via `upsertConstant()`
+
+### Changes
+
+**AppConfig.java** — Added `cachedAnthropicApiKey` volatile field, `setAnthropicApiKey()`, `getAnthropicApiKey()` (DB-first, ssa.properties fallback, null for blank/FILL_ME_IN), `hasAnthropicApiKey()`
+
+**AmsDataGlobal.java** — Replaced `CHATBOT_ENABLED` property check with DB-first key resolution via `AppConfig`. Added `chatbotAllUsers` boolean (from `CHATBOT_ALL_USERS` constant, defaults false). `chatbotEnabled` now derived from `AppConfig.hasAnthropicApiKey()`
+
+**ClaudeApiService.java** — Replaced all 4 hardcoded key lookups with `AppConfig.getAnthropicApiKey()`. Added `validateApiKey(String)` — minimal API call (haiku, 1 token) returning null if valid, error message if not
+
+**UpdatePspSettings.java** — GET: added `AI_KEY_SOURCE`, `AI_KEY_HINT`, `CHATBOT_ALL_USERS` to JSON. POST: added `saveApiKey` (validates → saves to DB → reloads cache), `removeApiKey` (sets empty string to override ssa.properties), `CHATBOT_ALL_USERS` toggle save
+
+**smtpSettingsMod25.jsp** — AI Assistant section in Features tab: status badge, password input with visibility toggle, Validate & Save button, Remove Key button (conditional), "Show chatbot to all users" switch
+
+**navbar25.jsp** — Chatbot conditional updated: admins always see it when enabled; standard users only when `chatbotAllUsers` is on
+
+**DatabaseInitializer.java** — Seeds "AI Setup Guide" chatbot skill on init with idempotency guard. Explains AI key setup, skill manager, knowledge base system
+
+### Files Modified
+- `AppConfig.java` — cached API key with DB-first resolution
+- `AmsDataGlobal.java` — chatbotEnabled from key presence, chatbotAllUsers flag
+- `ClaudeApiService.java` — centralized key lookup, validateApiKey()
+- `UpdatePspSettings.java` — AI key AJAX save/remove, chatbotAllUsers toggle
+- `smtpSettingsMod25.jsp` — AI Assistant settings UI
+- `navbar25.jsp` — admin-gated chatbot visibility
+- `DatabaseInitializer.java` — AI Setup Guide skill seed

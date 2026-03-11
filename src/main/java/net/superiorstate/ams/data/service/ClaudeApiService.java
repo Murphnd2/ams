@@ -20,7 +20,7 @@ import java.util.Map;
  * Sends requests to the Anthropic Messages API and returns the response text.
  * Uses java.net.http.HttpClient (built-in) and Gson for JSON.
  *
- * API key is read from ssa.properties via AppConfig (ANTHROPIC_API_KEY).
+ * API key resolved via AppConfig.getAnthropicApiKey() (DB constant first, ssa.properties fallback).
  * The EntityManager parameter is retained on ask() for caller compatibility but is no longer used.
  */
 public class ClaudeApiService {
@@ -46,9 +46,9 @@ public class ClaudeApiService {
      * @return Claude's response text, or an error message if the call fails
      */
     public static String ask(EntityManager em, String systemPrompt, String userMessage) {
-        String apiKey = AppConfig.get("ANTHROPIC_API_KEY");
-        if (apiKey == null || apiKey.isBlank() || "FILL_ME_IN".equals(apiKey)) {
-            log.error("ANTHROPIC_API_KEY not configured in ssa.properties");
+        String apiKey = AppConfig.getAnthropicApiKey();
+        if (apiKey == null) {
+            log.error("ANTHROPIC_API_KEY not configured");
             return "The AI assistant is not configured. Please contact an administrator.";
         }
 
@@ -114,9 +114,9 @@ public class ClaudeApiService {
      * @return Claude's response text, or an error message if the call fails
      */
     public static String ask(String systemPrompt, List<Map<String, String>> messages, String model, int maxTokens) {
-        String apiKey = AppConfig.get("ANTHROPIC_API_KEY");
-        if (apiKey == null || apiKey.isBlank() || "FILL_ME_IN".equals(apiKey)) {
-            log.error("ANTHROPIC_API_KEY not configured in ssa.properties");
+        String apiKey = AppConfig.getAnthropicApiKey();
+        if (apiKey == null) {
+            log.error("ANTHROPIC_API_KEY not configured");
             return "The AI assistant is not configured. Please contact an administrator.";
         }
 
@@ -172,9 +172,9 @@ public class ClaudeApiService {
      * @return Claude's response text
      */
     public static String askWithContent(String systemPrompt, JsonArray contentBlocks, String model, int maxTokens) {
-        String apiKey = AppConfig.get("ANTHROPIC_API_KEY");
-        if (apiKey == null || apiKey.isBlank() || "FILL_ME_IN".equals(apiKey)) {
-            log.error("ANTHROPIC_API_KEY not configured in ssa.properties");
+        String apiKey = AppConfig.getAnthropicApiKey();
+        if (apiKey == null) {
+            log.error("ANTHROPIC_API_KEY not configured");
             return "The AI assistant is not configured. Please contact an administrator.";
         }
 
@@ -237,9 +237,9 @@ public class ClaudeApiService {
      * @return Claude's response text
      */
     public static String askWithStructuredMessages(String systemPrompt, List<Map<String, Object>> messages, String model, int maxTokens) {
-        String apiKey = AppConfig.get("ANTHROPIC_API_KEY");
-        if (apiKey == null || apiKey.isBlank() || "FILL_ME_IN".equals(apiKey)) {
-            log.error("ANTHROPIC_API_KEY not configured in ssa.properties");
+        String apiKey = AppConfig.getAnthropicApiKey();
+        if (apiKey == null) {
+            log.error("ANTHROPIC_API_KEY not configured");
             return "The AI assistant is not configured. Please contact an administrator.";
         }
 
@@ -286,6 +286,50 @@ public class ClaudeApiService {
         } catch (Exception e) {
             log.error("Error calling Claude API (structured messages)", e);
             return "Sorry, something went wrong. Please try again.";
+        }
+    }
+
+    /**
+     * Validates an Anthropic API key by making a minimal API call.
+     *
+     * @param apiKey the key to validate
+     * @return null if valid, or an error message if invalid/failed
+     */
+    public static String validateApiKey(String apiKey) {
+        try {
+            JsonObject body = new JsonObject();
+            body.addProperty("model", DEFAULT_MODEL);
+            body.addProperty("max_tokens", 1);
+            body.addProperty("system", "Respond with OK");
+
+            JsonArray messages = new JsonArray();
+            JsonObject msg = new JsonObject();
+            msg.addProperty("role", "user");
+            msg.addProperty("content", "test");
+            messages.add(msg);
+            body.add("messages", messages);
+
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(API_URL))
+                    .header("Content-Type", "application/json")
+                    .header("x-api-key", apiKey)
+                    .header("anthropic-version", API_VERSION)
+                    .timeout(Duration.ofSeconds(15))
+                    .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(body)))
+                    .build();
+
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+
+            if (response.statusCode() == 200) {
+                return null; // valid
+            } else if (response.statusCode() == 401) {
+                return "Invalid API key";
+            } else {
+                return "API returned status " + response.statusCode();
+            }
+        } catch (Exception e) {
+            log.error("Error validating API key", e);
+            return "Connection failed: " + e.getMessage();
         }
     }
 

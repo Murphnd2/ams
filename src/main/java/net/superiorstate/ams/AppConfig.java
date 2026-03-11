@@ -24,6 +24,7 @@ public final class AppConfig {
     private static boolean loaded = false;
     private static String resolvedPath = null;
     private static volatile String cachedSystemType = null;
+    private static volatile String cachedAnthropicApiKey = null;
 
     private AppConfig() {}
 
@@ -103,6 +104,41 @@ public final class AppConfig {
 
     public static boolean isBpo() {
         return "BPO".equalsIgnoreCase(getSystemType());
+    }
+
+    // --- Anthropic API Key (DB-first, ssa.properties fallback) ---
+
+    /**
+     * Cache the API key read from the DB constants table.
+     * Called by AmsDataGlobal during global data initialization.
+     *
+     * @param key the DB value, or null if no DB constant exists (falls back to ssa.properties)
+     */
+    public static void setAnthropicApiKey(String key) {
+        cachedAnthropicApiKey = key;
+    }
+
+    /**
+     * Resolves the Anthropic API key: DB constant first, ssa.properties fallback.
+     * Returns null if no valid key is configured anywhere.
+     */
+    public static String getAnthropicApiKey() {
+        String key = cachedAnthropicApiKey;
+        if (key == null) {
+            // No DB constant loaded yet — fall back to properties
+            key = get("ANTHROPIC_API_KEY");
+        }
+        if (key == null || key.isBlank() || "FILL_ME_IN".equals(key)) {
+            return null;
+        }
+        return key;
+    }
+
+    /**
+     * Returns true if a valid Anthropic API key is configured (DB or ssa.properties).
+     */
+    public static boolean hasAnthropicApiKey() {
+        return getAnthropicApiKey() != null;
     }
 
     // --- Internal ---

@@ -602,6 +602,8 @@ public abstract class DatabaseInitializer {
         }
         // Create Initialization Checklist
         createInitializationChecklist(em);
+        // Seed AI Setup Guide chatbot skill
+        seedAiSetupGuideSkill(em, psp);
 
     }
 
@@ -890,6 +892,56 @@ public abstract class DatabaseInitializer {
             createConstant(em,"EMAIL_FOOTER_TEXT",getPspName());
         if(getConstantByName(em,"DAYS_SINCE_WARNING")==null)
             createConstant(em,"DAYS_SINCE_WARNING","7");
+    }
+
+    /**
+     * Seeds a default "AI Setup Guide" chatbot skill that explains the AI features to PSP admins.
+     * Idempotent — skips if a skill with this name already exists for the PSP.
+     */
+    private static void seedAiSetupGuideSkill(EntityManager em, PSP psp) {
+        try {
+            Long count = em.createQuery(
+                    "SELECT COUNT(s) FROM ChatbotSkill s WHERE s.psp.id = :pspId AND s.skillName = :name", Long.class)
+                    .setParameter("pspId", psp.getId())
+                    .setParameter("name", "AI Setup Guide")
+                    .getSingleResult();
+            if (count > 0) return;
+
+            em.getTransaction().begin();
+            ChatbotSkill skill = new ChatbotSkill();
+            skill.setPsp(psp);
+            skill.setSkillName("AI Setup Guide");
+            skill.setDescription("Explains how the AI assistant works and how to manage skills");
+            skill.setTriggerKeywords("setup,configure,getting started,help,how to,ai features,skills,what can you do");
+            skill.setSystemPrompt(
+                "You are a helpful onboarding guide for the AMS AI Assistant. " +
+                "When users ask about AI features, explain the following:\n\n" +
+                "1. AI SETUP: The PSP admin enables AI by going to Settings (gear icon) > Features tab > " +
+                "AI Assistant section, and entering a valid Anthropic API key. The key is validated before saving.\n\n" +
+                "2. CHATBOT SKILLS: Skills are specialized behaviors the chatbot can perform. " +
+                "Each skill has trigger keywords, a system prompt, and optional file upload support. " +
+                "Admins manage skills at the Skill Manager page (Admin menu > Skill Manager).\n\n" +
+                "3. KNOWLEDGE BASES: The chatbot searches built-in knowledge bases (Summit Guide, Wave Accounting, " +
+                "Business Continuity, Backup/Recovery) to provide context-aware answers.\n\n" +
+                "4. RESOLVED TICKETS: The chatbot can also search previously resolved tickets to help answer questions.\n\n" +
+                "5. AI BUILDERS: Admins have access to the Proposal Page Builder (generates styled HTML proposal pages) " +
+                "and the Automation Email Builder (generates email templates with merge tags).\n\n" +
+                "Keep responses concise and friendly. If the user asks about something outside AI features, " +
+                "let them know you specialize in AI setup guidance."
+            );
+            skill.setAcceptsFileUpload(false);
+            skill.setModel("claude-haiku-4-5-20251001");
+            skill.setMaxTokens(1024);
+            skill.setActive(true);
+            skill.setAdminOnly(false);
+            skill.setSortOrder(1);
+            em.persist(skill);
+            em.getTransaction().commit();
+            System.out.println("Seeded AI Setup Guide chatbot skill");
+        } catch (Exception e) {
+            if (em.getTransaction().isActive()) em.getTransaction().rollback();
+            System.out.println("Warning: Could not seed AI Setup Guide skill — " + e.getMessage());
+        }
     }
 
     public static void createConstant(EntityManager em, String name, String value){
