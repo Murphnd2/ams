@@ -52,13 +52,11 @@
                 </span>
             </div>
             <div class="input-group">
-                <c:if test="${sessionScope.local.isPspAdmin()}">
                 <button class="btn btn-outline-secondary btn-sm" type="button"
                         onclick="document.getElementById('chatFileInput').click()"
                         title="Upload a file for analysis">
                     <i class="bi bi-paperclip"></i>
                 </button>
-                </c:if>
                 <input type="text" id="chatInput" class="form-control form-control-sm"
                        placeholder="Type your question..."
                        onkeydown="if(event.key==='Enter') sendQuestion()"
