@@ -66,4 +66,5 @@ INSERT IGNORE INTO schema_version (version, description, script_name) VALUES
 ('V043', 'Add text_value column to constant for custom landing page HTML', 'V043__custom_landing_page.sql'),
 ('V044', 'Add agency scoping to proposal_section for TITLE/CLOSING overrides', 'V044__proposal_section_agency_scoping.sql'),
 ('V045', 'Application selected LOS and Enhancement IDs', 'V045__application_selected_services.sql'),
-('V046', 'Chatbot skill table for extensible AI assistant capabilities', 'V046__chatbot_skill_table.sql');
+('V046', 'Chatbot skill table for extensible AI assistant capabilities', 'V046__chatbot_skill_table.sql'),
+('V047', 'Composite task order table for cross-sequence ordering', 'V047__composite_task_order.sql');

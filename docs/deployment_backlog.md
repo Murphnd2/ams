@@ -705,6 +705,23 @@ Deploy steps:
 
 ---
 
+### D-62: Apply V047 + Composite Task Ordering
+
+**Priority:** MEDIUM — New feature, no dependencies on existing data
+**Status:** Code complete — needs V047 applied + browser testing
+
+**Prerequisite:** V047 migration (`composite_task_order` table)
+
+Cross-sequence composite task ordering for multi-LOS/Enhancement setups. PSP admins define master task ordering across all sequences of a given activity type (Setup, Renewal, Ticket) via the Sequence Manager's new "Composite Order" view. When a Setup activity is created with multiple LOS/Enhancements, tasks are populated in composite order instead of arbitrary per-sequence order. Reusable tasks shared across sequences are deduplicated. Falls back to existing behavior when no composite order is defined.
+
+**Files (new):**
+- `V047__composite_task_order.sql`, `CompositeTaskOrder.java`, `CompositeTaskView.java`, `CompositeOrderDAO.java`
+
+**Files (modified):**
+- `ApplicationTaskDAO.java`, `AddSetupModule25.java`, `SequenceBuilder25.java`, `SequenceAction25.java`, `sequenceManager25.jsp`
+
+---
+
 ### D-59: BPO Deployment Fixes + Recurring Task Push
 
 **Priority:** HIGH — Fixes critical bugs discovered during demo/BPO VPS testing

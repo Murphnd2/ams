@@ -21,9 +21,12 @@ import net.superiorstate.ams.model.activity.checklist.tasks.ToDo;
 import net.superiorstate.ams.model.activity.ticket.setup.Setup;
 import net.superiorstate.ams.model.sales.application.Application;
 
+import net.superiorstate.ams.data.dao.CompositeOrderDAO;
+
 import java.io.IOException;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -118,6 +121,11 @@ public class AddSetupModule25 extends HttpServlet {
             return;
         }
 
+        // Check for composite ordering
+        int groupId = tp.getActivityCategory().getId();
+        Long pspId = rtl.getPsp().getId();
+        Map<Long, Integer> compositeMap = CompositeOrderDAO.getCompositeOrderMap(em, pspId, groupId);
+
         Set<Long> existingTaskIds = checkList.getToDoList().stream()
                 .map(t -> t.getTask().getId())
                 .collect(Collectors.toSet());
@@ -130,7 +138,9 @@ public class AddSetupModule25 extends HttpServlet {
                 if (task != null) {
                     ToDo toDo = new ToDo();
                     toDo.setTask(task);
-                    toDo.setSortOrder(seq.getSortOrder());
+                    // Use composite sort order if available, otherwise per-sequence order
+                    Integer compositePos = compositeMap.get(taskId);
+                    toDo.setSortOrder(compositePos != null ? compositePos : seq.getSortOrder());
                     toDo.setCheckList(checkList);
                     toDo.setComplete(task.getId() == 153L);
 
@@ -145,7 +155,7 @@ public class AddSetupModule25 extends HttpServlet {
             }
         }
 
-        // Optional: sort the checklist's ToDo list by sortOrder
+        // Re-sort entire checklist by sort order (composite or per-sequence)
         checkList.getToDoList().sort(Comparator.comparingInt(ToDo::getSortOrder));
     }
 

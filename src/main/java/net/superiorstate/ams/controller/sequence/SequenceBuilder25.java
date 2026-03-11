@@ -8,10 +8,13 @@ import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.AmsDataGlobal;
+import net.superiorstate.ams.data.AmsDataLocal;
+import net.superiorstate.ams.data.dao.CompositeOrderDAO;
 import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.model.ReqTaskListTix;
 import net.superiorstate.ams.model.activity.checklist.sequences.GenSeq;
 import net.superiorstate.ams.model.activity.checklist.sequences.RequiredTaskList;
+import net.superiorstate.ams.model.activity.checklist.sequences.support.CompositeTaskView;
 import net.superiorstate.ams.model.activity.checklist.sequences.support.TaskSequenceTable;
 import net.superiorstate.ams.model.activity.checklist.sequences.support.ServiceItem;
 import net.superiorstate.ams.model.activity.checklist.tasks.Task;
@@ -48,6 +51,7 @@ public class SequenceBuilder25 extends HttpServlet {
 
         try {
             loadAllSequences(request, em);
+            handleCompositeRequest(request, em);
             handleLoadRequest(request, em);
             loadSupportData(request, em);
         } finally {
@@ -105,6 +109,15 @@ public class SequenceBuilder25 extends HttpServlet {
         request.setAttribute("seqRenewalCount", renewalList.size());
         request.setAttribute("seqSetupCount", setupList.size());
         request.setAttribute("seqTicketCount", ticketList.size());
+
+        // Check which activity types have a saved composite order
+        AmsDataLocal local = (AmsDataLocal) request.getSession().getAttribute("local");
+        if (local != null && local.getCurrentPerson() != null && local.getCurrentPerson().getPsp() != null) {
+            Long pspId = local.getCurrentPerson().getPsp().getId();
+            request.setAttribute("hasCompositeRenewal", CompositeOrderDAO.hasCompositeOrder(em, pspId, 1));
+            request.setAttribute("hasCompositeSetup", CompositeOrderDAO.hasCompositeOrder(em, pspId, 2));
+            request.setAttribute("hasCompositeTicket", CompositeOrderDAO.hasCompositeOrder(em, pspId, 3));
+        }
     }
 
     /**
@@ -172,6 +185,62 @@ public class SequenceBuilder25 extends HttpServlet {
             }
             request.getSession().setAttribute("sbIsSuppressed", isSuppressed);
         } catch (NumberFormatException ignored) {
+        }
+    }
+
+    /**
+     * If ?composite=N is present, loads the composite ordering view for activity category N.
+     * Sets compositeGroupId, compositeGroupName, compositeTaskList, and hasExistingComposite
+     * as request attributes for the JSP.
+     */
+    private void handleCompositeRequest(HttpServletRequest request, EntityManager em) {
+        String compositeParam = request.getParameter("composite");
+        if (compositeParam == null || compositeParam.isEmpty()) {
+            request.setAttribute("compositeGroupId", 0);
+            return;
+        }
+
+        try {
+            int groupId = Integer.parseInt(compositeParam);
+            if (groupId < 1 || groupId > 3) {
+                request.setAttribute("compositeGroupId", 0);
+                return;
+            }
+
+            // Resolve PSP ID from session
+            AmsDataLocal local = (AmsDataLocal) request.getSession().getAttribute("local");
+            if (local == null || local.getCurrentPerson() == null || local.getCurrentPerson().getPsp() == null) {
+                request.setAttribute("compositeGroupId", 0);
+                return;
+            }
+            Long pspId = local.getCurrentPerson().getPsp().getId();
+
+            // Group name for display
+            String groupName;
+            switch (groupId) {
+                case 1: groupName = "Renewals"; break;
+                case 2: groupName = "Setups"; break;
+                case 3: groupName = "Tickets"; break;
+                default: groupName = "Unknown";
+            }
+
+            // Load all unique tasks across sequences for this category
+            List<CompositeTaskView> compositeTaskList = CompositeOrderDAO.getAllTasksForCategory(em, pspId, groupId);
+            boolean hasExisting = CompositeOrderDAO.hasCompositeOrder(em, pspId, groupId);
+
+            request.setAttribute("compositeGroupId", groupId);
+            request.setAttribute("compositeGroupName", groupName);
+            request.setAttribute("compositeTaskList", compositeTaskList);
+            request.setAttribute("hasExistingComposite", hasExisting);
+            request.setAttribute("compositeTaskCount", compositeTaskList.size());
+
+            // Clear single-sequence builder state when in composite mode
+            request.getSession().setAttribute("sbSelectedId", -1L);
+            request.getSession().setAttribute("sbSelectedName", "");
+            request.getSession().setAttribute("sbSelectedGroupId", -1);
+
+        } catch (NumberFormatException ignored) {
+            request.setAttribute("compositeGroupId", 0);
         }
     }
 

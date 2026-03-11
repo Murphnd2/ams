@@ -7,6 +7,8 @@ import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.AmsDataGlobal;
+import net.superiorstate.ams.data.AmsDataLocal;
+import net.superiorstate.ams.data.dao.CompositeOrderDAO;
 import net.superiorstate.ams.data.dao.TicketQueryDAO;
 import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.model.activity.checklist.sequences.RequiredTaskList;
@@ -64,6 +66,10 @@ public class SequenceAction25 extends HttpServlet {
                 case "CREATE" -> redirectId = handleCreate(request, em);
                 case "DELETE" -> handleDelete(request, em);
                 case "SUPPRESS" -> redirectId = handleSuppress(request, em);
+                case "SAVE_COMPOSITE" -> {
+                    handleSaveComposite(request, em);
+                    request.setAttribute("compositeRedirect", true);
+                }
             }
         } catch (Exception e) {
             System.out.println("❌ SequenceAction25 error (" + action + "): " + e.getMessage());
@@ -77,6 +83,16 @@ public class SequenceAction25 extends HttpServlet {
         String f = request.getParameter("f");
         String ss = request.getParameter("ss");
         StringBuilder redir = new StringBuilder("SequenceBuilder25");
+
+        // SAVE_COMPOSITE: redirect back to the composite view
+        if (Boolean.TRUE.equals(request.getAttribute("compositeRedirect"))) {
+            String compositeGroupId = request.getParameter("compositeGroupId");
+            redir.append("?composite=").append(compositeGroupId);
+            if (f != null && !f.isEmpty()) redir.append("&f=").append(f);
+            if (ss != null && !ss.isEmpty()) redir.append("&ss=").append(ss);
+            response.sendRedirect(redir.toString());
+            return;
+        }
 
         // SUPPRESS special case: if item was just suppressed and view is "hide suppressed",
         // deselect (don't load it) so it disappears cleanly from the list.
@@ -319,6 +335,62 @@ public class SequenceAction25 extends HttpServlet {
         return seqId;
     }
 
+
+    // ── SAVE_COMPOSITE: Save cross-sequence composite task ordering ────────────
+
+    private void handleSaveComposite(HttpServletRequest request, EntityManager em) {
+        String compositeOrderJson = request.getParameter("compositeOrder");
+        int groupId = Integer.parseInt(request.getParameter("compositeGroupId"));
+
+        AmsDataLocal local = (AmsDataLocal) request.getSession().getAttribute("local");
+        if (local == null || local.getCurrentPerson() == null || local.getCurrentPerson().getPsp() == null) return;
+        Long pspId = local.getCurrentPerson().getPsp().getId();
+
+        if (compositeOrderJson == null || compositeOrderJson.isEmpty() || compositeOrderJson.equals("[]")) {
+            // Empty order means clear all composite entries
+            CompositeOrderDAO.saveCompositeOrder(em, pspId, groupId, new ArrayList<>());
+            return;
+        }
+
+        // Parse JSON array: [{"taskId":123,"order":0}, ...]
+        List<long[]> entries = parseCompositeEntries(compositeOrderJson);
+        CompositeOrderDAO.saveCompositeOrder(em, pspId, groupId, entries);
+    }
+
+    /**
+     * Parses composite order JSON: [{"taskId":123,"order":0}, ...]
+     * Returns list of long[]{taskId, sortOrder}
+     */
+    private List<long[]> parseCompositeEntries(String json) {
+        List<long[]> entries = new ArrayList<>();
+        if (json == null || json.trim().isEmpty() || json.equals("[]")) return entries;
+
+        String inner = json.trim();
+        if (inner.startsWith("[")) inner = inner.substring(1);
+        if (inner.endsWith("]")) inner = inner.substring(0, inner.length() - 1);
+
+        String[] objects = inner.split("\\},\\s*\\{");
+        for (String obj : objects) {
+            obj = obj.replace("{", "").replace("}", "").trim();
+            if (obj.isEmpty()) continue;
+
+            long taskId = -1;
+            int order = 0;
+            String[] fields = obj.split(",");
+            for (String field : fields) {
+                field = field.trim();
+                if (field.contains("\"taskId\"")) {
+                    taskId = extractLong(field);
+                } else if (field.contains("\"order\"")) {
+                    order = extractInt(field);
+                }
+            }
+            if (taskId > 0) {
+                entries.add(new long[]{taskId, order});
+            }
+        }
+        return entries;
+    }
 
     // ── JSON parsing helper (no external library) ────────────────────────────────
 

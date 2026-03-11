@@ -16,7 +16,7 @@ Tracks database schema versions across environments.
 | BPO | bpo.superiorstate.biz | beta_ssa | BPO instance (V038, initialized, release V0.37.0) |
 | Master | master.superiorstate.biz | beta_ssa | Snapshot v8 (V037, stopped) |
 
-## Current Highest Version: V046
+## Current Highest Version: V047
 
 ## Dev Baseline
 
@@ -78,6 +78,7 @@ Individual migration scripts are no longer stored in the repo. The baseline dump
 | V044 | Add agency scoping to proposal_section for TITLE/CLOSING overrides | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
 | V045 | Application selected LOS and Enhancement IDs | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
 | V046 | Chatbot skill table for extensible AI assistant capabilities | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
+| V047 | Composite task order table for cross-sequence ordering | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
 
 ## Notes
 

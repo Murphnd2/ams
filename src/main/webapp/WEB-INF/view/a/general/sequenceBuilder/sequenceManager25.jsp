@@ -43,6 +43,15 @@
         .seq-list-scroll.show-suppressed .seq-suppressed.active { opacity: 0.7; }
         .suppress-toggle { font-size: 0.75rem; cursor: pointer; user-select: none; }
         .suppress-toggle:hover { color: #0d6681; }
+        /* Composite ordering styles */
+        .composite-btn { font-size: 0.75rem; padding: 3px 8px; border-radius: 4px; white-space: nowrap; }
+        .composite-btn.has-order { border-color: #87a948; color: #87a948; }
+        .composite-btn.has-order:hover { background: #87a948; color: #fff; }
+        .seq-source-pill { font-size: 0.65rem; padding: 1px 5px; border-radius: 3px; font-weight: 600; margin-right: 2px; display: inline-block; }
+        .seq-source-pill.setup { background: #f0fdf4; color: #15803d; }
+        .seq-source-pill.renewal { background: #ede9fe; color: #6d28d9; }
+        .seq-source-pill.ticket { background: #e0f2fe; color: #0369a1; }
+        .task-row.unordered { border-left: 3px dashed #fbbf24; background: #fffbeb; }
     </style>
 </head>
 <body>
@@ -76,6 +85,13 @@
                             <i class="bi bi-buildings"></i> <span id="countSetup">${seqSetupCount}</span>
                         </button>
                     </div>
+                </div>
+
+                <%-- Composite Order Button — shown when a specific type filter is active --%>
+                <div class="px-2 pt-1 pb-1 d-none" id="compositeBar" style="background: #f5f7f0; border-bottom: 1px solid #e0e5d6; flex-shrink: 0;">
+                    <a id="compositeBtn" href="#" class="btn btn-outline-secondary composite-btn w-100">
+                        <i class="bi bi-layers"></i> <span id="compositeBtnLabel">Composite Order</span>
+                    </a>
                 </div>
 
                 <%-- Search + Suppressed Toggle --%>
@@ -197,6 +213,68 @@
         <div class="col-lg-8 col-xl-9">
             <div class="builder-area">
                 <c:choose>
+                    <%-- ===== COMPOSITE ORDER VIEW ===== --%>
+                    <c:when test="${compositeGroupId > 0}">
+                        <div class="builder-header">
+                            <h5 class="mb-1" style="color:#0d6681; font-weight:700;">
+                                <i class="bi bi-layers"></i> Composite Order: ${compositeGroupName}
+                            </h5>
+                            <small class="text-muted">
+                                ${compositeTaskCount} unique tasks across all ${compositeGroupName} sequences
+                                <c:if test="${hasExistingComposite}">
+                                    &middot; <span style="color:#87a948;"><i class="bi bi-check-circle-fill"></i> Saved</span>
+                                </c:if>
+                            </small>
+                        </div>
+
+                        <form method="post" action="SequenceAction25" id="compositeForm">
+                            <input type="hidden" name="action" value="SAVE_COMPOSITE">
+                            <input type="hidden" name="compositeGroupId" value="${compositeGroupId}">
+                            <input type="hidden" name="compositeOrder" id="compositeOrderField" value="">
+                            <input type="hidden" name="f" value="${param.f}">
+                            <input type="hidden" name="ss" value="${param.ss}">
+
+                            <div id="compositeTaskList">
+                                <c:forEach var="ctv" items="${compositeTaskList}" varStatus="idx">
+                                    <div class="task-row ${!ctv.ordered ? 'unordered' : ''}" draggable="true"
+                                         data-task-id="${ctv.task.id}"
+                                         data-desc="${ctv.task.description}">
+                                        <span class="drag-handle"><i class="bi bi-grip-vertical"></i></span>
+                                        <span class="step-badge">${idx.count}</span>
+                                        <div style="flex:1; font-size:0.9rem; padding:4px 8px;">
+                                            ${ctv.task.description}
+                                            <div style="margin-top:2px;">
+                                                <c:forEach var="seqName" items="${ctv.sequenceNames}">
+                                                    <span class="seq-source-pill <c:choose><c:when test='${compositeGroupId == 1}'>renewal</c:when><c:when test='${compositeGroupId == 2}'>setup</c:when><c:otherwise>ticket</c:otherwise></c:choose>">${seqName}</span>
+                                                </c:forEach>
+                                            </div>
+                                        </div>
+                                        <div class="task-flags">
+                                            <span class="flag ${ctv.reusable ? 'on' : ''}" title="Reusable"><i class="bi bi-floppy"></i></span>
+                                        </div>
+                                    </div>
+                                </c:forEach>
+                            </div>
+
+                            <c:if test="${compositeTaskCount == 0}">
+                                <div class="empty-state">
+                                    <i class="bi bi-layers"></i>
+                                    <h5>No Tasks Found</h5>
+                                    <p class="text-muted">There are no tasks in any ${compositeGroupName} sequences yet.<br>
+                                        Add tasks to individual sequences first, then use this view to set the composite order.</p>
+                                </div>
+                            </c:if>
+
+                            <c:if test="${compositeTaskCount > 0}">
+                                <div class="save-bar d-flex justify-content-between">
+                                    <a href="SequenceBuilder25?f=${param.f}&ss=${param.ss}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-x-lg"></i> Cancel</a>
+                                    <button type="submit" class="btn btn-sm btn-dark" onclick="prepareCompositeSubmit()"><i class="bi bi-check2-all"></i> Save Composite Order</button>
+                                </div>
+                            </c:if>
+                        </form>
+                    </c:when>
+
+                    <%-- ===== SINGLE SEQUENCE BUILDER VIEW ===== --%>
                     <c:when test="${sessionScope.sbSelectedId > 0}">
 
                         <%-- Header --%>
@@ -561,6 +639,106 @@
     }
 
     function escapeHtml(text) { var d = document.createElement('div'); d.textContent = text; return d.innerHTML; }
+
+    /* ── Composite Order ── */
+
+    // Composite existence flags from server
+    var hasCompositeMap = {
+        ticket: ${hasCompositeTicket != null ? hasCompositeTicket : false},
+        renewal: ${hasCompositeRenewal != null ? hasCompositeRenewal : false},
+        setup: ${hasCompositeSetup != null ? hasCompositeSetup : false}
+    };
+    var groupIdMap = { ticket: 3, renewal: 1, setup: 2 };
+
+    // Show/hide composite button based on active filter
+    function updateCompositeBar() {
+        var bar = document.getElementById('compositeBar');
+        var btn = document.getElementById('compositeBtn');
+        var label = document.getElementById('compositeBtnLabel');
+        if (currentFilter === 'all' || !groupIdMap[currentFilter]) {
+            bar.classList.add('d-none');
+            return;
+        }
+        bar.classList.remove('d-none');
+        var gid = groupIdMap[currentFilter];
+        var typeName = currentFilter.charAt(0).toUpperCase() + currentFilter.slice(1);
+        label.textContent = 'Composite Order: ' + typeName + 's';
+        btn.href = 'SequenceBuilder25?composite=' + gid + '&' + viewQS();
+        // Add indicator if composite exists
+        if (hasCompositeMap[currentFilter]) {
+            btn.classList.add('has-order');
+            label.innerHTML = '<i class="bi bi-check-circle-fill"></i> Composite Order: ' + typeName + 's';
+        } else {
+            btn.classList.remove('has-order');
+        }
+    }
+
+    // Hook into filterSeq to update composite bar
+    var origFilterSeq = filterSeq;
+    filterSeq = function(type, btn) {
+        origFilterSeq(type, btn);
+        updateCompositeBar();
+    };
+
+    // Initialize composite bar on load
+    updateCompositeBar();
+
+    // Composite drag-and-drop (reuse same pattern as single-sequence)
+    document.querySelectorAll('#compositeTaskList .task-row').forEach(function(row) {
+        row.addEventListener('dragstart', function(e) { draggedRow = row; row.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; });
+        row.addEventListener('dragover', function(e) { e.preventDefault(); document.querySelectorAll('.drag-over').forEach(function(r){r.classList.remove('drag-over');}); row.classList.add('drag-over'); });
+        row.addEventListener('dragleave', function() { row.classList.remove('drag-over'); });
+        row.addEventListener('drop', function(e) {
+            e.preventDefault();
+            if (draggedRow && draggedRow !== row) {
+                var list = document.getElementById('compositeTaskList');
+                var rows = Array.from(list.children);
+                if (rows.indexOf(draggedRow) < rows.indexOf(row)) { row.after(draggedRow); } else { row.before(draggedRow); }
+                renumberComposite();
+            }
+            document.querySelectorAll('.drag-over').forEach(function(r){r.classList.remove('drag-over');});
+        });
+        row.addEventListener('dragend', function() { if(draggedRow) draggedRow.classList.remove('dragging'); document.querySelectorAll('.drag-over').forEach(function(r){r.classList.remove('drag-over');}); draggedRow=null; });
+    });
+
+    function renumberComposite() {
+        document.querySelectorAll('#compositeTaskList .task-row').forEach(function(row, i) {
+            row.querySelector('.step-badge').textContent = i + 1;
+            // Once dragged into position, remove unordered styling
+            row.classList.remove('unordered');
+        });
+    }
+
+    function prepareCompositeSubmit() {
+        var rows = document.querySelectorAll('#compositeTaskList .task-row');
+        var tasks = [];
+        rows.forEach(function(row, i) {
+            tasks.push({
+                taskId: parseInt(row.getAttribute('data-task-id')),
+                order: i * 10
+            });
+        });
+        document.getElementById('compositeOrderField').value = JSON.stringify(tasks);
+    }
+
+    // If in composite mode, auto-activate the correct filter tab
+    <c:if test="${compositeGroupId > 0}">
+    (function() {
+        var typeMap = {1: 'renewal', 2: 'setup', 3: 'ticket'};
+        var type = typeMap[${compositeGroupId}];
+        if (type) {
+            currentFilter = type;
+            var btns = document.querySelectorAll('.filter-tabs .btn');
+            btns.forEach(function(b) {
+                b.classList.remove('active-filter');
+                var onclick = b.getAttribute('onclick') || '';
+                if (onclick.indexOf("'" + type + "'") >= 0) b.classList.add('active-filter');
+            });
+            applyFilter();
+            updateCompositeBar();
+        }
+    })();
+    </c:if>
 </script>
 </body>
 </html>

@@ -15,14 +15,14 @@
 
 ## Current State
 - **Branch:** `refactor/modernize-architecture`
-- **Latest migration:** V045
-- **Session count:** 53
-- V025-V037 applied to Demo PSP, BPO, and Master; V038 applied to Demo and BPO; V039-V045 code-complete, not yet applied anywhere
+- **Latest migration:** V047
+- **Session count:** 55
+- V025-V037 applied to Demo PSP, BPO, and Master; V038 applied to Demo and BPO; V039-V047 code-complete, not yet applied anywhere
 - Not yet applied to production or local dev
 - Master snapshot v8 taken 2026-03-04 (V037, fixed update.sh, fixed healthcheck.sh)
 
 ## Database Migrations
-- Current highest version: **V045**
+- Current highest version: **V047**
 - Migration tracker: `docs/analysis/migration_tracker.md`
 - Schema version SQL: `docs/schema_version_migration.sql`
 
@@ -346,8 +346,29 @@
 - **Fix:** Comma-padded exact matching — `<c:set var="enhIdsCsv" value=",${selectedEnhancementIds},"/>` then `fn:contains(enhIdsCsv, ",${enh.getId()},")` — 6 occurrences fixed across service selection panel, summary bar, and modify panel
 - **JSP-only change** — no Java or DB changes needed
 
+## Session 54 (2026-03-11) — Extensible Chatbot Skill System
+- **V046:** `chatbot_skill` table (13 columns, FK to assignee, composite index on psp_id+is_active)
+- **ChatbotSkill.java** entity + **ChatbotSkillDAO.java** with scoring-based skill matching
+- **ClaudeApiService.java:** 3 new overloads for structured content blocks (document + text)
+- **ChatAssistant.java:** rewritten with `@MultipartConfig`, unified JSON + multipart endpoint, skill matching + fallback to KB search
+- **SkillManager.java** + **skillManager25.jsp:** CRUD admin UI for chatbot skills, card grid with modal
+- **AchFileUpload.java** deleted — replaced by unified ChatAssistant endpoint
+- D-61 in deployment_backlog
+
+## Session 55 (2026-03-11) — Composite Task Ordering
+- **V047:** `composite_task_order` table — cross-sequence task ordering per activity type per PSP
+- **CompositeTaskOrder.java** entity, **CompositeTaskView.java** DTO in `model/activity/checklist/sequences/support/`
+- **CompositeOrderDAO.java** — CRUD + `getAllTasksForCategory()` (dedup across RequiredTaskLists) + `getCompositeOrderMap()`
+- **ApplicationTaskDAO.java** — `applyCompositeOrder()` with fallback to legacy first-occurrence dedup
+- **AddSetupModule25.java** — composite-aware module addition (composite sort_order for new ToDos)
+- **SequenceBuilder25.java** — `handleCompositeRequest()` for `?composite={groupId}` mode
+- **SequenceAction25.java** — `SAVE_COMPOSITE` action with manual JSON parsing
+- **sequenceManager25.jsp** — composite UI: button bar, drag-and-drop task list, source sequence pills, save/cancel
+- **PSP ID from session:** `local.getCurrentPerson().getPsp().getId()` (NOT `getCurrentPsp()`)
+- D-62 in deployment_backlog — code complete, needs V047 applied + browser testing
+
 ## Reference
-- Last session (53): Application enhancement selection fn:contains substring bug fix
+- Last session (55): Composite task ordering for multi-sequence setups
 - Full session archive: `docs/analysis/session_history_archive.md`
 - Deployment backlog: `docs/deployment_backlog.md`
 - Migration tracker: `docs/analysis/migration_tracker.md`

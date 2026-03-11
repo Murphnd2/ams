@@ -2,7 +2,7 @@
 
 > **Purpose:** Consolidated historical record of all build sessions. For current project state, see `project_backlog.md`. For current architecture, see `application_flow.md` and `entity_reference.md`.
 >
-> **Last Updated:** March 11, 2026 (Session 54)
+> **Last Updated:** March 11, 2026 (Session 55)
 
 ---
 
@@ -1854,3 +1854,70 @@ Built an inline AI assistant for generating styled HTML content blocks for propo
 
 ### Database Changes
 - **V046:** `chatbot_skill` table with 13 columns, FK to assignee, composite index on (psp_id, is_active)
+
+---
+
+## March 11, 2026 — Session 55: Composite Task Ordering
+
+### V047 Migration — Composite Task Order Table
+- **V047__composite_task_order.sql** — `composite_task_order` table with FKs to `assignee`, `templategroup`, `task`, unique index on `(psp_id, group_id, task_id)`, self-registers in `schema_version`
+- Fields: id (AUTO_INCREMENT PK), psp_id, group_id (1=Renewal, 2=Setup, 3=Ticket), task_id, sort_order
+- Purpose: Defines master task ordering across all sequences within a given activity type
+
+### CompositeTaskOrder Entity + CompositeTaskView DTO
+- **CompositeTaskOrder.java** — JPA entity in `model/activity/checklist/sequences/support/`, ManyToOne FKs to PSP, ActivityCategory, Task
+- **CompositeTaskView.java** — DTO with Task, compositeSortOrder (-1 if unordered), List<String> sequenceNames, boolean reusable, `isOrdered()` helper
+
+### CompositeOrderDAO
+- **CompositeOrderDAO.java** — abstract DAO in `data/dao/`, static methods following project conventions
+- `getCompositeOrder()` — ordered list by sort_order
+- `hasCompositeOrder()` — boolean existence check
+- `getAllTasksForCategory()` — iterates RequiredTaskLists for a group_id, deduplicates tasks by ID, strips type prefixes from sequence names, forces eager access of Task boolean fields, merges with existing composite positions, sorts ordered-first then unordered
+- `saveCompositeOrder()` — delete-and-rebuild pattern within transaction
+- `getCompositeOrderMap()` — returns Map<Long, Integer> (taskId → sortOrder) for population logic
+
+### ApplicationTaskDAO — Composite Ordering with Fallback
+- `getTasksRequiredForApplication()` now collects unique tasks via legacy dedup, then checks for composite ordering and applies if available
+- Extracted `getTasksWithLegacyOrder()` private method (original dedup logic)
+- Added `applyCompositeOrder()` private method: loads composite map, reassigns sort values (unordered tasks get max+10), sorts
+- Zero behavior change when no composite order defined
+
+### AddSetupModule25 — Composite-Aware Module Addition
+- `addMissingTasksFromServiceItem()` loads composite map from DAO
+- New ToDos use composite sort order when available, falls back to per-sequence sort_order
+
+### SequenceBuilder25 — Composite Data Loading
+- New `handleCompositeRequest()` method: parses `?composite={groupId}` param, resolves PSP ID from session, loads composite task list via DAO
+- Sets request attributes: `compositeGroupId`, `compositeGroupName`, `compositeTaskList`, `hasExistingComposite`, `compositeTaskCount`
+- `loadAllSequences()` extended: checks composite existence for each activity type, sets `hasCompositeRenewal/Setup/Ticket` request attributes
+
+### SequenceAction25 — SAVE_COMPOSITE Action
+- New `SAVE_COMPOSITE` case in switch statement
+- `handleSaveComposite()` method: gets PSP ID from session, parses composite order JSON (`[{"taskId":123,"order":0},...]`), calls `CompositeOrderDAO.saveCompositeOrder()`
+- `parseCompositeEntries()` method: manual JSON parsing following project conventions (no external libraries)
+- Redirect to `SequenceBuilder25?composite={groupId}` after save
+
+### sequenceManager25.jsp — Composite UI
+- CSS: `.composite-btn`, `.seq-source-pill`, `.task-row.unordered` styles
+- Composite order button bar: hidden by default, shown when type filter active, layers icon, indicator when composite exists
+- Composite view panel: header with group name/task count/saved indicator, SAVE_COMPOSITE form, drag-and-drop task rows with source sequence pills, unordered task styling, save/cancel bar
+- JavaScript: `updateCompositeBar()`, `hasCompositeMap`, `groupIdMap`, drag-and-drop events, `renumberComposite()`, `prepareCompositeSubmit()`, auto-activate filter tab in composite mode
+
+### Files Created
+- `docs/migrations/V047__composite_task_order.sql`
+- `src/main/java/net/superiorstate/ams/model/activity/checklist/sequences/support/CompositeTaskOrder.java`
+- `src/main/java/net/superiorstate/ams/model/activity/checklist/sequences/support/CompositeTaskView.java`
+- `src/main/java/net/superiorstate/ams/data/dao/CompositeOrderDAO.java`
+
+### Files Modified
+- `ApplicationTaskDAO.java` — composite ordering with fallback in population logic
+- `AddSetupModule25.java` — composite-aware module addition
+- `SequenceBuilder25.java` — composite data loading + handleCompositeRequest()
+- `SequenceAction25.java` — SAVE_COMPOSITE action handler
+- `sequenceManager25.jsp` — composite UI with drag-and-drop
+- `migration_tracker.md` — V047 row
+- `schema_version_migration.sql` — V047 insert
+- `deployment_backlog.md` — D-62 item
+
+### Database Changes
+- **V047:** `composite_task_order` table with 5 columns, 3 FKs, unique composite index on (psp_id, group_id, task_id)

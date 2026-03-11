@@ -10,7 +10,9 @@ import net.superiorstate.ams.model.sales.application.Application;
 import net.superiorstate.ams.model.sales.application.ApplicationModule;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 
 public abstract class ApplicationTaskDAO {
 
@@ -44,6 +46,28 @@ public abstract class ApplicationTaskDAO {
     public static List<SortedTask> getTasksRequiredForApplication(EntityManager em, Application a){
         List<RequiredTaskList> requiredTaskLists = getTaskListsForApplication(em,a);
         System.out.println("Required Task List Size: " + requiredTaskLists.size());
+
+        // Collect unique tasks via legacy dedup
+        List<SortedTask> necessaryList = getTasksWithLegacyOrder(requiredTaskLists);
+
+        // Check for composite ordering
+        if (!requiredTaskLists.isEmpty() && !necessaryList.isEmpty()) {
+            int groupId = requiredTaskLists.get(0).getServiceItem().getActivityCategory().getId();
+            Long pspId = requiredTaskLists.get(0).getPsp().getId();
+
+            if (CompositeOrderDAO.hasCompositeOrder(em, pspId, groupId)) {
+                System.out.println("Using composite ordering for groupId=" + groupId);
+                applyCompositeOrder(em, necessaryList, pspId, groupId);
+            }
+        }
+
+        return necessaryList;
+    }
+
+    /**
+     * Legacy dedup: iterate RequiredTaskLists, first occurrence wins.
+     */
+    private static List<SortedTask> getTasksWithLegacyOrder(List<RequiredTaskList> requiredTaskLists) {
         List<SortedTask> necessaryList = new ArrayList<>();
         for(RequiredTaskList rtl:requiredTaskLists){
             List<TaskSequenceTable> tstList = rtl.getTaskSequenceTableList();
@@ -66,6 +90,37 @@ public abstract class ApplicationTaskDAO {
             }
         }
         return necessaryList;
+    }
+
+    /**
+     * Re-sort the already-deduped task list using composite ordering.
+     * Tasks in the composite order get their composite sort values.
+     * Tasks NOT in the composite (newly added) get appended at the end.
+     */
+    private static void applyCompositeOrder(EntityManager em, List<SortedTask> taskList, Long pspId, int groupId) {
+        Map<Long, Integer> compositeMap = CompositeOrderDAO.getCompositeOrderMap(em, pspId, groupId);
+
+        // Find max composite sort order for appending unordered tasks
+        int maxOrder = 0;
+        for (int val : compositeMap.values()) {
+            if (val > maxOrder) maxOrder = val;
+        }
+
+        // Assign composite sort values
+        int appendOrder = maxOrder + 10;
+        for (SortedTask st : taskList) {
+            Integer compositePos = compositeMap.get(st.getTask().getId());
+            if (compositePos != null) {
+                st.setSortOrder(compositePos);
+            } else {
+                // Task not in composite order — append at end
+                st.setSortOrder(appendOrder);
+                appendOrder += 10;
+            }
+        }
+
+        // Sort by the newly assigned composite sort values
+        taskList.sort(Comparator.comparingInt(SortedTask::getSortOrder));
     }
 
     public static List<RequiredTaskList> getTaskListsForModule(EntityManager em, ApplicationModule am){
