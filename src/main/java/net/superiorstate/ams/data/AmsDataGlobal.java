@@ -98,6 +98,7 @@ public class AmsDataGlobal {
 
     private boolean chatbotEnabled;
     private boolean chatbotAllUsers = false;
+    private boolean chatbotAllBpoUsers = false;
     private boolean useTimeclock = true;
     private boolean useFriendlyNames = true;
     private boolean useCustomLanding = false;
@@ -298,6 +299,11 @@ public class AmsDataGlobal {
             String cau = getConstantValue(em, "CHATBOT_ALL_USERS");
             this.chatbotAllUsers = "true".equalsIgnoreCase(cau);
         } catch (Exception e) { this.chatbotAllUsers = false; }
+
+        try {
+            String cabu = getConstantValue(em, "CHATBOT_ALL_BPO_USERS");
+            this.chatbotAllBpoUsers = "true".equalsIgnoreCase(cabu);
+        } catch (Exception e) { this.chatbotAllBpoUsers = false; }
 
         try {
             String utc = getConstantValue(em, "USE_TIMECLOCK");
@@ -572,6 +578,7 @@ public class AmsDataGlobal {
 
     public boolean isChatbotEnabled() { return chatbotEnabled; }
     public boolean isChatbotAllUsers() { return chatbotAllUsers; }
+    public boolean isChatbotAllBpoUsers() { return chatbotAllBpoUsers; }
     public boolean isUseTimeclock() { return useTimeclock; }
     public boolean isUseFriendlyNames() { return useFriendlyNames; }
     public boolean isUseCustomLanding() { return useCustomLanding; }

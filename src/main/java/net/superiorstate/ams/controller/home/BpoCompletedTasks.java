@@ -85,6 +85,8 @@ public class BpoCompletedTasks extends HttpServlet {
             String lastName = row[4] != null ? (String) row[4] : "";
 
             Map<String, String> item = new HashMap<>();
+            item.put("todoId", String.valueOf(todo.getId()));
+            item.put("crossSystem", "false");
             item.put("taskName", todo.getTask().getDescription());
             item.put("activityName", activityName);
             item.put("pspName", pspName);
@@ -109,6 +111,9 @@ public class BpoCompletedTasks extends HttpServlet {
 
         for (DelegatedToDo dt : results) {
             Map<String, String> item = new HashMap<>();
+            item.put("todoId", String.valueOf(dt.getId()));
+            item.put("todoGuid", dt.getTodoGuid() != null ? dt.getTodoGuid() : "");
+            item.put("crossSystem", "true");
             item.put("taskName", dt.getTaskName());
             item.put("activityName", dt.getActivityName() != null ? dt.getActivityName() : "");
             item.put("pspName", dt.getPspClient() != null ? dt.getPspClient().getPspName() : "");

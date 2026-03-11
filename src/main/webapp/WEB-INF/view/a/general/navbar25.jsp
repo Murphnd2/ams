@@ -236,8 +236,8 @@
         </c:if>
         </c:if><%-- /isPspSystem --%>
 
-        <%-- ═══ BPO SYSTEM DASHBOARD ═══ --%>
-        <c:if test="${applicationScope.isBpoSystem}">
+        <%-- ═══ BPO NAVIGATION ═══ --%>
+        <c:if test="${sessionScope.isBpo || sessionScope.isBpoAdmin || sessionScope.isBpoUser}">
           <a class="nav-ghost" href="BpoHome">
             <i class="bi bi-house"></i><span class="d-lg-none d-xl-inline ms-1">Dashboard</span>
           </a>
@@ -245,27 +245,20 @@
             <a class="nav-ghost" href="BpoPspClients">
               <i class="bi bi-building"></i><span class="d-lg-none d-xl-inline ms-1">PSP Clients</span>
             </a>
+            <div class="nav-divider d-none d-lg-block"></div>
+            <div class="dropdown">
+              <button class="nav-ghost nav-ghost-warn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                <i class="bi bi-gear"></i><span class="d-lg-none d-xl-inline ms-1">Admin</span>
+              </button>
+              <ul class="dropdown-menu dropdown-menu-end">
+                <li><button class="dropdown-item" type="button" data-bs-toggle="modal" data-bs-target="#createUserModal"><i class="bi bi-person-plus me-2"></i>Create User</button></li>
+                <li><a class="dropdown-item" href="SkillManager"><i class="bi bi-robot me-2"></i>Chatbot Skills</a></li>
+                <li><hr class="dropdown-divider"></li>
+                <li><button class="dropdown-item" type="button" data-bs-toggle="modal" data-bs-target="#bpoSettingsMod"><i class="bi bi-gear me-2"></i>Settings</button></li>
+              </ul>
+            </div>
           </c:if>
         </c:if>
-
-            <%-- ═══ BPO USER LINKS ═══ --%>
-          <c:if test="${sessionScope.isBpo || sessionScope.isBpoAdmin || sessionScope.isBpoUser}">
-            <a class="nav-ghost" href="BpoHome">
-              <i class="bi bi-house"></i><span class="d-lg-none d-xl-inline ms-1">Home</span>
-            </a>
-            <c:if test="${sessionScope.isBpoAdmin}">
-              <div class="nav-divider d-none d-lg-block"></div>
-              <div class="dropdown">
-                <button class="nav-ghost nav-ghost-warn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                  <i class="bi bi-gear"></i><span class="d-lg-none d-xl-inline ms-1">Admin</span>
-                </button>
-                <ul class="dropdown-menu dropdown-menu-end">
-                  <li><button class="dropdown-item" type="button" data-bs-toggle="modal" data-bs-target="#createUserModal"><i class="bi bi-person-plus me-2"></i>Create User</button></li>
-                  <li><a class="dropdown-item" href="#"><i class="bi bi-building me-2"></i>PSP Connections</a></li>
-                </ul>
-              </div>
-            </c:if>
-          </c:if>
 
         <%-- ═══ UNAUTHENTICATED / LOGOUT ═══ --%>
         <div class="nav-divider d-none d-lg-block"></div>
@@ -368,7 +361,12 @@
   </div>
 </c:if>
 
-<%-- Chatbot — admins always; standard users only when chatbotAllUsers is on --%>
-<c:if test="${applicationScope.global.chatbotEnabled && (sessionScope.isPspAdmin || (sessionScope.isPspUser && applicationScope.global.chatbotAllUsers))}">
+<%-- BPO Settings modal (admin only) --%>
+<c:if test="${sessionScope.isBpoAdmin}">
+  <c:import url="/WEB-INF/view/bpo/bpoSettingsMod25.jsp"/>
+</c:if>
+
+<%-- Chatbot — admins always; standard users only when respective toggle is on --%>
+<c:if test="${applicationScope.global.chatbotEnabled && (sessionScope.isPspAdmin || (sessionScope.isPspUser && applicationScope.global.chatbotAllUsers) || sessionScope.isBpoAdmin || (sessionScope.isBpoUser && applicationScope.global.chatbotAllBpoUsers))}">
   <c:import url="/WEB-INF/view/a/general/chatAssistant25.jsp"/>
 </c:if>

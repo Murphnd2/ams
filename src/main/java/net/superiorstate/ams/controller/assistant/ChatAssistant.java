@@ -128,7 +128,8 @@ public class ChatAssistant extends HttpServlet {
             List<ChatbotSkill> activeSkills = new ArrayList<>(ChatbotSkillDAO.getActiveSkills(em, pspId));
 
             // Filter by role: remove admin-only skills if user is not admin
-            if (!local.isPspAdmin()) {
+            boolean isBpoAdmin = Boolean.TRUE.equals(session.getAttribute("isBpoAdmin"));
+            if (!local.isPspAdmin() && !isBpoAdmin) {
                 activeSkills.removeIf(ChatbotSkill::isAdminOnly);
             }
 

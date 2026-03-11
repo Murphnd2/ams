@@ -33,8 +33,9 @@ public class SkillManager extends HttpServlet {
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         HttpSession session = request.getSession(false);
         AmsDataLocal local = (AmsDataLocal) session.getAttribute("local");
-        if (local == null || !local.isPspAdmin()) {
-            response.sendRedirect("ViewHome25");
+        boolean isBpoAdmin = session != null && Boolean.TRUE.equals(session.getAttribute("isBpoAdmin"));
+        if (local == null || (!local.isPspAdmin() && !isBpoAdmin)) {
+            response.sendRedirect(isBpoAdmin ? "BpoHome" : "ViewHome25");
             return;
         }
 
@@ -55,8 +56,9 @@ public class SkillManager extends HttpServlet {
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws IOException {
         HttpSession session = request.getSession(false);
         AmsDataLocal local = (AmsDataLocal) session.getAttribute("local");
-        if (local == null || !local.isPspAdmin()) {
-            response.sendRedirect("ViewHome25");
+        boolean isBpoAdmin = session != null && Boolean.TRUE.equals(session.getAttribute("isBpoAdmin"));
+        if (local == null || (!local.isPspAdmin() && !isBpoAdmin)) {
+            response.sendRedirect(isBpoAdmin ? "BpoHome" : "ViewHome25");
             return;
         }
 

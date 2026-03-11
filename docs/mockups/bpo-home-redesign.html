@@ -1,0 +1,966 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BPO Dashboard — Redesign Mockup</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --ssa: #0d5681;
+            --ssa-light: #e8f4f8;
+            --ssa-secondary: #87a948;
+            --ssa-secondary-light: #f0f5e4;
+            --due-overdue: #dc3545;
+            --due-today: #fd7e14;
+            --due-future: #6c757d;
+        }
+
+        * { font-family: 'DM Sans', sans-serif; }
+        body { background: #f0f2f5; margin: 0; overflow: hidden; }
+
+        /* ── Fake navbar ── */
+        .mock-navbar {
+            height: 56px;
+            background: var(--ssa);
+            color: #fff;
+            display: flex;
+            align-items: center;
+            padding: 0 1.25rem;
+            font-weight: 600;
+            font-size: 1rem;
+            gap: 0.5rem;
+        }
+        .mock-navbar i { font-size: 1.2rem; }
+
+        /* ── Page layout ── */
+        .bpo-layout {
+            display: flex;
+            flex-direction: column;
+            height: calc(100vh - 56px);
+        }
+        .bpo-columns {
+            display: flex;
+            flex: 1;
+            min-height: 0;
+            overflow: hidden;
+        }
+
+        /* ── Left column (My Checklists) ── */
+        .bpo-col-left {
+            width: 280px;
+            min-width: 280px;
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid #dee2e6;
+            background: #fff;
+        }
+        .col-header {
+            padding: 0.75rem 1rem;
+            font-weight: 600;
+            font-size: 0.85rem;
+            border-bottom: 1px solid #dee2e6;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #fff;
+            flex-shrink: 0;
+        }
+        .col-header-accent {
+            border-top: 3px solid var(--ssa-secondary);
+        }
+        .col-body-scroll {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0.5rem;
+        }
+
+        /* ── Center column (Delegated Tasks) ── */
+        .bpo-col-center {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+            background: #f8f9fa;
+        }
+        .center-toolbar {
+            padding: 0.5rem 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            border-bottom: 1px solid #dee2e6;
+            background: #fff;
+            flex-shrink: 0;
+            flex-wrap: wrap;
+        }
+        .center-toolbar .btn-group .btn {
+            font-size: 0.75rem;
+            padding: 0.25rem 0.65rem;
+        }
+        .center-toolbar .btn-group .btn.active {
+            background: var(--ssa);
+            border-color: var(--ssa);
+            color: #fff;
+        }
+        .center-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0.75rem 1rem;
+        }
+
+        /* ── PSP Accordion (Level 1) ── */
+        .psp-group {
+            margin-bottom: 0.5rem;
+            border-radius: 6px;
+            overflow: hidden;
+            border: 1px solid #dee2e6;
+            background: #fff;
+        }
+        .psp-header {
+            display: flex;
+            align-items: center;
+            padding: 0.6rem 0.85rem;
+            cursor: pointer;
+            background: #fff;
+            font-weight: 600;
+            font-size: 0.82rem;
+            color: #333;
+            user-select: none;
+            gap: 0.5rem;
+            border-bottom: 1px solid transparent;
+            transition: background 0.15s;
+        }
+        .psp-header:hover { background: #f8f9fa; }
+        .psp-header.open { border-bottom-color: #dee2e6; }
+        .psp-header .chevron {
+            transition: transform 0.2s;
+            font-size: 0.7rem;
+            color: #999;
+        }
+        .psp-header.open .chevron { transform: rotate(90deg); }
+        .psp-header .psp-name { flex: 1; }
+        .psp-badge {
+            font-size: 0.65rem;
+            font-weight: 600;
+            padding: 0.15rem 0.45rem;
+            border-radius: 10px;
+            background: var(--ssa-light);
+            color: var(--ssa);
+        }
+        .psp-body { display: none; }
+        .psp-header.open + .psp-body { display: block; }
+
+        /* ── Activity group (Level 2) ── */
+        .activity-group {
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .activity-group:last-child { border-bottom: none; }
+        .activity-header {
+            display: flex;
+            align-items: center;
+            padding: 0.5rem 0.85rem 0.5rem 1.5rem;
+            cursor: pointer;
+            font-size: 0.78rem;
+            gap: 0.5rem;
+            user-select: none;
+            transition: background 0.15s;
+        }
+        .activity-header:hover { background: #f8f9fa; }
+        .activity-header .chevron {
+            transition: transform 0.2s;
+            font-size: 0.65rem;
+            color: #bbb;
+        }
+        .activity-header.open .chevron { transform: rotate(90deg); }
+        .activity-name {
+            flex: 1;
+            font-weight: 500;
+            color: #444;
+        }
+        .activity-type-badge {
+            font-size: 0.6rem;
+            font-weight: 600;
+            padding: 0.1rem 0.4rem;
+            border-radius: 3px;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+        .type-renewal { background: #e8f0fe; color: #1a56db; }
+        .type-setup { background: #fef3e2; color: #b45309; }
+        .type-ticket { background: #fce8e8; color: #c53030; }
+        .activity-due {
+            font-size: 0.7rem;
+            font-weight: 500;
+            white-space: nowrap;
+        }
+        .activity-task-count {
+            font-size: 0.65rem;
+            color: #999;
+            white-space: nowrap;
+        }
+        .activity-tasks { display: none; }
+        .activity-header.open + .activity-tasks { display: block; }
+
+        /* ── Task rows (Level 3) ── */
+        .task-row {
+            display: flex;
+            align-items: center;
+            padding: 0.4rem 0.85rem 0.4rem 2.5rem;
+            font-size: 0.75rem;
+            cursor: pointer;
+            gap: 0.5rem;
+            transition: background 0.15s;
+            border-top: 1px solid #f5f5f5;
+        }
+        .task-row:hover { background: #f0f7fb; }
+        .task-row.selected {
+            background: var(--ssa-light);
+            border-left: 3px solid var(--ssa);
+            padding-left: calc(2.5rem - 3px);
+        }
+        .task-icon {
+            font-size: 0.7rem;
+            color: #aaa;
+            width: 16px;
+            text-align: center;
+        }
+        .task-row.selected .task-icon { color: var(--ssa); }
+        .task-name-text {
+            flex: 1;
+            font-weight: 400;
+            color: #555;
+        }
+        .task-row.selected .task-name-text {
+            font-weight: 500;
+            color: var(--ssa);
+        }
+        .task-status {
+            font-size: 0.6rem;
+            padding: 0.1rem 0.35rem;
+            border-radius: 3px;
+            font-weight: 500;
+        }
+        .status-assigned { background: #d4edda; color: #155724; }
+        .status-unassigned { background: #fff3cd; color: #856404; }
+
+        /* ── Right panel (Task Detail) ── */
+        .bpo-col-right {
+            width: 0;
+            min-width: 0;
+            overflow: hidden;
+            transition: width 0.25s ease, min-width 0.25s ease, border 0.25s ease;
+            background: #fff;
+            display: flex;
+            flex-direction: column;
+            border-left: none;
+        }
+        .bpo-col-right.open {
+            width: 400px;
+            min-width: 400px;
+            border-left: 1px solid #dee2e6;
+        }
+        .detail-header {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid #dee2e6;
+            display: flex;
+            align-items: flex-start;
+            gap: 0.5rem;
+            flex-shrink: 0;
+            background: #fff;
+        }
+        .detail-header-content { flex: 1; min-width: 0; }
+        .detail-task-name {
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: #333;
+            line-height: 1.3;
+        }
+        .detail-meta {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-top: 0.25rem;
+            flex-wrap: wrap;
+        }
+        .detail-close-btn {
+            background: none;
+            border: none;
+            font-size: 1.1rem;
+            color: #999;
+            cursor: pointer;
+            padding: 0;
+            line-height: 1;
+        }
+        .detail-close-btn:hover { color: #333; }
+
+        .detail-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0;
+        }
+        .detail-section {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .detail-section-title {
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: #999;
+            margin-bottom: 0.4rem;
+        }
+        .detail-links {
+            display: flex;
+            gap: 0.5rem;
+        }
+        .detail-links .btn {
+            font-size: 0.75rem;
+            padding: 0.3rem 0.75rem;
+        }
+
+        /* ── Assignment row ── */
+        .assign-row {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .assign-row select {
+            font-size: 0.78rem;
+            padding: 0.25rem 0.5rem;
+            flex: 1;
+        }
+
+        /* ── Notes ── */
+        .note-item {
+            padding: 0.5rem 0;
+            border-bottom: 1px solid #f5f5f5;
+        }
+        .note-item:last-child { border-bottom: none; }
+        .note-header {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            margin-bottom: 0.2rem;
+        }
+        .note-source {
+            font-size: 0.6rem;
+            font-weight: 600;
+            padding: 0.1rem 0.3rem;
+            border-radius: 3px;
+        }
+        .note-bpo { background: #e8f4f8; color: var(--ssa); }
+        .note-psp { background: var(--ssa-secondary-light); color: #5a7a1e; }
+        .note-author {
+            font-size: 0.72rem;
+            font-weight: 500;
+            color: #444;
+        }
+        .note-date {
+            font-size: 0.65rem;
+            color: #999;
+            margin-left: auto;
+        }
+        .note-text {
+            font-size: 0.75rem;
+            color: #555;
+            line-height: 1.4;
+        }
+        .note-attachment {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            font-size: 0.68rem;
+            background: #f0f0f0;
+            padding: 0.15rem 0.45rem;
+            border-radius: 3px;
+            color: var(--ssa);
+            margin-top: 0.25rem;
+            cursor: pointer;
+        }
+        .note-attachment:hover { background: #e0e0e0; }
+
+        /* ── Add note ── */
+        .add-note-area {
+            padding: 0.75rem 1rem;
+            border-top: 1px solid #dee2e6;
+            background: #fafafa;
+            flex-shrink: 0;
+        }
+        .add-note-area textarea {
+            font-size: 0.78rem;
+            resize: none;
+            border-radius: 6px;
+        }
+        .add-note-actions {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-top: 0.4rem;
+        }
+        .add-note-actions .btn {
+            font-size: 0.72rem;
+            padding: 0.25rem 0.6rem;
+        }
+        .attach-label {
+            font-size: 0.72rem;
+            color: var(--ssa);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.2rem;
+        }
+
+        /* ── Detail footer ── */
+        .detail-footer {
+            padding: 0.6rem 1rem;
+            border-top: 1px solid #dee2e6;
+            display: flex;
+            gap: 0.5rem;
+            flex-shrink: 0;
+            background: #fff;
+        }
+        .detail-footer .btn { font-size: 0.78rem; }
+        .btn-ssa {
+            background: var(--ssa);
+            border-color: var(--ssa);
+            color: #fff;
+        }
+        .btn-ssa:hover {
+            background: #0a4468;
+            border-color: #0a4468;
+            color: #fff;
+        }
+
+        /* ── Completed section (bottom of center) ── */
+        .completed-toggle {
+            padding: 0.5rem 1rem;
+            font-size: 0.75rem;
+            font-weight: 500;
+            color: #888;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            border-top: 1px solid #e0e0e0;
+            margin-top: 0.5rem;
+        }
+        .completed-toggle:hover { color: #555; }
+
+        /* ── Empty state ── */
+        .empty-state {
+            text-align: center;
+            padding: 2rem 1rem;
+            color: #aaa;
+            font-size: 0.8rem;
+        }
+        .empty-state i { font-size: 2rem; display: block; margin-bottom: 0.5rem; }
+
+        /* ── Checklist placeholder items ── */
+        .cl-item {
+            padding: 0.4rem 0.5rem;
+            font-size: 0.78rem;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            border-bottom: 1px solid #f0f0f0;
+            color: #555;
+        }
+        .cl-item i { color: #ccc; font-size: 0.7rem; }
+        .cl-done { color: #aaa; text-decoration: line-through; }
+        .cl-done i { color: var(--ssa-secondary); }
+
+        /* ── Pending toolbar ── */
+        .pending-bar {
+            padding: 0.4rem 1rem;
+            background: #fff8e1;
+            border-bottom: 1px solid #ffe0b2;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 0.75rem;
+            flex-shrink: 0;
+        }
+        .pending-bar select, .pending-bar .btn {
+            font-size: 0.72rem;
+            padding: 0.2rem 0.5rem;
+        }
+
+        /* ── Responsive ── */
+        @media (max-width: 991px) {
+            .bpo-col-left { display: none; }
+            .bpo-col-right.open { width: 100%; min-width: 100%; position: absolute; right: 0; top: 0; bottom: 0; z-index: 10; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Fake Navbar -->
+<div class="mock-navbar">
+    <i class="bi bi-headset"></i>
+    BPO Dashboard
+    <span style="margin-left:auto; font-weight:400; font-size:0.78rem; opacity:0.8;">Welcome, Sarah — Superior BPO Services</span>
+</div>
+
+<div class="bpo-layout">
+    <div class="bpo-columns">
+
+        <!-- ════════════════════════════════════════════ -->
+        <!-- LEFT COLUMN — My Checklists (as-is)         -->
+        <!-- ════════════════════════════════════════════ -->
+        <div class="bpo-col-left">
+            <div class="col-header col-header-accent">
+                My Checklists
+                <div>
+                    <button class="btn btn-sm btn-outline-secondary" style="font-size:0.7rem; padding:0.15rem 0.4rem;" title="Add Reminder">
+                        <i class="bi bi-bell"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-secondary" style="font-size:0.7rem; padding:0.15rem 0.4rem;" title="Add Checklist">
+                        <i class="bi bi-plus-lg"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="col-body-scroll">
+                <div style="font-size:0.72rem; font-weight:600; color:#888; padding:0.3rem 0.25rem; text-transform:uppercase; letter-spacing:0.03em;">Personal Tasks</div>
+                <div class="cl-item cl-done"><i class="bi bi-check-circle-fill"></i> Review monthly invoice batch</div>
+                <div class="cl-item"><i class="bi bi-circle"></i> Prepare Q2 vendor audit report</div>
+                <div class="cl-item"><i class="bi bi-circle"></i> Follow up on Jotform webhook config</div>
+                <div class="cl-item"><i class="bi bi-circle"></i> Update BPO onboarding docs</div>
+                <div class="cl-item cl-done"><i class="bi bi-check-circle-fill"></i> Test recurring task push</div>
+                <div style="font-size:0.72rem; font-weight:600; color:#888; padding:0.5rem 0.25rem 0.3rem; text-transform:uppercase; letter-spacing:0.03em;">Reminders</div>
+                <div class="cl-item"><i class="bi bi-bell" style="color:#fd7e14;"></i> Staff meeting — Friday 10am</div>
+                <div class="cl-item"><i class="bi bi-bell" style="color:#fd7e14;"></i> Compliance cert renewal — Mar 20</div>
+            </div>
+        </div>
+
+        <!-- ════════════════════════════════════════════ -->
+        <!-- CENTER COLUMN — Delegated Tasks (redesigned) -->
+        <!-- ════════════════════════════════════════════ -->
+        <div class="bpo-col-center">
+            <!-- Toolbar -->
+            <div class="center-toolbar">
+                <span style="font-weight:600; font-size:0.85rem; color:#333;">Delegated Tasks</span>
+                <div class="btn-group ms-2">
+                    <button class="btn btn-outline-secondary" id="btnPending" onclick="setView('pending')">
+                        Pending <span class="badge bg-danger ms-1" style="font-size:0.6rem;">3</span>
+                    </button>
+                    <button class="btn btn-outline-secondary active" id="btnMine" onclick="setView('mine')">My Tasks</button>
+                    <button class="btn btn-outline-secondary" id="btnAll" onclick="setView('all')">All Open</button>
+                </div>
+                <div class="ms-auto d-flex align-items-center gap-2">
+                    <input type="text" class="form-control form-control-sm" placeholder="Search tasks..." style="font-size:0.75rem; width:180px;">
+                </div>
+            </div>
+
+            <!-- Pending acceptance bar (shown only in pending view) -->
+            <div class="pending-bar" id="pendingBar" style="display:none;">
+                <input type="checkbox" id="selectAll"> <label for="selectAll" style="margin:0;">Select all</label>
+                <span style="color:#888;">0 selected</span>
+                <select class="form-select form-select-sm" style="width:160px;">
+                    <option>-- No Assignment --</option>
+                    <option>Sarah Mitchell</option>
+                    <option>James Rivera</option>
+                    <option>Mike Chen</option>
+                </select>
+                <button class="btn btn-sm btn-warning">Accept Selected</button>
+                <button class="btn btn-sm btn-outline-warning">Accept All</button>
+            </div>
+
+            <!-- Scrollable task tree -->
+            <div class="center-body">
+
+                <!-- ── PSP: Acme Benefits Corp ── -->
+                <div class="psp-group">
+                    <div class="psp-header open" onclick="togglePsp(this)">
+                        <i class="bi bi-chevron-right chevron"></i>
+                        <span class="psp-name">Acme Benefits Corp</span>
+                        <span class="psp-badge">12 tasks</span>
+                    </div>
+                    <div class="psp-body">
+
+                        <!-- Activity: Johnson Manufacturing Renewal -->
+                        <div class="activity-group">
+                            <div class="activity-header open" onclick="toggleActivity(this)">
+                                <i class="bi bi-chevron-right chevron"></i>
+                                <span class="activity-name">Johnson Manufacturing Renewal</span>
+                                <span class="activity-type-badge type-renewal">Renewal</span>
+                                <span class="activity-due due-overdue"><i class="bi bi-calendar3"></i> 03/08/2026</span>
+                                <span class="activity-task-count">4 tasks</span>
+                            </div>
+                            <div class="activity-tasks">
+                                <div class="task-row selected" onclick="selectTask(this)">
+                                    <i class="bi bi-card-checklist task-icon"></i>
+                                    <span class="task-name-text">Verify census data accuracy</span>
+                                    <span class="task-status status-assigned">Sarah M.</span>
+                                </div>
+                                <div class="task-row" onclick="selectTask(this)">
+                                    <i class="bi bi-card-checklist task-icon"></i>
+                                    <span class="task-name-text">Confirm carrier renewal rates</span>
+                                    <span class="task-status status-assigned">Sarah M.</span>
+                                </div>
+                                <div class="task-row" onclick="selectTask(this)">
+                                    <i class="bi bi-card-checklist task-icon"></i>
+                                    <span class="task-name-text">Update plan comparison spreadsheet</span>
+                                    <span class="task-status status-unassigned">Unassigned</span>
+                                </div>
+                                <div class="task-row" onclick="selectTask(this)">
+                                    <i class="bi bi-card-checklist task-icon"></i>
+                                    <span class="task-name-text">Send renewal summary to agent</span>
+                                    <span class="task-status status-assigned">James R.</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Activity: Greenfield Corp Setup -->
+                        <div class="activity-group">
+                            <div class="activity-header" onclick="toggleActivity(this)">
+                                <i class="bi bi-chevron-right chevron"></i>
+                                <span class="activity-name">Greenfield Corp New Group Setup</span>
+                                <span class="activity-type-badge type-setup">Setup</span>
+                                <span class="activity-due due-today"><i class="bi bi-calendar3"></i> 03/11/2026</span>
+                                <span class="activity-task-count">5 tasks</span>
+                            </div>
+                            <div class="activity-tasks">
+                                <div class="task-row" onclick="selectTask(this)">
+                                    <i class="bi bi-card-checklist task-icon"></i>
+                                    <span class="task-name-text">Process employer enrollment forms</span>
+                                    <span class="task-status status-assigned">Mike C.</span>
+                                </div>
+                                <div class="task-row" onclick="selectTask(this)">
+                                    <i class="bi bi-card-checklist task-icon"></i>
+                                    <span class="task-name-text">Verify banking information</span>
+                                    <span class="task-status status-assigned">Sarah M.</span>
+                                </div>
+                                <div class="task-row" onclick="selectTask(this)">
+                                    <i class="bi bi-card-checklist task-icon"></i>
+                                    <span class="task-name-text">Configure payroll deduction schedule</span>
+                                    <span class="task-status status-unassigned">Unassigned</span>
+                                </div>
+                                <div class="task-row" onclick="selectTask(this)">
+                                    <i class="bi bi-card-checklist task-icon"></i>
+                                    <span class="task-name-text">Set up employer portal access</span>
+                                    <span class="task-status status-assigned">James R.</span>
+                                </div>
+                                <div class="task-row" onclick="selectTask(this)">
+                                    <i class="bi bi-card-checklist task-icon"></i>
+                                    <span class="task-name-text">Send welcome packet to HR contact</span>
+                                    <span class="task-status status-assigned">Sarah M.</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Activity: Westbrook Industries Ticket -->
+                        <div class="activity-group">
+                            <div class="activity-header" onclick="toggleActivity(this)">
+                                <i class="bi bi-chevron-right chevron"></i>
+                                <span class="activity-name">Westbrook Industries COBRA Inquiry</span>
+                                <span class="activity-type-badge type-ticket">Ticket</span>
+                                <span class="activity-due due-future"><i class="bi bi-calendar3"></i> 03/18/2026</span>
+                                <span class="activity-task-count">3 tasks</span>
+                            </div>
+                            <div class="activity-tasks">
+                                <div class="task-row" onclick="selectTask(this)">
+                                    <i class="bi bi-card-checklist task-icon"></i>
+                                    <span class="task-name-text">Pull COBRA qualifying event documentation</span>
+                                    <span class="task-status status-assigned">Sarah M.</span>
+                                </div>
+                                <div class="task-row" onclick="selectTask(this)">
+                                    <i class="bi bi-card-checklist task-icon"></i>
+                                    <span class="task-name-text">Calculate continuation premiums</span>
+                                    <span class="task-status status-unassigned">Unassigned</span>
+                                </div>
+                                <div class="task-row" onclick="selectTask(this)">
+                                    <i class="bi bi-card-checklist task-icon"></i>
+                                    <span class="task-name-text">Send COBRA election notice</span>
+                                    <span class="task-status status-assigned">Mike C.</span>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- ── PSP: Northwest Benefits Group ── -->
+                <div class="psp-group">
+                    <div class="psp-header" onclick="togglePsp(this)">
+                        <i class="bi bi-chevron-right chevron"></i>
+                        <span class="psp-name">Northwest Benefits Group</span>
+                        <span class="psp-badge">7 tasks</span>
+                    </div>
+                    <div class="psp-body">
+
+                        <div class="activity-group">
+                            <div class="activity-header" onclick="toggleActivity(this)">
+                                <i class="bi bi-chevron-right chevron"></i>
+                                <span class="activity-name">Meridian Health Services Renewal</span>
+                                <span class="activity-type-badge type-renewal">Renewal</span>
+                                <span class="activity-due due-overdue"><i class="bi bi-calendar3"></i> 03/05/2026</span>
+                                <span class="activity-task-count">4 tasks</span>
+                            </div>
+                            <div class="activity-tasks">
+                                <div class="task-row" onclick="selectTask(this)">
+                                    <i class="bi bi-card-checklist task-icon"></i>
+                                    <span class="task-name-text">Request updated employee census</span>
+                                    <span class="task-status status-assigned">James R.</span>
+                                </div>
+                                <div class="task-row" onclick="selectTask(this)">
+                                    <i class="bi bi-card-checklist task-icon"></i>
+                                    <span class="task-name-text">Compare carrier rate proposals</span>
+                                    <span class="task-status status-assigned">Sarah M.</span>
+                                </div>
+                                <div class="task-row" onclick="selectTask(this)">
+                                    <i class="bi bi-card-checklist task-icon"></i>
+                                    <span class="task-name-text">Prepare renewal presentation</span>
+                                    <span class="task-status status-unassigned">Unassigned</span>
+                                </div>
+                                <div class="task-row" onclick="selectTask(this)">
+                                    <i class="bi bi-card-checklist task-icon"></i>
+                                    <span class="task-name-text">File compliance documentation</span>
+                                    <span class="task-status status-assigned">Mike C.</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="activity-group">
+                            <div class="activity-header" onclick="toggleActivity(this)">
+                                <i class="bi bi-chevron-right chevron"></i>
+                                <span class="activity-name">Cascade Logistics FSA Setup</span>
+                                <span class="activity-type-badge type-setup">Setup</span>
+                                <span class="activity-due due-future"><i class="bi bi-calendar3"></i> 03/22/2026</span>
+                                <span class="activity-task-count">3 tasks</span>
+                            </div>
+                            <div class="activity-tasks">
+                                <div class="task-row" onclick="selectTask(this)">
+                                    <i class="bi bi-card-checklist task-icon"></i>
+                                    <span class="task-name-text">Configure FSA plan parameters</span>
+                                    <span class="task-status status-assigned">Sarah M.</span>
+                                </div>
+                                <div class="task-row" onclick="selectTask(this)">
+                                    <i class="bi bi-card-checklist task-icon"></i>
+                                    <span class="task-name-text">Set up debit card issuance</span>
+                                    <span class="task-status status-assigned">James R.</span>
+                                </div>
+                                <div class="task-row" onclick="selectTask(this)">
+                                    <i class="bi bi-card-checklist task-icon"></i>
+                                    <span class="task-name-text">Create employee communication materials</span>
+                                    <span class="task-status status-unassigned">Unassigned</span>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- ── PSP: Summit Partners TPA ── -->
+                <div class="psp-group">
+                    <div class="psp-header" onclick="togglePsp(this)">
+                        <i class="bi bi-chevron-right chevron"></i>
+                        <span class="psp-name">Summit Partners TPA</span>
+                        <span class="psp-badge">4 tasks</span>
+                    </div>
+                    <div class="psp-body">
+                        <div class="activity-group">
+                            <div class="activity-header" onclick="toggleActivity(this)">
+                                <i class="bi bi-chevron-right chevron"></i>
+                                <span class="activity-name">TechVentures Inc HSA Migration</span>
+                                <span class="activity-type-badge type-setup">Setup</span>
+                                <span class="activity-due due-today"><i class="bi bi-calendar3"></i> 03/11/2026</span>
+                                <span class="activity-task-count">4 tasks</span>
+                            </div>
+                            <div class="activity-tasks">
+                                <div class="task-row" onclick="selectTask(this)">
+                                    <i class="bi bi-card-checklist task-icon"></i>
+                                    <span class="task-name-text">Validate HSA custodian transfer docs</span>
+                                    <span class="task-status status-assigned">Mike C.</span>
+                                </div>
+                                <div class="task-row" onclick="selectTask(this)">
+                                    <i class="bi bi-card-checklist task-icon"></i>
+                                    <span class="task-name-text">Reconcile account balances</span>
+                                    <span class="task-status status-assigned">Sarah M.</span>
+                                </div>
+                                <div class="task-row" onclick="selectTask(this)">
+                                    <i class="bi bi-card-checklist task-icon"></i>
+                                    <span class="task-name-text">Coordinate investment fund mapping</span>
+                                    <span class="task-status status-unassigned">Unassigned</span>
+                                </div>
+                                <div class="task-row" onclick="selectTask(this)">
+                                    <i class="bi bi-card-checklist task-icon"></i>
+                                    <span class="task-name-text">Confirm employer contribution schedule</span>
+                                    <span class="task-status status-assigned">James R.</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Completed section toggle -->
+                <div class="completed-toggle" onclick="toggleCompleted(this)">
+                    <i class="bi bi-chevron-right" style="transition:transform 0.2s;"></i>
+                    Completed Tasks (last 7 days) — 14 tasks
+                </div>
+
+            </div>
+        </div>
+
+        <!-- ════════════════════════════════════════════ -->
+        <!-- RIGHT COLUMN — Task Detail Panel            -->
+        <!-- ════════════════════════════════════════════ -->
+        <div class="bpo-col-right open" id="detailPanel">
+            <div class="detail-header">
+                <div class="detail-header-content">
+                    <div class="detail-task-name">Verify census data accuracy</div>
+                    <div class="detail-meta">
+                        <span class="psp-badge">Acme Benefits Corp</span>
+                        <span class="activity-type-badge type-renewal">Renewal</span>
+                        <span class="activity-due due-overdue" style="font-size:0.7rem;"><i class="bi bi-calendar3"></i> 03/08/2026</span>
+                    </div>
+                    <div style="font-size:0.75rem; color:#666; margin-top:0.3rem;">
+                        <i class="bi bi-folder2-open" style="font-size:0.7rem;"></i>
+                        Johnson Manufacturing Renewal
+                    </div>
+                </div>
+                <button class="detail-close-btn" onclick="closePanel()" title="Close">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+
+            <div class="detail-body">
+                <!-- Links -->
+                <div class="detail-section">
+                    <div class="detail-section-title">Quick Links</div>
+                    <div class="detail-links">
+                        <button class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-box-arrow-up-right"></i> Go To Activity
+                        </button>
+                        <button class="btn btn-sm btn-outline-secondary">
+                            <i class="bi bi-info-circle"></i> Info / Reference
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Description -->
+                <div class="detail-section">
+                    <div class="detail-section-title">Task Description</div>
+                    <div style="font-size:0.78rem; color:#555; line-height:1.5;">
+                        Review the latest employee census file from the employer. Cross-reference headcount against the carrier's records and flag any discrepancies in coverage tier, dependent count, or termination dates.
+                    </div>
+                </div>
+
+                <!-- Assignment -->
+                <div class="detail-section">
+                    <div class="detail-section-title">Assignment</div>
+                    <div class="assign-row">
+                        <select class="form-select form-select-sm">
+                            <option>Sarah Mitchell</option>
+                            <option>James Rivera</option>
+                            <option>Mike Chen</option>
+                            <option value="">-- Unassign --</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Recurring history -->
+                <div class="detail-section">
+                    <div class="detail-section-title">
+                        <i class="bi bi-arrow-repeat"></i> Recurring Task — Cycle 3
+                    </div>
+                    <div style="font-size:0.72rem; color:#888;">
+                        <a href="#" style="color:var(--ssa); text-decoration:none;">View past cycles</a>
+                    </div>
+                </div>
+
+                <!-- Notes -->
+                <div class="detail-section" style="border-bottom:none;">
+                    <div class="detail-section-title">Notes (3)</div>
+
+                    <div class="note-item">
+                        <div class="note-header">
+                            <span class="note-source note-psp">PSP</span>
+                            <span class="note-author">Kevin Murphy</span>
+                            <span class="note-date">03/10/2026 2:15 PM</span>
+                        </div>
+                        <div class="note-text">Census file uploaded to the activity. Please note 3 new hires added since last month — verify they have completed enrollment.</div>
+                        <div><span class="note-attachment"><i class="bi bi-paperclip"></i> census_march_2026.xlsx</span></div>
+                    </div>
+
+                    <div class="note-item">
+                        <div class="note-header">
+                            <span class="note-source note-bpo">BPO</span>
+                            <span class="note-author">Sarah Mitchell</span>
+                            <span class="note-date">03/10/2026 3:42 PM</span>
+                        </div>
+                        <div class="note-text">Received. One of the new hires (Martinez, R.) doesn't have a coverage tier selected. Flagging for follow-up.</div>
+                    </div>
+
+                    <div class="note-item">
+                        <div class="note-header">
+                            <span class="note-source note-psp">PSP</span>
+                            <span class="note-author">Kevin Murphy</span>
+                            <span class="note-date">03/11/2026 9:08 AM</span>
+                        </div>
+                        <div class="note-text">Confirmed with agent — Martinez should be Employee + Spouse tier. Please update and proceed.</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Add note -->
+            <div class="add-note-area">
+                <textarea class="form-control" rows="2" placeholder="Add a note..."></textarea>
+                <div class="add-note-actions">
+                    <button class="btn btn-sm btn-ssa">Add Note</button>
+                    <label class="attach-label"><i class="bi bi-paperclip"></i> Attach file</label>
+                    <span style="flex:1;"></span>
+                </div>
+            </div>
+
+            <!-- Footer actions -->
+            <div class="detail-footer">
+                <button class="btn btn-sm btn-ssa"><i class="bi bi-check-lg"></i> Mark Complete</button>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+    function togglePsp(el) {
+        el.classList.toggle('open');
+    }
+
+    function toggleActivity(el) {
+        el.classList.toggle('open');
+    }
+
+    function selectTask(el) {
+        // Deselect previous
+        document.querySelectorAll('.task-row.selected').forEach(r => r.classList.remove('selected'));
+        el.classList.add('selected');
+
+        // Open detail panel
+        document.getElementById('detailPanel').classList.add('open');
+
+        // In real app, this would populate the panel via AJAX
+        // For mockup, panel content is static
+    }
+
+    function closePanel() {
+        document.getElementById('detailPanel').classList.remove('open');
+        document.querySelectorAll('.task-row.selected').forEach(r => r.classList.remove('selected'));
+    }
+
+    function setView(mode) {
+        document.querySelectorAll('.center-toolbar .btn-group .btn').forEach(b => b.classList.remove('active'));
+        document.getElementById('btn' + mode.charAt(0).toUpperCase() + mode.slice(1)).classList.add('active');
+        document.getElementById('pendingBar').style.display = (mode === 'pending') ? 'flex' : 'none';
+    }
+
+    function toggleCompleted(el) {
+        const icon = el.querySelector('i');
+        icon.style.transform = icon.style.transform === 'rotate(90deg)' ? '' : 'rotate(90deg)';
+    }
+</script>
+
+</body>
+</html>
