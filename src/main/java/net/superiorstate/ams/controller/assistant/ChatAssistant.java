@@ -1,34 +1,42 @@
 package net.superiorstate.ams.controller.assistant;
 
 import com.google.gson.Gson;
+import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
+import jakarta.servlet.annotation.MultipartConfig;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
+import jakarta.servlet.http.Part;
 import net.superiorstate.ams.data.AmsDataLocal;
+import net.superiorstate.ams.data.dao.ChatbotSkillDAO;
 import net.superiorstate.ams.data.dao.TicketKnowledgeDAO;
 import net.superiorstate.ams.data.service.ClaudeApiService;
 import net.superiorstate.ams.data.service.KnowledgeSearchService;
 import net.superiorstate.ams.data.service.KnowledgeSearchService.ScoredChunk;
+import net.superiorstate.ams.model.general.ChatbotSkill;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Base64;
 import java.util.List;
 import java.util.Set;
 
 /**
  * AJAX endpoint for the AI Knowledge Assistant chatbox.
- * Accepts a question via POST, searches relevant knowledge bases,
- * sends context + question to Claude, and returns the response as JSON.
+ * Accepts both JSON text questions and multipart file uploads.
+ * Routes to matched skills when available, falls through to KB search otherwise.
  *
  * URL: /ChatAssistant
  */
 @WebServlet("/ChatAssistant")
+@MultipartConfig(maxFileSize = 10 * 1024 * 1024)
 public class ChatAssistant extends HttpServlet {
 
     private static final Logger log = LogManager.getLogger(ChatAssistant.class);
@@ -63,63 +71,79 @@ public class ChatAssistant extends HttpServlet {
             return;
         }
 
-        // Parse question from request body
+        // Determine request type: multipart (file upload) vs JSON (text only)
+        String contentType = request.getContentType();
+        boolean isMultipart = contentType != null && contentType.startsWith("multipart/");
+
         String question;
-        try {
-            JsonObject body = gson.fromJson(request.getReader(), JsonObject.class);
-            question = body.has("question") ? body.get("question").getAsString().trim() : "";
-        } catch (Exception e) {
-            sendError(response, HttpServletResponse.SC_BAD_REQUEST, "Invalid request format");
-            return;
+        byte[] fileBytes = null;
+        String fileMimeType = null;
+        String fileName = null;
+
+        if (isMultipart) {
+            try {
+                Part filePart = request.getPart("chatFile");
+                if (filePart != null && filePart.getSize() > 0) {
+                    fileBytes = filePart.getInputStream().readAllBytes();
+                    fileMimeType = filePart.getContentType();
+                    fileName = filePart.getSubmittedFileName();
+                    if (fileName != null) {
+                        fileName = java.nio.file.Paths.get(fileName).getFileName().toString();
+                    }
+                }
+                Part textPart = request.getPart("question");
+                question = textPart != null ? new String(textPart.getInputStream().readAllBytes()).trim() : "";
+            } catch (Exception e) {
+                log.error("Error reading multipart upload", e);
+                sendError(response, HttpServletResponse.SC_BAD_REQUEST, "Error reading upload");
+                return;
+            }
+        } else {
+            // Existing JSON path
+            try {
+                JsonObject body = gson.fromJson(request.getReader(), JsonObject.class);
+                question = body.has("question") ? body.get("question").getAsString().trim() : "";
+            } catch (Exception e) {
+                sendError(response, HttpServletResponse.SC_BAD_REQUEST, "Invalid request format");
+                return;
+            }
         }
 
-        if (question.isEmpty()) {
-            sendError(response, HttpServletResponse.SC_BAD_REQUEST, "Please enter a question");
+        if (question.isEmpty() && fileBytes == null) {
+            sendError(response, HttpServletResponse.SC_BAD_REQUEST, "Please enter a question or upload a file");
             return;
         }
 
         // Initialize knowledge service on first use
         ensureKnowledgeService(request);
-        if (knowledgeService == null || !knowledgeService.isInitialized()) {
-            sendError(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
-                    "Knowledge base is not available. Please try again later.");
-            return;
-        }
 
-        // Determine eligible KBs based on user role
-        boolean isAdmin = local.isPspAdmin();
-        Set<String> eligibleKBs = knowledgeService.getEligibleKBs(isAdmin);
-
-        // Search for relevant chunks
-        List<ScoredChunk> results = knowledgeService.search(question, eligibleKBs);
-        String context = knowledgeService.buildContext(results);
-
-        // Search resolved tickets from database
-        EntityManagerFactory emf = (EntityManagerFactory) request.getServletContext().getAttribute("emf");
+        // Skill matching + response
+        EntityManagerFactory emf = (EntityManagerFactory) getServletContext().getAttribute("emf");
         EntityManager em = emf.createEntityManager();
         String answer;
+
         try {
-            // Build ticket search terms from the question
-            String[] words = question.toLowerCase().replaceAll("[^a-z0-9\\s]", "").split("\\s+");
-            List<String> searchTerms = new java.util.ArrayList<>();
-            for (String w : words) {
-                if (w.length() > 2) searchTerms.add(w);
-            }
-            List<String> ticketResults = TicketKnowledgeDAO.searchResolvedTickets(em, searchTerms, 5);
+            // Load active skills for this PSP
+            Long pspId = local.getCurrentPerson().getPsp().getId();
+            List<ChatbotSkill> activeSkills = new ArrayList<>(ChatbotSkillDAO.getActiveSkills(em, pspId));
 
-            // Combine KB context + ticket context
-            StringBuilder fullContext = new StringBuilder(context);
-            if (!ticketResults.isEmpty()) {
-                fullContext.append("\n=== RESOLVED TICKET HISTORY ===\n\n");
-                for (String t : ticketResults) {
-                    fullContext.append(t).append("\n");
-                }
+            // Filter by role: remove admin-only skills if user is not admin
+            if (!local.isPspAdmin()) {
+                activeSkills.removeIf(ChatbotSkill::isAdminOnly);
             }
 
-            // Build the user message with combined context
-            String userMessage = fullContext.toString() + "\n\n=== QUESTION ===\n" + question;
+            // Try to match a skill
+            ChatbotSkill matchedSkill = ChatbotSkillDAO.findMatchingSkill(activeSkills, question, fileMimeType);
 
-            answer = ClaudeApiService.ask(em, SYSTEM_PROMPT, userMessage);
+            if (matchedSkill != null) {
+                answer = executeSkill(matchedSkill, question, fileBytes, fileMimeType, fileName);
+            } else if (fileBytes != null) {
+                // File uploaded but no skill matched
+                answer = "No skill is configured to analyze this file type. Please contact an administrator.";
+            } else {
+                // Default KB search path (existing behavior)
+                answer = executeKBSearch(em, local, question);
+            }
         } finally {
             em.close();
         }
@@ -127,8 +151,81 @@ public class ChatAssistant extends HttpServlet {
         // Send response
         JsonObject result = new JsonObject();
         result.addProperty("answer", answer);
-        result.addProperty("chunksUsed", results.size());
         response.getWriter().write(gson.toJson(result));
+    }
+
+    /**
+     * Executes a matched chatbot skill. If the skill accepts files and a file is attached,
+     * sends the file as a base64 document block to Claude alongside the text question.
+     */
+    private String executeSkill(ChatbotSkill skill, String question, byte[] fileBytes,
+                                String fileMimeType, String fileName) {
+        if (skill.isAcceptsFileUpload() && fileBytes != null) {
+            String base64 = Base64.getEncoder().encodeToString(fileBytes);
+
+            JsonArray contentBlocks = new JsonArray();
+
+            // Document block
+            JsonObject docBlock = new JsonObject();
+            docBlock.addProperty("type", "document");
+            JsonObject source = new JsonObject();
+            source.addProperty("type", "base64");
+            source.addProperty("media_type", fileMimeType);
+            source.addProperty("data", base64);
+            docBlock.add("source", source);
+            contentBlocks.add(docBlock);
+
+            // Text block
+            JsonObject textBlock = new JsonObject();
+            textBlock.addProperty("type", "text");
+            textBlock.addProperty("text",
+                    (question != null && !question.isBlank()) ? question : "Please analyze this document.");
+            contentBlocks.add(textBlock);
+
+            log.info("Executing skill '{}' with file: {} ({} bytes)",
+                    skill.getSkillName(), fileName, fileBytes.length);
+
+            return ClaudeApiService.askWithContent(
+                    skill.getSystemPrompt(), contentBlocks, skill.getModel(), skill.getMaxTokens());
+        } else {
+            // Text-only skill (specialized system prompt, no file)
+            log.info("Executing skill '{}' (text-only)", skill.getSkillName());
+            return ClaudeApiService.ask(null, skill.getSystemPrompt(), question);
+        }
+    }
+
+    /**
+     * Existing KB search behavior — searches knowledge bases and resolved tickets,
+     * builds context, and sends to Claude with the default system prompt.
+     */
+    private String executeKBSearch(EntityManager em, AmsDataLocal local, String question) {
+        if (knowledgeService == null || !knowledgeService.isInitialized()) {
+            return "Knowledge base is not available. Please try again later.";
+        }
+
+        boolean isAdmin = local.isPspAdmin();
+        Set<String> eligibleKBs = knowledgeService.getEligibleKBs(isAdmin);
+        List<ScoredChunk> results = knowledgeService.search(question, eligibleKBs);
+        String context = knowledgeService.buildContext(results);
+
+        // Search resolved tickets
+        String[] words = question.toLowerCase().replaceAll("[^a-z0-9\\s]", "").split("\\s+");
+        List<String> searchTerms = new ArrayList<>();
+        for (String w : words) {
+            if (w.length() > 2) searchTerms.add(w);
+        }
+        List<String> ticketResults = TicketKnowledgeDAO.searchResolvedTickets(em, searchTerms, 5);
+
+        StringBuilder fullContext = new StringBuilder(context);
+        if (!ticketResults.isEmpty()) {
+            fullContext.append("\n=== RESOLVED TICKET HISTORY ===\n\n");
+            for (String t : ticketResults) {
+                fullContext.append(t).append("\n");
+            }
+        }
+
+        String userMessage = fullContext.toString() + "\n\n=== QUESTION ===\n" + question;
+        return ClaudeApiService.ask(null, SYSTEM_PROMPT, userMessage);
     }
 
     /**
@@ -139,7 +236,6 @@ public class ChatAssistant extends HttpServlet {
         if (knowledgeService != null && knowledgeService.isInitialized()) return;
 
         synchronized (request.getServletContext()) {
-            // Double-check after acquiring lock
             knowledgeService = (KnowledgeSearchService) request.getServletContext().getAttribute("knowledgeService");
             if (knowledgeService != null && knowledgeService.isInitialized()) return;
 

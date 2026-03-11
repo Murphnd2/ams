@@ -42,7 +42,23 @@
 
             <%-- Input area --%>
         <div style="border-top:1px solid #dee2e6; padding:10px 14px; background:#fff;">
+            <%-- File upload indicator (hidden by default) --%>
+            <div id="chatFileIndicator" style="display:none; margin-bottom:6px;">
+                <span class="badge bg-light text-dark border" style="font-size:0.78rem;">
+                    <i class="bi bi-file-earmark me-1"></i>
+                    <span id="chatFileName"></span>
+                    <button type="button" class="btn-close ms-2" style="font-size:0.5rem;"
+                            onclick="clearChatFile()" aria-label="Remove"></button>
+                </span>
+            </div>
             <div class="input-group">
+                <c:if test="${sessionScope.local.isPspAdmin()}">
+                <button class="btn btn-outline-secondary btn-sm" type="button"
+                        onclick="document.getElementById('chatFileInput').click()"
+                        title="Upload a file for analysis">
+                    <i class="bi bi-paperclip"></i>
+                </button>
+                </c:if>
                 <input type="text" id="chatInput" class="form-control form-control-sm"
                        placeholder="Type your question..."
                        onkeydown="if(event.key==='Enter') sendQuestion()"
@@ -51,6 +67,8 @@
                     <i class="bi bi-send-fill"></i>
                 </button>
             </div>
+            <input type="file" id="chatFileInput" accept=".pdf,.xlsx,.csv,.txt" style="display:none;"
+                   onchange="handleChatFileSelect(this)">
         </div>
     </div>
 
@@ -65,9 +83,78 @@
             }
         }
 
+        let pendingChatFile = null;
+
+        function handleChatFileSelect(input) {
+            if (input.files && input.files[0]) {
+                const file = input.files[0];
+                if (file.size > 10 * 1024 * 1024) {
+                    appendMessage('assistant', 'File is too large. Maximum size is 10MB.');
+                    input.value = '';
+                    return;
+                }
+                pendingChatFile = file;
+                document.getElementById('chatFileName').textContent = file.name;
+                document.getElementById('chatFileIndicator').style.display = 'block';
+            }
+        }
+
+        function clearChatFile() {
+            pendingChatFile = null;
+            document.getElementById('chatFileInput').value = '';
+            document.getElementById('chatFileIndicator').style.display = 'none';
+        }
+
         function sendQuestion() {
             const input = document.getElementById('chatInput');
             const question = input.value.trim();
+
+            // If there's a file pending, send via file upload endpoint
+            if (pendingChatFile) {
+                const fileName = pendingChatFile.name;
+                const displayMsg = question || ('Analyze: ' + fileName);
+                appendMessage('user', displayMsg);
+                input.value = '';
+
+                const loadingId = 'loading-' + Date.now();
+                appendLoading(loadingId);
+                input.disabled = true;
+                document.getElementById('chatSendBtn').disabled = true;
+
+                const formData = new FormData();
+                formData.append('chatFile', pendingChatFile);
+                formData.append('question', question || 'Please analyze this document.');
+
+                clearChatFile();
+
+                fetch('ChatAssistant', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    removeLoading(loadingId);
+                    if (data.error) {
+                        appendMessage('assistant', data.error);
+                    } else {
+                        appendMessage('assistant', data.answer);
+                    }
+                })
+                .catch(err => {
+                    removeLoading(loadingId);
+                    appendMessage('assistant', 'Sorry, something went wrong processing the file.');
+                    console.error('File upload error:', err);
+                })
+                .finally(() => {
+                    input.disabled = false;
+                    document.getElementById('chatSendBtn').disabled = false;
+                    input.focus();
+                });
+
+                return;
+            }
+
+            // Normal text question flow
             if (!question) return;
 
             // Show user message

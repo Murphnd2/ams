@@ -16,7 +16,7 @@ Tracks database schema versions across environments.
 | BPO | bpo.superiorstate.biz | beta_ssa | BPO instance (V038, initialized, release V0.37.0) |
 | Master | master.superiorstate.biz | beta_ssa | Snapshot v8 (V037, stopped) |
 
-## Current Highest Version: V045
+## Current Highest Version: V046
 
 ## Dev Baseline
 
@@ -77,6 +77,7 @@ Individual migration scripts are no longer stored in the repo. The baseline dump
 | V043 | Add text_value column to constant for custom landing page HTML | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
 | V044 | Add agency scoping to proposal_section for TITLE/CLOSING overrides | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
 | V045 | Application selected LOS and Enhancement IDs | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
+| V046 | Chatbot skill table for extensible AI assistant capabilities | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
 
 ## Notes
 
@@ -109,3 +110,4 @@ Individual migration scripts are no longer stored in the repo. The baseline dump
 - V043 adds nullable text_value TEXT column to the constant table. Used for storing large text content (custom landing page HTML). The existing value VARCHAR column is unchanged. Requires updated WAR with Constant entity textValue field, AmsDataGlobal custom landing cache, login.java routing, UpdatePspSettings AJAX save, and new customLanding25.jsp.
 - V044 adds nullable agency_id BIGINT FK to proposal_section (references agency). Enables agency-scoped TITLE/CLOSING overrides — when an agency-scoped section exists for a proposal's agency, it renders instead of the default. Includes unique index on (psp_id, agency_id, section_type). Requires updated WAR with ProposalSection entity agency field, ProposalSettings create/delete/toggle changes, ViewProposal agency resolution logic, and proposalSettings.jsp Agency Overrides UI.
 - V045 adds selected_los_ids VARCHAR(500) and selected_enhancement_ids VARCHAR(500) to the application table. Stores which LOS and Enhancement services the applicant selected during proposal application. Comma-separated ID format for simple storage without join tables. Requires updated WAR with Application entity fields, ApplyForProposal save/restore logic, and ReviewApplication display.
+- V046 creates chatbot_skill table for per-PSP, admin-configurable AI chatbot skills. Each skill defines a specialized system prompt, trigger keywords, file acceptance rules (MIME types), model preference, max_tokens, admin-only toggle, and sort order. FK to assignee (PSP). Requires updated WAR with ChatbotSkill entity, ChatbotSkillDAO, refactored ChatAssistant (unified multipart/JSON endpoint with skill matching), SkillManager CRUD servlet, and skillManager25.jsp admin page.

@@ -162,6 +162,134 @@ public class ClaudeApiService {
     }
 
     /**
+     * Sends a message with structured content blocks (text + documents) to Claude.
+     * Used for PDF analysis where the user message contains both text and a base64 document.
+     *
+     * @param systemPrompt  the system prompt
+     * @param contentBlocks a JsonArray of content blocks (text blocks and document blocks)
+     * @param model         the model ID
+     * @param maxTokens     max response tokens
+     * @return Claude's response text
+     */
+    public static String askWithContent(String systemPrompt, JsonArray contentBlocks, String model, int maxTokens) {
+        String apiKey = AppConfig.get("ANTHROPIC_API_KEY");
+        if (apiKey == null || apiKey.isBlank() || "FILL_ME_IN".equals(apiKey)) {
+            log.error("ANTHROPIC_API_KEY not configured in ssa.properties");
+            return "The AI assistant is not configured. Please contact an administrator.";
+        }
+
+        try {
+            JsonObject body = new JsonObject();
+            body.addProperty("model", model);
+            body.addProperty("max_tokens", maxTokens);
+            body.addProperty("system", systemPrompt);
+
+            JsonArray messages = new JsonArray();
+            JsonObject msg = new JsonObject();
+            msg.addProperty("role", "user");
+            msg.add("content", contentBlocks);
+            messages.add(msg);
+            body.add("messages", messages);
+
+            String json = gson.toJson(body);
+
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(API_URL))
+                    .header("Content-Type", "application/json")
+                    .header("x-api-key", apiKey)
+                    .header("anthropic-version", API_VERSION)
+                    .timeout(Duration.ofSeconds(TIMEOUT_SECONDS))
+                    .POST(HttpRequest.BodyPublishers.ofString(json))
+                    .build();
+
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+
+            if (response.statusCode() == 200) {
+                return extractResponseText(response.body());
+            } else {
+                log.error("Claude API returned status {}: {}", response.statusCode(), response.body());
+                return "Sorry, I'm having trouble connecting right now. Please try again in a moment.";
+            }
+
+        } catch (Exception e) {
+            log.error("Error calling Claude API (structured content)", e);
+            return "Sorry, something went wrong. Please try again.";
+        }
+    }
+
+    /**
+     * Convenience overload using default model and max tokens.
+     */
+    public static String askWithContent(String systemPrompt, JsonArray contentBlocks) {
+        return askWithContent(systemPrompt, contentBlocks, DEFAULT_MODEL, DEFAULT_MAX_TOKENS);
+    }
+
+    /**
+     * Multi-turn variant supporting structured content blocks in any message.
+     * Each message map must have "role" (String). The "content" value can be:
+     *   - a String (plain text message, same as existing ask())
+     *   - a JsonArray (structured content blocks with text + documents)
+     *
+     * @param systemPrompt the system prompt
+     * @param messages     list of maps with "role" and "content" keys
+     * @param model        the model ID
+     * @param maxTokens    max response tokens
+     * @return Claude's response text
+     */
+    public static String askWithStructuredMessages(String systemPrompt, List<Map<String, Object>> messages, String model, int maxTokens) {
+        String apiKey = AppConfig.get("ANTHROPIC_API_KEY");
+        if (apiKey == null || apiKey.isBlank() || "FILL_ME_IN".equals(apiKey)) {
+            log.error("ANTHROPIC_API_KEY not configured in ssa.properties");
+            return "The AI assistant is not configured. Please contact an administrator.";
+        }
+
+        try {
+            JsonObject body = new JsonObject();
+            body.addProperty("model", model);
+            body.addProperty("max_tokens", maxTokens);
+            body.addProperty("system", systemPrompt);
+
+            JsonArray msgArray = new JsonArray();
+            for (Map<String, Object> m : messages) {
+                JsonObject msg = new JsonObject();
+                msg.addProperty("role", (String) m.get("role"));
+                Object content = m.get("content");
+                if (content instanceof JsonArray) {
+                    msg.add("content", (JsonArray) content);
+                } else {
+                    msg.addProperty("content", content.toString());
+                }
+                msgArray.add(msg);
+            }
+            body.add("messages", msgArray);
+
+            String json = gson.toJson(body);
+
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(API_URL))
+                    .header("Content-Type", "application/json")
+                    .header("x-api-key", apiKey)
+                    .header("anthropic-version", API_VERSION)
+                    .timeout(Duration.ofSeconds(TIMEOUT_SECONDS))
+                    .POST(HttpRequest.BodyPublishers.ofString(json))
+                    .build();
+
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+
+            if (response.statusCode() == 200) {
+                return extractResponseText(response.body());
+            } else {
+                log.error("Claude API returned status {}: {}", response.statusCode(), response.body());
+                return "Sorry, I'm having trouble connecting right now. Please try again in a moment.";
+            }
+
+        } catch (Exception e) {
+            log.error("Error calling Claude API (structured messages)", e);
+            return "Sorry, something went wrong. Please try again.";
+        }
+    }
+
+    /**
      * Extracts the text content from the Anthropic API response JSON.
      * Response format: { "content": [ { "type": "text", "text": "..." } ] }
      */

@@ -65,4 +65,5 @@ INSERT IGNORE INTO schema_version (version, description, script_name) VALUES
 ('V042', 'BPO pending approval workflow - status PENDING support', 'V042__delegated_todo_pending_status.sql'),
 ('V043', 'Add text_value column to constant for custom landing page HTML', 'V043__custom_landing_page.sql'),
 ('V044', 'Add agency scoping to proposal_section for TITLE/CLOSING overrides', 'V044__proposal_section_agency_scoping.sql'),
-('V045', 'Application selected LOS and Enhancement IDs', 'V045__application_selected_services.sql');
+('V045', 'Application selected LOS and Enhancement IDs', 'V045__application_selected_services.sql'),
+('V046', 'Chatbot skill table for extensible AI assistant capabilities', 'V046__chatbot_skill_table.sql');
