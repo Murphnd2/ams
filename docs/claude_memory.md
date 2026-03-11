@@ -15,14 +15,14 @@
 
 ## Current State
 - **Branch:** `refactor/modernize-architecture`
-- **Latest migration:** V041
-- **Session count:** 44
-- V025-V037 applied to Demo PSP, BPO, and Master; V038 applied to Demo and BPO; V039-V041 code-complete, not yet applied anywhere
+- **Latest migration:** V045
+- **Session count:** 53
+- V025-V037 applied to Demo PSP, BPO, and Master; V038 applied to Demo and BPO; V039-V045 code-complete, not yet applied anywhere
 - Not yet applied to production or local dev
 - Master snapshot v8 taken 2026-03-04 (V037, fixed update.sh, fixed healthcheck.sh)
 
 ## Database Migrations
-- Current highest version: **V041**
+- Current highest version: **V045**
 - Migration tracker: `docs/analysis/migration_tracker.md`
 - Schema version SQL: `docs/schema_version_migration.sql`
 
@@ -339,8 +339,15 @@
 - **proposalDetail.jsp:** displays proposal LOS items
 - **reviewApplication.jsp:** shows saved service selections with green check badges
 
+## Session 53 (2026-03-11) — Application Enhancement Selection Bug Fix
+- **Bug:** `fn:contains()` substring matching on comma-separated enhancement IDs caused false positives in `applyForProposal.jsp`
+- **Example:** `fn:contains("15,3", "5")` → true because "5" is substring of "15"
+- **Impact:** Selecting single-LOS enhancements phantom-selected multi-LOS enhancements; Modify panel pre-checked wrong boxes on every page reload, making them impossible to remove
+- **Fix:** Comma-padded exact matching — `<c:set var="enhIdsCsv" value=",${selectedEnhancementIds},"/>` then `fn:contains(enhIdsCsv, ",${enh.getId()},")` — 6 occurrences fixed across service selection panel, summary bar, and modify panel
+- **JSP-only change** — no Java or DB changes needed
+
 ## Reference
-- Last session (52): Application service selections (V045), setup enhancement cascade, opportunity proposal creation
+- Last session (53): Application enhancement selection fn:contains substring bug fix
 - Full session archive: `docs/analysis/session_history_archive.md`
 - Deployment backlog: `docs/deployment_backlog.md`
 - Migration tracker: `docs/analysis/migration_tracker.md`
