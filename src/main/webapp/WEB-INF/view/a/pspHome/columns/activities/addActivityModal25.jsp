@@ -58,6 +58,7 @@
           <form method="post" action="CreateOpportunity" id="aa_oppForm">
             <input type="hidden" name="returnTo" value="home">
             <input type="hidden" name="prospectMode" id="aa_prospectMode" value="existing">
+            <input type="hidden" name="losIds" id="aa_oppLosInput" value="">
 
             <%-- Agency (first — drives prospect cascade) --%>
             <label class="form-label fw-semibold mb-1" style="font-size:0.85rem;">
@@ -129,7 +130,27 @@
               </div>
             </div>
 
-            <button type="submit" class="btn btn-ssa btn-sm w-100" id="aa_oppBtn" disabled>
+            <%-- Rate selector (filtered by agency) --%>
+            <label class="form-label fw-semibold mb-1" style="font-size:0.85rem;">
+              <i class="bi bi-cash-coin me-1 text-ssa"></i>Rate Package
+            </label>
+            <select class="form-select form-select-sm mb-3" name="rateId" id="aa_oppRateId" required
+                    onchange="aa_onOppRateChange()">
+              <option value="" selected disabled>Select rate...</option>
+              <%-- Options populated by JavaScript via SetupModalData --%>
+            </select>
+
+            <%-- LOS checkboxes (filtered by rate) --%>
+            <label class="form-label fw-semibold mb-1" style="font-size:0.85rem;">
+              <i class="bi bi-list-check me-1 text-ssa"></i>Lines of Service
+            </label>
+            <div class="border rounded p-2 mb-3" id="aa_oppLosContainer" style="max-height:180px; overflow-y:auto;">
+              <div id="aa_oppLosHint" class="text-muted small fst-italic">Select a rate package first</div>
+              <%-- LOS switches populated by JavaScript via SetupModalData --%>
+            </div>
+
+            <button type="submit" class="btn btn-ssa btn-sm w-100" id="aa_oppBtn" disabled
+                    onclick="return aa_prepareOppSubmit()">
               <i class="bi bi-graph-up-arrow me-1"></i>Create Opportunity
             </button>
           </form>
@@ -319,7 +340,14 @@
     // Agent must be selected if agent row is visible
     var agentRow = document.getElementById('aa_oppAgentRow');
     var agentOk = (agentRow.style.display === 'none') || !!document.getElementById('aa_oppAgentId').value;
-    document.getElementById('aa_oppBtn').disabled = !(agencyOk && prospectOk && agentOk);
+    // Rate must be selected
+    var rateOk = !!document.getElementById('aa_oppRateId').value;
+    // At least one visible LOS must be checked
+    var losOk = false;
+    document.querySelectorAll('.aa-opp-los-item').forEach(function(div) {
+      if (div.style.display !== 'none' && div.querySelector('input').checked) losOk = true;
+    });
+    document.getElementById('aa_oppBtn').disabled = !(agencyOk && prospectOk && agentOk && rateOk && losOk);
   }
   window.aa_validateOpp = aa_validateOpp;
   document.getElementById('aa_prospectId').addEventListener('change', aa_validateOpp);
@@ -432,7 +460,7 @@
       div.style.display = 'none';
       div.innerHTML =
         '<input class="form-check-input aa-los-switch" type="checkbox" ' +
-        'id="aa_sLos_' + los.id + '" value="' + los.id + '" onchange="aa_validateSetup()">' +
+        'id="aa_sLos_' + los.id + '" value="' + los.id + '" onchange="aa_filterEnhancements(); aa_validateSetup()">' +
         '<label class="form-check-label" for="aa_sLos_' + los.id + '" style="font-size:0.85rem;">' +
         aa_escapeHtml(los.description) + '</label>';
       losContainer.insertBefore(div, losHint);
@@ -501,7 +529,41 @@
       var opt = document.createElement('option');
       opt.value = a.id;
       opt.textContent = a.name;
+      opt.dataset.rates = a.rateIds || '';
       agSel.appendChild(opt);
+    }
+
+    // Build rate options
+    var rateSel = document.getElementById('aa_oppRateId');
+    rateSel.length = 1;
+    for (var i = 0; i < data.rates.length; i++) {
+      var r = data.rates[i];
+      var opt = document.createElement('option');
+      opt.value = r.id;
+      opt.textContent = r.description;
+      rateSel.appendChild(opt);
+    }
+
+    // Build LOS switches
+    var losContainer = document.getElementById('aa_oppLosContainer');
+    var losHint = document.getElementById('aa_oppLosHint');
+    var oldLos = losContainer.querySelectorAll('.aa-opp-los-item');
+    for (var i = 0; i < oldLos.length; i++) oldLos[i].remove();
+    losHint.textContent = 'Select a rate package first';
+    losHint.style.display = '';
+
+    for (var i = 0; i < data.losList.length; i++) {
+      var los = data.losList[i];
+      var div = document.createElement('div');
+      div.className = 'form-check form-switch mb-1 aa-opp-los-item';
+      div.dataset.losId = los.id;
+      div.style.display = 'none';
+      div.innerHTML =
+        '<input class="form-check-input aa-opp-los-switch" type="checkbox" ' +
+        'id="aa_oppLos_' + los.id + '" value="' + los.id + '" onchange="aa_validateOpp()">' +
+        '<label class="form-check-label" for="aa_oppLos_' + los.id + '" style="font-size:0.85rem;">' +
+        aa_escapeHtml(los.description) + '</label>';
+      losContainer.insertBefore(div, losHint);
     }
 
     // Auto-select if only one agency
@@ -583,7 +645,51 @@
       agentSel.selectedIndex = lastAgentIdx;
     }
 
+    // ── Filter rate dropdown by agency's rates ──
+    var agOpt = document.getElementById('aa_agencyId').options[document.getElementById('aa_agencyId').selectedIndex];
+    var ratesStr = (agOpt && agOpt.dataset && agOpt.dataset.rates) || '';
+    var agencyRateIds = ratesStr ? ratesStr.split(',').map(Number) : [];
+
+    var rateSel = document.getElementById('aa_oppRateId');
+    rateSel.selectedIndex = 0;
+    for (var i = 1; i < rateSel.options.length; i++) {
+      var show = agencyRateIds.indexOf(parseInt(rateSel.options[i].value)) >= 0;
+      rateSel.options[i].style.display = show ? '' : 'none';
+      rateSel.options[i].disabled = !show;
+    }
+    // Auto-select if only one rate visible
+    var visibleRates = [];
+    for (var i = 1; i < rateSel.options.length; i++) {
+      if (!rateSel.options[i].disabled) visibleRates.push(i);
+    }
+    if (visibleRates.length === 1) rateSel.selectedIndex = visibleRates[0];
+
+    aa_onOppRateChange();
     aa_updateOppAgentVisibility();
+    aa_validateOpp();
+  };
+
+  /* ═══ Opportunity Rate → LOS cascade ═══ */
+  window.aa_onOppRateChange = function() {
+    var rateId = document.getElementById('aa_oppRateId').value;
+    var losIds = [];
+    if (rateId && aa_setupData && aa_setupData.rateLosMap[rateId]) {
+      losIds = aa_setupData.rateLosMap[rateId];
+    }
+
+    var anyLos = false;
+    document.querySelectorAll('.aa-opp-los-item').forEach(function(div) {
+      var id = parseInt(div.dataset.losId);
+      var show = losIds.indexOf(id) >= 0;
+      div.style.display = show ? '' : 'none';
+      if (!show) div.querySelector('input').checked = false;
+      if (show) anyLos = true;
+    });
+    var losHint = document.getElementById('aa_oppLosHint');
+    losHint.style.display = (rateId && !anyLos) ? '' : 'none';
+    if (rateId && !anyLos) losHint.textContent = 'No lines of service configured for this rate';
+    if (!rateId) { losHint.style.display = ''; losHint.textContent = 'Select a rate package first'; }
+
     aa_validateOpp();
   };
 
@@ -725,21 +831,48 @@
     if (rateId && !anyLos) losHint.textContent = 'No lines of service configured for this rate';
     if (!rateId) { losHint.style.display = ''; losHint.textContent = 'Select a rate package first'; }
 
-    // Show/hide extra switches
-    var anyExtra = false;
-    document.querySelectorAll('.aa-extra-item').forEach(function(div) {
-      var id = parseInt(div.dataset.extraId);
-      var show = extraIds.indexOf(id) >= 0;
-      div.style.display = show ? '' : 'none';
-      if (!show) div.querySelector('input').checked = false;
-      if (show) anyExtra = true;
-    });
-    var extraHint = document.getElementById('aa_sExtraHint');
-    extraHint.style.display = anyExtra ? 'none' : '';
-    if (!rateId) { extraHint.textContent = 'Select a rate package first'; }
-    else if (!anyExtra) { extraHint.textContent = 'No additional services for this rate'; }
+    // Filter enhancements based on rate AND checked LOSs
+    aa_filterEnhancements();
 
     aa_validateSetup();
+  };
+
+  /* ═══ LOS → Enhancement cascade ═══ */
+  window.aa_filterEnhancements = function() {
+    var rateId = document.getElementById('aa_sRateId').value;
+
+    // Get checked LOS IDs (only visible ones)
+    var checkedLosIds = [];
+    document.querySelectorAll('.aa-los-item').forEach(function(div) {
+      if (div.style.display !== 'none' && div.querySelector('input').checked) {
+        checkedLosIds.push(parseInt(div.dataset.losId));
+      }
+    });
+
+    // Enhancement is visible if at least one of its parent LOSs is checked
+    var enhLosMap = (aa_setupData && aa_setupData.enhLosMap) ? aa_setupData.enhLosMap : {};
+    var anyExtra = false;
+    document.querySelectorAll('.aa-extra-item').forEach(function(div) {
+      var enhId = div.querySelector('input').value;
+      var parentLosIds = enhLosMap[enhId] || [];
+      var losChecked = false;
+      for (var i = 0; i < parentLosIds.length; i++) {
+        if (checkedLosIds.indexOf(parentLosIds[i]) >= 0) { losChecked = true; break; }
+      }
+
+      div.style.display = losChecked ? '' : 'none';
+      if (!losChecked) div.querySelector('input').checked = false;
+      if (losChecked) anyExtra = true;
+    });
+
+    var extraHint = document.getElementById('aa_sExtraHint');
+    if (!rateId) {
+      extraHint.style.display = ''; extraHint.textContent = 'Select a rate package first';
+    } else if (!anyExtra && checkedLosIds.length > 0) {
+      extraHint.style.display = ''; extraHint.textContent = 'No additional services for selected lines';
+    } else {
+      extraHint.style.display = 'none';
+    }
   };
 
   /* ═══ Setup validation ═══ */
@@ -772,6 +905,24 @@
   document.getElementById('aa_sCompanyName').addEventListener('input', aa_validateSetup);
 
   /* ═══ Prepare hidden inputs before submit ═══ */
+  window.aa_prepareOppSubmit = function() {
+    // Build comma-separated losIds from opportunity LOS switches
+    var losVals = [];
+    document.querySelectorAll('.aa-opp-los-switch:checked').forEach(function(cb) {
+      losVals.push(cb.value);
+    });
+    document.getElementById('aa_oppLosInput').value = losVals.join(',');
+
+    // Disable button to prevent double-submit
+    setTimeout(function() {
+      var btn = document.getElementById('aa_oppBtn');
+      btn.disabled = true;
+      btn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Creating...';
+    }, 50);
+
+    return true;
+  };
+
   window.aa_prepareSetupSubmit = function() {
     // Build comma-separated losIds
     var losVals = [];
@@ -819,6 +970,13 @@
     document.getElementById('aa_companyName').value = '';
     document.querySelectorAll('#aa_newProspectFields input').forEach(function(el) { if (el.type !== 'hidden') el.value = ''; });
     document.getElementById('aa_oppBtn').disabled = true;
+    document.getElementById('aa_oppBtn').innerHTML = '<i class="bi bi-graph-up-arrow me-1"></i>Create Opportunity';
+    document.getElementById('aa_oppRateId').selectedIndex = 0;
+    document.getElementById('aa_oppLosInput').value = '';
+    document.querySelectorAll('.aa-opp-los-item input').forEach(function(cb) { cb.checked = false; });
+    document.querySelectorAll('.aa-opp-los-item').forEach(function(div) { div.style.display = 'none'; });
+    var oppLosHint = document.getElementById('aa_oppLosHint');
+    if (oppLosHint) { oppLosHint.style.display = ''; oppLosHint.textContent = 'Select a rate package first'; }
 
     // Reset setup form
     document.getElementById('aa_sTogExisting').checked = true;

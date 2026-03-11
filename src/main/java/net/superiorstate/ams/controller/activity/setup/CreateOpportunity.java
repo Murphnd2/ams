@@ -14,13 +14,18 @@ import net.superiorstate.ams.model.activity.checklist.CheckList;
 import net.superiorstate.ams.model.activity.checklist.tasks.ToDo;
 import net.superiorstate.ams.model.general.Person;
 import net.superiorstate.ams.model.sales.agency.Agency;
+import net.superiorstate.ams.model.sales.agency.Proposal;
 import net.superiorstate.ams.model.sales.agency.Prospect;
+import net.superiorstate.ams.model.sales.agency.Rate;
+import net.superiorstate.ams.data.dao.SalesDAO;
+import net.superiorstate.ams.model.sales.offering.LOS;
 
 import java.io.IOException;
 import java.sql.Date;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 @WebServlet(name = "CreateOpportunity", value = "/CreateOpportunity")
 public class CreateOpportunity extends HttpServlet {
@@ -144,6 +149,43 @@ public class CreateOpportunity extends HttpServlet {
             opp.setCheckList(checkList);
             em.persist(opp);
             em.getTransaction().commit();
+
+            // Create linked Proposal with rate and LOS selections
+            String rateIdParam = request.getParameter("rateId");
+            String losIdsParam = request.getParameter("losIds");
+            if (rateIdParam != null && !rateIdParam.isEmpty()) {
+                long rateId = Long.parseLong(rateIdParam);
+                Rate rate = em.find(Rate.class, rateId);
+
+                em.getTransaction().begin();
+                Proposal proposal = new Proposal();
+                proposal.setProspect(prospect);
+                proposal.setRate(rate);
+                proposal.setApplicationGUID(UUID.randomUUID().toString());
+                proposal.setStatus("CREATED");
+                proposal.setCreatedBy(currentUser);
+                proposal.setInactive(false);
+                proposal.setLosList(new ArrayList<>());
+                proposal.setSourceActivity(opp);
+                em.persist(proposal);
+                em.getTransaction().commit();
+
+                // Add selected LOSs to proposal
+                if (losIdsParam != null && !losIdsParam.isEmpty()) {
+                    for (String losIdStr : losIdsParam.split(",")) {
+                        long losId = Long.parseLong(losIdStr.trim());
+                        LOS los = SalesDAO.getLosFull(em, losId);
+                        em.getTransaction().begin();
+                        proposal.getLosList().add(los);
+                        los.getListOfProposalsThatIncludeThisLOS().add(proposal);
+                        em.persist(proposal);
+                        em.persist(los);
+                        em.getTransaction().commit();
+                    }
+                }
+
+                System.out.println("Proposal created for opportunity: #" + proposal.getId());
+            }
 
             // Update session
             em.refresh(opp);

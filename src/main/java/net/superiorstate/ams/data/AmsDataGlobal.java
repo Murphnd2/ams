@@ -114,6 +114,7 @@ public class AmsDataGlobal {
     private List<Rate> rateList;
     private Map<Long, List<Long>> rateLosMap;
     private Map<Long, List<Integer>> rateExtraMap;
+    private Map<Long, List<Long>> enhLosMap;
     private Map<Long, List<Long>> agencyRateMap;
     private List<AgentInfo> setupAgents;
     private Map<Long, String> prospectAgencyMap;
@@ -169,6 +170,7 @@ public class AmsDataGlobal {
                 setRateList(SalesDAO.getRateList(em, getPsp().getId().intValue()));
                 setRateLosMap(SalesDAO.getRateLosMap(em));
                 setRateExtraMap(SalesDAO.getRateExtraMap(em));
+                setEnhLosMap(buildEnhLosMap(em));
                 setAgencyRateMap(SalesDAO.getAgencyRateMap(em));
                 setSetupAgents(buildAgentList(em));
                 setProspectAgencyMap(buildProspectAgencyMap(em));
@@ -778,6 +780,26 @@ public class AmsDataGlobal {
         }
     }
 
+    private Map<Long, List<Long>> buildEnhLosMap(EntityManager em) {
+        Map<Long, List<Long>> map = new HashMap<>();
+        try {
+            List<Object[]> rows = em.createQuery(
+                    "SELECT e.id, l.id FROM Enhancement e JOIN e.losList l " +
+                    "WHERE e.psp.id = :pspId AND e.suppressed = false",
+                    Object[].class)
+                    .setParameter("pspId", getPsp().getId())
+                    .getResultList();
+            for (Object[] row : rows) {
+                Long enhId = (Long) row[0];
+                Long losId = (Long) row[1];
+                map.computeIfAbsent(enhId, k -> new ArrayList<>()).add(losId);
+            }
+        } catch (Exception e) {
+            System.err.println("buildEnhLosMap error: " + e.getMessage());
+        }
+        return map;
+    }
+
     public List<Enhancement> getEnhancementList() {
         return enhancementList;
     }
@@ -810,6 +832,14 @@ public class AmsDataGlobal {
         this.rateExtraMap = rateExtraMap;
     }
 
+    public Map<Long, List<Long>> getEnhLosMap() {
+        return enhLosMap;
+    }
+
+    public void setEnhLosMap(Map<Long, List<Long>> enhLosMap) {
+        this.enhLosMap = enhLosMap;
+    }
+
     public Map<Long, List<Long>> getAgencyRateMap() {
         return agencyRateMap;
     }
@@ -836,6 +866,7 @@ public class AmsDataGlobal {
         setRateList(SalesDAO.getRateList(em, getPsp().getId().intValue()));
         setRateLosMap(SalesDAO.getRateLosMap(em));
         setRateExtraMap(SalesDAO.getRateExtraMap(em));
+        setEnhLosMap(buildEnhLosMap(em));
         setAgencyRateMap(SalesDAO.getAgencyRateMap(em));
         setAgencies(SalesDAO.getAgencyList(em, getPsp().getId().intValue()));
         setProspects(SalesDAO.getProspectsByPsp(em, getPsp().getId().intValue()));

@@ -25,6 +25,7 @@ import net.superiorstate.ams.model.general.Person;
 import net.superiorstate.ams.model.sales.agency.Proposal;
 import net.superiorstate.ams.model.sales.agency.Prospect;
 import net.superiorstate.ams.model.sales.application.*;
+import net.superiorstate.ams.model.sales.offering.Enhancement;
 import net.superiorstate.ams.model.sales.offering.LOS;
 
 import java.io.IOException;
@@ -111,17 +112,29 @@ public class ReviewApplication extends HttpServlet {
                 valueMap.put(fv.getApplicationField().getFieldKey(), fv.getFieldValue());
             }
 
-            // Load sections relevant to this proposal's LOS list (same logic as ApplyForProposal)
-            List<Long> losIds = application.getProposal().getLosList().stream()
-                    .map(LOS::getId).collect(Collectors.toList());
+            // Use selected LOS/Enhancement IDs if available, fall back to full proposal LOS list
+            List<Long> losIds;
+            List<Long> enhIds;
+            if (application.hasServiceSelections()) {
+                losIds = application.getSelectedLosIdList();
+                enhIds = application.getSelectedEnhancementIdList();
+            } else {
+                losIds = application.getProposal().getLosList().stream()
+                        .map(LOS::getId).collect(Collectors.toList());
+                enhIds = java.util.Collections.emptyList();
+            }
+            List<Long> safeLosIds = (losIds == null || losIds.isEmpty()) ? List.of(-1L) : losIds;
+            List<Long> safeEnhIds = (enhIds == null || enhIds.isEmpty()) ? List.of(-1L) : enhIds;
 
             Query sq = em.createQuery(
                     "SELECT DISTINCT s FROM ApplicationSection s " +
                             "LEFT JOIN FETCH s.fieldList f " +
                             "LEFT JOIN s.losList los " +
-                            "WHERE s.suppressed = false AND (s.scope = 'ALL' OR los.id IN :losIds) " +
+                            "LEFT JOIN s.enhancementList enh " +
+                            "WHERE s.suppressed = false AND (s.scope = 'ALL' OR los.id IN :losIds OR enh.id IN :enhIds) " +
                             "ORDER BY s.sortOrder");
-            sq.setParameter("losIds", losIds);
+            sq.setParameter("losIds", safeLosIds);
+            sq.setParameter("enhIds", safeEnhIds);
             List<ApplicationSection> sections = sq.getResultList();
 
             // Remove suppressed fields and re-sort (EclipseLink DISTINCT can scramble @OrderBy)
@@ -129,6 +142,28 @@ public class ReviewApplication extends HttpServlet {
                 if (sec.getFieldList() != null) {
                     sec.getFieldList().removeIf(ApplicationField::isSuppressed);
                     sec.getFieldList().sort(java.util.Comparator.comparingInt(ApplicationField::getSortOrder));
+                }
+            }
+
+            // Build display lists of selected service names for reviewer
+            if (application.hasServiceSelections()) {
+                List<String> selectedServiceNames = new ArrayList<>();
+                for (LOS los : application.getProposal().getLosList()) {
+                    if (application.getSelectedLosIdList().contains(los.getId())) {
+                        selectedServiceNames.add(los.getDescription());
+                    }
+                }
+                request.setAttribute("selectedServiceNames", selectedServiceNames);
+
+                List<Long> selEnhIds = application.getSelectedEnhancementIdList();
+                if (!selEnhIds.isEmpty()) {
+                    List<Enhancement> selEnhancements = em.createQuery(
+                            "SELECT e FROM Enhancement e WHERE e.id IN :ids ORDER BY e.sortOrder", Enhancement.class)
+                            .setParameter("ids", selEnhIds)
+                            .getResultList();
+                    List<String> selectedEnhNames = selEnhancements.stream()
+                            .map(Enhancement::getDescription).collect(Collectors.toList());
+                    request.setAttribute("selectedEnhancementNames", selectedEnhNames);
                 }
             }
 

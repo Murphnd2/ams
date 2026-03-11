@@ -6,7 +6,10 @@ import net.superiorstate.ams.model.general.Person;
 import net.superiorstate.ams.model.sales.agency.Proposal;
 
 import java.sql.Timestamp;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Entity
 public class Application {
@@ -33,6 +36,12 @@ public class Application {
 
     @Column(name="review_notes",columnDefinition = "TEXT")
     private String reviewNotes;
+
+    @Column(name = "selected_los_ids", columnDefinition = "varchar(500)")
+    private String selectedLosIds;
+
+    @Column(name = "selected_enhancement_ids", columnDefinition = "varchar(500)")
+    private String selectedEnhancementIds;
 
     @OneToMany(mappedBy = "application")
     private List<ApplicationModule> applicationModuleList;
@@ -123,6 +132,43 @@ public class Application {
 
     public void setSetup(Setup setup) {
         this.setup = setup;
+    }
+
+    public String getSelectedLosIds() {
+        return selectedLosIds;
+    }
+
+    public void setSelectedLosIds(String selectedLosIds) {
+        this.selectedLosIds = selectedLosIds;
+    }
+
+    public String getSelectedEnhancementIds() {
+        return selectedEnhancementIds;
+    }
+
+    public void setSelectedEnhancementIds(String selectedEnhancementIds) {
+        this.selectedEnhancementIds = selectedEnhancementIds;
+    }
+
+    /** Parse selected LOS IDs into a List. Returns empty list if null/blank. */
+    public List<Long> getSelectedLosIdList() {
+        if (selectedLosIds == null || selectedLosIds.isBlank()) return Collections.emptyList();
+        return Arrays.stream(selectedLosIds.split(","))
+                .map(String::trim).filter(s -> !s.isEmpty())
+                .map(Long::parseLong).collect(Collectors.toList());
+    }
+
+    /** Parse selected Enhancement IDs into a List. Returns empty list if null/blank. */
+    public List<Long> getSelectedEnhancementIdList() {
+        if (selectedEnhancementIds == null || selectedEnhancementIds.isBlank()) return Collections.emptyList();
+        return Arrays.stream(selectedEnhancementIds.split(","))
+                .map(String::trim).filter(s -> !s.isEmpty())
+                .map(Long::parseLong).collect(Collectors.toList());
+    }
+
+    /** Check if this application has service selections recorded. */
+    public boolean hasServiceSelections() {
+        return selectedLosIds != null && !selectedLosIds.isBlank();
     }
 
 }

@@ -82,19 +82,15 @@ public class ProposalBuilder extends HttpServlet {
             request.setAttribute("losList", losList);
 
             // ── Build rate → LOS availability map ──
+            // Only include LOSs that have at least one fee line item (RateTable row) in the rate
             Map<Long, Set<Long>> rateLosMap = new HashMap<>();
             for (Rate rate : allRates) {
                 List<RateTable> rtRows = SalesDAO.getRateTableList(em, rate.getId());
                 Set<Long> availableLosIds = new HashSet<>();
                 for (RateTable rt : rtRows) {
                     ServiceModule mod = rt.getModule();
-                    if (mod.getLos() != null) {
+                    if (mod != null && mod.getLos() != null) {
                         availableLosIds.add(mod.getLos().getId());
-                    }
-                    if (mod.getListOfLosWithThisModule() != null) {
-                        for (LOS los : mod.getListOfLosWithThisModule()) {
-                            availableLosIds.add(los.getId());
-                        }
                     }
                 }
                 rateLosMap.put(rate.getId(), availableLosIds);

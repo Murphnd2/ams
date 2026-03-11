@@ -15,6 +15,7 @@ import net.superiorstate.ams.model.sales.agency.Proposal;
 import net.superiorstate.ams.model.sales.application.*;
 import net.superiorstate.ams.model.sales.offering.BenefitType;
 import net.superiorstate.ams.model.sales.offering.BillingType;
+import net.superiorstate.ams.model.sales.offering.Enhancement;
 import net.superiorstate.ams.model.sales.offering.LOS;
 import java.io.IOException;
 import java.sql.Timestamp;
@@ -40,26 +41,129 @@ public class ApplyForProposal extends HttpServlet {
                 return;
             }
 
-            // Get LOS IDs from the proposal
-            List<Long> losIds = proposal.getLosList().stream()
+            // Full proposal LOS list
+            List<LOS> proposalLosList = proposal.getLosList();
+            List<Long> proposalLosIds = proposalLosList.stream()
                     .map(LOS::getId).collect(Collectors.toList());
 
-            // Load matching sections: scope=ALL, or scope=LOS with overlapping LOSs
-            // Exclude suppressed sections and fields
-            Query sq = em.createQuery(
-                    "SELECT DISTINCT s FROM ApplicationSection s " +
-                            "LEFT JOIN FETCH s.fieldList " +
-                            "LEFT JOIN s.losList los " +
-                            "WHERE s.suppressed = false AND (s.scope = 'ALL' OR los.id IN :losIds) " +
-                            "ORDER BY s.sortOrder");
-            sq.setParameter("losIds", losIds);
-            List<ApplicationSection> sections = sq.getResultList();
+            // Load enhancements linked to any of the proposal's LOSs
+            List<Enhancement> proposalEnhancements = new ArrayList<>();
+            if (!proposalLosIds.isEmpty()) {
+                proposalEnhancements = em.createQuery(
+                        "SELECT DISTINCT e FROM Enhancement e LEFT JOIN FETCH e.losList " +
+                                "JOIN e.losList l WHERE l.id IN :losIds AND e.suppressed = false ORDER BY e.sortOrder",
+                        Enhancement.class)
+                        .setParameter("losIds", proposalLosIds)
+                        .getResultList();
+            }
 
-            // EclipseLink DISTINCT + JOIN FETCH can scramble @OrderBy — re-sort and remove suppressed fields
-            for (ApplicationSection sec : sections) {
-                if (sec.getFieldList() != null) {
-                    sec.getFieldList().removeIf(ApplicationField::isSuppressed);
-                    sec.getFieldList().sort(java.util.Comparator.comparingInt(ApplicationField::getSortOrder));
+            // Check if Application exists and has service selections (use em.find to bypass stale cache)
+            Application application = em.find(Application.class, proposal.getId());
+            boolean showServiceSelection = false;
+            List<Long> effectiveLosIds;
+            List<Long> effectiveEnhIds;
+
+            if (application != null && application.hasServiceSelections()) {
+                // User already made selections — use them
+                effectiveLosIds = application.getSelectedLosIdList();
+                effectiveEnhIds = application.getSelectedEnhancementIdList();
+            } else if (proposalLosList.size() <= 1 && proposalEnhancements.isEmpty()) {
+                // Single LOS, no enhancements — auto-select, no selection step needed
+                effectiveLosIds = proposalLosIds;
+                effectiveEnhIds = Collections.emptyList();
+
+                // Persist auto-selection so it's recorded
+                if (application == null) {
+                    em.getTransaction().begin();
+                    application = new Application();
+                    application.setProposal(proposal);
+                    application.setStatus("IN_PROGRESS");
+                    application.setDateStarted(Timestamp.from(Instant.now()));
+                    application.setSelectedLosIds(proposalLosIds.stream()
+                            .map(String::valueOf).collect(Collectors.joining(",")));
+                    application.setSelectedEnhancementIds("");
+                    em.persist(application);
+                    em.getTransaction().commit();
+                } else if (!application.hasServiceSelections()) {
+                    em.getTransaction().begin();
+                    application.setSelectedLosIds(proposalLosIds.stream()
+                            .map(String::valueOf).collect(Collectors.joining(",")));
+                    application.setSelectedEnhancementIds("");
+                    em.merge(application);
+                    em.getTransaction().commit();
+                }
+            } else if (application == null || !application.hasServiceSelections()) {
+                // Multiple LOSs or enhancements — show selection step
+                showServiceSelection = true;
+                effectiveLosIds = proposalLosIds; // won't be used for section query since selection is shown
+                effectiveEnhIds = Collections.emptyList();
+            } else {
+                // Fallback — use full proposal LOS list (backward compat for pre-V045 apps)
+                effectiveLosIds = proposalLosIds;
+                effectiveEnhIds = Collections.emptyList();
+            }
+
+            // Pass selection-related attributes to JSP
+            request.setAttribute("proposalLos", proposalLosList);
+            request.setAttribute("proposalEnhancements", proposalEnhancements);
+            request.setAttribute("showServiceSelection", showServiceSelection);
+            request.setAttribute("selectedLosIds", application != null ? application.getSelectedLosIds() : "");
+            request.setAttribute("selectedEnhancementIds", application != null ? application.getSelectedEnhancementIds() : "");
+
+            // Build enhancementLosMap JSON for cascade logic
+            StringBuilder enhLosJson = new StringBuilder("{");
+            boolean first = true;
+            for (Enhancement enh : proposalEnhancements) {
+                if (!first) enhLosJson.append(",");
+                first = false;
+                enhLosJson.append("\"").append(enh.getId()).append("\":[");
+                if (enh.getLosList() != null) {
+                    enhLosJson.append(enh.getLosList().stream()
+                            .map(l -> String.valueOf(l.getId()))
+                            .collect(Collectors.joining(",")));
+                }
+                enhLosJson.append("]");
+            }
+            enhLosJson.append("}");
+            request.setAttribute("enhancementLosMapJson", enhLosJson.toString());
+
+            // Load sections (only if not showing selection step)
+            List<ApplicationSection> sections = Collections.emptyList();
+            if (!showServiceSelection) {
+                sections = new ArrayList<>(loadSections(em, effectiveLosIds, effectiveEnhIds));
+
+                // Filter out enhancement-gated sections:
+                // If a section is linked to any enhancement (via applicationsectionenhancement),
+                // only show it if at least one of those enhancements was selected.
+                if (!proposalEnhancements.isEmpty()) {
+                    Set<Long> proposalEnhIds = proposalEnhancements.stream()
+                            .map(Enhancement::getId).collect(Collectors.toSet());
+                    Set<Long> selectedEnhSet = new HashSet<>(effectiveEnhIds);
+
+                    sections.removeIf(sec -> {
+                        if ("ALL".equals(sec.getScope())) return false;
+
+                        // Get this section's direct enhancement links
+                        List<Long> secEnhIds;
+                        try {
+                            secEnhIds = em.createQuery(
+                                            "SELECT e.id FROM ApplicationSection s JOIN s.enhancementList e WHERE s.id = :sId", Long.class)
+                                    .setParameter("sId", sec.getId())
+                                    .getResultList();
+                        } catch (Exception e) {
+                            return false; // keep section on error
+                        }
+
+                        // If section has no enhancement links, keep it (plain LOS-scoped section)
+                        if (secEnhIds.isEmpty()) return false;
+
+                        // If section is linked to a proposal enhancement, require it to be selected
+                        boolean linkedToProposalEnh = secEnhIds.stream().anyMatch(proposalEnhIds::contains);
+                        if (!linkedToProposalEnh) return false; // linked to other enhancements, not relevant — keep
+
+                        // Section IS linked to a proposal enhancement — only keep if that enhancement was selected
+                        return secEnhIds.stream().noneMatch(selectedEnhSet::contains);
+                    });
                 }
             }
 
@@ -162,8 +266,54 @@ public class ApplyForProposal extends HttpServlet {
                 return;
             }
 
-            // Create or get existing Application
-            Application application = proposal.getApplication();
+            // ── Service Selection action ──
+            String action = request.getParameter("action");
+            if ("selectServices".equals(action)) {
+                // Create or get existing Application (use em.find to bypass stale cache)
+                Application application = em.find(Application.class, proposal.getId());
+                if (application == null) {
+                    em.getTransaction().begin();
+                    application = new Application();
+                    application.setProposal(proposal);
+                    application.setStatus("IN_PROGRESS");
+                    application.setDateStarted(Timestamp.from(Instant.now()));
+                    em.persist(application);
+                    em.getTransaction().commit();
+                }
+
+                // Parse selected LOS IDs from checkboxes
+                String[] losIdParams = request.getParameterValues("selectedLos");
+                String losIdsCsv = (losIdParams != null)
+                        ? String.join(",", losIdParams) : "";
+
+                // Parse selected Enhancement IDs from checkboxes
+                String[] enhIdParams = request.getParameterValues("selectedEnh");
+                String enhIdsCsv = (enhIdParams != null)
+                        ? String.join(",", enhIdParams) : "";
+
+                // Validate: at least one LOS must be selected
+                if (losIdsCsv.isBlank()) {
+                    request.setAttribute("selectionError", "Please select at least one service to continue.");
+                    doGet(request, response);
+                    return;
+                }
+
+                // Persist selections
+                em.getTransaction().begin();
+                application.setSelectedLosIds(losIdsCsv);
+                application.setSelectedEnhancementIds(enhIdsCsv);
+                em.merge(application);
+                em.getTransaction().commit();
+
+                // PRG — redirect back to GET so form renders with selected sections
+                response.sendRedirect(request.getRequestURI());
+                return;
+            }
+
+            // ── Application Submit action ──
+
+            // Create or get existing Application (use em.find to bypass stale cache)
+            Application application = em.find(Application.class, proposal.getId());
             if (application == null) {
                 em.getTransaction().begin();
                 application = new Application();
@@ -174,18 +324,19 @@ public class ApplyForProposal extends HttpServlet {
                 em.getTransaction().commit();
             }
 
-            // Get all field keys for sections that apply to this proposal
-            List<Long> losIds = proposal.getLosList().stream()
-                    .map(LOS::getId).collect(Collectors.toList());
+            // Use selected LOS/Enhancement IDs if available, fall back to full proposal LOS list
+            List<Long> losIds;
+            List<Long> enhIds;
+            if (application.hasServiceSelections()) {
+                losIds = application.getSelectedLosIdList();
+                enhIds = application.getSelectedEnhancementIdList();
+            } else {
+                losIds = proposal.getLosList().stream()
+                        .map(LOS::getId).collect(Collectors.toList());
+                enhIds = Collections.emptyList();
+            }
 
-            Query fq = em.createQuery(
-                    "SELECT DISTINCT f FROM ApplicationField f " +
-                            "JOIN f.applicationSection s " +
-                            "LEFT JOIN s.losList los " +
-                            "WHERE f.suppressed = false AND s.suppressed = false " +
-                            "AND (s.scope = 'ALL' OR los.id IN :losIds)");
-            fq.setParameter("losIds", losIds);
-            List<ApplicationField> fields = fq.getResultList();
+            List<ApplicationField> fields = loadFields(em, losIds, enhIds);
 
             // Save field values
             em.getTransaction().begin();
@@ -248,6 +399,51 @@ public class ApplyForProposal extends HttpServlet {
 
         RequestDispatcher dispatcher = request.getRequestDispatcher("/WEB-INF/view/sales/applicationConfirmation.jsp");
         dispatcher.forward(request, response);
+    }
+
+    // ======================== Shared Helpers ========================
+
+    /** Load application sections matching the given LOS and Enhancement IDs. */
+    private List<ApplicationSection> loadSections(EntityManager em, List<Long> losIds, List<Long> enhIds) {
+        List<Long> safeLosIds = (losIds == null || losIds.isEmpty()) ? List.of(-1L) : losIds;
+        List<Long> safeEnhIds = (enhIds == null || enhIds.isEmpty()) ? List.of(-1L) : enhIds;
+
+        Query sq = em.createQuery(
+                "SELECT DISTINCT s FROM ApplicationSection s " +
+                        "LEFT JOIN FETCH s.fieldList " +
+                        "LEFT JOIN s.losList los " +
+                        "LEFT JOIN s.enhancementList enh " +
+                        "WHERE s.suppressed = false AND (s.scope = 'ALL' OR los.id IN :losIds OR enh.id IN :enhIds) " +
+                        "ORDER BY s.sortOrder");
+        sq.setParameter("losIds", safeLosIds);
+        sq.setParameter("enhIds", safeEnhIds);
+        List<ApplicationSection> sections = sq.getResultList();
+
+        // EclipseLink DISTINCT + JOIN FETCH can scramble @OrderBy — re-sort and remove suppressed fields
+        for (ApplicationSection sec : sections) {
+            if (sec.getFieldList() != null) {
+                sec.getFieldList().removeIf(ApplicationField::isSuppressed);
+                sec.getFieldList().sort(java.util.Comparator.comparingInt(ApplicationField::getSortOrder));
+            }
+        }
+        return sections;
+    }
+
+    /** Load application fields matching the given LOS and Enhancement IDs. */
+    private List<ApplicationField> loadFields(EntityManager em, List<Long> losIds, List<Long> enhIds) {
+        List<Long> safeLosIds = (losIds == null || losIds.isEmpty()) ? List.of(-1L) : losIds;
+        List<Long> safeEnhIds = (enhIds == null || enhIds.isEmpty()) ? List.of(-1L) : enhIds;
+
+        Query fq = em.createQuery(
+                "SELECT DISTINCT f FROM ApplicationField f " +
+                        "JOIN f.applicationSection s " +
+                        "LEFT JOIN s.losList los " +
+                        "LEFT JOIN s.enhancementList enh " +
+                        "WHERE f.suppressed = false AND s.suppressed = false " +
+                        "AND (s.scope = 'ALL' OR los.id IN :losIds OR enh.id IN :enhIds)");
+        fq.setParameter("losIds", safeLosIds);
+        fq.setParameter("enhIds", safeEnhIds);
+        return fq.getResultList();
     }
 
     private String extractGuid(HttpServletRequest request, HttpServletResponse response) throws IOException {

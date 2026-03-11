@@ -100,10 +100,26 @@
                     </c:if>
                 </div>
                 <div class="col-md-4">
-                    <small class="text-muted d-block">Lines of Service</small>
-                    <c:forEach var="los" items="${application.getProposal().getLosList()}">
-                        <span class="badge bg-primary me-1" style="font-size: 0.75rem;">${los.getDescription()}</span>
-                    </c:forEach>
+                    <c:choose>
+                        <c:when test="${not empty selectedServiceNames}">
+                            <small class="text-muted d-block">Selected Services</small>
+                            <c:forEach var="name" items="${selectedServiceNames}">
+                                <span class="badge bg-primary me-1" style="font-size: 0.75rem;">${name}</span>
+                            </c:forEach>
+                            <c:if test="${not empty selectedEnhancementNames}">
+                                <br>
+                                <c:forEach var="enhName" items="${selectedEnhancementNames}">
+                                    <span class="badge bg-info me-1 mt-1" style="font-size: 0.75rem;">${enhName}</span>
+                                </c:forEach>
+                            </c:if>
+                        </c:when>
+                        <c:otherwise>
+                            <small class="text-muted d-block">Lines of Service</small>
+                            <c:forEach var="los" items="${application.getProposal().getLosList()}">
+                                <span class="badge bg-primary me-1" style="font-size: 0.75rem;">${los.getDescription()}</span>
+                            </c:forEach>
+                        </c:otherwise>
+                    </c:choose>
                 </div>
                 <div class="col-md-2">
                     <small class="text-muted d-block">Submitted</small>

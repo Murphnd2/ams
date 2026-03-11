@@ -29,7 +29,7 @@
 | # | Feature | Priority | Status | Spec Doc | Notes |
 |---|---------|----------|--------|----------|-------|
 | 1 | Users and Roles Enhancement | CONF | ✅ Done | `ams_to_be_vision.md` §1 | Agent + Agency Manager roles built. Invitation system complete. BPO roles built. User Manager modal (V029). SSO future (D-31). |
-| 2 | Sales Portal | CONF | ✅ Done | `sales_pipeline_reference.md` | Full pipeline built and tested end-to-end. Proposal customization added (V035-V036). Raw HTML paste support for TITLE/CLOSING sections (Session 37). Application Visibility & Role Walls (V041, Session 41). AI Page Builder for custom proposal pages (Session 50). Agency-scoped TITLE/CLOSING overrides (V044, Session 51). |
+| 2 | Sales Portal | CONF | ✅ Done | `sales_pipeline_reference.md` | Full pipeline built and tested end-to-end. Proposal customization added (V035-V036). Raw HTML paste support for TITLE/CLOSING sections (Session 37). Application Visibility & Role Walls (V041, Session 41). AI Page Builder for custom proposal pages (Session 50). Agency-scoped TITLE/CLOSING overrides (V044, Session 51). Application service selections (V045), setup enhancement cascade, opportunity linked proposal creation (Session 52). |
 | 3 | Sales / Marketing Library | CONF | ✅ Done | `session_history_archive.md` (Feb 21) | Resource Library UI, Wasabi upload/download, category management, feature linking to proposals. |
 | 4 | Sequence Template Overhaul | CONF | ✅ Done | `session_history_archive.md` (Feb 19) | New drag-and-drop builder complete. Old pages preserved for cleanup. |
 | 5 | Third-Party Vendor Task Outsourcing (BPO) | CONF | ✅ Done | `bpo_feature_session_history.md` | Full cross-system architecture: push/pull API, note sync, file attachments (V033), vendor registry (V032), partnership management. Co-located and federated modes both working. |
@@ -62,7 +62,7 @@
 | T3 | Data layer rename | HIGH | ✅ Done | All cryptic names replaced. |
 | T4 | Modal servlet analysis | MED | ✅ Done | All modals mapped to servlets. |
 | T5 | Sequence builder old page cleanup | LOW | 📋 Planned | Delete old builder JSPs/servlets after new builder proven. |
-| T6 | Database migration tracking | HIGH | ✅ Done | 41 versions tracked (V001–V041). V001-V024 on all environments, V025-V037 on Demo/BPO/Master, V038 on Demo/BPO. V039-V041 code-complete. Production at V024. |
+| T6 | Database migration tracking | HIGH | ✅ Done | 45 versions tracked (V001–V045). V001-V024 on all environments, V025-V037 on Demo/BPO/Master, V038 on Demo/BPO. V039-V045 code-complete. Production at V024. |
 | T7 | Docs cleanup & consolidation | MED | ✅ Done | This audit. Session summaries consolidated. Obsolete docs flagged for deletion. |
 | T8 | Empty checklist / todo list handling | LOW | 💡 Backlog | Remove task-153 dummy workaround. Audit display chain for empty todo list safety. |
 | T9 | Refactor manual setup to dynamic LOS | CONF | 📋 Planned | `GenerateProp25` uses hardcoded `q1`–`q8` flags. Needs refactor to dynamic LOS from DB. |

@@ -95,29 +95,37 @@
         </div>
         <div class="card-body p-0">
             <c:set var="currentModule" value=""/>
+            <c:set var="hasVisibleRows" value="false"/>
             <table class="table table-sm mb-0">
                 <c:forEach var="rt" items="${pricing}">
-                    <c:if test="${rt.getModule().getId() != currentModule}">
-                        <c:set var="currentModule" value="${rt.getModule().getId()}"/>
-                        <tr class="pricing-header">
-                            <td colspan="2" class="fw-semibold py-2 px-3">
+                    <%-- Skip $0.00 rows entirely --%>
+                    <c:if test="${rt.getPrice() > 0.001}">
+                        <c:if test="${rt.getModule().getId() != currentModule}">
+                            <c:set var="currentModule" value="${rt.getModule().getId()}"/>
+                            <tr class="pricing-header">
+                                <td colspan="2" class="fw-semibold py-2 px-3">
+                                    <c:choose>
+                                        <c:when test="${not empty rt.getModule().getLos()}">${rt.getModule().getLos().getDescription()}</c:when>
+                                        <c:when test="${not empty rt.getModule().getEnhancement()}">${rt.getModule().getEnhancement().getDescription()}</c:when>
+                                        <c:otherwise>${rt.getModule().getDescription()}</c:otherwise>
+                                    </c:choose>
+                                </td>
+                            </tr>
+                        </c:if>
+                        <tr>
+                            <td class="ps-5">${rt.getPriceItem().getDescription()}</td>
+                            <td class="text-end pe-3">
                                 <c:choose>
-                                    <c:when test="${not empty rt.getModule().getLos()}">${rt.getModule().getLos().getDescription()}</c:when>
-                                    <c:when test="${not empty rt.getModule().getEnhancement()}">${rt.getModule().getEnhancement().getDescription()}</c:when>
-                                    <c:otherwise>${rt.getModule().getDescription()}</c:otherwise>
+                                    <c:when test="${rt.getPrice() < 0.02}">Included</c:when>
+                                    <c:otherwise><fmt:formatNumber value="${rt.getPrice()}" type="currency"/></c:otherwise>
                                 </c:choose>
                             </td>
                         </tr>
+                        <c:set var="hasVisibleRows" value="true"/>
                     </c:if>
-                    <tr>
-                        <td class="ps-5">${rt.getPriceItem().getDescription()}</td>
-                        <td class="text-end pe-3">
-                            <fmt:formatNumber value="${rt.getPrice()}" type="currency"/>
-                        </td>
-                    </tr>
                 </c:forEach>
-                <c:if test="${empty pricing}">
-                    <tr><td class="text-muted p-3">No pricing available for this rate/LOS combination</td></tr>
+                <c:if test="${empty pricing || hasVisibleRows == 'false'}">
+                    <tr><td class="text-muted p-3" colspan="2">No pricing available for this rate/LOS combination</td></tr>
                 </c:if>
             </table>
         </div>

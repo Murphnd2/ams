@@ -2,7 +2,7 @@
 
 > **Purpose:** Consolidated historical record of all build sessions. For current project state, see `project_backlog.md`. For current architecture, see `application_flow.md` and `entity_reference.md`.
 >
-> **Last Updated:** March 10, 2026 (Session 51)
+> **Last Updated:** March 10, 2026 (Session 52)
 
 ---
 
@@ -1750,3 +1750,53 @@ Built an inline AI assistant for generating styled HTML content blocks for propo
 - `proposalFeatures.jsp` — features visibility guard
 - `viewProposal.jsp` — features visibility guard
 - `ModuleDetail.java` — @Table annotation
+
+---
+
+## March 10, 2026 — Session 52: Application Service Selections, Setup Enhancement Cascade, Opportunity Proposal Creation
+
+### V045 Migration — Application Selected Services
+- **V045__application_selected_services.sql** — `selected_los_ids VARCHAR(500)` and `selected_enhancement_ids VARCHAR(500)` on `application` table
+- **Application.java** — new fields, comma-separated ID storage, helper methods (`getSelectedLosIdList()`, `getSelectedEnhancementIdList()`, `hasServiceSelections()`)
+
+### Application Form Service Selection Persistence
+- **ApplyForProposal.java** — stores checked LOS/Enhancement IDs as comma-separated strings on Application entity during form submission; pre-selects checkboxes on reload from saved values; fix for duplicate key error on Application INSERT (LEFT JOIN FETCH p.application in loadProposal)
+- **SaveApplicationProgress.java** — saves LOS/Enhancement selections during AJAX auto-save progress
+- **applyForProposal.jsp** — service selection checkboxes restore state from saved `selectedLosIds`/`selectedEnhancementIds`; enhancement opt-in display; fix for selections resetting on page reload
+- **ReviewApplication.java** — displays saved service selections in review view
+- **reviewApplication.jsp** — shows selected services with green check badges
+
+### Setup Modal Enhancement Cascade (enhLosMap)
+- **AmsDataGlobal.java** — new `enhLosMap` (Map<Long, List<Long>>) built from `enhancement_los` join table via JPQL; cached alongside other setup maps; refreshed in `refreshSalesData()`
+- **SetupModalData.java** — added `enhLosMap` JSON block to endpoint response, mapping enhancement ID → parent LOS IDs
+- **addActivityModal25.jsp (Setup tab)** — new `aa_filterEnhancements()` function: shows enhancement switches when at least one parent LOS is checked; hides and unchecks when no parent LOS selected; driven purely by enhLosMap (removed rateExtraMap dependency)
+
+### Opportunity Tab — Rate/LOS Selection + Linked Proposal Creation
+- **addActivityModal25.jsp (Opportunity tab)** — added Rate dropdown (`aa_oppRateId`), LOS checkbox switches (`.aa-opp-los-item`), hidden `losIds` input; cascade: agency → rate filtering via `dataset.rates`, rate → LOS filtering via `rateLosMap`; `aa_onOppRateChange()`, `aa_prepareOppSubmit()`, updated `aa_validateOpp()` (requires rate + LOS)
+- **CreateOpportunity.java** — after Opportunity + CheckList creation, creates linked Proposal with selected rate and LOS items; sets `sourceActivity` to the opportunity; uses ProposalBuilder's bidirectional M:N pattern for LOS linking
+
+### ProposalBuilder LOS Filtering Fix
+- **ProposalBuilder.java** — Rate→LOS availability map now built from `RateTable.getModule().getLos()` with proper null checks; ensures only LOSs with fee line items in the rate appear as selectable
+- **proposalDetail.jsp** — displays selected LOS items on proposal detail page
+
+### Files Created
+- `docs/migrations/V045__application_selected_services.sql`
+
+### Files Modified
+- `Application.java` — selected LOS/Enhancement ID fields + helpers
+- `ApplyForProposal.java` — service selection save/restore, duplicate key fix
+- `SaveApplicationProgress.java` — LOS/Enhancement auto-save
+- `applyForProposal.jsp` — service selection UI with state restore
+- `ReviewApplication.java` — service selection display
+- `reviewApplication.jsp` — selected services badges
+- `AmsDataGlobal.java` — enhLosMap cache
+- `SetupModalData.java` — enhLosMap JSON
+- `addActivityModal25.jsp` — Setup enhancement cascade, Opportunity Rate/LOS/Proposal
+- `CreateOpportunity.java` — linked Proposal creation
+- `ProposalBuilder.java` — Rate→LOS map fix
+- `proposalDetail.jsp` — LOS display
+- `migration_tracker.md` — V045 row
+- `schema_version_migration.sql` — V045 insert
+
+### Database Changes
+- **V045:** `selected_los_ids VARCHAR(500)` and `selected_enhancement_ids VARCHAR(500)` on `application`

@@ -16,6 +16,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -61,16 +62,29 @@ public class SaveApplicationProgress extends HttpServlet {
                 em.getTransaction().commit();
             }
 
-            // Get applicable fields
-            List<Long> losIds = proposal.getLosList().stream()
-                    .map(LOS::getId).collect(Collectors.toList());
+            // Use selected LOS/Enhancement IDs if available, fall back to full proposal LOS list
+            List<Long> losIds;
+            List<Long> enhIds;
+            if (application.hasServiceSelections()) {
+                losIds = application.getSelectedLosIdList();
+                enhIds = application.getSelectedEnhancementIdList();
+            } else {
+                losIds = proposal.getLosList().stream()
+                        .map(LOS::getId).collect(Collectors.toList());
+                enhIds = Collections.emptyList();
+            }
+
+            List<Long> safeLosIds = (losIds == null || losIds.isEmpty()) ? List.of(-1L) : losIds;
+            List<Long> safeEnhIds = (enhIds == null || enhIds.isEmpty()) ? List.of(-1L) : enhIds;
 
             Query fq = em.createQuery(
                     "SELECT DISTINCT f FROM ApplicationField f " +
                             "JOIN f.applicationSection s " +
                             "LEFT JOIN s.losList los " +
-                            "WHERE s.scope = 'ALL' OR los.id IN :losIds");
-            fq.setParameter("losIds", losIds);
+                            "LEFT JOIN s.enhancementList enh " +
+                            "WHERE (s.scope = 'ALL' OR los.id IN :losIds OR enh.id IN :enhIds)");
+            fq.setParameter("losIds", safeLosIds);
+            fq.setParameter("enhIds", safeEnhIds);
             List<ApplicationField> fields = fq.getResultList();
 
             // Save values

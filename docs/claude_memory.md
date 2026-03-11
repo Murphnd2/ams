@@ -325,7 +325,22 @@
 - **Bug fixes:** proposal URL, features visibility, ModuleDetail @Table
 - **Git sync:** Pulled `948aadb` from other workstation (AI Builder), resolved `proposalFeatures.jsp` conflict
 
+## Session 52 (2026-03-10) — Application Service Selections, Setup Enhancement Cascade, Opportunity Proposal Creation
+- **V045 migration:** `selected_los_ids` + `selected_enhancement_ids` VARCHAR(500) on `application` table
+- **Application.java:** comma-separated ID storage, helper methods (`getSelectedLosIdList()`, `hasServiceSelections()`)
+- **ApplyForProposal.java:** saves LOS/Enhancement selections to Application; restores checkboxes on reload; duplicate key fix (LEFT JOIN FETCH p.application)
+- **SaveApplicationProgress.java:** AJAX auto-save includes service selections
+- **AmsDataGlobal.enhLosMap:** Map<Long,List<Long>> built from enhancement_los join table via JPQL, cached for Setup modal
+- **SetupModalData.java:** added enhLosMap JSON — maps enhancement ID → parent LOS IDs
+- **addActivityModal25.jsp Setup tab:** `aa_filterEnhancements()` shows enhancements when parent LOS checked (pure enhLosMap, no rateExtraMap dependency)
+- **addActivityModal25.jsp Opportunity tab:** Rate dropdown + LOS checkboxes + `aa_onOppRateChange()` + `aa_prepareOppSubmit()` + validation requiring rate+LOS
+- **CreateOpportunity.java:** creates linked Proposal with selected rate + LOS after Opportunity+CheckList; sets sourceActivity=opp
+- **ProposalBuilder.java:** Rate→LOS map built from RateTable module with null checks
+- **proposalDetail.jsp:** displays proposal LOS items
+- **reviewApplication.jsp:** shows saved service selections with green check badges
+
 ## Reference
+- Last session (52): Application service selections (V045), setup enhancement cascade, opportunity proposal creation
 - Full session archive: `docs/analysis/session_history_archive.md`
 - Deployment backlog: `docs/deployment_backlog.md`
 - Migration tracker: `docs/analysis/migration_tracker.md`

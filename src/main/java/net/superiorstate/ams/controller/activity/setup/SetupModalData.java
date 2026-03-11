@@ -180,6 +180,26 @@ public class SetupModalData extends HttpServlet {
         }
         json.append("}");
 
+        // enhLosMap object — { "enhId": [losId, ...], ... }
+        // Maps each enhancement to its parent LOS IDs for LOS→Enhancement cascade
+        json.append(",\"enhLosMap\":{");
+        Map<Long, List<Long>> enhLosMap = global.getEnhLosMap();
+        if (enhLosMap != null) {
+            boolean first = true;
+            for (Map.Entry<Long, List<Long>> entry : enhLosMap.entrySet()) {
+                if (!first) json.append(",");
+                first = false;
+                json.append("\"").append(entry.getKey()).append("\":[");
+                List<Long> losIds = entry.getValue();
+                for (int i = 0; i < losIds.size(); i++) {
+                    if (i > 0) json.append(",");
+                    json.append(losIds.get(i));
+                }
+                json.append("]");
+            }
+        }
+        json.append("}");
+
         json.append("}");
         out.print(json);
         out.flush();

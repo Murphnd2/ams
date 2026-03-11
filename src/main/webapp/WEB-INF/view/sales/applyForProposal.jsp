@@ -34,6 +34,24 @@
         .progress-bar-custom { height: 6px; background: #e9ecef; border-radius: 3px; margin-bottom: 2rem; }
         .progress-bar-fill { height: 100%; background: var(--psp-accent); border-radius: 3px; transition: width 0.3s; }
         .app-footer { text-align: center; color: #999; font-size: 0.85rem; padding: 2rem 0; border-top: 1px solid #e9ecef; }
+
+        /* Service Selection */
+        .selection-card { background: white; border-radius: 8px; margin-bottom: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.08); overflow: hidden; }
+        .selection-header { background: var(--psp-primary); color: white; padding: 0.75rem 1.25rem; font-weight: 600; font-size: 1.05rem; }
+        .selection-body { padding: 1.5rem; }
+        .selection-body .form-check { padding: 0.5rem 0 0.5rem 2rem; }
+        .selection-body .form-check-input:checked { background-color: var(--psp-primary); border-color: var(--psp-primary); }
+        .selection-body .form-check-label { font-size: 1rem; }
+        .enh-requires { font-size: 0.8rem; color: #6c757d; margin-left: 0.25rem; }
+        .btn-continue { background: var(--psp-accent); border-color: var(--psp-accent); color: white; font-weight: 600; padding: 0.6rem 2.5rem; border-radius: 6px; }
+        .btn-continue:hover { background: var(--psp-primary); border-color: var(--psp-primary); color: white; }
+
+        /* Summary Bar (after selection made) */
+        .summary-bar { background: #f8f9fa; border-left: 4px solid var(--psp-primary); border-radius: 4px; padding: 0.75rem 1rem; margin-bottom: 1.5rem; }
+        .summary-bar .summary-text { font-size: 0.95rem; color: #333; }
+        .summary-bar .summary-label { font-weight: 600; color: var(--psp-primary); }
+        .modify-link { color: var(--psp-primary); text-decoration: none; font-size: 0.9rem; cursor: pointer; }
+        .modify-link:hover { text-decoration: underline; }
     </style>
 </head>
 <body>
@@ -49,192 +67,391 @@
 
 <div class="app-container">
 
-    <%-- Progress Bar --%>
-    <div class="progress-bar-custom">
-        <div class="progress-bar-fill" id="progressFill" style="width: 0%"></div>
-    </div>
+    <%-- ============================================================ --%>
+    <%-- SERVICE SELECTION PANEL (shown when user hasn't selected yet) --%>
+    <%-- ============================================================ --%>
+    <c:if test="${showServiceSelection}">
+        <form method="post" action="${pageContext.request.contextPath}/apply/${proposal.getApplicationGUID()}">
+            <input type="hidden" name="action" value="selectServices">
 
-    <form method="post" action="${pageContext.request.contextPath}/apply/${proposal.getApplicationGUID()}" id="applicationForm">
-
-        <c:forEach var="section" items="${sections}" varStatus="secStatus">
-            <div class="section-card">
-                <div class="section-header">
-                    <i class="bi bi-clipboard-check me-2"></i>${section.getName()}
+            <div class="selection-card">
+                <div class="selection-header">
+                    <i class="bi bi-list-check me-2"></i>Select Your Services
                 </div>
-                <div class="section-body">
-                    <c:if test="${section.getDescription() != null}">
-                        <div class="section-desc">${section.getDescription()}</div>
+                <div class="selection-body">
+                    <p class="text-muted mb-3">Choose which services you'd like to apply for:</p>
+
+                    <c:forEach var="los" items="${proposalLos}">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="selectedLos"
+                                   value="${los.getId()}" id="los_${los.getId()}"
+                                   onchange="updateEnhancementAvailability()"
+                                ${fn:contains(selectedLosIds, los.getId().toString()) ? 'checked' : ''}>
+                            <label class="form-check-label" for="los_${los.getId()}">${los.getDescription()}</label>
+                        </div>
+                    </c:forEach>
+
+                    <c:if test="${not empty proposalEnhancements}">
+                        <hr class="my-3">
+                        <p class="text-muted mb-2 fw-semibold" style="font-size:0.9rem;">Optional Enhancements:</p>
+                        <c:forEach var="enh" items="${proposalEnhancements}">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="selectedEnh"
+                                       value="${enh.getId()}" id="enh_${enh.getId()}"
+                                    ${fn:contains(selectedEnhancementIds, enh.getId().toString()) ? 'checked' : ''}>
+                                <label class="form-check-label" for="enh_${enh.getId()}">
+                                    ${enh.getDescription()}
+                                    <c:if test="${not empty enh.getLosList()}">
+                                        <span class="enh-requires">(requires:
+                                            <c:forEach var="reqLos" items="${enh.getLosList()}" varStatus="rs">
+                                                ${reqLos.getDescription()}<c:if test="${!rs.last}">, </c:if>
+                                            </c:forEach>)
+                                        </span>
+                                    </c:if>
+                                </label>
+                            </div>
+                        </c:forEach>
                     </c:if>
 
-                    <c:forEach var="field" items="${section.getFieldList()}">
-                        <div class="field-group">
+                    <c:if test="${not empty selectionError}">
+                        <div class="alert alert-warning mt-3 mb-0 py-2">
+                            <i class="bi bi-exclamation-triangle me-1"></i>${selectionError}
+                        </div>
+                    </c:if>
 
-                                <%-- Label (skip for BOOLEAN — label is inline) --%>
-                            <c:if test="${field.getFieldType() != 'BOOLEAN'}">
-                                <label for="${field.getFieldKey()}">
-                                        ${field.getLabel()}
-                                    <c:if test="${field.isRequired()}"><span class="required-star">*</span></c:if>
-                                </label>
+                    <div class="text-center mt-4">
+                        <button type="submit" class="btn btn-continue">
+                            Continue to Application <i class="bi bi-arrow-right ms-1"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </form>
+
+        <script>
+            var enhLosMap = ${enhancementLosMapJson};
+            function updateEnhancementAvailability() {
+                var selectedLosIds = [];
+                document.querySelectorAll('input[name="selectedLos"]:checked').forEach(function(cb) {
+                    selectedLosIds.push(parseInt(cb.value));
+                });
+                document.querySelectorAll('input[name="selectedEnh"]').forEach(function(enhCb) {
+                    var enhId = enhCb.value;
+                    var requiredLos = enhLosMap[enhId] || [];
+                    var hasParentLos = requiredLos.some(function(losId) {
+                        return selectedLosIds.indexOf(losId) !== -1;
+                    });
+                    enhCb.disabled = !hasParentLos;
+                    if (!hasParentLos && enhCb.checked) {
+                        enhCb.checked = false;
+                    }
+                    var wrapper = enhCb.closest('.form-check');
+                    if (wrapper) {
+                        wrapper.style.opacity = hasParentLos ? '1' : '0.5';
+                    }
+                });
+            }
+            document.querySelectorAll('input[name="selectedLos"]').forEach(function(cb) {
+                cb.addEventListener('change', updateEnhancementAvailability);
+            });
+            updateEnhancementAvailability();
+        </script>
+    </c:if>
+
+    <%-- ============================================================ --%>
+    <%-- APPLICATION FORM (shown after service selection or auto-select) --%>
+    <%-- ============================================================ --%>
+    <c:if test="${!showServiceSelection}">
+
+        <%-- Summary bar showing selected services (only if multiple LOSs or enhancements exist) --%>
+        <c:if test="${fn:length(proposalLos) > 1 || not empty proposalEnhancements}">
+            <div class="summary-bar" id="summaryBar">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div class="summary-text">
+                        <span class="summary-label"><i class="bi bi-check-circle me-1"></i>Applying for:</span>
+                        <c:forEach var="los" items="${proposalLos}">
+                            <c:if test="${fn:contains(selectedLosIds, los.getId().toString())}">
+                                <span class="badge bg-light text-dark border me-1">${los.getDescription()}</span>
                             </c:if>
+                        </c:forEach>
+                        <c:if test="${not empty selectedEnhancementIds && selectedEnhancementIds != ''}">
+                            <br><span class="summary-label mt-1 d-inline-block"><i class="bi bi-plus-circle me-1"></i>Enhancements:</span>
+                            <c:forEach var="enh" items="${proposalEnhancements}">
+                                <c:if test="${fn:contains(selectedEnhancementIds, enh.getId().toString())}">
+                                    <span class="badge bg-light text-dark border me-1">${enh.getDescription()}</span>
+                                </c:if>
+                            </c:forEach>
+                        </c:if>
+                    </div>
+                    <a class="modify-link text-nowrap ms-3" onclick="document.getElementById('modifyPanel').style.display='block'; document.getElementById('summaryBar').style.display='none';">
+                        Modify <i class="bi bi-chevron-down"></i>
+                    </a>
+                </div>
+            </div>
 
-                                <%-- TEXT --%>
-                            <c:if test="${field.getFieldType() == 'TEXT'}">
-                                <input type="text" class="form-control form-control-sm" id="${field.getFieldKey()}"
-                                       name="${field.getFieldKey()}" ${field.isRequired() ? 'required' : ''}
-                                       value="${defaults.containsKey(field.getFieldKey()) ? defaults.get(field.getFieldKey()) : ''}">
-                            </c:if>
-
-                                <%-- EMAIL --%>
-                            <c:if test="${field.getFieldType() == 'EMAIL'}">
-                                <input type="email" class="form-control form-control-sm" id="${field.getFieldKey()}"
-                                       name="${field.getFieldKey()}" ${field.isRequired() ? 'required' : ''}
-                                       value="${defaults.containsKey(field.getFieldKey()) ? defaults.get(field.getFieldKey()) : ''}"
-                                       placeholder="name@example.com">
-                            </c:if>
-
-                                <%-- TEXTAREA --%>
-                            <c:if test="${field.getFieldType() == 'TEXTAREA'}">
-                <textarea class="form-control form-control-sm" id="${field.getFieldKey()}"
-                          name="${field.getFieldKey()}" rows="3" ${field.isRequired() ? 'required' : ''}>${defaults.containsKey(field.getFieldKey()) ? defaults.get(field.getFieldKey()) : ''}</textarea>
-                            </c:if>
-
-                                <%-- NUMBER --%>
-                            <c:if test="${field.getFieldType() == 'NUMBER'}">
-                                <input type="number" class="form-control form-control-sm" id="${field.getFieldKey()}"
-                                       name="${field.getFieldKey()}" ${field.isRequired() ? 'required' : ''}
-                                       value="${defaults.containsKey(field.getFieldKey()) ? defaults.get(field.getFieldKey()) : ''}"
-                                       <c:if test="${field.getFieldKey() == 'fsa_health_limit' && irsLimits.containsKey('FSA_HEALTH_MAX')}">placeholder="IRS max: ${irsLimits.get('FSA_HEALTH_MAX').getFormattedAmount()}"</c:if>
-                                       <c:if test="${field.getFieldKey() == 'fsa_depcare_limit' && irsLimits.containsKey('FSA_DEPCARE_MAX')}">placeholder="IRS max: ${irsLimits.get('FSA_DEPCARE_MAX').getFormattedAmount()}"</c:if>
-                                       <c:if test="${field.getFieldKey() == 'adopt_max_benefit' && irsLimits.containsKey('ADOPTION_MAX')}">placeholder="IRS max: ${irsLimits.get('ADOPTION_MAX').getFormattedAmount()}"</c:if>
-                                >
-                            </c:if>
-
-                                <%-- DATE --%>
-                            <c:if test="${field.getFieldType() == 'DATE'}">
-                                <input type="date" class="form-control form-control-sm" id="${field.getFieldKey()}"
-                                       name="${field.getFieldKey()}" ${field.isRequired() ? 'required' : ''}
-                                       value="${defaults.containsKey(field.getFieldKey()) ? defaults.get(field.getFieldKey()) : ''}">
-                            </c:if>
-
-                                <%-- SELECT --%>
-                            <c:if test="${field.getFieldType() == 'SELECT'}">
-                                <select class="form-select form-select-sm" id="${field.getFieldKey()}"
-                                        name="${field.getFieldKey()}" ${field.isRequired() ? 'required' : ''}>
-                                    <option value="">— Select —</option>
-                                    <c:forEach var="opt" items="${field.getSelectOptionsList()}">
-                                        <c:choose>
-                                            <c:when test="${field.getFieldKey() == 'fsa_health_rollover' && opt == 'Carryover' && irsLimits.containsKey('FSA_CARRYOVER')}">
-                                                <option value="${irsLimits.get('FSA_CARRYOVER').getFormattedAmount()} Carryover"
-                                                    ${defaults.containsKey(field.getFieldKey()) && fn:contains(defaults.get(field.getFieldKey()), 'Carryover') ? 'selected' : ''}>${irsLimits.get('FSA_CARRYOVER').getFormattedAmount()} Carryover (${irsLimits.get('FSA_CARRYOVER').getPlanYear()} IRS max)</option>
-                                            </c:when>
-                                            <c:otherwise>
-                                                <option value="${opt}" ${defaults.containsKey(field.getFieldKey()) && defaults.get(field.getFieldKey()) == opt ? 'selected' : ''}>${opt}</option>
-                                            </c:otherwise>
-                                        </c:choose>
-                                    </c:forEach>
-                                </select>
-                            </c:if>
-
-                                <%-- RADIO --%>
-                            <c:if test="${field.getFieldType() == 'RADIO'}">
-                                <div>
-                                    <c:forEach var="opt" items="${field.getSelectOptionsList()}" varStatus="optStatus">
-                                        <div class="form-check form-check-inline">
-                                            <input class="form-check-input" type="radio"
-                                                   name="${field.getFieldKey()}" id="${field.getFieldKey()}_${optStatus.index}"
-                                                   value="${opt}" ${field.isRequired() ? 'required' : ''}
-                                                ${defaults.containsKey(field.getFieldKey()) && defaults.get(field.getFieldKey()) == opt ? 'checked' : ''}>
-                                            <label class="form-check-label fw-normal" for="${field.getFieldKey()}_${optStatus.index}">${opt}</label>
-                                        </div>
-                                    </c:forEach>
-                                </div>
-                            </c:if>
-
-                                <%-- BOOLEAN --%>
-                            <c:if test="${field.getFieldType() == 'BOOLEAN'}">
+            <%-- Modify selections panel (hidden by default, shown when Modify clicked) --%>
+            <div id="modifyPanel" style="display:none;">
+                <form method="post" action="${pageContext.request.contextPath}/apply/${proposal.getApplicationGUID()}">
+                    <input type="hidden" name="action" value="selectServices">
+                    <div class="selection-card">
+                        <div class="selection-header">
+                            <i class="bi bi-list-check me-2"></i>Modify Service Selections
+                        </div>
+                        <div class="selection-body">
+                            <c:forEach var="los" items="${proposalLos}">
                                 <div class="form-check">
-                                    <input class="form-check-input" type="checkbox"
-                                           name="${field.getFieldKey()}" id="${field.getFieldKey()}" value="Yes"
-                                        ${defaults.containsKey(field.getFieldKey()) && defaults.get(field.getFieldKey()) == 'Yes' ? 'checked' : ''}>
-                                    <label class="form-check-label" for="${field.getFieldKey()}">
+                                    <input class="form-check-input" type="checkbox" name="selectedLos"
+                                           value="${los.getId()}" id="mod_los_${los.getId()}"
+                                           onchange="modUpdateEnhAvail()"
+                                        ${fn:contains(selectedLosIds, los.getId().toString()) ? 'checked' : ''}>
+                                    <label class="form-check-label" for="mod_los_${los.getId()}">${los.getDescription()}</label>
+                                </div>
+                            </c:forEach>
+                            <c:if test="${not empty proposalEnhancements}">
+                                <hr class="my-3">
+                                <p class="text-muted mb-2 fw-semibold" style="font-size:0.9rem;">Optional Enhancements:</p>
+                                <c:forEach var="enh" items="${proposalEnhancements}">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="selectedEnh"
+                                               value="${enh.getId()}" id="mod_enh_${enh.getId()}"
+                                            ${fn:contains(selectedEnhancementIds, enh.getId().toString()) ? 'checked' : ''}>
+                                        <label class="form-check-label" for="mod_enh_${enh.getId()}">
+                                            ${enh.getDescription()}
+                                            <c:if test="${not empty enh.getLosList()}">
+                                                <span class="enh-requires">(requires:
+                                                    <c:forEach var="reqLos" items="${enh.getLosList()}" varStatus="rs">
+                                                        ${reqLos.getDescription()}<c:if test="${!rs.last}">, </c:if>
+                                                    </c:forEach>)
+                                                </span>
+                                            </c:if>
+                                        </label>
+                                    </div>
+                                </c:forEach>
+                            </c:if>
+                            <div class="d-flex gap-2 mt-3">
+                                <button type="submit" class="btn btn-continue btn-sm">
+                                    <i class="bi bi-check-lg me-1"></i>Update Selections
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary btn-sm"
+                                        onclick="document.getElementById('modifyPanel').style.display='none'; document.getElementById('summaryBar').style.display='block';">
+                                    Cancel
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+                <script>
+                    var modEnhLosMap = ${enhancementLosMapJson};
+                    function modUpdateEnhAvail() {
+                        var sel = [];
+                        document.querySelectorAll('#modifyPanel input[name="selectedLos"]:checked').forEach(function(cb) {
+                            sel.push(parseInt(cb.value));
+                        });
+                        document.querySelectorAll('#modifyPanel input[name="selectedEnh"]').forEach(function(enhCb) {
+                            var req = modEnhLosMap[enhCb.value] || [];
+                            var ok = req.some(function(id) { return sel.indexOf(id) !== -1; });
+                            enhCb.disabled = !ok;
+                            if (!ok && enhCb.checked) enhCb.checked = false;
+                            var w = enhCb.closest('.form-check');
+                            if (w) w.style.opacity = ok ? '1' : '0.5';
+                        });
+                    }
+                    document.querySelectorAll('#modifyPanel input[name="selectedLos"]').forEach(function(cb) {
+                        cb.addEventListener('change', modUpdateEnhAvail);
+                    });
+                    modUpdateEnhAvail();
+                </script>
+            </div>
+        </c:if>
+
+        <%-- Progress Bar --%>
+        <div class="progress-bar-custom">
+            <div class="progress-bar-fill" id="progressFill" style="width: 0%"></div>
+        </div>
+
+        <form method="post" action="${pageContext.request.contextPath}/apply/${proposal.getApplicationGUID()}" id="applicationForm">
+
+            <c:forEach var="section" items="${sections}" varStatus="secStatus">
+                <div class="section-card">
+                    <div class="section-header">
+                        <i class="bi bi-clipboard-check me-2"></i>${section.getName()}
+                    </div>
+                    <div class="section-body">
+                        <c:if test="${section.getDescription() != null}">
+                            <div class="section-desc">${section.getDescription()}</div>
+                        </c:if>
+
+                        <c:forEach var="field" items="${section.getFieldList()}">
+                            <div class="field-group">
+
+                                    <%-- Label (skip for BOOLEAN — label is inline) --%>
+                                <c:if test="${field.getFieldType() != 'BOOLEAN'}">
+                                    <label for="${field.getFieldKey()}">
                                             ${field.getLabel()}
                                         <c:if test="${field.isRequired()}"><span class="required-star">*</span></c:if>
                                     </label>
-                                </div>
-                            </c:if>
+                                </c:if>
 
-                                <%-- CHECKBOX (multi-select) --%>
-                            <c:if test="${field.getFieldType() == 'CHECKBOX'}">
-                                <div class="row">
-                                    <c:forEach var="opt" items="${field.getSelectOptionsList()}" varStatus="optStatus">
-                                        <div class="col-6">
-                                            <div class="form-check">
-                                                <input class="form-check-input" type="checkbox"
+                                    <%-- TEXT --%>
+                                <c:if test="${field.getFieldType() == 'TEXT'}">
+                                    <input type="text" class="form-control form-control-sm" id="${field.getFieldKey()}"
+                                           name="${field.getFieldKey()}" ${field.isRequired() ? 'required' : ''}
+                                           value="${defaults.containsKey(field.getFieldKey()) ? defaults.get(field.getFieldKey()) : ''}">
+                                </c:if>
+
+                                    <%-- EMAIL --%>
+                                <c:if test="${field.getFieldType() == 'EMAIL'}">
+                                    <input type="email" class="form-control form-control-sm" id="${field.getFieldKey()}"
+                                           name="${field.getFieldKey()}" ${field.isRequired() ? 'required' : ''}
+                                           value="${defaults.containsKey(field.getFieldKey()) ? defaults.get(field.getFieldKey()) : ''}"
+                                           placeholder="name@example.com">
+                                </c:if>
+
+                                    <%-- TEXTAREA --%>
+                                <c:if test="${field.getFieldType() == 'TEXTAREA'}">
+                <textarea class="form-control form-control-sm" id="${field.getFieldKey()}"
+                          name="${field.getFieldKey()}" rows="3" ${field.isRequired() ? 'required' : ''}>${defaults.containsKey(field.getFieldKey()) ? defaults.get(field.getFieldKey()) : ''}</textarea>
+                                </c:if>
+
+                                    <%-- NUMBER --%>
+                                <c:if test="${field.getFieldType() == 'NUMBER'}">
+                                    <input type="number" class="form-control form-control-sm" id="${field.getFieldKey()}"
+                                           name="${field.getFieldKey()}" ${field.isRequired() ? 'required' : ''}
+                                           value="${defaults.containsKey(field.getFieldKey()) ? defaults.get(field.getFieldKey()) : ''}"
+                                           <c:if test="${field.getFieldKey() == 'fsa_health_limit' && irsLimits.containsKey('FSA_HEALTH_MAX')}">placeholder="IRS max: ${irsLimits.get('FSA_HEALTH_MAX').getFormattedAmount()}"</c:if>
+                                           <c:if test="${field.getFieldKey() == 'fsa_depcare_limit' && irsLimits.containsKey('FSA_DEPCARE_MAX')}">placeholder="IRS max: ${irsLimits.get('FSA_DEPCARE_MAX').getFormattedAmount()}"</c:if>
+                                           <c:if test="${field.getFieldKey() == 'adopt_max_benefit' && irsLimits.containsKey('ADOPTION_MAX')}">placeholder="IRS max: ${irsLimits.get('ADOPTION_MAX').getFormattedAmount()}"</c:if>
+                                    >
+                                </c:if>
+
+                                    <%-- DATE --%>
+                                <c:if test="${field.getFieldType() == 'DATE'}">
+                                    <input type="date" class="form-control form-control-sm" id="${field.getFieldKey()}"
+                                           name="${field.getFieldKey()}" ${field.isRequired() ? 'required' : ''}
+                                           value="${defaults.containsKey(field.getFieldKey()) ? defaults.get(field.getFieldKey()) : ''}">
+                                </c:if>
+
+                                    <%-- SELECT --%>
+                                <c:if test="${field.getFieldType() == 'SELECT'}">
+                                    <select class="form-select form-select-sm" id="${field.getFieldKey()}"
+                                            name="${field.getFieldKey()}" ${field.isRequired() ? 'required' : ''}>
+                                        <option value="">— Select —</option>
+                                        <c:forEach var="opt" items="${field.getSelectOptionsList()}">
+                                            <c:choose>
+                                                <c:when test="${field.getFieldKey() == 'fsa_health_rollover' && opt == 'Carryover' && irsLimits.containsKey('FSA_CARRYOVER')}">
+                                                    <option value="${irsLimits.get('FSA_CARRYOVER').getFormattedAmount()} Carryover"
+                                                        ${defaults.containsKey(field.getFieldKey()) && fn:contains(defaults.get(field.getFieldKey()), 'Carryover') ? 'selected' : ''}>${irsLimits.get('FSA_CARRYOVER').getFormattedAmount()} Carryover (${irsLimits.get('FSA_CARRYOVER').getPlanYear()} IRS max)</option>
+                                                </c:when>
+                                                <c:otherwise>
+                                                    <option value="${opt}" ${defaults.containsKey(field.getFieldKey()) && defaults.get(field.getFieldKey()) == opt ? 'selected' : ''}>${opt}</option>
+                                                </c:otherwise>
+                                            </c:choose>
+                                        </c:forEach>
+                                    </select>
+                                </c:if>
+
+                                    <%-- RADIO --%>
+                                <c:if test="${field.getFieldType() == 'RADIO'}">
+                                    <div>
+                                        <c:forEach var="opt" items="${field.getSelectOptionsList()}" varStatus="optStatus">
+                                            <div class="form-check form-check-inline">
+                                                <input class="form-check-input" type="radio"
                                                        name="${field.getFieldKey()}" id="${field.getFieldKey()}_${optStatus.index}"
-                                                       value="${opt}"
-                                                    ${defaults.containsKey(field.getFieldKey()) && fn:contains(defaults.get(field.getFieldKey()), opt) ? 'checked' : ''}>
+                                                       value="${opt}" ${field.isRequired() ? 'required' : ''}
+                                                    ${defaults.containsKey(field.getFieldKey()) && defaults.get(field.getFieldKey()) == opt ? 'checked' : ''}>
                                                 <label class="form-check-label fw-normal" for="${field.getFieldKey()}_${optStatus.index}">${opt}</label>
                                             </div>
-                                        </div>
-                                    </c:forEach>
-                                </div>
-                            </c:if>
+                                        </c:forEach>
+                                    </div>
+                                </c:if>
 
-                                <%-- JSON (benefit plan builder) --%>
-                            <c:if test="${field.getFieldType() == 'JSON' && field.getFieldKey() == 'bill_benefit_plans'}">
-                                <div id="planBuilder">
-                                    <div id="planList"></div>
-                                    <button type="button" class="btn btn-sm btn-outline-success mt-2" onclick="addPlan()">
-                                        <i class="bi bi-plus-circle me-1"></i>Add a Benefit Plan
-                                    </button>
-                                    <c:choose>
-                                        <c:when test="${defaults.containsKey('bill_benefit_plans_escaped')}">
-                                            <input type="hidden" name="bill_benefit_plans" id="bill_benefit_plans_json"
-                                                   value="${defaults.get('bill_benefit_plans_escaped')}">
-                                        </c:when>
-                                        <c:otherwise>
-                                            <input type="hidden" name="bill_benefit_plans" id="bill_benefit_plans_json" value="[]">
-                                        </c:otherwise>
-                                    </c:choose>
-                                </div>
-                            </c:if>
+                                    <%-- BOOLEAN --%>
+                                <c:if test="${field.getFieldType() == 'BOOLEAN'}">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox"
+                                               name="${field.getFieldKey()}" id="${field.getFieldKey()}" value="Yes"
+                                            ${defaults.containsKey(field.getFieldKey()) && defaults.get(field.getFieldKey()) == 'Yes' ? 'checked' : ''}>
+                                        <label class="form-check-label" for="${field.getFieldKey()}">
+                                                ${field.getLabel()}
+                                            <c:if test="${field.isRequired()}"><span class="required-star">*</span></c:if>
+                                        </label>
+                                    </div>
+                                </c:if>
 
-                                <%-- Help Text --%>
-                            <c:if test="${field.getHelpText() != null}">
-                                <div class="help-text">${field.getHelpText()}</div>
-                            </c:if>
-                                <%-- Dynamic IRS limit help text --%>
-                            <c:if test="${field.getFieldKey() == 'fsa_health_limit' && irsLimits.containsKey('FSA_HEALTH_MAX')}">
-                                <div class="help-text">IRS maximum for ${irsLimits.get('FSA_HEALTH_MAX').getPlanYear()}: ${irsLimits.get('FSA_HEALTH_MAX').getFormattedAmount()}. Leave blank to use IRS max.</div>
-                            </c:if>
-                            <c:if test="${field.getFieldKey() == 'fsa_depcare_limit' && irsLimits.containsKey('FSA_DEPCARE_MAX')}">
-                                <div class="help-text">IRS maximum for ${irsLimits.get('FSA_DEPCARE_MAX').getPlanYear()}: ${irsLimits.get('FSA_DEPCARE_MAX').getFormattedAmount()}. Leave blank to use IRS max.</div>
-                            </c:if>
-                            <c:if test="${field.getFieldKey() == 'adopt_max_benefit' && irsLimits.containsKey('ADOPTION_MAX')}">
-                                <div class="help-text">IRS limit for ${irsLimits.get('ADOPTION_MAX').getPlanYear()}: ${irsLimits.get('ADOPTION_MAX').getFormattedAmount()}</div>
-                            </c:if>
-                            <c:if test="${field.getFieldKey() == 'transit_election_changes' && irsLimits.containsKey('TRANSIT_MONTHLY')}">
-                                <div class="help-text">Current IRS monthly limit (${irsLimits.get('TRANSIT_MONTHLY').getPlanYear()}): ${irsLimits.get('TRANSIT_MONTHLY').getFormattedAmount()}</div>
-                            </c:if>
+                                    <%-- CHECKBOX (multi-select) --%>
+                                <c:if test="${field.getFieldType() == 'CHECKBOX'}">
+                                    <div class="row">
+                                        <c:forEach var="opt" items="${field.getSelectOptionsList()}" varStatus="optStatus">
+                                            <div class="col-6">
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox"
+                                                           name="${field.getFieldKey()}" id="${field.getFieldKey()}_${optStatus.index}"
+                                                           value="${opt}"
+                                                        ${defaults.containsKey(field.getFieldKey()) && fn:contains(defaults.get(field.getFieldKey()), opt) ? 'checked' : ''}>
+                                                    <label class="form-check-label fw-normal" for="${field.getFieldKey()}_${optStatus.index}">${opt}</label>
+                                                </div>
+                                            </div>
+                                        </c:forEach>
+                                    </div>
+                                </c:if>
 
-                        </div>
-                    </c:forEach>
+                                    <%-- JSON (benefit plan builder) --%>
+                                <c:if test="${field.getFieldType() == 'JSON' && field.getFieldKey() == 'bill_benefit_plans'}">
+                                    <div id="planBuilder">
+                                        <div id="planList"></div>
+                                        <button type="button" class="btn btn-sm btn-outline-success mt-2" onclick="addPlan()">
+                                            <i class="bi bi-plus-circle me-1"></i>Add a Benefit Plan
+                                        </button>
+                                        <c:choose>
+                                            <c:when test="${defaults.containsKey('bill_benefit_plans_escaped')}">
+                                                <input type="hidden" name="bill_benefit_plans" id="bill_benefit_plans_json"
+                                                       value="${defaults.get('bill_benefit_plans_escaped')}">
+                                            </c:when>
+                                            <c:otherwise>
+                                                <input type="hidden" name="bill_benefit_plans" id="bill_benefit_plans_json" value="[]">
+                                            </c:otherwise>
+                                        </c:choose>
+                                    </div>
+                                </c:if>
+
+                                    <%-- Help Text --%>
+                                <c:if test="${field.getHelpText() != null}">
+                                    <div class="help-text">${field.getHelpText()}</div>
+                                </c:if>
+                                    <%-- Dynamic IRS limit help text --%>
+                                <c:if test="${field.getFieldKey() == 'fsa_health_limit' && irsLimits.containsKey('FSA_HEALTH_MAX')}">
+                                    <div class="help-text">IRS maximum for ${irsLimits.get('FSA_HEALTH_MAX').getPlanYear()}: ${irsLimits.get('FSA_HEALTH_MAX').getFormattedAmount()}. Leave blank to use IRS max.</div>
+                                </c:if>
+                                <c:if test="${field.getFieldKey() == 'fsa_depcare_limit' && irsLimits.containsKey('FSA_DEPCARE_MAX')}">
+                                    <div class="help-text">IRS maximum for ${irsLimits.get('FSA_DEPCARE_MAX').getPlanYear()}: ${irsLimits.get('FSA_DEPCARE_MAX').getFormattedAmount()}. Leave blank to use IRS max.</div>
+                                </c:if>
+                                <c:if test="${field.getFieldKey() == 'adopt_max_benefit' && irsLimits.containsKey('ADOPTION_MAX')}">
+                                    <div class="help-text">IRS limit for ${irsLimits.get('ADOPTION_MAX').getPlanYear()}: ${irsLimits.get('ADOPTION_MAX').getFormattedAmount()}</div>
+                                </c:if>
+                                <c:if test="${field.getFieldKey() == 'transit_election_changes' && irsLimits.containsKey('TRANSIT_MONTHLY')}">
+                                    <div class="help-text">Current IRS monthly limit (${irsLimits.get('TRANSIT_MONTHLY').getPlanYear()}): ${irsLimits.get('TRANSIT_MONTHLY').getFormattedAmount()}</div>
+                                </c:if>
+
+                            </div>
+                        </c:forEach>
+                    </div>
                 </div>
+            </c:forEach>
+
+            <%-- Submit --%>
+            <div class="text-center mt-4 mb-3">
+                <button type="button" class="btn btn-outline-secondary me-3" id="btnSave" onclick="saveProgress()">
+                    <i class="bi bi-save me-1"></i>Save Progress
+                </button>
+                <button type="submit" class="btn btn-submit" id="btnSubmit">
+                    <i class="bi bi-send me-2"></i>Submit Application
+                </button>
+                <div id="saveStatus" class="text-muted mt-2" style="font-size:0.85rem;"></div>
             </div>
-        </c:forEach>
 
-        <%-- Submit --%>
-        <div class="text-center mt-4 mb-3">
-            <button type="button" class="btn btn-outline-secondary me-3" id="btnSave" onclick="saveProgress()">
-                <i class="bi bi-save me-1"></i>Save Progress
-            </button>
-            <button type="submit" class="btn btn-submit" id="btnSubmit">
-                <i class="bi bi-send me-2"></i>Submit Application
-            </button>
-            <div id="saveStatus" class="text-muted mt-2" style="font-size:0.85rem;"></div>
-        </div>
+        </form>
 
-    </form>
+    </c:if><%-- end !showServiceSelection --%>
 
     <div class="app-footer">
         <p class="mb-0">&copy; ${pspName} &middot; Benefits Administration Services</p>
@@ -242,6 +459,8 @@
 
 </div>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+<c:if test="${!showServiceSelection}">
 <script>
     // =========================================================================
     // Conditional show/hide rules
@@ -746,5 +965,6 @@
     updateProgress();
     if (plans.length > 0) renderPlans();
 </script>
+</c:if>
 </body>
 </html>
