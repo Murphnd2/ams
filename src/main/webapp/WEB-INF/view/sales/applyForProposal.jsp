@@ -71,6 +71,8 @@
     <%-- SERVICE SELECTION PANEL (shown when user hasn't selected yet) --%>
     <%-- ============================================================ --%>
     <c:if test="${showServiceSelection}">
+        <c:set var="selLosIdsCsv" value=",${selectedLosIds},"/>
+        <c:set var="selEnhIdsCsv" value=",${selectedEnhancementIds},"/>
         <form method="post" action="${pageContext.request.contextPath}/apply/${proposal.getApplicationGUID()}">
             <input type="hidden" name="action" value="selectServices">
 
@@ -83,10 +85,11 @@
 
                     <c:forEach var="los" items="${proposalLos}">
                         <div class="form-check">
+                            <c:set var="chkLos" value=",${los.getId()},"/>
                             <input class="form-check-input" type="checkbox" name="selectedLos"
                                    value="${los.getId()}" id="los_${los.getId()}"
                                    onchange="updateEnhancementAvailability()"
-                                ${fn:contains(selectedLosIds, los.getId().toString()) ? 'checked' : ''}>
+                                ${fn:contains(selLosIdsCsv, chkLos) ? 'checked' : ''}>
                             <label class="form-check-label" for="los_${los.getId()}">${los.getDescription()}</label>
                         </div>
                     </c:forEach>
@@ -96,9 +99,10 @@
                         <p class="text-muted mb-2 fw-semibold" style="font-size:0.9rem;">Optional Enhancements:</p>
                         <c:forEach var="enh" items="${proposalEnhancements}">
                             <div class="form-check">
+                                <c:set var="chkEnh" value=",${enh.getId()},"/>
                                 <input class="form-check-input" type="checkbox" name="selectedEnh"
                                        value="${enh.getId()}" id="enh_${enh.getId()}"
-                                    ${fn:contains(selectedEnhancementIds, enh.getId().toString()) ? 'checked' : ''}>
+                                    ${fn:contains(selEnhIdsCsv, chkEnh) ? 'checked' : ''}>
                                 <label class="form-check-label" for="enh_${enh.getId()}">
                                     ${enh.getDescription()}
                                     <c:if test="${not empty enh.getLosList()}">
@@ -162,6 +166,8 @@
     <%-- APPLICATION FORM (shown after service selection or auto-select) --%>
     <%-- ============================================================ --%>
     <c:if test="${!showServiceSelection}">
+        <c:set var="losIdsCsv" value=",${selectedLosIds},"/>
+        <c:set var="enhIdsCsv" value=",${selectedEnhancementIds},"/>
 
         <%-- Summary bar showing selected services (only if multiple LOSs or enhancements exist) --%>
         <c:if test="${fn:length(proposalLos) > 1 || not empty proposalEnhancements}">
@@ -170,14 +176,16 @@
                     <div class="summary-text">
                         <span class="summary-label"><i class="bi bi-check-circle me-1"></i>Applying for:</span>
                         <c:forEach var="los" items="${proposalLos}">
-                            <c:if test="${fn:contains(selectedLosIds, los.getId().toString())}">
+                            <c:set var="chkLos" value=",${los.getId()},"/>
+                            <c:if test="${fn:contains(losIdsCsv, chkLos)}">
                                 <span class="badge bg-light text-dark border me-1">${los.getDescription()}</span>
                             </c:if>
                         </c:forEach>
                         <c:if test="${not empty selectedEnhancementIds && selectedEnhancementIds != ''}">
                             <br><span class="summary-label mt-1 d-inline-block"><i class="bi bi-plus-circle me-1"></i>Enhancements:</span>
                             <c:forEach var="enh" items="${proposalEnhancements}">
-                                <c:if test="${fn:contains(selectedEnhancementIds, enh.getId().toString())}">
+                                <c:set var="chkEnh" value=",${enh.getId()},"/>
+                                <c:if test="${fn:contains(enhIdsCsv, chkEnh)}">
                                     <span class="badge bg-light text-dark border me-1">${enh.getDescription()}</span>
                                 </c:if>
                             </c:forEach>
@@ -200,10 +208,11 @@
                         <div class="selection-body">
                             <c:forEach var="los" items="${proposalLos}">
                                 <div class="form-check">
+                                    <c:set var="chkLos" value=",${los.getId()},"/>
                                     <input class="form-check-input" type="checkbox" name="selectedLos"
                                            value="${los.getId()}" id="mod_los_${los.getId()}"
                                            onchange="modUpdateEnhAvail()"
-                                        ${fn:contains(selectedLosIds, los.getId().toString()) ? 'checked' : ''}>
+                                        ${fn:contains(losIdsCsv, chkLos) ? 'checked' : ''}>
                                     <label class="form-check-label" for="mod_los_${los.getId()}">${los.getDescription()}</label>
                                 </div>
                             </c:forEach>
@@ -212,9 +221,10 @@
                                 <p class="text-muted mb-2 fw-semibold" style="font-size:0.9rem;">Optional Enhancements:</p>
                                 <c:forEach var="enh" items="${proposalEnhancements}">
                                     <div class="form-check">
+                                        <c:set var="chkEnh" value=",${enh.getId()},"/>
                                         <input class="form-check-input" type="checkbox" name="selectedEnh"
                                                value="${enh.getId()}" id="mod_enh_${enh.getId()}"
-                                            ${fn:contains(selectedEnhancementIds, enh.getId().toString()) ? 'checked' : ''}>
+                                            ${fn:contains(enhIdsCsv, chkEnh) ? 'checked' : ''}>
                                         <label class="form-check-label" for="mod_enh_${enh.getId()}">
                                             ${enh.getDescription()}
                                             <c:if test="${not empty enh.getLosList()}">
