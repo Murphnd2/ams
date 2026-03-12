@@ -192,6 +192,16 @@ public class CreateTicket25 extends HttpServlet {
             em.persist(t);
             em.getTransaction().commit();
 
+            // Link checklist back to ticket (bidirectional, mirrors createSetup pattern)
+            em.getTransaction().begin();
+            CheckList freshChecklist = EntityLookup.getCheckListById(em, checkList.getId());
+            freshChecklist.setTicket(t);
+            em.persist(freshChecklist);
+            em.getTransaction().commit();
+
+            // Push sourced tasks to BPO vendors (after bidirectional link committed)
+            BpoTaskPushService.pushDelegatedTasks(em, freshChecklist);
+
             // Auto-attach matching questionnaire instances
             QuestionnaireService.attachMatchingQuestionnaires(em, t, "TICKET",
                     getCurrentUser().getPsp().getId());
@@ -212,7 +222,6 @@ public class CreateTicket25 extends HttpServlet {
             em.getTransaction().commit();
             createToDoList(em,c);
             CheckList freshChecklist = EntityLookup.getCheckListById(em,c.getId());
-            BpoTaskPushService.pushDelegatedTasks(em, freshChecklist);
             return freshChecklist;
         }
 

@@ -49,6 +49,7 @@ public abstract class DatabaseResetUtil {
         public String smtpPort;
         public String smtpUser;
         public String smtpPassword;
+        public String systemType;  // "PSP" or "BPO"
         /** Captured rows from schema_version: [version, description, script_name] */
         public List<Object[]> schemaVersionRows;
     }
@@ -106,6 +107,7 @@ public abstract class DatabaseResetUtil {
         s.smtpPassword = getConstant(em, "SMTP_PASSWORD");
         s.domain = getConstant(em, "WEB_PATH");
         s.summitPath = getConstant(em, "SUMMIT_PATH");
+        s.systemType = getConstant(em, "SYSTEM_TYPE");
 
         // Capture schema_version rows (if the table exists)
         try {
@@ -223,10 +225,14 @@ public abstract class DatabaseResetUtil {
         DatabaseInitializer.setSmtpUsername(s.smtpUser);
         DatabaseInitializer.setSmtpPassword(s.smtpPassword);
 
-        // Run the core initialization (caller should provide a fresh EM after truncation)
-        DatabaseInitializer.performInitialization(em);
+        // Run the correct initialization path based on captured system type
+        if ("BPO".equals(s.systemType)) {
+            DatabaseInitializer.performBpoInitialization(em);
+        } else {
+            DatabaseInitializer.performInitialization(em);
+        }
 
-        log(out, "Database re-initialized.");
+        log(out, "Database re-initialized (" + (s.systemType != null ? s.systemType : "PSP") + ").");
 
         // Restore schema_version rows
         if (s.schemaVersionRows != null && !s.schemaVersionRows.isEmpty()) {

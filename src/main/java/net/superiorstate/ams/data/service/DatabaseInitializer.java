@@ -260,6 +260,15 @@ public abstract class DatabaseInitializer {
      */
     public static void initializeBpoDataBase(HttpServletRequest request, EntityManager em) {
         retrieveFormData(request);
+        performBpoInitialization(em);
+    }
+
+    /**
+     * BPO initialization logic — creates all seed data using values already set
+     * in the static fields (via retrieveFormData or direct setter calls).
+     * Separated so DatabaseResetUtil can call it during BPO reseed without an HttpServletRequest.
+     */
+    public static void performBpoInitialization(EntityManager em) {
         System.out.println("Retrieved Data (BPO): Company Name = " + getPspName());
 
         // ── Shared foundation ──
@@ -1398,6 +1407,7 @@ public abstract class DatabaseInitializer {
             if(em.getTransaction().isActive())
                 em.getTransaction().rollback();
             Query q = em.createQuery("SELECT d FROM DoW d WHERE d.weekdayId=:id");
+            q.setParameter("id", id);
             return (DoW) q.getSingleResult();
         }
         return d;

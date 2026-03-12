@@ -112,6 +112,9 @@ public class BpoTaskPushService {
 
                 taskMap.put("sortOrder", String.valueOf(todo.getSortOrder()));
 
+                // Source task ID — enables BPO to correlate required-sequence tasks across activities
+                taskMap.put("sourceTaskId", String.valueOf(todo.getTask().getId()));
+
                 // Recurring series — push RTL id so BPO can correlate past runs
                 if (checklist.getRecurringTaskList() != null && checklist.getRecurringTaskList().getId() != null) {
                     taskMap.put("recurringSeriesId", checklist.getRecurringTaskList().getId().toString());

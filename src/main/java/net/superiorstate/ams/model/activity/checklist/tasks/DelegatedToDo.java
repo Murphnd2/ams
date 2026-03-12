@@ -79,6 +79,9 @@ public class DelegatedToDo {
     @Column(name = "recurring_series_id", length = 50)
     private String recurringSeriesId;
 
+    @Column(name = "source_task_id", length = 20)
+    private String sourceTaskId;
+
     public DelegatedToDo() {}
 
     @PrePersist
@@ -254,5 +257,13 @@ public class DelegatedToDo {
 
     public void setRecurringSeriesId(String recurringSeriesId) {
         this.recurringSeriesId = recurringSeriesId;
+    }
+
+    public String getSourceTaskId() {
+        return sourceTaskId;
+    }
+
+    public void setSourceTaskId(String sourceTaskId) {
+        this.sourceTaskId = sourceTaskId;
     }
 }

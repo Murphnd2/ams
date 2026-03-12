@@ -112,8 +112,15 @@ public class TaskReceiveApi extends HttpServlet {
                     dt.setRecurringSeriesId(recurringSeriesId);
                 }
 
+                String sourceTaskId = getJsonString(t, "sourceTaskId");
+                if (sourceTaskId != null && !sourceTaskId.isBlank()) {
+                    dt.setSourceTaskId(sourceTaskId);
+                }
+
                 // Determine status: auto-accept if toggle is ON, or if this is a
-                // recurring task that was previously accepted for this PSP
+                // recurring task that was previously accepted for this PSP,
+                // or if the same source task was previously accepted (required-sequence
+                // tasks from tickets, setups, renewals — same task doesn't need re-approval)
                 if (pspClient.isAutoAcceptTasks()) {
                     dt.setStatus("ACTIVE");
                 } else if (recurringSeriesId != null && !recurringSeriesId.isBlank()) {
@@ -123,6 +130,18 @@ public class TaskReceiveApi extends HttpServlet {
                             "AND d.pspClient.id = :clientId " +
                             "AND d.status <> 'PENDING'")
                         .setParameter("seriesId", recurringSeriesId)
+                        .setParameter("clientId", pspClient.getId())
+                        .getSingleResult();
+                    dt.setStatus(priorAccepted > 0 ? "ACTIVE" : "PENDING");
+                } else if (sourceTaskId != null && !sourceTaskId.isBlank()) {
+                    // Required-sequence task: once approved for one activity, auto-accept
+                    // all future occurrences of the same source task from this PSP
+                    long priorAccepted = (Long) em.createQuery(
+                            "SELECT COUNT(d) FROM DelegatedToDo d " +
+                            "WHERE d.sourceTaskId = :taskId " +
+                            "AND d.pspClient.id = :clientId " +
+                            "AND d.status <> 'PENDING'")
+                        .setParameter("taskId", sourceTaskId)
                         .setParameter("clientId", pspClient.getId())
                         .getSingleResult();
                     dt.setStatus(priorAccepted > 0 ? "ACTIVE" : "PENDING");

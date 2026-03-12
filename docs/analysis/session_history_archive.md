@@ -2,7 +2,7 @@
 
 > **Purpose:** Consolidated historical record of all build sessions. For current project state, see `project_backlog.md`. For current architecture, see `application_flow.md` and `entity_reference.md`.
 >
-> **Last Updated:** March 11, 2026 (Session 59)
+> **Last Updated:** March 11, 2026 (Session 60)
 
 ---
 
@@ -2068,3 +2068,40 @@ Decoupled the company Anthropic API key from `ssa.properties` so each PSP instal
 - `smtpSettingsMod25.jsp` — AI Assistant settings UI
 - `navbar25.jsp` — admin-gated chatbot visibility
 - `DatabaseInitializer.java` — AI Setup Guide skill seed
+
+---
+
+## Session 60 — BPO Auto-Approval for Required Sequences + Reseed Fixes (March 11, 2026)
+
+### Overview
+Extended BPO task auto-approval to cover required-sequence tasks (tied to tickets, setups, renewals via ServiceItem). Once a BPO approves a delegated task from a RequiredTaskList, future occurrences of the same source task from the same PSP are auto-accepted. Also fixed BPO reseed crash and ticket activity type resolution.
+
+### V049 Migration
+- **New file:** `docs/migrations/V049__delegated_todo_source_task_id.sql`
+- Added `source_task_id VARCHAR(20)` to `delegated_todo` table
+- Composite index on `(source_task_id, psp_client_id)` for auto-approval lookups
+
+### BPO Auto-Approval — Required Sequence Tasks
+- **DelegatedToDo.java** — Added `sourceTaskId` field (maps to `source_task_id` column)
+- **BpoTaskPushService.java** — Sends `sourceTaskId` (PSP's `task.getId()`) in push payload alongside existing `recurringSeriesId`
+- **TaskReceiveApi.java** — Three-tier auto-approval: (1) global auto-accept toggle, (2) recurring series match, (3) source task ID match. Any previously-approved task with the same sourceTaskId from the same PSP auto-accepts
+
+### Ticket Activity Type Fix
+- **CreateTicket25.java** — `pushDelegatedTasks()` was called inside `createCheckListForTicket()` before `ticket.setCheckList(checkList)` was committed, so `checklist.getTicket()` returned null → activity type defaulted to "CHECKLIST". Fixed by:
+  1. Removed push from `createCheckListForTicket()`
+  2. Added explicit bidirectional link: `freshChecklist.setTicket(t)` + persist (mirrors Setup pattern)
+  3. Moved push to `createTicketObject()` after bidirectional FK committed
+
+### BPO Reseed Fix
+- **DatabaseResetUtil.java** — `reinitialize()` unconditionally called PSP's `performInitialization()`, which created constants like `SUMMIT_PATH` with null values on BPO systems. Fixed by:
+  1. Added `systemType` to `SavedState`, captured from `SYSTEM_TYPE` constant
+  2. Branched `reinitialize()`: calls `performBpoInitialization(em)` for BPO, `performInitialization(em)` for PSP
+- **DatabaseInitializer.java** — Extracted `performBpoInitialization(em)` from `initializeBpoDataBase(request, em)` so reseed can call BPO init path without HttpServletRequest. Fixed missing `setParameter("id", id)` in `createDayOfWeek()` catch block.
+
+### Files Modified
+- `DelegatedToDo.java` — sourceTaskId field + getter/setter
+- `BpoTaskPushService.java` — sends sourceTaskId in task push payload
+- `TaskReceiveApi.java` — three-tier auto-approval logic (auto-accept, recurring, source task)
+- `CreateTicket25.java` — bidirectional ticket-checklist link, moved push after commit
+- `DatabaseResetUtil.java` — systemType capture, PSP/BPO branching in reinitialize()
+- `DatabaseInitializer.java` — extracted performBpoInitialization(), fixed DoW parameter bug
