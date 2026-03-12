@@ -1,0 +1,26 @@
+employee_id,employer_id,first_name,last_name,email,address1,city,state,zip,status
+2001,1001,Maria,Torres,mtorres@lakesidemfg.com,412 Lakeshore Dr,Marquette,MI,49855,Active
+2002,1001,James,Korhonen,jkorhonen@lakesidemfg.com,88 Iron St,Negaunee,MI,49866,Active
+2003,1001,Susan,Pelto,spelto@lakesidemfg.com,221 Ridge Rd,Ishpeming,MI,49849,Active
+2004,1002,Michael,Heikkinen,mheikkinen@northerntimber.com,305 Pine Hollow Ln,Houghton,MI,49931,Active
+2005,1002,Laura,Aho,laho@northerntimber.com,19 Copper Country Rd,Hancock,MI,49930,Active
+2006,1003,William,Mattson,wmattson@superiorcopper.com,742 Mineral Blvd,Calumet,MI,49913,Active
+2007,1003,Jennifer,Kangas,jkangas@superiorcopper.com,55 Mine St,Laurium,MI,49913,Active
+2008,1003,Daniel,Wirtanen,dwirtanen@superiorcopper.com,130 Red Jacket Rd,Calumet,MI,49913,Active
+2009,1004,Patricia,Seppala,pseppala@ironrangelogistics.com,67 Harbor View Dr,Sault Ste Marie,MI,49783,Active
+2010,1004,Richard,Luoma,rluoma@ironrangelogistics.com,310 Ashmun St,Sault Ste Marie,MI,49783,Active
+2011,1005,Elizabeth,Maki,emaki@peninsulahealth.org,825 W College Ave,Marquette,MI,49855,Active
+2012,1005,Christopher,Niemi,cniemi@peninsulahealth.org,48 Presque Isle Ave,Marquette,MI,49855,Active
+2013,1005,Karen,Pietila,kpietila@peninsulahealth.org,190 McClellan Ave,Marquette,MI,49855,Active
+2014,1005,Steven,Lahti,slahti@peninsulahealth.org,12 Cherry Creek Rd,Marquette,MI,49855,Active
+2015,1006,Nancy,Rajala,nrajala@greatlakeseng.com,404 Quincy St,Hancock,MI,49930,Active
+2016,1006,Kevin,Jarvi,kjarvi@greatlakeseng.com,78 Elevation St,Houghton,MI,49931,Active
+2017,1007,Angela,Saari,asaari@marquettefinancial.com,550 Washington St,Marquette,MI,49855,Active
+2018,1007,Timothy,Hakala,thakala@marquettefinancial.com,22 Front St,Marquette,MI,49855,Active
+2019,1008,Donna,Koski,dkoski@keweenawadventure.com,101 Gratiot St,Copper Harbor,MI,49918,Active
+2020,1008,Joseph,Leinonen,jleinonen@keweenawadventure.com,340 US-41,Eagle River,MI,49924,Active
+2021,1009,Kathleen,Virtanen,kvirtanen@saultschools.edu,215 Bingham Ave,Sault Ste Marie,MI,49783,Active
+2022,1009,Charles,Puumala,cpuumala@saultschools.edu,62 Spruce St,Sault Ste Marie,MI,49783,Active
+2023,1010,Margaret,Toivonen,mtoivonen@mackinacbridge.gov,88 Nicolet St,Mackinaw City,MI,49701,Active
+2024,1010,George,Ketola,gketola@mackinacbridge.gov,445 Central Ave,St Ignace,MI,49781,Active
+2025,1011,Former,Employee,former@example.com,1 Closed Rd,Houghton,MI,49931,Inactive

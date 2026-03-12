@@ -2,31 +2,81 @@
   "packageId": "hra",
   "sections": [
     {
-      "templateKey": "hra_plan_design",
-      "name": "HRA Plan Design",
+      "templateKey": "hra_benefit_allocation",
+      "name": "105 Benefit Allocation",
       "description": "Health Reimbursement Arrangement plan structure and eligible expenses.",
       "scope": "LOS",
-      "sortOrder": 1100,
+      "sortOrder": 1210,
       "fields": [
-        { "fieldKey": "hra_plan_type", "label": "HRA Plan Type", "fieldType": "SELECT", "required": false, "sortOrder": 100, "helpText": null, "selectOptions": "Integrated|Stand-Alone|Post-Deductible" },
-        { "fieldKey": "hra_eligible_expenses", "label": "Eligible Expense Categories", "fieldType": "TEXTAREA", "required": false, "sortOrder": 200, "helpText": null, "selectOptions": null },
-        { "fieldKey": "hra_annual_allowance", "label": "Annual Allowance per Employee", "fieldType": "TEXT", "required": false, "sortOrder": 300, "helpText": null, "selectOptions": null },
-        { "fieldKey": "hra_family_allowance", "label": "Annual Allowance per Family", "fieldType": "TEXT", "required": false, "sortOrder": 400, "helpText": null, "selectOptions": null },
-        { "fieldKey": "hra_proration", "label": "Prorate New Hire Allowance?", "fieldType": "RADIO", "required": false, "sortOrder": 500, "helpText": null, "selectOptions": "Yes|No" }
+        { "fieldKey": "hra_annual_ee", "label": "Annual Amount per Employee", "fieldType": "TEXT", "required": true, "sortOrder": 500, "helpText": "If flat rate, just complete this entry.", "selectOptions": null },
+        { "fieldKey": "hra_annual_ee_plus_one", "label": "Annual Amount for Two Person Coverage", "fieldType": "TEXT", "required": false, "sortOrder": 600, "helpText": null, "selectOptions": null },
+        { "fieldKey": "hra_annual_ee_plus_children", "label": "Annual Amount for Employee + Child(ren)", "fieldType": "TEXT", "required": false, "sortOrder": 700, "helpText": null, "selectOptions": null },
+        { "fieldKey": "hra_annual_family", "label": "Annual Allowance per Family", "fieldType": "TEXT", "required": false, "sortOrder": 800, "helpText": null, "selectOptions": null }
       ]
     },
     {
-      "templateKey": "hra_carryover_runout",
-      "name": "HRA Carryover & Runout",
-      "description": "Carryover rules, runout periods, and rollover options for HRA plans.",
+      "templateKey": "hra_allocation_timing",
+      "name": "HRA Allocation Timing",
+      "description": "When are funds made available.",
       "scope": "LOS",
-      "sortOrder": 1200,
+      "sortOrder": 1222,
       "fields": [
-        { "fieldKey": "hra_carryover", "label": "Carryover Unused Funds?", "fieldType": "RADIO", "required": false, "sortOrder": 100, "helpText": null, "selectOptions": "Yes|No" },
-        { "fieldKey": "hra_carryover_limit", "label": "Carryover Limit", "fieldType": "TEXT", "required": false, "sortOrder": 200, "helpText": null, "selectOptions": null },
-        { "fieldKey": "hra_carryover_cap", "label": "Lifetime Carryover Cap", "fieldType": "TEXT", "required": false, "sortOrder": 300, "helpText": null, "selectOptions": null },
-        { "fieldKey": "hra_runout_period", "label": "Runout Period After Plan Year End", "fieldType": "SELECT", "required": false, "sortOrder": 400, "helpText": null, "selectOptions": "90 Days|6 Months|12 Months" },
-        { "fieldKey": "hra_term_runout", "label": "Runout Period After Termination", "fieldType": "SELECT", "required": false, "sortOrder": 500, "helpText": null, "selectOptions": "None|30 Days|60 Days|90 Days" }
+        { "fieldKey": "hra_cash_flow", "label": "HRA Cash Flow", "fieldType": "RADIO", "required": true, "sortOrder": 100, "helpText": "How annual HRA allocation is made available.", "selectOptions": "Immediate/Lump Sum|Monthly Stipend|Quarterly Stipend" }
+      ]
+    },
+    {
+      "templateKey": "hra_reimbursement_categories",
+      "name": "Eligible Reimbursement Categories",
+      "description": "Types of costs that are to be reimburseable",
+      "scope": "LOS",
+      "sortOrder": 1225,
+      "fields": [
+        { "fieldKey": "s105_allowed_categories", "label": "Categories of Reimburseable Expenses", "fieldType": "CHECKBOX", "required": true, "sortOrder": 100, "helpText": null, "selectOptions": "Medical|Dental|Vision|Rx|OTC" }
+      ]
+    },
+    {
+      "templateKey": "hra_reimbursement_classes",
+      "name": "Eligible Reimbursement Classes",
+      "description": "Classes of medical expenses that are reimburseable",
+      "scope": "LOS",
+      "sortOrder": 1230,
+      "fields": [
+        { "fieldKey": "s105_allowed_classes", "label": "Types of Medical Expenses Allowed", "fieldType": "CHECKBOX", "required": true, "sortOrder": 100, "helpText": null, "selectOptions": "Deductible|Co-insurance|Co-pays" }
+      ]
+    },
+    {
+      "templateKey": "hra_general_design",
+      "name": "General Design Info",
+      "description": "Describe what the HRA/MERP should do.",
+      "scope": "LOS",
+      "sortOrder": 1235,
+      "fields": [
+        { "fieldKey": "s105_description", "label": "Describe What HRA Should Do", "fieldType": "TEXTAREA", "required": true, "sortOrder": 100, "helpText": null, "selectOptions": null }
+      ]
+    },
+    {
+      "templateKey": "hra_carryover_rules",
+      "name": "HRA Carryover Rules",
+      "description": "Allow any unspent funds to roll forward?",
+      "scope": "LOS",
+      "sortOrder": 1240,
+      "fields": [
+        { "fieldKey": "hra_roll_percent", "label": "Percent To Carry Over", "fieldType": "NUMBER", "required": true, "sortOrder": 200, "helpText": "Percentage of unspent current year funds that will carry forward for use in future years.  Enter a number from 0 to 100", "selectOptions": null },
+        { "fieldKey": "hra_roll_limit_annual", "label": "Annual Carryover Limit", "fieldType": "TEXT", "required": false, "sortOrder": 300, "helpText": "Maximum amount of current year remaining funds that carry forward.", "selectOptions": null },
+        { "fieldKey": "hra_roll_limit_total", "label": "Carry Over Cap", "fieldType": "TEXT", "required": false, "sortOrder": 400, "helpText": "Maximum amount of total carryover funds that can accumulate.", "selectOptions": null }
+      ]
+    },
+    {
+      "templateKey": "hra_spend_down",
+      "name": "Spend Down Information",
+      "description": "Allow access to funds after certain losses of eligibility?",
+      "scope": "LOS",
+      "sortOrder": 1245,
+      "fields": [
+        { "fieldKey": "hra_spend_allow", "label": "Spend Down Allowed", "fieldType": "RADIO", "required": true, "sortOrder": 100, "helpText": null, "selectOptions": "Yes|No" },
+        { "fieldKey": "hra_spend_limit_type", "label": "Amount Available to Spend", "fieldType": "RADIO", "required": false, "sortOrder": 200, "helpText": "Is the amount available to spend down limited or capped in any way?", "selectOptions": "All Of It/Total Amount|Limited/Percent of Total|Limited/Maximum Amount" },
+        { "fieldKey": "hra_spend_months", "label": "Months To Spend", "fieldType": "NUMBER", "required": false, "sortOrder": 300, "helpText": "Number of months to use up any remaining balance.", "selectOptions": null },
+        { "fieldKey": "hra_spend_events", "label": "Events That Allow Spend Down", "fieldType": "CHECKBOX", "required": false, "sortOrder": 400, "helpText": null, "selectOptions": "Termination (Non Retirement)|Death of Employee|Full Time to Part Time|Retirement|Disability of Employee|USERRA Leave" }
       ]
     }
   ]

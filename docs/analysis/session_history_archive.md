@@ -2,7 +2,7 @@
 
 > **Purpose:** Consolidated historical record of all build sessions. For current project state, see `project_backlog.md`. For current architecture, see `application_flow.md` and `entity_reference.md`.
 >
-> **Last Updated:** March 11, 2026 (Session 61)
+> **Last Updated:** March 12, 2026 (Session 62)
 
 ---
 
@@ -2145,3 +2145,42 @@ Extended BPO task auto-approval to cover required-sequence tasks (tied to ticket
 - `V050__bpo_default_assignee.sql` — migration script
 - `migration_tracker.md` — V050 row
 - `schema_version_migration.sql` — V050 insert
+
+---
+
+## Session 62 — March 12, 2026 — UI Polish, Starter Packages Rebuild, Universal Import Demo Data
+
+### ViewHome25 Scrollbar Fix
+- `.home-zones-row` changed from `min-height: calc(100vh - 48px)` to `height: calc(100vh - 62px)` with `overflow: hidden`
+- Added `min-height: 0` to `.home-zones-row > [class*="col-"]` for proper flex shrinking
+- Added `overflow-y: auto` to `.home-col-left` for internal scrolling
+- Updated responsive media query from `min-height: auto` to `height: auto; overflow: visible`
+- Removed inline `height: calc(100vh - 70px)` from center and right columns
+
+### ActivityDetail25 Scrollbar Fix
+- `#actLayout` height changed from `calc(100vh - 70px)` to `calc(100vh - 80px)` to account for navbar + breadcrumb bar
+
+### Starter Packages Rebuilt from Production
+Deleted all existing package JSON files and rebuilt from non-suppressed `applicationsection` and `applicationfield` data in production database. Regrouped per business requirements:
+- **Deleted:** `pretax_s125.json`, `fsa.json`, `specialty.json`
+- **New:** `s125_fsa.json` (combined 125/FSA, 7 sections), `cobra.json` (billing plan design + COBRA requirements)
+- **Rebuilt:** `general.json` (4 sections), `hra.json` (standard HRA only, excludes EBHRA/ICHRA, 7 sections), `hsa.json` (1 section), `transit_parking.json` (1 section), `billing_payments.json` (2 sections, billing plan design moved to cobra)
+- **package-index.json** updated: 7 packages (was 8)
+- All `selectOptions` normalized from comma-delimited to pipe-delimited format
+
+### Universal Import Demo Data
+- **DemoDataSeeder.java** — Added section 3R: `seedUniversalImportProviders()` creates two import providers (Wex, DPI Suite) each with 4 file types (PLAN_TYPE, EMPLOYER, EMPLOYEE, BENEFIT) and full field mappings including DATE transform rules. Idempotent via provider_code + psp_id check.
+- **DatabaseInitializer.java** — Modified to pass EMF parameter for DemoDataSeeder calls
+- **4 CSV seed files** in `src/main/resources/demo-import/`:
+  - `plan_types.csv` — 10 plan types (IDs 100–109)
+  - `employers.csv` — 11 employers (10 active + 1 inactive, IDs 1001–1011)
+  - `employees.csv` — 25 employees across all employers, UP Michigan addresses (IDs 2001–2025)
+  - `benefits.csv` — 26 benefits with mixed effective dates (IDs 3001–3026)
+- **Bug fix:** Initial CSV files used string-prefixed IDs (PT-100, ER-1001, etc.) which failed `parseIntSafe()` validation in UniversalImportService. Changed to plain integer IDs.
+
+### Files Changed
+- **Modified (7):** DatabaseInitializer.java, DemoDataSeeder.java, pspHome25.jsp, activityDetail25.jsp, package-index.json, general.json, hra.json, hsa.json, billing_payments.json, transit_parking.json
+- **New (6):** s125_fsa.json, cobra.json, plan_types.csv, employers.csv, employees.csv, benefits.csv
+- **Deleted (3):** pretax_s125.json, fsa.json, specialty.json
+
+No database changes.

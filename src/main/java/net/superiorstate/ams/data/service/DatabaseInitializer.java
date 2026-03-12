@@ -477,10 +477,10 @@ public abstract class DatabaseInitializer {
         createLinkType(em,3,"Insert Link");
 
         //Create Lines of Service — generic baseline
-        LOS losMain = createLos(em,1L,"Line of Service","LOS",psp,siLos);
+        LOS losMain = createLos(em,1L,"Flexible Spending Account","FSA",psp,siLos);
 
         //Create Enhancement — generic baseline
-        Enhancement enhMain = createEnhancement(em,1L,"Service Enhancement","ENH",psp,siEnh);
+        Enhancement enhMain = createEnhancement(em,1L,"Debit Card","CARD",psp,siEnh);
 
         //Associate Enhancement to LOS (enhancement_los join table)
         em.getTransaction().begin();
@@ -490,8 +490,9 @@ public abstract class DatabaseInitializer {
         em.getTransaction().commit();
 
         //Create Service Modules — one per LOS + one per Enhancement
-        ServiceModule smLos = createServiceModule(em,1L,"Line of Service","LOS",100,psp);
-        ServiceModule smEnh = createServiceModule(em,2L,"Service Enhancement","ENH",200,psp);
+        ServiceModule smLos = createServiceModule(em,1L,"Flexible Spending Account","FSA",100,psp);
+        ServiceModule smEnh = createServiceModule(em,2L,"Debit Card","CARD",200,psp);
+
 
         //Associate Service Modules to LOS via M:N join table
         associateModuleToLos(em,losMain,smLos);
@@ -514,11 +515,11 @@ public abstract class DatabaseInitializer {
 
         //Populate Standard Rate pricing grid
         //  Line of Service: setup $350, annual $200, monthly $5.25
-        assignRateTable(em, rate, smLos, pi1, 350.00, 100);  // setup
-        assignRateTable(em, rate, smLos, pi2, 200.00, 100);  // annual
+        assignRateTable(em, rate, smLos, pi1, 500.00, 100);  // setup
+        assignRateTable(em, rate, smLos, pi2, 400.00, 100);  // annual
         assignRateTable(em, rate, smLos, pi3, 5.25, 100);    // monthly
         //  Service Enhancement: setup $200 only
-        assignRateTable(em, rate, smEnh, pi1, 200.00, 200);  // setup
+        assignRateTable(em, rate, smEnh, pi3, 2.00, 200);  // setup
 
         //Assign Standard Rate to PSP home agency
         Agency homeAgency = SalesDAO.getAgencyFull(em, agency.getId());
@@ -563,11 +564,11 @@ public abstract class DatabaseInitializer {
         createTask(em,153L,"System Close","",psp,p,false);
 
         //Create Ticket Category + Service Item (PSP defines additional categories)
-        TicketCategory tc = createTicketCategory(em,1L,"General","GEN");
-        ServiceItem siTicket = createServiceItem(em,10,"General Ticket",1,tg3,psp);
-        siTicket = setHasRequiredTasks(em, siTicket, true);
-        setTicketCategoryOnServiceItem(em, siTicket, tc);
-        createRequiredTaskList(em,siTicket,psp);
+        //TicketCategory tc = createTicketCategory(em,1L,"Other","OTHER");
+        //ServiceItem siTicket = createServiceItem(em,10,"General Ticket",1,tg3,psp);
+        //siTicket = setHasRequiredTasks(em, siTicket, true);
+        //setTicketCategoryOnServiceItem(em, siTicket, tc);
+        //createRequiredTaskList(em,siTicket,psp);
 
         //Create Initial Time Log Entry
         createTimeEntry(em,p);
@@ -591,17 +592,17 @@ public abstract class DatabaseInitializer {
         seedFilterPresets(em, user);
 
         // ── Demo Users ──────────────────────────────────────────────────
-        seedCoreDemoUsers(em);
+        //seedCoreDemoUsers(em);
 
         // Vendor users removed — configure via admin UI (future backlog item)
         // Add PSP Constants
         addPspConstants(em);
         // Seed baseline Application Sections (Company, Contact, Address)
-        createApplicationSections(em, psp);
+        //createApplicationSections(em, psp);
         //Assign ALL-scoped ApplicationSections to LOS and Enhancement
         //  (The app does this automatically on LOS/Enhancement creation via Service Manager,
         //   but during initialization we must do it explicitly)
-        assignAllSectionsToLosAndEnhancement(em, psp, losMain, enhMain);
+        //assignAllSectionsToLosAndEnhancement(em, psp, losMain, enhMain);
         // Seed baseline Questionnaire templates
         try {
             QuestionnaireLoader.LoadResult qResult = QuestionnaireLoader.loadQuestionnaires(em, psp);
@@ -861,13 +862,13 @@ public abstract class DatabaseInitializer {
         if(getConstantByName(em,"EMAIL_FOOTER_TEXT")==null)
             createConstant(em,"EMAIL_FOOTER_TEXT",getPspName());
         if(getConstantByName(em,"USE_TIMECLOCK")==null)
-            createConstant(em,"USE_TIMECLOCK","true");
+            createConstant(em,"USE_TIMECLOCK","false");
         if(getConstantByName(em,"USE_FRIENDLY_NAMES")==null)
-            createConstant(em,"USE_FRIENDLY_NAMES","true");
+            createConstant(em,"USE_FRIENDLY_NAMES","false");
         if(getConstantByName(em,"DAYS_SINCE_WARNING")==null)
             createConstant(em,"DAYS_SINCE_WARNING","7");
         if(getConstantByName(em,"MASTER_REGISTRY_URL")==null)
-            createConstant(em,"MASTER_REGISTRY_URL","https://superiorstate.biz");
+            createConstant(em,"MASTER_REGISTRY_URL","https://superiorstate.net");
         if(getConstantByName(em,"USE_CUSTOM_LANDING")==null)
             createConstant(em,"USE_CUSTOM_LANDING","false");
     }

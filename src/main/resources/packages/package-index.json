@@ -2,25 +2,19 @@
   {
     "id": "general",
     "name": "General Employer Setup",
-    "description": "Plan year, pay cycle, signing officer, and bank information sections (scope: ALL)",
+    "description": "Company information, primary contact, mailing address, and signing officer (scope: ALL)",
     "file": "general.json"
   },
   {
-    "id": "pretax_s125",
-    "name": "Pre-Tax / Section 125",
-    "description": "Pre-tax election preferences and cafeteria plan design (scope: LOS)",
-    "file": "pretax_s125.json"
-  },
-  {
-    "id": "fsa",
-    "name": "FSA Plan Design",
-    "description": "Flexible Spending Account plan parameters and limits (scope: LOS)",
-    "file": "fsa.json"
+    "id": "s125_fsa",
+    "name": "125 / FSA Package",
+    "description": "Section 125 pre-tax elections, plan year, pay cycle, claims runout, and FSA plan designs (scope: LOS)",
+    "file": "s125_fsa.json"
   },
   {
     "id": "hra",
-    "name": "HRA Plan Design",
-    "description": "Health Reimbursement Arrangement plan structure, carryover, and runout (scope: LOS)",
+    "name": "Standard HRA Package",
+    "description": "HRA benefit allocation, reimbursement categories/classes, carryover, spend down, and design info (scope: LOS)",
     "file": "hra.json"
   },
   {
@@ -38,13 +32,13 @@
   {
     "id": "billing_payments",
     "name": "Billing & Payment Services",
-    "description": "Billing plan design, reimbursement methods, and debit card setup (scope: LOS)",
+    "description": "Reimbursement payment methods and bank information (scope: LOS)",
     "file": "billing_payments.json"
   },
   {
-    "id": "specialty",
-    "name": "Specialty Benefits",
-    "description": "LSA, Adoption Assistance, and COBRA-specific requirements (scope: LOS)",
-    "file": "specialty.json"
+    "id": "cobra",
+    "name": "COBRA Package",
+    "description": "COBRA administration requirements and billing plan design (scope: LOS)",
+    "file": "cobra.json"
   }
 ]

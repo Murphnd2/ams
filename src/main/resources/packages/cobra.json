@@ -1,0 +1,32 @@
+{
+  "packageId": "cobra",
+  "sections": [
+    {
+      "templateKey": "billing_plan_design",
+      "name": "Billing Plan Design",
+      "description": "Retiree and direct billing plan parameters.",
+      "scope": "LOS",
+      "sortOrder": 2400,
+      "fields": [
+        { "fieldKey": "billing_type", "label": "Billing Type", "fieldType": "SELECT", "required": false, "sortOrder": 100, "helpText": null, "selectOptions": "Self-Bill|List Bill" },
+        { "fieldKey": "billing_frequency", "label": "Billing Frequency", "fieldType": "SELECT", "required": false, "sortOrder": 200, "helpText": null, "selectOptions": "Monthly|Quarterly" },
+        { "fieldKey": "billing_due_day", "label": "Payment Due Day of Month", "fieldType": "TEXT", "required": false, "sortOrder": 300, "helpText": null, "selectOptions": null },
+        { "fieldKey": "billing_contact_name", "label": "Billing Contact Name", "fieldType": "TEXT", "required": false, "sortOrder": 400, "helpText": null, "selectOptions": null },
+        { "fieldKey": "billing_contact_email", "label": "Billing Contact Email", "fieldType": "EMAIL", "required": false, "sortOrder": 500, "helpText": null, "selectOptions": null }
+      ]
+    },
+    {
+      "templateKey": "cobra_requirements",
+      "name": "COBRA-Specific Requirements",
+      "description": "Termination rules, state requirements, and current COBRA activity.",
+      "scope": "LOS",
+      "sortOrder": 2300,
+      "fields": [
+        { "fieldKey": "cobra_prior_admin", "label": "Current COBRA Administrator", "fieldType": "TEXT", "required": false, "sortOrder": 100, "helpText": null, "selectOptions": null },
+        { "fieldKey": "cobra_active_count", "label": "Number of Active COBRA Participants", "fieldType": "NUMBER", "required": false, "sortOrder": 200, "helpText": null, "selectOptions": null },
+        { "fieldKey": "cobra_state_reqs", "label": "State-Specific COBRA Requirements", "fieldType": "TEXTAREA", "required": false, "sortOrder": 300, "helpText": null, "selectOptions": null },
+        { "fieldKey": "cobra_term_notice", "label": "Termination Notice Process", "fieldType": "SELECT", "required": false, "sortOrder": 400, "helpText": null, "selectOptions": "Employer Notifies|TPA Notifies|Both" }
+      ]
+    }
+  ]
+}

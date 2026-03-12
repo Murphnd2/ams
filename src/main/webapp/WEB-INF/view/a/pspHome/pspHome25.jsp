@@ -30,17 +30,20 @@
     .home-zones-row {
         display: flex;
         align-items: stretch;
-        min-height: calc(100vh - 48px);
+        height: calc(100vh - 62px);
+        overflow: hidden;
     }
     .home-zones-row > [class*="col-"] {
         display: flex;
         flex-direction: column;
+        min-height: 0;
     }
 
     /* Left column — warm amber */
     .home-col-left {
         background: #fffbf0;
         border-right: 1px solid #fde68a;
+        overflow-y: auto;
     }
     .home-col-left .zone-stripe { height: 3px; background: #f59e0b; margin-bottom: 0; }
     .home-col-left .hdr-bar, .home-col-left .card-header {
@@ -144,7 +147,7 @@
 
     /* Responsive: stack on small screens, reset tonal backgrounds */
     @media (max-width: 991px) {
-        .home-zones-row { flex-direction: column; min-height: auto; }
+        .home-zones-row { flex-direction: column; height: auto; overflow: visible; }
         .home-col-left, .home-col-center, .home-col-right {
             background: white;
             border: none;
@@ -212,13 +215,13 @@
     </div>
     </c:if>
       <%-- ************************ A C T I V I T Y   C O L U M N ********************************************************* --%>
-      <div class="col-12 col-lg-7 col-xl-6 order-first order-xl-2 d-flex flex-column home-col-center" style="height: calc(100vh - 70px); min-height: 400px;">
+      <div class="col-12 col-lg-7 col-xl-6 order-first order-xl-2 d-flex flex-column home-col-center" style="min-height: 400px;">
         <div class="zone-stripe"></div>
         <c:import url="/WEB-INF/view/a/pspHome/columns/activities/activityHeader25.jsp"></c:import>
         <c:import url="/WEB-INF/view/a/pspHome/columns/activities/activityList25.jsp"></c:import>
       </div>
       <%-- ************************ T O D O   C O L U M N ********************************************************* --%>
-      <div class="col-12 col-lg-5 col-xl-3 order-2 order-xl-first d-flex flex-column home-col-right" style="height: calc(100vh - 70px); min-height: 400px;">
+      <div class="col-12 col-lg-5 col-xl-3 order-2 order-xl-first d-flex flex-column home-col-right" style="min-height: 400px;">
         <div class="zone-stripe"></div>
         <c:import url="/WEB-INF/view/a/pspHome/columns/toDos/toDoHeader.jsp"></c:import>
         <c:import url="/WEB-INF/view/a/pspHome/columns/toDos/toDoCurrentList25.jsp"></c:import>

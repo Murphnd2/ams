@@ -1,0 +1,90 @@
+{
+  "packageId": "s125_fsa",
+  "sections": [
+    {
+      "templateKey": "pretax_elections",
+      "name": "Pre-Tax Elections",
+      "description": "Section 125 pre-tax election preferences.",
+      "scope": "LOS",
+      "sortOrder": 1510,
+      "fields": [
+        { "fieldKey": "pretax_insurances", "label": "Pre-Tax Premium Deductions", "fieldType": "CHECKBOX", "required": true, "sortOrder": 600, "helpText": "Check all types that you collect employees' share pre-tax", "selectOptions": "Major Medical|Group Dental/Vision|Group Term Life|Group Disability (STD/LTD)" },
+        { "fieldKey": "pretax_other", "label": "Other Plan Features", "fieldType": "CHECKBOX", "required": false, "sortOrder": 700, "helpText": "Check any/all that may apply", "selectOptions": "HSA|Cash In Lieu of Benefits|Vacation Buy/Sell|Flexible Credits" }
+      ]
+    },
+    {
+      "templateKey": "plan_year_eligibility",
+      "name": "Plan Year and Eligibility",
+      "description": "Benefit plan year start and end dates.",
+      "scope": "LOS",
+      "sortOrder": 1520,
+      "fields": [
+        { "fieldKey": "plan_year_start", "label": "1st Year Start Date", "fieldType": "DATE", "required": true, "sortOrder": 100, "helpText": "When will the new plan be effective?", "selectOptions": null },
+        { "fieldKey": "plan_year_end", "label": "1st Year End Date", "fieldType": "DATE", "required": true, "sortOrder": 200, "helpText": "Typically 12 months later, but 1st year could be shorter.", "selectOptions": null },
+        { "fieldKey": "plan_service", "label": "Service Time Required", "fieldType": "SELECT", "required": true, "sortOrder": 500, "helpText": "How long a new employee must have worked to be ELIGIBLE to enter the plan.", "selectOptions": "Immediate Eligibility|30 Days after Hire Date|60 Days after Hire Date|90 Days after Hire Date|6 Months after Hire Date|1 Year after Hire Date" },
+        { "fieldKey": "plan_entry", "label": "Plan Entry Frequency", "fieldType": "SELECT", "required": true, "sortOrder": 600, "helpText": "After service time has been met and someone is eligible, when an the enter the plan.", "selectOptions": "Immediately when Eligible|The 1st Paydate after Eligibility|The 1st of the month after Eligibility|The 1st day of the next Plan Year" },
+        { "fieldKey": "plan_min_age", "label": "Minimum Age of Eligible Employees", "fieldType": "NUMBER", "required": true, "sortOrder": 700, "helpText": "No younger than 18", "selectOptions": null },
+        { "fieldKey": "plan_min_hours", "label": "Min Hours Worked per Week", "fieldType": "NUMBER", "required": true, "sortOrder": 800, "helpText": "Generally avg hours required to maintain full time status (35 hours)", "selectOptions": null },
+        { "fieldKey": "plan_min_months", "label": "Seasonal Employee Min Months per Year", "fieldType": "NUMBER", "required": true, "sortOrder": 900, "helpText": "If a seasonal employee, how many months of the year needed to work to be eligible (can be no greater than 6)", "selectOptions": null },
+        { "fieldKey": "plan_exclude_union", "label": "Exclude Union Employees from this Plan", "fieldType": "RADIO", "required": true, "sortOrder": 1000, "helpText": "If you have a union and they have their own plan, then likely yes, else no.", "selectOptions": "Yes|No" }
+      ]
+    },
+    {
+      "templateKey": "pay_cycle",
+      "name": "Pay Cycle",
+      "description": "Payroll frequency and pay dates.",
+      "scope": "LOS",
+      "sortOrder": 1530,
+      "fields": [
+        { "fieldKey": "paycycle_frequency", "label": "Pay Frequency", "fieldType": "SELECT", "required": true, "sortOrder": 100, "helpText": null, "selectOptions": "Weekly|Bi-Weekly|Semi-Monthly|Monthly" },
+        { "fieldKey": "paycycle_first_paydate", "label": "First Paydate In Plan Year", "fieldType": "DATE", "required": true, "sortOrder": 200, "helpText": "Enter the 1st date of pay after your plan year begins.", "selectOptions": null },
+        { "fieldKey": "paycycle_other_have", "label": "Any Other Pay cycles", "fieldType": "RADIO", "required": true, "sortOrder": 500, "helpText": "Do you have any other pay cycles besides the one listed above.", "selectOptions": "Yes|No" },
+        { "fieldKey": "paycycle_other_describe", "label": "Describe Other Pay Cycle(s)", "fieldType": "TEXTAREA", "required": false, "sortOrder": 600, "helpText": "If other paycycles, describe below", "selectOptions": null }
+      ]
+    },
+    {
+      "templateKey": "claims_runout",
+      "name": "Claims Runout Period",
+      "description": "Runout periods, and rollover options for HRA plans.",
+      "scope": "LOS",
+      "sortOrder": 1540,
+      "fields": [
+        { "fieldKey": "plan_runout_planyear", "label": "Runout Period After Plan Year End", "fieldType": "SELECT", "required": true, "sortOrder": 100, "helpText": "Amount of time after plan year ends that a participant may submit claims incurred in the prior plan year.", "selectOptions": "90 Days (Most Common)|4 Months|5 Months|6 Months|Other" },
+        { "fieldKey": "plan_runout_term", "label": "Runout Period After Termination", "fieldType": "SELECT", "required": true, "sortOrder": 200, "helpText": "Amount of time after termination a particpant may submit claims incurred from the start of the plan year up to the date of their termination.", "selectOptions": "90 Days (Most Common)|60 Days|30 Days|Other" }
+      ]
+    },
+    {
+      "templateKey": "health_fsa",
+      "name": "Health FSA",
+      "description": "Health FSA Specific Selections",
+      "scope": "LOS",
+      "sortOrder": 1110,
+      "fields": [
+        { "fieldKey": "hfsa_maximum_type", "label": "Maximum Annual Election", "fieldType": "RADIO", "required": true, "sortOrder": 100, "helpText": null, "selectOptions": "Maximum Allowable|Limited to Amount Below" },
+        { "fieldKey": "hfsa_maximum_amount", "label": "Health FSA Election Limit", "fieldType": "NUMBER", "required": false, "sortOrder": 200, "helpText": "If less than maximum, indicate amount here.", "selectOptions": null },
+        { "fieldKey": "hfsa_include_lpfsa", "label": "Include Limited Purpose FSA Option", "fieldType": "RADIO", "required": true, "sortOrder": 300, "helpText": null, "selectOptions": "Yes|No" },
+        { "fieldKey": "hfsa_roll_or_grace", "label": "End Of Year Feature", "fieldType": "RADIO", "required": true, "sortOrder": 400, "helpText": "No additional cost for any selection.", "selectOptions": "None|Carryover|2-1/2 Month Grace Period" }
+      ]
+    },
+    {
+      "templateKey": "dependent_care_fsa",
+      "name": "Dependent Care FSA",
+      "description": "Dependent Care Specific Selections",
+      "scope": "LOS",
+      "sortOrder": 1120,
+      "fields": [
+        { "fieldKey": "dcap_grace", "label": "End of Year Option", "fieldType": "RADIO", "required": true, "sortOrder": 100, "helpText": null, "selectOptions": "None|2-1/2 Month Grace Period" }
+      ]
+    },
+    {
+      "templateKey": "pra_section",
+      "name": "PRA Section",
+      "description": "Premium Reimbursement Account Selections",
+      "scope": "LOS",
+      "sortOrder": 1130,
+      "fields": [
+        { "fieldKey": "pra_annual_election_limit", "label": "PRA Annual Election Limit", "fieldType": "NUMBER", "required": true, "sortOrder": 100, "helpText": null, "selectOptions": null }
+      ]
+    }
+  ]
+}

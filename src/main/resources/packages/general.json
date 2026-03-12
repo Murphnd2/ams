@@ -2,28 +2,46 @@
   "packageId": "general",
   "sections": [
     {
-      "templateKey": "plan_year",
-      "name": "Plan Year",
-      "description": "Benefit plan year start and end dates.",
+      "templateKey": "company_info",
+      "name": "Company Information",
+      "description": "Legal business name, EIN, and basic company details.",
       "scope": "ALL",
-      "sortOrder": 400,
+      "sortOrder": 100,
       "fields": [
-        { "fieldKey": "plan_year_start", "label": "Plan Year Start Date", "fieldType": "DATE", "required": true, "sortOrder": 100, "helpText": null, "selectOptions": null },
-        { "fieldKey": "plan_year_end", "label": "Plan Year End Date", "fieldType": "DATE", "required": true, "sortOrder": 200, "helpText": null, "selectOptions": null },
-        { "fieldKey": "plan_year_short", "label": "Short Plan Year?", "fieldType": "RADIO", "required": false, "sortOrder": 300, "helpText": null, "selectOptions": "Yes|No" },
-        { "fieldKey": "plan_year_short_start", "label": "Short Plan Year Start Date", "fieldType": "DATE", "required": false, "sortOrder": 400, "helpText": null, "selectOptions": null }
+        { "fieldKey": "company_legal_name", "label": "Legal Company Name", "fieldType": "TEXT", "required": true, "sortOrder": 100, "helpText": null, "selectOptions": null },
+        { "fieldKey": "company_structure", "label": "Company Structure", "fieldType": "SELECT", "required": true, "sortOrder": 200, "helpText": null, "selectOptions": "C-Corporation|S-Corporation|LLC|Non-Profit|Government|Partnership|Sole Proprietor" },
+        { "fieldKey": "company_ein", "label": "Employer Identification Number (EIN)", "fieldType": "TEXT", "required": true, "sortOrder": 300, "helpText": null, "selectOptions": null },
+        { "fieldKey": "company_phone", "label": "Company Phone Number", "fieldType": "TEXT", "required": true, "sortOrder": 400, "helpText": null, "selectOptions": null },
+        { "fieldKey": "company_dba", "label": "DBA (Doing Business As)", "fieldType": "TEXT", "required": false, "sortOrder": 500, "helpText": null, "selectOptions": null },
+        { "fieldKey": "company_employees", "label": "Number of Employees", "fieldType": "NUMBER", "required": false, "sortOrder": 600, "helpText": null, "selectOptions": null },
+        { "fieldKey": "company_website", "label": "Company Website", "fieldType": "TEXT", "required": false, "sortOrder": 800, "helpText": null, "selectOptions": null }
       ]
     },
     {
-      "templateKey": "pay_cycle",
-      "name": "Pay Cycle",
-      "description": "Payroll frequency and pay dates.",
+      "templateKey": "primary_contact",
+      "name": "Primary Contact",
+      "description": "Main point of contact for benefits administration.",
       "scope": "ALL",
-      "sortOrder": 500,
+      "sortOrder": 200,
       "fields": [
-        { "fieldKey": "pay_frequency", "label": "Pay Frequency", "fieldType": "SELECT", "required": true, "sortOrder": 100, "helpText": null, "selectOptions": "Weekly|Bi-Weekly|Semi-Monthly|Monthly" },
-        { "fieldKey": "pay_day", "label": "Pay Day", "fieldType": "TEXT", "required": false, "sortOrder": 200, "helpText": null, "selectOptions": null },
-        { "fieldKey": "first_pay_date", "label": "First Pay Date of Plan Year", "fieldType": "DATE", "required": false, "sortOrder": 300, "helpText": null, "selectOptions": null }
+        { "fieldKey": "contact_first_name", "label": "Contact First Name", "fieldType": "TEXT", "required": true, "sortOrder": 200, "helpText": null, "selectOptions": null },
+        { "fieldKey": "contact_last_name", "label": "Contact Last Name", "fieldType": "TEXT", "required": true, "sortOrder": 300, "helpText": null, "selectOptions": null },
+        { "fieldKey": "contact_title", "label": "Title", "fieldType": "TEXT", "required": false, "sortOrder": 400, "helpText": null, "selectOptions": null },
+        { "fieldKey": "contact_email", "label": "Email Address", "fieldType": "EMAIL", "required": true, "sortOrder": 500, "helpText": null, "selectOptions": null }
+      ]
+    },
+    {
+      "templateKey": "mailing_address",
+      "name": "Mailing Address",
+      "description": "Company mailing address for correspondence.",
+      "scope": "ALL",
+      "sortOrder": 300,
+      "fields": [
+        { "fieldKey": "address_street1", "label": "Street Address Line 1", "fieldType": "TEXT", "required": true, "sortOrder": 100, "helpText": null, "selectOptions": null },
+        { "fieldKey": "address_street2", "label": "Street Address Line 2", "fieldType": "TEXT", "required": false, "sortOrder": 200, "helpText": null, "selectOptions": null },
+        { "fieldKey": "address_city", "label": "City", "fieldType": "TEXT", "required": true, "sortOrder": 300, "helpText": null, "selectOptions": null },
+        { "fieldKey": "address_state", "label": "State", "fieldType": "TEXT", "required": true, "sortOrder": 400, "helpText": null, "selectOptions": null },
+        { "fieldKey": "address_zip", "label": "ZIP Code", "fieldType": "TEXT", "required": true, "sortOrder": 500, "helpText": null, "selectOptions": null }
       ]
     },
     {
@@ -31,25 +49,10 @@
       "name": "Signing Officer",
       "description": "Authorized signer for plan documents.",
       "scope": "ALL",
-      "sortOrder": 600,
+      "sortOrder": 1550,
       "fields": [
         { "fieldKey": "signer_name", "label": "Signing Officer Name", "fieldType": "TEXT", "required": true, "sortOrder": 100, "helpText": null, "selectOptions": null },
-        { "fieldKey": "signer_title", "label": "Title", "fieldType": "TEXT", "required": true, "sortOrder": 200, "helpText": null, "selectOptions": null },
-        { "fieldKey": "signer_email", "label": "Email Address", "fieldType": "EMAIL", "required": false, "sortOrder": 300, "helpText": null, "selectOptions": null },
-        { "fieldKey": "signer_phone", "label": "Phone Number", "fieldType": "TEXT", "required": false, "sortOrder": 400, "helpText": null, "selectOptions": null }
-      ]
-    },
-    {
-      "templateKey": "bank_information",
-      "name": "Bank Information",
-      "description": "Banking details for employer contributions and reimbursements.",
-      "scope": "ALL",
-      "sortOrder": 700,
-      "fields": [
-        { "fieldKey": "bank_name", "label": "Bank Name", "fieldType": "TEXT", "required": false, "sortOrder": 100, "helpText": null, "selectOptions": null },
-        { "fieldKey": "bank_routing", "label": "Routing Number", "fieldType": "TEXT", "required": false, "sortOrder": 200, "helpText": null, "selectOptions": null },
-        { "fieldKey": "bank_account", "label": "Account Number", "fieldType": "TEXT", "required": false, "sortOrder": 300, "helpText": null, "selectOptions": null },
-        { "fieldKey": "bank_account_type", "label": "Account Type", "fieldType": "SELECT", "required": false, "sortOrder": 400, "helpText": null, "selectOptions": "Checking|Savings" }
+        { "fieldKey": "signer_title", "label": "Title", "fieldType": "TEXT", "required": true, "sortOrder": 200, "helpText": null, "selectOptions": null }
       ]
     }
   ]

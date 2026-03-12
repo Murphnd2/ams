@@ -182,7 +182,7 @@
 
     /* Desktop: side-by-side flex panels */
     @media (min-width: 1200px) {
-      #actLayout { display: flex; flex-wrap: nowrap; height: calc(100vh - 70px); overflow: hidden; }
+      #actLayout { display: flex; flex-wrap: nowrap; height: calc(100vh - 80px); overflow: hidden; }
       #panelLeft, #panelCenter, #panelRight { box-sizing: border-box; }
       #panelLeft { display: flex; flex-direction: column; overflow: hidden; min-width: 180px; flex: 0 0 22%; }
       #panelCenter { overflow: hidden auto; min-width: 200px; flex: 1 1 auto; }

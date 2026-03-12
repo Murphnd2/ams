@@ -31,6 +31,9 @@ import net.superiorstate.ams.model.sales.application.ApplicationSection;
 import net.superiorstate.ams.model.sales.application.ApplicationField;
 import net.superiorstate.ams.model.sales.application.ApplicationFieldValue;
 import net.superiorstate.ams.model.sales.offering.*;
+import net.superiorstate.ams.model.imports.ImportFieldMapping;
+import net.superiorstate.ams.model.imports.ImportFileType;
+import net.superiorstate.ams.model.imports.ImportProvider;
 import net.superiorstate.ams.model.summit.archive.Benefit;
 import net.superiorstate.ams.model.summit.archive.Employee;
 import net.superiorstate.ams.model.summit.archive.Employer;
@@ -146,8 +149,13 @@ public abstract class DemoDataSeeder {
         //       auto-creates TITLE, FEATURES, PRICING, CLOSING on first visit.
 
         // 3P — BPO Partnership
-        System.out.println("  Section 3P: BPO Partnership");
-        seedBpoPartnership(em, psp);
+        //System.out.println("  Section 3P: BPO Partnership");
+        //seedBpoPartnership(em, psp);
+        //em.clear();
+
+        // 3R — Universal Import Providers
+        System.out.println("  Section 3R: Universal Import Providers");
+        seedUniversalImportProviders(em, psp);
         em.clear();
 
         // Close initialization checklist
@@ -286,16 +294,16 @@ public abstract class DemoDataSeeder {
         Address agencyAddr = seedAddress(em, "2000 Technology Drive", "Suite 300",
                 "Traverse City", "MI", "49684");
         Person agencyManager = seedPerson(em, "Sarah", "Mitchell", "Agency Owner",
-                "s.mitchell@accelvantage.com", "231-555-0100", agencyAddr, psp);
+                "s.mitchell@prevantage.com", "231-555-0100", agencyAddr, psp);
 
         // Create Demo Agency (id=15)
         Agency demoAgency = DatabaseInitializer.createAgency(em, 15L,
-                "AccelVantage Benefits", "231-555-0100", "38-4001234",
+                "PreVantage Benefits", "231-555-0100", "38-4001234",
                 agencyAddr, agencyManager, psp);
 
         // Create sales agent person and add to agency
         Person salesAgent = seedPerson(em, "James", "Rivera", "Sales Representative",
-                "agent@pspdemo.com", "231-555-0101", agencyAddr, psp);
+                "j.rivera@prevantage.com", "231-555-0101", agencyAddr, psp);
         em.getTransaction().begin();
         demoAgency.getAgentList().add(salesAgent);
         em.merge(demoAgency);
@@ -602,7 +610,7 @@ public abstract class DemoDataSeeder {
         LocalDate today = LocalDate.now();
 
         // Single-task reminders
-        seedStandaloneChecklist(em, "Wish Bob a Happy 50th!", Date.valueOf(today.plusDays(3)),
+        seedStandaloneChecklist(em, "Wish Bob a Happy 50th!", Date.valueOf(today.plusDays(0)),
                 adminPerson, psp, new String[]{"Call Bob and wish him a happy 50th birthday"});
 
         seedStandaloneChecklist(em, "Submit Q2 Compliance Report", Date.valueOf(today.plusDays(14)),
@@ -660,7 +668,7 @@ public abstract class DemoDataSeeder {
         Person pWalsh = findPersonByEmail(em, "patricia.walsh@meridiangroup.com");
 
         // Ticket 1 — Update Bank Account (pre-seeded employee)
-        Ticket t1 = seedTicket(em, "Meridian Group — Update Bank Account",
+        Ticket t1 = seedTicket(em, "Patricia Walsh",
                 "Participant Patricia Walsh requesting update to direct deposit banking information on file.",
                 pWalsh, adminPerson, adminPerson, cmEmail, siBanking,
                 Date.valueOf(today.plusDays(5)), false, psp, null);
@@ -680,7 +688,7 @@ public abstract class DemoDataSeeder {
         Person robertPerson = seedPerson(em, "Robert", "Hartley", "Plan Participant",
                 "r.hartley@personal.com", "555-867-5309", null, psp);
 
-        Ticket t2 = seedTicket(em, "Robert Hartley — Reimbursement Status Inquiry",
+        Ticket t2 = seedTicket(em, "Robert Hartley",
                 "Participant requesting status update on FSA reimbursement claim submitted approximately 3 weeks ago. Has not received payment or denial notice.",
                 robertPerson, adminPerson, adminPerson, cmPhone, siGeneral,
                 Date.valueOf(today.plusDays(2)), false, psp, new String[]{
@@ -1381,6 +1389,124 @@ public abstract class DemoDataSeeder {
                 "Load/Update Benefits in Summit",
                 "Send COBRA Renewal Complete Message"
         };
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    //  3R — UNIVERSAL IMPORT PROVIDERS
+    // ═══════════════════════════════════════════════════════════════
+
+    private static void seedUniversalImportProviders(EntityManager em, PSP psp) {
+        seedImportProvider(em, psp, "Wex", "WEX", "Wex Health — FSA, HRA, HSA, and COBRA administration platform");
+        seedImportProvider(em, psp, "DPI Suite", "DPI", "DataPath Inc — benefits administration and compliance suite");
+    }
+
+    private static void seedImportProvider(EntityManager em, PSP psp,
+                                            String name, String code, String description) {
+        // Idempotency: skip if provider code already exists for this PSP
+        Long existing = em.createQuery(
+                "SELECT COUNT(p) FROM ImportProvider p WHERE p.providerCode = :code AND p.pspId = :pspId",
+                Long.class)
+                .setParameter("code", code)
+                .setParameter("pspId", psp.getId())
+                .getSingleResult();
+        if (existing > 0) {
+            System.out.println("    ⏭ Import provider '" + code + "' already exists, skipping");
+            return;
+        }
+
+        // Create provider
+        em.getTransaction().begin();
+        ImportProvider provider = new ImportProvider();
+        provider.setProviderName(name);
+        provider.setProviderCode(code);
+        provider.setDescription(description);
+        provider.setActive(true);
+        provider.setPspId(psp.getId());
+        em.persist(provider);
+        em.getTransaction().commit();
+        System.out.println("    ✓ Import provider: " + name + " (" + code + ")");
+
+        // Create 4 file types with field mappings (identical for both providers)
+        seedImportFileType(em, provider, "Plan Types", "PLAN_TYPE", 10,
+                "Plan type master list — maps external plan codes to AMS service items",
+                new String[][]{
+                        {"plan_type_id", "plan_type_id", "true", "true", null},
+                        {"plan_name",    "name",         "true", "false", null},
+                        {"plan_code",    "code",         "false","false", null}
+                });
+
+        seedImportFileType(em, provider, "Employers", "EMPLOYER", 20,
+                "Employer/organization master — company name, contact, and identifiers",
+                new String[][]{
+                        {"employer_id",   "employer_id",   "true", "true", null},
+                        {"employer_name", "employer_name", "true", "false", null},
+                        {"contact_name",  "contact_name",  "false","false", null},
+                        {"email",         "email",         "false","false", null},
+                        {"phone",         "phone",         "false","false", null},
+                        {"status",        "status",        "false","false", null}
+                });
+
+        seedImportFileType(em, provider, "Employees", "EMPLOYEE", 30,
+                "Employee/participant roster — demographics and employer linkage",
+                new String[][]{
+                        {"employee_id",  "employee_id",  "true", "true", null},
+                        {"employer_id",  "employer_id",  "true", "false", null},
+                        {"first_name",   "first_name",   "true", "false", null},
+                        {"last_name",    "last_name",    "true", "false", null},
+                        {"email",        "email",        "false","false", null},
+                        {"address1",     "address1",     "false","false", null},
+                        {"city",         "city",         "false","false", null},
+                        {"state",        "state",        "false","false", null},
+                        {"zip",          "zip",          "false","false", null},
+                        {"status",       "status",       "false","false", null}
+                });
+
+        seedImportFileType(em, provider, "Benefits", "BENEFIT", 40,
+                "Benefit enrollment — links employees to plan types with effective dates",
+                new String[][]{
+                        {"benefit_id",      "benefit_id",      "true", "true", null},
+                        {"employer_id",     "employer_id",     "true", "false", null},
+                        {"plan_type_id",    "plan_type_id",    "true", "false", null},
+                        {"plan_name",       "plan_name",       "true", "false", null},
+                        {"effective_date",  "effective_date",  "false","false", "DATE:MM/dd/yyyy"},
+                        {"termination_date","termination_date","false","false", "DATE:MM/dd/yyyy"},
+                        {"status",          "status",          "false","false", null}
+                });
+    }
+
+    /**
+     * Creates an ImportFileType and its field mappings.
+     * @param mappings array of {sourceColumn, canonicalField, isRequired, isKey, transformRule}
+     */
+    private static void seedImportFileType(EntityManager em, ImportProvider provider,
+                                            String label, String targetEntity, int sortOrder,
+                                            String description, String[][] mappings) {
+        em.getTransaction().begin();
+        ImportFileType fileType = new ImportFileType();
+        fileType.setProvider(provider);
+        fileType.setFileLabel(label);
+        fileType.setTargetEntity(targetEntity);
+        fileType.setFileFormat("CSV");
+        fileType.setSortOrder(sortOrder);
+        fileType.setRequired(true);
+        fileType.setDescription(description);
+        em.persist(fileType);
+        em.flush();  // ensure file_type_id assigned before FK references
+        em.getTransaction().commit();
+
+        for (String[] m : mappings) {
+            em.getTransaction().begin();
+            ImportFieldMapping mapping = new ImportFieldMapping();
+            mapping.setFileType(fileType);
+            mapping.setSourceColumn(m[0]);
+            mapping.setCanonicalField(m[1]);
+            mapping.setRequired("true".equals(m[2]));
+            mapping.setKey("true".equals(m[3]));
+            mapping.setTransformRule(m[4]);
+            em.persist(mapping);
+            em.getTransaction().commit();
+        }
+        System.out.println("      ✓ File type: " + label + " (" + targetEntity + ") — " + mappings.length + " mappings");
     }
 
 }
