@@ -16,7 +16,7 @@ Tracks database schema versions across environments.
 | BPO | bpo.superiorstate.biz | beta_ssa | BPO instance (V038, initialized, release V0.37.0) |
 | Master | master.superiorstate.biz | beta_ssa | Snapshot v8 (V037, stopped) |
 
-## Current Highest Version: V050
+## Current Highest Version: V053
 
 ## Dev Baseline
 
@@ -82,6 +82,9 @@ Individual migration scripts are no longer stored in the repo. The baseline dump
 | V048 | Universal import system tables and seed data | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
 | V049 | Add source_task_id to delegated_todo for required-sequence auto-approval | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
 | V050 | BPO default assignee per PSP client | ⬜ | ⬜ | ⬜ | ✅ | ✅ | ✅ | ⬜ |
+| V051 | Import ID mapping cross-reference table | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
+| V052 | Import run log cross-reference tracking columns | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
+| V053 | Interactive import enhancements: update mode, mapping status, FK flags | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
 
 ## Notes
 
@@ -102,6 +105,9 @@ Individual migration scripts are no longer stored in the repo. The baseline dump
 - V033 adds todo_note_id FK column to the weblink table, enabling file attachments on BPO task notes. Follows the same pattern as email_id FK for email attachments.
 - Demo PSP, BPO, and Master environments upgraded to V037 via release V0.37.0 on March 4, 2026. Master snapshot v8 (`SSA-Master-Base-v8-2026-03-04`).
 - Production remains at V024 and is intentionally isolated from conference demo infrastructure.
+- V051 creates the import_id_mapping cross-reference table for multi-provider ID resolution. Maps (provider_id, entity_type, external_id) → internal_id with is_primary flag for transition scenarios. Includes back-fill from existing archive data (Summit provider assumed). Requires updated WAR with ImportIdMapping entity, ImportIdResolver class, and updated SummitImportService/UniversalImportService.
+- V052 adds xref_resolved, pk_allocated, and mappings_recorded INT columns to import_run_log for tracking cross-reference resolution metrics during import runs. Requires updated WAR with ImportRunLog entity fields.
+- V053 adds update_mode and mapping_status columns to import_file_type; adds is_fk and fk_entity_type columns to import_field_mapping. Part of Phase A (Provider Setup Rework) — enables sample-file-driven column mapping with PK/FK flagging and readiness status tracking. Requires updated WAR with ImportFileType/ImportFieldMapping entity fields and reworked ProviderSetup servlet.
 - V034 adds nullable template_key VARCHAR(50) to applicationsection with a unique index scoped to (template_key, psp_id). Used for starter package duplicate detection. NULL values (manual/seeded sections) are unaffected by the unique constraint.
 - V035 adds nullable headline VARCHAR(200) to feature table for short punchy summary text. Widens description from VARCHAR(500) to VARCHAR(2000) for paragraph content. Part of the proposal customization feature (feature sales blurb upgrade).
 - V036 creates the proposal_section table for composable proposal content per PSP. Section types: TITLE, PRICING, FEATURES, CLOSING, CUSTOM. Supports HTML content with merge tokens, sort ordering, and active/inactive toggling.

@@ -2184,3 +2184,123 @@ Deleted all existing package JSON files and rebuilt from non-suppressed `applica
 - **Deleted (3):** pretax_s125.json, fsa.json, specialty.json
 
 No database changes.
+
+---
+
+## Session 63 — March 12, 2026 — Import Cross-Reference System (V051-V052)
+
+Built a multi-provider cross-reference resolution system for the import pipeline. The `import_id_mapping` table maps external IDs from any provider to internal AMS IDs, enabling multiple TPA platforms to import overlapping data without PK conflicts. Completed in 5 phases.
+
+### V051 Migration — Import ID Mapping Table
+
+- **New file:** `docs/migrations/V051__import_id_mapping.sql`
+- Creates `import_id_mapping` table: provider_id (FK), entity_type, external_id, internal_id, is_primary, created_at, updated_at
+- Unique index on (provider_id, entity_type, external_id)
+- Index on (entity_type, internal_id) for reverse lookups
+
+### V052 Migration — XRef Tracking on Run Log
+
+- **New file:** `docs/migrations/V052__import_run_log_xref_tracking.sql`
+- Adds `xref_resolved`, `pk_allocated`, `mappings_recorded` INT columns to `import_run_log`
+
+### Phase 1: Entity + Resolver
+
+- **ImportIdMapping.java** (`model/imports/`) — JPA entity for cross-reference mappings
+- **ImportIdResolver.java** (`data/resolver/`) — Static utility methods:
+  - `resolveEntity()` — provider xref → direct match → null chain
+  - `resolvePlanType()` — cascading: xref → plan_type_mapping → code → exact name → fuzzy name
+  - `recordMapping()` — upsert xref after successful import
+  - `allocateInternalId()` — find next available ID for PK conflicts
+  - Integrity checker methods for orphan/conflict detection
+
+### Phase 2: SummitImportService Integration
+
+- **SummitImportService.java** — Accepts optional ImportProvider parameter, records mappings after each entity import
+- **SummitImportWizard.java** — Looks up SUMMIT provider by code, passes to service
+
+### Phase 3: UniversalImportService Integration
+
+- **UniversalImportService.java** — Resolver+fallback for all `em.find()` calls:
+  - PK conflict → `allocateInternalId()` assigns next available
+  - FK resolution via xref chain before import
+  - Records all successful mappings
+
+### Phase 4: Import Transition Manager
+
+- **ImportTransitionManager.java** (`controller/data/`) — Admin servlet at `/ImportTransitionManager`
+  - Browse all mappings with pagination, search, entity type filter
+  - Link: manually create xref mapping
+  - Unlink: remove xref mapping
+  - Toggle Primary: change which mapping is the primary for an entity
+  - Transfer Primary: reassign primary from one provider to another
+  - Bulk CSV: upload CSV of external_id → internal_id mappings
+- **importTransition.jsp** — Full admin UI with search bar, filter tabs, mapping table, action modals
+
+### Phase 5: Run Log XRef Tracking
+
+- V052 migration adds tracking columns
+- ImportRunLog entity updated with new fields
+- UniversalImportService records xref stats per run
+
+### Files Changed
+- **New (6):** V051 migration, V052 migration, ImportIdMapping.java, ImportIdResolver.java, ImportTransitionManager.java, importTransition.jsp
+- **Modified (4):** SummitImportService.java, SummitImportWizard.java, UniversalImportService.java, ImportRunLog.java
+
+Database changes: V051 (import_id_mapping table), V052 (import_run_log xref columns).
+
+---
+
+## Session 64 — March 12, 2026 — Provider Setup Rework (V053) + Interactive Import Shell (B1)
+
+Major rework of the provider setup workflow with sample-file-driven column mapping, PK/FK flagging, and status tracking. Also built the shell for the Interactive Import wizard (Phase B1) and added UPDATE_ONLY as a third import update mode.
+
+### V053 Migration — Interactive Import Enhancements
+
+- **New file:** `docs/migrations/V053__interactive_import_enhancements.sql`
+- Adds `update_mode` VARCHAR(30) DEFAULT 'CREATE_AND_UPDATE' and `mapping_status` VARCHAR(20) DEFAULT 'PENDING' to `import_file_type`
+- Adds `is_fk` BOOLEAN DEFAULT FALSE and `fk_entity_type` VARCHAR(50) to `import_field_mapping`
+
+### Phase A: Provider Setup Rework
+
+Complete rewrite of the field mapping workflow. Mappings are now driven by a sample file rather than manual configuration.
+
+- **ProviderSetup.java** — Three major new methods:
+  - `autoDetect()` — Reads uploaded sample file, parses headers, matches to existing field mappings, displays unmapped rows
+  - `saveMappingsBulk()` — Saves all field mappings at once from table form (PK radio, FK checkbox+type, AMS field dropdown)
+  - `validateAndUpdateStatus()` — Checks PK/FK readiness, sets file type to READY or PENDING
+- **fieldMappingEdit.jsp** — Full rewrite: sample-file-driven table with PK radio buttons, FK checkboxes with entity type dropdowns, AMS field dropdowns, bulk save button, client-side validation
+- **fileTypeList.jsp** — Added Status badge (PENDING/READY with color coding), Mode column (Create Only/Create & Update/Update Only), UPDATE_ONLY option in add-file-type form
+- **ImportFieldMapping.java** — Added `isFk` boolean and `fkEntityType` String fields
+- **ImportFileType.java** — Added `updateMode` and `mappingStatus` String fields
+
+### UPDATE_ONLY Mode Patch
+
+Third update mode for supplemental data refresh files. When a file type is UPDATE_ONLY, only PK mapping is required (no FK needed) — allows files that refresh extraneous data on already-imported records without requiring foreign key resolution.
+
+- **ProviderSetup.java** — `validateAndUpdateStatus()` skips FK requirements when `updateMode == "UPDATE_ONLY"`
+- **fileTypeList.jsp** — Added `UPDATE_ONLY` display and form option
+- **fieldMappingEdit.jsp** — Client-side validation skips FK messages when UPDATE_ONLY
+
+### Phase B1: Interactive Import Wizard Shell
+
+Entity-by-entity import wizard with cross-reference resolution. Navigable skeleton — select provider, step through entity types, see results page.
+
+- **InteractiveImportSession.java** (`data/service/`) — Session POJO with typed state:
+  - Fields: providerId, providerName, currentEntityStep, entityStates map, completedEntities list
+  - `ENTITY_ORDER = List.of("PLAN_TYPE", "EMPLOYER", "BENEFIT", "EMPLOYEE")`
+  - Inner classes: EntityImportState, ImportRow, MatchCandidate
+  - Helper methods: getAvailableEntityTypes(), advanceToNextEntity(), getStepNumber(), getTotalSteps()
+- **InteractiveImport.java** (`controller/data/`) — Wizard servlet at `/InteractiveImport`:
+  - GET: step=1 (selectProvider), step=entity (entityStep), step=results (results)
+  - POST: selectProvider (init session), skipEntity (mark skipped, advance), reset (clear session)
+  - Security: PSP Admin (role 5) or BPO Admin (role 102) only
+- **selectProvider.jsp** — Provider dropdown, dynamic step indicator, Start Import button
+- **entityStep.jsp** — Full-height flex layout, upload card, resolution table with summary bar and status badges, Commit & Next / Skip buttons
+- **results.jsp** — Per-entity result cards with colored dots (insert/update/skip/error), warnings collapsible
+- **step1Provider.jsp** — Added link to Interactive Import
+
+### Files Changed
+- **New (7):** V053 migration, InteractiveImportSession.java, InteractiveImport.java, selectProvider.jsp, entityStep.jsp, results.jsp
+- **Modified (6):** ProviderSetup.java, fieldMappingEdit.jsp, fileTypeList.jsp, step1Provider.jsp, ImportFieldMapping.java, ImportFileType.java
+
+Database changes: V053 (update_mode + mapping_status on file_type, is_fk + fk_entity_type on field_mapping).

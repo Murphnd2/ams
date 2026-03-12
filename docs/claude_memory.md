@@ -15,14 +15,14 @@
 
 ## Current State
 - **Branch:** `refactor/modernize-architecture`
-- **Latest migration:** V050
-- **Session count:** 61
-- V025-V037 applied to Demo PSP, BPO, and Master; V038 applied to Demo and BPO; V039-V047 code-complete, not yet applied anywhere
+- **Latest migration:** V053
+- **Session count:** 64
+- V025-V037 applied to Demo PSP, BPO, and Master; V038 applied to Demo and BPO; V039-V053 code-complete, not yet applied anywhere
 - Not yet applied to production or local dev
 - Master snapshot v8 taken 2026-03-04 (V037, fixed update.sh, fixed healthcheck.sh)
 
 ## Database Migrations
-- Current highest version: **V047**
+- Current highest version: **V053**
 - Migration tracker: `docs/analysis/migration_tracker.md`
 - Schema version SQL: `docs/schema_version_migration.sql`
 
@@ -367,8 +367,60 @@
 - **PSP ID from session:** `local.getCurrentPerson().getPsp().getId()` (NOT `getCurrentPsp()`)
 - D-62 in deployment_backlog — code complete, needs V047 applied + browser testing
 
+## Universal Import System (V048, Sessions 56-58)
+- **5 tables:** import_provider, import_file_type, import_field_mapping, import_plan_type_mapping, import_run_log
+- **UniversalImport.java** — 4-step batch wizard: select provider → upload files → review/configure → results
+- **UniversalImportService.java** — config-driven entity import with field mapping, transform rules, upsert patterns
+- **ProviderSetup.java** — Admin CRUD for providers, file types, field mappings
+- **SummitImportWizard.java** — Looks up SUMMIT provider, records import_id_mapping entries
+- **4-entity import:** PLAN_TYPE → EMPLOYER → EMPLOYEE → BENEFIT (config-driven column mapping)
+- **EMF pattern:** `getServletContext().getAttribute("emf")` — NOT `@PersistenceUnit`
+- D-63 in deployment_backlog — code complete, needs V048 applied + browser testing
+
+## Import Cross-Reference System (V051-V052, Session 63)
+- **`import_id_mapping` table:** cross-reference for multi-provider PK resolution
+- **Entity:** `model/imports/ImportIdMapping.java`, **Resolver:** `data/resolver/ImportIdResolver.java`
+- Maps `(provider_id, entity_type, external_id)` → `internal_id` with `is_primary` flag
+- **Phase 1:** V051 migration, ImportIdMapping entity, ImportIdResolver (resolve, record, allocate, resolvePlanType cascade)
+- **Phase 2:** SummitImportService integration — accepts optional ImportProvider, records mappings
+- **Phase 3:** UniversalImportService integration — resolver+fallback for all em.find() calls, PK conflict → allocateInternalId(), FK resolution via xref
+- **Phase 4:** ImportTransitionManager servlet + importTransition.jsp — browse/search/link/unlink/togglePrimary/transferPrimary/bulkCSV
+- **Phase 5:** V052 adds xref_resolved/pk_allocated/mappings_recorded to import_run_log; integrity checker methods on ImportIdResolver
+- All 5 phases code-complete, compiles clean
+
+## Phase A: Provider Setup Rework (V053, Session 64)
+- **V053 migration:** `update_mode`, `mapping_status` on import_file_type; `is_fk`, `fk_entity_type` on import_field_mapping
+- **ProviderSetup.java** rewrite:
+  - `autoDetect()` — persistent sample file, unmapped rows display
+  - `saveMappingsBulk()` — all-at-once table save with PK radio, FK checkbox+type, AMS field dropdowns
+  - `validateAndUpdateStatus()` — PK/FK readiness checking, sets READY/PENDING status
+- **fieldMappingEdit.jsp** — full rewrite: sample-file-driven table with PK radio, FK checkbox+type, AMS field dropdowns, bulk save, client-side validation
+- **fileTypeList.jsp** — Status badge (PENDING/READY), Mode column (Create Only/Create & Update/Update Only), updateMode in add form
+- **UPDATE_ONLY mode patch:** Third update mode. `validateAndUpdateStatus` skips FK requirements for UPDATE_ONLY (supplemental data refresh — only PK needed, no FK creation)
+- Phase A code-complete, compiles clean
+
+## Phase B1: Interactive Import Wizard Shell (Session 64)
+- **InteractiveImportSession.java** (`data/service/`) — Session POJO with inner classes:
+  - `EntityImportState`: entityType, fileTypeId, updateMode, filePath, fileName, totalRows, rows, counts, resolutionComplete, skipped, ImportResult
+  - `ImportRow`: rowIndex, externalId, canonicalValues, displayLabel, status (MATCHED/SUGGESTED/UNMATCHED/CONFIRMED/MANUAL/SKIPPED/ERROR), amsInternalId, amsDisplayLabel, matchMethod, matchConfidence, errorMessage, candidates
+  - `MatchCandidate`: internalId, displayLabel, matchMethod, confidence, detail
+  - `ENTITY_ORDER = List.of("PLAN_TYPE", "EMPLOYER", "BENEFIT", "EMPLOYEE")`
+  - `getAvailableEntityTypes()`, `advanceToNextEntity()`, `getStepNumber()`, `getTotalSteps()`
+- **InteractiveImport.java** (`controller/data/`) — Wizard servlet at `/InteractiveImport`
+  - `@WebServlet`, `@MultipartConfig`, session key `ii_session`
+  - GET routing: step=1 (selectProvider.jsp), step=entity (entityStep.jsp), step=results (results.jsp)
+  - POST actions: selectProvider (init session), skipEntity (mark skipped, advance), reset (clear session)
+- **3 JSPs** in `interactiveImport/` folder:
+  - `selectProvider.jsp` — Provider dropdown, dynamic step indicator
+  - `entityStep.jsp` — Full-height flex layout, upload card + resolution table placeholder + step badges
+  - `results.jsp` — Per-entity result cards with insert/update/skip/error colored dots
+- **step1Provider.jsp** — Added Interactive Import link
+- **Entity order:** PLAN_TYPE → EMPLOYER → BENEFIT → EMPLOYEE (benefit before employee)
+- B1 code-complete, compiles clean. **B2 (Upload + Auto-Resolution) pending.**
+
 ## Reference
-- Last session (55): Composite task ordering for multi-sequence setups
+- Last session (64): Phase B1 Interactive Import wizard shell
+- Phase B2-B5 pending (resolution engine, AJAX interactions, commit logic, polish)
 - Full session archive: `docs/analysis/session_history_archive.md`
 - Deployment backlog: `docs/deployment_backlog.md`
 - Migration tracker: `docs/analysis/migration_tracker.md`

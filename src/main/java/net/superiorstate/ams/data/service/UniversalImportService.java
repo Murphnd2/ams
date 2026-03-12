@@ -9,6 +9,7 @@ import net.superiorstate.ams.model.general.PSP;
 import net.superiorstate.ams.model.imports.ImportFieldMapping;
 import net.superiorstate.ams.model.imports.ImportFileType;
 import net.superiorstate.ams.model.imports.ImportProvider;
+import net.superiorstate.ams.data.resolver.ImportIdResolver;
 import net.superiorstate.ams.model.summit.archive.*;
 import org.apache.poi.hssf.usermodel.HSSFWorkbook;
 import org.apache.poi.ss.usermodel.*;
@@ -414,7 +415,17 @@ public class UniversalImportService {
                 }
                 if (code.isEmpty()) code = name; // fallback
 
-                PlanType existing = em.find(PlanType.class, ptId);
+                String externalPtId = String.valueOf(ptId);
+
+                // Cascading plan type resolution: identity → code → name → none
+                String[] matchInfo = new String[1];
+                PlanType existing = ImportIdResolver.resolvePlanType(em, provider, externalPtId, code, name, matchInfo);
+
+                // Fall back to direct PK lookup for backward compatibility
+                if (existing == null && "none".equals(matchInfo[0])) {
+                    existing = em.find(PlanType.class, ptId);
+                    if (existing != null) matchInfo[0] = "direct-pk";
+                }
 
                 if (existing != null) {
                     boolean changed = false;
@@ -426,6 +437,8 @@ public class UniversalImportService {
                     if (changed) {
                         em.getTransaction().begin();
                         em.merge(existing);
+                        ImportIdResolver.recordMapping(em, provider, ImportIdResolver.PLAN_TYPE,
+                                externalPtId, existing.getPlanTypeId(), true);
                         em.getTransaction().commit();
                         result.addUpdated();
                     } else {
@@ -434,8 +447,8 @@ public class UniversalImportService {
 
                     // Ensure ServiceItem exists
                     if (existing.getServiceItem() == null) {
-                        int renewalMonths = getRenewalMonths(renewalMonthsMap, ptId);
-                        ServiceItem si = createRenewalServiceItem(em, name, code, ptId, renewalMonths,
+                        int renewalMonths = getRenewalMonths(renewalMonthsMap, existing.getPlanTypeId());
+                        ServiceItem si = createRenewalServiceItem(em, name, code, existing.getPlanTypeId(), renewalMonths,
                                 renewalCategory, psp, provider.getProviderCode());
                         em.getTransaction().begin();
                         existing.setServiceItem(si);
@@ -444,14 +457,21 @@ public class UniversalImportService {
                         result.addServiceItemCreated();
                     }
                 } else {
-                    int renewalMonths = getRenewalMonths(renewalMonthsMap, ptId);
+                    // No match — check if external ID conflicts with existing internal PK
+                    int internalPtId = ptId;
+                    if (ImportIdResolver.internalIdExists(em, ImportIdResolver.PLAN_TYPE, ptId)) {
+                        internalPtId = ImportIdResolver.allocateInternalId(em, ImportIdResolver.PLAN_TYPE);
+                        result.addWarning("PlanType ID " + ptId + " conflicts, allocated " + internalPtId);
+                    }
+
+                    int renewalMonths = getRenewalMonths(renewalMonthsMap, internalPtId);
                     em.getTransaction().begin();
-                    ServiceItem si = createRenewalServiceItem(em, name, code, ptId, renewalMonths,
+                    ServiceItem si = createRenewalServiceItem(em, name, code, internalPtId, renewalMonths,
                             renewalCategory, psp, provider.getProviderCode());
                     result.addServiceItemCreated();
 
                     PlanType pt = new PlanType();
-                    pt.setPlanTypeId(ptId);
+                    pt.setPlanTypeId(internalPtId);
                     pt.setCode(code);
                     pt.setPlanTypeName(name);
                     pt.setLevel(level);
@@ -459,6 +479,8 @@ public class UniversalImportService {
                     pt.setBillingGroup(defaultBg);
                     pt.setServiceItem(si);
                     em.persist(pt);
+                    ImportIdResolver.recordMapping(em, provider, ImportIdResolver.PLAN_TYPE,
+                            externalPtId, internalPtId, true);
                     em.getTransaction().commit();
                     result.addInserted();
                 }
@@ -529,7 +551,12 @@ public class UniversalImportService {
                 int altId = parseIntSafe(getCanonicalValue(row, mappings, "alt_id"));
                 int erKey = parseIntSafe(getCanonicalValue(row, mappings, "er_key"));
 
-                Employer existing = em.find(Employer.class, orgId);
+                String externalOrgId = String.valueOf(orgId);
+
+                // Resolve via cross-reference, then fall back to direct PK
+                Employer existing = ImportIdResolver.resolveEntity(em, Employer.class,
+                        provider.getId(), ImportIdResolver.EMPLOYER, externalOrgId);
+                if (existing == null) existing = em.find(Employer.class, orgId);
 
                 if (existing != null) {
                     boolean changed = false;
@@ -541,15 +568,24 @@ public class UniversalImportService {
                     if (changed) {
                         em.getTransaction().begin();
                         em.merge(existing);
+                        ImportIdResolver.recordMapping(em, provider, ImportIdResolver.EMPLOYER,
+                                externalOrgId, existing.getId(), true);
                         em.getTransaction().commit();
                         result.addUpdated();
                     } else {
                         result.addSkipped();
                     }
                 } else {
+                    // No existing record — check PK conflict
+                    int internalOrgId = orgId;
+                    if (ImportIdResolver.internalIdExists(em, ImportIdResolver.EMPLOYER, orgId)) {
+                        internalOrgId = ImportIdResolver.allocateInternalId(em, ImportIdResolver.EMPLOYER);
+                        result.addWarning("Employer ID " + orgId + " conflicts, allocated " + internalOrgId);
+                    }
+
                     em.getTransaction().begin();
                     Employer er = new Employer();
-                    er.setId(orgId);
+                    er.setId(internalOrgId);
                     er.setEmployerName(employerName);
                     er.setAltId(altId);
                     er.setErKey(erKey);
@@ -558,6 +594,8 @@ public class UniversalImportService {
                     er.setContactName(contactName);
                     er.setActive(true);
                     em.persist(er);
+                    ImportIdResolver.recordMapping(em, provider, ImportIdResolver.EMPLOYER,
+                            externalOrgId, internalOrgId, true);
                     em.getTransaction().commit();
                     result.addInserted();
                 }
@@ -639,7 +677,10 @@ public class UniversalImportService {
                 continue;
             }
 
-            Employer employer = em.find(Employer.class, orgId);
+            // Resolve employer via cross-reference, then fall back to direct PK
+            Employer employer = ImportIdResolver.resolveEntity(em, Employer.class,
+                    provider.getId(), ImportIdResolver.EMPLOYER, String.valueOf(orgId));
+            if (employer == null) employer = em.find(Employer.class, orgId);
             if (employer == null) {
                 result.addError("Employee " + empId + ": employer " + orgId + " not found, skipping.");
                 continue;
@@ -662,7 +703,12 @@ public class UniversalImportService {
                     && !statusStr.equalsIgnoreCase("false")
                     && !statusStr.equals("2"); // Summit convention: 2=Inactive
 
-            Employee existingEe = em.find(Employee.class, empId);
+            String externalEmpId = String.valueOf(empId);
+
+            // Resolve via cross-reference, then fall back to direct PK
+            Employee existingEe = ImportIdResolver.resolveEntity(em, Employee.class,
+                    provider.getId(), ImportIdResolver.EMPLOYEE, externalEmpId);
+            if (existingEe == null) existingEe = em.find(Employee.class, empId);
 
             if (existingEe != null) {
                 boolean changed = false;
@@ -680,15 +726,24 @@ public class UniversalImportService {
                 if (changed) {
                     em.getTransaction().begin();
                     em.merge(existingEe);
+                    ImportIdResolver.recordMapping(em, provider, ImportIdResolver.EMPLOYEE,
+                            externalEmpId, existingEe.getId(), true);
                     em.getTransaction().commit();
                     result.addUpdated();
                 } else {
                     result.addSkipped();
                 }
             } else {
+                // No existing record — check PK conflict
+                int internalEmpId = empId;
+                if (ImportIdResolver.internalIdExists(em, ImportIdResolver.EMPLOYEE, empId)) {
+                    internalEmpId = ImportIdResolver.allocateInternalId(em, ImportIdResolver.EMPLOYEE);
+                    result.addWarning("Employee ID " + empId + " conflicts, allocated " + internalEmpId);
+                }
+
                 em.getTransaction().begin();
                 Employee ee = new Employee();
-                ee.setId(empId);
+                ee.setId(internalEmpId);
                 ee.setEmployer(employer);
                 ee.setFirstName(firstName.isEmpty() ? "Unknown" : firstName);
                 ee.setLastName(lastName.isEmpty() ? "Unknown" : lastName);
@@ -703,6 +758,8 @@ public class UniversalImportService {
                 ee.setUserId(userId);
                 ee.setActive(isActive);
                 em.persist(ee);
+                ImportIdResolver.recordMapping(em, provider, ImportIdResolver.EMPLOYEE,
+                        externalEmpId, internalEmpId, true);
                 em.getTransaction().commit();
                 result.addInserted();
             }
@@ -773,13 +830,17 @@ public class UniversalImportService {
                     continue;
                 }
 
-                // Validate FKs
-                Employer employer = em.find(Employer.class, orgId);
+                // Validate FKs — resolve via cross-reference, then fall back to direct PK
+                Employer employer = ImportIdResolver.resolveEntity(em, Employer.class,
+                        provider.getId(), ImportIdResolver.EMPLOYER, String.valueOf(orgId));
+                if (employer == null) employer = em.find(Employer.class, orgId);
                 if (employer == null) {
                     result.addError("Benefit " + benefitId + ": employer " + orgId + " not found, skipping.");
                     continue;
                 }
-                PlanType planType = em.find(PlanType.class, planTypeId);
+                PlanType planType = ImportIdResolver.resolveEntity(em, PlanType.class,
+                        provider.getId(), ImportIdResolver.PLAN_TYPE, String.valueOf(planTypeId));
+                if (planType == null) planType = em.find(PlanType.class, planTypeId);
                 if (planType == null) {
                     result.addError("Benefit " + benefitId + ": PlanType " + planTypeId + " not found, skipping.");
                     continue;
@@ -805,6 +866,8 @@ public class UniversalImportService {
                     if (changed) {
                         em.getTransaction().begin();
                         em.merge(existing);
+                        ImportIdResolver.recordMapping(em, provider, ImportIdResolver.BENEFIT,
+                                String.valueOf(benefitId), existing.getId(), true);
                         em.getTransaction().commit();
                         result.addUpdated();
                     } else {
@@ -835,6 +898,9 @@ public class UniversalImportService {
                     }
 
                     em.persist(b);
+                    em.flush(); // ensure auto-generated benefit_id is assigned
+                    ImportIdResolver.recordMapping(em, provider, ImportIdResolver.BENEFIT,
+                            String.valueOf(benefitId), b.getId(), true);
                     em.getTransaction().commit();
                     result.addInserted();
                 }

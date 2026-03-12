@@ -70,4 +70,7 @@ INSERT IGNORE INTO schema_version (version, description, script_name) VALUES
 ('V047', 'Composite task order table for cross-sequence ordering', 'V047__composite_task_order.sql'),
 ('V048', 'Universal import system tables and seed data', 'V048__universal_import_system.sql'),
 ('V049', 'Add source_task_id to delegated_todo for required-sequence auto-approval', 'V049__delegated_todo_source_task_id.sql'),
-('V050', 'BPO default assignee per PSP client', 'V050__bpo_default_assignee.sql');
+('V050', 'BPO default assignee per PSP client', 'V050__bpo_default_assignee.sql'),
+('V051', 'Import ID mapping cross-reference table', 'V051__import_id_mapping.sql'),
+('V052', 'Import run log cross-reference tracking columns', 'V052__import_run_log_xref_tracking.sql'),
+('V053', 'Interactive import enhancements: update mode, mapping status, FK flags', 'V053__interactive_import_enhancements.sql');

@@ -33,6 +33,12 @@ public class ImportFileType {
     @Column(name = "description", length = 500)
     private String description;
 
+    @Column(name = "update_mode", nullable = false, length = 20)
+    private String updateMode = "CREATE_AND_UPDATE";
+
+    @Column(name = "mapping_status", nullable = false, length = 10)
+    private String mappingStatus = "PENDING";
+
     public ImportFileType() {}
 
     public int getId() {
@@ -97,5 +103,21 @@ public class ImportFileType {
 
     public void setDescription(String description) {
         this.description = description;
+    }
+
+    public String getUpdateMode() {
+        return updateMode;
+    }
+
+    public void setUpdateMode(String updateMode) {
+        this.updateMode = updateMode;
+    }
+
+    public String getMappingStatus() {
+        return mappingStatus;
+    }
+
+    public void setMappingStatus(String mappingStatus) {
+        this.mappingStatus = mappingStatus;
     }
 }

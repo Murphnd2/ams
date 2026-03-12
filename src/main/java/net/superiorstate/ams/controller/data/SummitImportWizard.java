@@ -13,6 +13,7 @@ import net.superiorstate.ams.data.dao.AppConstantDAO;
 import net.superiorstate.ams.data.service.SummitImportService;
 import net.superiorstate.ams.data.service.SummitImportService.ImportResult;
 import net.superiorstate.ams.data.AmsDataGlobal;
+import net.superiorstate.ams.model.imports.ImportProvider;
 
 import java.io.*;
 import java.nio.file.Files;
@@ -249,17 +250,25 @@ public class SummitImportWizard extends HttpServlet {
         Map<Integer, Integer> renewalMonthsMap = parseRenewalMonthsConfig(request);
 
         try {
+            // Resolve Summit provider for cross-reference mapping (null-safe if not yet configured)
+            ImportProvider summitProvider = null;
+            try {
+                summitProvider = em.createQuery(
+                    "SELECT p FROM ImportProvider p WHERE p.providerCode = 'SUMMIT'", ImportProvider.class)
+                    .setMaxResults(1).getSingleResult();
+            } catch (Exception ignored) {}
+
             // 1. Plan Types (must be first — benefits reference them)
             String planTypeFile = (String) request.getSession().getAttribute(SI_PLAN_TYPE_FILE);
             if (planTypeFile != null) {
-                ImportResult ptResult = SummitImportService.importPlanTypes(em, new File(planTypeFile), renewalMonthsMap);
+                ImportResult ptResult = SummitImportService.importPlanTypes(em, new File(planTypeFile), renewalMonthsMap, summitProvider);
                 results.put("Plan Types", ptResult);
             }
 
             // 2. Employers (must be before employees and benefits)
             String employerFile = (String) request.getSession().getAttribute(SI_EMPLOYER_FILE);
             if (employerFile != null) {
-                ImportResult erResult = SummitImportService.importEmployers(em, new File(employerFile));
+                ImportResult erResult = SummitImportService.importEmployers(em, new File(employerFile), summitProvider);
                 results.put("Employers", erResult);
             }
 
@@ -278,21 +287,21 @@ public class SummitImportWizard extends HttpServlet {
                     j3 = createEmptyCsv(request);
                 }
 
-                ImportResult eeResult = SummitImportService.importEmployees(em, j2, j3);
+                ImportResult eeResult = SummitImportService.importEmployees(em, j2, j3, summitProvider);
                 results.put("Employees", eeResult);
             }
 
             // 4. Benefits — CDH (need employers and plan types)
             String benefitFile = (String) request.getSession().getAttribute(SI_BENEFIT_FILE);
             if (benefitFile != null) {
-                ImportResult bResult = SummitImportService.importBenefits(em, new File(benefitFile), renewalMonthsMap);
+                ImportResult bResult = SummitImportService.importBenefits(em, new File(benefitFile), renewalMonthsMap, summitProvider);
                 results.put("Benefits (CDH)", bResult);
             }
 
             // 5. Benefits — COBRA/PB (need employers and plan types)
             String benefitCobraFile = (String) request.getSession().getAttribute(SI_BENEFIT_COBRA_FILE);
             if (benefitCobraFile != null) {
-                ImportResult bCobraResult = SummitImportService.importBenefitsCobra(em, new File(benefitCobraFile), renewalMonthsMap);
+                ImportResult bCobraResult = SummitImportService.importBenefitsCobra(em, new File(benefitCobraFile), renewalMonthsMap, summitProvider);
                 results.put("Benefits (COBRA)", bCobraResult);
             }
 

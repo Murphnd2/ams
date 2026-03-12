@@ -30,6 +30,12 @@ public class ImportFieldMapping {
     @Column(name = "transform_rule", length = 200)
     private String transformRule;
 
+    @Column(name = "is_fk", nullable = false)
+    private boolean fk = false;
+
+    @Column(name = "fk_entity_type", length = 20)
+    private String fkEntityType;
+
     public ImportFieldMapping() {}
 
     public int getId() {
@@ -86,5 +92,21 @@ public class ImportFieldMapping {
 
     public void setTransformRule(String transformRule) {
         this.transformRule = transformRule;
+    }
+
+    public boolean isFk() {
+        return fk;
+    }
+
+    public void setFk(boolean fk) {
+        this.fk = fk;
+    }
+
+    public String getFkEntityType() {
+        return fkEntityType;
+    }
+
+    public void setFkEntityType(String fkEntityType) {
+        this.fkEntityType = fkEntityType;
     }
 }

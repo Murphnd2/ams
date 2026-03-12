@@ -769,6 +769,69 @@ Provider-agnostic data import system for non-Summit TPA platforms. Configuration
 
 ---
 
+### D-64: Apply V051-V053 + Import Cross-Reference System + Phase A Provider Rework
+
+**Priority:** HIGH — Required for interactive import wizard
+**Status:** Code complete — needs V051, V052, V053 applied + browser testing
+
+**Prerequisite:** D-63 (V048 Universal Import System) must be applied first
+
+Three migrations enabling multi-provider cross-reference resolution, provider setup rework, and interactive import support:
+- **V051:** `import_id_mapping` table for cross-reference PK resolution across providers
+- **V052:** xref tracking columns (`xref_resolved`, `pk_allocated`, `mappings_recorded`) on `import_run_log`
+- **V053:** `update_mode` + `mapping_status` on `import_file_type`; `is_fk` + `fk_entity_type` on `import_field_mapping`
+
+**Deploy steps:**
+1. Apply `docs/migrations/V051__import_id_mapping.sql`
+2. Apply `docs/migrations/V052__import_run_log_xref_tracking.sql`
+3. Apply `docs/migrations/V053__interactive_import_enhancements.sql`
+4. Deploy WAR
+5. Test Import Transition Manager (browse/link/unlink xref mappings)
+6. Test ProviderSetup rework (sample file upload, PK/FK flagging, status badges)
+7. Test UPDATE_ONLY mode (create file type, verify FK not required)
+
+**Files (new):**
+- `V051__import_id_mapping.sql`, `V052__import_run_log_xref_tracking.sql`, `V053__interactive_import_enhancements.sql`
+- `ImportIdMapping.java` — xref entity in `model/imports/`
+- `ImportIdResolver.java` — resolution service in `data/resolver/`
+- `ImportTransitionManager.java` — xref admin servlet in `controller/data/`
+- `importTransition.jsp` — xref admin UI
+
+**Files (modified):**
+- `SummitImportService.java`, `SummitImportWizard.java` — xref recording integration
+- `UniversalImportService.java` — resolver+fallback integration
+- `ImportRunLog.java`, `ImportFieldMapping.java`, `ImportFileType.java` — new fields
+- `ProviderSetup.java` — rewritten (autoDetect, saveMappingsBulk, validateAndUpdateStatus)
+- `fieldMappingEdit.jsp` — full rewrite (sample-file-driven table)
+- `fileTypeList.jsp` — Status badge, Mode column, UPDATE_ONLY option
+
+---
+
+### D-65: Phase B Interactive Import Wizard
+
+**Priority:** HIGH — Core import workflow enhancement
+**Status:** B1 shell complete, B2-B5 pending development
+
+**Prerequisite:** D-64 (V051-V053) must be applied
+
+Entity-by-entity import wizard with interactive cross-reference resolution. Users upload one entity type at a time, see matched/suggested/unmatched rows, resolve cross-references interactively, then commit. Entity order: PlanType → Employer → Benefit → Employee.
+
+**B1 (complete):** Wizard shell — select provider, step through entity types (skip all), results page
+**B2 (pending):** Upload + auto-resolution engine (ImportResolutionService, fuzzy matching)
+**B3 (pending):** AJAX resolution interactions (InteractiveImportApi, confirm/search/link)
+**B4 (pending):** Commit logic + entity progression
+**B5 (pending):** Polish, UPDATE_ONLY enforcement, error handling
+
+**Files (new — B1):**
+- `InteractiveImportSession.java` — session POJO in `data/service/`
+- `InteractiveImport.java` — wizard servlet in `controller/data/`
+- `selectProvider.jsp`, `entityStep.jsp`, `results.jsp` — 3 JSPs in `view/a/general/interactiveImport/`
+
+**Files (modified — B1):**
+- `step1Provider.jsp` — added Interactive Import link
+
+---
+
 ### D-59: BPO Deployment Fixes + Recurring Task Push
 
 **Priority:** HIGH — Fixes critical bugs discovered during demo/BPO VPS testing

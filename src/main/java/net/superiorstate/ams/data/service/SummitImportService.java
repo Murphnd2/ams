@@ -3,10 +3,12 @@ package net.superiorstate.ams.data.service;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.NoResultException;
 import jakarta.persistence.Query;
+import net.superiorstate.ams.data.resolver.ImportIdResolver;
 import net.superiorstate.ams.model.activity.checklist.sequences.support.ActivityCategory;
 import net.superiorstate.ams.model.activity.checklist.sequences.support.ServiceItem;
 import net.superiorstate.ams.model.billing.BillingGroup;
 import net.superiorstate.ams.model.general.PSP;
+import net.superiorstate.ams.model.imports.ImportProvider;
 import net.superiorstate.ams.model.summit.archive.*;
 import org.apache.poi.hssf.usermodel.HSSFWorkbook;
 import org.apache.poi.ss.usermodel.*;
@@ -81,7 +83,8 @@ public class SummitImportService {
      * @return ImportResult with counts
      */
     public static ImportResult importPlanTypes(EntityManager em, File excelFile,
-                                               Map<Integer, Integer> renewalMonthsMap) throws Exception {
+                                               Map<Integer, Integer> renewalMonthsMap,
+                                               ImportProvider provider) throws Exception {
         ImportResult result = new ImportResult();
 
         Workbook workbook;
@@ -181,6 +184,7 @@ public class SummitImportService {
                     if (changed) {
                         em.getTransaction().begin();
                         em.merge(existing);
+                        if (provider != null) ImportIdResolver.recordMapping(em, provider, ImportIdResolver.PLAN_TYPE, String.valueOf(ptId), ptId, true);
                         em.getTransaction().commit();
                         result.addUpdated();
                     } else {
@@ -214,6 +218,7 @@ public class SummitImportService {
                     pt.setBillingGroup(defaultBg);
                     pt.setServiceItem(si);
                     em.persist(pt);
+                    if (provider != null) ImportIdResolver.recordMapping(em, provider, ImportIdResolver.PLAN_TYPE, String.valueOf(ptId), ptId, true);
 
                     em.getTransaction().commit();
                     result.addInserted();
@@ -243,7 +248,8 @@ public class SummitImportService {
      * Imports Employers from a Summit J1 CSV export.
      * Upsert by OrganizationID.
      */
-    public static ImportResult importEmployers(EntityManager em, File csvFile) throws Exception {
+    public static ImportResult importEmployers(EntityManager em, File csvFile,
+                                                ImportProvider provider) throws Exception {
         ImportResult result = new ImportResult();
 
         List<Map<String, String>> rows = parseCsv(csvFile);
@@ -312,6 +318,7 @@ public class SummitImportService {
                 if (changed) {
                     em.getTransaction().begin();
                     em.merge(existing);
+                    if (provider != null) ImportIdResolver.recordMapping(em, provider, ImportIdResolver.EMPLOYER, String.valueOf(orgId), orgId, true);
                     em.getTransaction().commit();
                     result.addUpdated();
                 } else {
@@ -329,6 +336,7 @@ public class SummitImportService {
                 er.setContactName(primaryContact);
                 er.setActive(true);
                 em.persist(er);
+                if (provider != null) ImportIdResolver.recordMapping(em, provider, ImportIdResolver.EMPLOYER, String.valueOf(orgId), orgId, true);
                 em.getTransaction().commit();
                 result.addInserted();
             }
@@ -355,7 +363,8 @@ public class SummitImportService {
      * @param j3File     J3 — Participant Listing Report with Division Option (status + dates)
      * @return ImportResult
      */
-    public static ImportResult importEmployees(EntityManager em, File j2File, File j3File) throws Exception {
+    public static ImportResult importEmployees(EntityManager em, File j2File, File j3File,
+                                                ImportProvider provider) throws Exception {
         ImportResult result = new ImportResult();
 
         // Parse both files
@@ -445,6 +454,7 @@ public class SummitImportService {
                 if (changed) {
                     em.getTransaction().begin();
                     em.merge(existing);
+                    if (provider != null) ImportIdResolver.recordMapping(em, provider, ImportIdResolver.EMPLOYEE, String.valueOf(pid), pid, true);
                     em.getTransaction().commit();
                     result.addUpdated();
                 } else {
@@ -469,6 +479,7 @@ public class SummitImportService {
                 ee.setSystemStatusId(systemStatusId != 0 ? systemStatusId : null);
                 ee.setActive(isActive);
                 em.persist(ee);
+                if (provider != null) ImportIdResolver.recordMapping(em, provider, ImportIdResolver.EMPLOYEE, String.valueOf(pid), pid, true);
                 em.getTransaction().commit();
                 result.addInserted();
             }
@@ -496,7 +507,8 @@ public class SummitImportService {
      * @return ImportResult
      */
     public static ImportResult importBenefits(EntityManager em, File csvFile,
-                                              Map<Integer, Integer> renewalMonthsMap) throws Exception {
+                                              Map<Integer, Integer> renewalMonthsMap,
+                                              ImportProvider provider) throws Exception {
         ImportResult result = new ImportResult();
 
         List<Map<String, String>> rows = parseCsv(csvFile);
@@ -579,6 +591,7 @@ public class SummitImportService {
                 if (changed) {
                     em.getTransaction().begin();
                     em.merge(existing);
+                    if (provider != null) ImportIdResolver.recordMapping(em, provider, ImportIdResolver.BENEFIT, String.valueOf(benefitId), existing.getId(), true);
                     em.getTransaction().commit();
                     result.addUpdated();
                 } else {
@@ -611,6 +624,8 @@ public class SummitImportService {
                 }
 
                 em.persist(b);
+                em.flush(); // flush to get auto-generated benefit_id
+                if (provider != null) ImportIdResolver.recordMapping(em, provider, ImportIdResolver.BENEFIT, String.valueOf(benefitId), b.getId(), true);
                 em.getTransaction().commit();
                 result.addInserted();
             }
@@ -638,7 +653,8 @@ public class SummitImportService {
      * @return ImportResult
      */
     public static ImportResult importBenefitsCobra(EntityManager em, File csvFile,
-                                                    Map<Integer, Integer> renewalMonthsMap) throws Exception {
+                                                    Map<Integer, Integer> renewalMonthsMap,
+                                                    ImportProvider provider) throws Exception {
         ImportResult result = new ImportResult();
 
         List<Map<String, String>> rows = parseCsv(csvFile);
@@ -737,6 +753,7 @@ public class SummitImportService {
                 if (changed) {
                     em.getTransaction().begin();
                     em.merge(existing);
+                    if (provider != null) ImportIdResolver.recordMapping(em, provider, ImportIdResolver.BENEFIT, "COBRA-" + summitBenefitId, existing.getId(), true);
                     em.getTransaction().commit();
                     result.addUpdated();
                 } else {
@@ -779,6 +796,8 @@ public class SummitImportService {
                 }
 
                 em.persist(b);
+                em.flush(); // flush to get auto-generated benefit_id
+                if (provider != null) ImportIdResolver.recordMapping(em, provider, ImportIdResolver.BENEFIT, "COBRA-" + summitBenefitId, b.getId(), true);
                 em.getTransaction().commit();
                 result.addInserted();
             }

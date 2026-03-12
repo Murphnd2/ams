@@ -7,7 +7,7 @@
 </head>
 <body>
 <c:import url="/WEB-INF/view/a/general/navbar25.jsp"/>
-<div class="container-fluid px-4 py-3" style="max-width: 900px;">
+<div class="container-fluid px-4 py-3" style="max-width: 1050px;">
     <h4 style="color: var(--ssa);"><i class="bi bi-file-earmark-ruled"></i> File Types — ${provider.providerName}</h4>
     <p class="text-muted mb-3">
         <a href="ProviderSetup" style="color: var(--ssa); text-decoration: none;"><i class="bi bi-arrow-left me-1"></i>Back to Providers</a>
@@ -22,6 +22,8 @@
                     <th>File Label</th>
                     <th>Target Entity</th>
                     <th>Format</th>
+                    <th>Mode</th>
+                    <th>Status</th>
                     <th>Required</th>
                     <th class="text-end">Actions</th>
                 </tr>
@@ -38,6 +40,27 @@
                         </td>
                         <td><span class="badge bg-info text-dark">${ft.targetEntity}</span></td>
                         <td>${ft.fileFormat}</td>
+                        <td style="font-size: 0.82rem;">
+                            <c:choose>
+                                <c:when test="${ft.updateMode == 'CREATE_ONLY'}">Create Only</c:when>
+                                <c:when test="${ft.updateMode == 'UPDATE_ONLY'}">Update Only</c:when>
+                                <c:otherwise>Create &amp; Update</c:otherwise>
+                            </c:choose>
+                        </td>
+                        <td>
+                            <c:choose>
+                                <c:when test="${ft.mappingStatus == 'READY'}">
+                                    <span style="font-size:0.78rem; padding:2px 8px; border-radius:10px; background:#d1e7dd; color:#0f5132; font-weight:600;">
+                                        <i class="bi bi-check-circle me-1"></i>READY
+                                    </span>
+                                </c:when>
+                                <c:otherwise>
+                                    <span style="font-size:0.78rem; padding:2px 8px; border-radius:10px; background:#fff3cd; color:#856404; font-weight:600;">
+                                        <i class="bi bi-exclamation-circle me-1"></i>PENDING
+                                    </span>
+                                </c:otherwise>
+                            </c:choose>
+                        </td>
                         <td>
                             <c:if test="${ft.required}"><i class="bi bi-check-circle text-success"></i></c:if>
                             <c:if test="${!ft.required}"><i class="bi bi-dash text-muted"></i></c:if>
@@ -98,10 +121,18 @@
                         </select>
                     </div>
                     <div class="col-md-4">
+                        <label class="form-label fw-semibold">Update Mode</label>
+                        <select name="updateMode" class="form-select">
+                            <option value="CREATE_AND_UPDATE">Create New &amp; Update Existing</option>
+                            <option value="CREATE_ONLY">Create New Only</option>
+                            <option value="UPDATE_ONLY">Update Existing Only</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
                         <label class="form-label fw-semibold">Sort Order</label>
                         <input type="number" name="sortOrder" class="form-control" value="0">
                     </div>
-                    <div class="col-md-4 d-flex align-items-end">
+                    <div class="col-md-3 d-flex align-items-end">
                         <div class="form-check">
                             <input type="checkbox" name="isRequired" class="form-check-input" checked>
                             <label class="form-check-label">Required</label>

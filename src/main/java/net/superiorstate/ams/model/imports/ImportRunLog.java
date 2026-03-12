@@ -67,6 +67,15 @@ public class ImportRunLog {
     @Column(name = "service_items_created")
     private int serviceItemsCreated = 0;
 
+    @Column(name = "xref_resolved")
+    private int xrefResolved = 0;
+
+    @Column(name = "pk_allocated")
+    private int pkAllocated = 0;
+
+    @Column(name = "mappings_recorded")
+    private int mappingsRecorded = 0;
+
     @Column(name = "warnings", columnDefinition = "TEXT")
     private String warnings;
 
@@ -221,6 +230,30 @@ public class ImportRunLog {
 
     public void setServiceItemsCreated(int serviceItemsCreated) {
         this.serviceItemsCreated = serviceItemsCreated;
+    }
+
+    public int getXrefResolved() {
+        return xrefResolved;
+    }
+
+    public void setXrefResolved(int xrefResolved) {
+        this.xrefResolved = xrefResolved;
+    }
+
+    public int getPkAllocated() {
+        return pkAllocated;
+    }
+
+    public void setPkAllocated(int pkAllocated) {
+        this.pkAllocated = pkAllocated;
+    }
+
+    public int getMappingsRecorded() {
+        return mappingsRecorded;
+    }
+
+    public void setMappingsRecorded(int mappingsRecorded) {
+        this.mappingsRecorded = mappingsRecorded;
     }
 
     public String getWarnings() {

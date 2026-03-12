@@ -9,6 +9,7 @@ import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.Part;
+import net.superiorstate.ams.data.dao.AppConstantDAO;
 import net.superiorstate.ams.data.service.UniversalImportService;
 import net.superiorstate.ams.model.imports.ImportFieldMapping;
 import net.superiorstate.ams.model.imports.ImportFileType;
@@ -20,8 +21,12 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Provider configuration admin page.
@@ -77,9 +82,29 @@ public class ProviderSetup extends HttpServlet {
                             ImportFieldMapping.class)
                             .setParameter("ftId", fileTypeId)
                             .getResultList();
+
+                    // Load sample file headers if a sample file exists
+                    List<String> sampleHeaders = loadSampleHeaders(fileType);
+
+                    // Determine which sample headers are unmapped
+                    Set<String> mappedSources = new LinkedHashSet<>();
+                    for (ImportFieldMapping m : mappings) {
+                        mappedSources.add(m.getSourceColumn().toLowerCase());
+                    }
+                    List<String> unmappedHeaders = new ArrayList<>();
+                    if (sampleHeaders != null) {
+                        for (String h : sampleHeaders) {
+                            if (!mappedSources.contains(h.toLowerCase())) {
+                                unmappedHeaders.add(h);
+                            }
+                        }
+                    }
+
                     request.setAttribute("fileType", fileType);
                     request.setAttribute("mappings", mappings);
                     request.setAttribute("provider", fileType.getProvider());
+                    request.setAttribute("sampleHeaders", sampleHeaders);
+                    request.setAttribute("unmappedHeaders", unmappedHeaders);
                     forwardTo(request, response, "fieldMappingEdit");
                 }
                 case "planTypes" -> {
@@ -177,6 +202,8 @@ public class ProviderSetup extends HttpServlet {
                     int sortOrder = parseInt(request.getParameter("sortOrder"), 0);
                     boolean required = "on".equals(request.getParameter("isRequired"));
                     String desc = request.getParameter("description");
+                    String updateMode = request.getParameter("updateMode");
+                    if (updateMode == null || updateMode.isBlank()) updateMode = "CREATE_AND_UPDATE";
 
                     ImportProvider provider = em.find(ImportProvider.class, providerId);
                     em.getTransaction().begin();
@@ -188,6 +215,7 @@ public class ProviderSetup extends HttpServlet {
                         ft.setSortOrder(sortOrder);
                         ft.setRequired(required);
                         ft.setDescription(desc);
+                        ft.setUpdateMode(updateMode);
                         em.merge(ft);
                     } else {
                         ImportFileType ft = new ImportFileType();
@@ -198,6 +226,7 @@ public class ProviderSetup extends HttpServlet {
                         ft.setSortOrder(sortOrder);
                         ft.setRequired(required);
                         ft.setDescription(desc);
+                        ft.setUpdateMode(updateMode);
                         em.persist(ft);
                     }
                     em.getTransaction().commit();
@@ -222,16 +251,14 @@ public class ProviderSetup extends HttpServlet {
                     Part filePart = request.getPart("sampleFile");
 
                     if (filePart != null && filePart.getSize() > 0) {
-                        File tempFile = File.createTempFile("sample_", ".csv");
-                        try (InputStream is = filePart.getInputStream()) {
-                            Files.copy(is, tempFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
-                        }
+                        // Save sample file to persistent path
+                        File sampleFile = saveSampleFile(filePart, fileType);
 
-                        List<String> headers = UniversalImportService.getFileHeaders(tempFile, fileType.getFileFormat());
+                        List<String> headers = UniversalImportService.getFileHeaders(sampleFile, fileType.getFileFormat());
                         List<ImportFieldMapping> suggestions = UniversalImportService.autoDetectMappings(
                                 headers, fileType.getTargetEntity());
 
-                        // Save auto-detected mappings (clear existing first)
+                        // Clear existing mappings, save auto-detected, reset status to PENDING
                         em.getTransaction().begin();
                         em.createQuery("DELETE FROM ImportFieldMapping m WHERE m.fileType.id = :ftId")
                                 .setParameter("ftId", fileTypeId)
@@ -241,12 +268,82 @@ public class ProviderSetup extends HttpServlet {
                             mapping.setFileType(fileType);
                             em.persist(mapping);
                         }
-                        em.getTransaction().commit();
 
-                        tempFile.delete();
-                        request.setAttribute("autoDetectCount", suggestions.size());
+                        // Also create unmapped rows for headers that auto-detect didn't match
+                        Set<String> mappedSources = new LinkedHashSet<>();
+                        for (ImportFieldMapping s : suggestions) {
+                            mappedSources.add(s.getSourceColumn().toLowerCase());
+                        }
+                        for (String header : headers) {
+                            if (!mappedSources.contains(header.toLowerCase())) {
+                                ImportFieldMapping unmapped = new ImportFieldMapping();
+                                unmapped.setFileType(fileType);
+                                unmapped.setSourceColumn(header);
+                                unmapped.setCanonicalField("");  // empty = unmapped
+                                em.persist(unmapped);
+                            }
+                        }
+
+                        // Reset status — user must re-confirm PK/FK
+                        fileType.setMappingStatus("PENDING");
+                        em.merge(fileType);
+
+                        em.getTransaction().commit();
                     }
 
+                    response.sendRedirect("ProviderSetup?action=mappings&fileTypeId=" + fileTypeId);
+                }
+                case "saveMappingsBulk" -> {
+                    int fileTypeId = Integer.parseInt(request.getParameter("fileTypeId"));
+                    ImportFileType fileType = em.find(ImportFileType.class, fileTypeId);
+
+                    String[] sourceColumns = request.getParameterValues("sourceColumn");
+                    String[] canonicalFields = request.getParameterValues("canonicalField");
+                    String[] isKeyValues = request.getParameterValues("isKeyFlag");
+                    String[] isFkValues = request.getParameterValues("isFkFlag");
+                    String[] fkEntityTypes = request.getParameterValues("fkEntityType");
+                    String[] isRequiredValues = request.getParameterValues("isRequiredFlag");
+                    String[] transformRules = request.getParameterValues("transformRule");
+
+                    em.getTransaction().begin();
+
+                    // Delete all existing mappings
+                    em.createQuery("DELETE FROM ImportFieldMapping m WHERE m.fileType.id = :ftId")
+                            .setParameter("ftId", fileTypeId)
+                            .executeUpdate();
+
+                    // The PK value sent is the index of the radio-selected row
+                    String pkIndex = request.getParameter("pkColumnIndex");
+                    int pkIdx = (pkIndex != null && !pkIndex.isEmpty()) ? Integer.parseInt(pkIndex) : -1;
+
+                    if (sourceColumns != null) {
+                        for (int i = 0; i < sourceColumns.length; i++) {
+                            String source = sourceColumns[i];
+                            String canonical = (canonicalFields != null && i < canonicalFields.length) ? canonicalFields[i] : "";
+                            boolean isKey = (i == pkIdx);
+                            boolean isFk = (isFkValues != null && i < isFkValues.length && "true".equals(isFkValues[i]));
+                            String fkEt = (fkEntityTypes != null && i < fkEntityTypes.length) ? fkEntityTypes[i] : null;
+                            boolean isReq = (isRequiredValues != null && i < isRequiredValues.length && "true".equals(isRequiredValues[i]));
+                            String transform = (transformRules != null && i < transformRules.length) ? transformRules[i] : null;
+
+                            ImportFieldMapping m = new ImportFieldMapping();
+                            m.setFileType(fileType);
+                            m.setSourceColumn(source);
+                            m.setCanonicalField(canonical != null && !canonical.isBlank() ? canonical : "");
+                            m.setKey(isKey);
+                            m.setFk(isFk);
+                            m.setFkEntityType(isFk && fkEt != null && !fkEt.isBlank() ? fkEt : null);
+                            m.setRequired(isReq || isKey); // PK is always required
+                            m.setTransformRule(transform != null && !transform.isBlank() ? transform : null);
+                            em.persist(m);
+                        }
+                    }
+
+                    // Validate and update status
+                    validateAndUpdateStatus(em, fileType);
+                    em.merge(fileType);
+
+                    em.getTransaction().commit();
                     response.sendRedirect("ProviderSetup?action=mappings&fileTypeId=" + fileTypeId);
                 }
                 case "saveMapping" -> {
@@ -279,15 +376,26 @@ public class ProviderSetup extends HttpServlet {
                         m.setTransformRule(transformRule != null && !transformRule.isBlank() ? transformRule : null);
                         em.persist(m);
                     }
+
+                    // Re-validate status after individual mapping change
+                    validateAndUpdateStatus(em, fileType);
+                    em.merge(fileType);
+
                     em.getTransaction().commit();
                     response.sendRedirect("ProviderSetup?action=mappings&fileTypeId=" + fileTypeId);
                 }
                 case "deleteMapping" -> {
                     int mappingId = Integer.parseInt(request.getParameter("mappingId"));
                     int fileTypeId = Integer.parseInt(request.getParameter("fileTypeId"));
+                    ImportFileType fileType = em.find(ImportFileType.class, fileTypeId);
                     em.getTransaction().begin();
                     ImportFieldMapping m = em.find(ImportFieldMapping.class, mappingId);
                     if (m != null) em.remove(m);
+
+                    // Re-validate status
+                    validateAndUpdateStatus(em, fileType);
+                    em.merge(fileType);
+
                     em.getTransaction().commit();
                     response.sendRedirect("ProviderSetup?action=mappings&fileTypeId=" + fileTypeId);
                 }
@@ -339,6 +447,103 @@ public class ProviderSetup extends HttpServlet {
             em.close();
         }
     }
+
+    // ── Validation ────────────────────────────────────────────────────────
+
+    /**
+     * Check if a file type's mappings meet the minimum requirements for import readiness.
+     * Updates the fileType's mappingStatus to READY or PENDING.
+     * Must be called within an active transaction.
+     */
+    private void validateAndUpdateStatus(EntityManager em, ImportFileType fileType) {
+        List<ImportFieldMapping> mappings = em.createQuery(
+                "SELECT m FROM ImportFieldMapping m WHERE m.fileType.id = :ftId",
+                ImportFieldMapping.class)
+                .setParameter("ftId", fileType.getId())
+                .getResultList();
+
+        boolean hasPk = false;
+        boolean hasEmployerFk = false;
+        boolean hasPlanTypeFk = false;
+
+        for (ImportFieldMapping m : mappings) {
+            if (m.isKey()) hasPk = true;
+            if (m.isFk() && "EMPLOYER".equals(m.getFkEntityType())) hasEmployerFk = true;
+            if (m.isFk() && "PLAN_TYPE".equals(m.getFkEntityType())) hasPlanTypeFk = true;
+        }
+
+        boolean ready = hasPk; // PK is always required
+
+        // UPDATE_ONLY mode only needs PK — no FK requirements (supplemental data refresh)
+        boolean updateOnly = "UPDATE_ONLY".equals(fileType.getUpdateMode());
+
+        if (!updateOnly) {
+            String target = fileType.getTargetEntity();
+            if ("BENEFIT".equals(target)) {
+                ready = ready && hasEmployerFk && hasPlanTypeFk;
+            } else if ("EMPLOYEE".equals(target)) {
+                ready = ready && hasEmployerFk;
+            }
+        }
+
+        fileType.setMappingStatus(ready ? "READY" : "PENDING");
+    }
+
+    // ── Sample file management ────────────────────────────────────────────
+
+    /**
+     * Save an uploaded sample file to a persistent location under SAVE_PATH.
+     * Returns the saved File.
+     */
+    private File saveSampleFile(Part filePart, ImportFileType fileType) throws IOException {
+        String ext = switch (fileType.getFileFormat()) {
+            case "EXCEL" -> ".xlsx";
+            case "TSV" -> ".tsv";
+            default -> ".csv";
+        };
+
+        Path sampleDir = Path.of(AppConstantDAO.getSavePath(),
+                "universal_import", "samples",
+                String.valueOf(fileType.getProvider().getId()),
+                String.valueOf(fileType.getId()));
+        Files.createDirectories(sampleDir);
+
+        File sampleFile = sampleDir.resolve("sample" + ext).toFile();
+        try (InputStream is = filePart.getInputStream()) {
+            Files.copy(is, sampleFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+        }
+        return sampleFile;
+    }
+
+    /**
+     * Load headers from a previously saved sample file.
+     * Returns null if no sample file exists.
+     */
+    private List<String> loadSampleHeaders(ImportFileType fileType) {
+        String ext = switch (fileType.getFileFormat()) {
+            case "EXCEL" -> ".xlsx";
+            case "TSV" -> ".tsv";
+            default -> ".csv";
+        };
+
+        Path samplePath = Path.of(AppConstantDAO.getSavePath(),
+                "universal_import", "samples",
+                String.valueOf(fileType.getProvider().getId()),
+                String.valueOf(fileType.getId()),
+                "sample" + ext);
+
+        File sampleFile = samplePath.toFile();
+        if (!sampleFile.exists()) return null;
+
+        try {
+            return UniversalImportService.getFileHeaders(sampleFile, fileType.getFileFormat());
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    // ── Utility ───────────────────────────────────────────────────────────
 
     private boolean isAdmin(HttpServletRequest request) {
         Boolean isPspAdmin = (Boolean) request.getSession().getAttribute("isPspAdmin");
