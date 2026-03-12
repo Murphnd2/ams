@@ -28,17 +28,18 @@
                 display: flex;
                 flex: 1;
                 min-height: 0;
+                gap: 0.75rem;
+                padding-left: 0.75rem;
             }
             .bpo-col-left {
                 width: 280px;
                 min-width: 280px;
                 display: flex;
                 flex-direction: column;
-                border-right: 1px solid #dee2e6;
             }
             .bpo-col-left > .card {
                 flex: 1; display: flex; flex-direction: column; overflow: hidden;
-                border: none; border-radius: 0;
+                border: 1px solid #dee2e6; border-radius: 6px;
             }
             .bpo-col-left > .card > .card-body {
                 flex: 1; overflow-y: auto;
@@ -256,6 +257,11 @@
                                 class="btn btn-sm ${viewMode == 'mine' ? 'btn-light' : 'btn-outline-light'}"
                                 style="font-size:0.7rem; padding:0.15rem 0.5rem;">
                             My Tasks
+                        </button>
+                        <button type="submit" name="viewMode" value="unassigned"
+                                class="btn btn-sm ${viewMode == 'unassigned' ? 'btn-light' : 'btn-outline-light'}"
+                                style="font-size:0.7rem; padding:0.15rem 0.5rem;">
+                            Unassigned
                         </button>
                         <button type="submit" name="viewMode" value="all"
                                 class="btn btn-sm ${viewMode == 'all' ? 'btn-light' : 'btn-outline-light'}"

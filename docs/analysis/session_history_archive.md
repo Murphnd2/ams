@@ -2,7 +2,7 @@
 
 > **Purpose:** Consolidated historical record of all build sessions. For current project state, see `project_backlog.md`. For current architecture, see `application_flow.md` and `entity_reference.md`.
 >
-> **Last Updated:** March 11, 2026 (Session 60)
+> **Last Updated:** March 11, 2026 (Session 61)
 
 ---
 
@@ -2105,3 +2105,43 @@ Extended BPO task auto-approval to cover required-sequence tasks (tied to ticket
 - `CreateTicket25.java` — bidirectional ticket-checklist link, moved push after commit
 - `DatabaseResetUtil.java` — systemType capture, PSP/BPO branching in reinitialize()
 - `DatabaseInitializer.java` — extracted performBpoInitialization(), fixed DoW parameter bug
+
+---
+
+## Session 61 — March 11, 2026 — BPO Assignment & Filtering (V050)
+
+### BPO Dashboard Column Spacing
+- Added `gap: 0.75rem` and `padding-left: 0.75rem` to `.bpo-columns` flex container
+- Removed `border-right` from `.bpo-col-left`, added proper `border` and `border-radius: 6px` to the left card
+
+### My Tasks Filter Fix
+- Bug: "My Tasks" query included `OR d.assignedTo IS NULL`, showing unassigned tasks
+- Fix: Removed NULL condition from both cross-system (`getMyDelegatedToDos`) and co-located (`getMyBpoToDos`) queries
+
+### Unassigned Filter View
+- Added new viewMode `"unassigned"` with dedicated queries for both cross-system and co-located modes
+- Added "Unassigned" button to toolbar between "My Tasks" and "All Open"
+
+### Auto-Assignment for Auto-Accepted Tasks (V050)
+- When tasks are auto-accepted (global toggle, recurring series, or required-sequence), the system now attempts assignment:
+  1. Find most recent prior instance with same recurringSeriesId or sourceTaskId that had an active assignee
+  2. Fall back to PspClient.defaultAssignee if set and active
+  3. Leave unassigned if neither found
+- Added `resolveAutoAssignee()`, `findPriorAssignee()`, `isActiveBpoUser()` methods to TaskReceiveApi
+
+### Default Assignee per PSP Client
+- V050 migration: `default_assignee_id` FK column on `psp_clients`
+- `PspClient.java`: `defaultAssignee` ManyToOne field
+- `pspClients25.jsp`: dropdown to select default assignee per PSP client (populated from BPO users)
+- `BpoPspClients.java`: `setDefaultAssignee` action handler
+
+### Files Modified
+- `bpoHome25.jsp` — column gap CSS, unassigned filter button
+- `BpoHome.java` — fixed My Tasks queries, added unassigned queries and viewMode
+- `TaskReceiveApi.java` — auto-assignment logic after auto-approval
+- `PspClient.java` — defaultAssignee field
+- `pspClients25.jsp` — default assignee dropdown UI
+- `BpoPspClients.java` — setDefaultAssignee handler
+- `V050__bpo_default_assignee.sql` — migration script
+- `migration_tracker.md` — V050 row
+- `schema_version_migration.sql` — V050 insert

@@ -190,6 +190,22 @@
                                                 </form>
                                             </span>
                                         </div>
+                                        <div style="font-size:0.8rem; margin-top:0.4rem;">
+                                            <form method="post" action="BpoPspClients" class="d-inline-flex align-items-center gap-2">
+                                                <input type="hidden" name="action" value="setDefaultAssignee">
+                                                <input type="hidden" name="clientId" value="${c.id}">
+                                                <label style="font-size:0.75rem; color:#6c757d; white-space:nowrap;">Default assignee:</label>
+                                                <select name="defaultAssigneeId" class="form-select form-select-sm"
+                                                        style="font-size:0.75rem; padding:0.15rem 0.4rem; width:auto; min-width:140px;">
+                                                    <option value="0">-- None --</option>
+                                                    <c:forEach var="bpo" items="${applicationScope.global.getBpoUsers()}">
+                                                        <option value="${bpo.getId()}" ${c.defaultAssignee != null && c.defaultAssignee.id == bpo.getId() ? 'selected' : ''}>${bpo.firstName} ${bpo.lastName}</option>
+                                                    </c:forEach>
+                                                </select>
+                                                <button type="submit" class="btn btn-sm btn-outline-secondary"
+                                                        style="font-size:0.68rem; padding:0.1rem 0.4rem;">Save</button>
+                                            </form>
+                                        </div>
                                     </div>
                                     <form method="post" action="BpoPspClients"
                                           onsubmit="return confirm('Disconnect ${c.pspName}? This will revoke API access.');">

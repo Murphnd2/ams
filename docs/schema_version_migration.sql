@@ -69,4 +69,5 @@ INSERT IGNORE INTO schema_version (version, description, script_name) VALUES
 ('V046', 'Chatbot skill table for extensible AI assistant capabilities', 'V046__chatbot_skill_table.sql'),
 ('V047', 'Composite task order table for cross-sequence ordering', 'V047__composite_task_order.sql'),
 ('V048', 'Universal import system tables and seed data', 'V048__universal_import_system.sql'),
-('V049', 'Add source_task_id to delegated_todo for required-sequence auto-approval', 'V049__delegated_todo_source_task_id.sql');
+('V049', 'Add source_task_id to delegated_todo for required-sequence auto-approval', 'V049__delegated_todo_source_task_id.sql'),
+('V050', 'BPO default assignee per PSP client', 'V050__bpo_default_assignee.sql');

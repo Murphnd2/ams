@@ -31,6 +31,10 @@ public class PspClient {
     @Column(name="auto_accept_tasks", nullable=false)
     private boolean autoAcceptTasks;
 
+    @ManyToOne
+    @JoinColumn(name="default_assignee_id")
+    private Person defaultAssignee;
+
     @Column(name="date_requested")
     private Date dateRequested;
 
@@ -107,6 +111,14 @@ public class PspClient {
 
     public void setAutoAcceptTasks(boolean autoAcceptTasks) {
         this.autoAcceptTasks = autoAcceptTasks;
+    }
+
+    public Person getDefaultAssignee() {
+        return defaultAssignee;
+    }
+
+    public void setDefaultAssignee(Person defaultAssignee) {
+        this.defaultAssignee = defaultAssignee;
     }
 
     public Date getDateRequested() {

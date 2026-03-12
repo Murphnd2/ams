@@ -9,6 +9,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import net.superiorstate.ams.AppConfig;
 import net.superiorstate.ams.model.activity.checklist.tasks.DelegatedToDo;
+import net.superiorstate.ams.model.general.Person;
 import net.superiorstate.ams.model.general.PspClient;
 
 import java.io.IOException;
@@ -149,6 +150,14 @@ public class TaskReceiveApi extends HttpServlet {
                     dt.setStatus("PENDING");
                 }
 
+                // Auto-assignment: when task is auto-accepted, try to assign it
+                if ("ACTIVE".equals(dt.getStatus())) {
+                    Person assignee = resolveAutoAssignee(em, pspClient, recurringSeriesId, sourceTaskId);
+                    if (assignee != null) {
+                        dt.setAssignedTo(assignee);
+                    }
+                }
+
                 String dueDateStr = getJsonString(t, "dueDate");
                 if (dueDateStr != null) {
                     try {
@@ -174,6 +183,67 @@ public class TaskReceiveApi extends HttpServlet {
         } finally {
             if (em.isOpen()) em.close();
         }
+    }
+
+    /**
+     * Resolve who should be auto-assigned to an incoming task.
+     * Priority:
+     *   1. Prior instance of same recurring series or source task → copy that assignee (if active)
+     *   2. PspClient default assignee (if set and active)
+     *   3. null (leave unassigned)
+     */
+    private Person resolveAutoAssignee(EntityManager em, PspClient pspClient,
+                                       String recurringSeriesId, String sourceTaskId) {
+        // 1. Try prior instance assignment (recurring series first, then source task)
+        Person priorAssignee = findPriorAssignee(em, pspClient, "recurringSeriesId", recurringSeriesId);
+        if (priorAssignee == null) {
+            priorAssignee = findPriorAssignee(em, pspClient, "sourceTaskId", sourceTaskId);
+        }
+        if (priorAssignee != null) return priorAssignee;
+
+        // 2. Fall back to PSP client default assignee
+        Person defaultAssignee = pspClient.getDefaultAssignee();
+        if (defaultAssignee != null && isActiveBpoUser(em, defaultAssignee.getId())) {
+            return defaultAssignee;
+        }
+
+        return null;
+    }
+
+    private Person findPriorAssignee(EntityManager em, PspClient pspClient,
+                                     String fieldName, String fieldValue) {
+        if (fieldValue == null || fieldValue.isBlank()) return null;
+
+        // Get prior instances ordered by most recent first, that had an assignee
+        String jpql = "SELECT d FROM DelegatedToDo d " +
+                "WHERE d." + fieldName + " = :val " +
+                "AND d.pspClient.id = :clientId " +
+                "AND d.assignedTo IS NOT NULL " +
+                "ORDER BY d.dateReceived DESC";
+        List<DelegatedToDo> priors = em.createQuery(jpql, DelegatedToDo.class)
+                .setParameter("val", fieldValue)
+                .setParameter("clientId", pspClient.getId())
+                .setMaxResults(5)
+                .getResultList();
+
+        for (DelegatedToDo prior : priors) {
+            Person candidate = prior.getAssignedTo();
+            if (candidate != null && isActiveBpoUser(em, candidate.getId())) {
+                return candidate;
+            }
+        }
+        return null;
+    }
+
+    private boolean isActiveBpoUser(EntityManager em, Long personId) {
+        // Check if person has an active user account (role doesn't matter for BPO —
+        // if they were previously assigned, they were valid)
+        String jpql = "SELECT COUNT(u) FROM User u " +
+                "WHERE u.person.id = :pid AND u.isActive = true";
+        long count = (Long) em.createQuery(jpql)
+                .setParameter("pid", personId)
+                .getSingleResult();
+        return count > 0;
     }
 
     private String getJsonString(JsonObject obj, String key) {

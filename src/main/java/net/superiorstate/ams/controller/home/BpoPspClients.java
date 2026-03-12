@@ -10,6 +10,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import net.superiorstate.ams.AppConfig;
 import net.superiorstate.ams.data.util.ApiClient;
+import net.superiorstate.ams.model.general.Person;
 import net.superiorstate.ams.model.general.PspClient;
 
 import java.io.IOException;
@@ -65,6 +66,7 @@ public class BpoPspClients extends HttpServlet {
             case "reject" -> handleReject(request, response);
             case "disconnect" -> handleDisconnect(request, response);
             case "toggleAutoAccept" -> handleToggleAutoAccept(request, response);
+            case "setDefaultAssignee" -> handleSetDefaultAssignee(request, response);
             default -> response.sendRedirect(request.getContextPath() + "/BpoPspClients");
         }
     }
@@ -226,6 +228,43 @@ public class BpoPspClients extends HttpServlet {
             }
         } catch (Exception e) {
             if (em.getTransaction().isActive()) em.getTransaction().rollback();
+        } finally {
+            if (em.isOpen()) em.close();
+        }
+
+        response.sendRedirect(request.getContextPath() + "/BpoPspClients");
+    }
+
+    private void handleSetDefaultAssignee(HttpServletRequest request, HttpServletResponse response) throws IOException {
+        String clientIdStr = request.getParameter("clientId");
+        String assigneeIdStr = request.getParameter("defaultAssigneeId");
+        if (clientIdStr == null) {
+            response.sendRedirect(request.getContextPath() + "/BpoPspClients");
+            return;
+        }
+
+        EntityManagerFactory emf = (EntityManagerFactory) getServletContext().getAttribute("emf");
+        EntityManager em = emf.createEntityManager();
+        try {
+            long clientId = Long.parseLong(clientIdStr);
+            PspClient client = em.find(PspClient.class, clientId);
+            if (client != null) {
+                em.getTransaction().begin();
+                if (assigneeIdStr == null || "0".equals(assigneeIdStr)) {
+                    client.setDefaultAssignee(null);
+                } else {
+                    long assigneeId = Long.parseLong(assigneeIdStr);
+                    Person assignee = em.find(Person.class, assigneeId);
+                    client.setDefaultAssignee(assignee);
+                }
+                em.merge(client);
+                em.getTransaction().commit();
+                request.getSession().setAttribute("clientMessage",
+                        "Default assignee updated for " + client.getPspName() + ".");
+            }
+        } catch (Exception e) {
+            if (em.getTransaction().isActive()) em.getTransaction().rollback();
+            request.getSession().setAttribute("clientError", "Error: " + e.getMessage());
         } finally {
             if (em.isOpen()) em.close();
         }

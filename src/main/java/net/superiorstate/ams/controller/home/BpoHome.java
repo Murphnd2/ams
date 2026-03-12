@@ -70,6 +70,10 @@ public class BpoHome extends HttpServlet {
                     List<DelegatedToDo> delegatedToDos = getAllDelegatedToDos(em);
                     request.setAttribute("delegatedToDos", delegatedToDos);
                     request.setAttribute("pspGroups", groupDelegatedToDos(delegatedToDos));
+                } else if ("unassigned".equals(viewMode)) {
+                    List<DelegatedToDo> delegatedToDos = getUnassignedDelegatedToDos(em);
+                    request.setAttribute("delegatedToDos", delegatedToDos);
+                    request.setAttribute("pspGroups", groupDelegatedToDos(delegatedToDos));
                 } else {
                     viewMode = "mine"; // Normalize if non-admin tried "pending"
                     List<DelegatedToDo> delegatedToDos = getMyDelegatedToDos(em, currentUser.getId());
@@ -81,6 +85,8 @@ public class BpoHome extends HttpServlet {
                 List<Object[]> bpoToDos;
                 if ("all".equals(viewMode)) {
                     bpoToDos = getAllOpenBpoToDos(em);
+                } else if ("unassigned".equals(viewMode)) {
+                    bpoToDos = getUnassignedBpoToDos(em);
                 } else {
                     bpoToDos = getMyBpoToDos(em, currentUser.getId());
                 }
@@ -126,7 +132,7 @@ public class BpoHome extends HttpServlet {
         String jpql = "SELECT d FROM DelegatedToDo d " +
                 "WHERE d.status = 'ACTIVE' " +
                 "AND d.isCompleted = false " +
-                "AND (d.assignedTo.id = :userId OR d.assignedTo IS NULL) " +
+                "AND d.assignedTo.id = :userId " +
                 "ORDER BY d.dueDate, d.activityName, d.sortOrder";
         Query q = em.createQuery(jpql, DelegatedToDo.class);
         q.setParameter("userId", bpoUserId);
@@ -152,6 +158,21 @@ public class BpoHome extends HttpServlet {
         }
     }
 
+    private List<DelegatedToDo> getUnassignedDelegatedToDos(EntityManager em) {
+        String jpql = "SELECT d FROM DelegatedToDo d " +
+                "WHERE d.status = 'ACTIVE' " +
+                "AND d.isCompleted = false " +
+                "AND d.assignedTo IS NULL " +
+                "ORDER BY d.dueDate, d.activityName, d.sortOrder";
+        Query q = em.createQuery(jpql, DelegatedToDo.class);
+        try {
+            return q.getResultList();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return new ArrayList<>();
+        }
+    }
+
     // --- Co-located BPO local ToDo queries ---
 
     private List<Object[]> getMyBpoToDos(EntityManager em, Long bpoUserId) {
@@ -162,7 +183,7 @@ public class BpoHome extends HttpServlet {
                 "WHERE task.isSourced = true " +
                 "AND t.isComplete = false " +
                 "AND t.bpoCompleted = false " +
-                "AND (t.bpoAssignedTo.id = :userId OR t.bpoAssignedTo IS NULL) " +
+                "AND t.bpoAssignedTo.id = :userId " +
                 "ORDER BY cl.dueDate, cl.fullName, t.sortOrder";
         Query q = em.createQuery(jpql);
         q.setParameter("userId", bpoUserId);
@@ -182,6 +203,25 @@ public class BpoHome extends HttpServlet {
                 "WHERE task.isSourced = true " +
                 "AND t.isComplete = false " +
                 "AND t.bpoCompleted = false " +
+                "ORDER BY cl.dueDate, cl.fullName, t.sortOrder";
+        Query q = em.createQuery(jpql);
+        try {
+            return q.getResultList();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return new ArrayList<>();
+        }
+    }
+
+    private List<Object[]> getUnassignedBpoToDos(EntityManager em) {
+        String jpql = "SELECT t, cl.fullName, cl.dueDate, task.psp.fullName " +
+                "FROM ToDo t " +
+                "JOIN t.checkList cl " +
+                "JOIN t.task task " +
+                "WHERE task.isSourced = true " +
+                "AND t.isComplete = false " +
+                "AND t.bpoCompleted = false " +
+                "AND t.bpoAssignedTo IS NULL " +
                 "ORDER BY cl.dueDate, cl.fullName, t.sortOrder";
         Query q = em.createQuery(jpql);
         try {
