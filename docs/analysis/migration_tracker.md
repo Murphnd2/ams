@@ -81,7 +81,7 @@ Individual migration scripts are no longer stored in the repo. The baseline dump
 | V047 | Composite task order table for cross-sequence ordering | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
 | V048 | Universal import system tables and seed data | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
 | V049 | Add source_task_id to delegated_todo for required-sequence auto-approval | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
-| V050 | BPO default assignee per PSP client | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
+| V050 | BPO default assignee per PSP client | ⬜ | ⬜ | ⬜ | ✅ | ✅ | ✅ | ⬜ |
 
 ## Notes
 
@@ -117,3 +117,4 @@ Individual migration scripts are no longer stored in the repo. The baseline dump
 - V046 creates chatbot_skill table for per-PSP, admin-configurable AI chatbot skills. Each skill defines a specialized system prompt, trigger keywords, file acceptance rules (MIME types), model preference, max_tokens, admin-only toggle, and sort order. FK to assignee (PSP). Requires updated WAR with ChatbotSkill entity, ChatbotSkillDAO, refactored ChatAssistant (unified multipart/JSON endpoint with skill matching), SkillManager CRUD servlet, and skillManager25.jsp admin page.
 - V049 adds source_task_id VARCHAR(20) to delegated_todo with composite index on (source_task_id, psp_client_id). Enables BPO auto-approval of required-sequence tasks (SETUP/RENEWAL): once the BPO approves a task the first time, future occurrences of the same source task from the same PSP are auto-accepted without manual approval. Requires updated WAR with DelegatedToDo sourceTaskId field, BpoTaskPushService sending sourceTaskId in payload, and TaskReceiveApi auto-approval logic for SETUP/RENEWAL activity types.
 - V048 creates the universal import system: import_provider (TPA platform registry), import_file_type (file definitions per provider), import_field_mapping (column-to-canonical-field mappings), import_plan_type_mapping (provider plan codes → AMS plan types, nullable provider_id for universal defaults), and import_run_log (execution history). Seeds 17 universal plan type codes (FSA, HRA, HSA, DCA, COBRA, etc.). Requires updated WAR with 5 new entities in model/imports/, UniversalImportService, ProviderSetup servlet, and UniversalImport wizard servlet.
+- V050 FK fix: original script referenced `person(id)` which doesn't exist as a standalone table (Person extends Assignee via JPA inheritance). Corrected to `assignee(id)`. On all environments the column was added but the FK failed silently — manually applied corrected FK on production, demo, and BPO (March 12, 2026).

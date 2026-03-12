@@ -4,7 +4,7 @@
 
 ALTER TABLE psp_clients ADD COLUMN default_assignee_id BIGINT NULL;
 ALTER TABLE psp_clients ADD CONSTRAINT fk_psp_client_default_assignee
-    FOREIGN KEY (default_assignee_id) REFERENCES person(id);
+    FOREIGN KEY (default_assignee_id) REFERENCES assignee(id);
 
 INSERT IGNORE INTO schema_version (version, description, script_name, applied_on)
 VALUES ('V050', 'BPO default assignee per PSP client', 'V050__bpo_default_assignee.sql', NOW());
