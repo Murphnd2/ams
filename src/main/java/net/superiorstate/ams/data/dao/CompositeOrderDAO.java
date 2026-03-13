@@ -87,7 +87,8 @@ public abstract class CompositeOrderDAO {
                 seqName = seqName.substring(seqName.indexOf(")") + 1).trim();
             }
 
-            List<TaskSequenceTable> tstList = rtl.getTaskSequenceTableList();
+            // Use direct query instead of lazy @OneToMany to avoid L2 cache staleness
+            List<TaskSequenceTable> tstList = ApplicationTaskDAO.getTaskSequenceItems(em, rtl.getId());
             for (TaskSequenceTable tst : tstList) {
                 Task task = tst.getTask();
                 Long taskId = task.getId();

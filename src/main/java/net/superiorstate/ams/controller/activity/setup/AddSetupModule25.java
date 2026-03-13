@@ -10,6 +10,7 @@ import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.AmsDataLocal;
 import net.superiorstate.ams.model.ToDoOut25;
 import net.superiorstate.ams.data.dao.ActivityDAO;
+import net.superiorstate.ams.data.dao.ApplicationTaskDAO;
 import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.model.activity.Activity;
 import net.superiorstate.ams.model.activity.checklist.CheckList;
@@ -130,7 +131,9 @@ public class AddSetupModule25 extends HttpServlet {
                 .map(t -> t.getTask().getId())
                 .collect(Collectors.toSet());
 
-        for (TaskSequenceTable seq : rtl.getTaskSequenceTableList()) {
+        // Use direct query instead of lazy @OneToMany to avoid L2 cache staleness
+        List<TaskSequenceTable> tstList = ApplicationTaskDAO.getTaskSequenceItems(em, rtl.getId());
+        for (TaskSequenceTable seq : tstList) {
             Long taskId = seq.getTask().getId();
 
             if (!existingTaskIds.contains(taskId)) {

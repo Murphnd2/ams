@@ -48,7 +48,7 @@ public abstract class ApplicationTaskDAO {
         System.out.println("Required Task List Size: " + requiredTaskLists.size());
 
         // Collect unique tasks via legacy dedup
-        List<SortedTask> necessaryList = getTasksWithLegacyOrder(requiredTaskLists);
+        List<SortedTask> necessaryList = getTasksWithLegacyOrder(em, requiredTaskLists);
 
         // Check for composite ordering
         if (!requiredTaskLists.isEmpty() && !necessaryList.isEmpty()) {
@@ -66,13 +66,15 @@ public abstract class ApplicationTaskDAO {
 
     /**
      * Legacy dedup: iterate RequiredTaskLists, first occurrence wins.
+     * Uses direct JPQL query instead of lazy @OneToMany collection to avoid
+     * EclipseLink L2 cache staleness (seeded sequences would return empty lists).
      */
-    private static List<SortedTask> getTasksWithLegacyOrder(List<RequiredTaskList> requiredTaskLists) {
+    private static List<SortedTask> getTasksWithLegacyOrder(EntityManager em, List<RequiredTaskList> requiredTaskLists) {
         List<SortedTask> necessaryList = new ArrayList<>();
         for(RequiredTaskList rtl:requiredTaskLists){
-            List<TaskSequenceTable> tstList = rtl.getTaskSequenceTableList();
+            List<TaskSequenceTable> tstList = getTaskSequenceItems(em, rtl.getId());
             System.out.println("RTL:"+rtl.getDescription()+"----------------------------");
-            System.out.println(" * Task List Size = " + rtl.getTaskSequenceTableList().size());
+            System.out.println(" * Task List Size = " + tstList.size());
             for(TaskSequenceTable tst: tstList){
                 boolean listHasIt = false;
                 for(SortedTask st: necessaryList){
@@ -121,6 +123,21 @@ public abstract class ApplicationTaskDAO {
 
         // Sort by the newly assigned composite sort values
         taskList.sort(Comparator.comparingInt(SortedTask::getSortOrder));
+    }
+
+    /**
+     * Direct JPQL query for TaskSequenceTable items — bypasses EclipseLink L2 cache
+     * on the lazy @OneToMany collection which can be stale after seeding.
+     */
+    public static List<TaskSequenceTable> getTaskSequenceItems(EntityManager em, Long sequenceId) {
+        Query q = em.createQuery(
+                "SELECT tst FROM TaskSequenceTable tst WHERE tst.taskSequence.id = :id ORDER BY tst.sortOrder");
+        q.setParameter("id", sequenceId);
+        try {
+            return (List<TaskSequenceTable>) q.getResultList();
+        } catch (NoResultException e) {
+            return new ArrayList<>();
+        }
     }
 
     public static List<RequiredTaskList> getTaskListsForModule(EntityManager em, ApplicationModule am){

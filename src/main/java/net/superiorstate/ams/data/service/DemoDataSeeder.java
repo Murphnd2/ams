@@ -3,6 +3,7 @@ package net.superiorstate.ams.data.service;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
 import jakarta.persistence.Query;
+import net.superiorstate.ams.data.dao.ActivityDAO;
 import net.superiorstate.ams.data.dao.SalesDAO;
 import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.model.Constant;
@@ -717,16 +718,20 @@ public abstract class DemoDataSeeder {
         Person gregPerson = seedPerson(em, "Greg", "Hartfield", "Owner",
                 "g.hartfield@hartfieldmfg.com", "906-555-0199", hartfieldAddr, psp);
 
-        // Create Prospect
-        Prospect prospect = seedProspect(em, "Hartfield Manufacturing LLC", gregPerson, hartfieldAddr, adminPerson);
+        // Create Prospect — assigned to PreVantage's sales agent (James Rivera)
+        // so Hartfield is a prospect of the outside agency with a full rate grid
+        Person salesAgent = em.createQuery(
+                "SELECT p FROM Person p WHERE p.email = 's.mitchell@prevantage.com'", Person.class)
+                .getSingleResult();
+        Prospect prospect = seedProspect(em, "Hartfield Manufacturing LLC", gregPerson, hartfieldAddr, salesAgent);
 
-        // Create Opportunity
-        Agency homeAgency = EntityLookup.getAgencyById(em, 14L);
+        // Create Opportunity — tied to PreVantage Benefits (id=15) instead of home agency
+        Agency preVantage = EntityLookup.getAgencyById(em, 15L);
         em.getTransaction().begin();
         Opportunity opp = new Opportunity();
         opp.setFullName("Hartfield Manufacturing LLC");
         opp.setProspect(prospect);
-        opp.setAgency(homeAgency);
+        opp.setAgency(preVantage);
         opp.setLoggedBy(adminPerson);
         opp.setAssignedTo(adminPerson);
         opp.setPrimaryContact(gregPerson);
@@ -751,14 +756,14 @@ public abstract class DemoDataSeeder {
         managedOpp.setCheckList(oppCl);
         em.getTransaction().commit();
 
-        // Create Proposal
-        Rate standardRate = EntityLookup.getRateById(em, 1L, true);
+        // Create Proposal — uses Demo Agency Rate (id=2) which has full pricing grid
+        Rate demoRate = EntityLookup.getRateById(em, 2L, true);
         LOS fsaLos = em.find(LOS.class, 2L);
 
         em.getTransaction().begin();
         Proposal proposal = new Proposal();
         proposal.setProspect(prospect);
-        proposal.setRate(standardRate);
+        proposal.setRate(demoRate);
         proposal.setApplicationGUID(UUID.randomUUID().toString());
         proposal.setStatus("APPLIED");
         proposal.setCreatedBy(adminPerson);
@@ -777,6 +782,11 @@ public abstract class DemoDataSeeder {
         app.setDateSubmitted(new Timestamp(System.currentTimeMillis()));
         em.persist(app);
         em.getTransaction().commit();
+
+        // Create ApplicationModule for FSA — this is what ReviewApplication uses
+        // to determine which services to implement when the application is approved
+        ServiceItem siFsa = EntityLookup.getServiceItemById(em, 3);
+        ActivityDAO.addModule(em, app, siFsa);
 
         // Populate application field values
         seedApplicationFieldValue(em, app, "company_legal_name", "Hartfield Manufacturing LLC");
@@ -1082,6 +1092,12 @@ public abstract class DemoDataSeeder {
 
             sortOrder += 10;
         }
+
+        // Refresh RTL from DB so EclipseLink L2 cache picks up the new
+        // TaskSequenceTable rows.  Without this, lazy getTaskSequenceTableList()
+        // returns the stale empty collection that was cached when the RTL was
+        // first persisted (before any TST rows existed).
+        em.refresh(rtl);
     }
 
     private static void seedPastRenewal(EntityManager em, String name, Employer employer,

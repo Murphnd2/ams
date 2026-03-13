@@ -406,13 +406,12 @@ public class ReviewApplication extends HttpServlet {
         em.getTransaction().commit();
         System.out.println("[ReviewApplication] Setup Created for Proposal ID: " + application.getProposal().getId());
 
-        // Link checklist back to setup
+        // Link checklist back to setup (use em.find to avoid dual JOIN FETCH)
         em.getTransaction().begin();
-        CheckList c = EntityLookup.getCheckListById(em, checkList.getId());
-        assert c != null;
-        c.setAssignedTo(setup);
-        c.setSetup(setup);
-        em.persist(c);
+        CheckList cl = em.find(CheckList.class, checkList.getId());
+        cl.setAssignedTo(setup);
+        cl.setSetup(setup);
+        em.persist(cl);
         em.getTransaction().commit();
         System.out.println("[ReviewApplication] Checklist assigned to Setup");
 
@@ -430,29 +429,24 @@ public class ReviewApplication extends HttpServlet {
             System.out.println("[ReviewApplication] Sorted Task List Size = " + sortedTaskList.size());
         }
 
+        // Persist each ToDo — the FK (toDo.checkList) handles the DB relationship.
+        // Avoids reloading CheckList via getCheckListById (dual JOIN FETCH) in each
+        // iteration, which triggers EclipseLink SINGLE_TABLE descriptor confusion.
         for (SortedTask st : sortedTaskList) {
             em.getTransaction().begin();
             ToDo toDo = new ToDo();
             toDo.setTask(st.getTask());
             toDo.setSortOrder(st.getSortOrder());
             toDo.setCheckList(c);
-            toDo.setComplete(false);
-            if (st.getTask().getId() == 153L)
-                toDo.setComplete(true);
+            toDo.setComplete(st.getTask().getId() == 153L);
             em.persist(toDo);
-            em.getTransaction().commit();
-
-            em.getTransaction().begin();
-            CheckList checkList = EntityLookup.getCheckListById(em, c.getId());
-            assert checkList != null;
-            checkList.getToDoList().add(toDo);
-            em.persist(checkList);
             em.getTransaction().commit();
             System.out.println("[ReviewApplication] Todo created for Task: " + st.getTask().getDescription());
         }
 
-        // Push sourced tasks to BPO vendors (non-fatal, after all transactions committed)
-        CheckList freshChecklist = EntityLookup.getCheckListById(em, c.getId());
+        // Refresh checklist to pick up all new ToDos via simple find
+        // (avoids dual JOIN FETCH in getCheckListById that causes inheritance issues)
+        CheckList freshChecklist = em.find(CheckList.class, c.getId());
         BpoTaskPushService.pushDelegatedTasks(em, freshChecklist);
     }
 

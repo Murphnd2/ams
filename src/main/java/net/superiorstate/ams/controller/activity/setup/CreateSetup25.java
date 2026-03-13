@@ -299,8 +299,9 @@ public class CreateSetup25 extends HttpServlet {
         em.getTransaction().commit();
 
         // Link checklist back to setup (bidirectional)
+        // Use em.find to avoid dual JOIN FETCH in getCheckListById (EclipseLink-26 with SINGLE_TABLE)
         em.getTransaction().begin();
-        CheckList cl = EntityLookup.getCheckListById(em, checkList.getId());
+        CheckList cl = em.find(CheckList.class, checkList.getId());
         cl.setAssignedTo(setup);
         cl.setSetup(setup);
         em.persist(cl);
@@ -329,16 +330,11 @@ public class CreateSetup25 extends HttpServlet {
             toDo.setComplete(st.getTask().getId() == 153L);
             em.persist(toDo);
             em.getTransaction().commit();
-
-            em.getTransaction().begin();
-            CheckList checkList = EntityLookup.getCheckListById(em, c.getId());
-            checkList.getToDoList().add(toDo);
-            em.persist(checkList);
-            em.getTransaction().commit();
         }
 
         // Push sourced tasks to BPO vendors (non-fatal, after all transactions committed)
-        CheckList freshChecklist = EntityLookup.getCheckListById(em, c.getId());
+        // Use em.find to avoid dual JOIN FETCH in getCheckListById (EclipseLink-26 with SINGLE_TABLE)
+        CheckList freshChecklist = em.find(CheckList.class, c.getId());
         BpoTaskPushService.pushDelegatedTasks(em, freshChecklist);
     }
 
