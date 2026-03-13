@@ -1,7 +1,7 @@
 # AMS Project Backlog
 
 **Created:** February 19, 2026
-**Last Updated:** March 10, 2026
+**Last Updated:** March 13, 2026
 **Reference:** `docs/ams_to_be_vision.md` for full project descriptions
 
 ---
@@ -62,8 +62,8 @@
 | T3 | Data layer rename | HIGH | ✅ Done | All cryptic names replaced. |
 | T4 | Modal servlet analysis | MED | ✅ Done | All modals mapped to servlets. |
 | T5 | Sequence builder old page cleanup | LOW | 📋 Planned | Delete old builder JSPs/servlets after new builder proven. |
-| T6 | Database migration tracking | HIGH | ✅ Done | 45 versions tracked (V001–V045). V001-V024 on all environments, V025-V037 on Demo/BPO/Master, V038 on Demo/BPO. V039-V045 code-complete. Production at V024. |
-| T7 | Docs cleanup & consolidation | MED | ✅ Done | This audit. Session summaries consolidated. Obsolete docs flagged for deletion. |
+| T6 | Database migration tracking | HIGH | ✅ Done | 53 versions tracked (V001–V053). V001-V024 on all environments, V025-V037 on Demo/BPO/Master, V038 on Demo/BPO. V039-V053 code-complete. Production at V024. |
+| T7 | Docs cleanup & consolidation | MED | ✅ Done | Session 69 cleanup: removed 4 obsolete files, consolidated demo materials, compressed session archive (2397→1163 lines), replaced claude_memory.md with pointer file. |
 | T8 | Empty checklist / todo list handling | LOW | 💡 Backlog | Remove task-153 dummy workaround. Audit display chain for empty todo list safety. |
 | T9 | Refactor manual setup to dynamic LOS | CONF | 📋 Planned | `GenerateProp25` uses hardcoded `q1`–`q8` flags. Needs refactor to dynamic LOS from DB. |
 | T10 | PspAgencyHome scoping | HIGH | 📋 Planned | Agency Manager should only see their own agency. Hide rate management for non-PSP users. |
@@ -104,6 +104,11 @@
 | 25 | Proposal Content Page Skill | MED | ✅ Done | Claude Code skill (`.claude/skills/proposal-content-page/`) generates styled HTML blocks for proposal custom pages. Dark navy card-inset pattern, `--s` scale factor, scoped CSS, print-ready layout. Reference examples in `docs/proposal-fsa-page*.html`. Useful for building content library and proposal inserts. |
 | 29 | Agency-Scoped Proposal Sections | MED | ✅ Code complete | V044 adds agency_id FK to proposal_section. TITLE/CLOSING pages can be overridden per-agency. ProposalSettings Agency Overrides card. ViewProposal resolves agency chain. Full-height flex layout with collapsible editor. Needs V044 applied + browser testing. Session 51. |
 | 26 | Legacy TPO Path → Opportunity Creation | MED | 💡 Backlog | When `/tpo/*` path is hit, auto-create an Opportunity for the agency manager. Extract the full original path sought (e.g. `/tpo/quote/12345`) so previous quote/prospect info can be looked up from the old superiorstate.net IIS site. Currently `/tpo/*` shows a static "site updated" notice page (`LegacyTpoRedirect`). |
+| 30 | Universal Import System | HIGH | ✅ Code complete | Config-driven entity import with provider setup, field mapping, transform rules (V048). Cross-reference system (V051-V052). Provider setup rework (V053). Interactive Import Wizard B1-B5 complete. Sessions 56-66. |
+| 31 | Chatbot Skill System | MED | ✅ Code complete | Extensible skill matching with ChatbotSkill entity, SkillManager admin UI, unified ChatAssistant endpoint (V046). Session 54. |
+| 32 | Composite Task Ordering | MED | ✅ Code complete | Cross-sequence master ordering per activity type, drag-and-drop UI in sequenceManager25.jsp (V047). Session 55. |
+| 33 | Custom Landing Page System | MED | ✅ Code complete | PSP-customizable landing page with login modal, Request a Quote form, configurable header colors (V043). Sessions 45-46. |
+| 34 | Center Panel Redesign | MED | ✅ Done | Unified "Colored Tab" section headers across all activity detail panels. Navbar application review badge. Session 68. |
 
 ---
 
@@ -126,10 +131,12 @@ Built and functional. Client-side JS filtering. Placeholder cards for Agent Pipe
 | Instance | URL | IP | Type | Schema | Status |
 |----------|-----|----|------|--------|--------|
 | Production PSP | https://superiorstate.biz | (production IP) | PSP | V024 | Running |
-| Demo PSP | https://demo.superiorstate.biz | 192.152.28.73 | PSP | V037 | Running, seeded with demo data, release V0.37.0 |
-| BPO | https://bpo.superiorstate.biz | 158.222.102.168 (DHCP) | BPO | V037 | Running, initialized, partnered with Demo PSP, release V0.37.0 |
-| Master | master.superiorstate.biz | 208.94.39.77 | Master image | V037 | Snapshot v8 taken, stopped |
+| Demo PSP | https://demo.superiorstate.biz | 192.152.28.73 | PSP | V038 | Running, seeded with demo data |
+| BPO | https://bpo.superiorstate.biz | 158.222.102.168 (DHCP) | BPO | V038 | Running, initialized, partnered with Demo PSP |
+| Master | master.superiorstate.biz | 208.94.39.77 | Master image | V037 | Snapshot v8 taken 2026-03-04, stopped |
 
 **Migrations pending application:**
-- V025–V037: Applied to Demo/BPO/Master. Not applied to production (V024) or local dev.
-- Production intentionally isolated at V024 until conference demo infrastructure is proven
+- V025–V037: Applied to Demo/BPO/Master.
+- V038: Applied to Demo/BPO.
+- V039–V053: Code-complete, not yet applied to any environment.
+- Production intentionally isolated at V024 until conference demo infrastructure is proven.
