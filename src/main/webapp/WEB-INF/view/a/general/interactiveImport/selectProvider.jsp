@@ -56,8 +56,8 @@
         <a href="ProviderSetup" style="color: var(--ssa); text-decoration: none;">
             <i class="bi bi-gear me-1"></i>Manage Providers
         </a>
-        <a href="UniversalImport" style="color: var(--ssa); text-decoration: none;">
-            <i class="bi bi-cloud-upload me-1"></i>Batch Import (legacy)
+        <a href="SummitImport" style="color: var(--ssa); text-decoration: none;">
+            <i class="bi bi-database me-1"></i>Summit Import
         </a>
     </div>
 </div>

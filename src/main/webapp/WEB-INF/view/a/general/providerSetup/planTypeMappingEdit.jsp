@@ -70,14 +70,14 @@
                             <c:choose>
                                 <c:when test="${ptm.targetPlanType != null}">
                                     <strong>${ptm.targetPlanType.planTypeName}</strong>
-                                    <small class="text-muted ms-1">(ID: ${ptm.targetPlanType.id})</small>
+                                    <small class="text-muted ms-1">(ID: ${ptm.targetPlanType.planTypeId})</small>
                                 </c:when>
                                 <c:otherwise><span class="text-muted fst-italic">Auto-create on import</span></c:otherwise>
                             </c:choose>
                         </td>
                         <td class="text-end">
                             <button class="ssa-action primary" style="font-size:0.85rem;"
-                                    onclick="editPtm('${ptm.id}','${ptm.sourcePlanCode}','${ptm.sourcePlanName}','${ptm.targetPlanType != null ? ptm.targetPlanType.id : ""}')">
+                                    onclick="editPtm('${ptm.id}','${ptm.sourcePlanCode}','${ptm.sourcePlanName}','${ptm.targetPlanType != null ? ptm.targetPlanType.planTypeId : ""}')">
                                 Edit
                             </button>
                             <form method="POST" action="ProviderSetup" class="d-inline"
@@ -130,7 +130,7 @@
                         <select id="targetPlanTypeId" name="targetPlanTypeId" class="form-select">
                             <option value="">— Auto-create on import —</option>
                             <c:forEach var="pt" items="${allPlanTypes}">
-                                <option value="${pt.id}">${pt.planTypeName} (${pt.code})</option>
+                                <option value="${pt.planTypeId}">${pt.planTypeName} (${pt.code})</option>
                             </c:forEach>
                         </select>
                         <div class="form-text">Leave blank to auto-create a new plan type during import.</div>

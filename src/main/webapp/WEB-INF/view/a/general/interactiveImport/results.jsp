@@ -1,5 +1,6 @@
 <%@ page contentType="text/html;charset=UTF-8" %>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
+<%@ taglib prefix="fn" uri="http://java.sun.com/jsp/jstl/functions" %>
 <html>
 <head>
     <c:import url="/WEB-INF/view/css-js.jsp"/>
@@ -79,11 +80,11 @@
                 <c:if test="${not empty etState.result.warnings}">
                     <details style="margin-top: 8px; font-size: 0.82rem;">
                         <summary class="text-muted" style="cursor: pointer;">
-                            ${etState.result.warnings.size()} warning(s)
+                            ${fn:length(etState.result.warnings)} warning(s)
                         </summary>
                         <ul class="mt-1 mb-0">
                             <c:forEach var="w" items="${etState.result.warnings}">
-                                <li class="text-danger">${w}</li>
+                                <li class="text-danger">${fn:escapeXml(w)}</li>
                             </c:forEach>
                         </ul>
                     </details>
@@ -91,6 +92,41 @@
             </c:if>
         </div>
     </c:forEach>
+
+    <%-- Grand totals --%>
+    <c:set var="totalInserted" value="0"/>
+    <c:set var="totalUpdated" value="0"/>
+    <c:set var="totalSkipped" value="0"/>
+    <c:set var="totalErrors" value="0"/>
+    <c:set var="totalSI" value="0"/>
+    <c:forEach var="et" items="${iiSession.availableEntityTypes}">
+        <c:set var="s" value="${iiSession.entityStates[et]}"/>
+        <c:if test="${not empty s.result}">
+            <c:set var="totalInserted" value="${totalInserted + s.result.inserted}"/>
+            <c:set var="totalUpdated" value="${totalUpdated + s.result.updated}"/>
+            <c:set var="totalSkipped" value="${totalSkipped + s.result.skipped}"/>
+            <c:set var="totalErrors" value="${totalErrors + s.result.errors}"/>
+            <c:set var="totalSI" value="${totalSI + s.result.serviceItemsCreated}"/>
+        </c:if>
+    </c:forEach>
+
+    <c:if test="${totalInserted + totalUpdated + totalSkipped + totalErrors > 0}">
+        <div class="result-card" style="background: #f8f9fa; border-color: var(--ssa);">
+            <h6 style="color: var(--ssa);"><i class="bi bi-bar-chart me-1"></i>Overall Totals</h6>
+            <div class="stat-row">
+                <div class="stat"><span class="dot dot-insert"></span> <strong>${totalInserted}</strong> inserted</div>
+                <div class="stat"><span class="dot dot-update"></span> <strong>${totalUpdated}</strong> updated</div>
+                <div class="stat"><span class="dot dot-skip"></span> <strong>${totalSkipped}</strong> unchanged</div>
+                <div class="stat"><span class="dot dot-error"></span> <strong>${totalErrors}</strong> errors</div>
+            </div>
+            <c:if test="${totalSI > 0}">
+                <div style="margin-top: 6px; font-size: 0.85rem;">
+                    <i class="bi bi-plus-square text-success"></i>
+                    <strong>${totalSI}</strong> service items auto-created
+                </div>
+            </c:if>
+        </div>
+    </c:if>
 
     <hr>
     <div class="d-flex gap-2">

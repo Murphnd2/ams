@@ -10,6 +10,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.Part;
 import net.superiorstate.ams.data.dao.AppConstantDAO;
+import net.superiorstate.ams.data.service.SummitProviderSeeder;
 import net.superiorstate.ams.data.service.UniversalImportService;
 import net.superiorstate.ams.model.imports.ImportFieldMapping;
 import net.superiorstate.ams.model.imports.ImportFileType;
@@ -129,6 +130,9 @@ public class ProviderSetup extends HttpServlet {
                     forwardTo(request, response, "planTypeMappingEdit");
                 }
                 default -> {
+                    // Auto-ensure Summit provider exists (idempotent)
+                    SummitProviderSeeder.seed(em, pspId);
+
                     List<ImportProvider> providers = em.createQuery(
                             "SELECT p FROM ImportProvider p WHERE p.pspId = :pspId ORDER BY p.providerName",
                             ImportProvider.class)

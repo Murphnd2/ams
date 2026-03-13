@@ -1396,8 +1396,10 @@ public abstract class DemoDataSeeder {
     // ═══════════════════════════════════════════════════════════════
 
     private static void seedUniversalImportProviders(EntityManager em, PSP psp) {
-        seedImportProvider(em, psp, "Wex", "WEX", "Wex Health — FSA, HRA, HSA, and COBRA administration platform");
-        seedImportProvider(em, psp, "DPI Suite", "DPI", "DataPath Inc — benefits administration and compliance suite");
+        seedImportProvider(em, psp, "DataPath DPI Suite", "SUITE",
+                "DataPath Inc — benefits administration and compliance suite");
+        seedImportProvider(em, psp, "Wex", "WEX",
+                "Wex Health — FSA, HRA, HSA, and COBRA administration platform");
     }
 
     private static void seedImportProvider(EntityManager em, PSP psp,
@@ -1426,57 +1428,59 @@ public abstract class DemoDataSeeder {
         em.getTransaction().commit();
         System.out.println("    ✓ Import provider: " + name + " (" + code + ")");
 
-        // Create 4 file types with field mappings (identical for both providers)
-        seedImportFileType(em, provider, "Plan Types", "PLAN_TYPE", 10,
-                "Plan type master list — maps external plan codes to AMS service items",
+        // Create 4 file types with field mappings matching DataPath DPI Suite configuration
+        // sort_order 0-3, mapping arrays: {sourceCol, canonicalField, required, key, transform, fk, fkEntityType}
+        seedImportFileType(em, provider, "Plan Type Listing", "PLAN_TYPE", 0,
+                null,
                 new String[][]{
-                        {"plan_type_id", "plan_type_id", "true", "true", null},
-                        {"plan_name",    "name",         "true", "false", null},
-                        {"plan_code",    "code",         "false","false", null}
+                        {"plan_name",    "name",         "false","false", null, null, null},
+                        {"plan_type_id", "plan_type_id", "true", "true",  null, null, null},
+                        {"plan_code",    "code",         "false","false", null, null, null}
                 });
 
-        seedImportFileType(em, provider, "Employers", "EMPLOYER", 20,
-                "Employer/organization master — company name, contact, and identifiers",
+        seedImportFileType(em, provider, "Employer Listing", "EMPLOYER", 1,
+                null,
                 new String[][]{
-                        {"employer_id",   "employer_id",   "true", "true", null},
-                        {"employer_name", "employer_name", "true", "false", null},
-                        {"contact_name",  "contact_name",  "false","false", null},
-                        {"email",         "email",         "false","false", null},
-                        {"phone",         "phone",         "false","false", null},
-                        {"status",        "status",        "false","false", null}
+                        {"employer_name", "employer_name", "true", "false", null, null, null},
+                        {"employer_id",   "",              "false","false", null, null, null},
+                        {"contact_name",  "contact_name",  "false","false", null, null, null},
+                        {"email",         "email",         "false","false", null, null, null},
+                        {"phone",         "phone",         "false","false", null, null, null},
+                        {"employer_id",   "employer_id",   "true", "true",  null, null, null},
+                        {"status",        "status",        "false","false", null, null, null}
                 });
 
-        seedImportFileType(em, provider, "Employees", "EMPLOYEE", 30,
-                "Employee/participant roster — demographics and employer linkage",
+        seedImportFileType(em, provider, "Benefit Listing", "BENEFIT", 2,
+                null,
                 new String[][]{
-                        {"employee_id",  "employee_id",  "true", "true", null},
-                        {"employer_id",  "employer_id",  "true", "false", null},
-                        {"first_name",   "first_name",   "true", "false", null},
-                        {"last_name",    "last_name",    "true", "false", null},
-                        {"email",        "email",        "false","false", null},
-                        {"address1",     "address1",     "false","false", null},
-                        {"city",         "city",         "false","false", null},
-                        {"state",        "state",        "false","false", null},
-                        {"zip",          "zip",          "false","false", null},
-                        {"status",       "status",       "false","false", null}
+                        {"effective_date",  "effective_date",  "false","false", null, null,   null},
+                        {"benefit_id",      "benefit_id",      "true", "true",  null, null,   null},
+                        {"termination_date","termination_date","false","false", null, null,   null},
+                        {"plan_type_id",    "plan_type_id",    "false","false", null, "true", "PLAN_TYPE"},
+                        {"plan_name",       "plan_name",       "true", "false", null, null,   null},
+                        {"employer_id",     "employer_id",     "false","false", null, "true", "EMPLOYER"},
+                        {"status",          "status",          "false","false", null, null,   null}
                 });
 
-        seedImportFileType(em, provider, "Benefits", "BENEFIT", 40,
-                "Benefit enrollment — links employees to plan types with effective dates",
+        seedImportFileType(em, provider, "Employee Listing", "EMPLOYEE", 3,
+                null,
                 new String[][]{
-                        {"benefit_id",      "benefit_id",      "true", "true", null},
-                        {"employer_id",     "employer_id",     "true", "false", null},
-                        {"plan_type_id",    "plan_type_id",    "true", "false", null},
-                        {"plan_name",       "plan_name",       "true", "false", null},
-                        {"effective_date",  "effective_date",  "false","false", "DATE:MM/dd/yyyy"},
-                        {"termination_date","termination_date","false","false", "DATE:MM/dd/yyyy"},
-                        {"status",          "status",          "false","false", null}
+                        {"email",        "email",        "false","false", null, null,   null},
+                        {"last_name",    "last_name",    "true", "false", null, null,   null},
+                        {"zip",          "zip",          "false","false", null, null,   null},
+                        {"city",         "city",         "false","false", null, null,   null},
+                        {"employer_id",  "employer_id",  "false","false", null, "true", "EMPLOYER"},
+                        {"employee_id",  "employee_id",  "true", "true",  null, null,   null},
+                        {"status",       "status",       "false","false", null, null,   null},
+                        {"address1",     "address1",     "false","false", null, null,   null},
+                        {"state",        "state",        "false","false", null, null,   null},
+                        {"first_name",   "first_name",   "true", "false", null, null,   null}
                 });
     }
 
     /**
      * Creates an ImportFileType and its field mappings.
-     * @param mappings array of {sourceColumn, canonicalField, isRequired, isKey, transformRule}
+     * @param mappings array of {sourceColumn, canonicalField, isRequired, isKey, transformRule, isFk, fkEntityType}
      */
     private static void seedImportFileType(EntityManager em, ImportProvider provider,
                                             String label, String targetEntity, int sortOrder,
@@ -1490,6 +1494,7 @@ public abstract class DemoDataSeeder {
         fileType.setSortOrder(sortOrder);
         fileType.setRequired(true);
         fileType.setDescription(description);
+        fileType.setMappingStatus("READY");
         em.persist(fileType);
         em.flush();  // ensure file_type_id assigned before FK references
         em.getTransaction().commit();
@@ -1503,6 +1508,8 @@ public abstract class DemoDataSeeder {
             mapping.setRequired("true".equals(m[2]));
             mapping.setKey("true".equals(m[3]));
             mapping.setTransformRule(m[4]);
+            mapping.setFk("true".equals(m[5]));
+            mapping.setFkEntityType(m[6]);
             em.persist(mapping);
             em.getTransaction().commit();
         }

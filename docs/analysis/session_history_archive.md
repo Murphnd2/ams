@@ -2,7 +2,7 @@
 
 > **Purpose:** Consolidated historical record of all build sessions. For current project state, see `project_backlog.md`. For current architecture, see `application_flow.md` and `entity_reference.md`.
 >
-> **Last Updated:** March 12, 2026 (Session 62)
+> **Last Updated:** March 13, 2026 (Session 66)
 
 ---
 
@@ -2304,3 +2304,39 @@ Entity-by-entity import wizard with cross-reference resolution. Navigable skelet
 - **Modified (6):** ProviderSetup.java, fieldMappingEdit.jsp, fileTypeList.jsp, step1Provider.jsp, ImportFieldMapping.java, ImportFileType.java
 
 Database changes: V053 (update_mode + mapping_status on file_type, is_fk + fk_entity_type on field_mapping).
+
+---
+
+## March 13, 2026 — Session 66: Interactive Import Wizard B2-B5 Complete
+
+Full implementation of the Interactive Import Wizard — upload, resolution, commit, and results flow.
+
+### B2: Upload & Auto-Resolution
+- **InteractiveImport.java** — `handleUploadEntity()`: saves uploaded CSV to servlet context temp dir, parses via UniversalImportService, runs ImportResolutionService to auto-categorize rows
+- **ImportResolutionService.java** (new) — Auto-categorizes import rows as MATCHED (exact ID/name hit), SUGGESTED (fuzzy match), or UNMATCHED (no match found); queries by entity type with PSP scoping
+
+### B3: AJAX Row Resolution
+- **entityStep.jsp** — Full resolution UI: status badges (Matched/Suggested/Unmatched/New/Skipped), confirm/manual-match/create-new/skip actions per row, search modal for manual entity matching, summary bar with live counts
+- **InteractiveImport.java** — AJAX endpoints: resolveRow, searchEntities, bulkConfirmMatched
+
+### B4: Import Commit with Person Association
+- **ImportCommitService.java** — Per-entity upsert with cross-reference recording, PK allocation, FK resolution
+- **Employee commit** — After insert/update, associates employees with Person objects via email/name matching; only matches unlinked persons (`p.employee IS NULL`); creates new Person + Assignee if no match found
+
+### B5: Polish & Fixes
+- Commit confirmation dialog, SUGGESTED→UNMATCHED pre-commit validation, re-upload support
+- Results page with per-entity cards showing insert/update/skip/error counts
+- Temp file permission fix: use `jakarta.servlet.context.tempdir` instead of `java.io.tmpdir`
+- **PlanType dropdown fix** in planTypeMappingEdit.jsp: `${pt.id}` → `${pt.planTypeId}` (PlanType entity uses `getPlanTypeId()` not `getId()`)
+
+### Admin Menu Update
+- **navbar25.jsp** — Admin Data Import link now points to `/InteractiveImport` (new wizard) instead of old SummitImport
+
+### Provider Setup Improvements
+- **providerList.jsp** — DataPath Summit provider shown as preconfigured/system with edit restrictions
+- **DatabaseInitializer.java** — Auto-creates DataPath Summit provider on startup (not demo-seed dependent)
+- **DemoDataSeeder.java** — Seeds "DataPath DPI Suite" provider with full field mappings for Plan Type, Employer, Benefit, Employee file types
+
+### Files Changed
+- **New (2):** ImportCommitService.java, ImportResolutionService.java
+- **Modified (10):** InteractiveImport.java, ProviderSetup.java, DatabaseInitializer.java, DemoDataSeeder.java, benefits.csv, entityStep.jsp, results.jsp, selectProvider.jsp, navbar25.jsp, planTypeMappingEdit.jsp, providerList.jsp

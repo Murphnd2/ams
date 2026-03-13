@@ -432,27 +432,24 @@ public abstract class DatabaseInitializer {
         ActivityCategory tg3 = createTemplateGroup(em,3,"Ticket");
         ActivityCategory tg4 = createTemplateGroup(em,4,"Opportunity");
 
-        //Create Setup Service Items — generic baseline (PSP customizes names in Service Manager)
-        ServiceItem siLos = createServiceItemWithCode(em,1,"Line of Service","LOS",1,tg2,psp);
-        ServiceItem siEnh = createServiceItemWithCode(em,2,"Service Enhancement","ENH",2,tg2,psp);
 
         //Create Plan Types — each auto-creates a 1:1 Renewal ServiceItem
-        PlanType pt1  = createPlanTypeWithRenewal(em,1,"DCA","Dependent Care Account",bg,tg1,psp);
-        PlanType pt2  = createPlanTypeWithRenewal(em,2,"FSA","Health Flexible Spending Account",bg,tg1,psp);
-        PlanType pt3  = createPlanTypeWithRenewal(em,3,"HRA","Health Reimbursement Arrangement",bg,tg1,psp);
-        PlanType pt4  = createPlanTypeWithRenewal(em,4,"HSA","HSA",bg,tg1,psp);
-        PlanType pt5  = createPlanTypeWithRenewal(em,5,"LFSA","Limited Purpose FSA",bg,tg1,psp);
-        PlanType pt6  = createPlanTypeWithRenewal(em,6,"MERP","Medical Expense Reimbursement Plan",bg,tg1,psp);
-        PlanType pt7  = createPlanTypeWithRenewal(em,7,"PRK","Parking Plan",bg,tg1,psp);
-        PlanType pt8  = createPlanTypeWithRenewal(em,8,"TRN","Transportation Plan",bg,tg1,psp);
-        PlanType pt9  = createPlanTypeWithRenewal(em,9,"Dental","Dental",bg,tg1,psp);
-        PlanType pt10 = createPlanTypeWithRenewal(em,10,"EAP","EAP",bg,tg1,psp);
-        PlanType pt11 = createPlanTypeWithRenewal(em,11,"Life","Life",bg,tg1,psp);
-        PlanType pt12 = createPlanTypeWithRenewal(em,12,"Medical","Medical",bg,tg1,psp);
-        PlanType pt13 = createPlanTypeWithRenewal(em,13,"Pharmacy","Pharmacy",bg,tg1,psp);
-        PlanType pt14 = createPlanTypeWithRenewal(em,14,"Vision","Vision",bg,tg1,psp);
-        PlanType pt15 = createPlanTypeWithRenewal(em,15,"NEFSA","NEFSA",bg,tg1,psp);
-        PlanType pt16 = createPlanTypeWithRenewal(em,16,"LSA","Lifestyle Spending Account",bg,tg1,psp);
+        PlanType pt1  = createPlanTypeWithRenewal(em,1,"DCA","(CDH-125) Dependent Care Account",bg,tg1,psp);
+        PlanType pt2  = createPlanTypeWithRenewal(em,2,"FSA","(CDH-125) Health Flexible Spending Account",bg,tg1,psp);
+        PlanType pt3  = createPlanTypeWithRenewal(em,3,"HRA","(CDH-105) Health Reimbursement Arrangement",bg,tg1,psp);
+        PlanType pt4  = createPlanTypeWithRenewal(em,4,"HSA","(CDH-Other) Health Savings Account",bg,tg1,psp);
+        PlanType pt5  = createPlanTypeWithRenewal(em,5,"LFSA","(CDH-125) Limited Purpose FSA",bg,tg1,psp);
+        PlanType pt6  = createPlanTypeWithRenewal(em,6,"MERP","(CDH-105) Medical Expense Reimbursement Plan",bg,tg1,psp);
+        PlanType pt7  = createPlanTypeWithRenewal(em,7,"PRK","(CDH-132) Parking Plan",bg,tg1,psp);
+        PlanType pt8  = createPlanTypeWithRenewal(em,8,"TRN","(CDH-132) Transportation Plan",bg,tg1,psp);
+        PlanType pt9  = createPlanTypeWithRenewal(em,9,"Dental","(COBRA) Dental Insurance",bg,tg1,psp);
+        PlanType pt10 = createPlanTypeWithRenewal(em,10,"EAP","(COBRA) Employee Assistance Plan",bg,tg1,psp);
+        PlanType pt11 = createPlanTypeWithRenewal(em,11,"Life","(COBRA) Life Insurance",bg,tg1,psp);
+        PlanType pt12 = createPlanTypeWithRenewal(em,12,"Medical","(COBRA) Medical Insurance",bg,tg1,psp);
+        PlanType pt13 = createPlanTypeWithRenewal(em,13,"Pharmacy","(COBRA) Pharmacy Benefit",bg,tg1,psp);
+        PlanType pt14 = createPlanTypeWithRenewal(em,14,"Vision","(COBRA) Vision Insurance",bg,tg1,psp);
+        PlanType pt15 = createPlanTypeWithRenewal(em,15,"NEFSA","(COBRA) Non-Exempt FSA",bg,tg1,psp);
+        PlanType pt16 = createPlanTypeWithRenewal(em,16,"LSA","(CDH-Other) Lifestyle Spending Account",bg,tg1,psp);
 
         //Benefits: not seeded — populated via Summit import. SeedDemoData creates demo benefits.
 
@@ -475,6 +472,11 @@ public abstract class DatabaseInitializer {
         createLinkType(em,1,"File Upload");
         createLinkType(em,2,"Hyperlink");
         createLinkType(em,3,"Insert Link");
+
+        /*
+        //Create Setup Service Items — generic baseline (PSP customizes names in Service Manager)
+        ServiceItem siLos = createServiceItemWithCode(em,1,"Flexible Spending Account","FSA",1,tg2,psp);
+        ServiceItem siEnh = createServiceItemWithCode(em,2,"Debit Card","Card",2,tg2,psp);
 
         //Create Lines of Service — generic baseline
         LOS losMain = createLos(em,1L,"Flexible Spending Account","FSA",psp,siLos);
@@ -505,6 +507,8 @@ public abstract class DatabaseInitializer {
         em.merge(smEnh);
         em.getTransaction().commit();
 
+        */
+
         //Create Price Items (standard fee structure)
         PriceItem pi1 = createPriceItem(em,1L,"Setup (One-time) Fee",100,psp);
         PriceItem pi2 = createPriceItem(em,2L,"Annual Administration Fee",200,psp);
@@ -513,13 +517,16 @@ public abstract class DatabaseInitializer {
         //Create Rate
         Rate rate = createRate(em,1L,"Standard Rate",psp);
 
-        //Populate Standard Rate pricing grid
-        //  Line of Service: setup $350, annual $200, monthly $5.25
+        /* Populate Standard Rate pricing grid
+        //  Line of Service: setup $350, annual $200, monthly
         assignRateTable(em, rate, smLos, pi1, 500.00, 100);  // setup
         assignRateTable(em, rate, smLos, pi2, 400.00, 100);  // annual
         assignRateTable(em, rate, smLos, pi3, 5.25, 100);    // monthly
+
         //  Service Enhancement: setup $200 only
         assignRateTable(em, rate, smEnh, pi3, 2.00, 200);  // setup
+
+         */
 
         //Assign Standard Rate to PSP home agency
         Agency homeAgency = SalesDAO.getAgencyFull(em, agency.getId());

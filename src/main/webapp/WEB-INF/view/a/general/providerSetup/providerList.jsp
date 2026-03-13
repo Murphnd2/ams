@@ -52,9 +52,16 @@
                             </c:choose>
                         </td>
                         <td class="text-end" style="white-space: nowrap;">
-                            <a href="ProviderSetup?action=edit&id=${p.id}" class="ssa-action primary" style="font-size:0.85rem;">Edit</a>
-                            <a href="ProviderSetup?action=files&id=${p.id}" class="ssa-action primary" style="font-size:0.85rem;">File Types</a>
-                            <a href="ProviderSetup?action=planTypes&id=${p.id}" class="ssa-action primary" style="font-size:0.85rem;">Plan Types</a>
+                            <c:choose>
+                                <c:when test="${p.providerCode == 'SUMMIT'}">
+                                    <span class="badge bg-info text-dark"><i class="bi bi-lock me-1"></i>Preconfigured</span>
+                                </c:when>
+                                <c:otherwise>
+                                    <a href="ProviderSetup?action=edit&id=${p.id}" class="ssa-action primary" style="font-size:0.85rem;">Edit</a>
+                                    <a href="ProviderSetup?action=files&id=${p.id}" class="ssa-action primary" style="font-size:0.85rem;">File Types</a>
+                                    <a href="ProviderSetup?action=planTypes&id=${p.id}" class="ssa-action primary" style="font-size:0.85rem;">Plan Types</a>
+                                </c:otherwise>
+                            </c:choose>
                         </td>
                     </tr>
                 </c:forEach>
