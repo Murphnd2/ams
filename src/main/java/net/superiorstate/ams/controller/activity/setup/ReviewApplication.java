@@ -353,6 +353,10 @@ public class ReviewApplication extends HttpServlet {
                     response.sendRedirect("ReviewApplication?id=" + proposalId);
             }
 
+            // Invalidate navbar badge count after any status change
+            AmsDataLocal local = (AmsDataLocal) request.getSession().getAttribute("local");
+            if (local != null) local.invalidateAwaitingReviewCount();
+
         } catch (Exception e) {
             e.printStackTrace();
             response.sendRedirect("ReviewApplications?err=" + encode("Error processing action: " + e.getMessage()));

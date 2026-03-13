@@ -15,7 +15,7 @@
       </button>
     </span>
   </div>
-  <div class="py-2 px-3">
+  <div class="detail-section-body">
     <div class="d-flex align-items-center flex-wrap" style="font-size: 0.9rem;">
       <span class="fw-bold text-dark text-capitalize me-2">
         <c:choose>

@@ -2,7 +2,7 @@
 
 > **Purpose:** Consolidated historical record of all build sessions. For current project state, see `project_backlog.md`. For current architecture, see `application_flow.md` and `entity_reference.md`.
 >
-> **Last Updated:** March 13, 2026 (Session 67)
+> **Last Updated:** March 13, 2026 (Session 68)
 
 ---
 
@@ -2368,3 +2368,30 @@ Full implementation of the Interactive Import Wizard — upload, resolution, com
 ### Files Changed
 - **New (1):** SendBackToDo25.java
 - **Modified (10):** NoteAddedCallbackApi.java, TaskNotesApi.java, CloseToDo25.java, ViewRecurringHistory25.java, BpoTaskPushService.java, checklistBasic25.jsp, checklistFooter25.jsp, checklistHistory25.jsp, taskManager25.jsp, bpoHome25.jsp
+
+---
+
+## March 13, 2026 — Session 68: Center Panel Redesign & Application Badge
+
+### Unified Center Panel Section Headers ("Colored Tab" Pattern)
+Replaced two inconsistent section header patterns in the activity detail center panel with a single unified "Colored Tab" design:
+- **Before:** Mix of flat gray bar headers (`detail-section-header` with `#f7f9fc` bg) for Primary Contact/Questionnaires, and Bootstrap `card border-start border-3` left-colored-border cards for Setup/Renewal/Ticket/Opportunity
+- **After:** All sections use a consistent pattern: left 3px blue accent bar + `#f0f5fa` tinted background header, darker `#1e3a5f` title text, with content in a `detail-section-body` div below
+- New CSS classes: `.detail-section-header` (restyled), `.detail-section-body` (new)
+- **activityDetail25.jsp** — Updated CSS definitions for center section styles
+- **detailPrimaryContact25.jsp** — Swapped content div to `detail-section-body`
+- **detailQuestionnaires25.jsp** — Swapped content div to `detail-section-body`
+- **detailSetup25.jsp** — Converted from `card border-start` to `detail-section-card`/`detail-section-header`/`detail-section-body`
+- **detailRenewal25.jsp** — Same conversion
+- **detailTicket25.jsp** — Same conversion
+- **detailOpportunity25.jsp** — Same conversion (both "Opportunity Details" and "Proposals" cards)
+
+### Navbar "Awaiting Review" Application Badge
+Added a red badge counter to the Applications nav link showing count of submitted applications awaiting review:
+- **AmsDataLocal.java** — Added `awaitingReviewCount` field with lazy-loading getter; count query mirrors ApplicationsHome logic (`status='SUBMITTED'`, proposal not approved/denied/inactive); `invalidateAwaitingReviewCount()` resets on next access
+- **navbar25.jsp** — Added `<span class="badge rounded-pill bg-danger">` after Applications text, only rendered when count > 0
+- **ReviewApplication.java** — Calls `invalidateAwaitingReviewCount()` after any approve/deny/more_info/under_review action
+- **CreateSetup25.java** — Calls `invalidateAwaitingReviewCount()` after direct setup creation (which approves the application)
+
+### Files Changed
+- **Modified (10):** activityDetail25.jsp, detailPrimaryContact25.jsp, detailQuestionnaires25.jsp, detailSetup25.jsp, detailRenewal25.jsp, detailTicket25.jsp, detailOpportunity25.jsp, AmsDataLocal.java, ReviewApplication.java, CreateSetup25.java, navbar25.jsp

@@ -84,15 +84,18 @@
     /* CENTER panel: white = reference/data zone */
     .detail-panel-center { background: white; }
     .detail-panel-center-stripe { height: 3px; background: var(--ssa); }
-    /* Center section card headers */
+    /* Center section: colored-tab header pattern */
+    .detail-section-card { border-bottom: 1px solid #edf0f5; }
     .detail-section-header {
-      background: #f7f9fc; border-bottom: 1px solid #edf0f5;
-      padding: 6px 12px; display: flex; align-items: center; gap: 6px;
-      font-size: 0.71rem; font-weight: 700; color: #374151;
+      display: flex; align-items: center; gap: 8px;
+      padding: 7px 14px;
+      border-left: 3px solid var(--ssa);
+      background: #f0f5fa;
+      font-size: 0.72rem; font-weight: 700; color: #1e3a5f;
     }
-    .detail-section-header i { color: var(--ssa); }
-    .detail-section-header .section-end { margin-left: auto; }
-    .detail-section-card { border-bottom: 1px solid #f0f3f7; }
+    .detail-section-header i { color: var(--ssa); font-size: 0.78rem; }
+    .detail-section-header .section-end { margin-left: auto; display: flex; align-items: center; }
+    .detail-section-body { padding: 8px 14px 12px; }
     .primary-contact-row {
       display: flex; align-items: center; gap: 8px; padding: 7px 12px;
       background: #f8fafc; border-left: 3px solid var(--ssa);

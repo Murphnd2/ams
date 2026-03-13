@@ -157,6 +157,7 @@ public class CreateSetup25 extends HttpServlet {
             // 8. Update caches
             em.refresh(setup);
             local.respondToActivityUpdate(em, "ADD_TICKET", setup);
+            local.invalidateAwaitingReviewCount();
             request.getSession().setAttribute("local", local);
 
             // Update global activity list

@@ -47,7 +47,7 @@
       </c:if>
     </span>
   </div>
-  <div class="py-2 px-3">
+  <div class="detail-section-body">
     <c:if test="${not empty qInstances}">
     <div class="overflow-auto" style="max-height: 200px;">
       <c:forEach var="qi" items="${qInstances}">

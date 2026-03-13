@@ -9,17 +9,18 @@
     || (opp.getAssignedTo() != null && opp.getAssignedTo().getId() == sessionScope.local.getCurrentPerson().getId())}"/>
 
 <%-- Key Info Card --%>
-<div class="card border-0 border-start border-3 mt-2 mb-2" style="border-color: #0d6efd !important;">
-    <div class="card-body py-2 px-3">
-        <div class="d-flex align-items-center justify-content-between mb-1">
-      <span class="fw-semibold" style="color: var(--ssa); font-size: 0.85rem;">
-        <i class="bi bi-bullseye me-1"></i>Opportunity Details
-      </span>
+<div class="detail-section-card">
+    <div class="detail-section-header">
+        <i class="bi bi-bullseye"></i>
+        Opportunity Details
+        <span class="section-end">
             <button class="btn btn-sm btn-outline-ssa border-0 p-0 px-1 d-none" id="btnExpandOpp"
                     type="button" data-bs-toggle="modal" data-bs-target="#oppFullModal" title="View full details">
                 <i class="bi bi-arrows-fullscreen" style="font-size: 0.75rem;"></i>
             </button>
-        </div>
+        </span>
+    </div>
+    <div class="detail-section-body">
         <div id="oppContent" class="overflow-auto" style="max-height: 160px; font-size: 0.85rem;">
             <%-- Row A: Prospect | Stage --%>
             <div class="row g-0 py-1 border-bottom">
@@ -108,46 +109,44 @@
 </div>
 
 <%-- Proposals Card with Toggle --%>
-<div class="card border-0 border-start border-3 mt-2 mb-2" style="border-color: #0d6efd !important;">
-    <div class="card-body py-2 px-3">
-        <div class="d-flex align-items-center justify-content-between mb-1">
-            <span class="fw-semibold" style="color: var(--ssa); font-size: 0.85rem;">
-                <i class="bi bi-file-earmark-text me-1"></i>Proposals
-            </span>
-            <div class="d-flex align-items-center">
-                <div class="btn-group btn-group-sm me-1" role="group">
-                    <button type="button" class="btn btn-outline-secondary active py-0 px-2"
-                            id="btnThisOpp" onclick="toggleProposalView('opp')"
-                            style="font-size: 0.7rem; line-height: 1.4;">This Opp</button>
-                    <button type="button" class="btn btn-outline-secondary py-0 px-2"
-                            id="btnAllProposals" onclick="toggleProposalView('all')"
-                            style="font-size: 0.7rem; line-height: 1.4;">All</button>
-                </div>
-                <c:if test="${opp.getProspect() != null && !opp.isComplete()}">
-                    <a href="ProposalBuilder?prospectId=${opp.getProspect().getId()}&sourceActivityId=${opp.getId()}"
-                       class="btn btn-sm btn-outline-ssa border-0 p-0 px-1 me-1" title="Create Proposal">
-                        <i class="bi bi-file-earmark-plus" style="font-size: 0.85rem;"></i>
-                    </a>
-                </c:if>
-                <c:set var="oppHasApp" value="false"/>
-                <c:if test="${not empty opportunityProposals}">
-                    <c:forEach var="xp" items="${opportunityProposals}">
-                        <c:if test="${xp.getApplication() != null}"><c:set var="oppHasApp" value="true"/></c:if>
-                    </c:forEach>
-                </c:if>
-                <c:if test="${oppHasApp}">
-                    <a href="ExportApplicationCsv?opportunityId=${opp.getId()}"
-                       class="btn btn-sm btn-outline-ssa border-0 p-0 px-1 me-1" title="Export Application CSV">
-                        <i class="bi bi-filetype-csv" style="font-size: 0.85rem;"></i>
-                    </a>
-                </c:if>
-                <button class="btn btn-sm btn-outline-ssa border-0 p-0 px-1 d-none" id="btnExpandProposals"
-                        type="button" data-bs-toggle="modal" data-bs-target="#proposalsFullModal" title="View all proposals">
-                    <i class="bi bi-arrows-fullscreen" style="font-size: 0.75rem;"></i>
-                </button>
+<div class="detail-section-card">
+    <div class="detail-section-header">
+        <i class="bi bi-file-earmark-text"></i>
+        Proposals
+        <span class="section-end">
+            <div class="btn-group btn-group-sm me-1" role="group">
+                <button type="button" class="btn btn-outline-secondary active py-0 px-2"
+                        id="btnThisOpp" onclick="toggleProposalView('opp')"
+                        style="font-size: 0.7rem; line-height: 1.4;">This Opp</button>
+                <button type="button" class="btn btn-outline-secondary py-0 px-2"
+                        id="btnAllProposals" onclick="toggleProposalView('all')"
+                        style="font-size: 0.7rem; line-height: 1.4;">All</button>
             </div>
-        </div>
-
+            <c:if test="${opp.getProspect() != null && !opp.isComplete()}">
+                <a href="ProposalBuilder?prospectId=${opp.getProspect().getId()}&sourceActivityId=${opp.getId()}"
+                   class="btn btn-sm btn-outline-ssa border-0 p-0 px-1 me-1" title="Create Proposal">
+                    <i class="bi bi-file-earmark-plus" style="font-size: 0.85rem;"></i>
+                </a>
+            </c:if>
+            <c:set var="oppHasApp" value="false"/>
+            <c:if test="${not empty opportunityProposals}">
+                <c:forEach var="xp" items="${opportunityProposals}">
+                    <c:if test="${xp.getApplication() != null}"><c:set var="oppHasApp" value="true"/></c:if>
+                </c:forEach>
+            </c:if>
+            <c:if test="${oppHasApp}">
+                <a href="ExportApplicationCsv?opportunityId=${opp.getId()}"
+                   class="btn btn-sm btn-outline-ssa border-0 p-0 px-1 me-1" title="Export Application CSV">
+                    <i class="bi bi-filetype-csv" style="font-size: 0.85rem;"></i>
+                </a>
+            </c:if>
+            <button class="btn btn-sm btn-outline-ssa border-0 p-0 px-1 d-none" id="btnExpandProposals"
+                    type="button" data-bs-toggle="modal" data-bs-target="#proposalsFullModal" title="View all proposals">
+                <i class="bi bi-arrows-fullscreen" style="font-size: 0.75rem;"></i>
+            </button>
+        </span>
+    </div>
+    <div class="detail-section-body">
         <%-- Proposals linked to THIS opportunity --%>
         <div id="proposalsOpp" class="overflow-auto" style="max-height: 120px;">
                 <c:choose>

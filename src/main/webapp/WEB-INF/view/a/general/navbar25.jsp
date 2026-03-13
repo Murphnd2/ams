@@ -161,6 +161,9 @@
           </a>
           <a href="ApplicationsHome" class="nav-ghost ${pageTitle == 'Applications' ? 'active' : ''}">
             <i class="bi bi-file-earmark-check me-1"></i><span class="d-lg-none d-xl-inline">Applications</span>
+            <c:if test="${sessionScope.local.getAwaitingReviewCount() > 0}">
+              <span class="badge rounded-pill bg-danger ms-1" style="font-size: 0.62rem; vertical-align: top;">${sessionScope.local.getAwaitingReviewCount()}</span>
+            </c:if>
           </a>
 
         </c:if>

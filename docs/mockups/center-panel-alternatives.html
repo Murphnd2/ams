@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Center Panel — Before vs After (Colored Tab)</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&display=swap" rel="stylesheet">
+  <style>
+    :root { --ssa: #0d5681; --ssa-green: #87a948; }
+    body { font-family: 'DM Sans', sans-serif; background: #e9ecef; padding: 40px 20px; }
+
+    .comparison { display: flex; gap: 40px; justify-content: center; flex-wrap: wrap; margin-bottom: 60px; }
+
+    .mock-panel {
+      background: white; width: 420px; flex-shrink: 0;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08); overflow: hidden;
+    }
+    .mock-panel-stripe { height: 3px; background: var(--ssa); }
+    .mock-label {
+      text-align: center; font-size: 0.7rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.08em;
+      color: #6b7280; margin-bottom: 6px;
+    }
+    .mock-sublabel {
+      text-align: center; font-size: 0.78rem; color: #9ca3af; margin-bottom: 16px;
+    }
+    h2 { text-align: center; font-size: 1.1rem; font-weight: 700; color: #374151; margin-bottom: 4px; }
+
+    .section-btn {
+      border: 0; background: none; padding: 0 4px; color: #6b7280; cursor: pointer;
+    }
+    .section-btn:hover { color: var(--ssa); }
+
+    /* ══════ BEFORE: old mixed styles ══════ */
+    .before .detail-section-header-old {
+      background: #f7f9fc; border-bottom: 1px solid #edf0f5;
+      padding: 6px 12px; display: flex; align-items: center; gap: 6px;
+      font-size: 0.71rem; font-weight: 700; color: #374151;
+    }
+    .before .detail-section-header-old i { color: var(--ssa); }
+    .before .detail-section-header-old .section-end { margin-left: auto; }
+    .before .detail-section-card-old { border-bottom: 1px solid #f0f3f7; }
+
+    /* ══════ AFTER: unified colored tab ══════ */
+    .after .detail-section-card { border-bottom: 1px solid #edf0f5; }
+    .after .detail-section-header {
+      display: flex; align-items: center; gap: 8px;
+      padding: 7px 14px;
+      border-left: 3px solid var(--ssa);
+      background: #f0f5fa;
+      font-size: 0.72rem; font-weight: 700; color: #1e3a5f;
+    }
+    .after .detail-section-header i { color: var(--ssa); font-size: 0.78rem; }
+    .after .detail-section-header .section-end { margin-left: auto; display: flex; align-items: center; }
+    .after .detail-section-body { padding: 8px 14px 12px; }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     SETUP ACTIVITY
+     ═══════════════════════════════════════════════════════════════ -->
+<h2>Setup Activity</h2>
+<div class="mock-sublabel">Primary Contact + Services To Implement + Questionnaires</div>
+<div class="comparison">
+
+  <!-- BEFORE -->
+  <div>
+    <div class="mock-label">Before</div>
+    <div class="mock-panel before">
+      <div class="mock-panel-stripe"></div>
+      <div class="detail-section-card-old">
+        <div class="detail-section-header-old">
+          <i class="bi bi-person-fill"></i> Primary Contact
+          <span class="section-end"><button class="section-btn"><i class="bi bi-pencil-square" style="font-size:0.8rem"></i></button></span>
+        </div>
+        <div class="py-2 px-3" style="font-size:0.9rem;">
+          <span class="fw-bold text-dark text-capitalize me-2">john smith</span>
+          <span class="text-muted" style="font-size:0.82rem"><i class="bi bi-envelope me-1"></i>john.smith@acme.com</span>
+        </div>
+      </div>
+      <div class="card border-0 border-start border-3 mt-2 mb-2" style="border-color:#6c757d !important">
+        <div class="card-body py-2 px-3">
+          <div class="d-flex align-items-center justify-content-between mb-1">
+            <span class="fw-semibold" style="color:var(--ssa);font-size:0.85rem"><i class="bi bi-gear-wide-connected me-1"></i>Services To Implement</span>
+            <button class="section-btn"><i class="bi bi-plus-circle" style="font-size:0.85rem"></i></button>
+          </div>
+          <div class="d-flex align-items-center py-1 border-bottom" style="font-size:0.88rem"><span class="badge me-2" style="background:var(--ssa);font-size:0.7rem">Dental</span></div>
+          <div class="d-flex align-items-center py-1 border-bottom" style="font-size:0.88rem"><span class="badge me-2" style="background:var(--ssa);font-size:0.7rem">Medical</span></div>
+          <div class="d-flex align-items-center py-1" style="font-size:0.88rem"><span class="badge me-2" style="background:var(--ssa);font-size:0.7rem">Vision</span></div>
+        </div>
+      </div>
+      <div class="detail-section-card-old">
+        <div class="detail-section-header-old">
+          <i class="bi bi-ui-checks-grid"></i> Questionnaires
+          <span class="badge rounded-pill text-bg-secondary ms-1" style="font-size:0.7rem">2</span>
+          <span class="section-end"><button class="section-btn"><i class="bi bi-plus-circle" style="font-size:0.85rem"></i></button></span>
+        </div>
+        <div class="py-2 px-3">
+          <div class="d-flex align-items-center py-1 border-bottom" style="font-size:0.82rem">
+            <i class="bi bi-ui-checks me-2" style="color:var(--ssa)"></i><span class="flex-grow-1">Enrollment Checklist</span>
+            <span class="badge text-bg-warning ms-2" style="font-size:0.65rem">In Progress</span>
+          </div>
+          <div class="d-flex align-items-center py-1" style="font-size:0.82rem">
+            <i class="bi bi-box-arrow-up-right me-2" style="color:#7952b3"></i><span class="flex-grow-1">Benefits Survey</span>
+            <span class="badge text-bg-secondary ms-2" style="font-size:0.65rem">Not Started</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- AFTER -->
+  <div>
+    <div class="mock-label">After (Colored Tab)</div>
+    <div class="mock-panel after">
+      <div class="mock-panel-stripe"></div>
+      <div class="detail-section-card">
+        <div class="detail-section-header">
+          <i class="bi bi-person-fill"></i> Primary Contact
+          <span class="section-end"><button class="section-btn"><i class="bi bi-pencil-square" style="font-size:0.8rem"></i></button></span>
+        </div>
+        <div class="detail-section-body" style="font-size:0.9rem;">
+          <span class="fw-bold text-dark text-capitalize me-2">john smith</span>
+          <span class="text-muted" style="font-size:0.82rem"><i class="bi bi-envelope me-1"></i>john.smith@acme.com</span>
+        </div>
+      </div>
+      <div class="detail-section-card">
+        <div class="detail-section-header">
+          <i class="bi bi-gear-wide-connected"></i> Services To Implement
+          <span class="section-end"><button class="section-btn"><i class="bi bi-plus-circle" style="font-size:0.85rem"></i></button></span>
+        </div>
+        <div class="detail-section-body">
+          <div class="d-flex align-items-center py-1 border-bottom" style="font-size:0.88rem"><span class="badge me-2" style="background:var(--ssa);font-size:0.7rem">Dental</span></div>
+          <div class="d-flex align-items-center py-1 border-bottom" style="font-size:0.88rem"><span class="badge me-2" style="background:var(--ssa);font-size:0.7rem">Medical</span></div>
+          <div class="d-flex align-items-center py-1" style="font-size:0.88rem"><span class="badge me-2" style="background:var(--ssa);font-size:0.7rem">Vision</span></div>
+        </div>
+      </div>
+      <div class="detail-section-card">
+        <div class="detail-section-header">
+          <i class="bi bi-ui-checks-grid"></i> Questionnaires
+          <span class="badge rounded-pill text-bg-secondary ms-1" style="font-size:0.7rem">2</span>
+          <span class="section-end"><button class="section-btn"><i class="bi bi-plus-circle" style="font-size:0.85rem"></i></button></span>
+        </div>
+        <div class="detail-section-body">
+          <div class="d-flex align-items-center py-1 border-bottom" style="font-size:0.82rem">
+            <i class="bi bi-ui-checks me-2" style="color:var(--ssa)"></i><span class="flex-grow-1">Enrollment Checklist</span>
+            <span class="badge text-bg-warning ms-2" style="font-size:0.65rem">In Progress</span>
+          </div>
+          <div class="d-flex align-items-center py-1" style="font-size:0.82rem">
+            <i class="bi bi-box-arrow-up-right me-2" style="color:#7952b3"></i><span class="flex-grow-1">Benefits Survey</span>
+            <span class="badge text-bg-secondary ms-2" style="font-size:0.65rem">Not Started</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════════
+     RENEWAL ACTIVITY
+     ═══════════════════════════════════════════════════════════════ -->
+<h2>Renewal Activity</h2>
+<div class="mock-sublabel">Primary Contact + Benefits In Renewal + Questionnaires</div>
+<div class="comparison">
+
+  <!-- BEFORE -->
+  <div>
+    <div class="mock-label">Before</div>
+    <div class="mock-panel before">
+      <div class="mock-panel-stripe"></div>
+      <div class="detail-section-card-old">
+        <div class="detail-section-header-old">
+          <i class="bi bi-person-fill"></i> Primary Contact
+          <span class="section-end"><button class="section-btn"><i class="bi bi-pencil-square" style="font-size:0.8rem"></i></button></span>
+        </div>
+        <div class="py-2 px-3" style="font-size:0.9rem;">
+          <span class="fw-bold text-dark text-capitalize me-2">jane doe</span>
+          <span class="text-muted" style="font-size:0.82rem"><i class="bi bi-envelope me-1"></i>jane@bigcorp.com</span>
+        </div>
+      </div>
+      <div class="card border-0 border-start border-3 mt-2 mb-2" style="border-color:#0d6efd !important">
+        <div class="card-body py-2 px-3">
+          <div class="d-flex align-items-center justify-content-between mb-1">
+            <span class="fw-semibold" style="color:var(--ssa);font-size:0.85rem"><i class="bi bi-shield-check me-1"></i>Benefits In Renewal</span>
+            <button class="section-btn"><i class="bi bi-plus-circle" style="font-size:0.85rem"></i></button>
+          </div>
+          <div class="d-flex align-items-center py-1 border-bottom" style="font-size:0.88rem">
+            <span class="fw-semibold text-dark flex-grow-1">Delta Dental PPO</span>
+            <span class="text-muted" style="font-size:0.78rem">Jun 26</span>
+          </div>
+          <div class="d-flex align-items-center py-1" style="font-size:0.88rem">
+            <span class="fw-semibold text-dark flex-grow-1">VSP Vision</span>
+            <span class="text-muted" style="font-size:0.78rem">Jun 26</span>
+          </div>
+        </div>
+      </div>
+      <div class="detail-section-card-old">
+        <div class="detail-section-header-old">
+          <i class="bi bi-ui-checks-grid"></i> Questionnaires
+          <span class="badge rounded-pill text-bg-secondary ms-1" style="font-size:0.7rem">1</span>
+          <span class="section-end"><button class="section-btn"><i class="bi bi-plus-circle" style="font-size:0.85rem"></i></button></span>
+        </div>
+        <div class="py-2 px-3">
+          <div class="d-flex align-items-center py-1" style="font-size:0.82rem">
+            <i class="bi bi-ui-checks me-2" style="color:var(--ssa)"></i><span class="flex-grow-1">Renewal Census</span>
+            <span class="badge text-bg-success ms-2" style="font-size:0.65rem">Reviewed</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- AFTER -->
+  <div>
+    <div class="mock-label">After (Colored Tab)</div>
+    <div class="mock-panel after">
+      <div class="mock-panel-stripe"></div>
+      <div class="detail-section-card">
+        <div class="detail-section-header">
+          <i class="bi bi-person-fill"></i> Primary Contact
+          <span class="section-end"><button class="section-btn"><i class="bi bi-pencil-square" style="font-size:0.8rem"></i></button></span>
+        </div>
+        <div class="detail-section-body" style="font-size:0.9rem;">
+          <span class="fw-bold text-dark text-capitalize me-2">jane doe</span>
+          <span class="text-muted" style="font-size:0.82rem"><i class="bi bi-envelope me-1"></i>jane@bigcorp.com</span>
+        </div>
+      </div>
+      <div class="detail-section-card">
+        <div class="detail-section-header">
+          <i class="bi bi-shield-check"></i> Benefits In Renewal
+          <span class="section-end"><button class="section-btn"><i class="bi bi-plus-circle" style="font-size:0.85rem"></i></button></span>
+        </div>
+        <div class="detail-section-body">
+          <div class="d-flex align-items-center py-1 border-bottom" style="font-size:0.88rem">
+            <span class="fw-semibold text-dark flex-grow-1">Delta Dental PPO</span>
+            <span class="text-muted" style="font-size:0.78rem">Jun 26</span>
+          </div>
+          <div class="d-flex align-items-center py-1" style="font-size:0.88rem">
+            <span class="fw-semibold text-dark flex-grow-1">VSP Vision</span>
+            <span class="text-muted" style="font-size:0.78rem">Jun 26</span>
+          </div>
+        </div>
+      </div>
+      <div class="detail-section-card">
+        <div class="detail-section-header">
+          <i class="bi bi-ui-checks-grid"></i> Questionnaires
+          <span class="badge rounded-pill text-bg-secondary ms-1" style="font-size:0.7rem">1</span>
+          <span class="section-end"><button class="section-btn"><i class="bi bi-plus-circle" style="font-size:0.85rem"></i></button></span>
+        </div>
+        <div class="detail-section-body">
+          <div class="d-flex align-items-center py-1" style="font-size:0.82rem">
+            <i class="bi bi-ui-checks me-2" style="color:var(--ssa)"></i><span class="flex-grow-1">Renewal Census</span>
+            <span class="badge text-bg-success ms-2" style="font-size:0.65rem">Reviewed</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════════
+     TICKET ACTIVITY
+     ═══════════════════════════════════════════════════════════════ -->
+<h2>Ticket Activity</h2>
+<div class="mock-sublabel">Primary Contact + Description + Questionnaires</div>
+<div class="comparison">
+
+  <!-- BEFORE -->
+  <div>
+    <div class="mock-label">Before</div>
+    <div class="mock-panel before">
+      <div class="mock-panel-stripe"></div>
+      <div class="detail-section-card-old">
+        <div class="detail-section-header-old">
+          <i class="bi bi-person-fill"></i> Primary Contact
+          <span class="section-end"><button class="section-btn"><i class="bi bi-pencil-square" style="font-size:0.8rem"></i></button></span>
+        </div>
+        <div class="py-2 px-3" style="font-size:0.9rem;">
+          <span class="fw-bold text-dark text-capitalize me-2">mike johnson</span>
+          <span class="text-muted" style="font-size:0.82rem"><i class="bi bi-envelope me-1"></i>mike@company.org</span>
+        </div>
+      </div>
+      <div class="card border-0 border-start border-3 mt-2 mb-2" style="border-color:#17a2b8 !important">
+        <div class="card-body py-2 px-3">
+          <div class="d-flex align-items-center justify-content-between mb-1">
+            <span class="fw-semibold" style="color:var(--ssa);font-size:0.85rem"><i class="bi bi-chat-left-text me-1"></i>Description</span>
+          </div>
+          <div class="text-dark" style="font-size:0.9rem">
+            Employee is having trouble accessing benefits portal after password reset. Already tried clearing cache and using incognito mode. Need to verify SSO configuration.
+          </div>
+          <div class="text-muted fst-italic mt-2" style="font-size:0.72rem">
+            Logged by Sarah Admin on Mar 10, 2026 @ 02:15 PM
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- AFTER -->
+  <div>
+    <div class="mock-label">After (Colored Tab)</div>
+    <div class="mock-panel after">
+      <div class="mock-panel-stripe"></div>
+      <div class="detail-section-card">
+        <div class="detail-section-header">
+          <i class="bi bi-person-fill"></i> Primary Contact
+          <span class="section-end"><button class="section-btn"><i class="bi bi-pencil-square" style="font-size:0.8rem"></i></button></span>
+        </div>
+        <div class="detail-section-body" style="font-size:0.9rem;">
+          <span class="fw-bold text-dark text-capitalize me-2">mike johnson</span>
+          <span class="text-muted" style="font-size:0.82rem"><i class="bi bi-envelope me-1"></i>mike@company.org</span>
+        </div>
+      </div>
+      <div class="detail-section-card">
+        <div class="detail-section-header">
+          <i class="bi bi-chat-left-text"></i> Description
+          <span class="section-end"></span>
+        </div>
+        <div class="detail-section-body">
+          <div class="text-dark" style="font-size:0.9rem">
+            Employee is having trouble accessing benefits portal after password reset. Already tried clearing cache and using incognito mode. Need to verify SSO configuration.
+          </div>
+          <div class="text-muted fst-italic mt-2" style="font-size:0.72rem">
+            Logged by Sarah Admin on Mar 10, 2026 @ 02:15 PM
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div style="text-align:center; padding:40px 0; color:#9ca3af; font-size:0.8rem;">
+  Before/After comparison — unified "Colored Tab" section headers across all activity types.
+</div>
+
+</body>
+</html>

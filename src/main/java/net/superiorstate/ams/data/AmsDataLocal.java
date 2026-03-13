@@ -57,6 +57,7 @@ public class AmsDataLocal implements AutoCloseable {
     private List<Activity25p> activitiesWithDependencies;
 
     private final Set<Long> pendingCloseIds = new HashSet<>();
+    private long awaitingReviewCount = -1; // -1 = not yet loaded
     private List<Activity25u> filteredActivityList;
     private List<Checklist25u> checklistsAll;
     private List<Checklist25u> checklistsCurrent;
@@ -203,6 +204,35 @@ public class AmsDataLocal implements AutoCloseable {
     public void clearPendingCloseIds() {
         this.pendingCloseIds.clear();
     }
+
+    /** Lazy-loaded count of applications with status SUBMITTED (awaiting review). */
+    public long getAwaitingReviewCount() {
+        if (awaitingReviewCount < 0) {
+            refreshAwaitingReviewCount();
+        }
+        return awaitingReviewCount;
+    }
+
+    public void refreshAwaitingReviewCount() {
+        try {
+            long pspId = getCurrentPerson().getPsp().getId();
+            awaitingReviewCount = em.createQuery(
+                    "SELECT COUNT(a) FROM Application a " +
+                    "WHERE a.proposal.prospect.contact.psp.id = :pspId " +
+                    "AND a.status = 'SUBMITTED' " +
+                    "AND a.proposal.status NOT IN ('APPROVED', 'DENIED') " +
+                    "AND a.proposal.isInactive = false", Long.class)
+                .setParameter("pspId", pspId)
+                .getSingleResult();
+        } catch (Exception e) {
+            awaitingReviewCount = 0;
+        }
+    }
+
+    public void invalidateAwaitingReviewCount() {
+        awaitingReviewCount = -1;
+    }
+
     public User getCurrentUser() {
         return currentUser;
     }

@@ -4,23 +4,22 @@
 <c:if test="${sessionScope.local.getCurrentActivity().getActivity().isComplete() == false}">
   <c:set var="isPast" value=""/>
 </c:if>
-<div class="card border-0 border-start border-3 mt-2 mb-2" style="border-color: #0d6efd !important;">
-  <div class="card-body py-2 px-3">
-    <div class="d-flex align-items-center justify-content-between mb-1">
-      <span class="fw-semibold" style="color: var(--ssa); font-size: 0.85rem;">
-        <i class="bi bi-shield-check me-1"></i>Benefits In Renewal
-      </span>
-      <div class="d-flex align-items-center">
-        <button class="btn btn-sm btn-outline-ssa border-0 p-0 px-1 d-none me-1" id="btnExpandRenewal"
-                type="button" data-bs-toggle="modal" data-bs-target="#renewalFullModal" title="View all benefits">
-          <i class="bi bi-arrows-fullscreen" style="font-size: 0.75rem;"></i>
-        </button>
-        <button type="button" class="btn btn-sm btn-outline-ssa border-0 p-0 px-1 ${isPast}"
-                data-bs-target="#addRenewalItem" data-bs-toggle="modal" title="Add benefit">
-          <i class="bi bi-plus-circle" style="font-size: 0.85rem;"></i>
-        </button>
-      </div>
-    </div>
+<div class="detail-section-card">
+  <div class="detail-section-header">
+    <i class="bi bi-shield-check"></i>
+    Benefits In Renewal
+    <span class="section-end">
+      <button class="btn btn-sm btn-outline-ssa border-0 p-0 px-1 d-none me-1" id="btnExpandRenewal"
+              type="button" data-bs-toggle="modal" data-bs-target="#renewalFullModal" title="View all benefits">
+        <i class="bi bi-arrows-fullscreen" style="font-size: 0.75rem;"></i>
+      </button>
+      <button type="button" class="btn btn-sm btn-outline-ssa border-0 p-0 px-1 ${isPast}"
+              data-bs-target="#addRenewalItem" data-bs-toggle="modal" title="Add benefit">
+        <i class="bi bi-plus-circle" style="font-size: 0.85rem;"></i>
+      </button>
+    </span>
+  </div>
+  <div class="detail-section-body">
     <c:choose>
       <c:when test="${empty sessionScope.local.getCurrentActivity().getActivity().getRenewalItemList()}">
         <div class="text-muted fst-italic" style="font-size: 0.82rem;">No benefits added yet.</div>
