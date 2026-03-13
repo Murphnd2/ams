@@ -65,6 +65,17 @@
             tasksHtml += '<span style="color:#555;">' + escHtml(n.author) + '</span>';
             if (n.date) tasksHtml += '<span class="text-muted ms-1" style="font-size:0.7rem;">' + n.date + '</span>';
             tasksHtml += '<div class="mt-1" style="color:#333;">' + escHtml(n.text) + '</div>';
+            if (n.attachments && n.attachments.length > 0) {
+              tasksHtml += '<div style="margin-top:0.25rem;">';
+              n.attachments.forEach(function(att) {
+                tasksHtml += '<a href="' + att.url + '" target="_blank" '
+                  + 'style="display:inline-block;font-size:0.7rem;padding:0.1rem 0.4rem;'
+                  + 'background:#e8f4f8;color:#0d5681;border-radius:12px;text-decoration:none;'
+                  + 'margin-right:0.3rem;margin-bottom:0.2rem;">'
+                  + '<i class="bi bi-paperclip"></i> ' + escHtml(att.name) + '</a>';
+              });
+              tasksHtml += '</div>';
+            }
             tasksHtml += '</div>';
           });
 

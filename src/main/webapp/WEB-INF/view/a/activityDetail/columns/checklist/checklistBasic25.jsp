@@ -161,6 +161,15 @@
                         </a>
                       </li>
                     </c:if>
+                    <c:if test="${toDo.isBpoCompleted() && !toDo.isComplete() && sessionScope.isPspAdmin}">
+                      <li><hr class="dropdown-divider my-1"></li>
+                      <li>
+                        <a class="dropdown-item py-1 text-warning" href="javascript:void(0)"
+                           onclick="confirmSendBack(${toDo.getToDo().getId()})">
+                          <i class="bi bi-arrow-return-left me-2"></i>Send Back
+                        </a>
+                      </li>
+                    </c:if>
                     <c:if test="${toDo.getBtnIcon() == 'square'}">
                       <li><hr class="dropdown-divider my-1"></li>
                       <li>
@@ -432,6 +441,37 @@
     document.getElementById('pspNoteFile').value = '';
     document.getElementById('pspFileLabel').textContent = '';
     document.getElementById('pspFileClear').style.display = 'none';
+  }
+</script>
+
+<%-- ===== SEND BACK CONFIRM MODAL (PSP admin only) ===== --%>
+<div class="modal fade" id="sendBackModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-sm modal-fullscreen-sm-down">
+    <div class="modal-content">
+      <div class="modal-header py-2" style="background-color: var(--ssa); color: white;">
+        <h6 class="modal-title fw-semibold"><i class="bi bi-arrow-return-left me-2"></i>Send Back to Vendor?</h6>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-2" style="font-size: 0.85rem;">
+          This will reject the vendor's completion and send the task back for rework.
+          The vendor will be notified.
+        </div>
+        <form method="post" action="SendBackToDo25" id="sendBackForm">
+          <input type="hidden" name="btnSendBack" id="sendBackToDoId" value="">
+          <button type="submit" class="ssa-action danger w-100">
+            <i class="bi bi-arrow-return-left me-1"></i>Send Back
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  function confirmSendBack(toDoId) {
+    document.getElementById('sendBackToDoId').value = toDoId;
+    new bootstrap.Modal(document.getElementById('sendBackModal')).show();
   }
 </script>
 

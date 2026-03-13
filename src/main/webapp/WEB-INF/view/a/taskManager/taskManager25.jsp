@@ -256,6 +256,11 @@
                     </c:forEach>
                   </select>
                 </div>
+                <c:if test="${toDo.getTask().isSourced() && sessionScope.isPspAdmin==true}">
+                  <button type="button" class="btn btn-sm btn-outline-danger mt-1" onclick="confirmRevokeVendor()" style="font-size:0.75rem;">
+                    <i class="bi bi-x-circle me-1"></i>Revoke Vendor
+                  </button>
+                </c:if>
               </div>
             </c:if>
 
@@ -590,6 +595,42 @@
     div.textContent = text;
     return div.innerHTML;
   }
+
+  /* ── Revoke Vendor ── */
+  function confirmRevokeVendor() {
+    new bootstrap.Modal(document.getElementById('revokeVendorModal')).show();
+  }
+  function executeRevokeVendor() {
+    // Set sourcing to Internal (0) and submit the form
+    document.getElementById('cb4a').checked = true;
+    document.getElementById('bpoDropDown').className = 'd-none';
+    document.querySelector('form[action="UpdateTask25"]').submit();
+  }
 </script>
+
+<%-- ===== REVOKE VENDOR CONFIRM MODAL ===== --%>
+<c:if test="${toDo.getTask().isSourced() && sessionScope.isPspAdmin==true}">
+<div class="modal fade" id="revokeVendorModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-sm modal-fullscreen-sm-down">
+    <div class="modal-content">
+      <div class="modal-header py-2" style="background-color: var(--ssa); color: white;">
+        <h6 class="modal-title fw-semibold"><i class="bi bi-x-circle me-2"></i>Revoke Vendor?</h6>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-2" style="font-size: 0.85rem;">
+          This will recall the task from
+          <strong>${toDo.getTask().getBpoRegistration() != null ? toDo.getTask().getBpoRegistration().getBpoName() : 'the vendor'}</strong>.
+          The vendor will no longer see or work on this task. Any in-progress vendor work will be lost.
+        </div>
+        <button type="button" class="ssa-action danger w-100" onclick="executeRevokeVendor()">
+          <i class="bi bi-x-circle me-1"></i>Revoke Vendor Assignment
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+</c:if>
+
 </body>
 </html>

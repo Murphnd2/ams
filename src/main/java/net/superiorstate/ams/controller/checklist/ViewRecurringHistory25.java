@@ -7,13 +7,17 @@ import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import net.superiorstate.ams.data.AmsDataGlobal;
 import net.superiorstate.ams.data.AmsDataLocal;
 import net.superiorstate.ams.data.dao.RecurringChecklistDAO;
+import net.superiorstate.ams.data.dao.StorageDAO;
 import net.superiorstate.ams.model.activity.checklist.CheckList;
 import net.superiorstate.ams.model.activity.checklist.tasks.ToDo;
 import net.superiorstate.ams.model.activity.checklist.tasks.ToDoNote;
+import net.superiorstate.ams.model.general.WebLink;
 
 import java.io.IOException;
+import java.time.Duration;
 import java.util.List;
 
 @WebServlet("/ViewRecurringHistory25")
@@ -89,11 +93,14 @@ public class ViewRecurringHistory25 extends HttpServlet {
                         String tdCompletedBy = td.getCompletedBy() != null ? escapeJson(td.getCompletedBy().getFullName()) : "";
                         json.append("\"completedBy\":\"").append(tdCompletedBy).append("\",");
 
-                        // Notes — query per ToDo since ToDo has no notes collection
+                        // Notes + attachments — query per ToDo since ToDo has no notes collection
                         json.append("\"notes\":[");
                         try {
+                            AmsDataGlobal global = (AmsDataGlobal) getServletContext().getAttribute("global");
+                            String pspSlug = global.getPsp().getFullName();
+
                             List<ToDoNote> notes = em.createQuery(
-                                "SELECT n FROM ToDoNote n WHERE n.toDo.id = :todoId ORDER BY n.createdDate ASC",
+                                "SELECT n FROM ToDoNote n LEFT JOIN FETCH n.webLinkList WHERE n.toDo.id = :todoId ORDER BY n.createdDate ASC",
                                 ToDoNote.class)
                                 .setParameter("todoId", td.getId())
                                 .getResultList();
@@ -107,7 +114,30 @@ public class ViewRecurringHistory25 extends HttpServlet {
                                 String noteAuthor = n.getCreatedBy() != null ? escapeJson(n.getCreatedBy().getFullName())
                                         : (n.getAuthorName() != null ? escapeJson(n.getAuthorName()) : "");
                                 json.append("\"author\":\"").append(noteAuthor).append("\",");
-                                json.append("\"date\":\"").append(n.getCreatedDate() != null ? n.getCreatedDate().toString() : "").append("\"");
+                                json.append("\"date\":\"").append(n.getCreatedDate() != null ? n.getCreatedDate().toString() : "").append("\",");
+
+                                // Attachments
+                                json.append("\"attachments\":[");
+                                List<WebLink> links = n.getWebLinkList();
+                                if (links != null) {
+                                    int ai = 0;
+                                    for (WebLink w : links) {
+                                        if (w.getLinkType() == null || !w.isActive()) continue;
+                                        if (ai > 0) json.append(",");
+                                        json.append("{");
+                                        json.append("\"name\":\"").append(escapeJson(w.getPlainText())).append("\",");
+                                        if (w.getLinkType().getId() == 1) {
+                                            String downloadUrl = StorageDAO.getDownloadUrl(null, pspSlug, w.getLinkPath(), Duration.ofHours(1));
+                                            json.append("\"url\":\"").append(escapeJson(downloadUrl)).append("\"");
+                                        } else {
+                                            json.append("\"url\":\"").append(escapeJson(w.getLinkPath())).append("\"");
+                                        }
+                                        json.append("}");
+                                        ai++;
+                                    }
+                                }
+                                json.append("]");
+
                                 json.append("}");
                             }
                         } catch (Exception ignored) {}

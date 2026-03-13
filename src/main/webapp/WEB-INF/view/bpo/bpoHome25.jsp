@@ -988,12 +988,23 @@
                 }
                 let html = '';
                 notes.forEach(function(n) {
-                    const badgeColor = n.sourceType === 'BPO' ? '#0d5681' : '#6c757d';
+                    const badgeColor = n.source === 'BPO' ? '#0d5681' : '#6c757d';
                     html += '<div class="mb-1 p-1 rounded" style="background:#f8f9fa;font-size:0.75rem;">';
-                    html += '<span class="badge me-1" style="background:' + badgeColor + ';font-size:0.6rem;">' + (n.sourceType || '') + '</span>';
-                    html += '<span style="color:#555;">' + (n.authorName || '') + '</span>';
-                    if (n.createdDate) html += '<span class="text-muted ms-1" style="font-size:0.68rem;">' + n.createdDate + '</span>';
-                    html += '<div style="color:#333;margin-top:2px;">' + (n.noteText || '') + '</div>';
+                    html += '<span class="badge me-1" style="background:' + badgeColor + ';font-size:0.6rem;">' + (n.source || '') + '</span>';
+                    html += '<span style="color:#555;">' + (n.author || '') + '</span>';
+                    if (n.date) html += '<span class="text-muted ms-1" style="font-size:0.68rem;">' + n.date + '</span>';
+                    html += '<div style="color:#333;margin-top:2px;">' + (n.text || '') + '</div>';
+                    if (n.attachments && n.attachments.length > 0) {
+                        html += '<div style="margin-top:0.25rem;">';
+                        n.attachments.forEach(function(att) {
+                            html += '<a href="' + att.url + '" target="_blank" '
+                                + 'style="display:inline-block;font-size:0.7rem;padding:0.1rem 0.4rem;'
+                                + 'background:#e8f4f8;color:#0d5681;border-radius:12px;text-decoration:none;'
+                                + 'margin-right:0.3rem;margin-bottom:0.2rem;">'
+                                + '<i class="bi bi-paperclip"></i> ' + att.name + '</a>';
+                        });
+                        html += '</div>';
+                    }
                     html += '</div>';
                 });
                 body.innerHTML = html;

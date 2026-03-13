@@ -33,4 +33,11 @@
   </div>
   <c:import url="/WEB-INF/view/a/activityDetail/columns/checklist/modals/closeActivityModal.jsp"/>
 </form>
+<c:if test="${autoShowCloseModal == true}">
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    new bootstrap.Modal(document.getElementById('closeActivity')).show();
+  });
+</script>
+</c:if>
 <c:import url="/WEB-INF/view/a/checklistDetail/addToDo25.jsp"/>

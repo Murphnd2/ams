@@ -197,6 +197,9 @@ public class TaskNotesApi extends HttpServlet {
 
             em.getTransaction().commit();
 
+            // Evict L2 cache so LEFT JOIN FETCH n.webLinkList returns fresh data
+            em.getEntityManagerFactory().getCache().evict(ToDoNote.class, note.getId());
+
             response.setStatus(HttpServletResponse.SC_CREATED);
             response.getWriter().write("{\"status\": \"OK\"}");
 

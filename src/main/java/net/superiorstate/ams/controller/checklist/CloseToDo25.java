@@ -72,6 +72,14 @@ public class CloseToDo25 extends HttpServlet {
             }
 
             local.respondToActivityUpdate(em, "TODO_CLOSE", toDoId);
+
+            // If all todos are now complete, auto-show the close activity modal
+            boolean allNowComplete = local.getCurrentActivity().getToDoList().stream()
+                    .noneMatch(out -> !out.isComplete());
+            if (allNowComplete) {
+                request.setAttribute("autoShowCloseModal", true);
+            }
+
             request.getSession().setAttribute("local", local);
         } finally {
             em.close();

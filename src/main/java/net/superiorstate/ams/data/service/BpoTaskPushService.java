@@ -245,6 +245,34 @@ public class BpoTaskPushService {
     }
 
     /**
+     * Send REVERT to BPO for a single ToDo whose completion the PSP is rejecting.
+     * BPO-side handler clears completion, sets reverted=true, status=ACTIVE.
+     */
+    public static void revertTaskCompletion(EntityManager em, ToDo todo) {
+        if (!AppConfig.isPsp()) return;
+        if (todo == null || todo.getTask() == null || !todo.getTask().isSourced()) return;
+
+        BpoRegistration reg = todo.getTask().getBpoRegistration();
+        if (reg == null || !reg.isAvailable()) return;
+        if (reg.getPartnerUrl() == null || reg.getApiTokenOutbound() == null) return;
+
+        try {
+            String url = reg.getPartnerUrl() + "/api/v1/tasks/update";
+            String token = reg.getApiTokenOutbound();
+
+            Map<String, String> payload = new LinkedHashMap<>();
+            payload.put("action", "REVERT");
+            payload.put("todoGuid", todo.getTodoGuid());
+
+            ApiClient.ApiResponse resp = ApiClient.postJson(url, payload, token);
+            System.out.println("[BPO-API] revertTaskCompletion: todoGuid=" + todo.getTodoGuid() +
+                    " to " + reg.getBpoName() + " (" + resp.statusCode + ")");
+        } catch (Exception e) {
+            System.out.println("[BPO-API] revertTaskCompletion error (non-fatal): " + e.getMessage());
+        }
+    }
+
+    /**
      * Push all incomplete ToDos for a task to its BPO vendor.
      * Used when a task transitions from Internal to Sourced.
      */

@@ -2,7 +2,7 @@
 
 > **Purpose:** Consolidated historical record of all build sessions. For current project state, see `project_backlog.md`. For current architecture, see `application_flow.md` and `entity_reference.md`.
 >
-> **Last Updated:** March 13, 2026 (Session 66)
+> **Last Updated:** March 13, 2026 (Session 67)
 
 ---
 
@@ -2340,3 +2340,31 @@ Full implementation of the Interactive Import Wizard — upload, resolution, com
 ### Files Changed
 - **New (2):** ImportCommitService.java, ImportResolutionService.java
 - **Modified (10):** InteractiveImport.java, ProviderSetup.java, DatabaseInitializer.java, DemoDataSeeder.java, benefits.csv, entityStep.jsp, results.jsp, selectProvider.jsp, navbar25.jsp, planTypeMappingEdit.jsp, providerList.jsp
+
+---
+
+## March 13, 2026 — Session 67: Checklist/BPO Improvements & Attachment Fixes
+
+### Auto-Close Modal on Last ToDo Completion
+- **CloseToDo25.java** — After completing a todo, checks if all todos are now complete; if so, sets `autoShowCloseModal` request attribute
+- **checklistFooter25.jsp** — JavaScript auto-shows the `#closeActivity` Bootstrap modal when flag is set
+- Works for both activity-linked checklists (Setup, Renewal, Ticket) and standalone person-assigned checklists
+
+### Vendor Task Management for PSP Admins
+- **taskManager25.jsp** — Added "Revoke Vendor" button (PSP admin only, sourced tasks) with confirm modal; leverages existing UpdateTask25 Sourced→Internal flow
+- **checklistBasic25.jsp** — Added "Send Back" kebab menu item for BPO-completed-but-not-PSP-verified tasks with confirm modal
+- **SendBackToDo25.java** (new) — Clears `bpoCompleted`, sets `isReverted=true`, persists, creates audit note, calls `BpoTaskPushService.revertTaskCompletion()` to notify BPO
+- **BpoTaskPushService.java** — Added `revertTaskCompletion()` method sending REVERT action to BPO's `/api/v1/tasks/update`
+
+### BPO Note Attachment Visibility Fix (L2 Cache)
+- **NoteAddedCallbackApi.java** — Added `em.getEntityManagerFactory().getCache().evict(ToDoNote.class, note.getId())` after commit; fixes EclipseLink L2 cache staleness where `LEFT JOIN FETCH n.webLinkList` returned empty collection for cross-system note attachments
+- **TaskNotesApi.java** — Same L2 cache eviction fix on BPO side receiving PSP note callbacks
+
+### Recurring Checklist Past Runs Fixes
+- **bpoHome25.jsp** — Fixed `loadPastRunNotes()` using wrong JSON field names (`n.sourceType`→`n.source`, `n.authorName`→`n.author`, `n.createdDate`→`n.date`, `n.noteText`→`n.text`); added attachment rendering
+- **ViewRecurringHistory25.java** — Changed notes query to `LEFT JOIN FETCH n.webLinkList`; added attachment serialization (linkType 1=Wasabi pre-signed URL, linkType 2=external URL)
+- **checklistHistory25.jsp** — Added attachment rendering (paperclip links) in past completion notes
+
+### Files Changed
+- **New (1):** SendBackToDo25.java
+- **Modified (10):** NoteAddedCallbackApi.java, TaskNotesApi.java, CloseToDo25.java, ViewRecurringHistory25.java, BpoTaskPushService.java, checklistBasic25.jsp, checklistFooter25.jsp, checklistHistory25.jsp, taskManager25.jsp, bpoHome25.jsp
