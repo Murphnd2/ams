@@ -598,36 +598,48 @@ public class SummitImportService {
                     result.addSkipped();
                 }
             } else {
-                em.getTransaction().begin();
-                Benefit b = new Benefit();
-                b.setSummitId(benefitId);
-                b.setSourceType("CDH");
-                b.setEmployer(employer);
-                b.setPlanType(planType);
-                b.setPlanName(planName);
-                b.setPlanDescription(planDescription);
-                b.setEffectiveDate(effectiveDate);
-                b.setTerminationDate(terminationDate);
-                b.setHasCards(cardEnabled);
-                b.setRenewalMonths(renewalMonths);
-                b.setActive(true);
+                try {
+                    em.getTransaction().begin();
+                    Benefit b = new Benefit();
+                    b.setSummitId(benefitId);
+                    b.setSourceType("CDH");
+                    b.setEmployer(employer);
+                    b.setPlanType(planType);
+                    b.setPlanName(planName);
+                    b.setPlanDescription(planDescription);
+                    b.setEffectiveDate(effectiveDate);
+                    b.setTerminationDate(terminationDate);
+                    b.setHasCards(cardEnabled);
+                    b.setRenewalMonths(renewalMonths);
+                    b.setActive(true);
 
-                // Calculate next renewal due
-                if (effectiveDate != null) {
-                    LocalDate eff = effectiveDate.toLocalDate();
-                    LocalDate nextDue = eff.plusMonths(renewalMonths);
-                    // If next due is in the past, roll forward until it's in the future
-                    while (nextDue.isBefore(LocalDate.now())) {
-                        nextDue = nextDue.plusMonths(renewalMonths);
+                    // Calculate next renewal due
+                    if (effectiveDate != null) {
+                        LocalDate eff = effectiveDate.toLocalDate();
+                        LocalDate nextDue = eff.plusMonths(renewalMonths);
+                        // If next due is in the past, roll forward until it's in the future
+                        while (nextDue.isBefore(LocalDate.now())) {
+                            nextDue = nextDue.plusMonths(renewalMonths);
+                        }
+                        b.setNextRenewalDue(Date.valueOf(nextDue));
                     }
-                    b.setNextRenewalDue(Date.valueOf(nextDue));
-                }
 
-                em.persist(b);
-                em.flush(); // flush to get auto-generated benefit_id
-                if (provider != null) ImportIdResolver.recordMapping(em, provider, ImportIdResolver.BENEFIT, String.valueOf(benefitId), b.getId(), true);
-                em.getTransaction().commit();
-                result.addInserted();
+                    em.persist(b);
+                    em.flush(); // flush to get auto-generated benefit_id
+                    if (provider != null) ImportIdResolver.recordMapping(em, provider, ImportIdResolver.BENEFIT, String.valueOf(benefitId), b.getId(), true);
+                    em.getTransaction().commit();
+                    result.addInserted();
+                } catch (Exception e) {
+                    if (em.getTransaction().isActive()) em.getTransaction().rollback();
+                    // Constraint violation = benefit already exists (e.g. re-import). Count as skipped.
+                    if (e.getMessage() != null && e.getMessage().contains("uq_benefit_source_summit")) {
+                        result.addSkipped();
+                    } else {
+                        result.addWarning("Benefit CDH-" + benefitId + ": " + e.getMessage());
+                        result.addError();
+                    }
+                    em.clear(); // reset persistence context after rollback
+                }
             }
 
             if (result.total() % 50 == 0) {
@@ -741,6 +753,7 @@ public class SummitImportService {
             if (existing != null) {
                 boolean changed = false;
                 if (!benefitName.isEmpty() && !benefitName.equals(existing.getPlanName())) { existing.setPlanName(benefitName); changed = true; }
+                if (!benefitName.isEmpty() && !benefitName.equals(existing.getPlanDescription())) { existing.setPlanDescription(benefitName); changed = true; }
                 if (pbBenefitId != 0 && pbBenefitId != existing.getPbBenId()) { existing.setPbBenId(pbBenefitId); changed = true; }
 
                 // Update plan year dates from latest J7 row data — renewal date
@@ -760,46 +773,58 @@ public class SummitImportService {
                     result.addSkipped();
                 }
             } else {
-                em.getTransaction().begin();
-                Benefit b = new Benefit();
-                b.setSummitId(summitBenefitId);
-                b.setSourceType("COBRA");
-                b.setPbBenId(pbBenefitId);
-                b.setEmployer(employer);
-                b.setPlanType(planType);
-                b.setPlanName(benefitName);
-                b.setEffectiveDate(effectiveDate);
-                b.setTerminationDate(terminationDate);
-                b.setRenewalMonths(renewalMonths);
-                b.setActive(true);
+                try {
+                    em.getTransaction().begin();
+                    Benefit b = new Benefit();
+                    b.setSummitId(summitBenefitId);
+                    b.setSourceType("COBRA");
+                    b.setPbBenId(pbBenefitId);
+                    b.setEmployer(employer);
+                    b.setPlanType(planType);
+                    b.setPlanName(benefitName);
+                    b.setPlanDescription(benefitName);
+                    b.setEffectiveDate(effectiveDate);
+                    b.setTerminationDate(terminationDate);
+                    b.setRenewalMonths(renewalMonths);
+                    b.setActive(true);
 
-                // Store latest plan year dates from J7 multi-row data
-                Date pyStart = latestPlanYearStart.get(summitBenefitId);
-                Date pyEnd = latestPlanYearEnd.get(summitBenefitId);
-                if (pyStart != null) b.setPlanYearStart(pyStart);
-                if (pyEnd != null) b.setPlanYearEnd(pyEnd);
+                    // Store latest plan year dates from J7 multi-row data
+                    Date pyStart = latestPlanYearStart.get(summitBenefitId);
+                    Date pyEnd = latestPlanYearEnd.get(summitBenefitId);
+                    if (pyStart != null) b.setPlanYearStart(pyStart);
+                    if (pyEnd != null) b.setPlanYearEnd(pyEnd);
 
-                // Use plan year end + 1 day as renewal anchor; fall back to effective date
-                LocalDate renewalAnchor = null;
-                if (pyEnd != null) {
-                    renewalAnchor = pyEnd.toLocalDate().plusDays(1);
-                } else if (effectiveDate != null) {
-                    renewalAnchor = effectiveDate.toLocalDate();
-                }
-
-                if (renewalAnchor != null) {
-                    LocalDate nextDue = renewalAnchor;
-                    while (nextDue.isBefore(LocalDate.now())) {
-                        nextDue = nextDue.plusMonths(renewalMonths);
+                    // Use plan year end + 1 day as renewal anchor; fall back to effective date
+                    LocalDate renewalAnchor = null;
+                    if (pyEnd != null) {
+                        renewalAnchor = pyEnd.toLocalDate().plusDays(1);
+                    } else if (effectiveDate != null) {
+                        renewalAnchor = effectiveDate.toLocalDate();
                     }
-                    b.setNextRenewalDue(Date.valueOf(nextDue));
-                }
 
-                em.persist(b);
-                em.flush(); // flush to get auto-generated benefit_id
-                if (provider != null) ImportIdResolver.recordMapping(em, provider, ImportIdResolver.BENEFIT, "COBRA-" + summitBenefitId, b.getId(), true);
-                em.getTransaction().commit();
-                result.addInserted();
+                    if (renewalAnchor != null) {
+                        LocalDate nextDue = renewalAnchor;
+                        while (nextDue.isBefore(LocalDate.now())) {
+                            nextDue = nextDue.plusMonths(renewalMonths);
+                        }
+                        b.setNextRenewalDue(Date.valueOf(nextDue));
+                    }
+
+                    em.persist(b);
+                    em.flush(); // flush to get auto-generated benefit_id
+                    if (provider != null) ImportIdResolver.recordMapping(em, provider, ImportIdResolver.BENEFIT, "COBRA-" + summitBenefitId, b.getId(), true);
+                    em.getTransaction().commit();
+                    result.addInserted();
+                } catch (Exception e) {
+                    if (em.getTransaction().isActive()) em.getTransaction().rollback();
+                    if (e.getMessage() != null && e.getMessage().contains("uq_benefit_source_summit")) {
+                        result.addSkipped();
+                    } else {
+                        result.addWarning("Benefit COBRA-" + summitBenefitId + ": " + e.getMessage());
+                        result.addError();
+                    }
+                    em.clear();
+                }
             }
 
             if (result.total() % 50 == 0) {
@@ -1185,6 +1210,12 @@ public class SummitImportService {
     private static Date parseDate(String s) {
         if (s == null || s.trim().isEmpty()) return null;
         s = s.trim();
+
+        // Strip time portion if present (e.g. "4/1/2022 12:00:00 AM" → "4/1/2022")
+        int spaceIdx = s.indexOf(' ');
+        if (spaceIdx > 0) {
+            s = s.substring(0, spaceIdx);
+        }
 
         // Try M/d/yyyy (Summit's typical format)
         try {

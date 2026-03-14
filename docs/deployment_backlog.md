@@ -849,3 +849,36 @@ Five fixes bundled together (no schema changes):
 - `SeedDemoData.java`, `ReSeedDemoData.java`, `ReSeedDb.java`, `SeedBpoDemoData.java`
 - `PartnershipApproveApi.java`
 - `CloseActivity25.java`, `AmsDataLocal.java`
+
+---
+
+### D-66: Systemd ReadWritePaths for Tomcat Data Directory
+
+**Priority:** HIGH — Required on all VPS instances for Summit Import and future file uploads
+**Status:** Applied to Demo PSP — needs applying to BPO, Production, Master image
+
+Tomcat 10 on Ubuntu 24.04 ships with `ProtectSystem=strict` in the systemd unit, which makes the filesystem read-only except for explicitly allowed paths. The existing branding override (`/var/lib/tomcat10/webapps/ROOT/branding/`) only covers branding files. Summit Import (and any future file-upload feature) writes to `SAVE_PATH/summit_import/` which is blocked.
+
+**Fix (per VPS):**
+```bash
+sudo systemctl edit tomcat10
+```
+Add to the override file:
+```ini
+[Service]
+ReadWritePaths=/var/lib/tomcat10/data/
+```
+Then:
+```bash
+sudo systemctl daemon-reload
+sudo systemctl restart tomcat10
+```
+
+**Note:** The existing branding `ReadWritePaths` line should be consolidated into the same override block. Both lines can coexist:
+```ini
+[Service]
+ReadWritePaths=/var/lib/tomcat10/webapps/ROOT/branding/
+ReadWritePaths=/var/lib/tomcat10/data/
+```
+
+**Applies to:** Demo PSP ✅, BPO ⬜, Production ⬜, Master image ⬜
