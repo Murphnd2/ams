@@ -1,0 +1,24 @@
+Employer_ID,EmployerName,OrganizationID,EmployerOrganizationID,EmployerPlan_ID,PlanTypeID,PlanName,PlanDescription,ImportPlanID,PlanType,EffectiveDate,TerminationDate,PlanStatus,LinkedtoDefaultPlan,CardEnabled
+406,Columbia Corridor Association,408,408,402,1,Dep Care,Dep Care,DCAP,DCA,1/1/2023 12:00:00 AM,,Active,False,False
+438,Maplewood Community Church,440,440,475,1,Dep Care,Dep Care,DCAP,DCA,1/1/2023 12:00:00 AM,,Active,False,False
+1153,Village of Brookfield,1155,1155,424,1,Dep Care,Dep Care,DCAP,DCA,1/1/2023 12:00:00 AM,,Active,False,False
+404,Summit Cardiology Partners,406,406,645,1,Dep Care FSA,Dep Care FSA,DCAP,DCA,4/1/2023 12:00:00 AM,,Active,False,False
+548,Clearwater Media Productions,550,550,588,1,Dep Care FSA,Dep Care FSA,DCAP,DCA,3/1/2023 12:00:00 AM,,Active,False,False
+1100,Granite Advisory Services P.C.,1102,1102,782,1,Dep Care FSA,Dep Care FSA,DCAP,DCA,4/1/2025 12:00:00 AM,,Inactive,True,False
+219,Horizon Benefits Group,221,221,473,2,Health FSA,Health FSA,HFSA,FSA,1/1/2023 12:00:00 AM,3/1/2024 12:00:00 AM,Inactive,False,True
+219,Horizon Benefits Group,221,221,537,2,Health FSA,Health Flex Spending,HFSA2,FSA,3/1/2024 12:00:00 AM,,Active,False,True
+404,Summit Cardiology Partners,406,406,644,2,Health FSA,Health FSA,HFSA,FSA,4/1/2023 12:00:00 AM,,Active,False,True
+406,Columbia Corridor Association,408,408,401,2,Health FSA,Health FSA,HFSA,FSA,1/1/2023 12:00:00 AM,,Active,False,False
+438,Maplewood Community Church,440,440,474,2,Health FSA,Health FSA,HFSA,FSA,1/1/2023 12:00:00 AM,,Active,False,False
+438,Maplewood Community Church,440,440,474,2,Health FSA,Health FSA,HFSA,FSA,1/1/2023 12:00:00 AM,,Active,False,True
+548,Clearwater Media Productions,550,550,587,2,Health FSA,Health FSA,HFSA,FSA,3/1/2023 12:00:00 AM,,Active,False,False
+1100,Granite Advisory Services P.C.,1102,1102,781,2,Health FSA,Health FSA,HFSA,FSA,4/1/2024 12:00:00 AM,,Inactive,True,True
+1153,Village of Brookfield,1155,1155,423,2,Health FSA,Health FSA,HFSA,FSA,1/1/2023 12:00:00 AM,,Active,False,True
+438,Maplewood Community Church,440,440,765,2,Health FSA.,Health FSA.,HFSA.,FSA,4/1/2024 12:00:00 AM,,Inactive,False,True
+1069,"Ridgeline Manufacturing, LLC",1071,1071,466,1004,HRA,HRA,HRA,DRiP,1/1/2023 12:00:00 AM,1/1/2023 12:00:00 AM,Inactive,False,False
+221,Beard Pension Services Inc.,223,223,245,1005,MEDPLAN,MEDPLAN,MEDPLAN,Ins125,1/1/2024 12:00:00 AM,11/30/2025 12:00:00 AM,Active,True,False
+440,Cooks Lumber and Hardware,442,442,619,1005,MEDPLAN,MEDPLAN,MEDPLAN,Ins125,4/1/2024 12:00:00 AM,,Active,True,False
+550,Northern Metals Inc.,552,552,55,1005,MEDPLAN,MEDPLAN,MEDPLAN,Ins125,9/1/2023 12:00:00 AM,,Active,True,False
+1100,Granite Advisory Services P.C.,1102,1102,375,1005,MEDPLAN,MEDPLAN,MEDPLAN,Ins125,1/1/2024 12:00:00 AM,3/31/2025 12:00:00 AM,Active,True,False
+221,Beard Pension Services Inc.,223,223,805,1007,MEDwHSA,MEDwHSA,MEDwHSA,Ins125_w_HSA,1/1/2026 12:00:00 AM,,Inactive,True,False
+1069,"Ridgeline Manufacturing, LLC",1071,1071,609,1004,SHRA,SHRA,SDRIP,DRiP,12/1/2022 12:00:00 AM,,Active,False,False

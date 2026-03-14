@@ -1,0 +1,58 @@
+Organization_ID,Employer,EmployerOrganizationID,PlanYear,PlanYear_ID,EmployerPlan_ID,EmployerPlanDetailForPlanYear_ID,PlanName,PlanDescription,ContributionSchedule,ContributionScheduleTemplate_ID,PlanStatus
+221,Horizon Benefits Group,221,01/01/2023-12/31/2023,1126,473,546,Health FSA,Health FSA,B Saturday Auto,35,Inactive
+221,Horizon Benefits Group,221,01/01/2024-02/29/2024,1193,473,547,Health FSA,Health FSA,B Saturday Auto,35,Inactive
+221,Horizon Benefits Group,221,03/01/2024-02/28/2025,1194,537,666,Health FSA,Health Flex Spending,B Saturday Auto,35,Active
+221,Horizon Benefits Group,221,03/01/2025-02/28/2026,1486,537,1125,Health FSA,Health Flex Spending,B Saturday Auto,35,Active
+221,Horizon Benefits Group,221,03/01/2026-02/28/2027,1574,537,1330,Health FSA,Health Flex Spending,B Saturday Auto,35,Active
+223,Beard Pension Services Inc.,223,01/01/2024-12/31/2024,879,245,264,MEDPLAN,MEDPLAN,,,Active
+223,Beard Pension Services Inc.,223,01/01/2024-12/31/2024,879,805,1287,MEDwHSA,MEDwHSA,,,Inactive
+406,Summit Cardiology Partners,406,04/01/2023-03/31/2024,1310,645,826,Dep Care FSA,Dep Care FSA,C Bi Thursdays,47,Active
+406,Summit Cardiology Partners,406,04/01/2023-03/31/2024,1309,644,825,Health FSA,Health FSA,C Bi Thursdays,47,Active
+406,Summit Cardiology Partners,406,04/01/2024-03/31/2025,1292,645,828,Dep Care FSA,Dep Care FSA,C Bi Thursdays,47,Active
+406,Summit Cardiology Partners,406,04/01/2024-03/31/2025,1290,644,827,Health FSA,Health FSA,C Bi Thursdays,47,Active
+406,Summit Cardiology Partners,406,04/01/2025-03/31/2026,1489,645,1127,Dep Care FSA,Dep Care FSA,C Bi Thursdays,47,Active
+406,Summit Cardiology Partners,406,04/01/2025-03/31/2026,1489,644,1126,Health FSA,Health FSA,C Bi Thursdays,47,Active
+440,Maplewood Community Church,440,01/01/2023-12/31/2023,1128,475,550,Dep Care,Dep Care,C Semi Mon 15 L Auto,9,Active
+440,Maplewood Community Church,440,01/01/2023-12/31/2023,1127,474,548,Health FSA,Health FSA,C Semi Mon 15 L Auto,9,Active
+440,Maplewood Community Church,440,01/01/2024-12/31/2024,1044,475,551,Dep Care,Dep Care,C Semi Mon 15 L Auto,9,Active
+440,Maplewood Community Church,440,01/01/2024-12/31/2024,1045,474,549,Health FSA,Health FSA,C Semi Mon 15 L Auto,9,Active
+440,Maplewood Community Church,440,01/01/2025-03/31/2025,1426,475,988,Dep Care,Dep Care,C Semi Mon 15 L Auto,9,Active
+440,Maplewood Community Church,440,01/01/2025-03/31/2025,1426,474,987,Health FSA,Health FSA,C Semi Mon 15 L Auto,9,Active
+440,Maplewood Community Church,440,04/01/2024-03/31/2025,1290,765,1022,Health FSA.,Health FSA.,C Semi Mon 15 L Auto,9,Inactive
+440,Maplewood Community Church,440,04/01/2025-03/31/2026,1492,475,1133,Dep Care,Dep Care,C Semi Mon 15 L Auto,9,Active
+440,Maplewood Community Church,440,04/01/2025-03/31/2026,1492,765,1132,Health FSA.,Health FSA.,C Semi Mon 15 L Auto,9,Inactive
+408,Columbia Corridor Association,408,01/01/2023-12/31/2023,1049,402,431,Dep Care,Dep Care,C Semi Mon 15 L Auto,9,Active
+408,Columbia Corridor Association,408,01/01/2023-12/31/2023,1048,401,430,Health FSA,Health FSA,C Semi Mon 15 L Auto,9,Active
+408,Columbia Corridor Association,408,01/01/2024-12/31/2024,1045,402,433,Dep Care,Dep Care,C Semi Mon 15 L Auto,9,Active
+408,Columbia Corridor Association,408,01/01/2024-12/31/2024,1045,401,432,Health FSA,Health FSA,C Semi Mon 15 L Auto,9,Active
+408,Columbia Corridor Association,408,01/01/2025-12/31/2025,1467,402,1071,Dep Care,Dep Care,C Semi Mon 15 L Auto,9,Active
+408,Columbia Corridor Association,408,01/01/2025-12/31/2025,1467,401,1070,Health FSA,Health FSA,C Semi Mon 15 L Auto,9,Active
+408,Columbia Corridor Association,408,01/01/2026-12/31/2026,1550,402,1228,Dep Care,Dep Care,C Semi Mon 15 L Auto,9,Active
+408,Columbia Corridor Association,408,01/01/2026-12/31/2026,1550,401,1227,Health FSA,Health FSA,C Semi Mon 15 L Auto,9,Active
+442,Cooks Lumber and Hardware,442,04/01/2024-03/31/2025,1301,619,800,MEDPLAN,MEDPLAN,,,Active
+550,Clearwater Media Productions,550,03/01/2023-02/29/2024,1265,588,762,Dep Care FSA,Dep Care FSA,C Bi Fridays Auto,23,Active
+550,Clearwater Media Productions,550,03/01/2023-02/29/2024,1264,587,761,Health FSA,Health FSA,C Bi Fridays Auto,23,Active
+550,Clearwater Media Productions,550,03/01/2024-02/28/2025,1262,588,763,Dep Care FSA,Dep Care FSA,C Bi Fridays Auto,23,Active
+550,Clearwater Media Productions,550,03/01/2024-02/28/2025,1262,587,764,Health FSA,Health FSA,C Bi Fridays Auto,23,Active
+550,Clearwater Media Productions,550,03/01/2025-02/28/2026,1483,588,1121,Dep Care FSA,Dep Care FSA,C Bi Fridays Auto,23,Active
+550,Clearwater Media Productions,550,03/01/2025-02/28/2026,1483,587,1120,Health FSA,Health FSA,C Bi Fridays Auto,23,Active
+550,Clearwater Media Productions,550,03/01/2026-02/28/2027,1574,588,1326,Dep Care FSA,Dep Care FSA,C Bi Fridays Auto,23,Active
+550,Clearwater Media Productions,550,03/01/2026-02/28/2027,1574,587,1325,Health FSA,Health FSA,C Bi Fridays Auto,23,Active
+552,Northern Metals Inc.,552,09/01/2023-08/31/2024,663,55,58,MEDPLAN,MEDPLAN,,,Active
+1071,"Ridgeline Manufacturing, LLC",1071,01/01/2023-12/31/2023,1119,466,533,HRA,HRA,,,Inactive
+1071,"Ridgeline Manufacturing, LLC",1071,12/01/2022-11/30/2023,1286,609,787,SHRA,SHRA,,,Active
+1071,"Ridgeline Manufacturing, LLC",1071,12/01/2023-11/30/2024,1336,609,892,SHRA,SHRA,,,Active
+1071,"Ridgeline Manufacturing, LLC",1071,12/01/2024-11/30/2025,1482,609,1119,SHRA,SHRA,,,Active
+1102,Granite Advisory Services P.C.,1102,01/01/2024-12/31/2024,1009,375,394,MEDPLAN,MEDPLAN,,,Active
+1102,Granite Advisory Services P.C.,1102,04/01/2024-03/31/2025,1292,782,1135,Dep Care FSA,Dep Care FSA,C Semi Mon 15 L Auto,9,Inactive
+1102,Granite Advisory Services P.C.,1102,04/01/2024-03/31/2025,1292,781,1134,Health FSA,Health FSA,C Semi Mon 15 L Auto,9,Inactive
+1102,Granite Advisory Services P.C.,1102,04/01/2025-03/31/2026,1487,782,1137,Dep Care FSA,Dep Care FSA,TA Semi,56,Inactive
+1102,Granite Advisory Services P.C.,1102,04/01/2025-03/31/2026,1487,781,1136,Health FSA,Health FSA,TA Semi,56,Inactive
+1155,Village of Brookfield,1155,01/01/2023-12/31/2023,1073,424,469,Dep Care,Dep Care,C Bi Thurs Auto,29,Active
+1155,Village of Brookfield,1155,01/01/2023-12/31/2023,1072,423,467,Health FSA,Health FSA,C Bi Thurs Auto,29,Active
+1155,Village of Brookfield,1155,01/01/2024-12/31/2024,1045,424,470,Dep Care,Dep Care,C Bi Thurs Auto,29,Active
+1155,Village of Brookfield,1155,01/01/2024-12/31/2024,1045,423,468,Health FSA,Health FSA,C Bi Thurs Auto,29,Active
+1155,Village of Brookfield,1155,01/01/2025-12/31/2025,1470,424,1088,Dep Care,Dep Care,C Bi Thurs Auto,29,Active
+1155,Village of Brookfield,1155,01/01/2025-12/31/2025,1470,423,1087,Health FSA,Health FSA,C Bi Thurs Auto,29,Active
+1155,Village of Brookfield,1155,01/01/2026-12/31/2026,1568,424,1304,Dep Care,Dep Care,C Bi Thurs Auto,29,Active
+1155,Village of Brookfield,1155,01/01/2026-12/31/2026,1568,423,1303,Health FSA,Health FSA,C Bi Thurs Auto,29,Active
