@@ -236,6 +236,13 @@
 
             </ul>
           </div>
+
+          <%-- Super Dashboard link (master installations only) --%>
+          <c:if test="${applicationScope.isMasterSystem}">
+            <a class="nav-ghost nav-ghost-warn" href="SuperDashboard">
+              <i class="bi bi-hdd-network"></i><span class="d-lg-none d-xl-inline ms-1">Super</span>
+            </a>
+          </c:if>
         </c:if>
         </c:if><%-- /isPspSystem --%>
 

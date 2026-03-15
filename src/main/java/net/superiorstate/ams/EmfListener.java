@@ -10,6 +10,8 @@ import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.AmsDataGlobal;
 import net.superiorstate.ams.model.Constant;
 
+import net.superiorstate.ams.service.InstallationHealthScheduler;
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -19,6 +21,8 @@ import java.time.LocalDate;
 
 @WebListener
 public class EmfListener implements ServletContextListener, HttpSessionListener, HttpSessionAttributeListener {
+
+    private InstallationHealthScheduler healthScheduler;
 
     public EmfListener() {}
 
@@ -63,7 +67,15 @@ public class EmfListener implements ServletContextListener, HttpSessionListener,
                     sce.getServletContext().setAttribute("systemType", AppConfig.getSystemType());
                     sce.getServletContext().setAttribute("isBpoSystem", AppConfig.isBpo());
                     sce.getServletContext().setAttribute("isPspSystem", AppConfig.isPsp());
-                    System.out.println("✅ Global data loaded (systemType=" + AppConfig.getSystemType() + ")");
+                    sce.getServletContext().setAttribute("isMasterSystem", AppConfig.isMaster());
+                    System.out.println("✅ Global data loaded (systemType=" + AppConfig.getSystemType()
+                            + ", isMaster=" + AppConfig.isMaster() + ")");
+
+                    // Start background health scheduler on master installations
+                    if (AppConfig.isMaster()) {
+                        healthScheduler = new InstallationHealthScheduler(emf, global);
+                        healthScheduler.start();
+                    }
                 }
             } finally {
                 if (em != null && em.isOpen()) {
@@ -106,6 +118,11 @@ public class EmfListener implements ServletContextListener, HttpSessionListener,
 
     @Override
     public void contextDestroyed(ServletContextEvent sce) {
+        // Stop health scheduler before closing EMF
+        if (healthScheduler != null) {
+            healthScheduler.stop();
+        }
+
         EntityManagerFactory emf = (EntityManagerFactory) sce.getServletContext().getAttribute("emf");
         if (emf != null && emf.isOpen()) {
             try {

@@ -21,6 +21,7 @@ import net.superiorstate.ams.model.activity.ticket.ContactMethod;
 import net.superiorstate.ams.model.activity.ticket.TicketCategory;
 import net.superiorstate.ams.model.activity.ticket.tEmployee;
 import net.superiorstate.ams.model.general.BpoRegistration;
+import net.superiorstate.ams.model.general.ManagedInstallation;
 import net.superiorstate.ams.model.general.PSP;
 import net.superiorstate.ams.model.general.Person;
 import net.superiorstate.ams.model.general.UserRole;
@@ -63,6 +64,7 @@ public class AmsDataGlobal {
     private List<Person> bpoUsers;
     private List<Person> opportunityManagers;
     private List<BpoRegistration> activeBpoRegistrations;
+    private List<ManagedInstallation> managedInstallations;
     private List<ActivityCategory> activityCategories;
     private List<ServiceItem> serviceItems;
     private List<ReasonCreated> reasonsCreated;
@@ -150,6 +152,14 @@ public class AmsDataGlobal {
             if (dbSystemType != null && !dbSystemType.isBlank()) {
                 AppConfig.setSystemType(dbSystemType);
                 System.out.println("🔧 System type cached from DB: " + dbSystemType);
+            }
+
+            // Cache master flag from DB constant
+            String isMaster = getConstantValue(em, "IS_MASTER");
+            AppConfig.setMaster("true".equalsIgnoreCase(isMaster));
+            if (AppConfig.isMaster()) {
+                System.out.println("🔧 This installation is the MASTER management node");
+                setManagedInstallations(loadManagedInstallations(em));
             }
 
             if (AppConfig.isPsp()) {
@@ -406,14 +416,22 @@ public class AmsDataGlobal {
             this.pspHomeAgencyId = Long.parseLong(homeAgencyIdStr);
         }
 
-        // Schema version (latest applied migration)
+        // Schema version — prefer structural view, fall back to table
         try {
             Object result = em.createNativeQuery(
-                "SELECT script_name FROM schema_version ORDER BY applied_on DESC LIMIT 1"
+                "SELECT version FROM schema_info"
             ).getSingleResult();
             if (result != null) schemaVersion = result.toString();
         } catch (Exception e) {
-            schemaVersion = "Unknown";
+            // View doesn't exist yet — fall back to schema_version table
+            try {
+                Object result = em.createNativeQuery(
+                    "SELECT script_name FROM schema_version ORDER BY applied_on DESC LIMIT 1"
+                ).getSingleResult();
+                if (result != null) schemaVersion = result.toString();
+            } catch (Exception e2) {
+                schemaVersion = "Unknown";
+            }
         }
     }
 
@@ -624,6 +642,25 @@ public class AmsDataGlobal {
             return em.createQuery(
                     "SELECT b FROM BpoRegistration b WHERE b.isActive = true AND b.isApproved = true " +
                     "AND b.isRequested = true AND b.isAccepted = true ORDER BY b.bpoName", BpoRegistration.class)
+                    .getResultList();
+        } catch (Exception e) {
+            return new ArrayList<>();
+        }
+    }
+
+    public List<ManagedInstallation> getManagedInstallations() {
+        return managedInstallations != null ? managedInstallations : new ArrayList<>();
+    }
+
+    public void setManagedInstallations(List<ManagedInstallation> managedInstallations) {
+        this.managedInstallations = managedInstallations;
+    }
+
+    private List<ManagedInstallation> loadManagedInstallations(EntityManager em) {
+        try {
+            return em.createQuery(
+                    "SELECT m FROM ManagedInstallation m WHERE m.isActive = true ORDER BY m.installationName",
+                    ManagedInstallation.class)
                     .getResultList();
         } catch (Exception e) {
             return new ArrayList<>();

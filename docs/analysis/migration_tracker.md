@@ -16,7 +16,7 @@ Tracks database schema versions across environments.
 | BPO | bpo.superiorstate.biz | beta_ssa | BPO instance (V038, initialized, release V0.37.0) |
 | Master | master.superiorstate.biz | beta_ssa | Snapshot v8 (V037, stopped) |
 
-## Current Highest Version: V053
+## Current Highest Version: V055
 
 ## Dev Baseline
 
@@ -85,6 +85,8 @@ Individual migration scripts are no longer stored in the repo. The baseline dump
 | V051 | Import ID mapping cross-reference table | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
 | V052 | Import run log cross-reference tracking columns | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
 | V053 | Interactive import enhancements: update mode, mapping status, FK flags | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
+| V054 | Super User Dashboard — managed_installation table | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
+| V055 | Schema info view for structural version identification | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
 
 ## Notes
 

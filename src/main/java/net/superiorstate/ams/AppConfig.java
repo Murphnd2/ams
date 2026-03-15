@@ -25,6 +25,7 @@ public final class AppConfig {
     private static String resolvedPath = null;
     private static volatile String cachedSystemType = null;
     private static volatile String cachedAnthropicApiKey = null;
+    private static volatile boolean masterFlag = false;
 
     private AppConfig() {}
 
@@ -106,6 +107,23 @@ public final class AppConfig {
         return "BPO".equalsIgnoreCase(getSystemType());
     }
 
+    /**
+     * Returns true if this installation is the master management node.
+     * Set from the DB constant IS_MASTER or ssa.properties IS_MASTER.
+     * A master installation is still a PSP — it just also has the super dashboard.
+     */
+    public static boolean isMaster() {
+        return masterFlag;
+    }
+
+    /**
+     * Cache the master flag read from the DB constants table.
+     * Called by AmsDataGlobal during global data initialization.
+     */
+    public static void setMaster(boolean value) {
+        masterFlag = value;
+    }
+
     // --- Anthropic API Key (DB-first, ssa.properties fallback) ---
 
     /**
@@ -140,6 +158,60 @@ public final class AppConfig {
     public static boolean hasAnthropicApiKey() {
         return getAnthropicApiKey() != null;
     }
+
+    // --- Build Info ---
+
+    private static String appVersion;
+    private static String buildTimestamp;
+
+    static {
+        // 1. App version: prefer /opt/ssa/current_version.txt (git tag from update.sh)
+        try {
+            Path versionFile = Paths.get("/opt/ssa/current_version.txt");
+            if (Files.exists(versionFile)) {
+                String tag = Files.readString(versionFile).trim();
+                if (!tag.isBlank()) appVersion = tag;
+            }
+        } catch (Exception ignored) {}
+
+        // 2. Fall back to Maven-filtered build.properties (pom version)
+        try (InputStream in = AppConfig.class.getClassLoader().getResourceAsStream("build.properties")) {
+            if (in != null) {
+                Properties bp = new Properties();
+                bp.load(in);
+                if (appVersion == null) {
+                    String pomVer = bp.getProperty("app.version", "");
+                    // Skip if Maven filtering didn't run (literal ${...} still present)
+                    if (!pomVer.isBlank() && !pomVer.contains("${")) appVersion = pomVer;
+                }
+                String ts = bp.getProperty("build.timestamp", "");
+                if (!ts.isBlank() && !ts.contains("${")) buildTimestamp = ts;
+            }
+        } catch (Exception ignored) {}
+
+        // 3. Build timestamp fallback: use AppConfig.class file last-modified
+        if (buildTimestamp == null) {
+            try {
+                java.net.URL classUrl = AppConfig.class.getProtectionDomain().getCodeSource().getLocation();
+                if (classUrl != null) {
+                    Path classPath = Paths.get(classUrl.toURI());
+                    java.time.Instant lastMod = Files.getLastModifiedTime(classPath).toInstant();
+                    buildTimestamp = java.time.LocalDateTime.ofInstant(lastMod,
+                            java.time.ZoneId.systemDefault()).format(
+                            java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
+                }
+            } catch (Exception ignored) {}
+        }
+
+        if (appVersion == null) appVersion = "Unknown";
+        if (buildTimestamp == null) buildTimestamp = "Unknown";
+    }
+
+    /** Application version — git tag on deployed machines, pom version in dev. */
+    public static String getAppVersion() { return appVersion; }
+
+    /** Build timestamp (e.g., "2026-03-15 14:30") */
+    public static String getBuildTimestamp() { return buildTimestamp; }
 
     // --- Internal ---
 

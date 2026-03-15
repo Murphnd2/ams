@@ -71,15 +71,25 @@ public class ApiClient {
      * On any exception, returns ApiResponse with statusCode = -1 and empty body.
      */
     public static ApiResponse getJson(String url) {
+        return getJson(url, null);
+    }
+
+    /**
+     * GET JSON from a URL with optional Bearer token authentication.
+     */
+    public static ApiResponse getJson(String url, String bearerToken) {
         try {
-            HttpRequest request = HttpRequest.newBuilder()
+            HttpRequest.Builder builder = HttpRequest.newBuilder()
                     .uri(URI.create(url))
                     .header("Accept", "application/json")
                     .timeout(Duration.ofSeconds(5))
-                    .GET()
-                    .build();
+                    .GET();
 
-            HttpResponse<String> response = redirectClient.send(request,
+            if (bearerToken != null) {
+                builder.header("Authorization", "Bearer " + bearerToken);
+            }
+
+            HttpResponse<String> response = redirectClient.send(builder.build(),
                     HttpResponse.BodyHandlers.ofString());
 
             return new ApiResponse(response.statusCode(), response.body());

@@ -40,6 +40,12 @@ public class ApiTokenFilter implements Filter {
             return;
         }
 
+        // Skip auth for master registration handshake
+        if (uri.endsWith("/api/v1/system/register")) {
+            chain.doFilter(request, response);
+            return;
+        }
+
         String authHeader = request.getHeader("Authorization");
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             sendUnauthorized(response);
@@ -73,6 +79,16 @@ public class ApiTokenFilter implements Filter {
     }
 
     private Object lookupPartnerByToken(EntityManager em, String token) {
+        // Check for master management token (all installation types)
+        try {
+            String masterToken = em.createQuery(
+                    "SELECT c.value FROM Constant c WHERE c.name = 'MASTER_API_TOKEN_INBOUND'",
+                    String.class).getSingleResult();
+            if (masterToken != null && masterToken.equals(token)) {
+                return "MASTER";
+            }
+        } catch (Exception ignored) {}
+
         try {
             if (AppConfig.isPsp()) {
                 // PSP side: look up BpoRegistration by inbound token
