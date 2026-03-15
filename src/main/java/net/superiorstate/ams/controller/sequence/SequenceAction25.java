@@ -65,6 +65,7 @@ public class SequenceAction25 extends HttpServlet {
                 case "SAVE" -> redirectId = handleSave(request, em);
                 case "CREATE" -> redirectId = handleCreate(request, em);
                 case "DELETE" -> handleDelete(request, em);
+                case "RENAME" -> redirectId = handleRename(request, em);
                 case "SUPPRESS" -> redirectId = handleSuppress(request, em);
                 case "SAVE_COMPOSITE" -> {
                     handleSaveComposite(request, em);
@@ -267,13 +268,12 @@ public class SequenceAction25 extends HttpServlet {
         }
 
         // Create the RequiredTaskList
-        String prefix = "ticket".equals(type) ? "" : ("renewal".equals(type) ? "(Renewal) " : "(Setup) ");
         em.getTransaction().begin();
         RequiredTaskList rtl = new RequiredTaskList();
         rtl.setInActive(false);
         rtl.setPsp(psp);
         rtl.setServiceItem(tp);
-        rtl.setDescription(prefix + tp.getDescription());
+        rtl.setDescription(tp.getDescription());
         em.persist(rtl);
         em.getTransaction().commit();
 
@@ -294,6 +294,25 @@ public class SequenceAction25 extends HttpServlet {
         em.getTransaction().commit();
 
         System.out.println("✅ SequenceAction25 DELETE: sequence " + seqId + " deactivated");
+    }
+
+    // ── RENAME: Update sequence description ─────────────────────────────────────
+
+    private long handleRename(HttpServletRequest request, EntityManager em) {
+        long seqId = Long.parseLong(request.getParameter("sequenceId"));
+        String newName = request.getParameter("seqName");
+        if (newName == null || newName.trim().isEmpty()) return seqId;
+
+        RequiredTaskList rtl = EntityLookup.getReqListById(em, seqId);
+        if (rtl == null) return -1;
+
+        em.getTransaction().begin();
+        rtl.setDescription(newName.trim());
+        em.persist(rtl);
+        em.getTransaction().commit();
+
+        System.out.println("✅ SequenceAction25 RENAME: sequence " + seqId + " → '" + newName.trim() + "'");
+        return seqId;
     }
 
     /**

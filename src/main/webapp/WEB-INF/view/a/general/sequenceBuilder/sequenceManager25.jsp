@@ -13,7 +13,7 @@
         .seq-item.active { background: #e8f4f8; border-left: 3px solid #0d6681; }
         .task-count-badge { font-size: 0.75rem; background: #e9ecef; border-radius: 10px; padding: 2px 8px; color: #555; white-space: nowrap; }
         .seq-name { font-size: 0.9rem; font-weight: 500; }
-        .stat-chip { font-size: 0.7rem; padding: 2px 6px; border-radius: 3px; font-weight: 600; }
+        .stat-chip { font-size: 0.7rem; padding: 2px 6px; border-radius: 3px; font-weight: 600; width: 58px; text-align: center; flex-shrink: 0; }
         .stat-chip.ticket { background: #e0f2fe; color: #0369a1; }
         .stat-chip.renewal { background: #ede9fe; color: #6d28d9; }
         .stat-chip.setup { background: #f0fdf4; color: #15803d; }
@@ -62,7 +62,7 @@
     <div class="row g-3">
 
         <%-- ====================== LEFT PANEL ====================== --%>
-        <div class="col-lg-4 col-xl-3">
+        <div class="col-lg-5 col-xl-4">
             <div class="seq-panel">
                 <div class="seq-panel-header d-flex justify-content-between align-items-center">
                     <span><i class="bi bi-collection"></i> Template Sequences</span>
@@ -210,7 +210,7 @@
         </div>
 
         <%-- ====================== RIGHT PANEL ====================== --%>
-        <div class="col-lg-8 col-xl-9">
+        <div class="col-lg-7 col-xl-8">
             <div class="builder-area">
                 <c:choose>
                     <%-- ===== COMPOSITE ORDER VIEW ===== --%>
@@ -283,8 +283,23 @@
                                 <c:if test="${sessionScope.sbSelectedGroupId == 3}"><i class="bi bi-ticket-detailed text-info"></i></c:if>
                                 <c:if test="${sessionScope.sbSelectedGroupId == 1}"><i class="bi bi-repeat text-primary"></i></c:if>
                                 <c:if test="${sessionScope.sbSelectedGroupId == 2}"><i class="bi bi-buildings text-secondary"></i></c:if>
-                                    ${sessionScope.sbSelectedName}
+                                <span id="seqNameDisplay">${sessionScope.sbSelectedName}</span>
+                                <button type="button" class="btn btn-sm btn-link p-0 ms-2" onclick="showRenameForm()" title="Rename sequence" style="color:#0d6681;">
+                                    <i class="bi bi-pencil-square"></i>
+                                </button>
                             </h5>
+                            <%-- Inline rename form (hidden by default) --%>
+                            <form method="post" action="SequenceAction25" id="renameForm" class="d-none mb-2">
+                                <input type="hidden" name="action" value="RENAME">
+                                <input type="hidden" name="sequenceId" value="${sessionScope.sbSelectedId}">
+                                <input type="hidden" name="f" value="${param.f}">
+                                <input type="hidden" name="ss" value="${param.ss}">
+                                <div class="input-group input-group-sm" style="max-width:400px;">
+                                    <input type="text" class="form-control" name="seqName" id="renameInput" value="${sessionScope.sbSelectedName}">
+                                    <button type="submit" class="btn btn-sm btn-success"><i class="bi bi-check-lg"></i></button>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="hideRenameForm()"><i class="bi bi-x-lg"></i></button>
+                                </div>
+                            </form>
                             <small class="text-muted">
                                 Sequence #${sessionScope.sbSelectedId} &middot; ${sessionScope.sbListBuilder.size()} tasks
                             </small>
@@ -311,6 +326,13 @@
                                     </c:choose>
                                 </form>
                             </c:if>
+                        </div>
+
+                        <%-- Copy from Existing --%>
+                        <div class="px-3 pt-2">
+                            <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#copyFromModal">
+                                <i class="bi bi-clipboard-plus"></i> Copy Tasks from Existing Sequence
+                            </button>
                         </div>
 
                         <%-- Task Rows --%>
@@ -396,6 +418,68 @@
     </div>
 </div>
 
+<%-- ===== Copy from Existing Sequence Modal ===== --%>
+<div class="modal fade" id="copyFromModal" tabindex="-1" aria-labelledby="copyFromModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header" style="background:#0d6681; color:#fff;">
+                <h6 class="modal-title" id="copyFromModalLabel"><i class="bi bi-clipboard-plus"></i> Copy Tasks from Existing Sequence</h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted" style="font-size:0.85rem;">Select a sequence below. Its tasks will be added to the current sequence (reusing the same tasks, not copies).</p>
+                <div class="form-check form-switch mb-3">
+                    <input class="form-check-input" type="checkbox" id="copyFromReplace">
+                    <label class="form-check-label" for="copyFromReplace" style="font-size:0.85rem;">Replace existing tasks <span class="text-muted">(overwrite instead of append)</span></label>
+                </div>
+                <input type="text" class="form-control form-control-sm mb-3" id="copyFromSearch" placeholder="Search sequences..." oninput="filterCopyFromList()">
+                <div id="copyFromList" style="max-height:400px; overflow-y:auto;">
+                    <%-- Renewal sequences --%>
+                    <c:forEach var="seq" items="${sessionScope.seqRenewalList}">
+                        <c:if test="${seq.getId() != sessionScope.sbSelectedId}">
+                            <a href="javascript:void(0)" class="copy-from-item seq-item" style="text-decoration:none;"
+                               data-seq-id="${seq.getId()}" data-searchname="${seq.getDescription()}"
+                               onclick="copyFromSequence(${seq.getId()}, this)">
+                                <span class="stat-chip renewal">REN</span>
+                                <span class="seq-name">${seq.getDescription()}</span>
+                                <span class="task-count-badge">${taskCountMap[seq.getId()]} tasks</span>
+                            </a>
+                        </c:if>
+                    </c:forEach>
+                    <%-- Setup sequences --%>
+                    <c:forEach var="seq" items="${sessionScope.seqSetupList}">
+                        <c:if test="${seq.getId() != sessionScope.sbSelectedId}">
+                            <a href="javascript:void(0)" class="copy-from-item seq-item" style="text-decoration:none;"
+                               data-seq-id="${seq.getId()}" data-searchname="${seq.getDescription()}"
+                               onclick="copyFromSequence(${seq.getId()}, this)">
+                                <span class="stat-chip setup">SET</span>
+                                <span class="seq-name">${seq.getDescription()}</span>
+                                <span class="task-count-badge">${taskCountMap[seq.getId()]} tasks</span>
+                            </a>
+                        </c:if>
+                    </c:forEach>
+                    <%-- Ticket sequences --%>
+                    <c:forEach var="tix" items="${sessionScope.seqTicketDisplay}">
+                        <c:if test="${tix.getId() != sessionScope.sbSelectedId}">
+                            <a href="javascript:void(0)" class="copy-from-item seq-item" style="text-decoration:none;"
+                               data-seq-id="${tix.getId()}" data-searchname="${tix.getDescription()}"
+                               onclick="copyFromSequence(${tix.getId()}, this)">
+                                <span class="stat-chip ticket">TIX</span>
+                                <span class="seq-name">${tix.getDescription()}</span>
+                                <span class="task-count-badge">${taskCountMap[tix.getId()]} tasks</span>
+                            </a>
+                        </c:if>
+                    </c:forEach>
+                </div>
+                <div id="copyFromStatus" class="mt-2" style="display:none;"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
     /* ── View state from URL params ── */
     var urlParams = new URLSearchParams(window.location.search);
@@ -413,7 +497,7 @@
     /* ── Rewrite all sequence links to carry view state ── */
     function updateSeqLinks() {
         var qs = viewQS();
-        document.querySelectorAll('.seq-item').forEach(function(a) {
+        document.querySelectorAll('#seqListContainer .seq-item').forEach(function(a) {
             var base = a.href.split('?')[0];
             var loadParam = new URL(a.href).searchParams.get('load');
             a.href = base + '?load=' + loadParam + '&' + qs;
@@ -428,7 +512,7 @@
     function updateCounts() {
         var showSuppressed = document.getElementById('seqListContainer').classList.contains('show-suppressed');
         var tickets = 0, renewals = 0, setups = 0;
-        document.querySelectorAll('.seq-item').forEach(function(item) {
+        document.querySelectorAll('#seqListContainer .seq-item').forEach(function(item) {
             var isSuppressed = item.getAttribute('data-suppressed') === 'true';
             if (isSuppressed && !showSuppressed) return;
             var type = item.getAttribute('data-type');
@@ -456,7 +540,7 @@
     function applyFilter() {
         var type = currentFilter;
         var showSuppressed = document.getElementById('seqListContainer').classList.contains('show-suppressed');
-        document.querySelectorAll('.seq-item').forEach(function(item) {
+        document.querySelectorAll('#seqListContainer .seq-item').forEach(function(item) {
             var matchesType = (type === 'all' || item.getAttribute('data-type') === type);
             var isSuppressed = item.getAttribute('data-suppressed') === 'true';
             if (!matchesType) {
@@ -482,7 +566,7 @@
     function searchSeq() {
         var term = document.getElementById('seqSearch').value.toLowerCase();
         var showSuppressed = document.getElementById('seqListContainer').classList.contains('show-suppressed');
-        document.querySelectorAll('.seq-item').forEach(function(item) {
+        document.querySelectorAll('#seqListContainer .seq-item').forEach(function(item) {
             var name = (item.getAttribute('data-searchname') || '').toLowerCase();
             var matchesSearch = name.indexOf(term) >= 0;
             var isSuppressed = item.getAttribute('data-suppressed') === 'true';
@@ -531,6 +615,13 @@
         updateSeqLinks();
     })();
 
+    /* ── Unsaved changes warning ── */
+    var builderDirty = false;
+    function markDirty() { builderDirty = true; }
+    window.addEventListener('beforeunload', function(e) {
+        if (builderDirty) { e.preventDefault(); e.returnValue = ''; }
+    });
+
     function toggleAddMode() {
         var isNew = document.getElementById('addNew').checked;
         document.getElementById('newTaskInput').className = isNew ? 'col' : 'col d-none';
@@ -573,9 +664,10 @@
         attachDragEvents(row);
         list.appendChild(row);
         renumber();
+        markDirty();
     }
 
-    function removeTask(btn) { btn.closest('.task-row').remove(); renumber(); }
+    function removeTask(btn) { btn.closest('.task-row').remove(); renumber(); markDirty(); }
 
     function renumber() {
         document.querySelectorAll('#taskList .task-row').forEach(function(row, i) {
@@ -595,6 +687,7 @@
                 var rows = Array.from(list.children);
                 if (rows.indexOf(draggedRow) < rows.indexOf(row)) { row.after(draggedRow); } else { row.before(draggedRow); }
                 renumber();
+                markDirty();
             }
             document.querySelectorAll('.drag-over').forEach(function(r){r.classList.remove('drag-over');});
         });
@@ -602,7 +695,7 @@
     }
     document.querySelectorAll('#taskList .task-row').forEach(attachDragEvents);
 
-    document.addEventListener('click', function(e) { var flag = e.target.closest('.task-flags .flag'); if(flag) flag.classList.toggle('on'); });
+    document.addEventListener('click', function(e) { var flag = e.target.closest('.task-flags .flag'); if(flag) { flag.classList.toggle('on'); markDirty(); } });
 
     function toggleNewSeqFields() {
         var v = document.getElementById('newSeqType').value;
@@ -636,9 +729,101 @@
             });
         });
         document.getElementById('taskOrderField').value = JSON.stringify(tasks);
+        builderDirty = false;
     }
 
     function escapeHtml(text) { var d = document.createElement('div'); d.textContent = text; return d.innerHTML; }
+
+    /* ── Rename sequence ── */
+    function showRenameForm() {
+        document.getElementById('renameForm').classList.remove('d-none');
+        var input = document.getElementById('renameInput');
+        input.focus();
+        input.select();
+    }
+    function hideRenameForm() {
+        document.getElementById('renameForm').classList.add('d-none');
+    }
+
+    /* ── Copy from Existing Sequence ── */
+
+    function filterCopyFromList() {
+        var term = document.getElementById('copyFromSearch').value.toLowerCase();
+        document.querySelectorAll('.copy-from-item').forEach(function(item) {
+            var name = (item.getAttribute('data-searchname') || '').toLowerCase();
+            item.style.display = name.indexOf(term) >= 0 ? 'flex' : 'none';
+        });
+    }
+
+    function copyFromSequence(seqId, el) {
+        var status = document.getElementById('copyFromStatus');
+        status.style.display = 'block';
+        status.innerHTML = '<span class="text-muted"><i class="bi bi-hourglass-split"></i> Loading tasks...</span>';
+
+        // Highlight the clicked item
+        document.querySelectorAll('.copy-from-item').forEach(function(item) { item.classList.remove('active'); });
+        el.classList.add('active');
+
+        var replaceMode = document.getElementById('copyFromReplace').checked;
+
+        fetch('SequenceBuilder25?ajax=tasks&seqId=' + seqId)
+            .then(function(resp) { return resp.json(); })
+            .then(function(tasks) {
+                if (!tasks || tasks.length === 0) {
+                    status.innerHTML = '<span class="text-warning"><i class="bi bi-exclamation-triangle"></i> That sequence has no tasks.</span>';
+                    return;
+                }
+
+                var list = document.getElementById('taskList');
+
+                // Replace mode: clear all existing tasks first
+                if (replaceMode) {
+                    list.innerHTML = '';
+                }
+
+                var added = 0;
+
+                tasks.forEach(function(t) {
+                    // In append mode, skip duplicates; in replace mode, always add
+                    if (!replaceMode) {
+                        var existing = list.querySelector('.task-row[data-task-id="' + t.taskId + '"]');
+                        if (existing) return;
+                    }
+
+                    var row = document.createElement('div');
+                    row.className = 'task-row';
+                    row.draggable = true;
+                    row.setAttribute('data-task-id', t.taskId);
+                    row.setAttribute('data-desc', t.desc);
+                    row.setAttribute('data-reusable', t.reusable);
+                    row.innerHTML =
+                        '<span class="drag-handle"><i class="bi bi-grip-vertical"></i></span>' +
+                        '<span class="step-badge">0</span>' +
+                        '<div style="flex:1;font-size:0.9rem;padding:4px 8px;">' + escapeHtml(t.desc) + '</div>' +
+                        '<div class="task-flags">' +
+                        '<span class="flag ' + (t.reusable ? 'on' : '') + '" title="Reusable"><i class="bi bi-floppy"></i></span>' +
+                        '</div>' +
+                        '<button type="button" class="btn btn-sm btn-outline-danger" onclick="removeTask(this)"><i class="bi bi-x-lg"></i></button>';
+                    attachDragEvents(row);
+                    list.appendChild(row);
+                    added++;
+                });
+
+                renumber();
+                if (added > 0 || replaceMode) markDirty();
+
+                if (replaceMode) {
+                    status.innerHTML = '<span class="text-success"><i class="bi bi-check-circle"></i> Replaced with ' + added + ' task' + (added > 1 ? 's' : '') + '. Close this modal and save to keep changes.</span>';
+                } else if (added > 0) {
+                    status.innerHTML = '<span class="text-success"><i class="bi bi-check-circle"></i> Added ' + added + ' task' + (added > 1 ? 's' : '') + '. Close this modal and save to keep changes.</span>';
+                } else {
+                    status.innerHTML = '<span class="text-info"><i class="bi bi-info-circle"></i> All tasks from that sequence are already in the current list.</span>';
+                }
+            })
+            .catch(function(err) {
+                status.innerHTML = '<span class="text-danger"><i class="bi bi-x-circle"></i> Error loading tasks.</span>';
+            });
+    }
 
     /* ── Composite Order ── */
 

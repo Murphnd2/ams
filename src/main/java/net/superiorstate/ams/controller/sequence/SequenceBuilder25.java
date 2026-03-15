@@ -37,6 +37,11 @@ public class SequenceBuilder25 extends HttpServlet {
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        // AJAX endpoint: return tasks for a sequence as JSON
+        if ("tasks".equals(request.getParameter("ajax"))) {
+            handleAjaxTasks(request, response);
+            return;
+        }
         process(request, response);
     }
 
@@ -60,6 +65,58 @@ public class SequenceBuilder25 extends HttpServlet {
 
         RequestDispatcher dispatcher = request.getRequestDispatcher("/WEB-INF/view/a/general/sequenceBuilder/sequenceManager25.jsp");
         dispatcher.forward(request, response);
+    }
+
+    /**
+     * AJAX endpoint: GET /SequenceBuilder25?ajax=tasks&seqId=123
+     * Returns JSON array of tasks for the given sequence, sorted by sortOrder.
+     * Used by "Copy from Existing" feature.
+     */
+    private void handleAjaxTasks(HttpServletRequest request, HttpServletResponse response) throws IOException {
+        response.setContentType("application/json");
+        response.setCharacterEncoding("UTF-8");
+
+        String seqIdParam = request.getParameter("seqId");
+        if (seqIdParam == null || seqIdParam.isEmpty()) {
+            response.getWriter().write("[]");
+            return;
+        }
+
+        EntityManagerFactory emf = (EntityManagerFactory) getServletContext().getAttribute("emf");
+        EntityManager em = emf.createEntityManager();
+        try {
+            long seqId = Long.parseLong(seqIdParam);
+            Query q = em.createQuery("SELECT tst FROM TaskSequenceTable tst WHERE tst.taskSequence.id = :id ORDER BY tst.sortOrder");
+            q.setParameter("id", seqId);
+            List<TaskSequenceTable> tstList;
+            try {
+                tstList = (List<TaskSequenceTable>) q.getResultList();
+            } catch (NoResultException e) {
+                tstList = new ArrayList<>();
+            }
+
+            StringBuilder json = new StringBuilder("[");
+            for (int i = 0; i < tstList.size(); i++) {
+                Task task = tstList.get(i).getTask();
+                if (i > 0) json.append(",");
+                json.append("{\"taskId\":").append(task.getId())
+                    .append(",\"desc\":\"").append(escapeJsonString(task.getDescription())).append("\"")
+                    .append(",\"reusable\":").append(task.isReUsable())
+                    .append("}");
+            }
+            json.append("]");
+            response.getWriter().write(json.toString());
+        } catch (Exception e) {
+            response.getWriter().write("[]");
+        } finally {
+            if (em.isOpen()) em.close();
+        }
+    }
+
+    /** Escapes special characters for JSON string values */
+    private String escapeJsonString(String s) {
+        if (s == null) return "";
+        return s.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n").replace("\r", "\\r").replace("\t", "\\t");
     }
 
     /**

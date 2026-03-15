@@ -7,7 +7,7 @@
 ## Current State
 - **Branch:** `refactor/modernize-architecture`
 - **Latest migration:** V053
-- **Session count:** 69
+- **Session count:** 70
 - **Build tool:** Maven wrapper `./mvnw compile` (no system `mvn` on PATH)
 - V025-V037 applied to Demo/BPO/Master; V038 applied to Demo/BPO; V039-V053 code-complete, not yet applied
 - Master snapshot v8 taken 2026-03-04 (V037)
@@ -32,10 +32,10 @@
 - **EntityManager must stay open** during JSP forward — move forward() inside try block
 
 ## Recent Sessions
-- **Session 66:** Interactive Import Wizard B2-B5 complete
 - **Session 67:** Checklist/BPO improvements — auto-close modal, vendor task management, L2 cache fixes
 - **Session 68:** Center panel redesign — unified "Colored Tab" headers, navbar application review badge
 - **Session 69:** Docs/demo cleanup — removed obsolete files, consolidated demo/, compressed session archive
+- **Session 70:** Sequence Manager enhancements — copy-from-existing modal, inline rename, unsaved changes warning, wider left panel, fixed-width badges, filter scoping fix
 
 ## Reference Docs
 | Topic | Location |
