@@ -52,7 +52,6 @@
       </c:if>
 
       <%-- ===== OPEN ITEMS ===== --%>
-      <c:set var="isFirstOpen" value="true"/>
       <c:forEach var="toDo" items="${sessionScope.local.getCurrentActivity().getToDoList()}" varStatus="tds">
         <c:if test="${toDo.getTask().getId() != 153 && toDo.isComplete() == false}">
 
@@ -124,9 +123,9 @@
                 </c:if>
               </div>
 
-              <%-- Automation icon (first open item only) --%>
-              <c:if test="${isFirstOpen && toDo.hasAutomation() && toDo.getAutomation() != null && empty isPast}">
-                <button type="button" class="td-auto" data-bs-toggle="modal" data-bs-target="#autoModal" title="${toDo.getAutomationText()}">
+              <%-- Automation icon (any unblocked item with automation) --%>
+              <c:if test="${toDo.getBtnIcon() == 'square' && toDo.hasAutomation() && toDo.getAutomation() != null && empty isPast}">
+                <button type="button" class="td-auto" onclick="openAutoModal('${toDo.getAutomationText()}', '${toDo.getAutomation().getAutomationName()}', '${toDo.getAutomation().getId()}', '${toDo.getServletName()}')" title="${toDo.getAutomationText()}">
                   <i class="bi bi-lightning-charge-fill"></i>
                 </button>
               </c:if>
@@ -184,8 +183,6 @@
 
             </div>
           </div>
-
-          <c:set var="isFirstOpen" value="false"/>
 
         </c:if>
       </c:forEach>
@@ -250,44 +247,44 @@
 
 </div>
 
-<%-- ===== AUTOMATION MODAL ===== --%>
-<c:set var="firstOpenToDo" value="${null}"/>
-<c:forEach var="toDo" items="${sessionScope.local.getCurrentActivity().getToDoList()}">
-  <c:if test="${firstOpenToDo == null && toDo.getTask().getId() != 153 && toDo.isComplete() == false}">
-    <c:set var="firstOpenToDo" value="${toDo}"/>
-  </c:if>
-</c:forEach>
-
-<c:if test="${firstOpenToDo != null && firstOpenToDo.hasAutomation() && firstOpenToDo.getAutomation() != null}">
-  <div class="modal fade" id="autoModal" tabindex="-1" aria-labelledby="autoModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-fullscreen-sm-down">
-      <div class="modal-content">
-        <div class="modal-header py-2" style="background: linear-gradient(135deg, #0d5681, #0a4468); color: white;">
-          <h6 class="modal-title m-0" id="autoModalLabel">
-            <i class="bi bi-lightning-charge-fill me-1" style="color: #fd7e14;"></i>${firstOpenToDo.getAutomationText()}
-          </h6>
-          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+<%-- ===== AUTOMATION MODAL (dynamic, populated via JS) ===== --%>
+<div class="modal fade" id="autoModal" tabindex="-1" aria-labelledby="autoModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-fullscreen-sm-down">
+    <div class="modal-content">
+      <div class="modal-header py-2" style="background: linear-gradient(135deg, #0d5681, #0a4468); color: white;">
+        <h6 class="modal-title m-0" id="autoModalLabel">
+          <i class="bi bi-lightning-charge-fill me-1" style="color: #fd7e14;"></i><span id="autoModalTitle"></span>
+        </h6>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="text-center text-muted py-3">
+          <i class="bi bi-envelope-paper" style="font-size: 2rem; color: #0d5681;"></i>
+          <p class="mt-2 mb-1 fw-semibold" style="font-size: 0.9rem;" id="autoModalName"></p>
+          <p class="mb-0" style="font-size: 0.78rem;">Automation email ready to send for this task.</p>
         </div>
-        <div class="modal-body">
-          <div class="text-center text-muted py-3">
-            <i class="bi bi-envelope-paper" style="font-size: 2rem; color: #0d5681;"></i>
-            <p class="mt-2 mb-1 fw-semibold" style="font-size: 0.9rem;">${firstOpenToDo.getAutomation().getAutomationName()}</p>
-            <p class="mb-0" style="font-size: 0.78rem;">Automation email ready to send for this task.</p>
-          </div>
-        </div>
-        <div class="modal-footer py-2">
-          <c:set var="autoId" value="${firstOpenToDo.getAutomation().getId()}"/>
-          <a href="PreviewAutomation?aeId=${autoId}" class="btn btn-sm btn-outline-secondary" target="_blank">
-            <i class="bi bi-eye me-1"></i>Preview
-          </a>
-          <a href="${firstOpenToDo.getServletName()}" class="btn btn-sm btn-ssa">
-            <i class="bi bi-send me-1"></i>Send
-          </a>
-        </div>
+      </div>
+      <div class="modal-footer py-2">
+        <a href="#" id="autoModalPreview" class="btn btn-sm btn-outline-secondary" target="_blank">
+          <i class="bi bi-eye me-1"></i>Preview
+        </a>
+        <a href="#" id="autoModalSend" class="btn btn-sm btn-ssa">
+          <i class="bi bi-send me-1"></i>Send
+        </a>
       </div>
     </div>
   </div>
-</c:if>
+</div>
+
+<script>
+  function openAutoModal(autoText, autoName, autoId, servletName) {
+    document.getElementById('autoModalTitle').textContent = autoText;
+    document.getElementById('autoModalName').textContent = autoName;
+    document.getElementById('autoModalPreview').href = 'PreviewAutomation?aeId=' + autoId;
+    document.getElementById('autoModalSend').href = servletName;
+    new bootstrap.Modal(document.getElementById('autoModal')).show();
+  }
+</script>
 
 <%-- ===== BPO NOTES MODAL ===== --%>
 <div class="modal fade" id="bpoNotesModal" tabindex="-1">
