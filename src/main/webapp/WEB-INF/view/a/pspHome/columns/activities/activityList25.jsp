@@ -111,7 +111,7 @@
 <%-- ══════════════════════════════════════════════════════════════════════ --%>
 <%-- SCROLL CONTAINER (JS will render into this)                           --%>
 <%-- ══════════════════════════════════════════════════════════════════════ --%>
-<div class="overflow-auto flex-grow-1" style="min-height: 0;" id="actListContainer">
+<div class="overflow-auto flex-grow-1" style="min-height: 0; height: 0;" id="actListContainer">
 </div>
 
 <%-- ══════════════════════════════════════════════════════════════════════ --%>

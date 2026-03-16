@@ -73,6 +73,7 @@
         background: white;
         border-left: 1px solid #e5eaf1;
         border-right: 1px solid #e5eaf1;
+        overflow: hidden;
     }
     .home-col-center .zone-stripe { height: 3px; background: var(--ssa); margin-bottom: 0; }
 

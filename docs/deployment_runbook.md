@@ -240,7 +240,7 @@ If a code update causes issues:
 2. Swap to previous WAR:
    ```bash
    cp /var/lib/tomcat10/webapps/ROOT.war /var/lib/tomcat10/webapps/ROOT.war.broken
-   cp /opt/ssa/backups/ssa-previous.war /var/lib/tomcat10/webapps/ROOT.war
+   cp /opt/ssa/backups/ROOT-previous.war /var/lib/tomcat10/webapps/ROOT.war
    ```
 3. Start Tomcat: `sudo systemctl start tomcat10`
 4. If the new WAR included DB migrations, also restore the DB from the pre-update backup

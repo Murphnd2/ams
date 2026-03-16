@@ -17,12 +17,18 @@ WEBAPPS="/var/lib/tomcat10/webapps"
 BACKUP_DIR="/opt/ssa/backups"
 TMP_DIR="/tmp/ssa-update"
 
+# ── Ensure directories exist ────────────────────────────────────────────────
+mkdir -p "$(dirname "$LOG")" "$BACKUP_DIR"
+
 # ── Helper ───────────────────────────────────────────────────────────────────
 log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" >> "$LOG"; }
 
 read_prop() { grep "^$1=" "$PROPS" | cut -d'=' -f2- | xargs; }
 
 run_mysql() { LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu mysql --socket=/var/run/mysqld/mysqld.sock -u "$DB_USER" -p"$DB_PASSWORD" "$DB_NAME" "$@"; }
+
+# Resolve lowercase tag to original GitHub tag (case may differ, e.g., V0.37.0 vs v0.37.0)
+resolve_tag() { echo "$ALL_TAGS_RAW" | grep -i "^$1$" | head -1; }
 
 # ── Read config ──────────────────────────────────────────────────────────────
 PSP_ID=$(read_prop PSP_ID)
@@ -46,54 +52,54 @@ if [ -f "$VERSION_FILE" ]; then
     CURRENT_VERSION=$(cat "$VERSION_FILE" | xargs)
 fi
 
-# ── Fetch ALL releases and find missed ones ─────────────────────────────────
-# GitHub API returns releases newest-first; we need oldest-first for catch-up
+# ── Fetch ALL releases ───────────────────────────────────────────────────────
+# GitHub API order is unreliable (by creation date, not version).
+# We normalize tags to lowercase and use `sort -V` for correct ordering.
 ALL_RELEASES=$(curl -sf -H "Authorization: token $RELEASE_TOKEN" "$RELEASE_REPO?per_page=50") || {
     log "ERROR: Failed to fetch releases from GitHub"
     exit 1
 }
 
-# Extract all tag names, one per line, newest first
-ALL_TAGS=$(echo "$ALL_RELEASES" | grep '"tag_name"' | sed 's/.*: "//;s/",//')
+# Extract all tag names (original case) and build a lowercase-sorted list
+ALL_TAGS_RAW=$(echo "$ALL_RELEASES" | grep '"tag_name"' | sed 's/.*: "//;s/",//')
+ALL_TAGS_SORTED=$(echo "$ALL_TAGS_RAW" | tr '[:upper:]' '[:lower:]' | sort -V | uniq)
 
-if [ -z "$ALL_TAGS" ]; then
+if [ -z "$ALL_TAGS_SORTED" ]; then
     log "ERROR: No releases found"
     exit 1
 fi
 
-LATEST_TAG=$(echo "$ALL_TAGS" | head -1)
+# Latest = last line after version sort
+LATEST_TAG=$(echo "$ALL_TAGS_SORTED" | tail -1)
 
-if [ "$LATEST_TAG" = "$CURRENT_VERSION" ]; then
+# Normalize current version for comparison
+CURRENT_LOWER=$(echo "$CURRENT_VERSION" | tr '[:upper:]' '[:lower:]')
+
+if [ "$LATEST_TAG" = "$CURRENT_LOWER" ]; then
     log "CURRENT: Already on $CURRENT_VERSION — no update needed"
     exit 0
 fi
 
-# Build list of missed releases (everything after current, reversed to oldest-first)
-MISSED_TAGS=""
-FOUND_CURRENT=false
+# Build list of missed releases: everything version-sorted AFTER current, oldest first
 if [ "$CURRENT_VERSION" = "none" ]; then
-    # Never updated — apply all releases, oldest first
-    MISSED_TAGS=$(echo "$ALL_TAGS" | tac)
+    MISSED_TAGS="$ALL_TAGS_SORTED"
 else
-    # Walk newest→oldest, collect everything until we hit current version
-    while IFS= read -r TAG; do
-        if [ "$TAG" = "$CURRENT_VERSION" ]; then
-            FOUND_CURRENT=true
-            break
+    # Keep only tags that sort higher than current version
+    MISSED_TAGS=$(echo "$ALL_TAGS_SORTED" | while IFS= read -r TAG; do
+        if [ "$(printf '%s\n%s' "$CURRENT_LOWER" "$TAG" | sort -V | tail -1)" = "$TAG" ] && [ "$TAG" != "$CURRENT_LOWER" ]; then
+            echo "$TAG"
         fi
-        MISSED_TAGS="$TAG"$'\n'"$MISSED_TAGS"
-    done <<< "$ALL_TAGS"
-
-    # Trim leading/trailing whitespace
-    MISSED_TAGS=$(echo "$MISSED_TAGS" | sed '/^$/d')
-
-    if [ "$FOUND_CURRENT" = false ]; then
-        log "WARNING: Current version $CURRENT_VERSION not found in releases — applying all as catch-up"
-        MISSED_TAGS=$(echo "$ALL_TAGS" | tac)
-    fi
+    done)
 fi
 
-RELEASE_COUNT=$(echo "$MISSED_TAGS" | sed '/^$/d' | wc -l | xargs)
+MISSED_TAGS=$(echo "$MISSED_TAGS" | sed '/^$/d')
+
+if [ -z "$MISSED_TAGS" ]; then
+    log "CURRENT: Already on $CURRENT_VERSION — no newer releases found"
+    exit 0
+fi
+
+RELEASE_COUNT=$(echo "$MISSED_TAGS" | wc -l | xargs)
 log "UPDATE: $CURRENT_VERSION → $LATEST_TAG ($RELEASE_COUNT release(s) to apply)"
 
 # ── Prepare temp directory ───────────────────────────────────────────────────
@@ -101,8 +107,15 @@ rm -rf "$TMP_DIR"
 mkdir -p "$TMP_DIR"
 
 # ── Walk through each missed release, oldest first ───────────────────────────
-while IFS= read -r RELEASE_TAG; do
-    [ -z "$RELEASE_TAG" ] && continue
+while IFS= read -r RELEASE_TAG_LOWER; do
+    [ -z "$RELEASE_TAG_LOWER" ] && continue
+
+    # Resolve to original GitHub tag casing for API call
+    RELEASE_TAG=$(resolve_tag "$RELEASE_TAG_LOWER")
+    if [ -z "$RELEASE_TAG" ]; then
+        log "WARNING: Could not resolve tag $RELEASE_TAG_LOWER — skipping"
+        continue
+    fi
 
     log "PROCESSING: Release $RELEASE_TAG"
 
@@ -158,15 +171,21 @@ done <<< "$MISSED_TAGS"
 
 # ── Download WAR from the LATEST release only ────────────────────────────────
 # (Only the newest WAR matters — it's cumulative)
-LATEST_JSON=$(curl -sf -H "Authorization: token $RELEASE_TOKEN" "$RELEASE_REPO/tags/$LATEST_TAG") || {
-    log "ERROR: Failed to fetch latest release $LATEST_TAG for WAR"
+# Resolve latest tag to original GitHub casing
+LATEST_TAG_ORIG=$(resolve_tag "$LATEST_TAG")
+if [ -z "$LATEST_TAG_ORIG" ]; then
+    LATEST_TAG_ORIG="$LATEST_TAG"
+fi
+
+LATEST_JSON=$(curl -sf -H "Authorization: token $RELEASE_TOKEN" "$RELEASE_REPO/tags/$LATEST_TAG_ORIG") || {
+    log "ERROR: Failed to fetch latest release $LATEST_TAG_ORIG for WAR"
     exit 1
 }
 
 WAR_URL=$(echo "$LATEST_JSON" | grep -o '"browser_download_url": "[^"]*\.war"' | head -1 | sed 's/"browser_download_url": "//;s/"$//' || true)
 
 if [ -z "$WAR_URL" ]; then
-    log "ERROR: No WAR file found in release $LATEST_TAG"
+    log "ERROR: No WAR file found in release $LATEST_TAG_ORIG"
     exit 1
 fi
 
@@ -177,7 +196,7 @@ curl -sfL -H "Authorization: token $RELEASE_TOKEN" -H "Accept: application/octet
 }
 
 WAR_SIZE=$(du -h "$TMP_DIR/ROOT.war" | cut -f1)
-log "DOWNLOADED: WAR ($WAR_SIZE) from $LATEST_TAG"
+log "DOWNLOADED: WAR ($WAR_SIZE) from $LATEST_TAG_ORIG"
 
 # ── Stop Tomcat, swap WAR, start Tomcat ──────────────────────────────────────
 systemctl stop tomcat10
@@ -200,8 +219,8 @@ systemctl start tomcat10
 log "TOMCAT: Started with new WAR"
 
 # ── Record new version ───────────────────────────────────────────────────────
-echo "$LATEST_TAG" > "$VERSION_FILE"
-log "DONE: Updated $PSP_ID from $CURRENT_VERSION to $LATEST_TAG ($RELEASE_COUNT release(s) applied)"
+echo "$LATEST_TAG_ORIG" > "$VERSION_FILE"
+log "DONE: Updated $PSP_ID from $CURRENT_VERSION to $LATEST_TAG_ORIG ($RELEASE_COUNT release(s) applied)"
 
 # ── Cleanup ──────────────────────────────────────────────────────────────────
 rm -rf "$TMP_DIR"

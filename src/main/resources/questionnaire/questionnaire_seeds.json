@@ -184,6 +184,836 @@
           ]
         }
       ]
+    },
+
+    {
+      "template_key": "q_ndt_org_profile",
+      "name": "NDT — Organization Profile",
+      "description": "Captures employer entity type, plan year, employee counts, controlled group status, and plan offerings. Complete this first — the answers determine which entity-specific NDT test questionnaires to attach.",
+      "activity_type": "NDT",
+      "external_url": null,
+      "scoping": {
+        "service_items": []
+      },
+      "sections": [
+        {
+          "section_name": "Organization Information",
+          "section_description": null,
+          "fields": [
+            {
+              "field_key": "ndt_entity_type",
+              "label": "What type of business entity is this employer?",
+              "field_type": "SELECT",
+              "select_options": "C-Corporation|S-Corporation|LLC|Partnership|Sole Proprietorship|Non-Profit (501(c)(3))|Government Entity",
+              "is_required": true,
+              "help_text": "This determines which version of each NDT test questionnaire to attach."
+            },
+            {
+              "field_key": "ndt_plan_year_start",
+              "label": "Plan year start date",
+              "field_type": "DATE",
+              "is_required": true,
+              "help_text": "First day of the Section 125 plan year."
+            },
+            {
+              "field_key": "ndt_plan_year_end",
+              "label": "Plan year end date",
+              "field_type": "DATE",
+              "is_required": true
+            },
+            {
+              "field_key": "ndt_total_employees",
+              "label": "Total W-2 employees as of the last day of the plan year",
+              "field_type": "NUMBER",
+              "is_required": true,
+              "help_text": "Count ALL employees on payroll — full-time, part-time, seasonal, whether or not they participate in any benefit."
+            },
+            {
+              "field_key": "ndt_has_controlled_group",
+              "label": "Does this employer have related companies, a parent company, or subsidiaries?",
+              "field_type": "RADIO",
+              "select_options": "YES|NO",
+              "is_required": true,
+              "help_text": "Under IRS controlled group rules (IRC §414), related employers may be treated as a single employer for testing."
+            },
+            {
+              "field_key": "ndt_controlled_group_details",
+              "label": "List each related company name and its W-2 employee count",
+              "field_type": "TEXTAREA",
+              "is_required": false,
+              "help_text": "Include all entities under common ownership or an affiliated service group. Leave blank if no related companies."
+            }
+          ]
+        },
+        {
+          "section_name": "Plan Offerings",
+          "section_description": null,
+          "fields": [
+            {
+              "field_key": "ndt_offers_pop",
+              "label": "Does this employer offer pre-tax insurance premiums (Premium Only Plan)?",
+              "field_type": "RADIO",
+              "select_options": "YES|NO",
+              "is_required": true,
+              "help_text": "Most Section 125 plans include this."
+            },
+            {
+              "field_key": "ndt_offers_health_fsa",
+              "label": "Does this employer offer a Health FSA?",
+              "field_type": "RADIO",
+              "select_options": "YES|NO",
+              "is_required": true
+            },
+            {
+              "field_key": "ndt_offers_dcfsa",
+              "label": "Does this employer offer a Dependent Care FSA?",
+              "field_type": "RADIO",
+              "select_options": "YES|NO",
+              "is_required": true
+            },
+            {
+              "field_key": "ndt_fsa_self_insured",
+              "label": "Is the Health FSA self-insured?",
+              "field_type": "RADIO",
+              "select_options": "YES|NO|Not Sure",
+              "is_required": false,
+              "help_text": "Almost all Health FSAs are self-insured (employer pays claims, not an insurance company). If yes, Section 105(h) testing also applies."
+            }
+          ]
+        },
+        {
+          "section_name": "Completion",
+          "section_description": null,
+          "fields": [
+            {
+              "field_key": "ndt_org_notes",
+              "label": "Additional notes or explanations",
+              "field_type": "TEXTAREA",
+              "is_required": false
+            },
+            {
+              "field_key": "ndt_org_attestation",
+              "label": "The information provided is accurate to the best of my knowledge.",
+              "field_type": "BOOLEAN",
+              "is_required": true
+            }
+          ]
+        }
+      ]
+    },
+
+    {
+      "template_key": "q_ndt_125_elig_ccorp",
+      "name": "NDT — §125 Eligibility Test (C-Corporation)",
+      "description": "Section 125 Cafeteria Plan Eligibility Test for C-Corporation employers. Tests whether a sufficient percentage of non-highly-compensated employees are eligible to participate. C-Corp owners participate as W-2 employees and can be HCEs or key employees.",
+      "activity_type": "NDT",
+      "external_url": null,
+      "scoping": {
+        "service_items": ["(CDH-125) Health Flexible Spending Account", "(CDH-125) Dependent Care Account", "(CDH-125) Limited Purpose FSA"]
+      },
+      "sections": [
+        {
+          "section_name": "Excludable Employees",
+          "section_description": "These are employees the IRS allows you to leave out of the eligibility test entirely.",
+          "fields": [
+            {
+              "field_key": "ndt_125e_cc_union",
+              "label": "How many employees are covered by a collective bargaining agreement (union)?",
+              "field_type": "NUMBER",
+              "is_required": true,
+              "help_text": "Exclude only if cafeteria plan benefits were the subject of good-faith bargaining between the employer and union."
+            },
+            {
+              "field_key": "ndt_125e_cc_nonresident",
+              "label": "How many employees are non-resident aliens with no U.S. source income?",
+              "field_type": "NUMBER",
+              "is_required": true,
+              "help_text": "These employees are excluded from testing by law."
+            },
+            {
+              "field_key": "ndt_125e_cc_under_age",
+              "label": "How many employees are under the plan's minimum age requirement?",
+              "field_type": "NUMBER",
+              "is_required": true,
+              "help_text": "Enter 0 if your plan has no age requirement. Most plans that have one use age 21."
+            },
+            {
+              "field_key": "ndt_125e_cc_under_service",
+              "label": "How many employees have not met the plan's service requirement?",
+              "field_type": "NUMBER",
+              "is_required": true,
+              "help_text": "Enter 0 if there is no waiting period. Common waiting periods are 30, 60, or 90 days."
+            },
+            {
+              "field_key": "ndt_125e_cc_part_time",
+              "label": "How many employees work fewer hours than the plan requires for eligibility?",
+              "field_type": "NUMBER",
+              "is_required": true,
+              "help_text": "Enter 0 if the plan has no minimum hours requirement."
+            }
+          ]
+        },
+        {
+          "section_name": "HCE Classification",
+          "section_description": "A Highly Compensated Employee (HCE) is someone who earned more than the IRS threshold in the PRIOR plan year, OR who owns more than 5% of the company's stock.",
+          "fields": [
+            {
+              "field_key": "ndt_125e_cc_prior_year",
+              "label": "What is the prior plan year used for HCE lookback?",
+              "field_type": "TEXT",
+              "is_required": true,
+              "help_text": "If the current plan year is 2026, the prior year is 2025."
+            },
+            {
+              "field_key": "ndt_125e_cc_hce_threshold",
+              "label": "Which IRS compensation threshold applies for the prior year?",
+              "field_type": "SELECT",
+              "select_options": "$155,000 (2025)|$150,000 (2024)|$135,000 (2023)",
+              "is_required": true,
+              "help_text": "Use the threshold for the prior plan year, not the current year."
+            },
+            {
+              "field_key": "ndt_125e_cc_top_paid",
+              "label": "Is the employer using the Top-Paid Group election?",
+              "field_type": "RADIO",
+              "select_options": "YES|NO|Not Sure",
+              "is_required": true,
+              "help_text": "This optional election limits HCEs to only those in the top 20% of employees by compensation who also exceed the threshold. Check the plan document."
+            },
+            {
+              "field_key": "ndt_125e_cc_hce_by_comp",
+              "label": "How many employees earned above the HCE threshold in the prior year?",
+              "field_type": "NUMBER",
+              "is_required": true,
+              "help_text": "Count only employees still employed during the current plan year."
+            },
+            {
+              "field_key": "ndt_125e_cc_hce_by_own",
+              "label": "How many employees own more than 5% of the company's stock (directly or through family)?",
+              "field_type": "NUMBER",
+              "is_required": true,
+              "help_text": "Include family attribution — a spouse's or child's stock ownership counts as yours under IRS rules."
+            },
+            {
+              "field_key": "ndt_125e_cc_total_hce",
+              "label": "Total number of HCEs (employees who meet EITHER the compensation OR ownership test)",
+              "field_type": "NUMBER",
+              "is_required": true,
+              "help_text": "Do not double-count — an employee who meets both tests is still one HCE."
+            }
+          ]
+        },
+        {
+          "section_name": "Eligibility and Participation",
+          "section_description": "Count employees AFTER removing the excludable employees listed above.",
+          "fields": [
+            {
+              "field_key": "ndt_125e_cc_elig_total",
+              "label": "Total employees eligible for the Section 125 plan",
+              "field_type": "NUMBER",
+              "is_required": true,
+              "help_text": "Total employees from Org Profile minus all excludable categories above."
+            },
+            {
+              "field_key": "ndt_125e_cc_elig_hce",
+              "label": "How many eligible employees are HCEs?",
+              "field_type": "NUMBER",
+              "is_required": true
+            },
+            {
+              "field_key": "ndt_125e_cc_elig_nhce",
+              "label": "How many eligible employees are Non-HCEs?",
+              "field_type": "NUMBER",
+              "is_required": true,
+              "help_text": "This should equal total eligible minus HCEs."
+            },
+            {
+              "field_key": "ndt_125e_cc_part_total",
+              "label": "Total employees who actually made Section 125 elections",
+              "field_type": "NUMBER",
+              "is_required": true,
+              "help_text": "Anyone who elected pre-tax premiums, Health FSA, or Dependent Care FSA."
+            },
+            {
+              "field_key": "ndt_125e_cc_part_hce",
+              "label": "How many participants are HCEs?",
+              "field_type": "NUMBER",
+              "is_required": true
+            },
+            {
+              "field_key": "ndt_125e_cc_part_nhce",
+              "label": "How many participants are Non-HCEs?",
+              "field_type": "NUMBER",
+              "is_required": true
+            }
+          ]
+        },
+        {
+          "section_name": "Completion",
+          "section_description": null,
+          "fields": [
+            {
+              "field_key": "ndt_125e_cc_notes",
+              "label": "Additional notes or explanations",
+              "field_type": "TEXTAREA",
+              "is_required": false
+            },
+            {
+              "field_key": "ndt_125e_cc_attestation",
+              "label": "The information provided is accurate to the best of my knowledge.",
+              "field_type": "BOOLEAN",
+              "is_required": true
+            }
+          ]
+        }
+      ]
+    },
+
+    {
+      "template_key": "q_ndt_125_elig_scorp",
+      "name": "NDT — §125 Eligibility Test (S-Corporation)",
+      "description": "Section 125 Cafeteria Plan Eligibility Test for S-Corporation employers. S-Corp shareholders owning 2% or more CANNOT participate in Section 125 and must be excluded from the eligible employee group, though they may still be classified as HCEs for testing purposes.",
+      "activity_type": "NDT",
+      "external_url": null,
+      "scoping": {
+        "service_items": ["(CDH-125) Health Flexible Spending Account", "(CDH-125) Dependent Care Account", "(CDH-125) Limited Purpose FSA"]
+      },
+      "sections": [
+        {
+          "section_name": "Owner Exclusions",
+          "section_description": "S-Corporation shareholders owning 2% or more CANNOT participate in a Section 125 plan. They must be removed from the eligible employee group before testing.",
+          "fields": [
+            {
+              "field_key": "ndt_125e_sc_2pct_owners",
+              "label": "How many shareholders own 2% or more of the S-Corp stock?",
+              "field_type": "NUMBER",
+              "is_required": true,
+              "help_text": "These individuals cannot make pre-tax elections under Section 125. Include family attribution — a spouse's ownership is counted as yours."
+            },
+            {
+              "field_key": "ndt_125e_sc_2pct_on_payroll",
+              "label": "Of those 2%+ shareholders, how many are on the W-2 payroll?",
+              "field_type": "NUMBER",
+              "is_required": true,
+              "help_text": "Only payroll employees matter for testing. Shareholders who are not on payroll are already outside the testing group."
+            }
+          ]
+        },
+        {
+          "section_name": "Excludable Employees",
+          "section_description": "These are employees (other than 2%+ shareholders, already excluded above) the IRS allows you to leave out of the eligibility test.",
+          "fields": [
+            {
+              "field_key": "ndt_125e_sc_union",
+              "label": "How many non-owner employees are covered by a collective bargaining agreement (union)?",
+              "field_type": "NUMBER",
+              "is_required": true,
+              "help_text": "Exclude only if cafeteria plan benefits were the subject of good-faith bargaining."
+            },
+            {
+              "field_key": "ndt_125e_sc_nonresident",
+              "label": "How many non-owner employees are non-resident aliens with no U.S. source income?",
+              "field_type": "NUMBER",
+              "is_required": true,
+              "help_text": "Excluded from testing by law."
+            },
+            {
+              "field_key": "ndt_125e_sc_under_age",
+              "label": "How many non-owner employees are under the plan's minimum age requirement?",
+              "field_type": "NUMBER",
+              "is_required": true,
+              "help_text": "Enter 0 if your plan has no age requirement."
+            },
+            {
+              "field_key": "ndt_125e_sc_under_service",
+              "label": "How many non-owner employees have not met the plan's service requirement?",
+              "field_type": "NUMBER",
+              "is_required": true,
+              "help_text": "Enter 0 if there is no waiting period."
+            },
+            {
+              "field_key": "ndt_125e_sc_part_time",
+              "label": "How many non-owner employees work fewer hours than the plan requires?",
+              "field_type": "NUMBER",
+              "is_required": true,
+              "help_text": "Enter 0 if the plan has no minimum hours requirement."
+            }
+          ]
+        },
+        {
+          "section_name": "HCE Classification",
+          "section_description": "Even though 2%+ S-Corp shareholders cannot participate, non-owner employees can still be HCEs based on compensation or ownership of less than 2% but more than 5% (rare with family attribution).",
+          "fields": [
+            {
+              "field_key": "ndt_125e_sc_prior_year",
+              "label": "What is the prior plan year used for HCE lookback?",
+              "field_type": "TEXT",
+              "is_required": true,
+              "help_text": "If the current plan year is 2026, the prior year is 2025."
+            },
+            {
+              "field_key": "ndt_125e_sc_hce_threshold",
+              "label": "Which IRS compensation threshold applies for the prior year?",
+              "field_type": "SELECT",
+              "select_options": "$155,000 (2025)|$150,000 (2024)|$135,000 (2023)",
+              "is_required": true,
+              "help_text": "Use the threshold for the prior plan year."
+            },
+            {
+              "field_key": "ndt_125e_sc_top_paid",
+              "label": "Is the employer using the Top-Paid Group election?",
+              "field_type": "RADIO",
+              "select_options": "YES|NO|Not Sure",
+              "is_required": true,
+              "help_text": "Limits HCEs to the top 20% by pay. Check the plan document."
+            },
+            {
+              "field_key": "ndt_125e_sc_hce_by_comp",
+              "label": "How many NON-OWNER employees earned above the HCE threshold in the prior year?",
+              "field_type": "NUMBER",
+              "is_required": true,
+              "help_text": "Count only non-2%+ shareholder employees. The 2%+ shareholders are already excluded from the eligible group."
+            },
+            {
+              "field_key": "ndt_125e_sc_hce_by_own",
+              "label": "Do any non-2% employees own more than 5% through family attribution?",
+              "field_type": "RADIO",
+              "select_options": "YES|NO",
+              "is_required": true,
+              "help_text": "This is rare but possible. Example: an employee's spouse owns 6% of the S-Corp but the employee owns 0%. The employee is attributed the spouse's ownership."
+            },
+            {
+              "field_key": "ndt_125e_sc_hce_by_own_count",
+              "label": "If yes, how many non-2% employees are HCEs through family attribution?",
+              "field_type": "NUMBER",
+              "is_required": false
+            },
+            {
+              "field_key": "ndt_125e_sc_total_hce",
+              "label": "Total HCEs among the eligible (non-owner) employee group",
+              "field_type": "NUMBER",
+              "is_required": true,
+              "help_text": "Count of non-owner employees who meet either the compensation or ownership test."
+            }
+          ]
+        },
+        {
+          "section_name": "Eligibility and Participation",
+          "section_description": "Count employees AFTER removing 2%+ shareholders and other excludable employees.",
+          "fields": [
+            {
+              "field_key": "ndt_125e_sc_elig_total",
+              "label": "Total employees eligible for the Section 125 plan",
+              "field_type": "NUMBER",
+              "is_required": true,
+              "help_text": "Total employees from Org Profile minus 2%+ shareholders on payroll minus all other excludable categories."
+            },
+            {
+              "field_key": "ndt_125e_sc_elig_hce",
+              "label": "How many eligible employees are HCEs?",
+              "field_type": "NUMBER",
+              "is_required": true
+            },
+            {
+              "field_key": "ndt_125e_sc_elig_nhce",
+              "label": "How many eligible employees are Non-HCEs?",
+              "field_type": "NUMBER",
+              "is_required": true,
+              "help_text": "Should equal total eligible minus HCEs."
+            },
+            {
+              "field_key": "ndt_125e_sc_part_total",
+              "label": "Total employees who actually made Section 125 elections",
+              "field_type": "NUMBER",
+              "is_required": true,
+              "help_text": "Anyone who elected pre-tax premiums, Health FSA, or Dependent Care FSA."
+            },
+            {
+              "field_key": "ndt_125e_sc_part_hce",
+              "label": "How many participants are HCEs?",
+              "field_type": "NUMBER",
+              "is_required": true
+            },
+            {
+              "field_key": "ndt_125e_sc_part_nhce",
+              "label": "How many participants are Non-HCEs?",
+              "field_type": "NUMBER",
+              "is_required": true
+            }
+          ]
+        },
+        {
+          "section_name": "Completion",
+          "section_description": null,
+          "fields": [
+            {
+              "field_key": "ndt_125e_sc_notes",
+              "label": "Additional notes or explanations",
+              "field_type": "TEXTAREA",
+              "is_required": false
+            },
+            {
+              "field_key": "ndt_125e_sc_attestation",
+              "label": "The information provided is accurate to the best of my knowledge.",
+              "field_type": "BOOLEAN",
+              "is_required": true
+            }
+          ]
+        }
+      ]
+    },
+
+    {
+      "template_key": "q_ndt_125_elig_passthru",
+      "name": "NDT — §125 Eligibility Test (LLC / Partnership / Sole Prop)",
+      "description": "Section 125 Cafeteria Plan Eligibility Test for pass-through entities. Owners, members, and partners of LLCs, partnerships, and sole proprietorships CANNOT participate in Section 125 and are excluded from the eligible employee group entirely.",
+      "activity_type": "NDT",
+      "external_url": null,
+      "scoping": {
+        "service_items": ["(CDH-125) Health Flexible Spending Account", "(CDH-125) Dependent Care Account", "(CDH-125) Limited Purpose FSA"]
+      },
+      "sections": [
+        {
+          "section_name": "Entity and Owner Exclusions",
+          "section_description": "Owners, members, and partners of pass-through entities CANNOT participate in a Section 125 plan and are removed from the testing group.",
+          "fields": [
+            {
+              "field_key": "ndt_125e_pt_entity_subtype",
+              "label": "Which type of pass-through entity is this?",
+              "field_type": "SELECT",
+              "select_options": "LLC (single-member)|LLC (multi-member)|General Partnership|Limited Partnership|Sole Proprietorship",
+              "is_required": true
+            },
+            {
+              "field_key": "ndt_125e_pt_owner_count",
+              "label": "How many owners/members/partners are on the W-2 payroll?",
+              "field_type": "NUMBER",
+              "is_required": true,
+              "help_text": "All of these individuals are excluded from Section 125 participation regardless of their ownership percentage."
+            }
+          ]
+        },
+        {
+          "section_name": "Excludable Employees",
+          "section_description": "Among the remaining non-owner W-2 employees, these are employees the IRS allows you to leave out of the eligibility test.",
+          "fields": [
+            {
+              "field_key": "ndt_125e_pt_union",
+              "label": "How many non-owner employees are covered by a collective bargaining agreement (union)?",
+              "field_type": "NUMBER",
+              "is_required": true,
+              "help_text": "Exclude only if cafeteria plan benefits were the subject of good-faith bargaining."
+            },
+            {
+              "field_key": "ndt_125e_pt_nonresident",
+              "label": "How many non-owner employees are non-resident aliens with no U.S. source income?",
+              "field_type": "NUMBER",
+              "is_required": true,
+              "help_text": "Excluded from testing by law."
+            },
+            {
+              "field_key": "ndt_125e_pt_under_age",
+              "label": "How many non-owner employees are under the plan's minimum age requirement?",
+              "field_type": "NUMBER",
+              "is_required": true,
+              "help_text": "Enter 0 if your plan has no age requirement."
+            },
+            {
+              "field_key": "ndt_125e_pt_under_service",
+              "label": "How many non-owner employees have not met the plan's service requirement?",
+              "field_type": "NUMBER",
+              "is_required": true,
+              "help_text": "Enter 0 if there is no waiting period."
+            },
+            {
+              "field_key": "ndt_125e_pt_part_time",
+              "label": "How many non-owner employees work fewer hours than the plan requires?",
+              "field_type": "NUMBER",
+              "is_required": true,
+              "help_text": "Enter 0 if the plan has no minimum hours requirement."
+            }
+          ]
+        },
+        {
+          "section_name": "HCE Classification",
+          "section_description": "Only non-owner W-2 employees are tested. An HCE is someone who earned more than the IRS threshold in the prior year. Ownership-based HCE status does not apply since all owners are already excluded.",
+          "fields": [
+            {
+              "field_key": "ndt_125e_pt_prior_year",
+              "label": "What is the prior plan year used for HCE lookback?",
+              "field_type": "TEXT",
+              "is_required": true,
+              "help_text": "If the current plan year is 2026, the prior year is 2025."
+            },
+            {
+              "field_key": "ndt_125e_pt_hce_threshold",
+              "label": "Which IRS compensation threshold applies for the prior year?",
+              "field_type": "SELECT",
+              "select_options": "$155,000 (2025)|$150,000 (2024)|$135,000 (2023)",
+              "is_required": true,
+              "help_text": "Use the threshold for the prior plan year."
+            },
+            {
+              "field_key": "ndt_125e_pt_top_paid",
+              "label": "Is the employer using the Top-Paid Group election?",
+              "field_type": "RADIO",
+              "select_options": "YES|NO|Not Sure",
+              "is_required": true,
+              "help_text": "Limits HCEs to the top 20% by pay. Check the plan document."
+            },
+            {
+              "field_key": "ndt_125e_pt_hce_by_comp",
+              "label": "How many non-owner employees earned above the HCE threshold in the prior year?",
+              "field_type": "NUMBER",
+              "is_required": true,
+              "help_text": "Count only non-owner W-2 employees."
+            },
+            {
+              "field_key": "ndt_125e_pt_total_hce",
+              "label": "Total HCEs among the non-owner employee group",
+              "field_type": "NUMBER",
+              "is_required": true,
+              "help_text": "For pass-through entities this is typically based on compensation only, since all owners are already excluded."
+            }
+          ]
+        },
+        {
+          "section_name": "Eligibility and Participation",
+          "section_description": "Count employees AFTER removing all owners/members/partners and other excludable employees.",
+          "fields": [
+            {
+              "field_key": "ndt_125e_pt_elig_total",
+              "label": "Total non-owner employees eligible for the Section 125 plan",
+              "field_type": "NUMBER",
+              "is_required": true,
+              "help_text": "Total employees from Org Profile minus owners on payroll minus all other excludable categories."
+            },
+            {
+              "field_key": "ndt_125e_pt_elig_hce",
+              "label": "How many eligible employees are HCEs?",
+              "field_type": "NUMBER",
+              "is_required": true
+            },
+            {
+              "field_key": "ndt_125e_pt_elig_nhce",
+              "label": "How many eligible employees are Non-HCEs?",
+              "field_type": "NUMBER",
+              "is_required": true,
+              "help_text": "Should equal total eligible minus HCEs."
+            },
+            {
+              "field_key": "ndt_125e_pt_part_total",
+              "label": "Total non-owner employees who actually made Section 125 elections",
+              "field_type": "NUMBER",
+              "is_required": true,
+              "help_text": "Anyone who elected pre-tax premiums, Health FSA, or Dependent Care FSA."
+            },
+            {
+              "field_key": "ndt_125e_pt_part_hce",
+              "label": "How many participants are HCEs?",
+              "field_type": "NUMBER",
+              "is_required": true
+            },
+            {
+              "field_key": "ndt_125e_pt_part_nhce",
+              "label": "How many participants are Non-HCEs?",
+              "field_type": "NUMBER",
+              "is_required": true
+            }
+          ]
+        },
+        {
+          "section_name": "Completion",
+          "section_description": null,
+          "fields": [
+            {
+              "field_key": "ndt_125e_pt_notes",
+              "label": "Additional notes or explanations",
+              "field_type": "TEXTAREA",
+              "is_required": false
+            },
+            {
+              "field_key": "ndt_125e_pt_attestation",
+              "label": "The information provided is accurate to the best of my knowledge.",
+              "field_type": "BOOLEAN",
+              "is_required": true
+            }
+          ]
+        }
+      ]
+    },
+
+    {
+      "template_key": "q_ndt_125_elig_exempt",
+      "name": "NDT — §125 Eligibility Test (Non-Profit / Government)",
+      "description": "Section 125 Cafeteria Plan Eligibility Test for tax-exempt organizations (501(c)(3) non-profits and government entities). There are no owner exclusions. HCE status is based solely on compensation — there is no ownership test. Officers are NOT classified as key employees (relevant for Key Employee Concentration Test).",
+      "activity_type": "NDT",
+      "external_url": null,
+      "scoping": {
+        "service_items": ["(CDH-125) Health Flexible Spending Account", "(CDH-125) Dependent Care Account", "(CDH-125) Limited Purpose FSA"]
+      },
+      "sections": [
+        {
+          "section_name": "Organization Details",
+          "section_description": null,
+          "fields": [
+            {
+              "field_key": "ndt_125e_ex_org_subtype",
+              "label": "Which type of tax-exempt organization is this?",
+              "field_type": "SELECT",
+              "select_options": "501(c)(3) Non-Profit|State Government|Local Government|Federal Government|Other Tax-Exempt",
+              "is_required": true
+            }
+          ]
+        },
+        {
+          "section_name": "Excludable Employees",
+          "section_description": "These are employees the IRS allows you to leave out of the eligibility test. There are no owner exclusions for tax-exempt organizations.",
+          "fields": [
+            {
+              "field_key": "ndt_125e_ex_union",
+              "label": "How many employees are covered by a collective bargaining agreement (union)?",
+              "field_type": "NUMBER",
+              "is_required": true,
+              "help_text": "Exclude only if cafeteria plan benefits were the subject of good-faith bargaining."
+            },
+            {
+              "field_key": "ndt_125e_ex_nonresident",
+              "label": "How many employees are non-resident aliens with no U.S. source income?",
+              "field_type": "NUMBER",
+              "is_required": true,
+              "help_text": "Excluded from testing by law."
+            },
+            {
+              "field_key": "ndt_125e_ex_under_age",
+              "label": "How many employees are under the plan's minimum age requirement?",
+              "field_type": "NUMBER",
+              "is_required": true,
+              "help_text": "Enter 0 if your plan has no age requirement."
+            },
+            {
+              "field_key": "ndt_125e_ex_under_service",
+              "label": "How many employees have not met the plan's service requirement?",
+              "field_type": "NUMBER",
+              "is_required": true,
+              "help_text": "Enter 0 if there is no waiting period."
+            },
+            {
+              "field_key": "ndt_125e_ex_part_time",
+              "label": "How many employees work fewer hours than the plan requires?",
+              "field_type": "NUMBER",
+              "is_required": true,
+              "help_text": "Enter 0 if the plan has no minimum hours requirement."
+            }
+          ]
+        },
+        {
+          "section_name": "HCE Classification",
+          "section_description": "For non-profits and government entities, HCE status is based SOLELY on compensation. There is no ownership test because there are no owners.",
+          "fields": [
+            {
+              "field_key": "ndt_125e_ex_prior_year",
+              "label": "What is the prior plan year used for HCE lookback?",
+              "field_type": "TEXT",
+              "is_required": true,
+              "help_text": "If the current plan year is 2026, the prior year is 2025."
+            },
+            {
+              "field_key": "ndt_125e_ex_hce_threshold",
+              "label": "Which IRS compensation threshold applies for the prior year?",
+              "field_type": "SELECT",
+              "select_options": "$155,000 (2025)|$150,000 (2024)|$135,000 (2023)",
+              "is_required": true,
+              "help_text": "Use the threshold for the prior plan year."
+            },
+            {
+              "field_key": "ndt_125e_ex_top_paid",
+              "label": "Is the employer using the Top-Paid Group election?",
+              "field_type": "RADIO",
+              "select_options": "YES|NO|Not Sure",
+              "is_required": true,
+              "help_text": "Limits HCEs to the top 20% by pay. Check the plan document."
+            },
+            {
+              "field_key": "ndt_125e_ex_hce_by_comp",
+              "label": "How many employees earned above the HCE threshold in the prior year?",
+              "field_type": "NUMBER",
+              "is_required": true,
+              "help_text": "This is the only HCE test for tax-exempt organizations — there is no ownership test."
+            },
+            {
+              "field_key": "ndt_125e_ex_total_hce",
+              "label": "Total HCEs",
+              "field_type": "NUMBER",
+              "is_required": true,
+              "help_text": "For tax-exempt entities, this equals the compensation-based count above."
+            }
+          ]
+        },
+        {
+          "section_name": "Eligibility and Participation",
+          "section_description": "Count employees AFTER removing excludable employees. No owners to exclude for tax-exempt organizations.",
+          "fields": [
+            {
+              "field_key": "ndt_125e_ex_elig_total",
+              "label": "Total employees eligible for the Section 125 plan",
+              "field_type": "NUMBER",
+              "is_required": true,
+              "help_text": "Total employees from Org Profile minus all excludable categories above."
+            },
+            {
+              "field_key": "ndt_125e_ex_elig_hce",
+              "label": "How many eligible employees are HCEs?",
+              "field_type": "NUMBER",
+              "is_required": true
+            },
+            {
+              "field_key": "ndt_125e_ex_elig_nhce",
+              "label": "How many eligible employees are Non-HCEs?",
+              "field_type": "NUMBER",
+              "is_required": true,
+              "help_text": "Should equal total eligible minus HCEs."
+            },
+            {
+              "field_key": "ndt_125e_ex_part_total",
+              "label": "Total employees who actually made Section 125 elections",
+              "field_type": "NUMBER",
+              "is_required": true,
+              "help_text": "Anyone who elected pre-tax premiums, Health FSA, or Dependent Care FSA."
+            },
+            {
+              "field_key": "ndt_125e_ex_part_hce",
+              "label": "How many participants are HCEs?",
+              "field_type": "NUMBER",
+              "is_required": true
+            },
+            {
+              "field_key": "ndt_125e_ex_part_nhce",
+              "label": "How many participants are Non-HCEs?",
+              "field_type": "NUMBER",
+              "is_required": true
+            }
+          ]
+        },
+        {
+          "section_name": "Completion",
+          "section_description": null,
+          "fields": [
+            {
+              "field_key": "ndt_125e_ex_notes",
+              "label": "Additional notes or explanations",
+              "field_type": "TEXTAREA",
+              "is_required": false
+            },
+            {
+              "field_key": "ndt_125e_ex_attestation",
+              "label": "The information provided is accurate to the best of my knowledge.",
+              "field_type": "BOOLEAN",
+              "is_required": true
+            }
+          ]
+        }
+      ]
     }
   ]
 }
