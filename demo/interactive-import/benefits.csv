@@ -1,27 +1,27 @@
-benefit_id,employer_id,plan_type_id,plan_name,effective_date,termination_date,status
-3301,1021,120,Lakeside Health FSA,01/01/2026,,Active
-3002,1001,101,Lakeside Dependent Care,01/01/2026,,Active
-3003,1001,105,Lakeside COBRA,01/01/2026,,Active
-3004,1002,100,Northern Timber Health FSA,07/01/2025,,Active
-3005,1002,103,Northern Timber HRA,07/01/2025,,Active
-3006,1002,104,Northern Timber HSA,07/01/2025,,Active
-3007,1003,103,Superior Copper HRA,04/01/2026,,Active
-3008,1003,105,Superior Copper COBRA,04/01/2026,,Active
-3009,1004,100,Iron Range Health FSA,01/01/2026,,Active
-3010,1004,106,Iron Range Transit/Parking,01/01/2026,,Active
-3011,1005,100,Peninsula Health FSA,10/01/2025,,Active
-3012,1005,103,Peninsula HRA,10/01/2025,,Active
-3013,1005,104,Peninsula HSA,10/01/2025,,Active
-3014,1005,105,Peninsula COBRA,10/01/2025,,Active
-3015,1006,100,Great Lakes Health FSA,01/01/2026,,Active
-3016,1006,101,Great Lakes Dependent Care,01/01/2026,,Active
-3017,1007,104,Marquette Financial HSA,03/01/2026,,Active
-3018,1007,107,Marquette Financial MERP,03/01/2026,,Active
-3019,1008,100,Keweenaw Health FSA,06/01/2025,,Active
-3020,1008,103,Keweenaw HRA,06/01/2025,,Active
-3021,1009,100,Sault Schools Health FSA,09/01/2025,,Active
-3022,1009,101,Sault Schools Dependent Care,09/01/2025,,Active
-3023,1009,105,Sault Schools COBRA,09/01/2025,,Active
-3024,1010,103,Mackinac Bridge HRA,01/01/2026,,Active
-3025,1010,104,Mackinac Bridge HSA,01/01/2026,,Active
-3026,1011,100,Houghton Tech FSA,01/01/2025,06/30/2025,Inactive
+benefit_id,employer_id,plan_type_id,plan_name,effective_date,termination_date,status,plan_description
+3301,1021,120,Lakeside Health FSA,01/01/2026,,Active,Lakeside Health FSA
+3002,1001,101,Lakeside Dependent Care,01/01/2026,,Active,Lakeside Dependent Care
+3003,1001,105,Lakeside COBRA,01/01/2026,,Active,Lakeside COBRA
+3004,1002,100,Northern Timber Health FSA,07/01/2025,,Active,Northern Timber Health FSA
+3005,1002,103,Northern Timber HRA,07/01/2025,,Active,Northern Timber HRA
+3006,1002,104,Northern Timber HSA,07/01/2025,,Active,Northern Timber HSA
+3007,1003,103,Superior Copper HRA,04/01/2026,,Active,Superior Copper HRA
+3008,1003,105,Superior Copper COBRA,04/01/2026,,Active,Superior Copper COBRA
+3009,1004,100,Iron Range Health FSA,01/01/2026,,Active,Iron Range Health FSA
+3010,1004,106,Iron Range Transit/Parking,01/01/2026,,Active,Iron Range Transit/Parking
+3011,1005,100,Peninsula Health FSA,10/01/2025,,Active,Peninsula Health FSA
+3012,1005,103,Peninsula HRA,10/01/2025,,Active,Peninsula HRA
+3013,1005,104,Peninsula HSA,10/01/2025,,Active,Peninsula HSA
+3014,1005,105,Peninsula COBRA,10/01/2025,,Active,Peninsula COBRA
+3015,1006,100,Great Lakes Health FSA,01/01/2026,,Active,Great Lakes Health FSA
+3016,1006,101,Great Lakes Dependent Care,01/01/2026,,Active,Great Lakes Dependent Care
+3017,1007,104,Marquette Financial HSA,03/01/2026,,Active,Marquette Financial HSA
+3018,1007,107,Marquette Financial MERP,03/01/2026,,Active,Marquette Financial MERP
+3019,1008,100,Keweenaw Health FSA,06/01/2025,,Active,Keweenaw Health FSA
+3020,1008,103,Keweenaw HRA,06/01/2025,,Active,Keweenaw HRA
+3021,1009,100,Sault Schools Health FSA,09/01/2025,,Active,Sault Schools Health FSA
+3022,1009,101,Sault Schools Dependent Care,09/01/2025,,Active,Sault Schools Dependent Care
+3023,1009,105,Sault Schools COBRA,09/01/2025,,Active,Sault Schools COBRA
+3024,1010,103,Mackinac Bridge HRA,01/01/2026,,Active,Mackinac Bridge HRA
+3025,1010,104,Mackinac Bridge HSA,01/01/2026,,Active,Mackinac Bridge HSA
+3026,1011,100,Houghton Tech FSA,01/01/2025,06/30/2025,Inactive,Houghton Tech FSA
