@@ -1,0 +1,11 @@
+plan_type_id,plan_name,plan_code
+100,(Suite) Health FSA,FSA
+101,(Suite) Dependent Care FSA,DCA
+102,(Suite) Limited Purpose FSA,LFSA
+103,(Suite) Health Reimbursement Arrangement,HRA
+104,(Suite) Health Savings Account,HSA
+105,(Suite) COBRA Administration,COBRA
+106,(Suite) Transit/Parking,TRANSIT
+107,(Suite) Premium Reimbursement Account,MERP
+108,(Suite) ICHRA,ICHRA
+109,(Suite) Excepted Benefit HRA,EBHRA

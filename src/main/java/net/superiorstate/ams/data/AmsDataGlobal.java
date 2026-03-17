@@ -109,6 +109,7 @@ public class AmsDataGlobal {
     private String landingHeaderTextColor = "#ffffff";
     private String schemaVersion = "Unknown";
     private String brandingPath;
+    private String videoPath;
     private List<Activity25u> activitiesAllOpen;
     private List<Agency> agencies;
     private List<Prospect> prospects;
@@ -290,6 +291,7 @@ public class AmsDataGlobal {
 
         setSavePath(AppConfig.get("SAVE_PATH", "/var/lib/tomcat10/data/"));
         setBrandingPath(AppConfig.get("BRANDING_PATH", System.getProperty("catalina.base") + "/branding/"));
+        setVideoPath(AppConfig.get("VIDEO_PATH", System.getProperty("catalina.base") + "/videos/"));
         // Resolve ANTHROPIC_API_KEY: DB constant first, ssa.properties fallback
         try {
             String dbApiKey = getConstantValue(em, "ANTHROPIC_API_KEY");
@@ -583,6 +585,8 @@ public class AmsDataGlobal {
     public void setFavicon(String favicon) { this.favicon = favicon; }
     public String getBrandingPath() { return brandingPath; }
     public void setBrandingPath(String brandingPath) { this.brandingPath = brandingPath; }
+    public String getVideoPath() { return videoPath; }
+    public void setVideoPath(String videoPath) { this.videoPath = videoPath; }
 
     /** Returns true if the path is NOT a /branding/ path, or if the branding file exists on disk. */
     private boolean brandingFileExists(String path) {

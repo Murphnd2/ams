@@ -221,6 +221,9 @@
               <li><button class="dropdown-item" type="button" data-bs-toggle="modal" data-bs-target="#userManagerModal"><i class="bi bi-person-gear me-2"></i><c:choose><c:when test="${applicationScope.global.useFriendlyNames}">Users: Who Can Do It</c:when><c:otherwise>User Manager</c:otherwise></c:choose></button></li>
               <li><a class="dropdown-item" href="VendorManager"><i class="bi bi-building me-2"></i><c:choose><c:when test="${applicationScope.global.useFriendlyNames}">Vendors: Who Can Help Us</c:when><c:otherwise>Vendor Manager</c:otherwise></c:choose></a></li>
               <li><a class="dropdown-item" href="SkillManager"><i class="bi bi-robot me-2"></i>Chatbot Skills</a></li>
+              <c:if test="${applicationScope.isMasterSystem}">
+              <li><a class="dropdown-item" href="ManageVideos"><i class="bi bi-camera-video me-2"></i>Training Videos</a></li>
+              </c:if>
 
               <%-- ── DATA IMPORT ── --%>
               <li><hr class="dropdown-divider"></li>
