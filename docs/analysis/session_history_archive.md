@@ -2,7 +2,7 @@
 
 > **Purpose:** Consolidated historical record of all build sessions. For current project state, see `project_backlog.md`. For current architecture, see `application_flow.md` and `entity_reference.md`.
 >
-> **Last Updated:** March 13, 2026 (Session 68)
+> **Last Updated:** March 16, 2026 (Session 74)
 >
 > **Note:** Sessions 1–38 (Feb 15 – Mar 5) were compressed during the Session 69 cleanup. Full details for those sessions are available in git history prior to that commit.
 
@@ -1159,3 +1159,23 @@ Added a red badge counter to the Applications nav link showing count of submitte
 
 ### Files Changed
 - **Modified (10):** activityDetail25.jsp, detailPrimaryContact25.jsp, detailQuestionnaires25.jsp, detailSetup25.jsp, detailRenewal25.jsp, detailTicket25.jsp, detailOpportunity25.jsp, AmsDataLocal.java, ReviewApplication.java, CreateSetup25.java, navbar25.jsp
+
+---
+
+## March 16, 2026 — Session 74: Import Plan Cross-Population & User Cache Fix
+
+### Benefit Import: Plan Name / Plan Description Cross-Population
+Added a rule to both import engines so that plan_name and plan_description fill each other's gaps:
+- If the import defines `plan_name` but not `plan_description`, `plan_description` is populated with `plan_name` (and vice versa)
+- On UPDATE: only fills the null/empty field — never overwrites an existing value
+- On INSERT: cross-populates the import variables before entity creation
+- **ImportCommitService.java** — Added cross-population logic for interactive import wizard
+- **UniversalImportService.java** — Added same logic for legacy Summit import engine
+
+### User Creation: PSP User List Cache Refresh
+Fixed bug where newly created PSP users would not appear in ownership/delegation dropdowns until Tomcat restart:
+- `CreateUser25.refreshGlobalCaches()` had an empty block for PSP roles — the BPO path correctly called `global.setBpoUsers()`, but the PSP path was a no-op
+- Now calls `global.refreshUserCaches(em)` which reloads PSP user list, opportunity managers, and BPO users
+
+### Files Changed
+- **Modified (3):** CreateUser25.java, ImportCommitService.java, UniversalImportService.java

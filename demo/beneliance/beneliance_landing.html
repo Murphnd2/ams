@@ -1,0 +1,695 @@
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<style>
+    .bn {
+        --teal: #0097A7;
+        --teal-dark: #007B8A;
+        --teal-deep: #005F6B;
+        --teal-light: #00B4C5;
+        --teal-bg: rgba(0,151,167,0.06);
+        --dark: #1C2833;
+        --dark-mid: #2C3E50;
+        --charcoal: #1A1F2B;
+        --text: #34495E;
+        --text-light: #7F8C9B;
+        --border: #E8ECF0;
+        --cream: #F8F9FA;
+        --white: #FFFFFF;
+        font-family: 'Plus Jakarta Sans', 'DM Sans', sans-serif;
+        color: var(--text);
+        line-height: 1.65;
+    }
+
+    /* ===== HERO — dark background, centered, clean ===== */
+    .bn .hero {
+        background: var(--charcoal);
+        padding: 6rem 2rem 8rem;
+        text-align: center;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .bn .hero::before {
+        content: '';
+        position: absolute;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background: radial-gradient(ellipse 60% 50% at 50% 40%, rgba(0,151,167,0.12) 0%, transparent 70%);
+        pointer-events: none;
+    }
+
+    .bn .hero-content {
+        max-width: 800px;
+        margin: 0 auto;
+        position: relative;
+        z-index: 1;
+    }
+
+    .bn .hero-tag {
+        display: inline-block;
+        font-size: 0.85rem;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--teal-light);
+        font-weight: 600;
+        margin-bottom: 1.5rem;
+    }
+
+    .bn .hero h1 {
+        font-size: 3.2rem;
+        font-weight: 800;
+        color: var(--white);
+        margin: 0 0 1.25rem;
+        line-height: 1.15;
+        letter-spacing: -0.02em;
+    }
+
+    .bn .hero-sub {
+        font-size: 1.15rem;
+        color: rgba(255,255,255,0.65);
+        max-width: 600px;
+        margin: 0 auto 2.5rem;
+        line-height: 1.7;
+    }
+
+    .bn .hero-btns {
+        display: flex;
+        gap: 1rem;
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+
+    .bn .btn-teal {
+        background: var(--teal);
+        color: var(--white);
+        padding: 0.85rem 2rem;
+        border-radius: 6px;
+        text-decoration: none;
+        font-weight: 700;
+        font-size: 0.95rem;
+        transition: all 0.25s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+    }
+
+    .bn .btn-teal:hover {
+        background: var(--teal-dark);
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(0,151,167,0.3);
+        color: var(--white);
+    }
+
+    .bn .btn-outline-w {
+        color: var(--white);
+        padding: 0.85rem 2rem;
+        border-radius: 6px;
+        border: 2px solid rgba(255,255,255,0.25);
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 0.95rem;
+        transition: all 0.25s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+    }
+
+    .bn .btn-outline-w:hover {
+        border-color: rgba(255,255,255,0.5);
+        background: rgba(255,255,255,0.05);
+        color: var(--white);
+    }
+
+    /* ===== AUDIENCE CARDS — overlapping hero bottom ===== */
+    .bn .audience {
+        max-width: 1100px;
+        margin: -4rem auto 0;
+        padding: 0 2rem;
+        position: relative;
+        z-index: 2;
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1.25rem;
+    }
+
+    .bn .aud-card {
+        background: var(--white);
+        border-radius: 12px;
+        padding: 2rem 1.75rem;
+        text-align: center;
+        box-shadow: 0 4px 24px rgba(0,0,0,0.07);
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        border-top: 3px solid var(--teal);
+    }
+
+    .bn .aud-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 10px 36px rgba(0,0,0,0.1);
+    }
+
+    .bn .aud-card h3 {
+        font-size: 1.2rem;
+        font-weight: 700;
+        color: var(--dark);
+        margin: 0 0 0.6rem;
+    }
+
+    .bn .aud-card p {
+        font-size: 0.9rem;
+        color: var(--text-light);
+        margin: 0 0 1rem;
+        line-height: 1.6;
+    }
+
+    .bn .aud-link {
+        color: var(--teal);
+        text-decoration: none;
+        font-weight: 700;
+        font-size: 0.9rem;
+        transition: color 0.2s;
+    }
+
+    .bn .aud-link:hover { color: var(--teal-dark); }
+
+    /* ===== RESOURCES SECTION — mimics their homepage card grid ===== */
+    .bn .resources {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 5rem 2rem;
+    }
+
+    .bn .section-head {
+        text-align: center;
+        margin-bottom: 3rem;
+    }
+
+    .bn .section-head h2 {
+        font-size: 2rem;
+        font-weight: 800;
+        color: var(--dark);
+        margin: 0 0 0.75rem;
+    }
+
+    .bn .section-head p {
+        font-size: 1.05rem;
+        color: var(--text-light);
+        max-width: 550px;
+        margin: 0 auto;
+    }
+
+    .bn .res-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1.25rem;
+    }
+
+    .bn .res-card {
+        background: var(--white);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 1.75rem 1.5rem;
+        transition: all 0.3s ease;
+    }
+
+    .bn .res-card:hover {
+        border-color: var(--teal);
+        box-shadow: 0 6px 24px rgba(0,151,167,0.08);
+        transform: translateY(-3px);
+    }
+
+    .bn .res-card h3 {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: var(--dark);
+        margin: 0 0 0.6rem;
+    }
+
+    .bn .res-card p {
+        font-size: 0.88rem;
+        color: var(--text-light);
+        line-height: 1.6;
+        margin: 0 0 1rem;
+    }
+
+    .bn .res-link {
+        color: var(--teal);
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 0.88rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3rem;
+        transition: gap 0.2s, color 0.2s;
+    }
+
+    .bn .res-link:hover { gap: 0.6rem; color: var(--teal-dark); }
+
+    /* ===== SERVICES SECTION — white bg, clean cards ===== */
+    .bn .services {
+        background: var(--cream);
+        padding: 5rem 2rem;
+    }
+
+    .bn .services-inner {
+        max-width: 1100px;
+        margin: 0 auto;
+    }
+
+    .bn .svc-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1.25rem;
+    }
+
+    .bn .svc-card {
+        background: var(--white);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 2rem 1.75rem;
+        border-left: 4px solid var(--teal);
+        transition: all 0.3s ease;
+    }
+
+    .bn .svc-card:hover {
+        box-shadow: 0 6px 24px rgba(0,0,0,0.06);
+        transform: translateY(-2px);
+    }
+
+    .bn .svc-card h3 {
+        font-size: 1.15rem;
+        font-weight: 700;
+        color: var(--dark);
+        margin: 0 0 0.5rem;
+    }
+
+    .bn .svc-card p {
+        font-size: 0.9rem;
+        color: var(--text-light);
+        line-height: 1.6;
+        margin: 0;
+    }
+
+    /* ===== WHY CHOOSE — teal background banner ===== */
+    .bn .why-banner {
+        background: var(--teal);
+        padding: 4rem 2rem;
+        color: var(--white);
+    }
+
+    .bn .why-inner {
+        max-width: 1100px;
+        margin: 0 auto;
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 2rem;
+        text-align: center;
+    }
+
+    .bn .why-item h4 {
+        font-size: 1.05rem;
+        font-weight: 700;
+        margin: 0 0 0.5rem;
+        color: var(--white);
+    }
+
+    .bn .why-item p {
+        font-size: 0.88rem;
+        color: rgba(255,255,255,0.8);
+        line-height: 1.6;
+        margin: 0;
+    }
+
+    .bn .why-item i {
+        font-size: 1.75rem;
+        margin-bottom: 0.75rem;
+        display: block;
+        opacity: 0.85;
+    }
+
+    /* ===== CTA ===== */
+    .bn .cta {
+        background: var(--dark);
+        padding: 4.5rem 2rem;
+        text-align: center;
+    }
+
+    .bn .cta h2 {
+        font-size: 2.25rem;
+        font-weight: 800;
+        color: var(--white);
+        margin: 0 0 1rem;
+    }
+
+    .bn .cta p {
+        font-size: 1.1rem;
+        color: rgba(255,255,255,0.6);
+        max-width: 550px;
+        margin: 0 auto 2rem;
+    }
+
+    .bn .cta-btns {
+        display: flex;
+        gap: 1rem;
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+
+    .bn .btn-white {
+        background: var(--white);
+        color: var(--dark);
+        padding: 0.85rem 2rem;
+        border-radius: 6px;
+        text-decoration: none;
+        font-weight: 700;
+        font-size: 0.95rem;
+        transition: all 0.25s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+    }
+
+    .bn .btn-white:hover {
+        background: var(--cream);
+        color: var(--teal);
+        transform: translateY(-2px);
+    }
+
+    .bn .btn-outline-w2 {
+        color: var(--white);
+        padding: 0.85rem 2rem;
+        border-radius: 6px;
+        border: 2px solid rgba(255,255,255,0.25);
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 0.95rem;
+        transition: all 0.25s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+    }
+
+    .bn .btn-outline-w2:hover {
+        border-color: rgba(255,255,255,0.5);
+        background: rgba(255,255,255,0.06);
+        color: var(--white);
+    }
+
+    /* ===== FOOTER ===== */
+    .bn .ft {
+        background: var(--charcoal);
+        color: var(--white);
+        padding: 3rem 2rem 1.5rem;
+    }
+
+    .bn .ft-inner {
+        max-width: 1100px;
+        margin: 0 auto;
+        display: grid;
+        grid-template-columns: 2fr 1fr 1fr 1fr;
+        gap: 2.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .bn .ft-logo {
+        margin-bottom: 1rem;
+    }
+
+    .bn .ft-logo img {
+        height: 40px;
+        display: block;
+        filter: brightness(0) invert(1);
+    }
+
+    .bn .ft-brand p {
+        color: rgba(255,255,255,0.5);
+        font-size: 0.88rem;
+        line-height: 1.65;
+        margin: 0 0 0.75rem;
+    }
+
+    .bn .ft h4 {
+        font-weight: 700;
+        font-size: 0.9rem;
+        margin: 0 0 1rem;
+        color: rgba(255,255,255,0.8);
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+    }
+
+    .bn .ft ul { list-style: none; padding: 0; margin: 0; }
+    .bn .ft li { margin-bottom: 0.5rem; }
+
+    .bn .ft a {
+        color: rgba(255,255,255,0.45);
+        text-decoration: none;
+        font-size: 0.86rem;
+        transition: color 0.2s;
+    }
+
+    .bn .ft a:hover { color: var(--teal-light); }
+
+    .bn .ft-bottom {
+        border-top: 1px solid rgba(255,255,255,0.06);
+        padding-top: 1.25rem;
+        text-align: center;
+        color: rgba(255,255,255,0.25);
+        font-size: 0.8rem;
+    }
+
+    /* ===== RESPONSIVE ===== */
+    @media (max-width: 992px) {
+        .bn .hero h1 { font-size: 2.5rem; }
+        .bn .audience { grid-template-columns: 1fr; max-width: 460px; margin-top: -3rem; }
+        .bn .res-grid { grid-template-columns: 1fr 1fr; }
+        .bn .svc-grid { grid-template-columns: 1fr; }
+        .bn .why-inner { grid-template-columns: 1fr 1fr; }
+        .bn .ft-inner { grid-template-columns: 1fr 1fr; }
+    }
+
+    @media (max-width: 768px) {
+        .bn .hero { padding: 4rem 1.25rem 6rem; }
+        .bn .hero h1 { font-size: 2.1rem; }
+        .bn .res-grid { grid-template-columns: 1fr; }
+        .bn .why-inner { grid-template-columns: 1fr; gap: 1.5rem; }
+        .bn .section-head h2 { font-size: 1.65rem; }
+        .bn .cta h2 { font-size: 1.8rem; }
+        .bn .ft-inner { grid-template-columns: 1fr; }
+        .bn .resources, .bn .services { padding: 3.5rem 1.25rem; }
+        .bn .why-banner, .bn .cta { padding: 3rem 1.25rem; }
+    }
+
+    @media (max-width: 480px) {
+        .bn .hero h1 { font-size: 1.8rem; }
+        .bn .btn-teal, .bn .btn-outline-w, .bn .btn-white, .bn .btn-outline-w2 { width: 100%; justify-content: center; }
+        .bn .hero-btns, .bn .cta-btns { flex-direction: column; }
+    }
+</style>
+
+<div class="bn">
+
+<!-- HERO -->
+<section class="hero">
+    <div class="hero-content">
+        <div class="hero-tag">Your Ally in Benefits Administration</div>
+        <h1>YOUR ALLY IN<br>BENEFITS ADMINISTRATION</h1>
+        <p class="hero-sub">Your trusted solution for professional benefits administration services since 1996</p>
+        <div class="hero-btns">
+            <a href="RequestQuote" class="btn-teal">I'm an Employer <i class="bi bi-arrow-right"></i></a>
+            <a href="RequestQuote" class="btn-outline-w">I'm a Broker <i class="bi bi-arrow-right"></i></a>
+            <a href="#" data-bs-toggle="modal" data-bs-target="#loginModal" class="btn-outline-w"><i class="bi bi-person-circle"></i> I'm an Employee</a>
+        </div>
+    </div>
+</section>
+
+<!-- AUDIENCE CARDS -->
+<div class="audience">
+    <div class="aud-card">
+        <h3>Employees &amp; Families</h3>
+        <p>Make your benefits work for you! Learn more about healthcare spending accounts, dependent care accounts, and COBRA benefits.</p>
+        <a href="#" data-bs-toggle="modal" data-bs-target="#loginModal" class="aud-link">Learn More &rarr;</a>
+    </div>
+    <div class="aud-card">
+        <h3>Employers</h3>
+        <p>Beneliance helps you attract and retain quality employees with in-demand, cost-effective benefit programs and professional services with a local touch.</p>
+        <a href="RequestQuote" class="aud-link">Learn More &rarr;</a>
+    </div>
+    <div class="aud-card">
+        <h3>Brokers</h3>
+        <p>Beneliance provides all the tools you need to help your employer clients and covered members take control of their healthcare costs.</p>
+        <a href="RequestQuote" class="aud-link">Learn More &rarr;</a>
+    </div>
+</div>
+
+<!-- RESOURCES FOR EMPLOYEES -->
+<div class="resources">
+    <div class="section-head">
+        <h2>Resources for Employees and Families</h2>
+        <p>Learn about your benefit accounts and how to make the most of them.</p>
+    </div>
+    <div class="res-grid">
+        <div class="res-card">
+            <h3>Flexible Spending Accounts</h3>
+            <p>Set aside money from each paycheck, before taxes, to help pay for IRS-approved out-of-pocket medical expenses for you and your dependents.</p>
+            <a href="#bn-svc" class="res-link">Learn More <i class="bi bi-arrow-right"></i></a>
+        </div>
+        <div class="res-card">
+            <h3>Health Savings Accounts</h3>
+            <p>A tax-advantaged account for people enrolled in a high-deductible health plan. Pre-tax contributions cover eligible expenses, and unused funds roll over year to year.</p>
+            <a href="#bn-svc" class="res-link">Learn More <i class="bi bi-arrow-right"></i></a>
+        </div>
+        <div class="res-card">
+            <h3>Health Reimbursement Arrangements</h3>
+            <p>An employer-funded benefit plan that reimburses you tax-free for qualified healthcare expenses. Your employer determines which expenses qualify.</p>
+            <a href="#bn-svc" class="res-link">Learn More <i class="bi bi-arrow-right"></i></a>
+        </div>
+        <div class="res-card">
+            <h3>COBRA Benefits</h3>
+            <p>Keep healthcare coverage under your employer's group plan after a qualifying event such as job loss, reduced hours, divorce, or other life changes.</p>
+            <a href="#bn-svc" class="res-link">Learn More <i class="bi bi-arrow-right"></i></a>
+        </div>
+        <div class="res-card">
+            <h3>Captain Contributor</h3>
+            <p>Your Benefits Superhero wants to help you make the most of your employer-sponsored benefits and save money on your taxes — in a fun, easy-to-understand format!</p>
+            <a href="#bn-svc" class="res-link">Meet the Captain <i class="bi bi-arrow-right"></i></a>
+        </div>
+        <div class="res-card">
+            <h3>Shopping with Your FSA &amp; HSA</h3>
+            <p>There are many ways to use your tax-advantaged benefit accounts to save money on healthcare expenses and taxes. Discover eligible shopping resources.</p>
+            <a href="#bn-svc" class="res-link">Learn More <i class="bi bi-arrow-right"></i></a>
+        </div>
+    </div>
+</div>
+
+<!-- WHY BENELIANCE BANNER -->
+<div class="why-banner">
+    <div class="why-inner">
+        <div class="why-item">
+            <i class="bi bi-lightning-charge"></i>
+            <h4>Convenience</h4>
+            <p>Online enrollment, mobile app, benefits cards, and electronic claims. Most claims processed next business day with 99%+ accuracy.</p>
+        </div>
+        <div class="why-item">
+            <i class="bi bi-sliders"></i>
+            <h4>Flexibility</h4>
+            <p>We set up and administer nearly unlimited plan types. Tailor claims adjudication, spending options, and schedules to your needs.</p>
+        </div>
+        <div class="why-item">
+            <i class="bi bi-shield-check"></i>
+            <h4>Compliance</h4>
+            <p>Our experienced team guarantees your plans are set up and maintained in complete accordance with all applicable laws and regulations.</p>
+        </div>
+        <div class="why-item">
+            <i class="bi bi-graph-up-arrow"></i>
+            <h4>Real-Time Reporting</h4>
+            <p>Online employer and broker modules with up-to-the-minute balances. Automated and on-demand reports in all popular formats.</p>
+        </div>
+        <div class="why-item">
+            <i class="bi bi-credit-card-2-front"></i>
+            <h4>Summit Card</h4>
+            <p>One debit card with a stacked environment — multiple benefit accounts on a single card for the ultimate in employee convenience.</p>
+        </div>
+        <div class="why-item">
+            <i class="bi bi-mortarboard"></i>
+            <h4>Education &amp; Engagement</h4>
+            <p>Captain Contributor and engaging educational materials help employees understand and maximize their benefits in a fun, approachable way.</p>
+        </div>
+    </div>
+</div>
+
+<!-- EMPLOYER SERVICES -->
+<div class="services" id="bn-svc">
+    <div class="services-inner">
+        <div class="section-head">
+            <h2>Our Services</h2>
+            <p>Professional benefits administration with a personal touch.</p>
+        </div>
+        <div class="svc-grid">
+            <div class="svc-card">
+                <h3>FSA Administration</h3>
+                <p>Healthcare FSAs, Dependent Care FSAs, Limited Purpose FSAs, and Premium Only Plans (POP). Increase payroll tax savings, boost employee satisfaction, and enjoy flexible plan options.</p>
+            </div>
+            <div class="svc-card">
+                <h3>HSA Administration</h3>
+                <p>One-stop HSA management — account administration, custodial banking, and integrated investments all under one roof. Paired with a qualified HDHP for triple tax advantages.</p>
+            </div>
+            <div class="svc-card">
+                <h3>HRA Administration</h3>
+                <p>Group health HRAs, ICHRAs, EBHRAs, and QSEHRAs. Employer-funded, fully customizable reimbursement accounts with Claims Crossover for the fastest possible claims payment.</p>
+            </div>
+            <div class="svc-card">
+                <h3>COBRA Administration</h3>
+                <p>Every detail handled correctly, every time. Timely notifications, election tracking, flexible payment options including ACH and mobile app, and full regulatory compliance.</p>
+            </div>
+            <div class="svc-card">
+                <h3>Transit &amp; Commuter Accounts</h3>
+                <p>Tax-free employee contributions for parking and mass transit expenses. Our stacked benefits debit card puts multiple accounts on one card for maximum convenience.</p>
+            </div>
+            <div class="svc-card">
+                <h3>Lifestyle Spending Accounts</h3>
+                <p>Employer-funded wellness benefits that employees love — fitness, financial wellness, personal development. Simple to offer, easy to administer, great for retention.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- CTA -->
+<div class="cta">
+    <h2>Want to know more about Beneliance?</h2>
+    <p>Contact us today to learn about our services, discuss your business needs, and receive a free plan consultation.</p>
+    <div class="cta-btns">
+        <a href="RequestQuote" class="btn-white">Contact Us <i class="bi bi-arrow-right"></i></a>
+        <a href="tel:5016876954" class="btn-outline-w2"><i class="bi bi-telephone"></i> (501) 687-6954</a>
+    </div>
+</div>
+
+<!-- FOOTER -->
+<div class="ft">
+    <div class="ft-inner">
+        <div class="ft-brand">
+            <div class="ft-logo">
+                <img src="images/logo01.png" alt="Beneliance">
+            </div>
+            <p>Your trusted solution for professional benefits administration services since 1996. Little Rock, Arkansas.</p>
+        </div>
+        <div>
+            <h4>Employees</h4>
+            <ul>
+                <li><a href="#bn-svc">FSAs</a></li>
+                <li><a href="#bn-svc">HSAs</a></li>
+                <li><a href="#bn-svc">HRAs</a></li>
+                <li><a href="#bn-svc">COBRA</a></li>
+                <li><a href="#bn-svc">Captain Contributor</a></li>
+            </ul>
+        </div>
+        <div>
+            <h4>Employers</h4>
+            <ul>
+                <li><a href="#bn-svc">FSA Administration</a></li>
+                <li><a href="#bn-svc">HSA Administration</a></li>
+                <li><a href="#bn-svc">HRA Administration</a></li>
+                <li><a href="#bn-svc">COBRA Administration</a></li>
+            </ul>
+        </div>
+        <div>
+            <h4>Company</h4>
+            <ul>
+                <li><a href="RequestQuote">Contact Us</a></li>
+                <li><a href="#" data-bs-toggle="modal" data-bs-target="#loginModal">Benefits Login</a></li>
+            </ul>
+        </div>
+    </div>
+    <div class="ft-bottom">
+        &copy; 2026 by Beneliance
+    </div>
+</div>
+
+</div>
+
+<script>
+    document.querySelectorAll('.bn a[href^="#bn-"]').forEach(anchor => {
+        anchor.addEventListener('click', function(e) {
+            e.preventDefault();
+            const target = document.querySelector(this.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+</script>

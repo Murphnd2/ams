@@ -357,6 +357,11 @@ public abstract class ImportCommitService {
 
             String planName = data.getOrDefault("plan_name", "");
             String planDescription = data.getOrDefault("plan_description", "");
+
+            // Cross-populate: if one is provided but the other is not, use it for both
+            if (!planName.isEmpty() && planDescription.isEmpty()) planDescription = planName;
+            else if (!planDescription.isEmpty() && planName.isEmpty()) planName = planDescription;
+
             String effectiveDateStr = data.getOrDefault("effective_date", "");
             String terminationDateStr = data.getOrDefault("termination_date", "");
 
@@ -375,6 +380,10 @@ public abstract class ImportCommitService {
                     boolean changed = false;
                     if (!planName.isEmpty() && !planName.equals(existing.getPlanName())) { existing.setPlanName(planName); changed = true; }
                     if (!Objects.equals(blankToNull(planDescription), blankToNull(existing.getPlanDescription()))) { existing.setPlanDescription(planDescription); changed = true; }
+                    // Cross-populate null plan fields after import updates are applied
+                    String pn = existing.getPlanName(), pd = existing.getPlanDescription();
+                    if (pn != null && !pn.isEmpty() && (pd == null || pd.isEmpty())) { existing.setPlanDescription(pn); changed = true; }
+                    else if (pd != null && !pd.isEmpty() && (pn == null || pn.isEmpty())) { existing.setPlanName(pd); changed = true; }
                     if (!existing.isActive()) { existing.setActive(true); changed = true; }
 
                     if (changed) {

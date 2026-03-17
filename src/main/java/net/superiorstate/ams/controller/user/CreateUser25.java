@@ -348,7 +348,7 @@ public class CreateUser25 extends HttpServlet {
         // Refresh PSP user list if any non-agency, non-BPO role was assigned
         boolean hasPspRole = roleIds.stream().anyMatch(id -> !AGENCY_ROLES.contains(id) && id < 100);
         if (hasPspRole) {
-            // addUser refreshes the internal user list
+            global.refreshUserCaches(em);
         }
     }
 
