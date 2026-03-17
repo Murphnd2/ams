@@ -1194,7 +1194,7 @@ public abstract class DatabaseInitializer {
         return r;
     }
 
-    private static void seedFilterPresets(EntityManager em, User user) {
+    public static void seedFilterPresets(EntityManager em, User user) {
         // Idempotency guard — skip if presets already exist for this user
         Long existing = em.createQuery(
                 "SELECT COUNT(p) FROM UserFilterPreset p WHERE p.user = :user", Long.class)

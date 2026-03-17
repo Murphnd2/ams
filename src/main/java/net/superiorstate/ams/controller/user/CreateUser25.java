@@ -228,13 +228,16 @@ public class CreateUser25 extends HttpServlet {
             }
         }
 
-        // 6. Create TimeEntry
+        // 6. Create default filter presets (3 slots)
+        DatabaseInitializer.seedFilterPresets(em, newUser);
+
+        // 7. Create TimeEntry
         DatabaseInitializer.createTimeEntry(em, newPerson, null, null);
 
-        // 7. Send welcome email with 7-day GUID
+        // 8. Send welcome email with 7-day GUID
         sendWelcomeEmail(em, newUser, firstName, global);
 
-        // 8. Refresh global caches
+        // 9. Refresh global caches
         refreshGlobalCaches(em, global, roleIds);
         request.getServletContext().setAttribute("global", global);
 

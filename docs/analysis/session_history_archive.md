@@ -2,7 +2,7 @@
 
 > **Purpose:** Consolidated historical record of all build sessions. For current project state, see `project_backlog.md`. For current architecture, see `application_flow.md` and `entity_reference.md`.
 >
-> **Last Updated:** March 16, 2026 (Session 74)
+> **Last Updated:** March 17, 2026 (Session 75)
 >
 > **Note:** Sessions 1–38 (Feb 15 – Mar 5) were compressed during the Session 69 cleanup. Full details for those sessions are available in git history prior to that commit.
 
@@ -1179,3 +1179,25 @@ Fixed bug where newly created PSP users would not appear in ownership/delegation
 
 ### Files Changed
 - **Modified (3):** CreateUser25.java, ImportCommitService.java, UniversalImportService.java
+
+---
+
+## March 17, 2026 — Session 75: Admin Checklist Override, User Creation Presets, Import Cross-Population
+
+### PSP Admin Checklist Override
+Admins were blocked from interacting with time-blocked checklist items (dimmed rows, non-functional "Open" and "Complete" in kebab menu). Fixed by removing `td-blocked` CSS class for PSP admins:
+- **checklistBasic25.jsp** — `td-blocked` class now conditionally excluded when `sessionScope.isPspAdmin` is true, so blocked rows render at full opacity and all interactions work
+- Kebab "Complete" option now available to admins on blocked items (previously gated by `btnIcon == 'square'` which excluded blocked items)
+- Automation lightning bolt icon also now visible to admins on blocked items
+- Complete action hardcoded to `CloseToDo25` for admin override (blocked items had no `formServlet` set)
+
+### User Creation: Default Filter Presets
+New PSP users created via User Manager had no activity view filter presets, and the ViewHome25 page only supports editing (not creating) presets:
+- **DatabaseInitializer.seedFilterPresets()** — Changed from `private` to `public` so it can be called from user creation flow
+- **CreateUser25.java** — Added step 6 to call `DatabaseInitializer.seedFilterPresets()` for newly created users, seeding the 3 default filter slots (My Actionable, My Pipeline, All Open)
+
+### Benefit Import: Plan Name / Plan Description Cross-Population
+(Committed in Session 74) Added rule to both import engines so plan_name and plan_description fill each other when one is null/empty.
+
+### Files Changed
+- **Modified (3):** checklistBasic25.jsp, CreateUser25.java, DatabaseInitializer.java

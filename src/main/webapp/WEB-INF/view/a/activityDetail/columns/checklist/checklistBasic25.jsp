@@ -62,10 +62,10 @@
               <c:set var="rowClass" value="td-item bpo-awaiting-verify sourced"/>
             </c:when>
             <c:when test="${toDo.isSourced() && !toDo.isBpoCompleted()}">
-              <c:set var="rowClass" value="td-item td-blocked sourced"/>
+              <c:set var="rowClass" value="td-item ${sessionScope.isPspAdmin ? '' : 'td-blocked'} sourced"/>
             </c:when>
             <c:when test="${toDo.isTimeBlocked() || toDo.isWhoBlocked()}">
-              <c:set var="rowClass" value="td-item td-blocked"/>
+              <c:set var="rowClass" value="td-item ${sessionScope.isPspAdmin ? '' : 'td-blocked'}"/>
             </c:when>
             <c:when test="${toDo.isDelegated()}">
               <c:set var="rowClass" value="td-item td-delegated"/>
@@ -123,8 +123,8 @@
                 </c:if>
               </div>
 
-              <%-- Automation icon (any unblocked item with automation) --%>
-              <c:if test="${toDo.getBtnIcon() == 'square' && toDo.hasAutomation() && toDo.getAutomation() != null && empty isPast}">
+              <%-- Automation icon (unblocked items, or any item for admins) --%>
+              <c:if test="${(toDo.getBtnIcon() == 'square' || sessionScope.isPspAdmin) && toDo.hasAutomation() && toDo.getAutomation() != null && empty isPast}">
                 <button type="button" class="td-auto" onclick="openAutoModal('${toDo.getAutomationText()}', '${toDo.getAutomation().getAutomationName()}', '${toDo.getAutomation().getId()}', '${toDo.getServletName()}')" title="${toDo.getAutomationText()}">
                   <i class="bi bi-lightning-charge-fill"></i>
                 </button>
@@ -169,10 +169,10 @@
                         </a>
                       </li>
                     </c:if>
-                    <c:if test="${toDo.getBtnIcon() == 'square'}">
+                    <c:if test="${toDo.getBtnIcon() == 'square' || sessionScope.isPspAdmin}">
                       <li><hr class="dropdown-divider my-1"></li>
                       <li>
-                        <form method="post" action="${toDo.getFormServlet()}" class="m-0">
+                        <form method="post" action="CloseToDo25" class="m-0">
                           <button type="submit" class="dropdown-item py-1 text-success" name="btnToDo" value="${toDo.getToDo().getId()}"><i class="bi bi-check-circle me-2"></i>Complete</button>
                         </form>
                       </li>
