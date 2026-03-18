@@ -7,6 +7,7 @@ import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.AmsDataLocal;
 import net.superiorstate.ams.data.resolver.EntityLookup;
+import net.superiorstate.ams.data.service.BpoTaskPushService;
 import net.superiorstate.ams.data.service.RenewalService;
 import net.superiorstate.ams.model.activity.renewal.Renewal;
 import net.superiorstate.ams.model.summit.archive.Benefit;
@@ -52,6 +53,9 @@ public class AssignBenefitToRenewal25 extends HttpServlet {
             em = emf.createEntityManager();
             Benefit benefitToAdd = EntityLookup.getBenefitById(em, benefitId);
             RenewalService.addBenefitToRenewal(request, em, benefitToAdd, renewal);
+            if (renewal.getCheckList() != null) {
+                BpoTaskPushService.pushDelegatedTasks(em, renewal.getCheckList());
+            }
             request.getSession().setAttribute("vp","1");
             request.getSession().setAttribute("pastActivityId",local.getCurrentActivity().getActivity().getId().toString());
         } finally {
