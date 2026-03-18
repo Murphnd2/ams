@@ -100,5 +100,21 @@
     </div>
 </div>
 
+<script>
+(function() {
+    var recorded = false;
+    var video = document.querySelector('video');
+    if (video) {
+        video.addEventListener('play', function() {
+            if (recorded) return;
+            recorded = true;
+            fetch('${pageContext.request.contextPath}/video?t=${tokenParam}&action=recordView', {
+                method: 'POST'
+            });
+        });
+    }
+})();
+</script>
+
 </body>
 </html>

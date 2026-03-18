@@ -103,21 +103,63 @@ public class ServeVideo extends HttpServlet {
                 // Stream the MP4 with Range request support
                 streamVideo(request, response, videoFile);
             } else {
-                // Record the view (only on landing page, not on stream requests)
-                if (vt.getViewCount() == 0 || vt.getFirstViewedAt() == null) {
-                    em.getTransaction().begin();
-                    vt.recordView(getClientIp(request), request.getHeader("User-Agent"));
-                    em.merge(vt);
-                    em.getTransaction().commit();
-                }
-
-                // Forward to the video player JSP
+                // Landing page only — view is recorded later via POST when user clicks play
                 request.setAttribute("videoToken", vt);
                 request.setAttribute("videoTitle", vt.getVideo().getTitle());
                 request.setAttribute("videoDescription", vt.getVideo().getDescription());
                 request.setAttribute("tokenParam", tokenParam);
                 request.getRequestDispatcher("/WEB-INF/view/general/videoPlayer.jsp").forward(request, response);
             }
+        } finally {
+            em.close();
+        }
+    }
+
+    /**
+     * Records a view when the user actually clicks play (AJAX from videoPlayer.jsp).
+     * This prevents email link previews and bots from consuming tokens.
+     */
+    @Override
+    protected void doPost(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
+
+        String tokenParam = request.getParameter("t");
+        if (tokenParam == null || !tokenParam.matches("[0-9a-fA-F\\-]{36}")) {
+            response.setContentType("application/json");
+            response.getWriter().write("{\"status\":\"invalid\"}");
+            return;
+        }
+
+        EntityManagerFactory emf = (EntityManagerFactory) getServletContext().getAttribute("emf");
+        if (emf == null) {
+            response.sendError(HttpServletResponse.SC_SERVICE_UNAVAILABLE);
+            return;
+        }
+
+        EntityManager em = emf.createEntityManager();
+        try {
+            VideoToken vt;
+            try {
+                vt = em.createQuery(
+                        "SELECT vt FROM VideoToken vt WHERE vt.token = :token",
+                        VideoToken.class
+                ).setParameter("token", tokenParam).getSingleResult();
+            } catch (NoResultException e) {
+                response.setContentType("application/json");
+                response.getWriter().write("{\"status\":\"invalid\"}");
+                return;
+            }
+
+            // Only record if not yet viewed
+            if (vt.getFirstViewedAt() == null) {
+                em.getTransaction().begin();
+                vt.recordView(getClientIp(request), request.getHeader("User-Agent"));
+                em.merge(vt);
+                em.getTransaction().commit();
+            }
+
+            response.setContentType("application/json");
+            response.getWriter().write("{\"status\":\"ok\"}");
         } finally {
             em.close();
         }
