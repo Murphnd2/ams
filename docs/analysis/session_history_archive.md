@@ -2,7 +2,7 @@
 
 > **Purpose:** Consolidated historical record of all build sessions. For current project state, see `project_backlog.md`. For current architecture, see `application_flow.md` and `entity_reference.md`.
 >
-> **Last Updated:** March 17, 2026 (Session 75)
+> **Last Updated:** March 19, 2026 (Session 76)
 >
 > **Note:** Sessions 1–38 (Feb 15 – Mar 5) were compressed during the Session 69 cleanup. Full details for those sessions are available in git history prior to that commit.
 
@@ -1201,3 +1201,48 @@ New PSP users created via User Manager had no activity view filter presets, and 
 
 ### Files Changed
 - **Modified (3):** checklistBasic25.jsp, CreateUser25.java, DatabaseInitializer.java
+
+---
+
+## March 19, 2026 — Session 76: BPO Dashboard Redesign & Bug Fixes
+
+### BPO Dashboard — Tonal Zone Layout (ViewHome25 pattern)
+Major visual overhaul of `bpoHome25.jsp` to match PSP ViewHome25's tonal zone layout:
+
+- **Three-column tonal zones** — Sage green left (checklists, `#f9faf4`), white center (delegated tasks), cool slate right (detail panel, `#f4f6f9`). Matches PSP's amber/white/teal pattern.
+- **Edge-to-edge columns** — Negative margins (`-0.75rem`) on layout container to cancel Bootstrap `.container-fluid` padding, matching how PSP's `.row` class works.
+- **Zone stripes** — 3px colored accent bars at top of each column (sage green left/center, slate blue right), column-scoped via `.bpo-col-left .zone-stripe` pattern.
+- **No card borders or rounded corners** — Killed global `.hdr-bar { border-radius: 6px 6px 0 0 }` and Bootstrap `.card` border-radius with page-level `!important` overrides. Columns separated by thin border lines, not card edges.
+- **Left column wider** — `flex: 0 0 25%` matching PSP's `col-xl-3` proportion.
+- **6px spacer** — Edge-to-edge gray bar between navbar and columns, matching PSP's inline-style spacer.
+- **`body { background-color: #eef0f4 }`** — Gray page background matching PSP.
+- **Responsive mobile reset** — Tonal backgrounds reset to white, zone stripes hidden, right panel overlays as full-width fixed drawer.
+
+### BPO Dashboard — Two-Zone Split Detail Panel
+Replaced the old right panel with a compact two-zone layout based on an approved HTML mockup:
+
+- **Top zone (context card)** — CSS Grid fields (PSP, Type, Activity, Due, Assigned To), close button, action links, completed banner. Compact layout replaces old vertical card stack.
+- **Bottom zone (tabbed)** — Notes tab (default, with note stream + input bar) and Past Runs tab (alternate, with expandable inline notes). Custom CSS tabs, not Bootstrap.
+- **AJAX Mark Complete** — Converted from form-submit to AJAX POST. On success, removes task row from tree view, cleans up empty activity/PSP parent groups, closes panel.
+- **Enhanced due date display** — Relative text ("6 days overdue", "Due today", "Due in 3 days") alongside the date.
+
+### BPO Task Delegation Bug Fixes
+- **AddRenewal25.java** — Re-fetch checklist after sequence creation so `toDoList` includes newly-created required-sequence ToDos before BPO push. Previously pushed stale detached checklist with empty toDoList.
+- **AssignBenefitToRenewal25.java** — Same fix: re-fetch checklist via `EntityLookup.getCheckListById()` before BPO push.
+- **BpoCompleteTask.java** — Added AJAX support: returns HTTP 200 for `XMLHttpRequest` callers, falls back to redirect for form submissions.
+
+### SendBackToDo25 — Push Note to BPO
+When a PSP admin sends a task back to the BPO vendor, the rejection note is now pushed to the BPO's `TaskNotesApi` so the vendor can see the reason:
+- New `pushNoteToBpo()` method posts `todoGuid`, `noteText`, `authorName` to the partner URL's `/api/v1/tasks/notes` endpoint using `ApiClient.postJsonObject()`. Non-fatal on failure.
+
+### Minor Fix
+- **checklistBasic25.jsp** — Replaced Unicode checkmark emoji `✓` with HTML entity `&#10003;` for consistent encoding.
+
+### Files Created
+- `docs/mockups/bpo-detail-panel-mockup.html` — Standalone browser-viewable design mockup for the two-zone detail panel
+
+### Files Modified
+- **Java (4):** AddRenewal25.java, AssignBenefitToRenewal25.java, SendBackToDo25.java, BpoCompleteTask.java
+- **JSP (2):** bpoHome25.jsp, checklistBasic25.jsp
+
+No database changes.

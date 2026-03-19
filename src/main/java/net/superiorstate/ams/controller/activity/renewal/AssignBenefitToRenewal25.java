@@ -9,6 +9,7 @@ import net.superiorstate.ams.data.AmsDataLocal;
 import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.data.service.BpoTaskPushService;
 import net.superiorstate.ams.data.service.RenewalService;
+import net.superiorstate.ams.model.activity.checklist.CheckList;
 import net.superiorstate.ams.model.activity.renewal.Renewal;
 import net.superiorstate.ams.model.summit.archive.Benefit;
 
@@ -54,7 +55,10 @@ public class AssignBenefitToRenewal25 extends HttpServlet {
             Benefit benefitToAdd = EntityLookup.getBenefitById(em, benefitId);
             RenewalService.addBenefitToRenewal(request, em, benefitToAdd, renewal);
             if (renewal.getCheckList() != null) {
-                BpoTaskPushService.pushDelegatedTasks(em, renewal.getCheckList());
+                // Re-fetch checklist so toDoList includes newly-created required-sequence ToDos
+                // (renewal.getCheckList() is a detached session object with a stale toDoList)
+                CheckList freshChecklist = EntityLookup.getCheckListById(em, renewal.getCheckList().getId());
+                BpoTaskPushService.pushDelegatedTasks(em, freshChecklist);
             }
             request.getSession().setAttribute("vp","1");
             request.getSession().setAttribute("pastActivityId",local.getCurrentActivity().getActivity().getId().toString());

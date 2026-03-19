@@ -45,7 +45,12 @@ public class BpoCompleteTask extends HttpServlet {
             } else {
                 markComplete(request);
             }
-            response.sendRedirect("BpoHome");
+            // AJAX callers send X-Requested-With; form fallback gets redirect
+            if ("XMLHttpRequest".equals(request.getHeader("X-Requested-With"))) {
+                response.setStatus(200);
+            } else {
+                response.sendRedirect("BpoHome");
+            }
         } else if ("addNote".equals(action)) {
             if (crossSystem) {
                 addNoteCrossSystem(request);

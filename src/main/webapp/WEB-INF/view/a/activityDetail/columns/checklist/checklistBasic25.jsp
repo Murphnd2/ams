@@ -107,7 +107,7 @@
                   <a href="${toDo.getInfoLink().getLinkPath()}" target="_blank" class="td-info" title="Info"><i class="bi bi-question-circle-fill"></i></a>
                 </c:if>
                 <c:if test="${toDo.isBpoCompleted() && !toDo.isComplete()}">
-                  <span class="bpo-done-badge" style="margin-left: 0.3rem;">Done ✓</span>
+                  <span class="bpo-done-badge" style="margin-left: 0.3rem;">Done &#10003;</span>
                 </c:if>
                 <c:if test="${toDo.isSourced() && !toDo.isBpoCompleted()}">
                   <span class="bpo-badge" style="margin-left: 0.3rem;">BPO</span>

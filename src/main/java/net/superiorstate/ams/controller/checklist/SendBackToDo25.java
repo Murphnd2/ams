@@ -8,11 +8,15 @@ import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.AmsDataLocal;
 import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.data.service.BpoTaskPushService;
+import net.superiorstate.ams.data.util.ApiClient;
 import net.superiorstate.ams.model.ToDoOut25;
 import net.superiorstate.ams.model.activity.checklist.tasks.ToDo;
 import net.superiorstate.ams.model.activity.checklist.tasks.ToDoNote;
+import net.superiorstate.ams.model.general.BpoRegistration;
 
 import java.io.IOException;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 /**
  * PSP admin action: reject a BPO completion and send the task back to the vendor for rework.
@@ -68,6 +72,8 @@ public class SendBackToDo25 extends HttpServlet {
 
             // === NOTIFY BPO ===
             BpoTaskPushService.revertTaskCompletion(em, toDo);
+            pushNoteToBpo(toDo, note.getNoteText(),
+                    local.getCurrentPerson().getFirstName() + " " + local.getCurrentPerson().getLastName());
 
             // === IN-MEMORY UPDATE ===
             local.getCurrentActivity().getToDoList().stream()
@@ -85,6 +91,28 @@ public class SendBackToDo25 extends HttpServlet {
             request.getSession().setAttribute("local", local);
         } finally {
             em.close();
+        }
+    }
+
+    /**
+     * Push the send-back audit note to the BPO's TaskNotesApi so the vendor can see it.
+     */
+    private void pushNoteToBpo(ToDo toDo, String noteText, String authorName) {
+        try {
+            BpoRegistration reg = toDo.getTask().getBpoRegistration();
+            if (reg == null || reg.getPartnerUrl() == null || reg.getApiTokenOutbound() == null) return;
+
+            String url = reg.getPartnerUrl() + "/api/v1/tasks/notes";
+
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("todoGuid", toDo.getTodoGuid());
+            payload.put("noteText", noteText);
+            payload.put("authorName", authorName);
+
+            ApiClient.ApiResponse resp = ApiClient.postJsonObject(url, payload, reg.getApiTokenOutbound());
+            System.out.println("[BPO-API] SendBackToDo25 pushNote: todoGuid=" + toDo.getTodoGuid() + " (" + resp.statusCode + ")");
+        } catch (Exception e) {
+            System.out.println("[BPO-API] SendBackToDo25 pushNote failed (non-fatal): " + e.getMessage());
         }
     }
 }

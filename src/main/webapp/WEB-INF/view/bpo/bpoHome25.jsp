@@ -13,69 +13,118 @@
     <title>BPO Dashboard</title>
     <c:import url="/WEB-INF/view/css-js.jsp"/>
     <style>
-        .hdr-bar { background-color: #87a948 !important; }
+        .hdr-bar { background-color: #87a948 !important; border-radius: 0 !important; }
+        .bpo-col-left .card { border-radius: 0 !important; border: none !important; }
     </style>
     <style>
-        /* ═══ 3-COLUMN LAYOUT ═══ */
-        @media (min-width: 992px) {
-            .bpo-layout {
-                display: flex;
-                flex-direction: column;
-                height: calc(100vh - 76px);
-                overflow: hidden;
-            }
-            .bpo-columns {
-                display: flex;
-                flex: 1;
-                min-height: 0;
-                gap: 0.75rem;
-                padding-left: 0.75rem;
-            }
-            .bpo-col-left {
-                width: 280px;
-                min-width: 280px;
-                display: flex;
-                flex-direction: column;
-            }
-            .bpo-col-left > .card {
-                flex: 1; display: flex; flex-direction: column; overflow: hidden;
-                border: 1px solid #dee2e6; border-radius: 6px;
-            }
-            .bpo-col-left > .card > .card-body {
-                flex: 1; overflow-y: auto;
-            }
-            .bpo-col-center {
-                flex: 1;
-                min-width: 0;
-                display: flex;
-                flex-direction: column;
-                background: #f8f9fa;
-            }
-            .bpo-col-right {
-                width: 0;
-                min-width: 0;
-                overflow: hidden;
-                transition: width 0.25s ease, min-width 0.25s ease;
-                background: #fff;
-                display: flex;
-                flex-direction: column;
-                border-left: 0 solid #dee2e6;
-            }
-            .bpo-col-right.open {
-                width: 420px;
-                min-width: 420px;
-                border-left-width: 1px;
-            }
+        /* ═══ TONAL ZONE LAYOUT (matches PSP ViewHome25 pattern) ═══ */
+        body { background-color: #eef0f4; }
+
+        .bpo-layout {
+            display: flex;
+            flex-direction: column;
+            height: calc(100vh - 62px);
+            overflow: hidden;
+            margin-left: -0.75rem;
+            margin-right: -0.75rem;
+        }
+        .bpo-columns {
+            display: flex;
+            flex: 1;
+            align-items: stretch;
+            min-height: 0;
+        }
+        .bpo-columns > [class*="bpo-col-"] {
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
         }
 
-        /* Mobile: right panel overlay */
+        /* Left column — warm sage */
+        .bpo-col-left {
+            flex: 0 0 25%;
+            background: #f9faf4;
+            border-right: 1px solid #d4dbb8;
+            overflow-y: auto;
+        }
+        .bpo-col-left > .card {
+            flex: 1; display: flex; flex-direction: column; overflow: hidden;
+            border: none; border-radius: 0; background: transparent;
+        }
+        .bpo-col-left > .card > .card-body {
+            flex: 1; display: flex; flex-direction: column; min-height: 0;
+            padding: 0;
+        }
+        .bpo-col-left .zone-stripe { height: 3px; background: #87a948; margin-bottom: 0; }
+        .bpo-col-left .hdr-bar {
+            background: #f9faf4 !important; color: #4a5a2c !important;
+            border-bottom: 1px solid #d4dbb8 !important;
+        }
+        .bpo-col-left .hdr-bar i { color: #6b8a3e; }
+        .bpo-col-left .hdr-bar .btn-outline-light {
+            border-color: #d4dbb8 !important; color: #6b8a3e !important;
+        }
+        .bpo-col-left .hdr-bar .btn-outline-light:hover {
+            background: rgba(107,138,62,0.08) !important;
+        }
+        .bpo-col-left .todo-body { background: #f9faf4; border-color: #d4dbb8; }
+        .bpo-col-left .td-section-toggle { background: rgba(0,0,0,0.025); border-top-color: #d4dbb8; }
+        .bpo-col-left .td-count { background: #e8eeda; color: #4a5a2c; }
+
+        /* Center column — white (green header unchanged) */
+        .bpo-col-center {
+            flex: 1;
+            min-width: 0;
+            background: white;
+            border-left: 1px solid #e5eaf1;
+            border-right: 1px solid #e5eaf1;
+            overflow: hidden;
+        }
+        .bpo-col-center .zone-stripe { height: 3px; background: #87a948; margin-bottom: 0; }
+
+        /* Right column — cool slate (slide panel) */
+        .bpo-col-right {
+            width: 0;
+            min-width: 0;
+            overflow: hidden;
+            transition: width 0.25s ease, min-width 0.25s ease;
+            background: #f4f6f9;
+            border-left: 0 solid #c8d1dc;
+        }
+        .bpo-col-right.open {
+            width: 420px;
+            min-width: 420px;
+            border-left-width: 1px;
+        }
+        .bpo-col-right .zone-stripe { height: 3px; background: #4a7a9b; margin-bottom: 0; }
+
+        /* Mobile: stack columns, reset tonal backgrounds */
         @media (max-width: 991px) {
-            .bpo-col-left { display: none; }
+            .bpo-layout { height: auto; overflow: visible; }
+            .bpo-columns { flex-direction: column; }
+            .bpo-col-left {
+                display: none;
+            }
+            .bpo-col-center, .bpo-col-left {
+                background: white;
+                border: none;
+                border-bottom: 2px solid #eef0f4;
+            }
+            .bpo-col-left .hdr-bar {
+                background: #87a948 !important; color: white !important;
+                border-bottom: none !important;
+            }
+            .bpo-col-left .hdr-bar i { color: white; }
+            .bpo-col-left .hdr-bar .btn-outline-light {
+                border-color: rgba(255,255,255,0.4) !important;
+                color: rgba(255,255,255,0.85) !important;
+            }
+            .bpo-col-left .zone-stripe, .bpo-col-center .zone-stripe { display: none; }
             .bpo-col-right {
                 position: fixed;
                 top: 0; right: 0; bottom: 0;
                 width: 0; z-index: 1050;
-                background: white;
+                background: #f4f6f9;
                 box-shadow: -4px 0 16px rgba(0,0,0,0.15);
                 transition: width 0.25s ease;
                 overflow: hidden;
@@ -161,32 +210,133 @@
         }
         .pending-count-badge { background: #dc3545; color: white; font-size: 0.6rem; padding: 0.1rem 0.4rem; border-radius: 8px; margin-left: 0.25rem; }
 
-        /* ═══ DETAIL PANEL ═══ */
+        /* ═══ DETAIL PANEL — TWO-ZONE SPLIT ═══ */
         .detail-inner {
             width: 420px; height: 100%; display: flex; flex-direction: column; overflow: hidden;
         }
         @media (max-width: 991px) { .detail-inner { width: 100%; } }
-        .detail-header {
-            padding: 0.6rem 0.85rem; border-bottom: 1px solid #dee2e6;
-            display: flex; align-items: flex-start; gap: 0.5rem; flex-shrink: 0; background: #fff;
+
+        /* Context card (top zone) */
+        .detail-context {
+            flex-shrink: 0; background: #f4f6f9;
+            padding: 0.55rem 0.75rem 0.5rem;
+            border-bottom: 2px solid #d0d7e0;
         }
-        .detail-header-content { flex: 1; min-width: 0; }
-        .detail-task-name { font-weight: 600; font-size: 0.9rem; color: #333; line-height: 1.3; }
-        .detail-meta { display: flex; align-items: center; gap: 0.4rem; margin-top: 0.2rem; flex-wrap: wrap; }
+        .detail-context-top {
+            display: flex; align-items: flex-start; gap: 0.4rem; margin-bottom: 0.4rem;
+        }
+        .detail-task-name {
+            flex: 1; font-weight: 700; font-size: 0.9rem; color: #1a1a1a; line-height: 1.3;
+            min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
         .detail-close-btn {
-            background: none; border: none; font-size: 1.1rem; color: #999;
-            cursor: pointer; padding: 0; line-height: 1;
+            background: none; border: none; font-size: 1rem; color: #999;
+            cursor: pointer; padding: 0.1rem; line-height: 1; flex-shrink: 0;
         }
         .detail-close-btn:hover { color: #333; }
-        .detail-body { flex: 1; overflow-y: auto; padding: 0; }
-        .detail-section { padding: 0.6rem 0.85rem; border-bottom: 1px solid #f0f0f0; }
-        .detail-label {
-            font-size: 0.68rem; color: #6c757d; text-transform: uppercase;
-            letter-spacing: 0.03em; margin-bottom: 0.25rem; font-weight: 600;
+        .detail-fields {
+            display: grid; grid-template-columns: 1fr 1fr;
+            gap: 0.3rem 0.75rem; font-size: 0.78rem;
         }
+        .detail-field { min-width: 0; }
+        .detail-field.full { grid-column: 1 / -1; }
+        .detail-field-label {
+            font-size: 0.6rem; color: #8899a6; text-transform: uppercase;
+            letter-spacing: 0.04em; font-weight: 600; margin-bottom: 0.05rem;
+        }
+        .detail-field-value {
+            color: #333; font-weight: 500;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .detail-field-value select {
+            font-size: 0.76rem; padding: 0.08rem 1.2rem 0.08rem 0.25rem;
+            border: 1px solid #ccd; border-radius: 3px; background: white;
+            width: 100%; max-width: 160px;
+        }
+        .detail-links {
+            display: flex; gap: 0.35rem; margin-top: 0.4rem;
+        }
+        .detail-links a {
+            font-size: 0.72rem; padding: 0.18rem 0.55rem; border-radius: 4px;
+            text-decoration: none; border: 1px solid #c8d1dc; color: #0d5681;
+            transition: background 0.15s;
+        }
+        .detail-links a:hover { background: rgba(13,86,129,0.06); }
+        .detail-links a i { margin-right: 0.2rem; font-size: 0.68rem; }
+
+        /* Completed banner */
+        .completed-banner {
+            background: #d4edda; padding: 0.35rem 0.75rem;
+            font-size: 0.78rem; color: #155724; flex-shrink: 0;
+        }
+
+        /* Bottom zone: tabbed content */
+        .detail-bottom-zone {
+            flex: 1; min-height: 0; display: flex;
+            flex-direction: column; background: #fff;
+        }
+        .detail-tabs {
+            display: flex; border-bottom: 1px solid #e0e5ec;
+            flex-shrink: 0; background: #fafbfc;
+        }
+        .detail-tab {
+            flex: 1; padding: 0.45rem 0.5rem; font-size: 0.72rem; font-weight: 600;
+            text-transform: uppercase; letter-spacing: 0.04em; color: #8899a6;
+            border: none; background: none; cursor: pointer; text-align: center;
+            border-bottom: 2px solid transparent; transition: color 0.15s, border-color 0.15s;
+        }
+        .detail-tab:hover { color: #556; }
+        .detail-tab.active { color: #0d5681; border-bottom-color: #0d5681; }
+        .detail-tab .tab-count {
+            display: inline-block; font-size: 0.58rem; min-width: 1rem;
+            padding: 0 0.25rem; border-radius: 8px; background: #e0e5ec;
+            color: #666; margin-left: 0.25rem; font-weight: 700; line-height: 1.4;
+        }
+        .detail-tab.active .tab-count { background: #0d5681; color: #fff; }
+        .detail-tab-pane {
+            display: none; flex: 1; min-height: 0; flex-direction: column;
+        }
+        .detail-tab-pane.active { display: flex; }
+        .detail-notes-stream { flex: 1; overflow-y: auto; padding: 0 0.75rem; }
+        .detail-note-bar {
+            padding: 0.35rem 0.75rem; border-top: 1px solid #eee;
+            flex-shrink: 0; background: #fafbfc;
+        }
+        .detail-past-runs-list { flex: 1; overflow-y: auto; padding: 0.4rem 0.75rem; }
+        .past-run-item {
+            padding: 0.4rem 0.55rem; background: #f8f9fa; border-radius: 4px;
+            margin-bottom: 0.35rem; border: 1px solid #eee; font-size: 0.78rem;
+            display: flex; align-items: center; gap: 0.35rem; cursor: pointer;
+        }
+        .past-run-item:hover { background: #eef1f5; }
+        .past-run-item .run-date { font-weight: 500; color: #333; }
+        .past-run-item .run-assignee { color: #6c757d; }
+        .past-run-item .run-notes-badge {
+            font-size: 0.58rem; background: #0d5681; color: #fff;
+            padding: 0.05rem 0.35rem; border-radius: 8px; font-weight: 700; margin-left: auto;
+        }
+        /* Note bubbles (used by renderNotes) */
+        .note-item { padding: 0.35rem 0; border-bottom: 1px solid #f0f0f0; }
+        .note-item:last-child { border-bottom: none; }
+        .note-header { display: flex; align-items: center; gap: 0.35rem; margin-bottom: 0.1rem; }
+        .note-source {
+            font-size: 0.6rem; padding: 0.08rem 0.35rem; border-radius: 8px; font-weight: 600;
+        }
+        .note-source.bpo { background: #e8f4f8; color: #0d5681; }
+        .note-source.psp { background: #fff3cd; color: #856404; }
+        .note-author { font-size: 0.78rem; font-weight: 500; color: #333; }
+        .note-date { font-size: 0.68rem; color: #999; }
+        .note-text { font-size: 0.82rem; color: #444; line-height: 1.45; padding-left: 0.15rem; }
+        .note-attachment {
+            display: inline-block; font-size: 0.72rem; padding: 0.1rem 0.45rem;
+            background: #e8f4f8; color: #0d5681; border-radius: 12px;
+            text-decoration: none; margin-top: 0.2rem;
+        }
+
+        /* Detail footer */
         .detail-footer {
-            padding: 0.5rem 0.85rem; border-top: 1px solid #dee2e6;
-            display: flex; justify-content: center; flex-shrink: 0; background: #fff;
+            padding: 0.45rem 0.75rem; border-top: 1px solid #c8d1dc;
+            display: flex; justify-content: center; flex-shrink: 0; background: #f4f6f9;
         }
 
         /* ═══ COMPLETED ═══ */
@@ -206,7 +356,7 @@
 <body>
 <div class="container-fluid">
     <c:import url="/WEB-INF/view/a/general/navbar25.jsp"/>
-    <div style="height: 6px; background: #eef0f4;"></div>
+    <div style="height: 6px; background: #eef0f4; margin-left: -0.75rem; margin-right: -0.75rem;"></div>
     <div class="bpo-layout">
     <div class="bpo-columns">
 
@@ -215,6 +365,7 @@
         <%-- ════════════════════════════════════════════ --%>
         <div class="bpo-col-left">
             <div class="card">
+                <div class="zone-stripe"></div>
                 <div class="hdr-bar d-flex align-items-center justify-content-between">
                     <span><i class="bi bi-check2-square me-2"></i>My Checklists</span>
                     <div class="d-flex gap-1">
@@ -228,7 +379,7 @@
                         </button>
                     </div>
                 </div>
-                <div class="card-body p-2">
+                <div class="card-body">
                     <c:import url="/WEB-INF/view/a/pspHome/columns/toDos/toDoCurrentList25.jsp"/>
                 </div>
             </div>
@@ -238,6 +389,7 @@
         <%-- CENTER COLUMN: Delegated Tasks (tree view)   --%>
         <%-- ════════════════════════════════════════════ --%>
         <div class="bpo-col-center">
+            <div class="zone-stripe"></div>
             <%-- Toolbar --%>
             <div class="hdr-bar d-flex align-items-center justify-content-between">
                 <span><i class="bi bi-list-task me-2"></i>Delegated Tasks</span>
@@ -502,105 +654,107 @@
         </div>
 
         <%-- ════════════════════════════════════════════ --%>
-        <%-- RIGHT COLUMN: Task Detail Panel              --%>
+        <%-- RIGHT COLUMN: Task Detail Panel (Two-Zone)   --%>
         <%-- ════════════════════════════════════════════ --%>
         <div class="bpo-col-right" id="bpoDetailPanel">
             <div class="detail-inner">
-                <%-- Panel Header --%>
-                <div class="detail-header">
-                    <div class="detail-header-content">
+                <div class="zone-stripe"></div>
+
+                <%-- TOP ZONE: Context Card --%>
+                <div class="detail-context" id="contextCard">
+                    <div class="detail-context-top">
                         <div class="detail-task-name" id="panelTaskName"></div>
-                        <div class="detail-meta">
-                            <span class="bpo-badge-psp" id="panelPspBadge"></span>
-                            <span class="bpo-type-badge" id="panelTypeBadge"></span>
-                            <span id="panelDueDate" style="font-size:0.7rem;"></span>
-                        </div>
-                        <div style="font-size:0.75rem; color:#666; margin-top:0.2rem;">
-                            <i class="bi bi-folder2-open" style="font-size:0.7rem;"></i>
-                            <span id="panelActivityName"></span>
-                        </div>
+                        <button class="detail-close-btn" onclick="closeTaskPanel()" title="Close">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
                     </div>
-                    <button class="detail-close-btn" onclick="closeTaskPanel()" title="Close">
-                        <i class="bi bi-x-lg"></i>
-                    </button>
+                    <div class="detail-fields">
+                        <div class="detail-field">
+                            <div class="detail-field-label">PSP</div>
+                            <div class="detail-field-value" id="panelPspName"></div>
+                        </div>
+                        <div class="detail-field">
+                            <div class="detail-field-label">Type</div>
+                            <div class="detail-field-value"><span class="bpo-type-badge" id="panelTypeBadge"></span></div>
+                        </div>
+                        <div class="detail-field full">
+                            <div class="detail-field-label">Activity</div>
+                            <div class="detail-field-value" id="panelActivityName"></div>
+                        </div>
+                        <div class="detail-field">
+                            <div class="detail-field-label">Due</div>
+                            <div class="detail-field-value" id="panelDueDate"></div>
+                        </div>
+                        <c:if test="${sessionScope.isBpoAdmin}">
+                        <div class="detail-field" id="panelAssignField">
+                            <div class="detail-field-label">Assigned To</div>
+                            <div class="detail-field-value">
+                                <select id="panelAssignTo" onchange="assignTaskAjax()">
+                                    <option value="0">-- Unassigned --</option>
+                                    <c:forEach var="bpo" items="${applicationScope.global.getBpoUsers()}">
+                                        <option value="${bpo.getId()}">${bpo.getFirstName()} ${bpo.getLastName()}</option>
+                                    </c:forEach>
+                                </select>
+                            </div>
+                        </div>
+                        </c:if>
+                    </div>
+                    <div class="detail-links" id="panelLinksRow" style="display:none;">
+                        <a id="panelGoToLink" href="#" target="_blank"><i class="bi bi-box-arrow-up-right"></i>Go To</a>
+                        <a id="panelInfoLink" href="#" target="_blank"><i class="bi bi-info-circle"></i>Info</a>
+                    </div>
                 </div>
 
                 <%-- Completed banner (hidden by default) --%>
-                <div id="panelCompletedBanner" style="display:none; background:#d4edda; border-bottom:1px solid #c3e6cb; padding:0.45rem 0.75rem; font-size:0.78rem; color:#155724;">
+                <div id="panelCompletedBanner" class="completed-banner" style="display:none;">
                     <i class="bi bi-check-circle-fill me-1"></i>Completed by <strong id="panelCompletedBy"></strong>
                     <span id="panelCompletedDate" class="ms-1" style="color:#6c757d;"></span>
                 </div>
 
-                <%-- Scrollable Panel Body --%>
-                <div class="detail-body">
-                    <%-- Quick Links --%>
-                    <div class="detail-section" id="panelLinksSection" style="display:none;">
-                        <div class="detail-label">Quick Links</div>
-                        <div class="d-flex gap-2">
-                            <a id="panelGoToLink" href="#" target="_blank" class="btn btn-sm btn-outline-primary flex-fill" style="display:none;">
-                                <i class="bi bi-box-arrow-up-right me-1"></i>Go To Activity
-                            </a>
-                            <a id="panelInfoLink" href="#" target="_blank" class="btn btn-sm btn-outline-secondary flex-fill" style="display:none;">
-                                <i class="bi bi-info-circle me-1"></i>Info / Reference
-                            </a>
-                        </div>
+                <%-- BOTTOM ZONE: Tabbed Content --%>
+                <div class="detail-bottom-zone">
+                    <div class="detail-tabs">
+                        <button class="detail-tab active" id="panelNotesTab" onclick="switchDetailTab('notes')">
+                            <i class="bi bi-chat-left-text me-1"></i>Notes<span class="tab-count" id="panelNotesCount">0</span>
+                        </button>
+                        <button class="detail-tab" id="panelHistoryTab" onclick="switchDetailTab('history')">
+                            <i class="bi bi-clock-history me-1"></i>Past Runs<span class="tab-count" id="panelHistoryCount">0</span>
+                        </button>
                     </div>
 
-                    <%-- Task Description --%>
-                    <div class="detail-section" id="panelDescSection" style="display:none;">
-                        <div class="detail-label">Task Description</div>
-                        <div id="panelDescription" style="font-size:0.8rem; color:#555; line-height:1.5;"></div>
-                    </div>
-
-                    <%-- Assignment --%>
-                    <c:if test="${sessionScope.isBpoAdmin}">
-                        <div class="detail-section" id="panelAssignSection">
-                            <div class="detail-label">Assignment</div>
-                            <select id="panelAssignTo" class="form-select form-select-sm" onchange="assignTaskAjax()">
-                                <option value="0">-- Unassigned --</option>
-                                <c:forEach var="bpo" items="${applicationScope.global.getBpoUsers()}">
-                                    <option value="${bpo.getId()}">${bpo.getFirstName()} ${bpo.getLastName()}</option>
-                                </c:forEach>
-                            </select>
+                    <%-- Notes tab pane --%>
+                    <div class="detail-tab-pane active" id="panelNotesPane">
+                        <div class="detail-notes-stream" id="panelNotesStream">
+                            <div class="text-center text-muted fst-italic py-3" style="font-size:0.8rem;">Select a task</div>
                         </div>
-                    </c:if>
-
-                    <%-- Notes --%>
-                    <div class="detail-section" style="border-bottom:none;">
-                        <div class="detail-label">Notes</div>
-                        <div id="panelNotes" style="max-height:250px; overflow-y:auto; margin-bottom:0.5rem;">
-                            <div class="text-center text-muted fst-italic py-2" style="font-size:0.8rem;">Select a task</div>
-                        </div>
-
-                        <%-- Add note + file attach --%>
-                        <div class="mb-2" id="panelAddNoteSection">
+                        <div class="detail-note-bar" id="panelAddNoteSection">
                             <div class="input-group input-group-sm">
                                 <input type="text" class="form-control" id="panelNoteInput" placeholder="Add a note..."
                                        onkeydown="if(event.key==='Enter'){addNoteAjax(); event.preventDefault();}">
-                                <button type="button" class="btn btn-sm btn-outline-ssa" onclick="addNoteAjax()">
-                                    <i class="bi bi-chat-dots me-1"></i>Add
-                                </button>
-                            </div>
-                            <div class="mt-1">
-                                <label class="form-label mb-0" style="font-size:0.75rem; color:#6c757d; cursor:pointer;">
-                                    <i class="bi bi-paperclip"></i> Attach file
+                                <label class="btn btn-sm btn-outline-secondary mb-0" style="display:flex; align-items:center; cursor:pointer;">
+                                    <i class="bi bi-paperclip"></i>
                                     <input type="file" id="panelNoteFile" style="display:none;" onchange="updateFileLabel(this)">
                                 </label>
-                                <span id="panelFileLabel" style="font-size:0.75rem; color:#0d5681;"></span>
-                                <span id="panelFileClear" style="display:none; font-size:0.75rem; color:#dc3545; cursor:pointer; margin-left:0.3rem;" onclick="clearFileInput()">&#10005;</span>
+                                <button type="button" class="btn btn-sm btn-outline-success" onclick="addNoteAjax()">
+                                    <i class="bi bi-send"></i>
+                                </button>
+                            </div>
+                            <div id="panelFileRow" style="display:none; margin-top:0.2rem; font-size:0.75rem;">
+                                <span id="panelFileLabel" style="color:#0d5681;"></span>
+                                <span id="panelFileClear" style="color:#dc3545; cursor:pointer; margin-left:0.3rem;" onclick="clearFileInput()">&#10005;</span>
                             </div>
                         </div>
                     </div>
 
-                    <%-- Past Runs (recurring cross-system tasks) --%>
-                    <div class="detail-section" id="panelPastRunsSection" style="display:none; border-bottom:none;">
-                        <div class="detail-label"><i class="bi bi-clock-history me-1"></i>Past Runs</div>
-                        <div id="panelPastRunsLoading" class="text-muted fst-italic" style="font-size:0.78rem;">Loading...</div>
-                        <div id="panelPastRunsAccordion" class="accordion accordion-flush" style="display:none; font-size:0.78rem;"></div>
+                    <%-- Past Runs tab pane --%>
+                    <div class="detail-tab-pane" id="panelHistoryPane">
+                        <div class="detail-past-runs-list" id="panelPastRunsList">
+                            <div class="text-center text-muted fst-italic py-3" style="font-size:0.8rem;">No past runs</div>
+                        </div>
                     </div>
                 </div>
 
-                <%-- Panel Footer --%>
+                <%-- Footer --%>
                 <div class="detail-footer" id="panelFooter">
                     <c:if test="${sessionScope.isBpoAdmin}">
                         <button type="button" class="ssa-action save" id="panelAcceptBtn" style="display:none;" onclick="acceptFromPanel()">
@@ -608,15 +762,9 @@
                         </button>
                         <span id="panelAcceptSep" class="ssa-action-sep" style="display:none;">|</span>
                     </c:if>
-                    <form method="post" action="BpoCompleteTask" class="d-inline" id="panelCompleteForm">
-                        <input type="hidden" name="action" value="complete">
-                        <input type="hidden" name="todoId" id="panelCompleteToDoId" value="">
-                        <input type="hidden" name="todoGuid" id="panelCompleteTodoGuid" value="">
-                        <input type="hidden" name="crossSystem" id="panelCrossSystem" value="false">
-                        <button type="submit" class="ssa-action save">
-                            <i class="bi bi-check-circle me-1"></i>Mark Complete
-                        </button>
-                    </form>
+                    <button type="button" class="ssa-action save" id="panelCompleteBtn" onclick="markCompleteAjax()">
+                        <i class="bi bi-check-circle me-1"></i>Mark Complete
+                    </button>
                     <span class="ssa-action-sep">|</span>
                     <button type="button" class="ssa-action cancel" onclick="closeTaskPanel()"><i class="bi bi-x-lg me-1"></i>Close</button>
                 </div>
@@ -651,8 +799,11 @@
         document.getElementById('panelCompletedBanner').style.display = 'none';
         document.getElementById('panelAddNoteSection').style.display = '';
         document.getElementById('panelFooter').style.display = '';
-        const assignSection = document.getElementById('panelAssignSection');
-        if (assignSection) assignSection.style.display = '';
+        const assignField = document.getElementById('panelAssignField');
+        if (assignField) assignField.style.display = '';
+
+        // Reset to Notes tab
+        switchDetailTab('notes');
 
         // Deselect previous
         if (currentTaskRow) currentTaskRow.classList.remove('active');
@@ -670,65 +821,57 @@
         const activityName = row.dataset.activityName || '';
         const activityType = row.dataset.activityType || '';
         const dueDate = row.dataset.dueDate || '';
-        const description = row.dataset.taskDescription || '';
         const gotoUrl = row.dataset.goto || '';
         const infoUrl = row.dataset.info || '';
         const assignedTo = row.dataset.assignedTo || '0';
 
-        // Populate header
+        // Populate context card
         document.getElementById('panelTaskName').textContent = taskName;
-        document.getElementById('panelPspBadge').textContent = pspName;
+        document.getElementById('panelPspName').textContent = pspName;
         document.getElementById('panelActivityName').textContent = activityName;
 
         // Type badge
         const typeBadge = document.getElementById('panelTypeBadge');
         typeBadge.textContent = activityType;
         typeBadge.className = 'bpo-type-badge bpo-type-' + activityType.toLowerCase();
+        typeBadge.style.cssText = '';
 
         // Due date with color
         const dueDateEl = document.getElementById('panelDueDate');
-        dueDateEl.textContent = dueDate;
-        // Parse and color-code
         if (dueDate) {
             const parts = dueDate.split('/');
             if (parts.length === 3) {
                 const d = new Date(parts[2], parts[0] - 1, parts[1]);
                 const today = new Date(); today.setHours(0,0,0,0);
-                if (d < today) dueDateEl.className = 'due-overdue';
-                else if (d.getTime() === today.getTime()) dueDateEl.className = 'due-today';
-                else dueDateEl.className = 'due-future';
+                const diffDays = Math.round((today - d) / 86400000);
+                if (d < today) {
+                    dueDateEl.innerHTML = '<span class="due-overdue">' + parts[0] + '/' + parts[1] + ' \u00b7 ' + diffDays + ' day' + (diffDays !== 1 ? 's' : '') + ' overdue</span>';
+                } else if (d.getTime() === today.getTime()) {
+                    dueDateEl.innerHTML = '<span class="due-today">' + parts[0] + '/' + parts[1] + ' \u00b7 Due today</span>';
+                } else {
+                    dueDateEl.innerHTML = '<span class="due-future">' + parts[0] + '/' + parts[1] + '</span>';
+                }
+            } else {
+                dueDateEl.textContent = dueDate;
             }
+        } else {
+            dueDateEl.textContent = '\u2014';
         }
-
-        // Hidden form fields
-        document.getElementById('panelCompleteToDoId').value = currentTodoId;
-        document.getElementById('panelCompleteTodoGuid').value = currentTodoGuid;
-        document.getElementById('panelCrossSystem').value = currentCrossSystem ? 'true' : 'false';
 
         // Show/hide Accept vs Complete based on pending state
         const acceptBtn = document.getElementById('panelAcceptBtn');
         const acceptSep = document.getElementById('panelAcceptSep');
-        const completeForm = document.getElementById('panelCompleteForm');
+        const completeBtn = document.getElementById('panelCompleteBtn');
         if (acceptBtn) {
             acceptBtn.style.display = currentIsPending ? '' : 'none';
             acceptSep.style.display = currentIsPending ? '' : 'none';
         }
-        if (completeForm) {
-            completeForm.style.display = currentIsPending ? 'none' : '';
-        }
-
-        // Description
-        const descSection = document.getElementById('panelDescSection');
-        const descEl = document.getElementById('panelDescription');
-        if (description) {
-            descEl.textContent = description;
-            descSection.style.display = '';
-        } else {
-            descSection.style.display = 'none';
+        if (completeBtn) {
+            completeBtn.style.display = currentIsPending ? 'none' : '';
         }
 
         // Links
-        const linksSection = document.getElementById('panelLinksSection');
+        const linksRow = document.getElementById('panelLinksRow');
         const goToLink = document.getElementById('panelGoToLink');
         const infoLink = document.getElementById('panelInfoLink');
         let hasLinks = false;
@@ -736,69 +879,61 @@
         else { goToLink.style.display = 'none'; }
         if (infoUrl) { infoLink.href = infoUrl; infoLink.style.display = ''; hasLinks = true; }
         else { infoLink.style.display = 'none'; }
-        linksSection.style.display = hasLinks ? '' : 'none';
+        linksRow.style.display = hasLinks ? '' : 'none';
 
         // Assignment dropdown
         const assignSelect = document.getElementById('panelAssignTo');
         if (assignSelect) assignSelect.value = assignedTo;
 
         // Load notes
-        const notesDiv = document.getElementById('panelNotes');
-        notesDiv.innerHTML = '<div class="text-center text-muted fst-italic py-2" style="font-size:0.8rem;">Loading...</div>';
+        const notesStream = document.getElementById('panelNotesStream');
+        notesStream.innerHTML = '<div class="text-center text-muted fst-italic py-3" style="font-size:0.8rem;">Loading...</div>';
         const notesUrl = currentCrossSystem
             ? 'BpoGetNotes?todoGuid=' + encodeURIComponent(currentTodoGuid)
             : 'BpoGetNotes?todoId=' + currentTodoId;
         fetch(notesUrl)
             .then(r => r.json())
             .then(notes => renderNotes(notes))
-            .catch(() => { notesDiv.innerHTML = '<div class="text-center text-muted py-2" style="font-size:0.8rem;">Could not load notes</div>'; });
+            .catch(() => { notesStream.innerHTML = '<div class="text-center text-muted py-3" style="font-size:0.8rem;">Could not load notes</div>'; });
 
         // Past Runs (recurring cross-system tasks)
         const recurringSeriesId = row.dataset.recurringSeriesId || '';
         const pspClientId = row.dataset.pspClientId || '';
-        const pastRunsSection = document.getElementById('panelPastRunsSection');
-        const pastRunsLoading = document.getElementById('panelPastRunsLoading');
-        const pastRunsAccordion = document.getElementById('panelPastRunsAccordion');
-        pastRunsSection.style.display = 'none';
-        pastRunsLoading.style.display = 'block';
-        pastRunsAccordion.style.display = 'none';
-        pastRunsAccordion.innerHTML = '';
+        const pastRunsList = document.getElementById('panelPastRunsList');
+        const historyCount = document.getElementById('panelHistoryCount');
+        pastRunsList.innerHTML = '<div class="text-center text-muted fst-italic py-3" style="font-size:0.8rem;">No past runs</div>';
+        historyCount.textContent = '0';
 
         if (recurringSeriesId && currentCrossSystem) {
-            pastRunsSection.style.display = '';
+            pastRunsList.innerHTML = '<div class="text-center text-muted fst-italic py-3" style="font-size:0.8rem;">Loading...</div>';
             fetch('BpoRecurringHistory?recurringSeriesId=' + encodeURIComponent(recurringSeriesId) + '&pspClientId=' + encodeURIComponent(pspClientId))
                 .then(r => r.json())
                 .then(runs => {
-                    pastRunsLoading.style.display = 'none';
-                    if (!runs || runs.length === 0) { pastRunsSection.style.display = 'none'; return; }
-                    pastRunsAccordion.style.display = 'block';
-                    runs.forEach(function(run, idx) {
-                        const colId = 'bpoPastRun' + idx;
+                    if (!runs || runs.length === 0) {
+                        pastRunsList.innerHTML = '<div class="text-center text-muted fst-italic py-3" style="font-size:0.8rem;">No past runs</div>';
+                        historyCount.textContent = '0';
+                        return;
+                    }
+                    historyCount.textContent = runs.length;
+                    let html = '';
+                    runs.forEach(function(run) {
                         const dueLabel = run.dueDate || '\u2014';
-                        const doneBy = run.completedByName ? ' \u00b7 ' + run.completedByName : '';
+                        const doneBy = run.completedByName || '';
                         const noteCount = run.noteCount || 0;
-                        const noteBadge = noteCount > 0
-                            ? '<span class="badge ms-1" style="background:#0d5681;font-size:0.6rem;">' + noteCount + (noteCount === 1 ? ' note' : ' notes') + '</span>'
+                        const notesBadge = noteCount > 0
+                            ? '<span class="run-notes-badge">' + noteCount + ' note' + (noteCount !== 1 ? 's' : '') + '</span>'
                             : '';
-                        const item = document.createElement('div');
-                        item.className = 'accordion-item';
-                        item.style.cssText = 'border:1px solid #dee2e6;border-radius:3px;margin-bottom:0.25rem;';
-                        item.innerHTML =
-                            '<h2 class="accordion-header">' +
-                            '<button class="accordion-button collapsed py-1 px-2" type="button" ' +
-                            'data-bs-toggle="collapse" data-bs-target="#' + colId + '" ' +
-                            'style="font-size:0.75rem;background:#f8f9fa;" ' +
-                            'onclick="loadPastRunNotes(\'' + colId + '\',\'' + (run.todoGuid || '') + '\')">' +
-                            dueLabel + doneBy + noteBadge +
-                            '</button></h2>' +
-                            '<div id="' + colId + '" class="accordion-collapse collapse">' +
-                            '<div class="accordion-body p-2" id="' + colId + '_body">' +
-                            '<div class="text-muted fst-italic" style="font-size:0.75rem;">Loading notes...</div>' +
-                            '</div></div>';
-                        pastRunsAccordion.appendChild(item);
+                        html += '<div class="past-run-item" data-todo-guid="' + (run.todoGuid || '') + '" onclick="loadPastRunNotesInline(this)">';
+                        html += '<span class="run-date">' + dueLabel + '</span>';
+                        if (doneBy) html += '<span>\u00b7</span><span class="run-assignee">' + doneBy + '</span>';
+                        html += notesBadge;
+                        html += '</div>';
                     });
+                    pastRunsList.innerHTML = html;
                 })
-                .catch(function() { pastRunsLoading.style.display = 'none'; });
+                .catch(function() {
+                    pastRunsList.innerHTML = '<div class="text-center text-muted py-3" style="font-size:0.8rem;">Could not load history</div>';
+                });
         }
 
         // Clear note input
@@ -823,6 +958,9 @@
         row.classList.add('active');
         currentTaskRow = row;
 
+        // Reset to Notes tab
+        switchDetailTab('notes');
+
         const taskName = row.dataset.taskName || '';
         const pspName = row.dataset.pspName || '';
         const activityName = row.dataset.activityName || '';
@@ -832,21 +970,20 @@
         const todoId = row.dataset.todoId || '';
         const todoGuid = row.dataset.todoGuid || '';
 
-        // Populate header
+        // Populate context card
         document.getElementById('panelTaskName').textContent = taskName;
-        document.getElementById('panelPspBadge').textContent = pspName;
+        document.getElementById('panelPspName').textContent = pspName;
         document.getElementById('panelActivityName').textContent = activityName;
 
         // Type badge — show "Completed"
         const typeBadge = document.getElementById('panelTypeBadge');
-        typeBadge.textContent = 'Completed';
+        typeBadge.textContent = 'COMPLETED';
         typeBadge.className = 'bpo-type-badge';
         typeBadge.style.cssText = 'background:#d4edda; color:#155724;';
 
         // Due date — show completed date
         const dueDateEl = document.getElementById('panelDueDate');
-        dueDateEl.textContent = completedDate;
-        dueDateEl.className = '';
+        dueDateEl.innerHTML = '<span style="color:#6c757d;">Completed ' + completedDate + '</span>';
 
         // Completed banner
         document.getElementById('panelCompletedBanner').style.display = '';
@@ -856,26 +993,26 @@
         // Hide editable controls
         document.getElementById('panelAddNoteSection').style.display = 'none';
         document.getElementById('panelFooter').style.display = 'none';
-        const assignSection = document.getElementById('panelAssignSection');
-        if (assignSection) assignSection.style.display = 'none';
+        const assignField = document.getElementById('panelAssignField');
+        if (assignField) assignField.style.display = 'none';
 
-        // Hide links, description (not relevant for completed view)
-        document.getElementById('panelLinksSection').style.display = 'none';
-        document.getElementById('panelDescSection').style.display = 'none';
+        // Hide links
+        document.getElementById('panelLinksRow').style.display = 'none';
 
-        // Load notes / history
-        const notesDiv = document.getElementById('panelNotes');
-        notesDiv.innerHTML = '<div class="text-center text-muted fst-italic py-2" style="font-size:0.8rem;">Loading...</div>';
+        // Clear past runs tab
+        document.getElementById('panelPastRunsList').innerHTML = '<div class="text-center text-muted fst-italic py-3" style="font-size:0.8rem;">No past runs</div>';
+        document.getElementById('panelHistoryCount').textContent = '0';
+
+        // Load notes
+        const notesStream = document.getElementById('panelNotesStream');
+        notesStream.innerHTML = '<div class="text-center text-muted fst-italic py-3" style="font-size:0.8rem;">Loading...</div>';
         const notesUrl = crossSystem
             ? 'BpoGetNotes?todoGuid=' + encodeURIComponent(todoGuid)
             : 'BpoGetNotes?todoId=' + todoId;
         fetch(notesUrl)
             .then(r => r.json())
             .then(notes => renderNotes(notes))
-            .catch(() => { notesDiv.innerHTML = '<div class="text-center text-muted py-2" style="font-size:0.8rem;">Could not load notes</div>'; });
-
-        // Hide past runs section for completed tasks
-        document.getElementById('panelPastRunsSection').style.display = 'none';
+            .catch(() => { notesStream.innerHTML = '<div class="text-center text-muted py-3" style="font-size:0.8rem;">Could not load notes</div>'; });
 
         // Open panel
         document.getElementById('bpoDetailPanel').classList.add('open');
@@ -886,38 +1023,104 @@
         if (e.key === 'Escape') closeTaskPanel();
     });
 
+    // ═══ TAB SWITCHING ═══
+
+    function switchDetailTab(tab) {
+        document.getElementById('panelNotesTab').classList.toggle('active', tab === 'notes');
+        document.getElementById('panelHistoryTab').classList.toggle('active', tab === 'history');
+        document.getElementById('panelNotesPane').classList.toggle('active', tab === 'notes');
+        document.getElementById('panelHistoryPane').classList.toggle('active', tab === 'history');
+    }
+
+    // ═══ MARK COMPLETE (AJAX) ═══
+
+    function markCompleteAjax() {
+        if (!currentTodoId) return;
+        const btn = document.getElementById('panelCompleteBtn');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Completing...';
+
+        let body = 'action=complete&todoId=' + currentTodoId;
+        if (currentCrossSystem) {
+            body += '&crossSystem=true&todoGuid=' + encodeURIComponent(currentTodoGuid);
+        }
+
+        fetch('BpoCompleteTask', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: body
+        })
+        .then(r => {
+            if (r.ok) {
+                // Remove task row from tree
+                if (currentTaskRow) {
+                    const actTasks = currentTaskRow.closest('.bpo-activity-tasks');
+                    const actHeader = actTasks ? actTasks.previousElementSibling : null;
+                    const actGroup = actTasks ? actTasks.closest('.bpo-activity-group') : null;
+                    const pspBody = currentTaskRow.closest('.bpo-psp-body');
+                    const pspGroup = pspBody ? pspBody.closest('.bpo-psp-group') : null;
+                    const pspHeader = pspGroup ? pspGroup.querySelector('.bpo-psp-header') : null;
+
+                    currentTaskRow.remove();
+
+                    // Clean up empty groups
+                    if (actTasks && actTasks.querySelectorAll('.bpo-task-row').length === 0 && actGroup) {
+                        actGroup.remove();
+                    } else if (actHeader) {
+                        const actCount = actHeader.querySelector('.bpo-activity-count');
+                        if (actCount && actTasks) actCount.textContent = '(' + actTasks.querySelectorAll('.bpo-task-row').length + ')';
+                    }
+                    if (pspBody && pspBody.querySelectorAll('.bpo-task-row').length === 0 && pspGroup) {
+                        pspGroup.remove();
+                    } else if (pspHeader) {
+                        const pspCount = pspHeader.querySelector('.bpo-psp-count');
+                        if (pspCount && pspBody) pspCount.textContent = pspBody.querySelectorAll('.bpo-task-row').length;
+                    }
+                    currentTaskRow = null;
+                }
+                closeTaskPanel();
+            } else {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-check-circle me-1"></i>Mark Complete';
+                alert('Could not complete task. Please try again.');
+            }
+        })
+        .catch(() => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-check-circle me-1"></i>Mark Complete';
+        });
+    }
+
     // ═══ NOTES ═══
 
     function renderNotes(notes) {
-        const notesDiv = document.getElementById('panelNotes');
+        const notesStream = document.getElementById('panelNotesStream');
+        const notesCount = document.getElementById('panelNotesCount');
         if (!notes || notes.length === 0) {
-            notesDiv.innerHTML = '<div class="text-center text-muted fst-italic py-2" style="font-size:0.8rem;">No notes yet</div>';
+            notesStream.innerHTML = '<div class="text-center text-muted fst-italic py-3" style="font-size:0.8rem;">No notes yet</div>';
+            notesCount.textContent = '0';
             return;
         }
+        notesCount.textContent = notes.length;
         let html = '';
         notes.forEach(n => {
-            const badgeClass = n.source === 'BPO' ? 'background:#e8f4f8; color:#0d5681;' : 'background:#fff3cd; color:#856404;';
-            html += '<div style="padding:0.35rem 0; border-bottom:1px solid #f0f0f0;">';
-            html += '  <div class="d-flex align-items-center gap-2">';
-            html += '    <span style="font-size:0.65rem; padding:0.1rem 0.4rem; border-radius:8px; ' + badgeClass + '">' + n.source + '</span>';
-            html += '    <span style="font-size:0.8rem; font-weight:500;">' + n.author + '</span>';
-            html += '    <span style="font-size:0.7rem; color:#999;">' + n.date + '</span>';
-            html += '  </div>';
-            html += '  <div style="font-size:0.85rem; margin-top:0.15rem; padding-left:0.2rem;">' + n.text + '</div>';
+            const sourceClass = n.source === 'BPO' ? 'bpo' : 'psp';
+            html += '<div class="note-item">';
+            html += '<div class="note-header">';
+            html += '<span class="note-source ' + sourceClass + '">' + n.source + '</span>';
+            html += '<span class="note-author">' + n.author + '</span>';
+            html += '<span class="note-date">' + n.date + '</span>';
+            html += '</div>';
+            html += '<div class="note-text">' + n.text + '</div>';
             if (n.attachments && n.attachments.length > 0) {
-                html += '<div style="margin-top:0.25rem; padding-left:0.2rem;">';
                 n.attachments.forEach(att => {
-                    html += '<a href="' + att.url + '" target="_blank" '
-                        + 'style="display:inline-block; font-size:0.75rem; padding:0.15rem 0.5rem; '
-                        + 'background:#e8f4f8; color:#0d5681; border-radius:12px; text-decoration:none; '
-                        + 'margin-right:0.3rem; margin-bottom:0.2rem;">'
+                    html += '<a href="' + att.url + '" target="_blank" class="note-attachment">'
                         + '<i class="bi bi-paperclip"></i> ' + att.name + '</a>';
                 });
-                html += '</div>';
             }
             html += '</div>';
         });
-        notesDiv.innerHTML = html;
+        notesStream.innerHTML = html;
     }
 
     function addNoteAjax() {
@@ -957,60 +1160,63 @@
     }
 
     function updateFileLabel(input) {
+        const fileRow = document.getElementById('panelFileRow');
         const label = document.getElementById('panelFileLabel');
-        const clear = document.getElementById('panelFileClear');
         if (input.files.length > 0) {
             label.textContent = input.files[0].name;
-            clear.style.display = 'inline';
+            fileRow.style.display = '';
         } else {
             label.textContent = '';
-            clear.style.display = 'none';
+            fileRow.style.display = 'none';
         }
     }
 
     function clearFileInput() {
         document.getElementById('panelNoteFile').value = '';
         document.getElementById('panelFileLabel').textContent = '';
-        document.getElementById('panelFileClear').style.display = 'none';
+        document.getElementById('panelFileRow').style.display = 'none';
     }
 
-    function loadPastRunNotes(colId, todoGuid) {
-        const body = document.getElementById(colId + '_body');
-        if (!body || !todoGuid || body.dataset.loaded === 'true') return;
-        body.dataset.loaded = 'true';
+    function loadPastRunNotesInline(runItem) {
+        const todoGuid = runItem.dataset.todoGuid;
+        if (!todoGuid || runItem.dataset.loaded === 'true') return;
+        runItem.dataset.loaded = 'true';
+
+        // Toggle expand: add a notes sub-area below the run item
+        const notesArea = document.createElement('div');
+        notesArea.style.cssText = 'padding:0.3rem 0.4rem; border-top:1px solid #eee; margin-top:0.25rem;';
+        notesArea.innerHTML = '<div class="text-muted fst-italic" style="font-size:0.75rem;">Loading notes...</div>';
+        runItem.appendChild(notesArea);
+        runItem.style.flexWrap = 'wrap';
 
         fetch('BpoGetNotes?todoGuid=' + encodeURIComponent(todoGuid))
             .then(r => r.json())
             .then(notes => {
                 if (!notes || notes.length === 0) {
-                    body.innerHTML = '<div class="text-muted fst-italic" style="font-size:0.75rem;">No notes for this run.</div>';
+                    notesArea.innerHTML = '<div class="text-muted fst-italic" style="font-size:0.75rem;">No notes for this run.</div>';
                     return;
                 }
                 let html = '';
                 notes.forEach(function(n) {
-                    const badgeColor = n.source === 'BPO' ? '#0d5681' : '#6c757d';
-                    html += '<div class="mb-1 p-1 rounded" style="background:#f8f9fa;font-size:0.75rem;">';
-                    html += '<span class="badge me-1" style="background:' + badgeColor + ';font-size:0.6rem;">' + (n.source || '') + '</span>';
-                    html += '<span style="color:#555;">' + (n.author || '') + '</span>';
-                    if (n.date) html += '<span class="text-muted ms-1" style="font-size:0.68rem;">' + n.date + '</span>';
-                    html += '<div style="color:#333;margin-top:2px;">' + (n.text || '') + '</div>';
+                    const sourceClass = n.source === 'BPO' ? 'bpo' : 'psp';
+                    html += '<div style="padding:0.2rem 0; font-size:0.75rem;">';
+                    html += '<span class="note-source ' + sourceClass + '" style="font-size:0.55rem;">' + (n.source || '') + '</span> ';
+                    html += '<span style="font-weight:500; color:#555;">' + (n.author || '') + '</span>';
+                    if (n.date) html += ' <span style="color:#999; font-size:0.68rem;">' + n.date + '</span>';
+                    html += '<div style="color:#333; margin-top:1px;">' + (n.text || '') + '</div>';
                     if (n.attachments && n.attachments.length > 0) {
-                        html += '<div style="margin-top:0.25rem;">';
                         n.attachments.forEach(function(att) {
-                            html += '<a href="' + att.url + '" target="_blank" '
-                                + 'style="display:inline-block;font-size:0.7rem;padding:0.1rem 0.4rem;'
-                                + 'background:#e8f4f8;color:#0d5681;border-radius:12px;text-decoration:none;'
-                                + 'margin-right:0.3rem;margin-bottom:0.2rem;">'
+                            html += '<a href="' + att.url + '" target="_blank" class="note-attachment" style="font-size:0.68rem;">'
                                 + '<i class="bi bi-paperclip"></i> ' + att.name + '</a>';
                         });
-                        html += '</div>';
                     }
                     html += '</div>';
                 });
-                body.innerHTML = html;
+                notesArea.innerHTML = html;
+                notesArea.style.width = '100%';
             })
             .catch(function() {
-                body.innerHTML = '<div class="text-muted" style="font-size:0.75rem;">Could not load notes.</div>';
+                notesArea.innerHTML = '<div class="text-muted" style="font-size:0.75rem;">Could not load notes.</div>';
             });
     }
 

@@ -14,6 +14,7 @@ import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.data.service.BpoTaskPushService;
 import net.superiorstate.ams.data.service.QuestionnaireService;
 import net.superiorstate.ams.data.service.RenewalService;
+import net.superiorstate.ams.model.activity.checklist.CheckList;
 import net.superiorstate.ams.model.activity.renewal.Renewal;
 import net.superiorstate.ams.model.general.Person;
 import net.superiorstate.ams.model.general.PersonV;
@@ -64,8 +65,10 @@ public class AddRenewal25 extends HttpServlet {
                     currentPerson.getPsp().getId());
 
             // Push sourced tasks to BPO vendors (non-fatal, after all transactions committed)
+            // Re-fetch checklist so toDoList includes all required-sequence ToDos just created
             if (renewal.getCheckList() != null) {
-                BpoTaskPushService.pushDelegatedTasks(em, renewal.getCheckList());
+                CheckList freshChecklist = EntityLookup.getCheckListById(em, renewal.getCheckList().getId());
+                BpoTaskPushService.pushDelegatedTasks(em, freshChecklist);
             }
 
             local.refreshRenewals(em);
