@@ -53,13 +53,15 @@ public class SetupModalData extends HttpServlet {
         // currentPersonId
         json.append(",\"currentPersonId\":").append(local.getCurrentPerson().getId());
 
-        // agencies array
+        // agencies array (exclude suppressed)
         json.append(",\"agencies\":[");
         List<Agency> agencies = global.getAgencies();
         if (agencies != null) {
-            for (int i = 0; i < agencies.size(); i++) {
-                if (i > 0) json.append(",");
-                Agency a = agencies.get(i);
+            boolean first = true;
+            for (Agency a : agencies) {
+                if (a.isSuppressed()) continue;
+                if (!first) json.append(",");
+                first = false;
                 json.append("{\"id\":").append(a.getId());
                 json.append(",\"name\":\"").append(escapeJson(a.getName())).append("\"");
                 json.append(",\"rateIds\":\"").append(escapeJson(global.getAgencyRateIds(a.getId()))).append("\"");

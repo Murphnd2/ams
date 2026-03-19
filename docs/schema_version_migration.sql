@@ -76,4 +76,5 @@ INSERT IGNORE INTO schema_version (version, description, script_name) VALUES
 ('V053', 'Interactive import enhancements: update mode, mapping status, FK flags', 'V053__interactive_import_enhancements.sql'),
 ('V054', 'Super User Dashboard — managed_installation table', 'V054__managed_installation.sql'),
 ('V055', 'Schema info view for structural version identification', 'V055__schema_info_view.sql'),
-('V056', 'Training video and single-use token tables', 'V056__training_video_tokens.sql');
+('V056', 'Training video and single-use token tables', 'V056__training_video_tokens.sql'),
+('V057', 'Add suppressed flag to agency table', 'V057__agency_suppressed.sql');

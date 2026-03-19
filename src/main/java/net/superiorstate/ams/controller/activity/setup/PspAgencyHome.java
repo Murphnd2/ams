@@ -35,8 +35,16 @@ public class PspAgencyHome extends HttpServlet {
         int pspId = local.getCurrentPerson().getPsp().getId().intValue();
 
         try {
-            // Always load agency list
-            List<Agency> agencyList = SalesDAO.getAgencyList(em, pspId);
+            // Load agency list — filter suppressed unless toggled
+            boolean showSuppressed = "true".equals(request.getParameter("showSuppressed"));
+            request.setAttribute("showSuppressed", showSuppressed);
+
+            List<Agency> agencyList;
+            if (showSuppressed) {
+                agencyList = SalesDAO.getAgencyList(em, pspId);
+            } else {
+                agencyList = SalesDAO.getActiveAgencyList(em, pspId);
+            }
             Collections.sort(agencyList);
             request.setAttribute("agencyList", agencyList);
 

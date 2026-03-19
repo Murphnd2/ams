@@ -2,7 +2,7 @@
 
 Tracks database schema versions across environments.
 
-**Last Updated:** March 16, 2026
+**Last Updated:** March 19, 2026
 
 ## Environments
 
@@ -16,7 +16,7 @@ Tracks database schema versions across environments.
 | BPO | bpo.superiorstate.biz | beta_ssa | BPO instance (V038, initialized, release V0.37.0) |
 | Master | master.superiorstate.biz | beta_ssa | Snapshot v8 (V037, stopped) |
 
-## Current Highest Version: V056
+## Current Highest Version: V057
 
 ## Dev Baseline
 
@@ -88,6 +88,7 @@ Individual migration scripts are no longer stored in the repo. The baseline dump
 | V054 | Super User Dashboard — managed_installation table | ⬜ | ⬜ | ⬜ | ✅ | ⬜ | ⬜ | ⬜ |
 | V055 | Schema info view for structural version identification | ⬜ | ⬜ | ⬜ | ✅ | ⬜ | ⬜ | ⬜ |
 | V056 | Training video and single-use token tables | ⬜ | ⬜ | ⬜ | ✅ | ⬜ | ⬜ | ⬜ |
+| V057 | Add suppressed flag to agency table | ⬜ | ⬜ | ⬜ | ✅ | ⬜ | ⬜ | ⬜ |
 
 ## Notes
 

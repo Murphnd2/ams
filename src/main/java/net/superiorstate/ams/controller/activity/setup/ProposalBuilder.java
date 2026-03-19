@@ -40,8 +40,8 @@ public class ProposalBuilder extends HttpServlet {
             request.setAttribute("isAgent", isAgent);
             request.setAttribute("isAgencyAdmin", isAgencyAdmin);
 
-            // ── Load agencies for this PSP (needed for PSP admin new-prospect modal) ──
-            List<Agency> agencyList = SalesDAO.getAgencyList(em, pspId);
+            // ── Load active agencies for this PSP (needed for PSP admin new-prospect modal) ──
+            List<Agency> agencyList = SalesDAO.getActiveAgencyList(em, pspId);
             request.setAttribute("agencyList", agencyList);
 
             // ── Resolve the current user's agency (if they belong to one) ──
@@ -135,8 +135,17 @@ public class ProposalBuilder extends HttpServlet {
                     // PSP admin not in any agency — just show all by default
                     prospectList = SalesDAO.getProspectsByPsp(em, pspId);
                 }
-                // Always load the full list for the "Show All" expansion
+                // Always load the full list for the "Show All" expansion — exclude prospects from suppressed agencies
                 List<Prospect> allProspects = SalesDAO.getProspectsByPsp(em, pspId);
+                // Build set of agent IDs that belong to at least one active agency
+                Set<Long> activeAgentIds = new HashSet<>();
+                for (Agency ag : agencyList) {
+                    Agency fullAg = SalesDAO.getAgencyFull(em, ag.getId());
+                    if (fullAg.getAgentList() != null) {
+                        fullAg.getAgentList().forEach(a -> activeAgentIds.add(a.getId()));
+                    }
+                }
+                allProspects.removeIf(p -> p.getAgent() == null || !activeAgentIds.contains(p.getAgent().getId()));
                 request.setAttribute("allProspects", allProspects);
                 canExpand = true;
 

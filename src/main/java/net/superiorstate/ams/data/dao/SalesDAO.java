@@ -110,6 +110,11 @@ public abstract class SalesDAO {
         q.setParameter("psp_id",pspID);
         return (List<Agency>) q.getResultList();
     }
+    public static List<Agency> getActiveAgencyList(EntityManager em, int pspID){
+        Query q = em.createQuery("SELECT a FROM Agency a WHERE a.psp.id = :psp_id AND a.suppressed = false");
+        q.setParameter("psp_id",pspID);
+        return (List<Agency>) q.getResultList();
+    }
     public static List<ServiceModule> getServiceModuleList(EntityManager em, int pspID){
         Query q = em.createQuery("SELECT sm FROM ServiceModule sm WHERE sm.psp.id = :psp_id");
         q.setParameter("psp_id",pspID);

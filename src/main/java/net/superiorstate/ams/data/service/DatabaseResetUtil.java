@@ -50,6 +50,8 @@ public abstract class DatabaseResetUtil {
         public String smtpUser;
         public String smtpPassword;
         public String systemType;  // "PSP" or "BPO"
+        public String masterApiTokenInbound;   // SuperDashboard registration token
+        public String masterUrl;               // SuperDashboard master URL
         /** Captured rows from schema_version: [version, description, script_name] */
         public List<Object[]> schemaVersionRows;
     }
@@ -108,6 +110,8 @@ public abstract class DatabaseResetUtil {
         s.domain = getConstant(em, "WEB_PATH");
         s.summitPath = getConstant(em, "SUMMIT_PATH");
         s.systemType = getConstant(em, "SYSTEM_TYPE");
+        s.masterApiTokenInbound = getConstant(em, "MASTER_API_TOKEN_INBOUND");
+        s.masterUrl = getConstant(em, "MASTER_URL");
 
         // Capture schema_version rows (if the table exists)
         try {
@@ -267,6 +271,30 @@ public abstract class DatabaseResetUtil {
                     em.getTransaction().commit();
                     log(out, "Restored admin password credentials.");
                 }
+            }
+        }
+
+        // Restore SuperDashboard master registration tokens (so refresh still works after reseed)
+        if (s.masterApiTokenInbound != null) {
+            try {
+                em.getTransaction().begin();
+                Constant tokenConst = new Constant();
+                tokenConst.setName("MASTER_API_TOKEN_INBOUND");
+                tokenConst.setValue(s.masterApiTokenInbound);
+                tokenConst.setNote("Token for master management node authentication");
+                em.persist(tokenConst);
+                if (s.masterUrl != null) {
+                    Constant urlConst = new Constant();
+                    urlConst.setName("MASTER_URL");
+                    urlConst.setValue(s.masterUrl);
+                    urlConst.setNote("URL of the master management node");
+                    em.persist(urlConst);
+                }
+                em.getTransaction().commit();
+                log(out, "Restored SuperDashboard master registration tokens.");
+            } catch (Exception e) {
+                if (em.getTransaction().isActive()) em.getTransaction().rollback();
+                log(out, "Warning: could not restore master tokens: " + e.getMessage());
             }
         }
     }

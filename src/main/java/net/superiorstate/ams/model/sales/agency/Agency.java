@@ -21,6 +21,9 @@ public class Agency implements Comparable<Agency> {
     @Column(name="phone",columnDefinition = "varchar(12)")
     private String phone;
 
+    @Column(name="suppressed", nullable = false)
+    private boolean suppressed;
+
     @ManyToOne
     @JoinColumn(name="psp_id")
     private PSP psp;
@@ -79,6 +82,14 @@ public class Agency implements Comparable<Agency> {
 
     public void setPhone(String phone) {
         this.phone = phone;
+    }
+
+    public boolean isSuppressed() {
+        return suppressed;
+    }
+
+    public void setSuppressed(boolean suppressed) {
+        this.suppressed = suppressed;
     }
 
     public PSP getPsp() {

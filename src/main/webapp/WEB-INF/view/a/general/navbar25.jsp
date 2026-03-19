@@ -180,10 +180,6 @@
                 <li><a class="dropdown-item" href="ProposalBuilder"><i class="bi bi-file-earmark-plus me-2"></i>New Proposal</a></li>
               </c:if>
               <c:if test="${sessionScope.isPspAdmin}">
-                <c:if test="${sessionScope.isAgent}">
-                  <li><hr class="dropdown-divider"></li>
-                </c:if>
-                <li><a class="dropdown-item" href="ReviewApplications"><i class="bi bi-clipboard-check me-2"></i>Application Review</a></li>
               </c:if>
               <c:if test="${sessionScope.isAgencyAdmin}">
                 <li><hr class="dropdown-divider"></li>

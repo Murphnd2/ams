@@ -251,6 +251,34 @@ public class AgencyAction extends HttpServlet {
                     em.merge(agency);
                     em.getTransaction().commit();
                 }
+
+                case "suppressAgency" -> {
+                    long agencyId = Long.parseLong(agencyIdParam);
+                    Agency agency = SalesDAO.getAgencyFull(em, agencyId);
+
+                    // Remove all rate assignments
+                    if (agency.getAgencyRateList() != null) {
+                        List<Rate> toRemove = new ArrayList<>(agency.getAgencyRateList());
+                        for (Rate r : toRemove) {
+                            agency.removeRate(r);
+                        }
+                    }
+
+                    agency.setSuppressed(true);
+                    em.getTransaction().begin();
+                    em.merge(agency);
+                    em.getTransaction().commit();
+                }
+
+                case "unsuppressAgency" -> {
+                    long agencyId = Long.parseLong(agencyIdParam);
+                    Agency agency = em.find(Agency.class, agencyId);
+
+                    agency.setSuppressed(false);
+                    em.getTransaction().begin();
+                    em.merge(agency);
+                    em.getTransaction().commit();
+                }
             }
 
         } finally {

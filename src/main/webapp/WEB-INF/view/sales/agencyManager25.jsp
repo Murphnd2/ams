@@ -52,9 +52,14 @@
           <c:choose>
             <c:when test="${not empty agencyList}">
               <c:forEach var="agency" items="${agencyList}">
-                <a href="PspAgencyHome?agencyId=${agency.getId()}" class="d-block text-decoration-none text-dark">
-                  <div class="agency-card p-2 ps-3 ${selectedAgency != null && selectedAgency.getId() == agency.getId() ? 'active' : ''}">
-                    <div class="fw-semibold">${agency.getName()}</div>
+                <a href="PspAgencyHome?agencyId=${agency.getId()}${showSuppressed ? '&showSuppressed=true' : ''}" class="d-block text-decoration-none ${agency.isSuppressed() ? 'text-muted' : 'text-dark'}">
+                  <div class="agency-card p-2 ps-3 ${selectedAgency != null && selectedAgency.getId() == agency.getId() ? 'active' : ''} ${agency.isSuppressed() ? 'opacity-50' : ''}">
+                    <div class="fw-semibold${agency.isSuppressed() ? ' fst-italic' : ''}">
+                      ${agency.getName()}
+                      <c:if test="${agency.isSuppressed()}">
+                        <span class="badge bg-secondary ms-1" style="font-size:0.65rem">Suppressed</span>
+                      </c:if>
+                    </div>
                     <small class="text-muted">
                       <c:if test="${agency.getPhone() != null && !agency.getPhone().isEmpty()}">
                         <i class="bi bi-telephone me-1"></i>${agency.getPhone()}
@@ -71,6 +76,20 @@
               </div>
             </c:otherwise>
           </c:choose>
+          <div class="text-center py-2 border-top">
+            <c:choose>
+              <c:when test="${showSuppressed}">
+                <a href="PspAgencyHome${not empty selectedAgency ? '?agencyId='.concat(selectedAgency.getId()) : ''}" class="small text-muted text-decoration-none">
+                  <i class="bi bi-eye-slash me-1"></i>Hide suppressed
+                </a>
+              </c:when>
+              <c:otherwise>
+                <a href="PspAgencyHome?showSuppressed=true${not empty selectedAgency ? '&agencyId='.concat(selectedAgency.getId()) : ''}" class="small text-muted text-decoration-none">
+                  <i class="bi bi-eye me-1"></i>Show suppressed
+                </a>
+              </c:otherwise>
+            </c:choose>
+          </div>
         </div>
       </div>
     </div>
@@ -85,12 +104,39 @@
             <div class="card-body py-2">
               <div class="d-flex justify-content-between align-items-center">
                 <div>
-                  <h5 class="mb-0">${selectedAgency.getName()}</h5>
+                  <h5 class="mb-0">
+                    ${selectedAgency.getName()}
+                    <c:if test="${selectedAgency.isSuppressed()}">
+                      <span class="badge bg-secondary ms-1" style="font-size:0.7rem">Suppressed</span>
+                    </c:if>
+                  </h5>
                   <small class="text-muted">Agency ID: ${selectedAgency.getId()}</small>
                 </div>
-                <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#editAgencyModal">
-                  <i class="bi bi-pencil me-1"></i>Edit
-                </button>
+                <div>
+                  <c:choose>
+                    <c:when test="${selectedAgency.isSuppressed()}">
+                      <form method="post" action="AgencyAction" class="d-inline">
+                        <input type="hidden" name="action" value="unsuppressAgency"/>
+                        <input type="hidden" name="agencyId" value="${selectedAgency.getId()}"/>
+                        <button type="submit" class="btn btn-outline-success btn-sm me-1" title="Reactivate this agency">
+                          <i class="bi bi-arrow-counterclockwise me-1"></i>Reactivate
+                        </button>
+                      </form>
+                    </c:when>
+                    <c:otherwise>
+                      <button type="button" class="btn btn-outline-danger btn-sm me-1" onclick="confirmSuppress()" title="Suppress this agency">
+                        <i class="bi bi-x-circle me-1"></i>Suppress
+                      </button>
+                      <form id="suppressForm" method="post" action="AgencyAction" class="d-none">
+                        <input type="hidden" name="action" value="suppressAgency"/>
+                        <input type="hidden" name="agencyId" value="${selectedAgency.getId()}"/>
+                      </form>
+                    </c:otherwise>
+                  </c:choose>
+                  <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#editAgencyModal">
+                    <i class="bi bi-pencil me-1"></i>Edit
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -685,6 +731,13 @@
 </c:if>
 
 <script>
+  // ── Agency Suppression ──────────────────────────────────────
+  function confirmSuppress() {
+    if (confirm('Suppress this agency? This will remove all assigned rates and hide the agency from active workflows.')) {
+      document.getElementById('suppressForm').submit();
+    }
+  }
+
   // ── Rate Assignment State Tracking ──────────────────────────
 
   function updateRateState() {
