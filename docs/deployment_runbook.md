@@ -2,7 +2,7 @@
 
 **Last Updated:** March 2, 2026
 **Reference:** `docs/deployment_strategy.md` for full architecture context
-**SSL Reference:** `docs/tomcat_ssl_setup.md` for detailed SSL instructions
+**SSL Reference:** `docs/tomcat_ssl_setup.md` for nginx + Let's Encrypt SSL setup
 
 ---
 
@@ -10,9 +10,9 @@
 
 Before deploying any PSP, ensure:
 
-- [ ] Master VM snapshot is current (`SSA-Master-Base-v8-2026-03-04` or newer)
+- [ ] Master VM snapshot is current (`SSA-Master-Base-v9-2026-03-20` or newer)
 - [ ] Latest release published to GitHub Releases (WAR + any migration SQL)
-- [ ] `schema_version` table is up to date on the master image (currently V037)
+- [ ] `schema_version` table is up to date on the master image (currently V057)
 - [ ] Health check script installed at `/opt/ssa/scripts/healthcheck.sh` on master image
 - [ ] PSP has provided: company name, contact info, email, domain name, SMTP credentials, Summit path, tax ID
 
@@ -144,21 +144,26 @@ The master image does not include a WAR file — it is pulled from GitHub Releas
 
 ## Phase 3: DNS & SSL (PSP's Side + Your Side)
 
+SSL is handled by nginx (reverse proxy), not Tomcat directly. See `docs/tomcat_ssl_setup.md` for full details.
+
 15. [ ] Communicate VM static IP address to PSP contact
 16. [ ] PSP creates A record: `their.domain.com` → VM IP
 17. [ ] Wait for DNS propagation (verify with `dig their.domain.com` or `nslookup`)
-18. [ ] Generate SSL certificate:
+18. [ ] Create nginx site config:
     ```bash
-    sudo systemctl stop tomcat10
-    sudo certbot certonly --standalone -d their.domain.com
+    sudo cp /etc/nginx/sites-available/template.conf /etc/nginx/sites-available/theirdomain.conf
+    # Edit to replace yourdomain.com with their.domain.com
+    sudo ln -s /etc/nginx/sites-available/theirdomain.conf /etc/nginx/sites-enabled/
     ```
-19. [ ] Configure Tomcat HTTPS connector in `/var/lib/tomcat10/conf/server.xml`
-    - See `docs/tomcat_ssl_setup.md` for full instructions
-20. [ ] Set privileged port binding:
+19. [ ] Generate SSL certificate (uses nginx plugin — no downtime):
     ```bash
-    sudo setcap cap_net_bind_service=+ep $(readlink -f /usr/lib/jvm/java-17-openjdk-amd64/bin/java)
+    sudo certbot certonly --nginx -d their.domain.com -d www.their.domain.com
     ```
-21. [ ] Start Tomcat:
+20. [ ] Reload nginx to pick up the new cert:
+    ```bash
+    sudo systemctl reload nginx
+    ```
+21. [ ] Start Tomcat if not already running:
     ```bash
     sudo systemctl start tomcat10
     ```
@@ -285,18 +290,21 @@ When the master image needs updating (new schema baseline, script changes, infra
 10. Update this runbook's Pre-Deployment Prerequisites with the new snapshot name
 11. Update `docs/deployment_strategy.md` §2.2 with the new image version
 
-### Current Master Image: `SSA-Master-Base-v8-2026-03-04`
+### Current Master Image: `SSA-Master-Base-v9-2026-03-20`
 
-**What's on the v8 image:**
-- Ubuntu 24.x LTS, Java 17, Tomcat 10, MySQL 8, Certbot
+**What's on the v9 image:**
+- Ubuntu 24.x LTS, Java 17, Tomcat 10, MySQL 8, Nginx, Certbot + python3-certbot-nginx
 - MySQL configured with `lower_case_table_names = 1` (required — EclipseLink generates uppercase table names, Linux MySQL defaults to case-sensitive)
 - `ams_app` MySQL user created with password matching `context.xml`
-- Schema at V037 with `schema_version` table populated (37 versions tracked)
+- Schema at V057 with `schema_version` table populated (57 versions tracked)
 - Full `ssa.properties` template with all keys including `SYSTEM_URL=` (PSP_ID=UNINITIALIZED)
+- Chatbot/Anthropic keys removed from ssa.properties (now self-service via UI — D-58)
 - Branding directory (`/var/lib/tomcat10/branding/`) with systemd write override
+- Data directory (`/var/lib/tomcat10/data/`) with systemd ReadWritePaths override (D-66)
 - Scripts: backup.sh, update.sh, healthcheck.sh (reads from ssa.properties)
-- `update.sh` patched with INSERT IGNORE fix (prevents duplicate key on self-registering migrations)
+- `update.sh` synced from repo (version-sort fix, INSERT IGNORE fix)
 - Cron jobs: backup 2:00 AM, update 2:30 AM, health check 6:00 AM UTC
+- Hostname: `ssa-master`
 - No WAR deployed (pulled via update.sh after cloning)
 
 ### MySQL Notes for All VMs
@@ -318,7 +326,7 @@ LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu mysql --socket=/var/run/mysqld/mysqld.
 | Tomcat config | `/var/lib/tomcat10/conf/server.xml` |
 | Tomcat logs | `/var/lib/tomcat10/logs/catalina.out` |
 | EMF error log | `/var/lib/tomcat10/logs/emf_error.log` |
-| SSL certificates | `/var/lib/tomcat10/conf/*.pem` |
+| Nginx site configs | `/etc/nginx/sites-enabled/` |
 | Certbot live certs | `/etc/letsencrypt/live/<domain>/` |
 | Application data | `/var/lib/tomcat10/data/` |
 | Branding files | `/var/lib/tomcat10/branding/` |
@@ -326,14 +334,13 @@ LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu mysql --socket=/var/run/mysqld/mysqld.
 | Backup script | `/opt/ssa/scripts/backup.sh` |
 | Update script | `/opt/ssa/scripts/update.sh` |
 | Health check script | `/opt/ssa/scripts/healthcheck.sh` |
-| SSL renewal script | `/opt/ssa/scripts/renew-ssl.sh` |
 | Local backups | `/opt/ssa/backups/` |
 | Update log | `/opt/ssa/logs/update.log` |
 | Health check log | `/opt/ssa/logs/healthcheck.log` |
-| SSL renewal log | `/opt/ssa/logs/ssl-renewal.log` |
+| Nginx logs | `/var/log/nginx/` |
 | Current version | `/opt/ssa/current_version.txt` |
 | Wasabi bucket | `ssa-backups/<PSP_ID>/db/` |
-| Master snapshot | `SSA-Master-Base-v8-2026-03-04` |
+| Master snapshot | `SSA-Master-Base-v9-2026-03-20` |
 | Master VM SSH | `ssh root@master.superiorstate.biz` (208.94.39.77) |
 
 ---
@@ -344,6 +351,6 @@ LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu mysql --socket=/var/run/mysqld/mysqld.
 |----------|---------|
 | `docs/deployment_strategy.md` | Full architecture and design decisions |
 | `docs/deployment_backlog.md` | Tracked work items and completion status |
-| `docs/tomcat_ssl_setup.md` | Detailed SSL/HTTPS setup instructions |
+| `docs/tomcat_ssl_setup.md` | Nginx + Let's Encrypt SSL setup |
 | `docs/analysis/migration_tracker.md` | Database migration version tracking |
 | `docs/schema_version_migration.sql` | Schema version table + retroactive inserts |

@@ -407,6 +407,25 @@ Snapshot: `SSA-Master-Base-v8-2026-03-04`. Changes from v7: schema upgraded V031
 
 ---
 
+### D-67: Master VPS v9 Snapshot ✅
+
+**Completed:** March 20, 2026
+
+Snapshot: `SSA-Master-Base-v9-2026-03-20`. Changes from v8:
+- Schema upgraded V037→V057, blank schema dump updated to V057
+- Nginx + python3-certbot-nginx installed (SSL now via nginx reverse proxy, not Tomcat-direct)
+- Systemd ReadWritePaths added for `/var/lib/tomcat10/data/` (D-66)
+- `CHATBOT_ENABLED` and `ANTHROPIC_API_KEY` removed from ssa.properties (D-58 — now self-service via UI)
+- `update.sh` synced from repo (version-sort fix)
+- Hostname set to `ssa-master` (D-50)
+- All VPS hostnames set: `ssa-production`, `ssa-demo`, `ssa-bpo`, `ssa-master`
+- SSL migrated on production from Comodo wildcard to Let's Encrypt via nginx (certbot nginx authenticator)
+- `backup.sh` added to repo (`docs/scripts/backup.sh`) with LD_LIBRARY_PATH workaround
+
+Clean state: no WAR, logs cleared, PSP_ID=UNINITIALIZED, SYSTEM_URL blank, Tomcat stopped.
+
+---
+
 ### D-58: Self-Service Anthropic API Key Management
 
 **Priority:** HIGH — Required before multi-PSP deployment (prevents company key leaking to other installs)
@@ -534,10 +553,9 @@ Additional vendors can be added via direct SQL on the master installation. A fut
 
 ---
 
-### D-50: Set Unique Hostnames on VPS Boxes
+### D-50: Set Unique Hostnames on VPS Boxes ✅
 
-**Priority:** LOW
-**Status:** Not started
+**Completed:** March 20, 2026
 
 All cloned VPS boxes have hostname `ubuntu` (inherited from master image). Health report emails all show `Hostname: ubuntu` making them hard to distinguish.
 
@@ -852,10 +870,10 @@ Five fixes bundled together (no schema changes):
 
 ---
 
-### D-66: Systemd ReadWritePaths for Tomcat Data Directory
+### D-66: Systemd ReadWritePaths for Tomcat Data Directory ✅
 
-**Priority:** HIGH — Required on all VPS instances for Summit Import and future file uploads
-**Status:** Applied to Demo PSP — needs applying to BPO, Production, Master image
+**Completed:** March 20, 2026 (master image v9)
+**Applied to:** Demo PSP ✅, Master ✅ — BPO and Production still need applying
 
 Tomcat 10 on Ubuntu 24.04 ships with `ProtectSystem=strict` in the systemd unit, which makes the filesystem read-only except for explicitly allowed paths. The existing branding override (`/var/lib/tomcat10/webapps/ROOT/branding/`) only covers branding files. Summit Import (and any future file-upload feature) writes to `SAVE_PATH/summit_import/` which is blocked.
 

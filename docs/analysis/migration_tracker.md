@@ -14,7 +14,7 @@ Tracks database schema versions across environments.
 | Production | superiorstate.biz | beta_ssa | Live server |
 | Demo PSP | demo.superiorstate.biz | beta_ssa | Conference demo PSP (V038, seeded, release V0.37.0) |
 | BPO | bpo.superiorstate.biz | beta_ssa | BPO instance (V038, initialized, release V0.37.0) |
-| Master | master.superiorstate.biz | beta_ssa | Snapshot v8 (V037, stopped) |
+| Master | master.superiorstate.biz | beta_ssa | Snapshot v9 (V057, stopped) |
 
 ## Current Highest Version: V057
 
