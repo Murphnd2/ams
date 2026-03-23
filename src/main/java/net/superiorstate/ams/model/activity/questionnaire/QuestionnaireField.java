@@ -22,7 +22,7 @@ public class QuestionnaireField implements Comparable<QuestionnaireField> {
     @Column(name = "field_key", columnDefinition = "varchar(100)", nullable = false)
     private String fieldKey;
 
-    @Column(name = "label", columnDefinition = "varchar(200)")
+    @Column(name = "label", columnDefinition = "varchar(500)")
     private String label;
 
     @Column(name = "field_type", columnDefinition = "varchar(20) DEFAULT 'TEXT'")

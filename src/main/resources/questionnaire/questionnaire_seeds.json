@@ -10,1006 +10,1018 @@
   },
   "questionnaires": [
     {
-      "template_key": "q_cobra_renewal",
-      "name": "Renewal Questionnaire",
-      "description": "Collects renewal rate changes, open enrollment details, and plan information from employers for COBRA administration. Responses drive updated payment coupons and participant notifications.",
-      "activity_type": "RENEWAL",
-      "external_url": null,
-      "scoping": {
-        "service_items": ["(COBRA) Medical Insurance"]
-      },
-      "sections": [
-        {
-          "section_name": "Open Enrollment",
-          "section_description": "COBRA participants and qualified beneficiaries must be given notification about open enrollment, rate changes, and benefit changes.",
-          "fields": [
-            {
-              "field_key": "cobra_open_enrollment_allowed",
-              "label": "Are employees allowed to add / change coverage for your upcoming benefit renewal?",
-              "field_type": "RADIO",
-              "select_options": "YES|NO",
-              "is_required": true
-            },
-            {
-              "field_key": "cobra_benefits_changing",
-              "label": "Are any of your benefits changing?",
-              "field_type": "RADIO",
-              "select_options": "YES|NO",
-              "is_required": true
-            },
-            {
-              "field_key": "cobra_what_changes",
-              "label": "What will change with some/all of your renewing benefits?",
-              "field_type": "CHECKBOX",
-              "select_options": "The cost (monthly premium) of the benefit.|The design (deductible, coinsurance, copay, etc.).|New benefits are being added.|Some benefits are being dropped.",
-              "is_required": false,
-              "help_text": "Check all that apply. Only applicable if benefits are changing."
-            },
-            {
-              "field_key": "cobra_change_summary_created",
-              "label": "Have you created a summary of these changes for your employees?",
-              "field_type": "RADIO",
-              "select_options": "YES|NO",
-              "is_required": false
-            },
-            {
-              "field_key": "cobra_enrollment_forms",
-              "label": "Are there specific enrollment forms you are distributing to be completed prior to or during open enrollment?",
-              "field_type": "RADIO",
-              "select_options": "YES|NO",
-              "is_required": false
-            },
-            {
-              "field_key": "cobra_sending_oe_info",
-              "label": "Are you sending open enrollment information to active employees for this benefit renewal?",
-              "field_type": "RADIO",
-              "select_options": "YES|NO",
-              "is_required": false
-            }
-          ]
-        },
-        {
-          "section_name": "Plan #1",
-          "section_description": "Enter plan type, rate structure, and rate details for your first renewing benefit.",
-          "fields": [
-            {
-              "field_key": "cobra_plan1_name",
-              "label": "Plan Name",
-              "field_type": "TEXT",
-              "is_required": true
-            },
-            {
-              "field_key": "cobra_plan1_type",
-              "label": "Plan Type",
-              "field_type": "TEXT",
-              "is_required": true,
-              "help_text": "e.g., Medical, Dental, Vision, Life, etc."
-            },
-            {
-              "field_key": "cobra_plan1_rate_structure",
-              "label": "Rate Structure",
-              "field_type": "RADIO",
-              "select_options": "Individually Rated|Banded|Tiered (Employee, Family, etc..)",
-              "is_required": true
-            },
-            {
-              "field_key": "cobra_plan1_rates",
-              "label": "Tiered Rates",
-              "field_type": "TEXTAREA",
-              "is_required": false,
-              "help_text": "Enter each tier and its rate, e.g., Employee Only: $500, Employee+Spouse: $1100, Family: $1500"
-            },
-            {
-              "field_key": "cobra_plan1_rates_good_through",
-              "label": "Rates Good Through",
-              "field_type": "DATE",
-              "is_required": true
-            },
-            {
-              "field_key": "cobra_plan1_coverage_end",
-              "label": "When does coverage end after a qualifying event?",
-              "field_type": "TEXT",
-              "is_required": false,
-              "help_text": "e.g., End of the month, Last day employed, etc."
-            },
-            {
-              "field_key": "cobra_plan1_another_benefit",
-              "label": "Do you have another benefit renewing?",
-              "field_type": "RADIO",
-              "select_options": "YES|NO",
-              "is_required": true
-            }
-          ]
-        },
-
-        {
-          "section_name": "Plan #6",
-          "section_description": "Enter details for your sixth renewing benefit. Skip if not applicable.",
-          "fields": [
-            {
-              "field_key": "cobra_plan6_name",
-              "label": "Plan Name",
-              "field_type": "TEXT",
-              "is_required": false
-            },
-            {
-              "field_key": "cobra_plan6_type",
-              "label": "Plan Type",
-              "field_type": "TEXT",
-              "is_required": false
-            },
-            {
-              "field_key": "cobra_plan6_rate_structure",
-              "label": "Rate Structure",
-              "field_type": "RADIO",
-              "select_options": "Individually Rated|Banded|Tiered (Employee, Family, etc..)",
-              "is_required": false
-            },
-            {
-              "field_key": "cobra_plan6_rates",
-              "label": "Tiered Rates",
-              "field_type": "TEXTAREA",
-              "is_required": false
-            },
-            {
-              "field_key": "cobra_plan6_rates_good_through",
-              "label": "Rates Good Through",
-              "field_type": "DATE",
-              "is_required": false
-            },
-            {
-              "field_key": "cobra_plan6_coverage_end",
-              "label": "When does coverage end after a qualifying event?",
-              "field_type": "TEXT",
-              "is_required": false
-            }
-          ]
-        },
-        {
-          "section_name": "Final Information",
-          "section_description": null,
-          "fields": [
-            {
-              "field_key": "cobra_additional_info",
-              "label": "Please provide any additional information you may think important for us to know regarding your benefit renewal.",
-              "field_type": "TEXTAREA",
-              "is_required": false
-            },
-            {
-              "field_key": "cobra_attestation",
-              "label": "The rates and information provided are correct to the best of my knowledge.",
-              "field_type": "BOOLEAN",
-              "is_required": true
-            }
-          ]
-        }
-      ]
-    },
-
-    {
-      "template_key": "q_ndt_org_profile",
-      "name": "NDT — Organization Profile",
-      "description": "Captures employer entity type, plan year, employee counts, controlled group status, and plan offerings. Complete this first — the answers determine which entity-specific NDT test questionnaires to attach.",
+      "template_key": "q_ndt_125_cafeteria_plan_test",
+      "name": "NDT - Section 125 Cafeteria Plan Test",
+      "description": "This questionnaire collects the data needed to perform nondiscrimination testing for a Section 125 cafeteria plan. Depending on the benefits offered, this may include Section 125 eligibility, contributions & benefits, and key employee concentration tests, as well as Section 105(h) self-insured plan tests and Section 129 dependent care tests. Sections will be marked as not applicable based on your answers.",
       "activity_type": "NDT",
       "external_url": null,
+      "renderer": "ndt_125",
       "scoping": {
-        "service_items": []
+        "scope_all": true
       },
       "sections": [
         {
-          "section_name": "Organization Information",
-          "section_description": null,
+          "section_name": "Section A - Entity & Plan Context",
+          "section_description": "Tell us about the company sponsoring the plan and the plan year being tested.|Common mistakes: Using a trade name instead of the legal entity name. Entering the wrong plan year end date.",
           "fields": [
             {
-              "field_key": "ndt_entity_type",
-              "label": "What type of business entity is this employer?",
-              "field_type": "SELECT",
-              "select_options": "C-Corporation|S-Corporation|LLC|Partnership|Sole Proprietorship|Non-Profit (501(c)(3))|Government Entity",
+              "field_key": "a_employer_legal_name",
+              "label": "Employer legal name",
+              "field_type": "TEXT",
               "is_required": true,
-              "help_text": "This determines which version of each NDT test questionnaire to attach."
+              "help_text": "Enter the legal name of the entity that sponsors the cafeteria plan."
             },
             {
-              "field_key": "ndt_plan_year_start",
-              "label": "Plan year start date",
-              "field_type": "DATE",
-              "is_required": true,
-              "help_text": "First day of the Section 125 plan year."
-            },
-            {
-              "field_key": "ndt_plan_year_end",
+              "field_key": "a_plan_year_end_date",
               "label": "Plan year end date",
               "field_type": "DATE",
-              "is_required": true
+              "is_required": true,
+              "help_text": "Enter the last day of the plan year being tested."
             },
             {
-              "field_key": "ndt_total_employees",
-              "label": "Total W-2 employees as of the last day of the plan year",
+              "field_key": "a_entity_type",
+              "label": "Entity type",
+              "field_type": "SELECT",
+              "is_required": true,
+              "help_text": "Select the legal entity type of the plan sponsor. If the employer is part of a controlled group with mixed entity types, select the entity type of the entity that sponsors the cafeteria plan.",
+              "select_options": "C-Corporation|S-Corporation|LLC / Partnership|Sole Proprietorship|Non-Profit (501(c)(3))|Government Entity"
+            }
+          ]
+        },
+        {
+          "section_name": "Section B - Controlled Group / Affiliated Service Group",
+          "section_description": "We need to know if your company is related to other companies. If so, employees of ALL related companies count for testing, even if they cannot join the plan.|Common mistakes: Forgetting about companies owned by the same person or family. Not counting employees at sister companies.",
+          "fields": [
+            {
+              "field_key": "b_controlled_group",
+              "label": "Is the employer part of a related group of companies?",
+              "field_type": "RADIO",
+              "is_required": true,
+              "help_text": "Related entities include parent-subsidiary groups (80%+ ownership), brother-sister groups (common ownership by 5 or fewer individuals), and affiliated service groups (service organizations with shared ownership or service relationships).",
+              "select_options": "Yes|No"
+            },
+            {
+              "field_key": "b_non_covered_entities",
+              "label": "Do any related companies exclude employees from the plan?",
+              "field_type": "RADIO",
+              "is_required": true,
+              "help_text": "Employees of non-covered related entities must still be included in the nondiscrimination testing population even though they cannot participate in the plan.",
+              "select_options": "Yes|No"
+            },
+            {
+              "field_key": "b_non_covered_entity_names",
+              "label": "Names of related companies whose employees cannot join",
+              "field_type": "TEXTAREA",
+              "is_required": true,
+              "help_text": "Include every related entity in the group whose employees cannot enroll in the cafeteria plan."
+            },
+            {
+              "field_key": "b_non_covered_entity_employee_count",
+              "label": "Total employees at those non-covered companies",
               "field_type": "NUMBER",
               "is_required": true,
-              "help_text": "Count ALL employees on payroll — full-time, part-time, seasonal, whether or not they participate in any benefit."
-            },
+              "help_text": "Count all common-law employees who were employed on any day during the plan year at the non-covered related entities listed above."
+            }
+          ]
+        },
+        {
+          "section_name": "Section C - Workforce Overview",
+          "section_description": "Tell us about the plan sponsor's workforce size and union status. These numbers form the baseline for all testing calculations.|Common mistakes: Including independent contractors or leased employees in the count. Forgetting to check whether union benefits were actually bargained for.",
+          "fields": [
             {
-              "field_key": "ndt_has_controlled_group",
-              "label": "Does this employer have related companies, a parent company, or subsidiaries?",
-              "field_type": "RADIO",
-              "select_options": "YES|NO",
+              "field_key": "c_total_employees",
+              "label": "Total employees",
+              "field_type": "NUMBER",
               "is_required": true,
-              "help_text": "Under IRS controlled group rules (IRC §414), related employers may be treated as a single employer for testing."
+              "help_text": "Count all common-law employees who were employed on any day during the plan year. Do not include independent contractors, leased employees, or employees of related entities (those are captured separately)."
             },
             {
-              "field_key": "ndt_controlled_group_details",
-              "label": "List each related company name and its W-2 employee count",
+              "field_key": "c_cba_covered",
+              "label": "Are any employees union members (covered by a CBA)?",
+              "field_type": "RADIO",
+              "is_required": true,
+              "help_text": "Employees covered by a CBA may be excludable from testing if cafeteria plan benefits were the subject of good-faith bargaining.",
+              "select_options": "Yes|No"
+            },
+            {
+              "field_key": "c_cba_good_faith",
+              "label": "Were cafeteria benefits bargained for in the CBA?",
+              "field_type": "RADIO",
+              "is_required": true,
+              "help_text": "CBA employees can only be excluded from testing if cafeteria plan benefits were actually bargained for in the agreement. If unsure, check the collective bargaining agreement or contact your labor counsel.",
+              "select_options": "Yes|No"
+            },
+            {
+              "field_key": "c_cba_employee_count",
+              "label": "Number of CBA-covered employees",
+              "field_type": "NUMBER",
+              "is_required": true,
+              "help_text": "Count all common-law employees covered by the collective bargaining agreement(s)."
+            },
+            {
+              "field_key": "c_cba_eligible",
+              "label": "Can CBA employees participate in the cafeteria plan?",
+              "field_type": "RADIO",
+              "is_required": true,
+              "help_text": "CBA employees may be excludable from the testing population, but if they are eligible and participating, their elections still count in certain test calculations.",
+              "select_options": "Yes|No"
+            }
+          ]
+        },
+        {
+          "section_name": "Section D - Benefits Offered",
+          "section_description": "Select the benefits available under the cafeteria plan. Your answers determine which tests apply and which sections you need to complete.|Common mistakes: Forgetting to include pre-tax premium deductions (POP). Not listing HSA contributions run through the cafeteria plan.",
+          "fields": [
+            {
+              "field_key": "d_benefits_offered",
+              "label": "Which benefits does the cafeteria plan offer?",
+              "field_type": "CHECKBOX",
+              "is_required": true,
+              "help_text": "Select all benefits available to employees through the cafeteria plan. Pre-tax insurance premiums (POP) means employees can pay their share of employer-sponsored health, dental, or vision premiums on a pre-tax basis.",
+              "select_options": "Pre-tax insurance premiums (POP)|Health FSA|Limited Purpose FSA|Dependent Care FSA|HSA contributions|Other"
+            },
+            {
+              "field_key": "d_benefits_other_describe",
+              "label": "If Other, describe",
+              "field_type": "TEXT",
+              "is_required": false,
+              "help_text": "Describe any additional benefits offered through the cafeteria plan not listed above."
+            }
+          ]
+        },
+        {
+          "section_name": "Section F - Simple Cafeteria Plan Safe Harbor",
+          "section_description": "Small employers may qualify for a safe harbor that skips all testing. If your employer adopted this and meets the requirements, no further sections are needed.|Common mistakes: Assuming you qualify without confirming the plan document actually adopted the safe harbor. Not checking the 100-employee average over both prior years.",
+          "fields": [
+            {
+              "field_key": "f_simple_cafeteria",
+              "label": "Has the employer adopted a Simple Cafeteria Plan?",
+              "field_type": "RADIO",
+              "is_required": true,
+              "help_text": "A Simple Cafeteria Plan is a special safe harbor for small employers. Your plan document or benefits advisor can confirm whether this has been adopted.",
+              "select_options": "Yes|No|Unsure"
+            },
+            {
+              "field_key": "f_100_or_fewer",
+              "label": "Did the employer average 100 or fewer employees?",
+              "field_type": "RADIO",
+              "is_required": true,
+              "help_text": "Only employers averaging 100 or fewer employees during both of the two preceding plan years are eligible for the Simple Cafeteria Plan safe harbor.",
+              "select_options": "Yes|No"
+            },
+            {
+              "field_key": "f_contribution_requirement",
+              "label": "Does the employer meet the contribution requirement?",
+              "field_type": "RADIO",
+              "is_required": true,
+              "help_text": "The Simple Cafeteria Plan requires the employer to meet one of these contribution requirements. Check your plan document for the contribution formula.",
+              "select_options": "Yes|No"
+            },
+            {
+              "field_key": "f_eligibility_requirement",
+              "label": "Are all employees with 1,000+ hours eligible?",
+              "field_type": "RADIO",
+              "is_required": true,
+              "help_text": "The Simple Cafeteria Plan requires that all employees meeting the 1,000-hour threshold be eligible. Standard excludable employee rules (under age 21, CBA, nonresident alien) still apply.",
+              "select_options": "Yes|No"
+            }
+          ]
+        },
+        {
+          "section_name": "Section E - Plan Eligibility Conditions",
+          "section_description": "Tell us the plan's eligibility rules -- waiting periods, age limits, and hours requirements. These determine who can be excluded from testing.|Common mistakes: Reporting the insurance carrier's waiting period instead of the plan document's. Not realizing eligibility differs by employee class.",
+          "fields": [
+            {
+              "field_key": "e_waiting_period",
+              "label": "Does the plan have a waiting period?",
+              "field_type": "RADIO",
+              "is_required": true,
+              "help_text": "If the plan requires employees to complete a waiting period before they can enroll, employees who have not yet met that requirement may be excludable from testing.",
+              "select_options": "Yes|No"
+            },
+            {
+              "field_key": "e_waiting_period_length",
+              "label": "How long is the waiting period?",
+              "field_type": "SELECT",
+              "is_required": true,
+              "help_text": "For nondiscrimination testing, employees with less than the plan's service requirement (up to 3 years) may be excluded from the testing population.",
+              "select_options": "30 days|60 days|90 days|6 months|1 year|2 years|3 years|Other"
+            },
+            {
+              "field_key": "e_minimum_age",
+              "label": "Does the plan require a minimum age?",
+              "field_type": "RADIO",
+              "is_required": true,
+              "help_text": "If the plan has a minimum age requirement, employees under that age may be excludable from testing.",
+              "select_options": "Yes|No"
+            },
+            {
+              "field_key": "e_minimum_age_value",
+              "label": "What is the minimum age?",
+              "field_type": "NUMBER",
+              "is_required": true,
+              "help_text": "Employees under this age who are not yet eligible may be excluded from testing. The maximum excludable age is 21 under Section 125 proposed regulations."
+            },
+            {
+              "field_key": "e_hours_requirement",
+              "label": "Does the plan require minimum hours worked?",
+              "field_type": "RADIO",
+              "is_required": true,
+              "help_text": "Part-time and seasonal employees may be excludable from testing if the plan imposes an hours or months-worked requirement.",
+              "select_options": "Yes|No"
+            },
+            {
+              "field_key": "e_hours_requirement_value",
+              "label": "What is the hours requirement?",
+              "field_type": "SELECT",
+              "is_required": true,
+              "help_text": "Under Section 125, employees who worked fewer than 1,000 hours in the preceding plan year may be excluded. Under Section 105(h), the threshold is 35 hours per week.",
+              "select_options": "500 hours per year|1,000 hours per year|Other"
+            },
+            {
+              "field_key": "e_eligibility_varies",
+              "label": "Do eligibility rules differ by employee class?",
+              "field_type": "RADIO",
+              "is_required": true,
+              "help_text": "For example, salaried employees eligible immediately but hourly employees subject to a 90-day waiting period. If eligibility conditions differ by group, this affects how the eligibility test is evaluated.",
+              "select_options": "Yes|No"
+            },
+            {
+              "field_key": "e_eligibility_varies_describe",
+              "label": "Describe the classes and their eligibility rules",
+              "field_type": "TEXTAREA",
+              "is_required": true,
+              "help_text": "List each employee classification and the eligibility conditions that apply to it (e.g., 'Salaried - eligible immediately; Hourly - 90-day waiting period; Seasonal - not eligible')."
+            }
+          ]
+        },
+        {
+          "section_name": "Section G - Excludable Employees (Section 125)",
+          "section_description": "Count employees who can be left out of Section 125 testing. Only exclude employees if the plan itself imposes the matching eligibility condition from Section E.|Common mistakes: Excluding employees when the plan has no corresponding rule. Entering a count for a category that does not apply to your plan.",
+          "fields": [
+            {
+              "field_key": "g_under_service_requirement",
+              "label": "Employees not yet meeting the service requirement",
+              "field_type": "NUMBER",
+              "is_required": true,
+              "help_text": "Count employees who have not yet completed the plan's waiting period as reported in Section E. If the plan has no waiting period, enter 0. Employees can only be excluded if the plan imposes this requirement."
+            },
+            {
+              "field_key": "g_under_minimum_age",
+              "label": "Employees under the minimum age requirement",
+              "field_type": "NUMBER",
+              "is_required": true,
+              "help_text": "Count employees under the minimum age reported in Section E. If the plan has no minimum age requirement, enter 0."
+            },
+            {
+              "field_key": "g_part_time_seasonal",
+              "label": "Part-time or seasonal employees (under 1,000 hours)",
+              "field_type": "NUMBER",
+              "is_required": true,
+              "help_text": "Count employees who worked fewer than 1,000 hours during the preceding plan year, or who worked during fewer than 7 months of the preceding plan year."
+            },
+            {
+              "field_key": "g_nonresident_alien",
+              "label": "Nonresident aliens with no US-source income",
+              "field_type": "NUMBER",
+              "is_required": true,
+              "help_text": "Count employees who are nonresident aliens and receive no earned income from US sources from this employer. If none, enter 0."
+            },
+            {
+              "field_key": "g_cobra",
+              "label": "Employees on COBRA continuation coverage",
+              "field_type": "NUMBER",
+              "is_required": true,
+              "help_text": "Count individuals receiving benefits under COBRA continuation provisions. If none, enter 0."
+            }
+          ]
+        },
+        {
+          "section_name": "Section J - HCI Classification (Section 125)",
+          "section_description": "Identify highly compensated individuals (HCIs) for Section 125 testing. Count everyone who qualifies across all related companies -- we handle eligibility exclusions later.|Common mistakes: Forgetting family attribution rules for ownership. Not counting officers at related entities. Leaving out spouses or dependents of HCIs who also work at the company.",
+          "fields": [
+            {
+              "field_key": "j_owners_5pct",
+              "label": "Employees who are more-than-5% owners",
+              "field_type": "NUMBER",
+              "is_required": true,
+              "help_text": "Count employees who directly or indirectly own more than 5% of voting power or value of stock (for corporations), or more than 5% of capital or profits interest (for partnerships/LLCs). Under family attribution rules, ownership by a spouse, children, grandchildren, or parents is treated as the employee's own. Include employees at all related entities in the controlled group."
+            },
+            {
+              "field_key": "j_officers_non_owners",
+              "label": "Officers not already counted as 5%+ owners",
+              "field_type": "NUMBER",
+              "is_required": true,
+              "help_text": "Count officers (president, vice president, secretary, treasurer, or any other corporate officer) who were not already included in the ownership count above. Under Section 125, any officer is a Highly Compensated Individual regardless of compensation."
+            },
+            {
+              "field_key": "j_high_comp_non_owner_officer",
+              "label": "High earners not already counted as owners/officers",
+              "field_type": "NUMBER",
+              "is_required": true,
+              "help_text": "For the 2026 plan year, count employees who earned more than $160,000 in 2025. For the 2025 plan year, the threshold is $155,000 based on 2024 compensation. Do not include anyone already counted as a more-than-5% owner or officer above. Include employees at all related entities in the controlled group."
+            },
+            {
+              "field_key": "j_spouse_dependent_exists",
+              "label": "Are any employees spouses/dependents of those above?",
+              "field_type": "RADIO",
+              "is_required": true,
+              "help_text": "This is unique to Section 125 - spouses and dependents of HCIs are themselves HCIs regardless of their own compensation or position. Do not count anyone already included above.",
+              "select_options": "Yes|No"
+            },
+            {
+              "field_key": "j_spouse_dependent_count",
+              "label": "Additional employees who are HCI spouses/dependents",
+              "field_type": "NUMBER",
+              "is_required": true,
+              "help_text": "Count employees who are spouses or dependents of anyone identified in the questions above, and who have not already been counted in any prior question."
+            },
+            {
+              "field_key": "j_total_hci",
+              "label": "Total HCIs (sum of all above)",
+              "field_type": "NUMBER",
+              "is_required": true,
+              "help_text": "This should equal the sum of all HCI counts from the questions above. Because each category excluded prior counts, this total is already deduplicated."
+            },
+            {
+              "field_key": "j_hci_non_covered_entities",
+              "label": "HCIs at non-covered related companies",
+              "field_type": "NUMBER",
+              "is_required": true,
+              "help_text": "If the employer is part of a controlled group and has related entities whose employees are not eligible for the cafeteria plan, count HCIs at those entities. These individuals are HCIs who cannot participate, which affects the eligibility test ratios. If no controlled group or no non-covered entities, enter 0."
+            }
+          ]
+        },
+        {
+          "section_name": "Section N - Section 125 Eligibility Test",
+          "section_description": "Determine whether the plan is open to employees on equal terms. If all non-excludable employees have the same access, it passes automatically.|Common mistakes: Answering Yes when salaried and hourly employees actually have different waiting periods. Not subtracting excludable employees before calculating totals.",
+          "fields": [
+            {
+              "field_key": "n_available_to_all",
+              "label": "Is the plan open to all eligible employees equally?",
+              "field_type": "RADIO",
+              "is_required": true,
+              "help_text": "If every non-excludable employee has the same eligibility conditions and access to the same benefits, the plan automatically passes the Section 125 eligibility test. Answer No if any group of employees has different eligibility conditions, waiting periods, or benefit access than another group.",
+              "select_options": "Yes|No"
+            },
+            {
+              "field_key": "n_classification_description",
+              "label": "Describe how eligibility differs by group",
+              "field_type": "TEXTAREA",
+              "is_required": true,
+              "help_text": "Describe which employees are eligible and which are not, and the business criteria used (e.g., 'All salaried employees are eligible; hourly warehouse employees are not eligible'). The classification must be based on reasonable, objective business criteria such as job category, salaried vs. hourly, geographic location, division, or business unit."
+            },
+            {
+              "field_key": "n_total_non_excludable",
+              "label": "Total non-excludable employees",
+              "field_type": "NUMBER",
+              "is_required": true,
+              "help_text": "Start with total employees across all related entities, then subtract excludable employees (those reported in Section G who meet a plan eligibility condition). This is the testing population."
+            },
+            {
+              "field_key": "n_non_hci_eligible",
+              "label": "Non-HCIs eligible to participate",
+              "field_type": "NUMBER",
+              "is_required": true,
+              "help_text": "Of all non-excludable non-HCI employees, how many are actually eligible to participate in the cafeteria plan?"
+            }
+          ]
+        },
+        {
+          "section_name": "Section O - Section 125 Contributions & Benefits Test",
+          "section_description": "Check whether benefits and employer contributions favor highly compensated participants. Skip this section if the plan only offers pre-tax premium deductions (POP only).|Common mistakes: Including employer contributions in the employee salary reduction total. Confusing HCIs (identified) with HCPs (those who actually elected benefits).",
+          "fields": [
+            {
+              "field_key": "o_same_benefits_all",
+              "label": "Are the same benefits offered to everyone equally?",
+              "field_type": "RADIO",
+              "is_required": true,
+              "help_text": "All qualified benefits and employer contributions must be available on the same terms to all participants. The same benefits must be offered, the required employee contribution for each benefit level must be identical, and maximum benefit levels cannot vary based on compensation, age, or years of service.",
+              "select_options": "Yes|No"
+            },
+            {
+              "field_key": "o_benefits_differ_describe",
+              "label": "Describe how benefits or terms differ by group",
+              "field_type": "TEXTAREA",
+              "is_required": true,
+              "help_text": "Explain which benefits, contribution levels, or maximum amounts differ and for which groups. For example, 'Executives receive an employer HSA contribution of $1,500; all other employees receive $750.'"
+            },
+            {
+              "field_key": "o_safe_harbor_health",
+              "label": "Does the employer contribution meet the 75% safe harbor?",
+              "field_type": "RADIO",
+              "is_required": true,
+              "help_text": "This is a safe harbor for health benefits (not FSAs). If the employer contributes at least 75% of the most expensive health option, the contributions and benefits test is deemed satisfied for those health benefits.",
+              "select_options": "Yes|No|Not applicable - no employer health contributions"
+            },
+            {
+              "field_key": "o_hcp_count",
+              "label": "HCIs who elected benefits (HCPs)",
+              "field_type": "NUMBER",
+              "is_required": true,
+              "help_text": "Count HCIs who actually made elections under the cafeteria plan - these are Highly Compensated Participants (HCPs). Include elections for any nontaxable benefit: pre-tax premiums, Health FSA, Dependent Care FSA, HSA contributions, etc."
+            },
+            {
+              "field_key": "o_non_hci_participant_count",
+              "label": "Non-HCIs who elected benefits",
+              "field_type": "NUMBER",
+              "is_required": true,
+              "help_text": "Count non-HCI employees who actually made elections under the cafeteria plan."
+            },
+            {
+              "field_key": "o_hcp_employee_reductions",
+              "label": "Total salary reductions elected by HCPs",
+              "field_type": "NUMBER",
+              "is_required": true,
+              "help_text": "Enter the total dollar amount of pre-tax salary reductions elected by all HCI participants. This is the employee-paid portion only - do not include employer contributions."
+            },
+            {
+              "field_key": "o_hcp_employer_contributions",
+              "label": "Total employer contributions for HCPs",
+              "field_type": "NUMBER",
+              "is_required": true,
+              "help_text": "Enter the total dollar amount the employer contributes toward benefits for all HCI participants. This includes the employer share of insurance premiums and any employer contributions to FSAs, HSAs, or HRAs."
+            },
+            {
+              "field_key": "o_non_hci_employee_reductions",
+              "label": "Total salary reductions elected by non-HCIs",
+              "field_type": "NUMBER",
+              "is_required": true,
+              "help_text": "Enter the total dollar amount of pre-tax salary reductions elected by all non-HCI participants. This is the employee-paid portion only."
+            },
+            {
+              "field_key": "o_non_hci_employer_contributions",
+              "label": "Total employer contributions for non-HCIs",
+              "field_type": "NUMBER",
+              "is_required": true,
+              "help_text": "Enter the total dollar amount the employer contributes toward benefits for all non-HCI participants."
+            }
+          ]
+        },
+        {
+          "section_name": "Section M - Key Employee Classification (Section 416(i))",
+          "section_description": "Identify key employees for the Section 125 concentration test. Count everyone who qualifies across all related companies -- we handle eligibility exclusions later. Skip if the plan only offers POP.|Common mistakes: Confusing key employees with HCIs -- they use different definitions. Using the wrong compensation threshold year.",
+          "fields": [
+            {
+              "field_key": "m_owners_5pct",
+              "label": "Employees who are more-than-5% owners",
+              "field_type": "NUMBER",
+              "is_required": true,
+              "help_text": "Count employees who directly or indirectly own more than 5% of the employer. This may be the same count as reported in the Section 125 HCI classification section. Include employees at all related entities in the controlled group."
+            },
+            {
+              "field_key": "m_owners_1pct_150k",
+              "label": "1-5% owners earning over $150,000 (not counted above)",
+              "field_type": "NUMBER",
+              "is_required": true,
+              "help_text": "Count employees who own more than 1% but not more than 5%, and who earned more than $150,000 in the preceding plan year. The $150,000 threshold is NOT indexed for inflation. Do not include anyone already counted as a >5% owner above. Include employees at all related entities."
+            },
+            {
+              "field_key": "m_officers_above_threshold",
+              "label": "Officers above the comp threshold (not counted above)",
+              "field_type": "NUMBER",
+              "is_required": true,
+              "help_text": "For the 2026 plan year, count officers who earned more than $230,000 in 2025. For the 2025 plan year, the threshold is $220,000 based on 2024 compensation. Do not include anyone already counted as a >5% or >1% owner above. Include officers at all related entities in the controlled group."
+            },
+            {
+              "field_key": "m_total_key_employees",
+              "label": "Total key employees (sum of all above)",
+              "field_type": "NUMBER",
+              "is_required": true,
+              "help_text": "This should equal the sum of all Key Employee counts from the questions above. Note: Key Employee status is different from HCI status - an employee can be one but not the other."
+            },
+            {
+              "field_key": "m_key_non_covered_entities",
+              "label": "Key employees at non-covered related companies",
+              "field_type": "NUMBER",
+              "is_required": true,
+              "help_text": "Count Key Employees at related entities whose employees are not eligible for the cafeteria plan. If no controlled group or no non-covered entities, enter 0."
+            }
+          ]
+        },
+        {
+          "section_name": "Section P - Section 125 Key Employee Concentration Test",
+          "section_description": "Check whether key employees receive too large a share of plan benefits. No more than 25% of total nontaxable benefits can go to key employees. Skip if POP only.|Common mistakes: Including employer contributions when only employee salary reductions were requested. Not separating key employee amounts from the rest.",
+          "fields": [
+            {
+              "field_key": "p_key_participant_count",
+              "label": "Key employees who elected benefits",
+              "field_type": "NUMBER",
+              "is_required": true,
+              "help_text": "Of the key employees identified in Section M, count those who actually made elections under the cafeteria plan. Key employees at non-covered related entities would not have elections."
+            },
+            {
+              "field_key": "p_key_employee_reductions",
+              "label": "Total salary reductions by key employees",
+              "field_type": "NUMBER",
+              "is_required": true,
+              "help_text": "Enter the total dollar amount of pre-tax salary reductions elected by all key employee participants. This is the employee-paid portion only - do not include employer contributions."
+            },
+            {
+              "field_key": "p_key_employer_contributions",
+              "label": "Total employer contributions for key employees",
+              "field_type": "NUMBER",
+              "is_required": true,
+              "help_text": "Enter the total dollar amount the employer contributes toward benefits for all key employee participants. This includes the employer share of insurance premiums and any employer contributions to FSAs, HSAs, or HRAs."
+            }
+          ]
+        },
+        {
+          "section_name": "Section H - Excludable Employees (Section 105(h))",
+          "section_description": "Count employees who can be left out of Section 105(h) testing. The thresholds differ from Section 125: age 25 (not 21), 35 hours/week (not 1,000/year), and 3 years of service. Applies only if a Health FSA or Limited Purpose FSA is offered.|Common mistakes: Using Section 125 thresholds instead of Section 105(h) thresholds. Measuring service as of the wrong date (should be start of plan year).",
+          "fields": [
+            {
+              "field_key": "h_under_3_years_service",
+              "label": "Employees with less than 3 years of service",
+              "field_type": "NUMBER",
+              "is_required": true,
+              "help_text": "Count employees with fewer than 3 full years of service as of the first day of the plan year. This threshold applies regardless of the plan's own waiting period."
+            },
+            {
+              "field_key": "h_under_age_25",
+              "label": "Employees under age 25",
+              "field_type": "NUMBER",
+              "is_required": true,
+              "help_text": "Count employees who had not reached age 25 as of the first day of the plan year. Note: this is age 25, not age 21 - the Section 105(h) threshold is different from Section 125."
+            },
+            {
+              "field_key": "h_under_35_hours",
+              "label": "Employees working fewer than 35 hours per week",
+              "field_type": "NUMBER",
+              "is_required": true,
+              "help_text": "Count employees who are customarily scheduled for fewer than 35 hours per week, or who worked fewer than 7 months in the preceding plan year. Note: this is 35 hours/week, not 1,000 hours/year - the Section 105(h) threshold is different from Section 125."
+            },
+            {
+              "field_key": "h_nonresident_alien",
+              "label": "Nonresident aliens with no US-source income",
+              "field_type": "NUMBER",
+              "is_required": true,
+              "help_text": "Count employees who are nonresident aliens and receive no earned income from US sources from this employer. If none, enter 0. This count may be the same as reported in the Section 125 excludable employees section."
+            }
+          ]
+        },
+        {
+          "section_name": "Section K - HCI Classification (Section 105(h))",
+          "section_description": "Identify highly compensated individuals under the Section 105(h) definition, which differs from Section 125: top 5 officers (not all), 10%+ owners (not 5%), and top 25% by pay. Applies only if a Health FSA or Limited Purpose FSA is offered.|Common mistakes: Using the Section 125 ownership threshold (5%) instead of 10%. Counting all officers instead of only the 5 highest-paid.",
+          "fields": [
+            {
+              "field_key": "k_owners_10pct",
+              "label": "Employees who are more-than-10% owners",
+              "field_type": "NUMBER",
+              "is_required": true,
+              "help_text": "Count employees who directly or indirectly own more than 10% in value of the employer's stock, applying Section 318 family attribution rules. Note: this is a higher threshold than Section 125 (>10% vs. >5%), so fewer individuals may qualify. Include employees at all related entities in the controlled group."
+            },
+            {
+              "field_key": "k_top5_officers_non_owners",
+              "label": "Top-5 paid officers not counted as 10%+ owners",
+              "field_type": "NUMBER",
+              "is_required": true,
+              "help_text": "Under Section 105(h), only the 5 highest-paid officers are HCIs - not all officers. Identify the 5 officers with the highest annual compensation and count those not already included as >10% owners. If the employer has fewer than 5 officers, count all of them (minus any already counted as owners)."
+            },
+            {
+              "field_key": "k_top25pct_non_owner_officer",
+              "label": "Top-25% earners not counted as owners/officers",
+              "field_type": "NUMBER",
+              "is_required": true,
+              "help_text": "Rank all employees (excluding excludable non-participants) by current plan year compensation. Count those in the top 25% who were not already included as >10% owners or top-5 officers. Include employees at all related entities in the controlled group."
+            },
+            {
+              "field_key": "k_total_105h_hci",
+              "label": "Total Section 105(h) HCIs (sum of all above)",
+              "field_type": "NUMBER",
+              "is_required": true,
+              "help_text": "This should equal the sum of all Section 105(h) HCI counts from the questions above. Note: this number will likely differ from your Section 125 HCI total - the definitions are different."
+            },
+            {
+              "field_key": "k_hci_non_covered_entities",
+              "label": "Section 105(h) HCIs at non-covered companies",
+              "field_type": "NUMBER",
+              "is_required": true,
+              "help_text": "Count Section 105(h) HCIs at related entities whose employees are not eligible for the self-insured plan. If no controlled group or no non-covered entities, enter 0."
+            }
+          ]
+        },
+        {
+          "section_name": "Section Q - Section 105(h) Eligibility Test",
+          "section_description": "Determine whether the self-insured plan (Health FSA) is open to employees fairly. Three sub-tests exist -- passing any one is enough. Applies only if a Health FSA or Limited Purpose FSA is offered.|Common mistakes: Using Section 125 excludable counts instead of Section 105(h) counts. Confusing 'eligible to benefit' with 'actually benefiting.'",
+          "fields": [
+            {
+              "field_key": "q_employees_benefiting",
+              "label": "Non-excludable employees who benefit under the plan",
+              "field_type": "NUMBER",
+              "is_required": true,
+              "help_text": "For Health FSAs, 'benefit' means the employee elected to participate (made a salary reduction election). For HRAs/MERPs, 'benefit' means the employee is enrolled and covered. Do not count employees who are eligible but did not elect or enroll. Use Section 105(h) excludable employees (Section H) to determine your non-excludable population."
+            },
+            {
+              "field_key": "q_total_non_excludable",
+              "label": "Total non-excludable employees (Section 105(h) rules)",
+              "field_type": "NUMBER",
+              "is_required": true,
+              "help_text": "Start with total employees across all related entities, then subtract Section 105(h) excludable employees reported in Section H (under age 25, less than 3 years of service, fewer than 35 hours/week, CBA, nonresident alien). This number may differ from the Section 125 non-excludable total because the thresholds are different."
+            },
+            {
+              "field_key": "q_eligible_to_benefit",
+              "label": "Non-excludable employees eligible to benefit",
+              "field_type": "NUMBER",
+              "is_required": true,
+              "help_text": "Count all non-excludable employees who are offered the opportunity to participate, whether or not they elected to. This is everyone who could enroll if they chose to."
+            },
+            {
+              "field_key": "q_classification_description",
+              "label": "Describe the eligibility classification",
+              "field_type": "TEXTAREA",
+              "is_required": true,
+              "help_text": "Describe which employees are eligible and which are not, and the business criteria used (e.g., 'All full-time salaried employees are eligible; part-time and seasonal employees are not'). The classification must be based on reasonable, objective business criteria."
+            },
+            {
+              "field_key": "q_105h_hci_benefiting",
+              "label": "Section 105(h) HCIs who benefit under the plan",
+              "field_type": "NUMBER",
+              "is_required": true,
+              "help_text": "Of the Section 105(h) HCIs identified in Section K, how many actually benefit under the self-insured plan? For Health FSAs, this means they elected to participate."
+            },
+            {
+              "field_key": "q_105h_hci_non_excludable",
+              "label": "Non-excludable Section 105(h) HCIs",
+              "field_type": "NUMBER",
+              "is_required": true,
+              "help_text": "Of all Section 105(h) HCIs (Section K), how many are in the non-excludable testing population?"
+            },
+            {
+              "field_key": "q_non_hci_benefiting",
+              "label": "Non-HCIs who benefit under the plan",
+              "field_type": "NUMBER",
+              "is_required": true,
+              "help_text": "Of all non-excludable non-HCI employees, how many actually benefit under the self-insured plan?"
+            },
+            {
+              "field_key": "q_non_hci_non_excludable",
+              "label": "Total non-excludable non-HCIs",
+              "field_type": "NUMBER",
+              "is_required": true,
+              "help_text": "Total non-excludable employees (field above) minus non-excludable Section 105(h) HCIs."
+            }
+          ]
+        },
+        {
+          "section_name": "Section R - Section 105(h) Benefits Test",
+          "section_description": "Check whether the self-insured plan's benefits are designed and run fairly. This is about what is available, not who has higher claims. Applies only if a Health FSA or Limited Purpose FSA is offered.|Common mistakes: Thinking higher HCI claims alone cause a failure (they do not). Not realizing that mid-year benefit changes can cause discrimination.",
+          "fields": [
+            {
+              "field_key": "r_same_expenses",
+              "label": "Are the same expenses reimbursable for everyone?",
+              "field_type": "RADIO",
+              "is_required": true,
+              "help_text": "All medical expenses covered for HCIs must also be covered for all other participants. For example, the plan cannot cover dental expenses for executives only.",
+              "select_options": "Yes|No"
+            },
+            {
+              "field_key": "r_expenses_differ_describe",
+              "label": "Describe the differences in covered expenses",
+              "field_type": "TEXTAREA",
+              "is_required": true,
+              "help_text": "Explain which expenses are covered differently and for which groups."
+            },
+            {
+              "field_key": "r_same_maximum",
+              "label": "Is the max reimbursement the same for everyone?",
+              "field_type": "RADIO",
+              "is_required": true,
+              "help_text": "The maximum benefit level attributable to employer contributions cannot vary based on compensation, age, or years of service. For Health FSAs, this means the same maximum election is available to everyone.",
+              "select_options": "Yes|No"
+            },
+            {
+              "field_key": "r_maximum_differ_describe",
+              "label": "Describe how maximums differ",
+              "field_type": "TEXTAREA",
+              "is_required": true,
+              "help_text": "Explain which groups have different maximums and what those amounts are."
+            },
+            {
+              "field_key": "r_same_cost_sharing",
+              "label": "Are employee contributions the same for everyone?",
+              "field_type": "RADIO",
+              "is_required": true,
+              "help_text": "If employees must contribute to participate in the plan, the contribution amount must be the same for all participants. Differences in cost-sharing can cause a benefits test failure.",
+              "select_options": "Yes|No|Not applicable - no employee contributions required"
+            },
+            {
+              "field_key": "r_cost_sharing_differ_describe",
+              "label": "Describe how employee contributions differ",
+              "field_type": "TEXTAREA",
+              "is_required": true,
+              "help_text": "Explain which groups pay different amounts and what those amounts are."
+            },
+            {
+              "field_key": "r_same_waiting_periods",
+              "label": "Are waiting periods the same for everyone?",
+              "field_type": "RADIO",
+              "is_required": true,
+              "help_text": "If HCIs have a shorter waiting period than other employees, the plan discriminates on its face. For example, if management is eligible immediately but hourly employees wait 90 days, this is a benefits test issue.",
+              "select_options": "Yes|No"
+            },
+            {
+              "field_key": "r_waiting_differ_describe",
+              "label": "Describe how waiting periods differ",
+              "field_type": "TEXTAREA",
+              "is_required": true,
+              "help_text": "Explain which groups have different waiting periods."
+            },
+            {
+              "field_key": "r_same_dependent_coverage",
+              "label": "Is dependent coverage the same for everyone?",
+              "field_type": "RADIO",
+              "is_required": true,
+              "help_text": "All dependent coverage available to HCIs must be available on the same basis for all other participants.",
+              "select_options": "Yes|No|Not applicable - no dependent coverage"
+            },
+            {
+              "field_key": "r_dependent_differ_describe",
+              "label": "Describe how dependent coverage differs",
+              "field_type": "TEXTAREA",
+              "is_required": true,
+              "help_text": "Explain which groups have different dependent coverage terms."
+            },
+            {
+              "field_key": "r_executive_physicals",
+              "label": "Are executive physicals offered to only some groups?",
+              "field_type": "RADIO",
+              "is_required": true,
+              "help_text": "Section 105(h) includes a specific exception allowing medical diagnostic procedures (routine exams, blood tests, X-rays) for a classification of employees without violating the benefits test. If yes, this may still be permissible - but it must be limited to diagnostic/preventive care for the employee only, not dependents.",
+              "select_options": "Yes|No"
+            },
+            {
+              "field_key": "r_benefit_changes",
+              "label": "Were benefits changed mid-year affecting groups differently?",
+              "field_type": "RADIO",
+              "is_required": true,
+              "help_text": "A plan that covers a benefit while an HCI needs it and then drops coverage is discriminatory in operation. Similarly, terminating a plan or benefit in a way that disproportionately favors HCIs can cause a failure.",
+              "select_options": "Yes|No"
+            },
+            {
+              "field_key": "r_benefit_changes_describe",
+              "label": "Describe the change and which groups were affected",
+              "field_type": "TEXTAREA",
+              "is_required": true,
+              "help_text": "Explain what benefit changed, when, and how it affected different groups of employees."
+            }
+          ]
+        },
+        {
+          "section_name": "Section I - Excludable Employees (Section 129)",
+          "section_description": "Count employees who can be left out of Section 129 (Dependent Care) testing. The thresholds differ from Section 125 and 105(h): age 21, 1 year of service, and a $25,000 pay exclusion. Applies only if a Dependent Care FSA is offered.|Common mistakes: Using the wrong age or service threshold from another section. Not knowing about the $25,000 compensation exclusion for the average benefits test.",
+          "fields": [
+            {
+              "field_key": "i_under_age_21",
+              "label": "Employees under age 21",
+              "field_type": "NUMBER",
+              "is_required": true,
+              "help_text": "Count employees who had not reached age 21 during the plan year. These employees may be excluded only if the plan excludes them from participation."
+            },
+            {
+              "field_key": "i_under_1_year_service",
+              "label": "Employees with less than 1 year of service",
+              "field_type": "NUMBER",
+              "is_required": true,
+              "help_text": "Count employees who have not completed 1 year of service. These employees may be excluded only if the plan excludes them from participation."
+            },
+            {
+              "field_key": "i_nonresident_alien",
+              "label": "Nonresident aliens with no US-source income",
+              "field_type": "NUMBER",
+              "is_required": true,
+              "help_text": "Count employees who are nonresident aliens and receive no earned income from US sources from this employer. If none, enter 0."
+            },
+            {
+              "field_key": "i_under_25k_compensation",
+              "label": "Employees earning less than $25,000",
+              "field_type": "NUMBER",
+              "is_required": true,
+              "help_text": "For the Section 129 55% Average Benefits Test only, employees earning less than $25,000 who participate through salary reduction may be excluded from the calculation. This threshold is not indexed for inflation."
+            }
+          ]
+        },
+        {
+          "section_name": "Section L - HCE Classification (Section 129)",
+          "section_description": "Identify highly compensated employees (HCEs) for Section 129 testing. This definition differs from Section 125 and 105(h): only 5%+ owners and high earners count -- no officer or spouse/dependent prong. Applies only if a Dependent Care FSA is offered.|Common mistakes: Including officers as a separate HCE category (they are not HCEs under Section 129 unless they meet the ownership or pay threshold). Counting spouses/dependents as HCEs (Section 129 does not include them).",
+          "fields": [
+            {
+              "field_key": "l_owners_5pct",
+              "label": "More-than-5% owners (current or prior year)",
+              "field_type": "NUMBER",
+              "is_required": true,
+              "help_text": "Count employees who directly or indirectly own more than 5% of the employer. This uses the same ownership threshold as Section 125 (>5%), but does NOT include spouses and dependents of owners in the HCE definition. Ownership is tested as of any time during the current or preceding plan year. Include employees at all related entities in the controlled group."
+            },
+            {
+              "field_key": "l_high_comp_non_owners",
+              "label": "High earners not counted as 5%+ owners",
+              "field_type": "NUMBER",
+              "is_required": true,
+              "help_text": "For the 2026 plan year, count employees who earned more than $160,000 in 2025. For the 2025 plan year, the threshold is $155,000 based on 2024 compensation. Do not include anyone already counted as a more-than-5% owner above. Include employees at all related entities in the controlled group."
+            },
+            {
+              "field_key": "l_total_hce",
+              "label": "Total Section 129 HCEs (sum of above)",
+              "field_type": "NUMBER",
+              "is_required": true,
+              "help_text": "This should equal the sum of questions above. Note: this number may differ from your Section 125 HCI total because Section 129 does not include officers as a separate category and does not include spouses/dependents of HCEs."
+            },
+            {
+              "field_key": "l_hce_non_covered_entities",
+              "label": "Section 129 HCEs at non-covered companies",
+              "field_type": "NUMBER",
+              "is_required": true,
+              "help_text": "Count Section 129 HCEs at related entities whose employees are not eligible for the Dependent Care FSA. If no controlled group or no non-covered entities, enter 0."
+            }
+          ]
+        },
+        {
+          "section_name": "Section S - Section 129 Eligibility Test",
+          "section_description": "Determine whether the Dependent Care FSA is open to employees on equal terms. If all non-excludable employees have the same access, it passes automatically. Applies only if a Dependent Care FSA is offered.|Common mistakes: Using Section 125 or 105(h) non-excludable counts instead of Section 129 counts. Not recalculating the testing population with Section 129 thresholds.",
+          "fields": [
+            {
+              "field_key": "s_available_to_all",
+              "label": "Is the Dependent Care FSA open to all equally?",
+              "field_type": "RADIO",
+              "is_required": true,
+              "help_text": "If every non-excludable employee has the same eligibility conditions and access to the Dependent Care FSA, the Section 129 eligibility test is satisfied. Answer No if any group of employees has different eligibility conditions or access.",
+              "select_options": "Yes|No"
+            },
+            {
+              "field_key": "s_classification_description",
+              "label": "Describe how DCFSA eligibility differs by group",
+              "field_type": "TEXTAREA",
+              "is_required": true,
+              "help_text": "Describe which employees are eligible for the Dependent Care FSA and which are not, and the business criteria used. The classification must be based on reasonable, objective business criteria such as job category, salaried vs. hourly, geographic location, division, or business unit."
+            },
+            {
+              "field_key": "s_total_non_excludable",
+              "label": "Total non-excludable employees (Section 129 rules)",
+              "field_type": "NUMBER",
+              "is_required": true,
+              "help_text": "Start with total employees across all related entities, then subtract Section 129 excludable employees reported in Section I (under age 21, less than 1 year of service, CBA, nonresident alien). This number may differ from the Section 125 and Section 105(h) non-excludable totals because the thresholds are different."
+            },
+            {
+              "field_key": "s_non_hce_eligible",
+              "label": "Non-HCEs eligible for the Dependent Care FSA",
+              "field_type": "NUMBER",
+              "is_required": true,
+              "help_text": "Of all non-excludable non-HCE employees (using the Section 414(q) HCE definition from Section L), how many are actually eligible to participate in the Dependent Care FSA?"
+            }
+          ]
+        },
+        {
+          "section_name": "Section T - Section 129 Benefits & Contributions Test",
+          "section_description": "Check whether the Dependent Care FSA's benefits and terms are designed fairly for all eligible employees. Applies only if a Dependent Care FSA is offered.|Common mistakes: Not knowing the statutory max increased to $7,500 for 2026. Forgetting to report employer-paid (nonelective) DCAP contributions separately.",
+          "fields": [
+            {
+              "field_key": "t_same_maximum",
+              "label": "Is the same DCFSA maximum available to everyone?",
+              "field_type": "RADIO",
+              "is_required": true,
+              "help_text": "All eligible employees must have access to the same maximum DCAP benefit. For the 2026 plan year, the statutory maximum is $7,500 (increased from $5,000 by the One Big Beautiful Bill Act of 2025). For 2025 and prior, the maximum is $5,000 ($2,500 for married filing separately).",
+              "select_options": "Yes|No"
+            },
+            {
+              "field_key": "t_maximum_differ_describe",
+              "label": "Describe how DCFSA maximums differ",
+              "field_type": "TEXTAREA",
+              "is_required": true,
+              "help_text": "Explain which groups have different maximums and what those amounts are."
+            },
+            {
+              "field_key": "t_same_terms",
+              "label": "Are DCFSA terms the same for all employees?",
+              "field_type": "RADIO",
+              "is_required": true,
+              "help_text": "This includes eligibility timing, enrollment procedures, reimbursement procedures, and any other plan terms. All participants must be treated the same.",
+              "select_options": "Yes|No"
+            },
+            {
+              "field_key": "t_terms_differ_describe",
+              "label": "Describe how DCFSA terms differ",
+              "field_type": "TEXTAREA",
+              "is_required": true,
+              "help_text": "Explain which terms differ and for which groups."
+            },
+            {
+              "field_key": "t_nonelective_contributions",
+              "label": "Does the employer contribute to the DCFSA directly?",
+              "field_type": "RADIO",
+              "is_required": true,
+              "help_text": "If the employer contributes to the DCAP on behalf of employees (beyond salary reduction), those contributions must be available on a nondiscriminatory basis.",
+              "select_options": "Yes|No"
+            },
+            {
+              "field_key": "t_nonelective_same_terms",
+              "label": "Are employer contributions the same for everyone?",
+              "field_type": "RADIO",
+              "is_required": true,
+              "help_text": "Employer contributions must not favor HCEs. The same amount or formula must apply to all eligible employees.",
+              "select_options": "Yes|No"
+            },
+            {
+              "field_key": "t_nonelective_describe",
+              "label": "Describe the employer contribution structure",
+              "field_type": "TEXTAREA",
+              "is_required": true,
+              "help_text": "Explain the contribution formula or amount and whether it varies by any factor."
+            }
+          ]
+        },
+        {
+          "section_name": "Section U - Section 129 More-Than-5% Owners Test",
+          "section_description": "Check whether 5%+ owners receive too large a share of Dependent Care benefits. No more than 25% of total DCAP benefits can go to 5%+ owners and their families. Applies only if a Dependent Care FSA is offered.|Common mistakes: Forgetting to include DCFSA elections by spouses and dependents of owners. Not including owners at related companies in the controlled group.",
+          "fields": [
+            {
+              "field_key": "u_owner_participant_count",
+              "label": "5%+ owners who elected DCFSA benefits",
+              "field_type": "NUMBER",
+              "is_required": true,
+              "help_text": "Count more-than-5% owners who made a DCAP salary reduction election for the current plan year. Include owners at all related entities in the controlled group."
+            },
+            {
+              "field_key": "u_owner_election_total",
+              "label": "Total DCFSA elections by 5%+ owners",
+              "field_type": "NUMBER",
+              "is_required": true,
+              "help_text": "Enter the total dollar amount of DCAP salary reductions elected by all more-than-5% owner participants for the current plan year."
+            },
+            {
+              "field_key": "u_spouse_dependent_participate",
+              "label": "Do owner spouses/dependents also have DCFSA elections?",
+              "field_type": "RADIO",
+              "is_required": true,
+              "help_text": "This test includes benefits provided to spouses and dependents of more-than-5% owners in the 25% concentration calculation. This includes spouses/dependents who are employees and have their own DCAP elections.",
+              "select_options": "Yes|No"
+            },
+            {
+              "field_key": "u_spouse_dependent_election_total",
+              "label": "Total DCFSA elections by owner spouses/dependents",
+              "field_type": "NUMBER",
+              "is_required": true,
+              "help_text": "Enter the total dollar amount of DCAP salary reductions elected by spouses and dependents of more-than-5% owners. Do not include amounts already reported for the owners themselves."
+            },
+            {
+              "field_key": "u_total_dcap_elections",
+              "label": "Total DCFSA elections for ALL participants",
+              "field_type": "NUMBER",
+              "is_required": true,
+              "help_text": "Enter the total dollar amount of DCAP salary reductions elected by all DCAP participants for the current plan year - owners, spouses/dependents, and all other employees combined."
+            }
+          ]
+        },
+        {
+          "section_name": "Section V - Section 129 55% Average Benefits Test",
+          "section_description": "Check whether the average DCFSA benefit for non-HCEs is at least 55% of the average for HCEs. This is the test DCAPs fail most often. Applies only if a Dependent Care FSA is offered.|Common mistakes: Dividing by eligible employees instead of actual participants. Using Section 125 HCI counts instead of Section 129 HCE counts.",
+          "fields": [
+            {
+              "field_key": "v_hce_participant_count",
+              "label": "HCEs who elected DCFSA benefits",
+              "field_type": "NUMBER",
+              "is_required": true,
+              "help_text": "Count Section 414(q) HCEs (from Section L) who made a DCAP salary reduction election for the current plan year."
+            },
+            {
+              "field_key": "v_hce_election_total",
+              "label": "Total DCFSA elections by HCEs",
+              "field_type": "NUMBER",
+              "is_required": true,
+              "help_text": "Enter the total dollar amount of DCAP salary reductions elected by all HCE participants for the current plan year."
+            },
+            {
+              "field_key": "v_non_hce_participant_count",
+              "label": "Non-HCEs who elected DCFSA benefits",
+              "field_type": "NUMBER",
+              "is_required": true,
+              "help_text": "Count non-HCE employees who made a DCAP salary reduction election for the current plan year."
+            },
+            {
+              "field_key": "v_non_hce_election_total",
+              "label": "Total DCFSA elections by non-HCEs",
+              "field_type": "NUMBER",
+              "is_required": true,
+              "help_text": "Enter the total dollar amount of DCAP salary reductions elected by all non-HCE participants for the current plan year."
+            }
+          ]
+        },
+        {
+          "section_name": "Section X - Notes & Attestation",
+          "section_description": "Add any extra context and confirm your answers are accurate.|Common mistakes: Skipping helpful notes that would explain unusual numbers. Submitting without double-checking key totals.",
+          "fields": [
+            {
+              "field_key": "x_notes",
+              "label": "Additional notes or comments",
               "field_type": "TEXTAREA",
               "is_required": false,
-              "help_text": "Include all entities under common ownership or an affiliated service group. Leave blank if no related companies."
-            }
-          ]
-        },
-        {
-          "section_name": "Plan Offerings",
-          "section_description": null,
-          "fields": [
-            {
-              "field_key": "ndt_offers_pop",
-              "label": "Does this employer offer pre-tax insurance premiums (Premium Only Plan)?",
-              "field_type": "RADIO",
-              "select_options": "YES|NO",
-              "is_required": true,
-              "help_text": "Most Section 125 plans include this."
+              "help_text": "Use this space to provide any additional information, context, or explanations that may be relevant to the nondiscrimination testing."
             },
             {
-              "field_key": "ndt_offers_health_fsa",
-              "label": "Does this employer offer a Health FSA?",
-              "field_type": "RADIO",
-              "select_options": "YES|NO",
-              "is_required": true
-            },
-            {
-              "field_key": "ndt_offers_dcfsa",
-              "label": "Does this employer offer a Dependent Care FSA?",
-              "field_type": "RADIO",
-              "select_options": "YES|NO",
-              "is_required": true
-            },
-            {
-              "field_key": "ndt_fsa_self_insured",
-              "label": "Is the Health FSA self-insured?",
-              "field_type": "RADIO",
-              "select_options": "YES|NO|Not Sure",
-              "is_required": false,
-              "help_text": "Almost all Health FSAs are self-insured (employer pays claims, not an insurance company). If yes, Section 105(h) testing also applies."
-            }
-          ]
-        },
-        {
-          "section_name": "Completion",
-          "section_description": null,
-          "fields": [
-            {
-              "field_key": "ndt_org_notes",
-              "label": "Additional notes or explanations",
-              "field_type": "TEXTAREA",
-              "is_required": false
-            },
-            {
-              "field_key": "ndt_org_attestation",
-              "label": "The information provided is accurate to the best of my knowledge.",
+              "field_key": "x_attestation",
+              "label": "I confirm this information is accurate and complete",
               "field_type": "BOOLEAN",
-              "is_required": true
-            }
-          ]
-        }
-      ]
-    },
-
-    {
-      "template_key": "q_ndt_125_elig_ccorp",
-      "name": "NDT — §125 Eligibility Test (C-Corporation)",
-      "description": "Section 125 Cafeteria Plan Eligibility Test for C-Corporation employers. Tests whether a sufficient percentage of non-highly-compensated employees are eligible to participate. C-Corp owners participate as W-2 employees and can be HCEs or key employees.",
-      "activity_type": "NDT",
-      "external_url": null,
-      "scoping": {
-        "service_items": ["(CDH-125) Health Flexible Spending Account", "(CDH-125) Dependent Care Account", "(CDH-125) Limited Purpose FSA"]
-      },
-      "sections": [
-        {
-          "section_name": "Excludable Employees",
-          "section_description": "These are employees the IRS allows you to leave out of the eligibility test entirely.",
-          "fields": [
-            {
-              "field_key": "ndt_125e_cc_union",
-              "label": "How many employees are covered by a collective bargaining agreement (union)?",
-              "field_type": "NUMBER",
               "is_required": true,
-              "help_text": "Exclude only if cafeteria plan benefits were the subject of good-faith bargaining between the employer and union."
-            },
-            {
-              "field_key": "ndt_125e_cc_nonresident",
-              "label": "How many employees are non-resident aliens with no U.S. source income?",
-              "field_type": "NUMBER",
-              "is_required": true,
-              "help_text": "These employees are excluded from testing by law."
-            },
-            {
-              "field_key": "ndt_125e_cc_under_age",
-              "label": "How many employees are under the plan's minimum age requirement?",
-              "field_type": "NUMBER",
-              "is_required": true,
-              "help_text": "Enter 0 if your plan has no age requirement. Most plans that have one use age 21."
-            },
-            {
-              "field_key": "ndt_125e_cc_under_service",
-              "label": "How many employees have not met the plan's service requirement?",
-              "field_type": "NUMBER",
-              "is_required": true,
-              "help_text": "Enter 0 if there is no waiting period. Common waiting periods are 30, 60, or 90 days."
-            },
-            {
-              "field_key": "ndt_125e_cc_part_time",
-              "label": "How many employees work fewer hours than the plan requires for eligibility?",
-              "field_type": "NUMBER",
-              "is_required": true,
-              "help_text": "Enter 0 if the plan has no minimum hours requirement."
-            }
-          ]
-        },
-        {
-          "section_name": "HCE Classification",
-          "section_description": "A Highly Compensated Employee (HCE) is someone who earned more than the IRS threshold in the PRIOR plan year, OR who owns more than 5% of the company's stock.",
-          "fields": [
-            {
-              "field_key": "ndt_125e_cc_prior_year",
-              "label": "What is the prior plan year used for HCE lookback?",
-              "field_type": "TEXT",
-              "is_required": true,
-              "help_text": "If the current plan year is 2026, the prior year is 2025."
-            },
-            {
-              "field_key": "ndt_125e_cc_hce_threshold",
-              "label": "Which IRS compensation threshold applies for the prior year?",
-              "field_type": "SELECT",
-              "select_options": "$155,000 (2025)|$150,000 (2024)|$135,000 (2023)",
-              "is_required": true,
-              "help_text": "Use the threshold for the prior plan year, not the current year."
-            },
-            {
-              "field_key": "ndt_125e_cc_top_paid",
-              "label": "Is the employer using the Top-Paid Group election?",
-              "field_type": "RADIO",
-              "select_options": "YES|NO|Not Sure",
-              "is_required": true,
-              "help_text": "This optional election limits HCEs to only those in the top 20% of employees by compensation who also exceed the threshold. Check the plan document."
-            },
-            {
-              "field_key": "ndt_125e_cc_hce_by_comp",
-              "label": "How many employees earned above the HCE threshold in the prior year?",
-              "field_type": "NUMBER",
-              "is_required": true,
-              "help_text": "Count only employees still employed during the current plan year."
-            },
-            {
-              "field_key": "ndt_125e_cc_hce_by_own",
-              "label": "How many employees own more than 5% of the company's stock (directly or through family)?",
-              "field_type": "NUMBER",
-              "is_required": true,
-              "help_text": "Include family attribution — a spouse's or child's stock ownership counts as yours under IRS rules."
-            },
-            {
-              "field_key": "ndt_125e_cc_total_hce",
-              "label": "Total number of HCEs (employees who meet EITHER the compensation OR ownership test)",
-              "field_type": "NUMBER",
-              "is_required": true,
-              "help_text": "Do not double-count — an employee who meets both tests is still one HCE."
-            }
-          ]
-        },
-        {
-          "section_name": "Eligibility and Participation",
-          "section_description": "Count employees AFTER removing the excludable employees listed above.",
-          "fields": [
-            {
-              "field_key": "ndt_125e_cc_elig_total",
-              "label": "Total employees eligible for the Section 125 plan",
-              "field_type": "NUMBER",
-              "is_required": true,
-              "help_text": "Total employees from Org Profile minus all excludable categories above."
-            },
-            {
-              "field_key": "ndt_125e_cc_elig_hce",
-              "label": "How many eligible employees are HCEs?",
-              "field_type": "NUMBER",
-              "is_required": true
-            },
-            {
-              "field_key": "ndt_125e_cc_elig_nhce",
-              "label": "How many eligible employees are Non-HCEs?",
-              "field_type": "NUMBER",
-              "is_required": true,
-              "help_text": "This should equal total eligible minus HCEs."
-            },
-            {
-              "field_key": "ndt_125e_cc_part_total",
-              "label": "Total employees who actually made Section 125 elections",
-              "field_type": "NUMBER",
-              "is_required": true,
-              "help_text": "Anyone who elected pre-tax premiums, Health FSA, or Dependent Care FSA."
-            },
-            {
-              "field_key": "ndt_125e_cc_part_hce",
-              "label": "How many participants are HCEs?",
-              "field_type": "NUMBER",
-              "is_required": true
-            },
-            {
-              "field_key": "ndt_125e_cc_part_nhce",
-              "label": "How many participants are Non-HCEs?",
-              "field_type": "NUMBER",
-              "is_required": true
-            }
-          ]
-        },
-        {
-          "section_name": "Completion",
-          "section_description": null,
-          "fields": [
-            {
-              "field_key": "ndt_125e_cc_notes",
-              "label": "Additional notes or explanations",
-              "field_type": "TEXTAREA",
-              "is_required": false
-            },
-            {
-              "field_key": "ndt_125e_cc_attestation",
-              "label": "The information provided is accurate to the best of my knowledge.",
-              "field_type": "BOOLEAN",
-              "is_required": true
-            }
-          ]
-        }
-      ]
-    },
-
-    {
-      "template_key": "q_ndt_125_elig_scorp",
-      "name": "NDT — §125 Eligibility Test (S-Corporation)",
-      "description": "Section 125 Cafeteria Plan Eligibility Test for S-Corporation employers. S-Corp shareholders owning 2% or more CANNOT participate in Section 125 and must be excluded from the eligible employee group, though they may still be classified as HCEs for testing purposes.",
-      "activity_type": "NDT",
-      "external_url": null,
-      "scoping": {
-        "service_items": ["(CDH-125) Health Flexible Spending Account", "(CDH-125) Dependent Care Account", "(CDH-125) Limited Purpose FSA"]
-      },
-      "sections": [
-        {
-          "section_name": "Owner Exclusions",
-          "section_description": "S-Corporation shareholders owning 2% or more CANNOT participate in a Section 125 plan. They must be removed from the eligible employee group before testing.",
-          "fields": [
-            {
-              "field_key": "ndt_125e_sc_2pct_owners",
-              "label": "How many shareholders own 2% or more of the S-Corp stock?",
-              "field_type": "NUMBER",
-              "is_required": true,
-              "help_text": "These individuals cannot make pre-tax elections under Section 125. Include family attribution — a spouse's ownership is counted as yours."
-            },
-            {
-              "field_key": "ndt_125e_sc_2pct_on_payroll",
-              "label": "Of those 2%+ shareholders, how many are on the W-2 payroll?",
-              "field_type": "NUMBER",
-              "is_required": true,
-              "help_text": "Only payroll employees matter for testing. Shareholders who are not on payroll are already outside the testing group."
-            }
-          ]
-        },
-        {
-          "section_name": "Excludable Employees",
-          "section_description": "These are employees (other than 2%+ shareholders, already excluded above) the IRS allows you to leave out of the eligibility test.",
-          "fields": [
-            {
-              "field_key": "ndt_125e_sc_union",
-              "label": "How many non-owner employees are covered by a collective bargaining agreement (union)?",
-              "field_type": "NUMBER",
-              "is_required": true,
-              "help_text": "Exclude only if cafeteria plan benefits were the subject of good-faith bargaining."
-            },
-            {
-              "field_key": "ndt_125e_sc_nonresident",
-              "label": "How many non-owner employees are non-resident aliens with no U.S. source income?",
-              "field_type": "NUMBER",
-              "is_required": true,
-              "help_text": "Excluded from testing by law."
-            },
-            {
-              "field_key": "ndt_125e_sc_under_age",
-              "label": "How many non-owner employees are under the plan's minimum age requirement?",
-              "field_type": "NUMBER",
-              "is_required": true,
-              "help_text": "Enter 0 if your plan has no age requirement."
-            },
-            {
-              "field_key": "ndt_125e_sc_under_service",
-              "label": "How many non-owner employees have not met the plan's service requirement?",
-              "field_type": "NUMBER",
-              "is_required": true,
-              "help_text": "Enter 0 if there is no waiting period."
-            },
-            {
-              "field_key": "ndt_125e_sc_part_time",
-              "label": "How many non-owner employees work fewer hours than the plan requires?",
-              "field_type": "NUMBER",
-              "is_required": true,
-              "help_text": "Enter 0 if the plan has no minimum hours requirement."
-            }
-          ]
-        },
-        {
-          "section_name": "HCE Classification",
-          "section_description": "Even though 2%+ S-Corp shareholders cannot participate, non-owner employees can still be HCEs based on compensation or ownership of less than 2% but more than 5% (rare with family attribution).",
-          "fields": [
-            {
-              "field_key": "ndt_125e_sc_prior_year",
-              "label": "What is the prior plan year used for HCE lookback?",
-              "field_type": "TEXT",
-              "is_required": true,
-              "help_text": "If the current plan year is 2026, the prior year is 2025."
-            },
-            {
-              "field_key": "ndt_125e_sc_hce_threshold",
-              "label": "Which IRS compensation threshold applies for the prior year?",
-              "field_type": "SELECT",
-              "select_options": "$155,000 (2025)|$150,000 (2024)|$135,000 (2023)",
-              "is_required": true,
-              "help_text": "Use the threshold for the prior plan year."
-            },
-            {
-              "field_key": "ndt_125e_sc_top_paid",
-              "label": "Is the employer using the Top-Paid Group election?",
-              "field_type": "RADIO",
-              "select_options": "YES|NO|Not Sure",
-              "is_required": true,
-              "help_text": "Limits HCEs to the top 20% by pay. Check the plan document."
-            },
-            {
-              "field_key": "ndt_125e_sc_hce_by_comp",
-              "label": "How many NON-OWNER employees earned above the HCE threshold in the prior year?",
-              "field_type": "NUMBER",
-              "is_required": true,
-              "help_text": "Count only non-2%+ shareholder employees. The 2%+ shareholders are already excluded from the eligible group."
-            },
-            {
-              "field_key": "ndt_125e_sc_hce_by_own",
-              "label": "Do any non-2% employees own more than 5% through family attribution?",
-              "field_type": "RADIO",
-              "select_options": "YES|NO",
-              "is_required": true,
-              "help_text": "This is rare but possible. Example: an employee's spouse owns 6% of the S-Corp but the employee owns 0%. The employee is attributed the spouse's ownership."
-            },
-            {
-              "field_key": "ndt_125e_sc_hce_by_own_count",
-              "label": "If yes, how many non-2% employees are HCEs through family attribution?",
-              "field_type": "NUMBER",
-              "is_required": false
-            },
-            {
-              "field_key": "ndt_125e_sc_total_hce",
-              "label": "Total HCEs among the eligible (non-owner) employee group",
-              "field_type": "NUMBER",
-              "is_required": true,
-              "help_text": "Count of non-owner employees who meet either the compensation or ownership test."
-            }
-          ]
-        },
-        {
-          "section_name": "Eligibility and Participation",
-          "section_description": "Count employees AFTER removing 2%+ shareholders and other excludable employees.",
-          "fields": [
-            {
-              "field_key": "ndt_125e_sc_elig_total",
-              "label": "Total employees eligible for the Section 125 plan",
-              "field_type": "NUMBER",
-              "is_required": true,
-              "help_text": "Total employees from Org Profile minus 2%+ shareholders on payroll minus all other excludable categories."
-            },
-            {
-              "field_key": "ndt_125e_sc_elig_hce",
-              "label": "How many eligible employees are HCEs?",
-              "field_type": "NUMBER",
-              "is_required": true
-            },
-            {
-              "field_key": "ndt_125e_sc_elig_nhce",
-              "label": "How many eligible employees are Non-HCEs?",
-              "field_type": "NUMBER",
-              "is_required": true,
-              "help_text": "Should equal total eligible minus HCEs."
-            },
-            {
-              "field_key": "ndt_125e_sc_part_total",
-              "label": "Total employees who actually made Section 125 elections",
-              "field_type": "NUMBER",
-              "is_required": true,
-              "help_text": "Anyone who elected pre-tax premiums, Health FSA, or Dependent Care FSA."
-            },
-            {
-              "field_key": "ndt_125e_sc_part_hce",
-              "label": "How many participants are HCEs?",
-              "field_type": "NUMBER",
-              "is_required": true
-            },
-            {
-              "field_key": "ndt_125e_sc_part_nhce",
-              "label": "How many participants are Non-HCEs?",
-              "field_type": "NUMBER",
-              "is_required": true
-            }
-          ]
-        },
-        {
-          "section_name": "Completion",
-          "section_description": null,
-          "fields": [
-            {
-              "field_key": "ndt_125e_sc_notes",
-              "label": "Additional notes or explanations",
-              "field_type": "TEXTAREA",
-              "is_required": false
-            },
-            {
-              "field_key": "ndt_125e_sc_attestation",
-              "label": "The information provided is accurate to the best of my knowledge.",
-              "field_type": "BOOLEAN",
-              "is_required": true
-            }
-          ]
-        }
-      ]
-    },
-
-    {
-      "template_key": "q_ndt_125_elig_passthru",
-      "name": "NDT — §125 Eligibility Test (LLC / Partnership / Sole Prop)",
-      "description": "Section 125 Cafeteria Plan Eligibility Test for pass-through entities. Owners, members, and partners of LLCs, partnerships, and sole proprietorships CANNOT participate in Section 125 and are excluded from the eligible employee group entirely.",
-      "activity_type": "NDT",
-      "external_url": null,
-      "scoping": {
-        "service_items": ["(CDH-125) Health Flexible Spending Account", "(CDH-125) Dependent Care Account", "(CDH-125) Limited Purpose FSA"]
-      },
-      "sections": [
-        {
-          "section_name": "Entity and Owner Exclusions",
-          "section_description": "Owners, members, and partners of pass-through entities CANNOT participate in a Section 125 plan and are removed from the testing group.",
-          "fields": [
-            {
-              "field_key": "ndt_125e_pt_entity_subtype",
-              "label": "Which type of pass-through entity is this?",
-              "field_type": "SELECT",
-              "select_options": "LLC (single-member)|LLC (multi-member)|General Partnership|Limited Partnership|Sole Proprietorship",
-              "is_required": true
-            },
-            {
-              "field_key": "ndt_125e_pt_owner_count",
-              "label": "How many owners/members/partners are on the W-2 payroll?",
-              "field_type": "NUMBER",
-              "is_required": true,
-              "help_text": "All of these individuals are excluded from Section 125 participation regardless of their ownership percentage."
-            }
-          ]
-        },
-        {
-          "section_name": "Excludable Employees",
-          "section_description": "Among the remaining non-owner W-2 employees, these are employees the IRS allows you to leave out of the eligibility test.",
-          "fields": [
-            {
-              "field_key": "ndt_125e_pt_union",
-              "label": "How many non-owner employees are covered by a collective bargaining agreement (union)?",
-              "field_type": "NUMBER",
-              "is_required": true,
-              "help_text": "Exclude only if cafeteria plan benefits were the subject of good-faith bargaining."
-            },
-            {
-              "field_key": "ndt_125e_pt_nonresident",
-              "label": "How many non-owner employees are non-resident aliens with no U.S. source income?",
-              "field_type": "NUMBER",
-              "is_required": true,
-              "help_text": "Excluded from testing by law."
-            },
-            {
-              "field_key": "ndt_125e_pt_under_age",
-              "label": "How many non-owner employees are under the plan's minimum age requirement?",
-              "field_type": "NUMBER",
-              "is_required": true,
-              "help_text": "Enter 0 if your plan has no age requirement."
-            },
-            {
-              "field_key": "ndt_125e_pt_under_service",
-              "label": "How many non-owner employees have not met the plan's service requirement?",
-              "field_type": "NUMBER",
-              "is_required": true,
-              "help_text": "Enter 0 if there is no waiting period."
-            },
-            {
-              "field_key": "ndt_125e_pt_part_time",
-              "label": "How many non-owner employees work fewer hours than the plan requires?",
-              "field_type": "NUMBER",
-              "is_required": true,
-              "help_text": "Enter 0 if the plan has no minimum hours requirement."
-            }
-          ]
-        },
-        {
-          "section_name": "HCE Classification",
-          "section_description": "Only non-owner W-2 employees are tested. An HCE is someone who earned more than the IRS threshold in the prior year. Ownership-based HCE status does not apply since all owners are already excluded.",
-          "fields": [
-            {
-              "field_key": "ndt_125e_pt_prior_year",
-              "label": "What is the prior plan year used for HCE lookback?",
-              "field_type": "TEXT",
-              "is_required": true,
-              "help_text": "If the current plan year is 2026, the prior year is 2025."
-            },
-            {
-              "field_key": "ndt_125e_pt_hce_threshold",
-              "label": "Which IRS compensation threshold applies for the prior year?",
-              "field_type": "SELECT",
-              "select_options": "$155,000 (2025)|$150,000 (2024)|$135,000 (2023)",
-              "is_required": true,
-              "help_text": "Use the threshold for the prior plan year."
-            },
-            {
-              "field_key": "ndt_125e_pt_top_paid",
-              "label": "Is the employer using the Top-Paid Group election?",
-              "field_type": "RADIO",
-              "select_options": "YES|NO|Not Sure",
-              "is_required": true,
-              "help_text": "Limits HCEs to the top 20% by pay. Check the plan document."
-            },
-            {
-              "field_key": "ndt_125e_pt_hce_by_comp",
-              "label": "How many non-owner employees earned above the HCE threshold in the prior year?",
-              "field_type": "NUMBER",
-              "is_required": true,
-              "help_text": "Count only non-owner W-2 employees."
-            },
-            {
-              "field_key": "ndt_125e_pt_total_hce",
-              "label": "Total HCEs among the non-owner employee group",
-              "field_type": "NUMBER",
-              "is_required": true,
-              "help_text": "For pass-through entities this is typically based on compensation only, since all owners are already excluded."
-            }
-          ]
-        },
-        {
-          "section_name": "Eligibility and Participation",
-          "section_description": "Count employees AFTER removing all owners/members/partners and other excludable employees.",
-          "fields": [
-            {
-              "field_key": "ndt_125e_pt_elig_total",
-              "label": "Total non-owner employees eligible for the Section 125 plan",
-              "field_type": "NUMBER",
-              "is_required": true,
-              "help_text": "Total employees from Org Profile minus owners on payroll minus all other excludable categories."
-            },
-            {
-              "field_key": "ndt_125e_pt_elig_hce",
-              "label": "How many eligible employees are HCEs?",
-              "field_type": "NUMBER",
-              "is_required": true
-            },
-            {
-              "field_key": "ndt_125e_pt_elig_nhce",
-              "label": "How many eligible employees are Non-HCEs?",
-              "field_type": "NUMBER",
-              "is_required": true,
-              "help_text": "Should equal total eligible minus HCEs."
-            },
-            {
-              "field_key": "ndt_125e_pt_part_total",
-              "label": "Total non-owner employees who actually made Section 125 elections",
-              "field_type": "NUMBER",
-              "is_required": true,
-              "help_text": "Anyone who elected pre-tax premiums, Health FSA, or Dependent Care FSA."
-            },
-            {
-              "field_key": "ndt_125e_pt_part_hce",
-              "label": "How many participants are HCEs?",
-              "field_type": "NUMBER",
-              "is_required": true
-            },
-            {
-              "field_key": "ndt_125e_pt_part_nhce",
-              "label": "How many participants are Non-HCEs?",
-              "field_type": "NUMBER",
-              "is_required": true
-            }
-          ]
-        },
-        {
-          "section_name": "Completion",
-          "section_description": null,
-          "fields": [
-            {
-              "field_key": "ndt_125e_pt_notes",
-              "label": "Additional notes or explanations",
-              "field_type": "TEXTAREA",
-              "is_required": false
-            },
-            {
-              "field_key": "ndt_125e_pt_attestation",
-              "label": "The information provided is accurate to the best of my knowledge.",
-              "field_type": "BOOLEAN",
-              "is_required": true
-            }
-          ]
-        }
-      ]
-    },
-
-    {
-      "template_key": "q_ndt_125_elig_exempt",
-      "name": "NDT — §125 Eligibility Test (Non-Profit / Government)",
-      "description": "Section 125 Cafeteria Plan Eligibility Test for tax-exempt organizations (501(c)(3) non-profits and government entities). There are no owner exclusions. HCE status is based solely on compensation — there is no ownership test. Officers are NOT classified as key employees (relevant for Key Employee Concentration Test).",
-      "activity_type": "NDT",
-      "external_url": null,
-      "scoping": {
-        "service_items": ["(CDH-125) Health Flexible Spending Account", "(CDH-125) Dependent Care Account", "(CDH-125) Limited Purpose FSA"]
-      },
-      "sections": [
-        {
-          "section_name": "Organization Details",
-          "section_description": null,
-          "fields": [
-            {
-              "field_key": "ndt_125e_ex_org_subtype",
-              "label": "Which type of tax-exempt organization is this?",
-              "field_type": "SELECT",
-              "select_options": "501(c)(3) Non-Profit|State Government|Local Government|Federal Government|Other Tax-Exempt",
-              "is_required": true
-            }
-          ]
-        },
-        {
-          "section_name": "Excludable Employees",
-          "section_description": "These are employees the IRS allows you to leave out of the eligibility test. There are no owner exclusions for tax-exempt organizations.",
-          "fields": [
-            {
-              "field_key": "ndt_125e_ex_union",
-              "label": "How many employees are covered by a collective bargaining agreement (union)?",
-              "field_type": "NUMBER",
-              "is_required": true,
-              "help_text": "Exclude only if cafeteria plan benefits were the subject of good-faith bargaining."
-            },
-            {
-              "field_key": "ndt_125e_ex_nonresident",
-              "label": "How many employees are non-resident aliens with no U.S. source income?",
-              "field_type": "NUMBER",
-              "is_required": true,
-              "help_text": "Excluded from testing by law."
-            },
-            {
-              "field_key": "ndt_125e_ex_under_age",
-              "label": "How many employees are under the plan's minimum age requirement?",
-              "field_type": "NUMBER",
-              "is_required": true,
-              "help_text": "Enter 0 if your plan has no age requirement."
-            },
-            {
-              "field_key": "ndt_125e_ex_under_service",
-              "label": "How many employees have not met the plan's service requirement?",
-              "field_type": "NUMBER",
-              "is_required": true,
-              "help_text": "Enter 0 if there is no waiting period."
-            },
-            {
-              "field_key": "ndt_125e_ex_part_time",
-              "label": "How many employees work fewer hours than the plan requires?",
-              "field_type": "NUMBER",
-              "is_required": true,
-              "help_text": "Enter 0 if the plan has no minimum hours requirement."
-            }
-          ]
-        },
-        {
-          "section_name": "HCE Classification",
-          "section_description": "For non-profits and government entities, HCE status is based SOLELY on compensation. There is no ownership test because there are no owners.",
-          "fields": [
-            {
-              "field_key": "ndt_125e_ex_prior_year",
-              "label": "What is the prior plan year used for HCE lookback?",
-              "field_type": "TEXT",
-              "is_required": true,
-              "help_text": "If the current plan year is 2026, the prior year is 2025."
-            },
-            {
-              "field_key": "ndt_125e_ex_hce_threshold",
-              "label": "Which IRS compensation threshold applies for the prior year?",
-              "field_type": "SELECT",
-              "select_options": "$155,000 (2025)|$150,000 (2024)|$135,000 (2023)",
-              "is_required": true,
-              "help_text": "Use the threshold for the prior plan year."
-            },
-            {
-              "field_key": "ndt_125e_ex_top_paid",
-              "label": "Is the employer using the Top-Paid Group election?",
-              "field_type": "RADIO",
-              "select_options": "YES|NO|Not Sure",
-              "is_required": true,
-              "help_text": "Limits HCEs to the top 20% by pay. Check the plan document."
-            },
-            {
-              "field_key": "ndt_125e_ex_hce_by_comp",
-              "label": "How many employees earned above the HCE threshold in the prior year?",
-              "field_type": "NUMBER",
-              "is_required": true,
-              "help_text": "This is the only HCE test for tax-exempt organizations — there is no ownership test."
-            },
-            {
-              "field_key": "ndt_125e_ex_total_hce",
-              "label": "Total HCEs",
-              "field_type": "NUMBER",
-              "is_required": true,
-              "help_text": "For tax-exempt entities, this equals the compensation-based count above."
-            }
-          ]
-        },
-        {
-          "section_name": "Eligibility and Participation",
-          "section_description": "Count employees AFTER removing excludable employees. No owners to exclude for tax-exempt organizations.",
-          "fields": [
-            {
-              "field_key": "ndt_125e_ex_elig_total",
-              "label": "Total employees eligible for the Section 125 plan",
-              "field_type": "NUMBER",
-              "is_required": true,
-              "help_text": "Total employees from Org Profile minus all excludable categories above."
-            },
-            {
-              "field_key": "ndt_125e_ex_elig_hce",
-              "label": "How many eligible employees are HCEs?",
-              "field_type": "NUMBER",
-              "is_required": true
-            },
-            {
-              "field_key": "ndt_125e_ex_elig_nhce",
-              "label": "How many eligible employees are Non-HCEs?",
-              "field_type": "NUMBER",
-              "is_required": true,
-              "help_text": "Should equal total eligible minus HCEs."
-            },
-            {
-              "field_key": "ndt_125e_ex_part_total",
-              "label": "Total employees who actually made Section 125 elections",
-              "field_type": "NUMBER",
-              "is_required": true,
-              "help_text": "Anyone who elected pre-tax premiums, Health FSA, or Dependent Care FSA."
-            },
-            {
-              "field_key": "ndt_125e_ex_part_hce",
-              "label": "How many participants are HCEs?",
-              "field_type": "NUMBER",
-              "is_required": true
-            },
-            {
-              "field_key": "ndt_125e_ex_part_nhce",
-              "label": "How many participants are Non-HCEs?",
-              "field_type": "NUMBER",
-              "is_required": true
-            }
-          ]
-        },
-        {
-          "section_name": "Completion",
-          "section_description": null,
-          "fields": [
-            {
-              "field_key": "ndt_125e_ex_notes",
-              "label": "Additional notes or explanations",
-              "field_type": "TEXTAREA",
-              "is_required": false
-            },
-            {
-              "field_key": "ndt_125e_ex_attestation",
-              "label": "The information provided is accurate to the best of my knowledge.",
-              "field_type": "BOOLEAN",
-              "is_required": true
+              "help_text": "By checking this box, you confirm that all responses reflect the current plan design and employee data as of the beginning of the plan year."
             }
           ]
         }

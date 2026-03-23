@@ -32,6 +32,9 @@ public class Questionnaire implements Comparable<Questionnaire> {
     @Column(name = "external_url", columnDefinition = "varchar(500)")
     private String externalUrl;
 
+    @Column(name = "renderer", columnDefinition = "varchar(30)")
+    private String renderer;
+
     @Column(name = "sort_order")
     private int sortOrder;
 
@@ -114,6 +117,14 @@ public class Questionnaire implements Comparable<Questionnaire> {
 
     public List<ServiceItem> getServiceItemList() { return serviceItemList; }
     public void setServiceItemList(List<ServiceItem> serviceItemList) { this.serviceItemList = serviceItemList; }
+
+    public String getRenderer() { return renderer; }
+    public void setRenderer(String renderer) { this.renderer = renderer; }
+
+    /** Returns renderer key, defaulting to "standard" when null/blank. */
+    public String getRendererOrDefault() {
+        return (renderer != null && !renderer.isBlank()) ? renderer : "standard";
+    }
 
     public List<QuestionnaireField> getFieldList() { return fieldList; }
     public void setFieldList(List<QuestionnaireField> fieldList) { this.fieldList = fieldList; }

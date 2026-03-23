@@ -77,4 +77,5 @@ INSERT IGNORE INTO schema_version (version, description, script_name) VALUES
 ('V054', 'Super User Dashboard — managed_installation table', 'V054__managed_installation.sql'),
 ('V055', 'Schema info view for structural version identification', 'V055__schema_info_view.sql'),
 ('V056', 'Training video and single-use token tables', 'V056__training_video_tokens.sql'),
-('V057', 'Add suppressed flag to agency table', 'V057__agency_suppressed.sql');
+('V057', 'Add suppressed flag to agency table', 'V057__agency_suppressed.sql'),
+('V058', 'Add renderer column to questionnaire', 'V058__questionnaire_renderer.sql');

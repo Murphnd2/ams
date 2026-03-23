@@ -80,6 +80,7 @@ public class QuestionnaireLoader {
                 q.setDescription(getTextOrNull(qNode, "description"));
                 q.setActivityType(qNode.get("activity_type").asText());
                 q.setExternalUrl(getTextOrNull(qNode, "external_url"));
+                q.setRenderer(getTextOrNull(qNode, "renderer"));
                 q.setSortOrder(loaded * 100); // auto-increment by loading order
                 q.setSuppressed(false);
                 q.setPsp(psp);

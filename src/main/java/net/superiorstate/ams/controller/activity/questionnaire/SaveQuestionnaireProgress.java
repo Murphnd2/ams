@@ -57,6 +57,11 @@ public class SaveQuestionnaireProgress extends HttpServlet {
             List<QuestionnaireField> fields = QuestionnaireService.getFieldsForQuestionnaire(
                     em, qi.getQuestionnaire().getId());
 
+            // Debug: log what we received
+            System.out.println("[SaveQ] Fields count: " + fields.size());
+            System.out.println("[SaveQ] All params: " + java.util.Collections.list(request.getParameterNames()));
+            int savedCount = 0;
+
             // Save values (single transaction)
             em.getTransaction().begin();
             for (QuestionnaireField field : fields) {
@@ -86,6 +91,7 @@ public class SaveQuestionnaireProgress extends HttpServlet {
                         fv.setFieldValue(paramValue.trim());
                         em.persist(fv);
                     }
+                    savedCount++;
                 } else if (!existing.isEmpty()) {
                     // Clear previously saved value if now empty
                     em.remove(existing.get(0));
@@ -105,6 +111,7 @@ public class SaveQuestionnaireProgress extends HttpServlet {
             em.persist(qi);
             em.getTransaction().commit();
 
+            System.out.println("[SaveQ] Saved " + savedCount + " field values");
             out.print("{\"status\":\"saved\",\"timestamp\":\"" + Instant.now().toString() + "\"}");
 
         } catch (Exception e) {

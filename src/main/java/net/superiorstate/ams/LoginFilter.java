@@ -84,7 +84,7 @@ public class LoginFilter implements Filter {
         }
 
         boolean loggedIn = (session != null && isAuthenticated);
-        boolean allowedPath = ALLOWED_ENDPOINTS.contains(path) || path.startsWith("/proposal/") || path.startsWith("/apply/") || path.startsWith("/tpo") || path.equals("/uploadRateSheet") || path.equals("/saveApplication") || path.startsWith("/video");
+        boolean allowedPath = ALLOWED_ENDPOINTS.contains(path) || path.startsWith("/proposal/") || path.startsWith("/apply/") || path.startsWith("/q/") || path.equals("/saveQuestionnaire") || path.startsWith("/tpo") || path.equals("/uploadRateSheet") || path.equals("/saveApplication") || path.startsWith("/video");
 
         if (loggedIn || allowedPath) {
             chain.doFilter(req, res);

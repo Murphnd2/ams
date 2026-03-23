@@ -102,12 +102,21 @@ public class FillQuestionnaire extends HttpServlet {
             request.setAttribute("pspName", pspName);
             request.setAttribute("activityName", activityName);
 
+            // Route to renderer-specific JSP (custom renderers) or standard fillQuestionnaire.jsp
+            String renderer = qi.getQuestionnaire().getRendererOrDefault();
+            String jspPath;
+            if ("standard".equals(renderer)) {
+                jspPath = "/WEB-INF/view/questionnaire/fillQuestionnaire.jsp";
+            } else {
+                jspPath = "/WEB-INF/view/questionnaire/fillQuestionnaire_" + renderer + ".jsp";
+            }
+
+            RequestDispatcher dispatcher = request.getRequestDispatcher(jspPath);
+            dispatcher.forward(request, response);
+
         } finally {
             em.close();
         }
-
-        RequestDispatcher dispatcher = request.getRequestDispatcher("/WEB-INF/view/questionnaire/fillQuestionnaire.jsp");
-        dispatcher.forward(request, response);
     }
 
     @Override
