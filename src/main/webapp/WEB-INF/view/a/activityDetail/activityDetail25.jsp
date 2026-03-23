@@ -308,6 +308,20 @@
               <c:import url="/WEB-INF/view/a/activityDetail/columns/detail/detailPrimaryContact25.jsp"></c:import>
               <c:import url="/WEB-INF/view/a/activityDetail/columns/detail/detailDetail25.jsp"></c:import>
               <c:import url="/WEB-INF/view/a/activityDetail/columns/detail/detailQuestionnaires25.jsp"></c:import>
+              <%-- NDT Census Testing button — shows only when NDT questionnaire is scoped to this activity --%>
+              <c:if test="${sessionScope.local.isPspAdmin()}">
+                <c:set var="hasNdtQuestionnaire" value="false" />
+                <c:forEach var="aq" items="${sessionScope.local.getCurrentActivity().availableQuestionnaires}">
+                  <c:if test="${aq.renderer == 'ndt_125'}"><c:set var="hasNdtQuestionnaire" value="true" /></c:if>
+                </c:forEach>
+                <c:if test="${hasNdtQuestionnaire}">
+                  <div class="detail-section" style="padding: 0.5rem 1rem;">
+                    <a href="${pageContext.request.contextPath}/NdtTestRun" class="btn btn-sm btn-outline-primary w-100">
+                      <i class="bi bi-shield-check me-1"></i>NDT Census Testing
+                    </a>
+                  </div>
+                </c:if>
+              </c:if>
               <c:import url="/WEB-INF/view/a/activityDetail/columns/detail/detailDocsLinks25.jsp"></c:import>
               <c:import url="/WEB-INF/view/a/activityDetail/columns/detail/detailAdditionalContacts25.jsp"></c:import>
               <c:import url="/WEB-INF/view/a/activityDetail/columns/detail/detailFooter25.jsp"></c:import>

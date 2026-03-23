@@ -16,7 +16,7 @@ Tracks database schema versions across environments.
 | BPO | bpo.superiorstate.biz | beta_ssa | BPO instance (V038, initialized, release V0.37.0) |
 | Master | master.superiorstate.biz | beta_ssa | Snapshot v9 (V057, stopped) |
 
-## Current Highest Version: V058
+## Current Highest Version: V059
 
 ## Dev Baseline
 
@@ -90,6 +90,7 @@ Individual migration scripts are no longer stored in the repo. The baseline dump
 | V056 | Training video and single-use token tables | ⬜ | ⬜ | ⬜ | ✅ | ⬜ | ⬜ | ⬜ |
 | V057 | Add suppressed flag to agency table | ⬜ | ⬜ | ⬜ | ✅ | ⬜ | ⬜ | ⬜ |
 | V058 | Add renderer column to questionnaire | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
+| V059 | NDT census-based testing tables | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
 
 ## Notes
 
