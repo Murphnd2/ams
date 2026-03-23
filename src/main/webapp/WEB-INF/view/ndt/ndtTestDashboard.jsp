@@ -87,7 +87,7 @@
     </style>
 </head>
 <body>
-<%@ include file="/WEB-INF/view/navbar25.jsp" %>
+<c:import url="/WEB-INF/view/a/general/navbar25.jsp"></c:import>
 
 <div class="audit-wrap">
     <%-- Toolbar --%>
@@ -98,7 +98,7 @@
         </div>
         <div class="d-flex align-items-center gap-1">
             <c:if test="${not empty testRun}">
-                <a href="${pageContext.request.contextPath}/Activity?activityId=${activity.id}" class="ghost-action">
+                <a href="${pageContext.request.contextPath}/ViewActivity25" class="ghost-action">
                     <i class="bi bi-arrow-left"></i> Back to Activity
                 </a>
             </c:if>
