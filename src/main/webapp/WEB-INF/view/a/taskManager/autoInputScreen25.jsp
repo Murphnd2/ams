@@ -34,6 +34,14 @@
                            placeholder="recipient@example.com"
                            required>
                   </c:when>
+                  <c:when test="${sessionScope.a1inputTypes[loop.index] == 'LINK'}">
+                    <input type="url"
+                           class="form-control"
+                           name="aInput-${loop.index}"
+                           id="aInput-${loop.index}"
+                           placeholder="https://..."
+                           required>
+                  </c:when>
                   <c:otherwise>
                     <input type="text"
                            class="form-control"

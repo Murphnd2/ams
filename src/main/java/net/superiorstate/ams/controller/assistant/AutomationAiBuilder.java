@@ -56,6 +56,8 @@ public class AutomationAiBuilder extends HttpServlet {
             "3. <<sig>> (near end)\n" +
             "4. <ii><cc></ii> (if needed, after sig)\n" +
             "5. <<close>> (last, if desired)\n\n" +
+            "LINE BREAKS:\n" +
+            "- Use <br/> for line breaks and paragraph spacing in the email body. Do NOT use <nl> tags.\n\n" +
             "RULES:\n" +
             "- Always output the final template code in a code block (triple backticks)\n" +
             "- Ask clarifying questions if the user's request is ambiguous\n" +

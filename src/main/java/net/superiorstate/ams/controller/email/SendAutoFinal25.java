@@ -80,6 +80,13 @@ public class SendAutoFinal25 extends HttpServlet {
                     if (toEmail != null) toEmail = toEmail.trim();
                     // Remove placeholder from body — TO email is used as recipient, not content
                     remainingText = remainingText.replace("<[{" + i + "}]>", "");
+                } else if ("LINK".equals(inputTypes.get(i))) {
+                    String rawValue = request.getParameter("aInput-" + i);
+                    String linkValue = (rawValue != null) ? rawValue.trim() : "";
+                    if (!linkValue.isBlank()) {
+                        linkValue = " <a target=\"_blank\" href=\"" + linkValue + "\">" + linkValue + "</a> ";
+                    }
+                    remainingText = remainingText.replace("<[{" + i + "}]>", linkValue);
                 } else {
                     String rawValue = request.getParameter("aInput-" + i);
                     String safeValue = AutoSafe.getInput(rawValue, inputCount - 1, i);
