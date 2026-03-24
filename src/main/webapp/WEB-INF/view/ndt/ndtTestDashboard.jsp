@@ -153,7 +153,8 @@
                         <div class="col-md-2">
                             <div class="stat-label">Plan Year End</div>
                             <div class="stat-value">
-                                <fmt:formatDate value="${testRun.planYearEnd}" pattern="MM/dd/yyyy"/>
+                                <c:if test="${testRun.planYearEnd != null}"><fmt:formatDate value="${testRun.planYearEnd}" pattern="MM/dd/yyyy"/></c:if>
+                                <c:if test="${testRun.planYearEnd == null}">—</c:if>
                             </div>
                         </div>
                         <div class="col-md-2">
@@ -167,7 +168,8 @@
                         <div class="col-md-2">
                             <div class="stat-label">Created</div>
                             <div class="stat-value">
-                                <fmt:formatDate value="${testRun.createdDate}" pattern="MM/dd/yyyy"/>
+                                <c:if test="${testRun.createdAt != null}"><fmt:formatDate value="${testRun.createdAt}" pattern="MM/dd/yyyy"/></c:if>
+                                <c:if test="${testRun.createdAt == null}">—</c:if>
                             </div>
                         </div>
                         <div class="col-md-1">
