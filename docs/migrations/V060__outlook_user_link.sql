@@ -12,6 +12,9 @@
 -- ----------------------------------------------------------------------
 -- 1. outlook_user_link table
 -- ----------------------------------------------------------------------
+-- Person is a SINGLE_TABLE subclass of Assignee, so Person rows live in
+-- `assignee` with PK column `id`. FKs referencing a Person must target
+-- `assignee(id)` — same pattern used throughout V030/V036/V039/V046.
 CREATE TABLE IF NOT EXISTS outlook_user_link (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     person_id BIGINT NOT NULL,
@@ -19,7 +22,7 @@ CREATE TABLE IF NOT EXISTS outlook_user_link (
     api_token VARCHAR(64) NOT NULL,
     created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
-    CONSTRAINT fk_oul_person FOREIGN KEY (person_id) REFERENCES person(person_id),
+    CONSTRAINT fk_oul_person FOREIGN KEY (person_id) REFERENCES assignee(id),
     CONSTRAINT uq_oul_m365_email UNIQUE (m365_email),
     CONSTRAINT uq_oul_api_token UNIQUE (api_token),
     INDEX idx_oul_person (person_id)
