@@ -2,10 +2,12 @@ package net.superiorstate.ams.model.activity.note;
 
 import jakarta.persistence.*;
 import net.superiorstate.ams.model.general.Person;
+import net.superiorstate.ams.model.general.WebLink;
 import net.superiorstate.ams.model.activity.Activity;
 
 import java.sql.Date;
 import java.sql.Timestamp;
+import java.util.List;
 
 @Entity
 public class Note {
@@ -41,6 +43,10 @@ public class Note {
 
     @Column(name="is_resolution")
     private boolean isResolution;
+
+    @OneToMany(mappedBy = "note")
+    private List<WebLink> webLinkList;
+
     public Note(){}
 
     public Long getId() {
@@ -112,5 +118,13 @@ public class Note {
 
     public void setResolution(boolean resolution) {
         isResolution = resolution;
+    }
+
+    public List<WebLink> getWebLinkList() {
+        return webLinkList;
+    }
+
+    public void setWebLinkList(List<WebLink> webLinkList) {
+        this.webLinkList = webLinkList;
     }
 }

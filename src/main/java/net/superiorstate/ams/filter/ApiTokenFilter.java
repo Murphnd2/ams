@@ -46,6 +46,13 @@ public class ApiTokenFilter implements Filter {
             return;
         }
 
+        // Skip auth for Outlook add-in endpoints (they use per-user tokens
+        // stored on outlook_user_link rows, validated via OutlookApiHelper).
+        if (uri.startsWith(contextPath + "/api/v1/outlook/")) {
+            chain.doFilter(request, response);
+            return;
+        }
+
         String authHeader = request.getHeader("Authorization");
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             sendUnauthorized(response);

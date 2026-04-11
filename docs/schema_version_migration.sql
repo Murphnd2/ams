@@ -79,4 +79,5 @@ INSERT IGNORE INTO schema_version (version, description, script_name) VALUES
 ('V056', 'Training video and single-use token tables', 'V056__training_video_tokens.sql'),
 ('V057', 'Add suppressed flag to agency table', 'V057__agency_suppressed.sql'),
 ('V058', 'Add renderer column to questionnaire', 'V058__questionnaire_renderer.sql'),
-('V059', 'NDT census-based testing tables', 'V059__ndt_census_tables.sql');
+('V059', 'NDT census-based testing tables', 'V059__ndt_census_tables.sql'),
+('V060', 'Outlook add-in user link + weblink.note_id', 'V060__outlook_user_link.sql');

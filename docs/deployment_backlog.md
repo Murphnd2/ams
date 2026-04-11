@@ -899,4 +899,58 @@ ReadWritePaths=/var/lib/tomcat10/webapps/ROOT/branding/
 ReadWritePaths=/var/lib/tomcat10/data/
 ```
 
+---
+
+### D-67: Apply V060 + Outlook Web Add-in ("Log to AMS")
+
+**Priority:** MEDIUM — New feature, no urgency, but adds value for PSP users handling client email
+**Status:** Code complete — V060 not yet applied anywhere
+
+New Outlook Web Add-in that adds a "Log to AMS" button to the reading pane. When clicked, a taskpane opens, auto-authenticates via the user's Microsoft 365 email, and lets them pick an open AMS activity and log the email as a Note. Any email attachments are uploaded to Wasabi and linked to the note via WebLink records.
+
+**Migration V060:**
+- Creates `outlook_user_link` table (person_id, m365_email unique, api_token unique, is_active)
+- Adds nullable `weblink.note_id` FK column + index (matches existing `email_id` / `todo_note_id` pattern)
+
+**New API endpoints (bypass ApiTokenFilter, use per-user tokens):**
+- `POST /api/v1/outlook/authenticate` — exchange M365 email for api_token
+- `GET  /api/v1/outlook/activities?q={term}` — PSP-scoped open-activity search (Activity25 view)
+- `POST /api/v1/outlook/log-email` — multipart upload, creates Note + WebLink rows, uploads files to Wasabi
+
+**New admin page:**
+- `/OutlookLinkManager` (PSP Admin role 5) — link AMS users to M365 emails, regenerate tokens, unlink
+- Token = 2× UUID.randomUUID concatenated, dashes stripped = 64 hex chars
+
+**Static add-in files at `/outlook/`:**
+- `manifest.xml` — Office Add-in MailApp manifest (Mailbox 1.5+)
+- `taskpane.html` — single-page UI (Office.js + Bootstrap, SSA brand colors)
+- `icon-16.png` / `icon-32.png` / `icon-80.png` — navy tile with white "A", green accent stripe
+- `scripts/generate-outlook-icons.ps1` — reproducible icon generator
+
+**Auth model:** The add-in does NOT use session cookies. On first open, it POSTs the user's M365 email to `/authenticate`, receives a token, stores it in `localStorage`, and sends it as `Authorization: Bearer {token}` on every subsequent call. PSP Admin must link each user via `/OutlookLinkManager` before they can use the add-in.
+
+**Deployment steps:**
+1. Apply `docs/migrations/V060__outlook_user_link.sql`
+2. Deploy WAR
+3. Navigate to `/OutlookLinkManager` (as PSP Admin) and link at least one user's M365 email
+4. In Outlook Web → More apps → Get Add-ins → My add-ins → Add from URL → `https://superiorstate.biz/outlook/manifest.xml`
+5. Open any email → click "Log to AMS" in the ribbon → verify taskpane auto-authenticates and picker works
+6. Test logging an email with attachments → verify Note appears on the activity with WebLink rows (check the activity's note list; attachments are tied to the note via `weblink.note_id`)
+
+**Files:**
+- `docs/migrations/V060__outlook_user_link.sql`
+- `src/main/java/net/superiorstate/ams/model/general/OutlookUserLink.java`
+- `src/main/java/net/superiorstate/ams/controller/api/outlook/` (4 files)
+- `src/main/java/net/superiorstate/ams/controller/user/OutlookLinkManager.java`
+- `src/main/webapp/WEB-INF/view/user/outlookLinkManager.jsp`
+- `src/main/webapp/outlook/` (manifest, taskpane, README, 3 PNGs)
+- `scripts/generate-outlook-icons.ps1`
+- Modified: `Note.java`, `WebLink.java`, `LoginFilter.java`, `ApiTokenFilter.java`
+
+**Future enhancements (not in scope):**
+- Bulk user linking via CSV
+- Auto-detect activity from email subject line keywords
+- Log sent emails (not just received)
+- Org-wide deployment via Microsoft 365 Admin Center (Integrated Apps)
+
 **Applies to:** Demo PSP ✅, BPO ⬜, Production ⬜, Master image ⬜

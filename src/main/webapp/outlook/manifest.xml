@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<OfficeApp
+        xmlns="http://schemas.microsoft.com/office/appforoffice/1.1"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xmlns:bt="http://schemas.microsoft.com/office/officeappbasictypes/1.0"
+        xmlns:mailappor="http://schemas.microsoft.com/office/mailappversionoverrides/1.0"
+        xsi:type="MailApp">
+
+    <Id>8f2a4c7d-1b3e-4d5f-9a6c-2e8f1b4d7e9a</Id>
+    <Version>1.0.0.0</Version>
+    <ProviderName>Superior State Administrators</ProviderName>
+    <DefaultLocale>en-US</DefaultLocale>
+    <DisplayName DefaultValue="Log to AMS"/>
+    <Description DefaultValue="Log this email as a note on an AMS activity."/>
+    <IconUrl DefaultValue="https://superiorstate.biz/outlook/icon-80.png"/>
+    <HighResolutionIconUrl DefaultValue="https://superiorstate.biz/outlook/icon-80.png"/>
+    <SupportUrl DefaultValue="https://superiorstate.biz"/>
+
+    <AppDomains>
+        <AppDomain>https://superiorstate.biz</AppDomain>
+    </AppDomains>
+
+    <Hosts>
+        <Host Name="Mailbox"/>
+    </Hosts>
+
+    <Requirements>
+        <Sets>
+            <Set Name="Mailbox" MinVersion="1.5"/>
+        </Sets>
+    </Requirements>
+
+    <FormSettings>
+        <Form xsi:type="ItemRead">
+            <DesktopSettings>
+                <SourceLocation DefaultValue="https://superiorstate.biz/outlook/taskpane.html"/>
+                <RequestedHeight>350</RequestedHeight>
+            </DesktopSettings>
+        </Form>
+    </FormSettings>
+
+    <Permissions>ReadWriteItem</Permissions>
+
+    <Rule xsi:type="RuleCollection" Mode="Or">
+        <Rule xsi:type="ItemIs" ItemType="Message" FormType="Read"/>
+    </Rule>
+
+    <DisableEntityHighlighting>false</DisableEntityHighlighting>
+
+    <VersionOverrides xmlns="http://schemas.microsoft.com/office/mailappversionoverrides"
+                      xsi:type="VersionOverridesV1_0">
+        <Requirements>
+            <bt:Sets DefaultMinVersion="1.5">
+                <bt:Set Name="Mailbox"/>
+            </bt:Sets>
+        </Requirements>
+
+        <Hosts>
+            <Host xsi:type="MailHost">
+                <DesktopFormFactor>
+                    <FunctionFile resid="functionFile"/>
+                    <ExtensionPoint xsi:type="MessageReadCommandSurface">
+                        <OfficeTab id="TabDefault">
+                            <Group id="amsGroup">
+                                <Label resid="amsGroupLabel"/>
+                                <Control xsi:type="Button" id="logToAmsButton">
+                                    <Label resid="logToAmsLabel"/>
+                                    <Supertip>
+                                        <Title resid="logToAmsTitle"/>
+                                        <Description resid="logToAmsDesc"/>
+                                    </Supertip>
+                                    <Icon>
+                                        <bt:Image size="16" resid="icon16"/>
+                                        <bt:Image size="32" resid="icon32"/>
+                                        <bt:Image size="80" resid="icon80"/>
+                                    </Icon>
+                                    <Action xsi:type="ShowTaskpane">
+                                        <SourceLocation resid="taskpaneUrl"/>
+                                    </Action>
+                                </Control>
+                            </Group>
+                        </OfficeTab>
+                    </ExtensionPoint>
+                </DesktopFormFactor>
+            </Host>
+        </Hosts>
+
+        <Resources>
+            <bt:Images>
+                <bt:Image id="icon16" DefaultValue="https://superiorstate.biz/outlook/icon-16.png"/>
+                <bt:Image id="icon32" DefaultValue="https://superiorstate.biz/outlook/icon-32.png"/>
+                <bt:Image id="icon80" DefaultValue="https://superiorstate.biz/outlook/icon-80.png"/>
+            </bt:Images>
+            <bt:Urls>
+                <bt:Url id="functionFile" DefaultValue="https://superiorstate.biz/outlook/taskpane.html"/>
+                <bt:Url id="taskpaneUrl" DefaultValue="https://superiorstate.biz/outlook/taskpane.html"/>
+            </bt:Urls>
+            <bt:ShortStrings>
+                <bt:String id="amsGroupLabel" DefaultValue="AMS"/>
+                <bt:String id="logToAmsLabel" DefaultValue="Log to AMS"/>
+                <bt:String id="logToAmsTitle" DefaultValue="Log to AMS"/>
+            </bt:ShortStrings>
+            <bt:LongStrings>
+                <bt:String id="logToAmsDesc"
+                           DefaultValue="Log this email as a note on an AMS activity."/>
+            </bt:LongStrings>
+        </Resources>
+    </VersionOverrides>
+</OfficeApp>

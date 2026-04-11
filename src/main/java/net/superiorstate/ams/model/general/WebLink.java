@@ -5,6 +5,7 @@ import net.superiorstate.ams.data.dao.AppConstantDAO;
 import net.superiorstate.ams.model.activity.checklist.tasks.Task;
 import net.superiorstate.ams.model.activity.checklist.tasks.ToDoNote;
 import net.superiorstate.ams.model.activity.note.Email;
+import net.superiorstate.ams.model.activity.note.Note;
 
 import java.util.List;
 
@@ -35,6 +36,10 @@ public class WebLink {
     @ManyToOne
     @JoinColumn(name = "todo_note_id")
     private ToDoNote toDoNote;
+
+    @ManyToOne
+    @JoinColumn(name = "note_id")
+    private Note note;
 
     @ManyToMany(mappedBy="webLinkList")
     List<Task> listOfTasksWithThisWebLink;
@@ -126,6 +131,14 @@ public class WebLink {
 
     public void setToDoNote(ToDoNote toDoNote) {
         this.toDoNote = toDoNote;
+    }
+
+    public Note getNote() {
+        return note;
+    }
+
+    public void setNote(Note note) {
+        this.note = note;
     }
 
 }

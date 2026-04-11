@@ -2,7 +2,7 @@
 
 > **Purpose:** Consolidated historical record of all build sessions. For current project state, see `project_backlog.md`. For current architecture, see `application_flow.md` and `entity_reference.md`.
 >
-> **Last Updated:** March 19, 2026 (Session 76)
+> **Last Updated:** April 11, 2026 (Session 77)
 >
 > **Note:** Sessions 1–38 (Feb 15 – Mar 5) were compressed during the Session 69 cleanup. Full details for those sessions are available in git history prior to that commit.
 
@@ -1246,3 +1246,98 @@ When a PSP admin sends a task back to the BPO vendor, the rejection note is now 
 - **JSP (2):** bpoHome25.jsp, checklistBasic25.jsp
 
 No database changes.
+
+---
+
+## April 11, 2026 — Session 77: Outlook Web Add-in "Log to AMS" (V060)
+
+End-to-end build of an Outlook Web Add-in that lets users log an inbound email as a Note on an open AMS activity, with attachments uploaded to Wasabi and linked via WebLink records. Also built the supporting admin page and V060 migration.
+
+### V060 Migration
+
+- **New file:** `docs/migrations/V060__outlook_user_link.sql`
+- Creates `outlook_user_link` table: `(id, person_id, m365_email UNIQUE, api_token UNIQUE, is_active, created_date)`
+- Adds nullable `weblink.note_id BIGINT` FK + index `idx_weblink_note` (same pattern as existing `email_id` / `todo_note_id`)
+- Updates `schema_info` view to V060
+- Self-registers in `schema_version`
+- **Numbering note:** Originally planned as V058, bumped to V060 because V058 (questionnaire_renderer) and V059 (ndt_census_tables) were already taken.
+
+### Authentication Model
+
+The add-in does NOT use session cookies or the existing `ApiTokenFilter`. Each linked user has a per-user `api_token` (64 hex chars = two concatenated UUIDs, dashes stripped) stored in `outlook_user_link`. The taskpane:
+
+1. On first open, reads `Office.context.mailbox.userProfile.emailAddress`
+2. POSTs it to `/api/v1/outlook/authenticate`
+3. Stores the returned token in `localStorage`
+4. Sends `Authorization: Bearer {token}` on every subsequent request
+
+This avoids cookie/session issues with Office.js iframes entirely. If no link row exists for a given M365 email, the add-in shows "Account not linked — contact your administrator."
+
+### API Endpoints (`/controller/api/outlook/`)
+
+- **`OutlookApiHelper`** — Shared token validator (`validateOutlookToken`) + JSON helpers (`sendJson`, `sendJsonError`, `escapeJson`). Avoids pulling in a JSON library for the single-field request bodies.
+- **`OutlookAuthApi`** (`POST /api/v1/outlook/authenticate`) — Exchanges M365 email for the stored api_token. Returns `{token, userName, personId}` or 404 "not linked". Uses a minimal inline JSON body parser.
+- **`OutlookActivitiesApi`** (`GET /api/v1/outlook/activities?q=...`) — PSP-scoped search against `Activity25` (view `a25_activity_list_open`). Filters on `LOWER(a25.name) LIKE ?` and `activity.loggedBy.psp.id = ?`. Returns up to 20 matches as `[{activityId, label, employerName, activityType}]`. Label format: `{employerName} — {activityType} (Due: {date})`.
+- **`OutlookLogEmailApi`** (`POST /api/v1/outlook/log-email`) — Multipart upload (20 MB/file, 50 MB total). Creates a `Note` with `reason_id=4` ("Received Email", confirmed in DatabaseInitializer seed), user-chosen `status_id` (default 3 "Waiting on Us"), `createdBy = token-linked person`. For each attachment: UUID filename, Wasabi upload via `StorageDAO.uploadFile`, `WebLink` row with `note_id` FK. PSP cross-tenant check via `activity.loggedBy.psp.id` comparison → 403 on mismatch.
+
+### Filter Updates
+
+- **`ApiTokenFilter.java`** — Added bypass for `/api/v1/outlook/` paths (follows existing partnership / registry / webhook / system-register pattern).
+- **`LoginFilter.java`** — Added `/outlook/` to `allowedPath` check so the static add-in files (manifest.xml, taskpane.html, PNGs) are reachable without auth. Note: `/api/*` was already whitelisted.
+- **Package discovery:** `LoginFilter` lives at `net.superiorstate.ams.LoginFilter` (root package), not `net.superiorstate.ams.filter.LoginFilter`.
+
+### Admin Page (`/OutlookLinkManager`)
+
+- **`OutlookLinkManager.java`** (`controller/user/`) — PSP Admin (role 5) CRUD servlet. Actions: `link` (create with fresh token), `unlink` (soft-delete via `isActive=false`), `relink` (regenerate token, reactivates if inactive).
+- **`outlookLinkManager.jsp`** (`WEB-INF/view/user/`) — Full-page admin UI with `.audit-wrap` flex layout (toolbar + scrollable body, `calc(100vh - 64px)`), sticky-header table, SSA brand badges, Bootstrap modal for "Link New User" with user dropdown + email field. Confirm prompts on destructive actions.
+- PSP users dropdown scoped to `psp.id = 4` and `u.isActive = true`.
+
+### Static Add-in Files (`/src/main/webapp/outlook/`)
+
+- **`manifest.xml`** — Office Add-in MailApp manifest, Mailbox API 1.5+, `MessageReadCommandSurface` button that opens the taskpane, `ReadWriteItem` permission. Uses VersionOverrides for ribbon button configuration.
+- **`taskpane.html`** — Single self-contained page (Office.js + Bootstrap 5 CDN). Auto-auth flow on load → email preview card (from/subject/date + attachment checkboxes) → typeahead activity picker with 300 ms debounce → status radio (Waiting on Us default) → multipart submission. Base64 attachment content converted to `Blob` via `atob` helper. SSA brand colors `#0d5681` navy / `#87a948` green.
+- **`README.md`** — Icon specs + sideload instructions + reference to the generator script.
+
+### Icon Generation
+
+- **`scripts/generate-outlook-icons.ps1`** — Reproducible PowerShell icon generator using `System.Drawing` (no ImageMagick dependency). Generates three navy-tile PNGs with a white bold "A" glyph and a green accent stripe at the bottom (32/80 only; 16px is a flat square for clarity at small size).
+- **`icon-16.png`** (269 B), **`icon-32.png`** (541 B), **`icon-80.png`** (1.0 KB) — Brand-matched tiles, rounded corners on 32/80.
+- PowerShell gotcha: `New-Object` with float/int arguments must use `-ArgumentList` with explicit `[float]` casts or the `RectangleF` overload resolution fails.
+
+### Entity Changes
+
+- **`OutlookUserLink.java`** (`model/general/`) — New JPA entity. IDENTITY-generated id, ManyToOne Person, unique m365_email + api_token, isActive flag.
+- **`Note.java`** — Added `@OneToMany(mappedBy="note") List<WebLink> webLinkList` + getter/setter.
+- **`WebLink.java`** — Added `@ManyToOne @JoinColumn(name="note_id") Note note` + getter/setter.
+
+### Critical Findings from Investigation
+
+- **ActivityStatus seed is:** `1=Waiting on Them`, `2=No Change`, `3=Waiting on Us`. Prior MEMORY.md had these swapped — corrected by reading `DatabaseInitializer.java:276-278` and `AddNoteToActivity25.handleAnyActivityStatusUpdates`.
+- **ReasonCreated id=4 ("Received Email")** already seeded — no new reason needed.
+- **Activity25 view-backed DTO** has no service_item column — labels use employer name + DTYPE + due date instead.
+- **JSP directory** is `WEB-INF/view/` (singular), not `views/`.
+
+### Files Created (13)
+- `docs/migrations/V060__outlook_user_link.sql`
+- `model/general/OutlookUserLink.java`
+- `controller/api/outlook/OutlookApiHelper.java`
+- `controller/api/outlook/OutlookAuthApi.java`
+- `controller/api/outlook/OutlookActivitiesApi.java`
+- `controller/api/outlook/OutlookLogEmailApi.java`
+- `controller/user/OutlookLinkManager.java`
+- `WEB-INF/view/user/outlookLinkManager.jsp`
+- `webapp/outlook/manifest.xml`
+- `webapp/outlook/taskpane.html`
+- `webapp/outlook/README.md`
+- `webapp/outlook/{icon-16,icon-32,icon-80}.png`
+- `scripts/generate-outlook-icons.ps1`
+
+### Files Modified (6)
+- `Note.java`, `WebLink.java` — bidirectional note ↔ weblink relationship
+- `LoginFilter.java` — `/outlook/` static path allow
+- `ApiTokenFilter.java` — `/api/v1/outlook/` bypass
+- `docs/analysis/migration_tracker.md` — V060 row
+- `docs/schema_version_migration.sql` — V060 INSERT
+
+### Deployment
+See D-67 in `docs/deployment_backlog.md`. Not yet applied to any environment.
