@@ -7,7 +7,7 @@
         xsi:type="MailApp">
 
     <Id>8f2a4c7d-1b3e-4d5f-9a6c-2e8f1b4d7e9a</Id>
-    <Version>1.0.0.0</Version>
+    <Version>1.1.0.0</Version>
     <ProviderName>Superior State Administrators</ProviderName>
     <DefaultLocale>en-US</DefaultLocale>
     <DisplayName DefaultValue="Log to AMS"/>
@@ -33,7 +33,7 @@
     <FormSettings>
         <Form xsi:type="ItemRead">
             <DesktopSettings>
-                <SourceLocation DefaultValue="https://superiorstate.biz/outlook/taskpane.html"/>
+                <SourceLocation DefaultValue="https://superiorstate.biz/outlook/taskpane.html?v=1.1"/>
                 <RequestedHeight>350</RequestedHeight>
             </DesktopSettings>
         </Form>
@@ -93,7 +93,7 @@
             </bt:Images>
             <bt:Urls>
                 <bt:Url id="functionFile" DefaultValue="https://superiorstate.biz/outlook/taskpane.html"/>
-                <bt:Url id="taskpaneUrl" DefaultValue="https://superiorstate.biz/outlook/taskpane.html"/>
+                <bt:Url id="taskpaneUrl" DefaultValue="https://superiorstate.biz/outlook/taskpane.html?v=1.1"/>
             </bt:Urls>
             <bt:ShortStrings>
                 <bt:String id="amsGroupLabel" DefaultValue="AMS"/>

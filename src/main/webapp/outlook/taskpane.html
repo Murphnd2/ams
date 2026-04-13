@@ -130,6 +130,39 @@
             vertical-align: middle;
         }
         @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* --- Tab navigation --- */
+        .ams-tabs {
+            display: flex;
+            gap: 0;
+            margin-bottom: 14px;
+            border-bottom: 2px solid #dee2e6;
+        }
+        .ams-tab {
+            flex: 1;
+            text-align: center;
+            padding: 8px 4px;
+            font-size: 12px;
+            font-weight: 600;
+            color: #6c757d;
+            background: transparent;
+            border: none;
+            border-bottom: 2px solid transparent;
+            margin-bottom: -2px;
+            cursor: pointer;
+            transition: color 0.15s, border-color 0.15s;
+        }
+        .ams-tab:hover { color: var(--ams-primary); }
+        .ams-tab.active {
+            color: var(--ams-primary);
+            border-bottom-color: var(--ams-primary);
+        }
+        .tab-pane { display: none; }
+        .tab-pane.active { display: block; }
+
+        /* --- Custom reason toggle --- */
+        #customReasonWrap { margin-top: 6px; }
+        #ticketDescription { font-size: 13px; }
     </style>
 </head>
 <body>
@@ -156,6 +189,7 @@
 
 <div id="mainUi" class="hidden">
 
+    <!-- Email preview (shared) -->
     <div class="section">
         <div class="section-label">Email</div>
         <div class="email-preview">
@@ -169,34 +203,77 @@
         </div>
     </div>
 
-    <div class="section">
-        <div class="section-label">Activity</div>
-        <div id="activitySelector">
-            <input type="text" class="form-control" id="activitySearch"
-                   placeholder="Search by employer or activity…" autocomplete="off"/>
-            <div class="suggestions" id="suggestions"></div>
-        </div>
-        <div id="selectedActivityBox" class="selected-activity hidden">
-            <span id="selectedActivityLabel"></span>
-            <button type="button" class="clear-btn" id="clearActivityBtn" title="Clear">&times;</button>
-        </div>
+    <!-- Tabs -->
+    <div class="ams-tabs">
+        <button class="ams-tab active" data-tab="logTab">Log to Activity</button>
+        <button class="ams-tab" data-tab="ticketTab">Create Ticket</button>
     </div>
 
-    <div class="section">
-        <div class="section-label">Status after logging</div>
-        <div class="form-check">
-            <input class="form-check-input" type="radio" name="statusRadio" id="statusWaitOnUs" value="3" checked/>
-            <label class="form-check-label" for="statusWaitOnUs">Waiting on Us</label>
+    <!-- Tab 1: Log to Activity (existing) -->
+    <div class="tab-pane active" id="logTab">
+        <div class="section">
+            <div class="section-label">Activity</div>
+            <div id="activitySelector">
+                <input type="text" class="form-control" id="activitySearch"
+                       placeholder="Search by employer or activity…" autocomplete="off"/>
+                <div class="suggestions" id="suggestions"></div>
+            </div>
+            <div id="selectedActivityBox" class="selected-activity hidden">
+                <span id="selectedActivityLabel"></span>
+                <button type="button" class="clear-btn" id="clearActivityBtn" title="Clear">&times;</button>
+            </div>
         </div>
-        <div class="form-check">
-            <input class="form-check-input" type="radio" name="statusRadio" id="statusWaitOnThem" value="1"/>
-            <label class="form-check-label" for="statusWaitOnThem">Waiting on Them</label>
+
+        <div class="section">
+            <div class="section-label">Status after logging</div>
+            <div class="form-check">
+                <input class="form-check-input" type="radio" name="statusRadio" id="statusWaitOnUs" value="3" checked/>
+                <label class="form-check-label" for="statusWaitOnUs">Waiting on Us</label>
+            </div>
+            <div class="form-check">
+                <input class="form-check-input" type="radio" name="statusRadio" id="statusWaitOnThem" value="1"/>
+                <label class="form-check-label" for="statusWaitOnThem">Waiting on Them</label>
+            </div>
         </div>
+
+        <button type="button" class="btn-ams" id="logBtn" disabled>Log Email</button>
+        <div id="logResultAlert" class="alert hidden mt-2"></div>
     </div>
 
-    <button type="button" class="btn-ams" id="logBtn" disabled>Log Email</button>
+    <!-- Tab 2: Create Ticket -->
+    <div class="tab-pane" id="ticketTab">
+        <div class="section">
+            <div class="section-label">Ticket Reason</div>
+            <select class="form-select form-select-sm" id="serviceItemSelect">
+                <option value="" disabled selected>Loading…</option>
+            </select>
+            <div id="customReasonWrap" class="hidden">
+                <input type="text" class="form-control form-control-sm mt-1" id="customReasonInput"
+                       placeholder="Describe the reason…" autocomplete="off"/>
+            </div>
+        </div>
 
-    <div id="resultAlert" class="alert hidden mt-2"></div>
+        <div class="section">
+            <div class="section-label">Description</div>
+            <input type="text" class="form-control form-control-sm" id="ticketDescription"
+                   placeholder="Ticket description (defaults to subject)"/>
+        </div>
+
+        <div class="section">
+            <div class="section-label">Primary Contact</div>
+            <select class="form-select form-select-sm" id="primaryContactSelect">
+                <option value="" disabled selected>Loading…</option>
+            </select>
+        </div>
+
+        <div class="section" id="additionalContactsSection" style="display:none;">
+            <div class="section-label">Additional Contacts</div>
+            <div id="additionalContactsList"></div>
+        </div>
+
+        <button type="button" class="btn-ams" id="createTicketBtn" disabled>Create Ticket</button>
+        <div id="ticketResultAlert" class="alert hidden mt-2"></div>
+    </div>
 
     <div class="text-muted mt-3" style="font-size: 10px;">
         Signed in as <span id="signedInAs"></span>
@@ -218,7 +295,9 @@
         mailboxEmail: null,
         selectedActivity: null,
         emailBodyText: '',
-        attachmentMeta: []  // [{id, name, size, selected}]
+        attachmentMeta: [],  // [{id, name, size, selected}]
+        ticketCategories: [], // [{id, description, categoryId, category}]
+        emailPeople: []      // [{email, name, label}] — all people on the email minus logged-in user
     };
 
     // --- Office.js bootstrap ---
@@ -240,14 +319,10 @@
         var storedToken = localStorage.getItem(TOKEN_KEY);
         var storedEmail = localStorage.getItem(STORED_EMAIL_KEY);
 
-        // If we have a cached token for the same M365 email, validate it lazily.
         if (storedToken && storedEmail === state.mailboxEmail) {
             state.token = storedToken;
             validateStoredToken(function (ok) {
                 if (ok) {
-                    // Token is good — fetch profile via activities ping, user name
-                    // will come back from subsequent authenticate if needed.
-                    // We need userName for display, so re-authenticate once.
                     exchangeEmailForToken();
                 } else {
                     localStorage.removeItem(TOKEN_KEY);
@@ -316,8 +391,23 @@
         document.getElementById('mainUi').classList.remove('hidden');
         document.getElementById('signedInAs').textContent = state.userName || state.mailboxEmail;
         populateEmailPreview();
+        wireTabs();
         wireActivitySearch();
         wireLogButton();
+        wireTicketForm();
+    }
+
+    // --- Tabs ---
+    function wireTabs() {
+        var tabs = document.querySelectorAll('.ams-tab');
+        tabs.forEach(function (tab) {
+            tab.addEventListener('click', function () {
+                tabs.forEach(function (t) { t.classList.remove('active'); });
+                tab.classList.add('active');
+                document.querySelectorAll('.tab-pane').forEach(function (p) { p.classList.remove('active'); });
+                document.getElementById(tab.dataset.tab).classList.add('active');
+            });
+        });
     }
 
     // --- Email preview ---
@@ -333,6 +423,28 @@
         document.getElementById('emailDate').textContent =
             item.dateTimeCreated ? new Date(item.dateTimeCreated).toLocaleString() : '';
 
+        // Default the ticket description to the email subject
+        document.getElementById('ticketDescription').value = item.subject || '';
+
+        // Build people list for ticket contact selection (From + To + CC, minus logged-in user)
+        var userEmail = (state.mailboxEmail || '').toLowerCase();
+        var seen = {};
+        state.emailPeople = [];
+
+        function addPerson(email, name, isFrom) {
+            var key = (email || name || '').toLowerCase();
+            if (!key || key === userEmail || seen[key]) return;
+            seen[key] = true;
+            var label = name || email;
+            if (name && email) label = name + ' <' + email + '>';
+            state.emailPeople.push({ email: email || '', name: name || '', label: label, isFrom: isFrom });
+        }
+
+        // From first (so it's default)
+        if (item.from) addPerson(item.from.emailAddress, item.from.displayName, true);
+        (item.to || []).forEach(function (r) { addPerson(r.emailAddress, r.displayName, false); });
+        (item.cc || []).forEach(function (r) { addPerson(r.emailAddress, r.displayName, false); });
+
         // Attachments
         var atts = item.attachments || [];
         state.attachmentMeta = [];
@@ -340,7 +452,6 @@
             var listEl = document.getElementById('attachmentsList');
             listEl.innerHTML = '';
             atts.forEach(function (att, idx) {
-                // Skip inline attachments (embedded images etc.)
                 if (att.isInline) return;
                 state.attachmentMeta.push({
                     id: att.id,
@@ -377,7 +488,7 @@
         });
     }
 
-    // --- Activity autocomplete ---
+    // --- Activity autocomplete (Tab 1) ---
     function wireActivitySearch() {
         var input = document.getElementById('activitySearch');
         var suggestions = document.getElementById('suggestions');
@@ -455,7 +566,7 @@
         document.getElementById('logBtn').disabled = !state.selectedActivity;
     }
 
-    // --- Log button ---
+    // --- Log button (Tab 1) ---
     function wireLogButton() {
         document.getElementById('logBtn').addEventListener('click', logEmail);
     }
@@ -481,11 +592,10 @@
         form.append('attachmentCount', total);
 
         if (total === 0) {
-            submitFormData(form);
+            submitLogForm(form);
             return;
         }
 
-        // Fetch attachment content sequentially, then submit.
         var fetched = 0;
         selectedAtts.forEach(function (att, idx) {
             item.getAttachmentContentAsync(att.id, function (result) {
@@ -496,7 +606,6 @@
                     if (format === Office.MailboxEnums.AttachmentContentFormat.Base64) {
                         blob = base64ToBlob(content);
                     } else {
-                        // EML or iCal — treat as text
                         blob = new Blob([content], { type: 'text/plain' });
                     }
                     form.append('file_' + idx, blob, att.name);
@@ -506,12 +615,12 @@
                     form.append('fileName_' + idx, att.name);
                 }
                 fetched++;
-                if (fetched === total) submitFormData(form);
+                if (fetched === total) submitLogForm(form);
             });
         });
     }
 
-    function submitFormData(form) {
+    function submitLogForm(form) {
         fetch(API_BASE + '/api/v1/outlook/log-email', {
             method: 'POST',
             headers: { 'Authorization': 'Bearer ' + state.token },
@@ -524,30 +633,268 @@
             var btn = document.getElementById('logBtn');
             btn.innerHTML = 'Log Email';
             if (wrapped.status === 200 && wrapped.data.success) {
-                showResult('success',
+                showResult('logResultAlert', 'success',
                     'Email logged to activity. (' + wrapped.data.attachmentsUploaded +
                     ' attachment' + (wrapped.data.attachmentsUploaded === 1 ? '' : 's') + ' uploaded)');
                 btn.disabled = true;
             } else {
-                showResult('danger', wrapped.data.error || 'Failed to log email.');
+                showResult('logResultAlert', 'danger', wrapped.data.error || 'Failed to log email.');
                 btn.disabled = false;
             }
         }).catch(function (err) {
             var btn = document.getElementById('logBtn');
             btn.innerHTML = 'Log Email';
             btn.disabled = false;
-            showResult('danger', 'Network error: ' + err.message);
+            showResult('logResultAlert', 'danger', 'Network error: ' + err.message);
         });
     }
 
-    function showResult(type, msg) {
-        var el = document.getElementById('resultAlert');
+    // --- Ticket form (Tab 2) ---
+    function wireTicketForm() {
+        loadTicketCategories();
+        populatePrimaryContactDropdown();
+
+        var select = document.getElementById('serviceItemSelect');
+        var customWrap = document.getElementById('customReasonWrap');
+        var customInput = document.getElementById('customReasonInput');
+
+        select.addEventListener('change', function () {
+            if (select.value === '0') {
+                customWrap.classList.remove('hidden');
+                customInput.focus();
+            } else {
+                customWrap.classList.add('hidden');
+                customInput.value = '';
+            }
+            updateTicketButtonState();
+        });
+
+        document.getElementById('primaryContactSelect').addEventListener('change', function () {
+            renderAdditionalContacts();
+            updateTicketButtonState();
+        });
+
+        customInput.addEventListener('input', updateTicketButtonState);
+        document.getElementById('ticketDescription').addEventListener('input', updateTicketButtonState);
+        document.getElementById('createTicketBtn').addEventListener('click', createTicket);
+    }
+
+    function populatePrimaryContactDropdown() {
+        var sel = document.getElementById('primaryContactSelect');
+        sel.innerHTML = '';
+        if (state.emailPeople.length === 0) {
+            sel.innerHTML = '<option value="" disabled selected>No contacts found</option>';
+            return;
+        }
+        state.emailPeople.forEach(function (p, idx) {
+            var opt = document.createElement('option');
+            opt.value = idx;
+            opt.textContent = p.label;
+            sel.appendChild(opt);
+        });
+        // Default to first (the From sender)
+        sel.value = '0';
+        renderAdditionalContacts();
+    }
+
+    function renderAdditionalContacts() {
+        var primaryIdx = parseInt(document.getElementById('primaryContactSelect').value, 10);
+        var section = document.getElementById('additionalContactsSection');
+        var listEl = document.getElementById('additionalContactsList');
+        listEl.innerHTML = '';
+
+        var others = [];
+        state.emailPeople.forEach(function (p, idx) {
+            if (idx !== primaryIdx) others.push({ person: p, idx: idx });
+        });
+
+        if (others.length === 0) {
+            section.style.display = 'none';
+            return;
+        }
+
+        section.style.display = '';
+        others.forEach(function (o) {
+            var row = document.createElement('div');
+            row.className = 'form-check';
+            var cbId = 'addlContact_' + o.idx;
+            row.innerHTML = '<input class="form-check-input addl-contact-cb" type="checkbox" id="' + cbId +
+                '" value="' + o.idx + '" checked/>' +
+                '<label class="form-check-label" for="' + cbId + '">' +
+                escapeHtml(o.person.label) + '</label>';
+            listEl.appendChild(row);
+        });
+    }
+
+    function loadTicketCategories() {
+        fetch(API_BASE + '/api/v1/outlook/ticket-categories', {
+            method: 'GET',
+            headers: { 'Authorization': 'Bearer ' + state.token }
+        }).then(function (res) {
+            if (!res.ok) throw new Error('Failed to load categories (' + res.status + ')');
+            return res.json();
+        }).then(function (items) {
+            state.ticketCategories = items || [];
+            renderTicketDropdown(state.ticketCategories);
+        }).catch(function (err) {
+            console.error(err);
+            var sel = document.getElementById('serviceItemSelect');
+            sel.innerHTML = '<option value="" disabled selected>Failed to load</option>';
+        });
+    }
+
+    function renderTicketDropdown(items) {
+        var sel = document.getElementById('serviceItemSelect');
+        sel.innerHTML = '<option value="" disabled selected>Select a reason…</option>';
+
+        // Group by category
+        var groups = {};
+        var groupOrder = [];
+        items.forEach(function (it) {
+            if (!groups[it.category]) {
+                groups[it.category] = [];
+                groupOrder.push(it.category);
+            }
+            groups[it.category].push(it);
+        });
+
+        groupOrder.forEach(function (cat) {
+            var optgroup = document.createElement('optgroup');
+            optgroup.label = cat;
+            groups[cat].forEach(function (it) {
+                var opt = document.createElement('option');
+                opt.value = it.id;
+                opt.textContent = it.description;
+                optgroup.appendChild(opt);
+            });
+            sel.appendChild(optgroup);
+        });
+
+        // "Enter my own reason" option
+        var customOpt = document.createElement('option');
+        customOpt.value = '0';
+        customOpt.textContent = '— Enter my own reason —';
+        sel.appendChild(customOpt);
+    }
+
+    function updateTicketButtonState() {
+        var sel = document.getElementById('serviceItemSelect');
+        var desc = document.getElementById('ticketDescription').value.trim();
+        var valid = desc.length > 0 && sel.value !== '';
+
+        if (sel.value === '0') {
+            valid = valid && document.getElementById('customReasonInput').value.trim().length > 0;
+        }
+
+        document.getElementById('createTicketBtn').disabled = !valid;
+    }
+
+    function createTicket() {
+        var btn = document.getElementById('createTicketBtn');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-sm"></span> Creating…';
+
+        var item = Office.context.mailbox.item;
+        var sel = document.getElementById('serviceItemSelect');
+
+        var form = new FormData();
+        form.append('serviceItemId', sel.value);
+        if (sel.value === '0') {
+            form.append('customReason', document.getElementById('customReasonInput').value.trim());
+        }
+        form.append('description', document.getElementById('ticketDescription').value.trim());
+        form.append('subject', item.subject || '');
+        form.append('body', state.emailBodyText || '');
+        form.append('senderName', item.from ? (item.from.displayName || '') : '');
+        form.append('senderEmail', item.from ? (item.from.emailAddress || '') : '');
+        form.append('receivedDate', item.dateTimeCreated ? new Date(item.dateTimeCreated).toISOString() : '');
+
+        // Primary contact from dropdown
+        var primaryIdx = parseInt(document.getElementById('primaryContactSelect').value, 10);
+        var primary = state.emailPeople[primaryIdx];
+        form.append('primaryContactEmail', primary.email);
+        form.append('primaryContactName', primary.name);
+
+        // Additional contacts from checked boxes
+        var additionalContacts = [];
+        document.querySelectorAll('.addl-contact-cb:checked').forEach(function (cb) {
+            var idx = parseInt(cb.value, 10);
+            var p = state.emailPeople[idx];
+            additionalContacts.push({ email: p.email, name: p.name });
+        });
+        form.append('additionalContacts', JSON.stringify(additionalContacts));
+
+        var selectedAtts = state.attachmentMeta.filter(function (a) { return a.selected; });
+        var total = selectedAtts.length;
+        form.append('attachmentCount', total);
+
+        if (total === 0) {
+            submitTicketForm(form);
+            return;
+        }
+
+        var fetched = 0;
+        selectedAtts.forEach(function (att, idx) {
+            item.getAttachmentContentAsync(att.id, function (result) {
+                if (result.status === Office.AsyncResultStatus.Succeeded) {
+                    var content = result.value.content;
+                    var format = result.value.format;
+                    var blob;
+                    if (format === Office.MailboxEnums.AttachmentContentFormat.Base64) {
+                        blob = base64ToBlob(content);
+                    } else {
+                        blob = new Blob([content], { type: 'text/plain' });
+                    }
+                    form.append('file_' + idx, blob, att.name);
+                    form.append('fileName_' + idx, att.name);
+                } else {
+                    console.warn('Failed to fetch attachment ' + att.name);
+                    form.append('fileName_' + idx, att.name);
+                }
+                fetched++;
+                if (fetched === total) submitTicketForm(form);
+            });
+        });
+    }
+
+    function submitTicketForm(form) {
+        fetch(API_BASE + '/api/v1/outlook/create-ticket', {
+            method: 'POST',
+            headers: { 'Authorization': 'Bearer ' + state.token },
+            body: form
+        }).then(function (res) {
+            return res.json().then(function (data) {
+                return { status: res.status, data: data };
+            });
+        }).then(function (wrapped) {
+            var btn = document.getElementById('createTicketBtn');
+            btn.innerHTML = 'Create Ticket';
+            if (wrapped.status === 200 && wrapped.data.success) {
+                showResult('ticketResultAlert', 'success',
+                    'Ticket created (ID ' + wrapped.data.activityId + '). ' +
+                    wrapped.data.attachmentsUploaded + ' attachment' +
+                    (wrapped.data.attachmentsUploaded === 1 ? '' : 's') + ' uploaded.');
+                btn.disabled = true;
+            } else {
+                showResult('ticketResultAlert', 'danger', wrapped.data.error || 'Failed to create ticket.');
+                btn.disabled = false;
+            }
+        }).catch(function (err) {
+            var btn = document.getElementById('createTicketBtn');
+            btn.innerHTML = 'Create Ticket';
+            btn.disabled = false;
+            showResult('ticketResultAlert', 'danger', 'Network error: ' + err.message);
+        });
+    }
+
+    // --- Shared helpers ---
+    function showResult(elementId, type, msg) {
+        var el = document.getElementById(elementId);
         el.className = 'alert alert-' + type + ' mt-2';
         el.textContent = msg;
         el.classList.remove('hidden');
     }
 
-    // --- Utilities ---
     function escapeHtml(s) {
         if (s == null) return '';
         return String(s).replace(/[&<>"']/g, function (c) {

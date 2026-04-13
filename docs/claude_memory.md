@@ -7,7 +7,7 @@
 ## Current State
 - **Branch:** `refactor/modernize-architecture`
 - **Latest migration:** V053
-- **Session count:** 70
+- **Session count:** 78
 - **Build tool:** Maven wrapper `./mvnw compile` (no system `mvn` on PATH)
 - V025-V037 applied to Demo/BPO/Master; V038 applied to Demo/BPO; V039-V053 code-complete, not yet applied
 - Master snapshot v8 taken 2026-03-04 (V037)
@@ -36,6 +36,7 @@
 - **Session 68:** Center panel redesign — unified "Colored Tab" headers, navbar application review badge
 - **Session 69:** Docs/demo cleanup — removed obsolete files, consolidated demo/, compressed session archive
 - **Session 70:** Sequence Manager enhancements — copy-from-existing modal, inline rename, unsaved changes warning, wider left panel, fixed-width badges, filter scoping fix
+- **Session 78:** Outlook add-in "Create Ticket" feature — new API endpoints (ticket-categories, create-ticket), tabbed taskpane UI, contact selection from email recipients (primary + additional contacts)
 
 ## Reference Docs
 | Topic | Location |
