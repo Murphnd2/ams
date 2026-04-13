@@ -2,7 +2,7 @@
 
 > **Purpose:** Consolidated historical record of all build sessions. For current project state, see `project_backlog.md`. For current architecture, see `application_flow.md` and `entity_reference.md`.
 >
-> **Last Updated:** April 11, 2026 (Session 77)
+> **Last Updated:** April 13, 2026 (Session 79)
 >
 > **Note:** Sessions 1–38 (Feb 15 – Mar 5) were compressed during the Session 69 cleanup. Full details for those sessions are available in git history prior to that commit.
 
@@ -1341,3 +1341,38 @@ This avoids cookie/session issues with Office.js iframes entirely. If no link ro
 
 ### Deployment
 See D-67 in `docs/deployment_backlog.md`. Not yet applied to any environment.
+
+---
+
+## Session 79 — Fix Application-to-Setup Pipeline Bugs (April 13, 2026)
+
+### Problem
+Two bugs in the application-to-setup pipeline:
+1. **Resubmission after approval** — Public `/apply/{guid}` allowed prospects to resubmit an already-approved application, resetting `application.status` to SUBMITTED and `proposal.status` to APPLIED, re-incrementing the navbar badge and creating phantom pending applications.
+2. **Missing ApplicationModule records** — `ApplyForProposal.doPost()` never created `ApplicationModule` records for selected LOS/Enhancement ServiceItems, so `ReviewApplication.fillToDoList()` → `ApplicationTaskDAO.getTasksRequiredForApplication()` found no modules and fell back to only task 153. Setups created from approved applications had no service-specific tasks.
+
+### Changes
+
+**Fix 1 — Guard against re-submission (ApplyForProposal.java)**
+- `doGet()`: If application status is anything other than `IN_PROGRESS`, forwards to `applicationConfirmation.jsp` with status-specific message instead of editable form
+- `doPost()`: Rejects POST if application status is past `IN_PROGRESS`, redirects to GET
+
+**Fix 2 — Create ApplicationModule records on submit (ApplyForProposal.java)**
+- After field-value transaction commits, calls `em.clear()` then loops through selected LOS and Enhancement IDs calling `ActivityDAO.addModule()` for each ServiceItem
+- Follows same pattern as `CreateSetup25.java` (em.clear → re-fetch → addModule)
+
+**Fix 3 — Guard against double-approval (ReviewApplication.java)**
+- Checks `application.getStatus() == 'APPROVED'` before proceeding
+- Also queries `SELECT COUNT(s) FROM Setup s WHERE s.application.proposal.id = :appId` as belt-and-suspenders guard
+
+**Fix 4 — JSP approve button guard (reviewApplication.jsp)**
+- Wraps Approve button in `<c:choose>` — if `application.getSetup() != null`, shows warning instead of approve button
+
+**Supporting — Dynamic confirmation page (applicationConfirmation.jsp)**
+- Made confirmation page dynamic: shows status-specific heading and message when `statusMessage` attribute is set
+
+### Files Modified (4)
+- `ApplyForProposal.java` — status guards in doGet/doPost, ApplicationModule creation on submit
+- `ReviewApplication.java` — double-approval guard in approve case
+- `reviewApplication.jsp` — approve button hidden when Setup already exists
+- `applicationConfirmation.jsp` — dynamic status messages

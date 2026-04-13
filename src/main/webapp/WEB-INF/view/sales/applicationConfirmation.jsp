@@ -29,10 +29,34 @@
 <div class="accent-bar"></div>
 
 <div class="confirm-container">
-    <div class="check-circle"><i class="bi bi-check-circle-fill"></i></div>
-    <h2 style="color: var(--psp-primary); margin-bottom: 1rem;">Application Submitted</h2>
-    <p class="mb-3">Thank you! Your application for <strong>${prospectName}</strong> has been received.</p>
-    <p class="text-muted">Our team will review your application and follow up with next steps. You can expect to hear from us within two business days.</p>
+    <c:choose>
+        <c:when test="${applicationStatus == 'APPROVED'}">
+            <div class="check-circle"><i class="bi bi-check-circle-fill"></i></div>
+        </c:when>
+        <c:when test="${applicationStatus == 'DENIED'}">
+            <div class="check-circle" style="color: #6c757d;"><i class="bi bi-info-circle-fill"></i></div>
+        </c:when>
+        <c:otherwise>
+            <div class="check-circle"><i class="bi bi-check-circle-fill"></i></div>
+        </c:otherwise>
+    </c:choose>
+    <c:choose>
+        <c:when test="${not empty statusMessage}">
+            <h2 style="color: var(--psp-primary); margin-bottom: 1rem;">
+                <c:choose>
+                    <c:when test="${applicationStatus == 'APPROVED'}">Application Approved</c:when>
+                    <c:when test="${applicationStatus == 'DENIED'}">Application Reviewed</c:when>
+                    <c:otherwise>Application Submitted</c:otherwise>
+                </c:choose>
+            </h2>
+            <p class="mb-3">${statusMessage}</p>
+        </c:when>
+        <c:otherwise>
+            <h2 style="color: var(--psp-primary); margin-bottom: 1rem;">Application Submitted</h2>
+            <p class="mb-3">Thank you! Your application for <strong>${prospectName}</strong> has been received.</p>
+            <p class="text-muted">Our team will review your application and follow up with next steps. You can expect to hear from us within two business days.</p>
+        </c:otherwise>
+    </c:choose>
 </div>
 
 <div class="app-footer">

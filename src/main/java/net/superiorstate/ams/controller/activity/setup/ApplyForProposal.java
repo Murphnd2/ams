@@ -7,8 +7,11 @@ import jakarta.persistence.Query;
 import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
+import net.superiorstate.ams.data.dao.ActivityDAO;
 import net.superiorstate.ams.data.dao.AppConstantDAO;
 import net.superiorstate.ams.data.dao.SalesDAO;
+import net.superiorstate.ams.data.resolver.EntityLookup;
+import net.superiorstate.ams.model.activity.checklist.sequences.support.ServiceItem;
 import net.superiorstate.ams.model.general.Address;
 import net.superiorstate.ams.model.general.Person;
 import net.superiorstate.ams.model.sales.agency.Proposal;
@@ -38,6 +41,45 @@ public class ApplyForProposal extends HttpServlet {
             Proposal proposal = loadProposal(em, guid);
             if (proposal == null || proposal.isInactive()) {
                 response.sendError(HttpServletResponse.SC_NOT_FOUND);
+                return;
+            }
+
+            // Guard: block access to editable form if application is past IN_PROGRESS
+            Application existingApp = em.find(Application.class, proposal.getId());
+            if (existingApp != null && !"IN_PROGRESS".equals(existingApp.getStatus())) {
+                String statusMsg;
+                switch (existingApp.getStatus()) {
+                    case "SUBMITTED":
+                    case "UNDER_REVIEW":
+                        statusMsg = "Your application has been submitted and is under review.";
+                        break;
+                    case "MORE_INFO":
+                        statusMsg = "Your application is being reviewed. Additional information has been requested — your administrator will be in touch.";
+                        break;
+                    case "APPROVED":
+                        statusMsg = "Your application has been approved. Thank you!";
+                        break;
+                    case "DENIED":
+                        statusMsg = "Your application has been reviewed. Please contact your administrator for details.";
+                        break;
+                    default:
+                        statusMsg = "Your application has already been submitted.";
+                }
+                String pspName = "";
+                if (proposal.getProspect().getContact().getPsp() != null)
+                    pspName = proposal.getProspect().getContact().getPsp().getFullName();
+                String primaryColor = AppConstantDAO.getConstantValue(em, "EMAIL_COLOR_PRIMARY");
+                String accentColor = AppConstantDAO.getConstantValue(em, "EMAIL_COLOR_ACCENT");
+                if (primaryColor == null || primaryColor.isEmpty()) primaryColor = "#2B5F8A";
+                if (accentColor == null || accentColor.isEmpty()) accentColor = "#7AB648";
+                request.setAttribute("pspName", pspName);
+                request.setAttribute("prospectName", proposal.getProspect().getName());
+                request.setAttribute("primaryColor", primaryColor);
+                request.setAttribute("accentColor", accentColor);
+                request.setAttribute("statusMessage", statusMsg);
+                request.setAttribute("applicationStatus", existingApp.getStatus());
+                em.close();
+                request.getRequestDispatcher("/WEB-INF/view/sales/applicationConfirmation.jsp").forward(request, response);
                 return;
             }
 
@@ -266,6 +308,13 @@ public class ApplyForProposal extends HttpServlet {
                 return;
             }
 
+            // Guard: reject POST if application is past IN_PROGRESS
+            Application guardCheck = em.find(Application.class, proposal.getId());
+            if (guardCheck != null && !"IN_PROGRESS".equals(guardCheck.getStatus())) {
+                response.sendRedirect(request.getRequestURI());
+                return;
+            }
+
             // ── Service Selection action ──
             String action = request.getParameter("action");
             if ("selectServices".equals(action)) {
@@ -381,6 +430,31 @@ public class ApplyForProposal extends HttpServlet {
             em.persist(proposal);
 
             em.getTransaction().commit();
+
+            // Create ApplicationModule records for selected services
+            // (Required for ReviewApplication.fillToDoList() to populate task sequences)
+            // Clear L1 cache to avoid cascade PERSIST errors in addModule
+            long appProposalId = application.getProposal().getId();
+            em.clear();
+            Application freshApp = EntityLookup.getApplicationById(em, appProposalId);
+
+            for (Long losId : losIds) {
+                LOS los = EntityLookup.getLosById(em, losId);
+                if (los != null && los.getServiceItem() != null) {
+                    ServiceItem si = EntityLookup.getServiceItemById(em, los.getServiceItem().getId());
+                    ActivityDAO.addModule(em, freshApp, si);
+                }
+            }
+            for (Long enhId : enhIds) {
+                Enhancement enh = em.find(Enhancement.class, enhId);
+                if (enh != null && enh.getServiceItem() != null) {
+                    ServiceItem si = EntityLookup.getServiceItemById(em, enh.getServiceItem().getId());
+                    ActivityDAO.addModule(em, freshApp, si);
+                }
+            }
+
+            // Re-load proposal after em.clear() for confirmation page attributes
+            proposal = EntityLookup.getProposalById(em, appProposalId);
 
             // Redirect to confirmation
             request.setAttribute("pspName", proposal.getProspect().getContact().getPsp() != null

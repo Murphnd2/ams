@@ -280,6 +280,23 @@ public class ReviewApplication extends HttpServlet {
 
             switch (action) {
                 case "approve":
+                    // Guard: prevent double-approval
+                    if ("APPROVED".equals(application.getStatus())) {
+                        response.sendRedirect("ReviewApplications?err=" +
+                                encode("This application has already been approved."));
+                        return;
+                    }
+                    // Guard: prevent approval if a Setup already exists
+                    Long existingSetupCount = em.createQuery(
+                            "SELECT COUNT(s) FROM Setup s WHERE s.application.proposal.id = :appId", Long.class)
+                            .setParameter("appId", proposalId)
+                            .getSingleResult();
+                    if (existingSetupCount > 0) {
+                        response.sendRedirect("ReviewApplications?err=" +
+                                encode("A Setup already exists for this application."));
+                        return;
+                    }
+
                     // Update Application status
                     em.getTransaction().begin();
                     application.setStatus("APPROVED");

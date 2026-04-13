@@ -350,16 +350,26 @@
                                               placeholder="Add any notes for this review decision...">${application.getReviewNotes()}</textarea>
                                 </div>
 
-                                <%-- Approve --%>
-                                <form method="post" action="ReviewApplication" class="mb-2" id="approveForm"
-                                      onsubmit="return confirmAction('approve this application and create a Setup activity')">
-                                    <input type="hidden" name="id" value="${application.getProposal().getId()}">
-                                    <input type="hidden" name="action" value="approve">
-                                    <input type="hidden" name="reviewNotes" id="approveNotes">
-                                    <button type="submit" class="btn btn-success w-100">
-                                        <i class="bi bi-check-circle me-1"></i>Approve &amp; Create Setup
-                                    </button>
-                                </form>
+                                <%-- Approve (hidden if Setup already exists — race condition guard) --%>
+                                <c:choose>
+                                    <c:when test="${application.getSetup() != null}">
+                                        <div class="alert alert-warning py-2 small">
+                                            <i class="bi bi-exclamation-triangle me-1"></i>
+                                            A Setup already exists for this application (Setup #${application.getSetup().getId()}).
+                                        </div>
+                                    </c:when>
+                                    <c:otherwise>
+                                        <form method="post" action="ReviewApplication" class="mb-2" id="approveForm"
+                                              onsubmit="return confirmAction('approve this application and create a Setup activity')">
+                                            <input type="hidden" name="id" value="${application.getProposal().getId()}">
+                                            <input type="hidden" name="action" value="approve">
+                                            <input type="hidden" name="reviewNotes" id="approveNotes">
+                                            <button type="submit" class="btn btn-success w-100">
+                                                <i class="bi bi-check-circle me-1"></i>Approve &amp; Create Setup
+                                            </button>
+                                        </form>
+                                    </c:otherwise>
+                                </c:choose>
 
                                 <%-- Request More Info --%>
                                 <form method="post" action="ReviewApplication" class="mb-2" id="moreInfoForm">
