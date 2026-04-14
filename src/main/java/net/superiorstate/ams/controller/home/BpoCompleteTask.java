@@ -18,6 +18,9 @@ import net.superiorstate.ams.model.general.Person;
 import net.superiorstate.ams.model.general.PspClient;
 import net.superiorstate.ams.model.general.WebLink;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Paths;
@@ -33,6 +36,8 @@ import java.util.*;
         maxRequestSize = 1024 * 1024 * 100     // 100 MB
 )
 public class BpoCompleteTask extends HttpServlet {
+
+    private static final Logger log = LogManager.getLogger(BpoCompleteTask.class);
 
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
@@ -101,7 +106,7 @@ public class BpoCompleteTask extends HttpServlet {
             em.getTransaction().commit();
         } catch (Exception e) {
             if (em.getTransaction().isActive()) em.getTransaction().rollback();
-            e.printStackTrace();
+            log.error("BpoCompleteTask error", e);
         } finally {
             em.close();
         }
@@ -137,7 +142,7 @@ public class BpoCompleteTask extends HttpServlet {
 
         } catch (Exception e) {
             if (em.getTransaction().isActive()) em.getTransaction().rollback();
-            e.printStackTrace();
+            log.error("BpoCompleteTask error", e);
         } finally {
             em.close();
         }
@@ -168,7 +173,7 @@ public class BpoCompleteTask extends HttpServlet {
             em.getTransaction().commit();
         } catch (Exception e) {
             if (em.getTransaction().isActive()) em.getTransaction().rollback();
-            e.printStackTrace();
+            log.error("BpoCompleteTask error", e);
         } finally {
             em.close();
         }
@@ -209,7 +214,7 @@ public class BpoCompleteTask extends HttpServlet {
 
         } catch (Exception e) {
             if (em.getTransaction().isActive()) em.getTransaction().rollback();
-            e.printStackTrace();
+            log.error("BpoCompleteTask error", e);
         } finally {
             em.close();
         }
@@ -245,7 +250,7 @@ public class BpoCompleteTask extends HttpServlet {
 
         } catch (Exception e) {
             if (em.getTransaction().isActive()) em.getTransaction().rollback();
-            e.printStackTrace();
+            log.error("BpoCompleteTask error", e);
         } finally {
             em.close();
         }
@@ -276,7 +281,7 @@ public class BpoCompleteTask extends HttpServlet {
             em.getTransaction().commit();
         } catch (Exception e) {
             if (em.getTransaction().isActive()) em.getTransaction().rollback();
-            e.printStackTrace();
+            log.error("BpoCompleteTask error", e);
         } finally {
             em.close();
         }
@@ -311,11 +316,11 @@ public class BpoCompleteTask extends HttpServlet {
             }
 
             em.getTransaction().commit();
-            System.out.println("[BPO] Accepted tasks: " + todoIdsParam +
+            log.info("[BPO] Accepted tasks: {}{}", todoIdsParam,
                     (assignee != null ? " assigned to " + assignee.getFullName() : ""));
         } catch (Exception e) {
             if (em.getTransaction().isActive()) em.getTransaction().rollback();
-            e.printStackTrace();
+            log.error("BpoCompleteTask error", e);
         } finally {
             em.close();
         }
@@ -358,12 +363,12 @@ public class BpoCompleteTask extends HttpServlet {
             em.getTransaction().commit();
             em.getEntityManagerFactory().getCache().evict(ToDoNote.class, note.getId());
 
-            System.out.println("[BPO] Note attachment uploaded: " + displayName + " → " + objectKey);
+            log.info("[BPO] Note attachment uploaded: {} -> {}", displayName, objectKey);
             return w;
 
         } catch (Exception e) {
             if (em.getTransaction().isActive()) em.getTransaction().rollback();
-            System.out.println("[BPO] Note attachment upload failed (non-fatal): " + e.getMessage());
+            log.warn("[BPO] Note attachment upload failed (non-fatal): {}", e.getMessage());
             return null;
         }
     }
@@ -381,9 +386,9 @@ public class BpoCompleteTask extends HttpServlet {
                     "completedByName", completedBy.getFullName()
             );
             ApiClient.ApiResponse resp = ApiClient.postJson(url, payload, psp.getApiTokenOutbound());
-            System.out.println("[BPO-API] callbackTaskCompleted: todoGuid=" + dt.getTodoGuid() + " to " + psp.getPspName() + " (" + resp.statusCode + ")");
+            log.info("[BPO-API] callbackTaskCompleted: todoGuid={} to {} ({})", dt.getTodoGuid(), psp.getPspName(), resp.statusCode);
         } catch (Exception e) {
-            System.out.println("[BPO-API] callbackTaskCompleted: failed (non-fatal): " + e.getMessage());
+            log.warn("[BPO-API] callbackTaskCompleted: failed (non-fatal): {}", e.getMessage());
         }
     }
 
@@ -419,9 +424,9 @@ public class BpoCompleteTask extends HttpServlet {
             }
 
             ApiClient.ApiResponse resp = ApiClient.postJsonObject(url, payload, psp.getApiTokenOutbound());
-            System.out.println("[BPO-API] callbackNoteAdded: todoGuid=" + todoGuid + " to " + psp.getPspName() + " (" + resp.statusCode + ")");
+            log.info("[BPO-API] callbackNoteAdded: todoGuid={} to {} ({})", todoGuid, psp.getPspName(), resp.statusCode);
         } catch (Exception e) {
-            System.out.println("[BPO-API] callbackNoteAdded: failed (non-fatal): " + e.getMessage());
+            log.warn("[BPO-API] callbackNoteAdded: failed (non-fatal): {}", e.getMessage());
         }
     }
 }

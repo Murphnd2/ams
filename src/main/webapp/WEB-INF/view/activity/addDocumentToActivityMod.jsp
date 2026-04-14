@@ -7,6 +7,12 @@
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="close"></button>
       </div>
       <div class="modal-body py-3">
+        <c:if test="${not empty uploadError}">
+          <div class="alert alert-danger alert-dismissible fade show py-2" role="alert" style="font-size: 0.82rem;">
+            <i class="bi bi-exclamation-triangle me-1"></i>${uploadError}
+            <button type="button" class="btn-close btn-close-sm" data-bs-dismiss="alert" aria-label="Close" style="font-size: 0.6rem;"></button>
+          </div>
+        </c:if>
         <form method="post" action="AddDocumentToActivity25" enctype="multipart/form-data">
           <label class="form-label fw-semibold" style="font-size: 0.82rem; color: var(--ssa);">File</label>
           <input type="file" class="form-control form-control-sm mb-2" name="fileUpload" required>

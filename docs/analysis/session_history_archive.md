@@ -2,7 +2,7 @@
 
 > **Purpose:** Consolidated historical record of all build sessions. For current project state, see `project_backlog.md`. For current architecture, see `application_flow.md` and `entity_reference.md`.
 >
-> **Last Updated:** April 13, 2026 (Session 79)
+> **Last Updated:** April 14, 2026 (Session 80)
 >
 > **Note:** Sessions 1–38 (Feb 15 – Mar 5) were compressed during the Session 69 cleanup. Full details for those sessions are available in git history prior to that commit.
 
@@ -1376,3 +1376,63 @@ Two bugs in the application-to-setup pipeline:
 - `ReviewApplication.java` — double-approval guard in approve case
 - `reviewApplication.jsp` — approve button hidden when Setup already exists
 - `applicationConfirmation.jsp` — dynamic status messages
+
+---
+
+## Session 80 — Wasabi S3 Upload Reliability Overhaul (April 14, 2026)
+
+### Problem
+Users reported intermittent upload failures and exceedingly long upload times for email attachments and activity documents, particularly for standard (non-admin) users. Investigation revealed a 938KB file upload taking 90+ seconds to time out, despite the VPS having 1.4 Gbps upload bandwidth and a 68ms TLS round-trip to Wasabi.
+
+### Root causes identified
+1. **`RequestBody.fromInputStream()` + `Expect: 100-continue`** — primary cause. AWS SDK sent headers first, waited for Wasabi's "100 Continue" response (which never came promptly), then gave up after the full API timeout. Replacing with `RequestBody.fromBytes()` eliminated the handshake stall.
+2. **No connection pooling** — default `UrlConnectionHttpClient` opened a fresh TCP+TLS connection per call. Switched to Apache HTTP client with 10-connection pool and 5-minute TTL.
+3. **No singleton client** — old code built a new S3Client on every call, wasting ~200-500ms per upload on client construction.
+4. **No timeouts** — uploads could hang indefinitely, exhausting Tomcat threads. Added 120s API call timeout with client auto-reset on connection errors.
+
+### Fixes
+**StorageDAO hardening:**
+- Singleton `S3Client` + `S3Presigner` with double-checked locking
+- Apache HTTP client (`software.amazon.awssdk:apache-client` added to pom.xml)
+- `apiCallTimeout(120s)`
+- `forcePathStyle(true)` on client, `pathStyleAccessEnabled(true)` on presigner
+- `RequestBody.fromBytes()` instead of `fromInputStream()`
+- `resetClientOnConnectionError()` — nulls singleton on ConnectException/SocketTimeout/ApiCallTimeout so next call rebuilds
+- New `uploadFileSafe()` method returning `UploadResult` (success/errorMessage/elapsedMillis) — old `uploadFile()` preserved for backward compat
+- Log4j2 logging — upload start/complete at INFO with elapsed ms, presign at DEBUG
+- `shutdown()` lifecycle hook
+
+**Caller error handling (6 servlets):**
+- `AddAttachment25`, `AddDocumentToActivity25` — full try/catch/finally, `uploadError` request attribute on failure, EM leak fixed, WebLink only persisted on success
+- `AddNoteToToDo25`, `BpoCompleteTask` — Log4j2 replaces System.out/printStackTrace
+- `LibraryAction` — fixed data-loss bug (upload new before delete old), `errorMsg` now set for upload failures
+- `UploadRateSheet` — JSON error includes exception message
+
+**JSP upload feedback:**
+- `emailMaster25.jsp` — spinner + error alert on attachment modal. **Critical fix:** wrap button disable in `setTimeout(fn, 50)` so form submit fires first (synchronous disable blocked submission in Chrome/Edge)
+- `addDocumentToActivityMod.jsp` — uploadError alert only (spinner script removed after causing modal submission issues with `c:import` timing)
+
+**Pre-existing bugs fixed in passing:**
+- `SendEmail25.java:79` — NPE because `Email.getWebLinkList()` was null on freshly persisted entity. Added null init before `.add(w)`
+- `OutlookCreateTicketApi` / `OutlookLogEmailApi` — attachments uploaded to Wasabi and WebLink persisted, but no download links rendered on the note. Now appends `<a href="ShowFileUpload?doc={key}">{name}</a>` block to note.detail after uploads
+
+### Performance result
+938KB email attachment: **90s timeout → <2 seconds** after fixes.
+
+### Files Modified (13)
+- `pom.xml` — added `software.amazon.awssdk:apache-client`
+- `data/dao/StorageDAO.java` — full rewrite
+- `controller/email/AddAttachment25.java`
+- `controller/email/SendEmail25.java` (NPE fix)
+- `controller/activity/AddDocumentToActivity25.java`
+- `controller/activity/AddNoteToToDo25.java`
+- `controller/activity/setup/LibraryAction.java`
+- `controller/activity/setup/UploadRateSheet.java`
+- `controller/home/BpoCompleteTask.java`
+- `controller/api/outlook/OutlookCreateTicketApi.java`
+- `controller/api/outlook/OutlookLogEmailApi.java`
+- `webapp/WEB-INF/view/a/general/emailMaster25.jsp`
+- `webapp/WEB-INF/view/activity/addDocumentToActivityMod.jsp`
+
+### Tested on production
+Email attachment upload ✓, email send with attachment ✓, activity document upload ✓, Outlook create-ticket with attachment ✓.

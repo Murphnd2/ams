@@ -13,6 +13,8 @@ import net.superiorstate.ams.data.util.Validator;
 import net.superiorstate.ams.model.activity.Activity;
 import net.superiorstate.ams.model.general.LinkType;
 import net.superiorstate.ams.model.general.WebLink;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -27,6 +29,8 @@ import java.util.UUID;
 )
 public class AddDocumentToActivity25 extends HttpServlet {
 
+    private static final Logger log = LogManager.getLogger(AddDocumentToActivity25.class);
+
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         addFile(request);
@@ -36,9 +40,10 @@ public class AddDocumentToActivity25 extends HttpServlet {
     private void addFile(HttpServletRequest request) throws ServletException, IOException {
         EntityManagerFactory emf = (EntityManagerFactory) getServletContext().getAttribute("emf");
         EntityManager em = emf.createEntityManager();
-        AmsDataLocal local = (AmsDataLocal) request.getSession().getAttribute("local");
 
         try {
+            AmsDataLocal local = (AmsDataLocal) request.getSession().getAttribute("local");
+
             Part filePart = request.getPart("fileUpload");
             if (filePart == null || filePart.getSize() == 0) return;
 
@@ -62,11 +67,19 @@ public class AddDocumentToActivity25 extends HttpServlet {
                     ? description
                     : description + "." + extension;
 
+            StorageDAO.UploadResult result;
             try (InputStream fileContent = filePart.getInputStream()) {
-                StorageDAO.uploadFile(em, pspName, objectKey, displayName, fileContent, contentLength, contentType);
+                result = StorageDAO.uploadFileSafe(em, pspName, objectKey, displayName,
+                        fileContent, contentLength, contentType);
             }
 
-            // Persist WebLink and attach to Activity
+            if (!result.success) {
+                log.error("Activity document upload failed: {}", result.errorMessage);
+                request.setAttribute("uploadError", "File upload failed — please try again.");
+                return;
+            }
+
+            // Persist WebLink and attach to Activity only after successful upload
             Activity activity = local.getCurrentActivity().getActivity();
             if (activity == null) return;
 
@@ -87,6 +100,10 @@ public class AddDocumentToActivity25 extends HttpServlet {
             activity.getWebLinkList().add(w);
             request.getSession().setAttribute("local", local);
 
+        } catch (Exception e) {
+            log.error("Activity document upload error", e);
+            if (em.getTransaction().isActive()) em.getTransaction().rollback();
+            request.setAttribute("uploadError", "File upload failed — please try again.");
         } finally {
             em.close();
         }

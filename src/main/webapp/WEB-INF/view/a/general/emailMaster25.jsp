@@ -288,6 +288,12 @@
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="close"></button>
                   </div>
                   <div class="modal-body">
+                    <c:if test="${not empty uploadError}">
+                      <div class="alert alert-danger alert-dismissible fade show py-2" role="alert">
+                        <i class="bi bi-exclamation-triangle me-1"></i>${uploadError}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                      </div>
+                    </c:if>
                     <div class="mb-3">
                       <label class="form-label text-ssa fw-bold">Select File</label>
                       <input type="file" class="form-control" name="fileUpload" id="fileUpload">
@@ -298,7 +304,7 @@
                     </div>
                     <div class="d-flex justify-content-end gap-2">
                       <button type="button" class="btn btn-outline-ssa" data-bs-dismiss="modal">Close</button>
-                      <button type="submit" class="btn btn-ssa" name="action" value="AA">
+                      <button type="submit" class="btn btn-ssa" name="action" value="AA" id="btnAddFile">
                         <i class="bi bi-plus-lg me-1"></i>Add File
                       </button>
                     </div>
@@ -306,6 +312,27 @@
                 </div>
               </div>
             </div>
+            <script>
+              document.addEventListener('DOMContentLoaded', function() {
+                var btnAdd = document.getElementById('btnAddFile');
+                if (btnAdd) {
+                  btnAdd.addEventListener('click', function() {
+                    var fileInput = document.getElementById('fileUpload');
+                    if (fileInput && fileInput.files.length > 0) {
+                      // Delay disable so the form submit event fires first
+                      setTimeout(function() {
+                        btnAdd.disabled = true;
+                        btnAdd.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status"></span>Uploading\u2026';
+                      }, 50);
+                    }
+                  });
+                }
+                <c:if test="${not empty uploadError}">
+                  var modal = new bootstrap.Modal(document.getElementById('addAttachmentModal'));
+                  modal.show();
+                </c:if>
+              });
+            </script>
 
           </form>
         </div>

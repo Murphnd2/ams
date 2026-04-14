@@ -11,6 +11,8 @@ import net.superiorstate.ams.data.dao.StorageDAO;
 import net.superiorstate.ams.data.util.Validator;
 import net.superiorstate.ams.model.general.LinkType;
 import net.superiorstate.ams.model.general.WebLink;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -24,6 +26,9 @@ import java.util.UUID;
         maxRequestSize = 1024 * 1024 * 100      //100 MB
 )
 public class AddAttachment25 extends HttpServlet {
+
+    private static final Logger log = LogManager.getLogger(AddAttachment25.class);
+
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         addFile(request);
@@ -39,50 +44,67 @@ public class AddAttachment25 extends HttpServlet {
     private void addFile(HttpServletRequest request) throws ServletException, IOException {
         EntityManagerFactory emf = (EntityManagerFactory) getServletContext().getAttribute("emf");
         EntityManager em = emf.createEntityManager();
-        AmsDataLocal local = (AmsDataLocal) request.getSession().getAttribute("local");
 
-        Part filePart = request.getPart("fileUpload");
-        String optionalFileName = request.getParameter("fileUploadText");
+        try {
+            AmsDataLocal local = (AmsDataLocal) request.getSession().getAttribute("local");
 
-        String fileName = Paths.get(filePart.getSubmittedFileName()).getFileName().toString();
+            Part filePart = request.getPart("fileUpload");
+            if (filePart == null || filePart.getSize() == 0) return;
 
-        String fileDescription;
-        if (optionalFileName != null && !optionalFileName.isEmpty())
-            fileDescription = optionalFileName;
-        else
-            fileDescription = fileName;
-        String correctedDescription = fileDescription.replaceAll(" ", "_");
+            String optionalFileName = request.getParameter("fileUploadText");
+            String fileName = Paths.get(filePart.getSubmittedFileName()).getFileName().toString();
 
-        String extension = Validator.getExtensionByStringHandling(fileName).orElse("bin");
-        String newFileName = UUID.randomUUID() + "." + extension;
+            String fileDescription;
+            if (optionalFileName != null && !optionalFileName.isEmpty())
+                fileDescription = optionalFileName;
+            else
+                fileDescription = fileName;
+            String correctedDescription = fileDescription.replaceAll(" ", "_");
 
-        // Upload to Wasabi via StorageDAO
-        String pspName = local.getCurrentPerson().getPsp().getFullName();
-        String contentType = filePart.getContentType();
-        long contentLength = filePart.getSize();
-        String displayName = correctedDescription.endsWith("." + extension)
-                ? correctedDescription
-                : correctedDescription + "." + extension;
+            String extension = Validator.getExtensionByStringHandling(fileName).orElse("bin");
+            String newFileName = UUID.randomUUID() + "." + extension;
 
-        try (InputStream fileContent = filePart.getInputStream()) {
-            StorageDAO.uploadFile(em, pspName, newFileName, displayName, fileContent, contentLength, contentType);
+            // Upload to Wasabi via StorageDAO
+            String pspName = local.getCurrentPerson().getPsp().getFullName();
+            String contentType = filePart.getContentType();
+            long contentLength = filePart.getSize();
+            String displayName = correctedDescription.endsWith("." + extension)
+                    ? correctedDescription
+                    : correctedDescription + "." + extension;
+
+            StorageDAO.UploadResult result;
+            try (InputStream fileContent = filePart.getInputStream()) {
+                result = StorageDAO.uploadFileSafe(em, pspName, newFileName, displayName,
+                        fileContent, contentLength, contentType);
+            }
+
+            if (!result.success) {
+                log.error("Email attachment upload failed: {}", result.errorMessage);
+                request.setAttribute("uploadError", "File upload failed — please try again.");
+                return;
+            }
+
+            // Persist WebLink record only after successful upload
+            em.getTransaction().begin();
+            WebLink w = new WebLink();
+            w.setPlainText(correctedDescription);
+            w.setLinkPath(newFileName);
+            LinkType linkType = SequenceDAO.getLinkTypeById(em, 1);
+            w.setLinkType(linkType);
+            w.setActive(true);
+            em.persist(w);
+            em.getTransaction().commit();
+
+            local.getCurrentEmail().getAttachments().add(w);
+            request.getSession().setAttribute("local", local);
+
+        } catch (Exception e) {
+            log.error("Email attachment upload error", e);
+            if (em.getTransaction().isActive()) em.getTransaction().rollback();
+            request.setAttribute("uploadError", "File upload failed — please try again.");
+        } finally {
+            em.close();
         }
-
-        // Persist WebLink record
-        em.getTransaction().begin();
-        WebLink w = new WebLink();
-        w.setPlainText(correctedDescription);
-        w.setLinkPath(newFileName);
-        LinkType linkType = SequenceDAO.getLinkTypeById(em, 1);
-        w.setLinkType(linkType);
-        w.setActive(true);
-        em.persist(w);
-        em.getTransaction().commit();
-
-        local.getCurrentEmail().getAttachments().add(w);
-        request.getSession().setAttribute("local", local);
-
-        em.close();
     }
 
     private void goToPage(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {

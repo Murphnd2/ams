@@ -8,6 +8,9 @@ import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.dao.StorageDAO;
 import net.superiorstate.ams.data.util.Validator;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintWriter;
@@ -20,6 +23,8 @@ import java.util.UUID;
         maxRequestSize = 1024 * 1024 * 20
 )
 public class UploadRateSheet extends HttpServlet {
+
+    private static final Logger log = LogManager.getLogger(UploadRateSheet.class);
 
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws IOException, ServletException {
@@ -63,9 +68,9 @@ public class UploadRateSheet extends HttpServlet {
             out.print("{\"storageKey\":\"" + storageKey + "\",\"fileName\":\"" + escapeJson(displayName) + "\"}");
 
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Rate sheet upload failed", e);
             response.setStatus(500);
-            out.print("{\"error\":\"Upload failed\"}");
+            out.print("{\"error\":\"Upload failed — " + escapeJson(e.getMessage()) + "\"}");
         }
     }
 

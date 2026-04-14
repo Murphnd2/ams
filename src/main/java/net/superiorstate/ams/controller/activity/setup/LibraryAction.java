@@ -12,6 +12,9 @@ import net.superiorstate.ams.model.general.PSP;
 import net.superiorstate.ams.model.sales.offering.MarketingMaterial;
 import net.superiorstate.ams.model.sales.offering.ResourceCategory;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Paths;
@@ -25,6 +28,8 @@ import java.util.UUID;
         maxRequestSize = 1024 * 1024 * 50        // 50 MB
 )
 public class LibraryAction extends HttpServlet {
+
+    private static final Logger log = LogManager.getLogger(LibraryAction.class);
 
     /** Allowed file extensions for document uploads */
     private static final Set<String> ALLOWED_EXTENSIONS = Set.of("pdf", "xlsx", "docx", "csv");
@@ -109,16 +114,18 @@ public class LibraryAction extends HttpServlet {
                             errorMsg = "Invalid file type. Allowed: .pdf, .xlsx, .docx, .csv";
                             break;
                         }
-                        // Delete old file if exists
-                        if (m.getStorageGuid() != null && !m.getStorageGuid().isBlank()) {
-                            try {
-                                StorageDAO.deleteFile(em, psp.getFullName(), m.getStorageGuid());
-                            } catch (Exception e) {
-                                System.err.println("[LibraryAction] Warning: failed to delete old file: " + e.getMessage());
-                            }
-                        }
+                        // Upload new file first, then delete old on success
+                        String oldGuid = m.getStorageGuid();
                         String guid = uploadToWasabi(em, psp, filePart);
                         m.setStorageGuid(guid);
+                        // Delete old file after successful upload
+                        if (oldGuid != null && !oldGuid.isBlank()) {
+                            try {
+                                StorageDAO.deleteFile(em, psp.getFullName(), oldGuid);
+                            } catch (Exception e) {
+                                log.warn("[LibraryAction] Failed to delete old file (non-fatal): {}", e.getMessage());
+                            }
+                        }
                     }
 
                     em.getTransaction().begin();
@@ -154,7 +161,7 @@ public class LibraryAction extends HttpServlet {
                             try {
                                 StorageDAO.deleteFile(em, psp.getFullName(), m.getStorageGuid());
                             } catch (Exception e) {
-                                System.err.println("[LibraryAction] Warning: failed to delete file: " + e.getMessage());
+                                log.warn("[LibraryAction] Failed to delete file (non-fatal): {}", e.getMessage());
                             }
                         }
                         em.getTransaction().begin();
@@ -202,11 +209,12 @@ public class LibraryAction extends HttpServlet {
                     }
                 }
 
-                default -> System.err.println("[LibraryAction] Unknown action: " + action);
+                default -> log.warn("[LibraryAction] Unknown action: {}", action);
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("[LibraryAction] Error during action={}", action, e);
             if (em.getTransaction().isActive()) em.getTransaction().rollback();
+            if (errorMsg == null) errorMsg = "Operation failed — please try again.";
         } finally {
             em.close();
         }

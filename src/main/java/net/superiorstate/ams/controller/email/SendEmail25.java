@@ -76,6 +76,7 @@ public class SendEmail25 extends HttpServlet {
 
                 em.getTransaction().begin();
                 Email e = EntityLookup.getEmailById(em, email.getId());
+                if (e.getWebLinkList() == null) e.setWebLinkList(new ArrayList<>());
                 e.getWebLinkList().add(w);
                 em.persist(e);
                 em.getTransaction().commit();

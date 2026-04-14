@@ -169,7 +169,7 @@ public class OutlookLogEmailApi extends HttpServlet {
             int uploaded = 0;
             String pspName = caller.getPsp() != null ? caller.getPsp().getFullName() : "default";
             LinkType fileLinkType = SequenceDAO.getLinkTypeById(em, 1);
-            List<WebLink> webLinks = new ArrayList<>();
+            List<String[]> attachmentLinks = new ArrayList<>(); // [displayName, objectKey]
 
             for (int i = 0; i < attachmentCount; i++) {
                 Part filePart = request.getPart("file_" + i);
@@ -207,8 +207,24 @@ public class OutlookLogEmailApi extends HttpServlet {
                 em.persist(wl);
                 em.getTransaction().commit();
 
-                webLinks.add(wl);
+                attachmentLinks.add(new String[]{ displayName, objectKey });
                 uploaded++;
+            }
+
+            // Append attachment links to note detail so they render in activity view
+            if (!attachmentLinks.isEmpty()) {
+                StringBuilder attachHtml = new StringBuilder();
+                attachHtml.append("\n\n--- Attachments ---\n");
+                for (String[] link : attachmentLinks) {
+                    attachHtml.append("<a href=\"ShowFileUpload?doc=")
+                              .append(link[1]).append("\" target=\"_blank\">")
+                              .append(link[0]).append("</a>\n");
+                }
+                em.getTransaction().begin();
+                Note noteToUpdate = em.find(Note.class, note.getId());
+                noteToUpdate.setDetail(noteToUpdate.getDetail() + attachHtml);
+                em.merge(noteToUpdate);
+                em.getTransaction().commit();
             }
 
             String json = "{"

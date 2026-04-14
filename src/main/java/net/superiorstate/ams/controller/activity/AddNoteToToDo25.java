@@ -21,6 +21,9 @@ import net.superiorstate.ams.model.general.LinkType;
 import net.superiorstate.ams.model.general.Person;
 import net.superiorstate.ams.model.general.WebLink;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Paths;
@@ -38,6 +41,8 @@ import java.util.*;
         maxRequestSize = 1024 * 1024 * 100     // 100 MB
 )
 public class AddNoteToToDo25 extends HttpServlet {
+
+    private static final Logger log = LogManager.getLogger(AddNoteToToDo25.class);
 
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
@@ -126,12 +131,12 @@ public class AddNoteToToDo25 extends HttpServlet {
             em.getTransaction().commit();
             em.getEntityManagerFactory().getCache().evict(ToDoNote.class, note.getId());
 
-            System.out.println("[PSP] Note attachment uploaded: " + displayName + " -> " + objectKey);
+            log.info("[PSP] Note attachment uploaded: {} -> {}", displayName, objectKey);
             return w;
 
         } catch (Exception e) {
             if (em.getTransaction().isActive()) em.getTransaction().rollback();
-            System.out.println("[PSP] Note attachment upload failed (non-fatal): " + e.getMessage());
+            log.warn("[PSP] Note attachment upload failed (non-fatal): {}", e.getMessage());
             return null;
         }
     }
@@ -164,9 +169,9 @@ public class AddNoteToToDo25 extends HttpServlet {
             }
 
             ApiClient.ApiResponse resp = ApiClient.postJsonObject(url, payload, reg.getApiTokenOutbound());
-            System.out.println("[BPO-API] callbackNoteToBpo: todoGuid=" + todo.getTodoGuid() + " (" + resp.statusCode + ")");
+            log.info("[BPO-API] callbackNoteToBpo: todoGuid={} ({})", todo.getTodoGuid(), resp.statusCode);
         } catch (Exception e) {
-            System.out.println("[BPO-API] callbackNoteToBpo: failed (non-fatal): " + e.getMessage());
+            log.warn("[BPO-API] callbackNoteToBpo: failed (non-fatal): {}", e.getMessage());
         }
     }
 }
