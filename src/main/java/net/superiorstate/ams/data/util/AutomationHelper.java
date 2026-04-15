@@ -26,14 +26,23 @@ public abstract class AutomationHelper {
         List<Person> rList = new ArrayList<>();
         List<String> emailList = new ArrayList<>();
         Activity a = local.getCurrentActivity().getActivity();
-        if(local.getCurrentActivity().getPrimaryContact()!=null && local.getCurrentActivity().getPrimaryContact().getEmail()!=null && Validator.isValidEmail(local.getCurrentActivity().getPrimaryContact().getEmail())){
-            rList.add(local.getCurrentActivity().getPrimaryContact());
-            emailList.add(local.getCurrentActivity().getPrimaryContact().getEmail());
+
+        Person localPc = local.getCurrentActivity().getPrimaryContact();
+        if(localPc != null && localPc.getEmail() != null && Validator.isValidEmail(localPc.getEmail())){
+            String key = localPc.getEmail().trim().toLowerCase();
+            if(!emailList.contains(key)) {
+                rList.add(localPc);
+                emailList.add(key);
+            }
         }
 
-        if(a.getPrimaryContact()!=null && a.getPrimaryContact().getEmail()!=null && Validator.isValidEmail(a.getPrimaryContact().getEmail())){
-            rList.add(a.getPrimaryContact());
-            emailList.add(a.getPrimaryContact().getEmail().trim().toLowerCase());
+        Person activityPc = a.getPrimaryContact();
+        if(activityPc != null && activityPc.getEmail() != null && Validator.isValidEmail(activityPc.getEmail())){
+            String key = activityPc.getEmail().trim().toLowerCase();
+            if(!emailList.contains(key)) {
+                rList.add(activityPc);
+                emailList.add(key);
+            }
         }
 
         if(local.getCurrentActivity().getAdditionalContacts()!=null && local.getCurrentActivity().getAdditionalContacts().size()>0){

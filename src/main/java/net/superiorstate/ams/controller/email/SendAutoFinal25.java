@@ -51,7 +51,20 @@ public class SendAutoFinal25 extends HttpServlet {
             response.sendError(403, "CSRF protection failed");
             return;
         }
-        // =============================================
+
+        // NEW: preview-driven send — content has already been resolved and
+        // (possibly) edited by the user in autoPreview25.jsp.
+        if ("true".equals(request.getParameter("fromPreview"))) {
+            sendFromPreview(request, response);
+            return;
+        }
+
+        // ─────────────────────────────────────────────────────────────
+        // Legacy path — kept as a safety net for any caller that POSTs
+        // directly without the preview step. All current UI paths go
+        // through autoPreview25.jsp (fromPreview=true), so this branch
+        // is not expected to fire under normal use.
+        // ─────────────────────────────────────────────────────────────
         AmsDataLocal local = (AmsDataLocal) request.getSession().getAttribute("local");
         Activity a = local.getCurrentActivity().getActivity();
         System.out.println("GOT HERE");
@@ -146,8 +159,7 @@ public class SendAutoFinal25 extends HttpServlet {
             local.getCurrentEmail().getRecipientList().add(0, toPerson);
         }
 
-        String userSignature = "<p> " + local.getCurrentPerson().getFirstName() + " " + local.getCurrentPerson().getLastName() + "<br/>";
-        userSignature += local.getCurrentPerson().getPsp().getFullName() + "</p>";
+        String userSignature = buildSignature(local.getCurrentPerson());
 
         //Create Email Object
         Email email = null;
@@ -223,5 +235,196 @@ public class SendAutoFinal25 extends HttpServlet {
 
         RequestDispatcher dispatcher =  getServletContext().getNamedDispatcher("ViewActivity25");
         dispatcher.forward(request,response);
+    }
+
+    /**
+     * Preview-driven send — uses the subject/body/cc submitted from autoPreview25.jsp
+     * (the content the user actually reviewed and possibly edited) rather than
+     * re-processing the template. Recipient list was resolved in PrepareAutoPreview25
+     * (or SendAuto25 for no-input automations) and is read from session.
+     */
+    private void sendFromPreview(HttpServletRequest request, HttpServletResponse response)
+            throws MessagingException, ServletException, IOException {
+        HttpSession session = request.getSession();
+        AmsDataLocal local = (AmsDataLocal) session.getAttribute("local");
+        if (local == null || local.getCurrentActivity() == null || local.getCurrentActivity().getActivity() == null) {
+            response.sendRedirect("ViewActivity25");
+            return;
+        }
+        Activity a = local.getCurrentActivity().getActivity();
+
+        EntityManagerFactory emf = (EntityManagerFactory) getServletContext().getAttribute("emf");
+        EntityManager em = emf.createEntityManager();
+
+        // ── Pull user-edited content from the preview form ──
+        String subject = request.getParameter("previewSubject");
+        if (subject == null) subject = "";
+        subject = subject.trim();
+        if (subject.isEmpty()) {
+            // Fallback to the automation name if the user cleared the subject
+            Object autoName = session.getAttribute("a1autoName");
+            subject = (autoName != null) ? autoName.toString() : "(No subject)";
+        }
+
+        String body = request.getParameter("previewBody");
+        if (body == null) body = "";
+        // Run the user-edited HTML through the same sanitizer used for template input
+        body = AutoSafe.clean(body);
+
+        String ccInput = request.getParameter("previewCc");
+        boolean shouldClose = "true".equals(request.getParameter("previewAutoClose"));
+
+        Automation automation = (Automation) session.getAttribute("a1auto");
+
+        // ── Build recipient list: start with resolved list from session ──
+        @SuppressWarnings("unchecked")
+        List<Person> sessionRecipients = (List<Person>) session.getAttribute("a1recipientList");
+        List<Person> recipients = new ArrayList<>();
+        List<String> seenEmails = new ArrayList<>();
+        if (sessionRecipients != null) {
+            for (Person p : sessionRecipients) {
+                if (p != null && p.getEmail() != null && Validator.isValidEmail(p.getEmail())) {
+                    String key = p.getEmail().trim().toLowerCase();
+                    if (!seenEmails.contains(key)) {
+                        recipients.add(p);
+                        seenEmails.add(key);
+                    }
+                }
+            }
+        }
+
+        // ── Append any CC addresses entered in the preview page ──
+        if (ccInput != null && !ccInput.isBlank()) {
+            for (String raw : ccInput.split(";")) {
+                String addr = raw.trim();
+                if (addr.isEmpty()) continue;
+                if (!Validator.isValidEmail(addr)) continue;
+                String key = addr.toLowerCase();
+                if (seenEmails.contains(key)) continue;
+                Person p = EmailDAO.getPersonByEmail(em, addr, local.getCurrentPerson().getPsp());
+                if (p == null) {
+                    try {
+                        em.getTransaction().begin();
+                        p = new Person();
+                        p.setEmail(addr);
+                        p.setFirstName("NEW");
+                        p.setLastName("PERSON");
+                        p.setPsp(local.getCurrentPerson().getPsp());
+                        em.persist(p);
+                        em.getTransaction().commit();
+                    } catch (Exception ex) {
+                        if (em.getTransaction().isActive()) em.getTransaction().rollback();
+                        p = null;
+                    }
+                }
+                if (p != null) {
+                    recipients.add(p);
+                    seenEmails.add(key);
+                }
+            }
+        }
+
+        // ── Build + persist the Email entity ──
+        String signature = buildSignature(local.getCurrentPerson());
+        String finalSubject = subject + " ##ID:" + a.getId() + "##";
+        String finalBody = body + signature;
+
+        Email email = null;
+        try {
+            em.getTransaction().begin();
+            email = new Email();
+            email.setActivity(a);
+            email.setSubject(finalSubject);
+            email.setDateGenerated(Date.valueOf(LocalDate.now()));
+            email.setStatus(EntityLookup.getActivityStatusById(em, 1));
+            email.setReasonCreated(EntityLookup.getReasonById(em, 7));
+            email.setCreatedBy(local.getCurrentPerson());
+            email.setDetail(finalBody);
+            email.setRecipientList(recipients);
+            em.persist(email);
+            em.getTransaction().commit();
+        } catch (Exception ex) {
+            System.out.println("ERROR: Failed to create email entity (preview path)");
+            ex.printStackTrace();
+            if (em.getTransaction().isActive()) em.getTransaction().rollback();
+            email = null;
+        }
+
+        // ── Send + record on activity ──
+        if (email != null) {
+            boolean emailSent = true;
+            try {
+                EmailDAO.sendEmail(email, em);
+                System.out.println("=========== PREVIEW-SEND EMAIL SENT =========================");
+            } catch (Exception ex) {
+                emailSent = false;
+                System.out.println("ERROR: Failed to send email (preview path)");
+                ex.printStackTrace();
+            }
+
+            if (emailSent) {
+                try {
+                    Activity a1 = EntityLookup.getActivityById(em, a.getId());
+                    if (a1 != null) {
+                        if (a1.getNoteList() == null) a1.setNoteList(new ArrayList<>());
+                        em.getTransaction().begin();
+                        a1.getNoteList().add(email);
+                        em.persist(a1);
+                        em.getTransaction().commit();
+                    }
+
+                    local.respondToActivityUpdate(em, "NOTE", email);
+
+                    if (shouldClose && automation != null) {
+                        local.respondToActivityUpdate(em, "AUTO_CLOSE", automation);
+                    }
+                } catch (Exception ex) {
+                    System.out.println("ERROR: Failed to update activity with email (preview path)");
+                    ex.printStackTrace();
+                    if (em.getTransaction().isActive()) em.getTransaction().rollback();
+                }
+            }
+        }
+
+        // Clear preview-related session state so the next automation starts fresh
+        clearAutomationSessionState(session);
+
+        // Reset email compose buffer
+        if (local.getCurrentEmail() != null) {
+            local.getCurrentEmail().setSubject("");
+            local.getCurrentEmail().setBody("");
+            local.getCurrentEmail().setAttachments(new ArrayList<>());
+            local.getCurrentEmail().setRecipientList(new ArrayList<>());
+        }
+        session.setAttribute("local", local);
+        em.close();
+
+        RequestDispatcher dispatcher = getServletContext().getNamedDispatcher("ViewActivity25");
+        dispatcher.forward(request, response);
+    }
+
+    private static String buildSignature(Person sender) {
+        if (sender == null) return "";
+        String first = sender.getFirstName() != null ? sender.getFirstName() : "";
+        String last = sender.getLastName() != null ? sender.getLastName() : "";
+        String pspName = (sender.getPsp() != null && sender.getPsp().getFullName() != null)
+                ? sender.getPsp().getFullName() : "";
+        return "<p> " + first + " " + last + "<br/>" + pspName + "</p>";
+    }
+
+    private static void clearAutomationSessionState(HttpSession session) {
+        session.removeAttribute("a1auto");
+        session.removeAttribute("a1autoName");
+        session.removeAttribute("a1content");
+        session.removeAttribute("a1inputLabels");
+        session.removeAttribute("a1inputTypes");
+        session.removeAttribute("a1inputCount");
+        session.removeAttribute("a1shouldClose");
+        session.removeAttribute("a1addSignature");
+        session.removeAttribute("a1includeCc");
+        session.removeAttribute("a1resolvedSubject");
+        session.removeAttribute("a1resolvedBody");
+        session.removeAttribute("a1recipientList");
+        session.removeAttribute("a1previewReady");
     }
 }

@@ -1436,3 +1436,73 @@ Users reported intermittent upload failures and exceedingly long upload times fo
 
 ### Tested on production
 Email attachment upload ✓, email send with attachment ✓, activity document upload ✓, Outlook create-ticket with attachment ✓.
+
+---
+
+## Session 81 — Automation Email Preview & Send Overhaul (April 14, 2026)
+
+### Problem
+Clicking the lightning-bolt on a checklist task opened `autoModal` — a near-empty confirmation popup with two buttons. "Preview" opened a separate tab via `PreviewAutomation` that rendered dummy placeholder data ("Test Value 1", "Sample Employer Inc.") and split subject/body on `\n` instead of `<sbj>` markers, so it never matched what would actually send. "Send" went straight to `SendAuto25`, which — for automations without `<ii>` inputs — auto-POSTed through `autoConfirmSend25.jsp` and fired the email with zero user review. Users couldn't edit content, add CC recipients, correct typos, or see what was actually going out.
+
+### New flow
+```
+Lightning bolt → SendAuto25
+   ├─ count > 0 → autoInputScreen25.jsp (SSA-styled)
+   │              └─ POST → PrepareAutoPreview25 → autoPreview25.jsp
+   └─ count == 0 → autoPreview25.jsp (content pre-resolved in SendAuto25)
+                                │
+                                └─ POST fromPreview=true → SendAutoFinal25 (preview branch)
+```
+
+`autoPreview25.jsp` is an editable full-page review:
+- Subject editable
+- Body in Quill (snow theme) with the fully-resolved HTML
+- TO recipients rendered as read-only chips
+- CC input (semicolon-separated)
+- Mark-task-complete checkbox pre-reflecting `<<close>>`
+- Send / Cancel
+
+### Servlet changes
+**SendAuto25.java** — No-input branch now resolves content in place: `<<#erName>>` safety net, `<<#activityType>>`, `processBreaksAndNewLines`, `processReferenceLinks`, `getSubjectAndBody`, `getRecipientList`. Stores `a1resolvedSubject`, `a1resolvedBody`, `a1recipientList`, `a1previewReady` in session and forwards straight to `autoPreview25.jsp`. With-input branch unchanged except target JSP action is now `PrepareAutoPreview25`. Clears stale preview state on every run so re-triggering starts fresh.
+
+**PrepareAutoPreview25.java** (new, `/PrepareAutoPreview25`) — CSRF-protected. Receives the input form, applies `AutoSafe.getInput()` / link-wrapping / TO-email / CC input per `a1inputTypes`, runs the same tag-resolution chain as SendAuto25's no-input branch, builds the recipient list (creating Person rows for injected TO emails), stores preview-ready state in session, forwards to `autoPreview25.jsp`.
+
+**SendAutoFinal25.java** — Added top-of-method `fromPreview=true` branch (`sendFromPreview()`) after CSRF check. Uses `previewSubject` / `previewBody` / `previewCc` / `previewAutoClose` directly — no template re-processing. Body runs through `AutoSafe.clean()` (same allow-list as inputs). Recipient list seeded from session `a1recipientList` with local dedup by `email.trim().toLowerCase()`; CC additions appended (invalid skipped, duplicates skipped, new Persons auto-created). `##ID:{activityId}##` suffix still appended. Signature still appended (preserved existing always-on behavior; extracted into `buildSignature(Person)` helper). Clears all `a1*` session state after send. Legacy non-preview branch preserved as safety net.
+
+### JSP changes
+**autoInputScreen25.jsp** — Rewritten with SSA `.hdr-bar` card, "Step 1 of 2" indicator, icon-per-input-type labels. Form POSTs to `PrepareAutoPreview25`. Submit button reads "Preview Email".
+
+**autoPreview25.jsp** (new) — Quill 2.0.3 editor, SSA-styled card, recipient chips with email addresses, attachment note pointing to full composer (attachment upload deferred). CSRF + `sendAutoEmail=1` + `fromPreview=true` + `previewBody` hidden inputs.
+
+**checklistBasic25.jsp** — Lightning bolt now a direct `<a href="SendAuto25?aeId=X">`. Removed dead `autoModal` HTML + `openAutoModal()` JS.
+
+**taskManager25.jsp**, **checklistAutomation25.jsp** — Stale "Preview" buttons retargeted from `PreviewAutomation` to `SendAuto25`.
+
+### AutomationHelper.getRecipientList() dedup fix (surfaced during preview QA)
+Existing bug: `emailList` was built for deduping, but the first two blocks (for `local.getCurrentActivity().getPrimaryContact()` and `activity.getPrimaryContact()`) never checked against it before adding. Same person — the activity's primary contact — was almost always added twice. First block also stored the raw email while others stored `trim().toLowerCase()`, so even a check wouldn't have matched. Fix normalizes both keys consistently and checks `emailList` before adding. `additionalContacts` + CC blocks were already correct. Actual send was masked by my new `sendFromPreview` dedup loop, but the preview pane showed the duplicate chip.
+
+### Auto-close language correction
+`AUTO_CLOSE` in `AmsDataLocal.respondToActivityUpdate` finds the ToDo whose Task ID matches the automation and calls `toDo.setComplete(true)` — it does **not** close the parent activity. Preview checkbox corrected from "Auto-close this activity after sending" to "Mark this task complete after sending". `taskManager25.jsp` tag doc ("Auto-closes this task when sent") was already accurate.
+
+### Files
+**Created:**
+- `controller/email/PrepareAutoPreview25.java`
+- `webapp/WEB-INF/view/a/taskManager/autoPreview25.jsp`
+
+**Modified:**
+- `controller/email/SendAuto25.java`
+- `controller/email/SendAutoFinal25.java`
+- `data/util/AutomationHelper.java` (dedup fix)
+- `webapp/WEB-INF/view/a/taskManager/autoInputScreen25.jsp`
+- `webapp/WEB-INF/view/a/taskManager/taskManager25.jsp` (Preview button target)
+- `webapp/WEB-INF/view/a/activityDetail/columns/checklist/checklistBasic25.jsp`
+- `webapp/WEB-INF/view/a/activityDetail/columns/checklist/checklistAutomation25.jsp`
+
+**Deleted:**
+- `controller/email/PreviewAutomation.java`
+- `webapp/WEB-INF/view/a/taskManager/autoConfirmSend25.jsp`
+- `webapp/WEB-INF/view/a/taskManager/previewEmailModal.jsp`
+
+### Branch
+Developed on `feature/automation-email-preview`, merged back into `refactor/modernize-architecture`. No migration. No `claude_memory.md` / `deployment_backlog.md` entries needed (pure code change).
+

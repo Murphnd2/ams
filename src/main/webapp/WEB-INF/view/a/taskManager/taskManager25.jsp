@@ -357,7 +357,7 @@
                     <i class="bi bi-question-circle me-1"></i>Tags
                   </button>
                   <c:if test="${toDo.getTask().getAutomation() != null}">
-                    <a href="PreviewAutomation?aeId=${toDo.getTask().getAutomation().getId()}" target="_blank" class="btn btn-sm btn-outline-secondary" style="font-size:0.68rem;">
+                    <a href="SendAuto25?aeId=${toDo.getTask().getAutomation().getId()}" target="_blank" class="btn btn-sm btn-outline-secondary" style="font-size:0.68rem;">
                       <i class="bi bi-eye me-1"></i>Preview
                     </a>
                   </c:if>
