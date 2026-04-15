@@ -167,6 +167,12 @@
                         </c:if>
 
                         <form method="post" action="${pageContext.request.contextPath}/RequestQuote">
+                            <%-- Honeypot: hidden from humans via CSS, bots fill it --%>
+                            <div style="position:absolute;left:-9999px;top:-9999px;" aria-hidden="true" tabindex="-1">
+                                <label for="website">Website</label>
+                                <input type="text" name="website" id="website" value="" autocomplete="off" tabindex="-1">
+                            </div>
+                            <input type="hidden" name="formLoadedAt" id="formLoadedAt" value="">
                             <div class="row">
                                 <div class="col-md-6 mb-3">
                                     <label class="form-label" for="firstName">First Name <span class="required-star">*</span></label>
@@ -268,7 +274,10 @@
             emailStar.style.display = isEmail ? '' : 'none';
             phoneStar.style.display = isEmail ? 'none' : '';
         }
-        document.addEventListener('DOMContentLoaded', toggleContactRequired);
+        document.addEventListener('DOMContentLoaded', function() {
+            toggleContactRequired();
+            document.getElementById('formLoadedAt').value = Date.now().toString();
+        });
     </script>
 </body>
 </html>

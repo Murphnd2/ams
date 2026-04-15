@@ -480,10 +480,17 @@
             }
         }
 
-        // Body (async)
-        item.body.getAsync(Office.CoercionType.Text, function (result) {
+        // Body (async) — fetch as HTML to preserve formatting, then sanitize
+        item.body.getAsync(Office.CoercionType.Html, function (result) {
             if (result.status === Office.AsyncResultStatus.Succeeded) {
-                state.emailBodyText = result.value || '';
+                state.emailBodyText = sanitizeEmailHtml(result.value || '');
+            } else {
+                // Fallback to plain text if HTML fetch fails
+                item.body.getAsync(Office.CoercionType.Text, function (r2) {
+                    if (r2.status === Office.AsyncResultStatus.Succeeded) {
+                        state.emailBodyText = r2.value || '';
+                    }
+                });
             }
         });
     }
@@ -913,6 +920,106 @@
         var arr = new Uint8Array(bin.length);
         for (var i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
         return new Blob([arr]);
+    }
+
+    /**
+     * Sanitize email HTML for safe display in AMS note detail.
+     * Keeps: basic formatting (bold, italic, links, lists, line breaks, colors)
+     * Strips: scripts, style blocks, fixed widths, layout styles, classes, ids,
+     *         event handlers, javascript: hrefs, tracking pixels
+     */
+    function sanitizeEmailHtml(html) {
+        if (!html) return '';
+        var parser = new DOMParser();
+        var doc = parser.parseFromString(html, 'text/html');
+
+        // Remove dangerous/layout elements entirely
+        var killTags = ['script', 'style', 'meta', 'link', 'head', 'title', 'iframe', 'object', 'embed'];
+        killTags.forEach(function (tag) {
+            var els = doc.querySelectorAll(tag);
+            for (var i = 0; i < els.length; i++) els[i].remove();
+        });
+
+        // Style properties to strip (anything that could force a fixed size)
+        var stripProps = /\b(width|min-width|max-width|height|min-height|max-height|position|float|overflow|margin-left|margin-right|padding-left|padding-right)\s*:[^;]*(;|$)/gi;
+
+        // Walk all elements
+        var all = doc.body.querySelectorAll('*');
+        for (var i = 0; i < all.length; i++) {
+            var el = all[i];
+
+            // Remove event handler attributes (onclick, onload, etc.)
+            var attrs = el.attributes;
+            var toRemove = [];
+            for (var j = 0; j < attrs.length; j++) {
+                var name = attrs[j].name.toLowerCase();
+                if (name.startsWith('on') || name === 'class' || name === 'id') {
+                    toRemove.push(name);
+                }
+            }
+            toRemove.forEach(function (a) { el.removeAttribute(a); });
+
+            // Strip width/height HTML attributes
+            el.removeAttribute('width');
+            el.removeAttribute('height');
+
+            // Sanitize style attribute — keep safe properties, strip layout ones
+            var style = el.getAttribute('style');
+            if (style) {
+                var cleaned = style.replace(stripProps, '').replace(/;\s*;/g, ';').replace(/^\s*;\s*/, '').trim();
+                if (cleaned) {
+                    el.setAttribute('style', cleaned);
+                } else {
+                    el.removeAttribute('style');
+                }
+            }
+
+            // Sanitize <a> hrefs — strip javascript: links
+            if (el.tagName === 'A') {
+                var href = (el.getAttribute('href') || '').trim().toLowerCase();
+                if (href.startsWith('javascript:') || href.startsWith('data:')) {
+                    el.removeAttribute('href');
+                }
+            }
+
+            // Force tables to be fluid
+            if (el.tagName === 'TABLE') {
+                el.style.width = '100%';
+                el.style.tableLayout = 'auto';
+                el.style.wordBreak = 'break-word';
+            }
+
+            // Remove tiny tracking pixel images (1x1, hidden, etc.)
+            if (el.tagName === 'IMG') {
+                var w = parseInt(el.getAttribute('width') || el.style.width, 10);
+                var h = parseInt(el.getAttribute('height') || el.style.height, 10);
+                if ((w > 0 && w <= 3) || (h > 0 && h <= 3)) {
+                    el.remove();
+                    continue;
+                }
+                // Make remaining images responsive
+                el.style.maxWidth = '100%';
+                el.style.height = 'auto';
+            }
+        }
+
+        // Get the cleaned inner HTML
+        var result = doc.body.innerHTML || '';
+
+        // Collapse excessive whitespace/blank lines from removed elements
+        result = result.replace(/(\s*<br\s*\/?>\s*){3,}/gi, '<br><br>');
+
+        // Truncate safely if over the DB column limit (5000 chars).
+        // Cut at the last closing tag or space before the limit to avoid
+        // broken HTML, then close any open tags with a simple fallback.
+        if (result.length > 4800) {
+            var cut = result.lastIndexOf('>', 4700);
+            if (cut < 3500) cut = result.lastIndexOf(' ', 4700);
+            if (cut < 3500) cut = 4700;
+            result = result.substring(0, cut + 1) + '<br><em>[email truncated]</em>';
+        }
+
+        return result;
     }
 })();
 </script>

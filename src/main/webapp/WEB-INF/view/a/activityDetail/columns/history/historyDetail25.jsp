@@ -27,6 +27,29 @@
         <div class="mt-1" style="font-size: 0.8rem;">
             ${note.getDetail()}
         </div>
+        <c:if test="${not empty note.getWebLinkList()}">
+          <div class="mt-1" style="font-size: 0.78rem;">
+            <i class="bi bi-paperclip me-1 text-muted"></i>
+            <c:forEach var="att" items="${note.getWebLinkList()}">
+              <c:if test="${att.isActive()}">
+                <c:choose>
+                  <c:when test="${att.getLinkType().getId() == 1}">
+                    <a href="${pageContext.request.contextPath}/ShowFileUpload?doc=${att.getLinkPath()}" target="_blank"
+                       class="me-2 text-decoration-none" style="color: var(--ssa);">
+                      <i class="bi bi-file-earmark-arrow-down me-1"></i>${att.getPlainText()}
+                    </a>
+                  </c:when>
+                  <c:when test="${att.getLinkType().getId() == 2}">
+                    <a href="${att.getLinkPath()}" target="_blank"
+                       class="me-2 text-decoration-none" style="color: var(--ssa);">
+                      <i class="bi bi-link-45deg me-1"></i>${att.getPlainText()}
+                    </a>
+                  </c:when>
+                </c:choose>
+              </c:if>
+            </c:forEach>
+          </div>
+        </c:if>
         <div class="text-muted fst-italic mt-1" style="font-size: 0.68rem;">
             ${note.getCreatedBy().getFullName()} &mdash;
           <c:choose>

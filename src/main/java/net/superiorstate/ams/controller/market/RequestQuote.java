@@ -57,6 +57,32 @@ public class RequestQuote extends HttpServlet {
         String[] losIds = request.getParameterValues("losIds");
         String additionalInfo = request.getParameter("additionalInfo");
 
+        // --- Bot detection ---
+        // 1. Honeypot: invisible field that only bots fill in
+        String honeypot = request.getParameter("website");
+        if (honeypot != null && !honeypot.isBlank()) {
+            System.out.println("[RequestQuote] Bot detected: honeypot filled. Dropping submission.");
+            request.setAttribute("submitted", true);
+            setGlobalAttrs(request, global);
+            request.getRequestDispatcher("/WEB-INF/view/market/requestQuote25.jsp").forward(request, response);
+            return;
+        }
+        // 2. Time check: form must be open for at least 3 seconds
+        String loadedAt = request.getParameter("formLoadedAt");
+        if (loadedAt != null && !loadedAt.isBlank()) {
+            try {
+                long loadTime = Long.parseLong(loadedAt);
+                long elapsed = System.currentTimeMillis() - loadTime;
+                if (elapsed < 3000) {
+                    System.out.println("[RequestQuote] Bot detected: form submitted in " + elapsed + "ms. Dropping submission.");
+                    request.setAttribute("submitted", true);
+                    setGlobalAttrs(request, global);
+                    request.getRequestDispatcher("/WEB-INF/view/market/requestQuote25.jsp").forward(request, response);
+                    return;
+                }
+            } catch (NumberFormatException ignored) {}
+        }
+
         // Validate required fields
         boolean contactValid = "phone".equals(contactMethod) ? !isBlank(phone) : !isBlank(email);
         if (isBlank(firstName) || isBlank(lastName) || isBlank(companyName) || !contactValid) {

@@ -1506,3 +1506,62 @@ Existing bug: `emailList` was built for deduping, but the first two blocks (for 
 ### Branch
 Developed on `feature/automation-email-preview`, merged back into `refactor/modernize-architecture`. No migration. No `claude_memory.md` / `deployment_backlog.md` entries needed (pure code change).
 
+---
+
+## Session 82 — Outlook Add-in Polish + RequestQuote Bot Protection (April 15, 2026)
+
+Three targeted fixes: make Outlook-logged email attachments visible in AMS, preserve email formatting while keeping content responsive, and add anti-spam to the public quote request form.
+
+### 1. Outlook-logged note attachments now render in activity detail
+
+**Root cause:** `OutlookLogEmailApi` (Session 77) uploads attachments to Wasabi and creates `WebLink` rows with the new `note_id` FK (V060). But `historyDetail25.jsp` — which renders the notes list on activity detail pages — had no code path for `note.webLinkList`. It only knew how to show `Email.webLinkList` via `emailView25.jsp`. Server was uploading fine ("2 attachments uploaded" in the success toast), but downloaded files were invisible in AMS.
+
+**Fix:** Added an attachment block to `historyDetail25.jsp` immediately after the note detail text. Mirrors the pattern from `emailView25.jsp`:
+- Paperclip icon prefix
+- `linkType.id == 1` → `ShowFileUpload?doc=...` download link
+- `linkType.id == 2` → external URL link
+- Filters on `att.isActive()` to respect the active flag
+
+Previously-logged attachments became visible immediately after deployment — no re-upload needed, the rows were already in the DB.
+
+### 2. Email body now preserves formatting while staying responsive
+
+**Problem:** Email body was fetched as `CoercionType.Text`, losing bold/italic/links/lists. Switching to `CoercionType.Html` exposed the opposite risk — email HTML (esp. marketing templates) often uses fixed-width tables and inline styles that overflow narrow columns like the AMS notes panel.
+
+**Fix:** In `taskpane.html`, switched body fetch to `CoercionType.Html` with a plain-text fallback, plus a new `sanitizeEmailHtml()` DOM-based sanitizer:
+- **Strips entirely:** `<script>`, `<style>`, `<meta>`, `<link>`, `<head>`, `<title>`, `<iframe>`, `<object>`, `<embed>`
+- **Strips attributes:** `class`, `id`, all `on*` event handlers, HTML `width` / `height` attributes
+- **Strips layout-breaking CSS properties:** width, min-width, max-width, height, min-height, max-height, position, float, overflow, margin-left/right, padding-left/right (regex-based replacement in `style` attribute text)
+- **Forces tables:** `width: 100%; table-layout: auto; word-break: break-word`
+- **Removes tracking pixels:** images with width ≤ 3 or height ≤ 3
+- **Responsive remaining images:** `max-width: 100%; height: auto`
+- **Strips dangerous hrefs:** `javascript:` and `data:` links
+- **Collapses** runs of 3+ consecutive `<br>` tags to 2
+- **Safe truncation** at ~4700 chars (cut at last `>` or space) to stay under the `note.detail` `varchar(5000)` column limit, with `<em>[email truncated]</em>` marker
+
+Sent as `form.append('body', sanitized)` like before — server-side `OutlookLogEmailApi` unchanged. `historyDetail25.jsp` already renders note detail with raw `${note.getDetail()}` (no `<c:out>`), so the sanitized HTML displays with formatting intact.
+
+Manifest `Version` bumped to `1.1.0.0` and `SourceLocation` got `?v=1.1` cache-buster so Outlook re-fetches the taskpane.
+
+### 3. RequestQuote — honeypot + time-gate bot protection
+
+**Problem:** Public `/RequestQuote` form receiving spam submissions.
+
+**Fix:** Two-layer bot detection, zero friction for humans, no external dependencies (no reCAPTCHA):
+
+1. **Honeypot field** — Added hidden `<input name="website">` positioned `left: -9999px`, `top: -9999px`, `aria-hidden="true"`, `tabindex="-1"`. Real users never see or tab to it. Bots auto-fill any visible form field.
+2. **Time check** — Hidden `<input name="formLoadedAt">` populated by JavaScript on `DOMContentLoaded` with `Date.now()`. Server computes elapsed time on submit; rejects anything faster than 3000 ms.
+
+On detection, the servlet **silently shows the normal confirmation page** (`submitted=true`) rather than rejecting outright. Bots think they succeeded and don't adapt or retry. Real submissions are dropped server-side with a `System.out.println("[RequestQuote] Bot detected: ...")` for visibility in catalina.out.
+
+### Files changed
+
+**Modified (5):**
+- `src/main/webapp/WEB-INF/view/a/activityDetail/columns/history/historyDetail25.jsp` — note attachments block
+- `src/main/webapp/outlook/taskpane.html` — HTML body + sanitizer + truncation
+- `src/main/webapp/outlook/manifest.xml` — version 1.1.0.0 + `?v=1.1` cache-buster on taskpane URL
+- `src/main/java/net/superiorstate/ams/controller/market/RequestQuote.java` — honeypot + time-check at top of `doPost`
+- `src/main/webapp/WEB-INF/view/market/requestQuote25.jsp` — hidden honeypot + `formLoadedAt` field + DOM-ready handler
+
+**No migration, no new files.** Pure code fixes.
+
