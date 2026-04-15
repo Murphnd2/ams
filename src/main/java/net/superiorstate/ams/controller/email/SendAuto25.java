@@ -12,6 +12,7 @@ import net.superiorstate.ams.data.util.Validator;
 import net.superiorstate.ams.model.activity.Activity;
 import net.superiorstate.ams.model.general.Automation;
 import net.superiorstate.ams.model.general.Person;
+import net.superiorstate.ams.model.summit.archive.Employer;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -127,9 +128,7 @@ public class SendAuto25 extends HttpServlet {
 
         processedText.append(remainingText);
 
-        em.close();
-
-        // Set Session Variables
+        // Set Session Variables (shared by both paths)
         HttpSession session = request.getSession();
         session.setAttribute("a1auto", a);
         session.setAttribute("a1autoName", a.getAutomationName());
@@ -146,16 +145,67 @@ public class SendAuto25 extends HttpServlet {
             session.setAttribute("csrfToken", java.util.UUID.randomUUID().toString());
         }
 
-        // IMPORTANT: don't forward GET directly into SendAutoFinal25 (it requires csrf param)
+        // Clear any stale preview state from a previous run
+        session.removeAttribute("a1resolvedSubject");
+        session.removeAttribute("a1resolvedBody");
+        session.removeAttribute("a1recipientList");
+        session.removeAttribute("a1previewReady");
+
         RequestDispatcher d;
         if (count > 0) {
+            // Inputs needed — collect them before previewing
+            em.close();
             d = request.getRequestDispatcher("/WEB-INF/view/a/taskManager/autoInputScreen25.jsp");
         } else {
-            // NEW: confirm/auto-post screen that submits csrf + sendAutoEmail=1 via POST
-            d = request.getRequestDispatcher("/WEB-INF/view/a/taskManager/autoConfirmSend25.jsp");
+            // No inputs — resolve the rest of the content right now and go straight to preview
+            String fullyResolved = resolveNoInputContent(em, processedText.toString(), a, local);
+            List<String> subjectBody = AutomationHelper.getSubjectAndBody(fullyResolved);
+            String subject = subjectBody.get(0);
+            if (subject == null || subject.isEmpty()) {
+                subject = a.getAutomationName();
+            }
+            String body = subjectBody.get(1);
+
+            List<Person> recipients = (local != null && local.getCurrentActivity() != null)
+                    ? AutomationHelper.getRecipientList(em, local, null)
+                    : new ArrayList<>();
+
+            session.setAttribute("a1resolvedSubject", subject);
+            session.setAttribute("a1resolvedBody", body);
+            session.setAttribute("a1recipientList", recipients);
+            session.setAttribute("a1previewReady", Boolean.TRUE);
+
+            em.close();
+            d = request.getRequestDispatcher("/WEB-INF/view/a/taskManager/autoPreview25.jsp");
         }
 
         d.forward(request, response);
+    }
+
+    /**
+     * Completes content resolution for automations that have no user inputs.
+     * Mirrors the processing chain in SendAutoFinal25 up to the point of
+     * subject/body split — so the preview page shows exactly what would be sent.
+     */
+    private String resolveNoInputContent(EntityManager em, String text, Automation a, AmsDataLocal local) {
+        String out = text;
+
+        Activity act = (local != null && local.getCurrentActivity() != null)
+                ? local.getCurrentActivity().getActivity() : null;
+
+        // Safety net — <<#erName>> should already be resolved above, but handle legacy templates.
+        if (out.contains("<<#erName>>")) {
+            Employer er = (act != null) ? AutomationHelper.getEmployerForActivity(em, act) : null;
+            out = out.replace("<<#erName>>", er != null ? er.getEmployerName() : "");
+        }
+
+        if (out.contains("<<#activityType") && act != null) {
+            out = out.replace("<<#activityType>>", act.getClass().getSimpleName());
+        }
+
+        out = AutomationHelper.processBreaksAndNewLines(out);
+        out = AutomationHelper.processReferenceLinks(out, act, em);
+        return out;
     }
 
     private String getLabelType(String cl) {

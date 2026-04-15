@@ -123,11 +123,13 @@
                 </c:if>
               </div>
 
-              <%-- Automation icon (unblocked items, or any item for admins) --%>
+              <%-- Automation icon (unblocked items, or any item for admins) —
+                   navigates straight to SendAuto25, which routes to input
+                   collection (if needed) then the editable preview page. --%>
               <c:if test="${(toDo.getBtnIcon() == 'square' || sessionScope.isPspAdmin) && toDo.hasAutomation() && toDo.getAutomation() != null && empty isPast}">
-                <button type="button" class="td-auto" onclick="openAutoModal('${toDo.getAutomationText()}', '${toDo.getAutomation().getAutomationName()}', '${toDo.getAutomation().getId()}', '${toDo.getServletName()}')" title="${toDo.getAutomationText()}">
+                <a class="td-auto" href="SendAuto25?aeId=${toDo.getAutomation().getId()}" title="${toDo.getAutomationText()}">
                   <i class="bi bi-lightning-charge-fill"></i>
-                </button>
+                </a>
               </c:if>
 
               <%-- Kebab menu --%>
@@ -246,45 +248,6 @@
       </c:if>
 
 </div>
-
-<%-- ===== AUTOMATION MODAL (dynamic, populated via JS) ===== --%>
-<div class="modal fade" id="autoModal" tabindex="-1" aria-labelledby="autoModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-lg modal-fullscreen-sm-down">
-    <div class="modal-content">
-      <div class="modal-header py-2" style="background: linear-gradient(135deg, #0d5681, #0a4468); color: white;">
-        <h6 class="modal-title m-0" id="autoModalLabel">
-          <i class="bi bi-lightning-charge-fill me-1" style="color: #fd7e14;"></i><span id="autoModalTitle"></span>
-        </h6>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body">
-        <div class="text-center text-muted py-3">
-          <i class="bi bi-envelope-paper" style="font-size: 2rem; color: #0d5681;"></i>
-          <p class="mt-2 mb-1 fw-semibold" style="font-size: 0.9rem;" id="autoModalName"></p>
-          <p class="mb-0" style="font-size: 0.78rem;">Automation email ready to send for this task.</p>
-        </div>
-      </div>
-      <div class="modal-footer py-2">
-        <a href="#" id="autoModalPreview" class="btn btn-sm btn-outline-secondary" target="_blank">
-          <i class="bi bi-eye me-1"></i>Preview
-        </a>
-        <a href="#" id="autoModalSend" class="btn btn-sm btn-ssa">
-          <i class="bi bi-send me-1"></i>Send
-        </a>
-      </div>
-    </div>
-  </div>
-</div>
-
-<script>
-  function openAutoModal(autoText, autoName, autoId, servletName) {
-    document.getElementById('autoModalTitle').textContent = autoText;
-    document.getElementById('autoModalName').textContent = autoName;
-    document.getElementById('autoModalPreview').href = 'PreviewAutomation?aeId=' + autoId;
-    document.getElementById('autoModalSend').href = servletName;
-    new bootstrap.Modal(document.getElementById('autoModal')).show();
-  }
-</script>
 
 <%-- ===== BPO NOTES MODAL ===== --%>
 <div class="modal fade" id="bpoNotesModal" tabindex="-1">
