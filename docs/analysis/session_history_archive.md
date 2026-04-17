@@ -2,7 +2,7 @@
 
 > **Purpose:** Consolidated historical record of all build sessions. For current project state, see `project_backlog.md`. For current architecture, see `application_flow.md` and `entity_reference.md`.
 >
-> **Last Updated:** April 14, 2026 (Session 80)
+> **Last Updated:** April 17, 2026 (Session 83)
 >
 > **Note:** Sessions 1–38 (Feb 15 – Mar 5) were compressed during the Session 69 cleanup. Full details for those sessions are available in git history prior to that commit.
 
@@ -1564,4 +1564,33 @@ On detection, the servlet **silently shows the normal confirmation page** (`subm
 - `src/main/webapp/WEB-INF/view/market/requestQuote25.jsp` — hidden honeypot + `formLoadedAt` field + DOM-ready handler
 
 **No migration, no new files.** Pure code fixes.
+
+---
+
+## Session 83 — Activity detail NPE when CheckList lookup returns null (April 17, 2026)
+
+**Symptom:** After running `ReSeedDb` on the demo site, creating a fresh Opportunity, and clicking it in the activity list, `GoActivityDetail25` threw:
+
+```
+NullPointerException: Cannot invoke "CheckList.getId()" because "c" is null
+  at AmsDataLocal$CurrentActivity.getToDosForCurrentActivity(AmsDataLocal.java:1438)
+  at AmsDataLocal$CurrentActivity.intializeActivity(AmsDataLocal.java:1183)
+```
+
+**Root cause:** `intializeActivity` calls `getChecklistByActivity(em, activity)` for non-CheckList activities. That helper has a broad `catch (Exception) { return null; }` that silently swallows any query failure. The returned null was passed straight into `getToDosForCurrentActivity(em, CheckList c)` which dereferenced `c.getId()` with no guard.
+
+The underlying `assignee` rows for the failing Opportunity (id 1071, dtype=Opportunity) and its CheckList (id 1072, assigned_to_id=1071) were both present and correct, so the lookup *should* have returned a row — yet the catch-all returned null. Creating a second Opportunity for the same prospect worked fine. Likely a first-run-after-reseed EM/L2-cache quirk, but we couldn't confirm because the exception was suppressed.
+
+**Fix (both in [AmsDataLocal.java](src/main/java/net/superiorstate/ams/data/AmsDataLocal.java)):**
+
+1. **Null guard in `getToDosForCurrentActivity`** (line 1437) — return an empty list instead of NPE'ing when the CheckList is null. The activity detail page now opens with an empty task list rather than a 500 error.
+
+2. **Diagnostic logging in `getChecklistByActivity`** (line 1463) — split the catch into `NoResultException` (expected, one-line warn) vs other exceptions (log type + message + stack trace). Next time this happens we'll see *why* the query returned nothing instead of guessing.
+
+### Files changed
+
+**Modified (1):**
+- `src/main/java/net/superiorstate/ams/data/AmsDataLocal.java` — +6/-1
+
+**No migration, no new files.** Pure defensive fix.
 

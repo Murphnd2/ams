@@ -1434,6 +1434,7 @@ public class AmsDataLocal implements AutoCloseable {
 
         }
         private List<ToDoOut25> getToDosForCurrentActivity(EntityManager em, CheckList c){
+            if (c == null) return new ArrayList<>();
             Query q= em.createQuery("SELECT t FROM ToDo t WHERE t.checkList.id  = :id order by t.isComplete, t.sortOrder, t.id");
             q.setParameter("id",c.getId());
             List<ToDo> toDos;
@@ -1460,7 +1461,12 @@ public class AmsDataLocal implements AutoCloseable {
             CheckList c;
             try{
                 c = (CheckList) q.getSingleResult();
+            } catch (NoResultException e){
+                System.err.println("⚠ getChecklistByActivity: no CheckList for activity id=" + a.getId() + " (" + a.getClass().getSimpleName() + ")");
+                return null;
             } catch (Exception e){
+                System.err.println("⚠ getChecklistByActivity: query failed for activity id=" + a.getId() + " (" + a.getClass().getSimpleName() + "): " + e.getClass().getSimpleName() + " - " + e.getMessage());
+                e.printStackTrace();
                 return null;
             }
             return c;
