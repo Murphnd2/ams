@@ -58,6 +58,23 @@ public class ToDo {
     @JoinColumn(name="bpo_assigned_to_id")
     private Person bpoAssignedTo;
 
+    // --- Ownership override (V061) ---
+    // When overrideOwnership=false, ToDoOut25 inherits from Task.
+    // When true, the three fields below take precedence for this ToDo.
+
+    @Column(name="override_ownership")
+    private boolean overrideOwnership;
+
+    @Column(name="has_owner")
+    private boolean hasOwner;
+
+    @ManyToOne
+    @JoinColumn(name="owner_id")
+    private Person owner;
+
+    @Column(name="allow_non_owner")
+    private boolean allowNonOwner;
+
     public ToDo(){}
 
     @PrePersist
@@ -173,5 +190,39 @@ public class ToDo {
 
     public void setBpoAssignedTo(Person bpoAssignedTo) {
         this.bpoAssignedTo = bpoAssignedTo;
+    }
+
+    // --- Ownership override getters/setters (V061) ---
+
+    public boolean isOverrideOwnership() {
+        return overrideOwnership;
+    }
+
+    public void setOverrideOwnership(boolean overrideOwnership) {
+        this.overrideOwnership = overrideOwnership;
+    }
+
+    public boolean hasOwner() {
+        return hasOwner;
+    }
+
+    public void setHasOwner(boolean hasOwner) {
+        this.hasOwner = hasOwner;
+    }
+
+    public Person getOwner() {
+        return owner;
+    }
+
+    public void setOwner(Person owner) {
+        this.owner = owner;
+    }
+
+    public boolean allowNonOwner() {
+        return allowNonOwner;
+    }
+
+    public void setAllowNonOwner(boolean allowNonOwner) {
+        this.allowNonOwner = allowNonOwner;
     }
 }

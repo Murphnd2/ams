@@ -2,7 +2,7 @@
 
 Tracks database schema versions across environments.
 
-**Last Updated:** March 19, 2026
+**Last Updated:** April 23, 2026
 
 ## Environments
 
@@ -16,7 +16,7 @@ Tracks database schema versions across environments.
 | BPO | bpo.superiorstate.biz | beta_ssa | BPO instance (V038, initialized, release V0.37.0) |
 | Master | master.superiorstate.biz | beta_ssa | Snapshot v9 (V057, stopped) |
 
-## Current Highest Version: V060
+## Current Highest Version: V061
 
 ## Dev Baseline
 
@@ -92,6 +92,7 @@ Individual migration scripts are no longer stored in the repo. The baseline dump
 | V058 | Add renderer column to questionnaire | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
 | V059 | NDT census-based testing tables | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
 | V060 | Outlook add-in user link + weblink.note_id | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
+| V061 | ToDo-level ownership override for agent delegation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
 
 ## Notes
 
@@ -131,3 +132,4 @@ Individual migration scripts are no longer stored in the repo. The baseline dump
 - V049 adds source_task_id VARCHAR(20) to delegated_todo with composite index on (source_task_id, psp_client_id). Enables BPO auto-approval of required-sequence tasks (SETUP/RENEWAL): once the BPO approves a task the first time, future occurrences of the same source task from the same PSP are auto-accepted without manual approval. Requires updated WAR with DelegatedToDo sourceTaskId field, BpoTaskPushService sending sourceTaskId in payload, and TaskReceiveApi auto-approval logic for SETUP/RENEWAL activity types.
 - V048 creates the universal import system: import_provider (TPA platform registry), import_file_type (file definitions per provider), import_field_mapping (column-to-canonical-field mappings), import_plan_type_mapping (provider plan codes → AMS plan types, nullable provider_id for universal defaults), and import_run_log (execution history). Seeds 17 universal plan type codes (FSA, HRA, HSA, DCA, COBRA, etc.). Requires updated WAR with 5 new entities in model/imports/, UniversalImportService, ProviderSetup servlet, and UniversalImport wizard servlet.
 - V050 FK fix: original script referenced `person(id)` which doesn't exist as a standalone table (Person extends Assignee via JPA inheritance). Corrected to `assignee(id)`. On all environments the column was added but the FK failed silently — manually applied corrected FK on production, demo, and BPO (March 12, 2026).
+- V061 adds four ownership-override columns to the todo table: override_ownership TINYINT(1), has_owner TINYINT(1), owner_id BIGINT (FK → assignee), and allow_non_owner TINYINT(1). Mirrors Task's ownership shape at the ToDo instance level. When override_ownership=0 the ToDo inherits from Task; when 1 the ToDo's own fields are authoritative. Index on owner_id supports the delegated_to_me EXISTS subquery in ActivityLandingDao. Enables per-Setup delegation to originating-agency agents without affecting the Task template. Requires updated WAR with ToDo entity fields, ToDoOut25 resolver swap, UpdateTask25 override branch, ActivityLandingDao SQL update, OriginatingAgencyResolver, taskManager25.jsp override sub-row, and AgentHome delegated-to-me panel.

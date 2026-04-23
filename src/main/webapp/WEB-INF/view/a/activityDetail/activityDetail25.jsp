@@ -304,6 +304,19 @@
                     <span>${sessionScope.local.getCurrentActivity().getActivity().getAssignedTo().getFirstName()} ${sessionScope.local.getCurrentActivity().getActivity().getAssignedTo().getLastName()}</span>
                   </span>
                 </c:if>
+                <%-- V061: Originating agent (Setup only, and only when different from loggedBy/assignedTo) --%>
+                <c:if test="${not empty requestScope.originatingAgent}">
+                  <c:set var="originId" value="${requestScope.originatingAgent.getId()}"/>
+                  <c:set var="loggedById" value="${sessionScope.local.getCurrentActivity().getActivity().getLoggedBy() != null ? sessionScope.local.getCurrentActivity().getActivity().getLoggedBy().getId() : 0}"/>
+                  <c:set var="assignedToId" value="${sessionScope.local.getCurrentActivity().getActivity().getAssignedTo() != null ? sessionScope.local.getCurrentActivity().getActivity().getAssignedTo().getId() : 0}"/>
+                  <c:if test="${originId != loggedById && originId != assignedToId}">
+                    <div class="dsb-sep"></div>
+                    <span class="dsb-item" title="Originating agent (sale came from this person)">
+                      <i class="bi bi-buildings dsb-icon"></i>
+                      <span>${requestScope.originatingAgent.getFirstName()} ${requestScope.originatingAgent.getLastName()}<c:if test="${not empty requestScope.originatingAgency}"> &middot; <span class="text-muted" style="font-size:0.72rem;">${requestScope.originatingAgency.getName()}</span></c:if></span>
+                    </span>
+                  </c:if>
+                </c:if>
               </div>
               <c:import url="/WEB-INF/view/a/activityDetail/columns/detail/detailPrimaryContact25.jsp"></c:import>
               <c:import url="/WEB-INF/view/a/activityDetail/columns/detail/detailDetail25.jsp"></c:import>

@@ -63,9 +63,19 @@ public class ToDoOut25 {
         setAutomationText(t.getTask().getAutomationText());
         setAllowEarly(t.getTask().allowEarly());
         setAllowFuture(t.getTask().allowFuture());
-        setAllowNonOwner(t.getTask().allowNonOwner());
-        setHasOwner(t.getTask().hasOwner());
-        setTaskOwner(t.getTask().getOwner());
+
+        // V061: ToDo-level ownership override. When overrideOwnership=true,
+        // the ToDo's own fields are authoritative; otherwise fall back to Task.
+        if (t.isOverrideOwnership()) {
+            setAllowNonOwner(t.allowNonOwner());
+            setHasOwner(t.hasOwner());
+            setTaskOwner(t.getOwner());
+        } else {
+            setAllowNonOwner(t.getTask().allowNonOwner());
+            setHasOwner(t.getTask().hasOwner());
+            setTaskOwner(t.getTask().getOwner());
+        }
+
         setSourced(t.getTask().isSourced());
         setBpoRegistration(t.getTask().getBpoRegistration());
         setHasGoto(t.getTask().hasGoTo());

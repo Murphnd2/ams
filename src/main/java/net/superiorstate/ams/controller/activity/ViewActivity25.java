@@ -7,6 +7,10 @@ import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.AmsDataGlobal;
 import net.superiorstate.ams.data.AmsDataLocal;
+import net.superiorstate.ams.data.resolver.OriginatingAgencyResolver;
+import net.superiorstate.ams.model.activity.ticket.setup.Setup;
+import net.superiorstate.ams.model.general.Person;
+import net.superiorstate.ams.model.sales.agency.Agency;
 
 import java.io.IOException;
 import java.time.LocalDate;
@@ -49,6 +53,18 @@ public class ViewActivity25 extends HttpServlet {
             long days = ChronoUnit.DAYS.between(LocalDate.now(), due);
             request.setAttribute("daysUntilDue", (int) days);
         }
+
+        // V061: surface the originating agent in the Setup header (Option C — presentational only)
+        if (local != null && local.getCurrentActivity() != null
+                && local.getCurrentActivity().getActivity() instanceof Setup setup) {
+            Person originAgent = OriginatingAgencyResolver.resolveAgent(setup);
+            if (originAgent != null) {
+                request.setAttribute("originatingAgent", originAgent);
+                Agency originAgency = OriginatingAgencyResolver.resolve(setup);
+                if (originAgency != null) request.setAttribute("originatingAgency", originAgency);
+            }
+        }
+
         RequestDispatcher dispatcher= request.getRequestDispatcher("/WEB-INF/view/a/activityDetail/activityDetail25.jsp");
         dispatcher.forward(request,response);
     }

@@ -14,6 +14,7 @@ import net.superiorstate.ams.data.util.SessionVar;
 import net.superiorstate.ams.data.util.Validator;
 import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.model.activity.checklist.tasks.Task;
+import net.superiorstate.ams.model.activity.checklist.tasks.ToDo;
 import net.superiorstate.ams.model.general.Automation;
 import net.superiorstate.ams.model.general.BpoRegistration;
 import net.superiorstate.ams.model.general.LinkType;
@@ -80,6 +81,9 @@ public class UpdateTask25 extends HttpServlet {
                     break;
                 }
             }
+            // V061: persist ToDo-level override (if submitted) and re-resolve the
+            // session ToDoOut25 for this one ToDo so the UI reflects override.
+            updateToDoOverride(em, request, local);
             // Recompute display states so icons reflect the updated sourcing/owner state
             ToDoOut25.computeAllDisplayStates(
                     local.getCurrentActivity().getToDoList(),
@@ -98,6 +102,73 @@ public class UpdateTask25 extends HttpServlet {
         // Clear AI builder conversation history to free memory
         request.getSession().removeAttribute("aiBuilderHistory");
         em.close();
+    }
+
+    /**
+     * V061: persist per-Setup override fields on ToDo and sync the matching
+     * ToDoOut25 in the session so the UI refreshes correctly.
+     *
+     * Override semantics:
+     *   checkbox `overrideOwnership` unchecked → clears all override fields,
+     *     ToDoOut25 falls back to Task.
+     *   checkbox checked → stores `ovWhoOwns` + `ovOwnerId` on ToDo
+     *     (mirrors Task's hasOwner / owner / allowNonOwner tri-state).
+     */
+    private void updateToDoOverride(EntityManager em, HttpServletRequest request, AmsDataLocal local) {
+        ToDo currentToDo = local.getCurrentToDo();
+        if (currentToDo == null || currentToDo.getId() == null) return;
+        Long toDoId = currentToDo.getId();
+
+        boolean overrideEnabled = "1".equals(request.getParameter("overrideOwnership"));
+
+        ToDo managed = em.find(ToDo.class, toDoId);
+        if (managed == null) return;
+
+        em.getTransaction().begin();
+        if (overrideEnabled) {
+            int ovWhoOwns = 0;
+            try { ovWhoOwns = Integer.parseInt(request.getParameter("ovWhoOwns")); } catch (Exception ignored) {}
+            Person ovOwner = null;
+            if (ovWhoOwns > 0) {
+                try {
+                    ovOwner = EntityLookup.getPersonById(em, Long.parseLong(request.getParameter("ovOwnerId")));
+                } catch (Exception ignored) {}
+            }
+            boolean ovHasOwner = ovOwner != null && ovWhoOwns != 0;
+            boolean ovAllowNonOwner = ovWhoOwns != 2;
+            managed.setOverrideOwnership(true);
+            managed.setHasOwner(ovHasOwner);
+            managed.setOwner(ovOwner);
+            managed.setAllowNonOwner(ovAllowNonOwner);
+        } else {
+            managed.setOverrideOwnership(false);
+            managed.setHasOwner(false);
+            managed.setOwner(null);
+            managed.setAllowNonOwner(false);
+        }
+        em.persist(managed);
+        em.getTransaction().commit();
+        em.refresh(managed);
+        local.setCurrentToDo(managed);
+
+        // Sync this one ToDoOut25 to reflect the new ownership resolution.
+        for (ToDoOut25 tdo : local.getCurrentActivity().getToDoList()) {
+            if (tdo.getToDo() != null && toDoId.equals(tdo.getToDo().getId())) {
+                if (managed.isOverrideOwnership()) {
+                    tdo.setHasOwner(managed.hasOwner());
+                    tdo.setTaskOwner(managed.getOwner());
+                    tdo.setAllowNonOwner(managed.allowNonOwner());
+                } else {
+                    Task task = tdo.getTask();
+                    if (task != null) {
+                        tdo.setHasOwner(task.hasOwner());
+                        tdo.setTaskOwner(task.getOwner());
+                        tdo.setAllowNonOwner(task.allowNonOwner());
+                    }
+                }
+                break;
+            }
+        }
     }
 
     private void updateAutomation(HttpServletRequest request, EntityManager em, Task t){

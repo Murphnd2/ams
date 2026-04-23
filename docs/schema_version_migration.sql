@@ -80,4 +80,5 @@ INSERT IGNORE INTO schema_version (version, description, script_name) VALUES
 ('V057', 'Add suppressed flag to agency table', 'V057__agency_suppressed.sql'),
 ('V058', 'Add renderer column to questionnaire', 'V058__questionnaire_renderer.sql'),
 ('V059', 'NDT census-based testing tables', 'V059__ndt_census_tables.sql'),
-('V060', 'Outlook add-in user link + weblink.note_id', 'V060__outlook_user_link.sql');
+('V060', 'Outlook add-in user link + weblink.note_id', 'V060__outlook_user_link.sql'),
+('V061', 'ToDo-level ownership override for agent delegation', 'V061__todo_ownership_override.sql');

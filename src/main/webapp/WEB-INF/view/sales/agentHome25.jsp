@@ -205,6 +205,35 @@
                     </div>
                 </div>
 
+                <%-- ══ V061: Delegated ToDos (Setup tasks assigned to this agent) ══ --%>
+                <c:if test="${not empty delegatedToDos}">
+                    <div style="padding: 0.5rem 1rem 0.25rem 1rem; background:#fff; border-bottom: 1px solid #dee2e6;">
+                        <div style="display:flex; align-items:center; gap:0.4rem; margin-bottom:0.35rem;">
+                            <span style="font-size:0.78rem; font-weight:700; color:var(--ssa);"><i class="bi bi-inbox-fill me-1"></i>Tasks Delegated to Me</span>
+                            <span class="stat-pill" style="background:#fef3c7; color:#92400e;">${fn:length(delegatedToDos)}</span>
+                        </div>
+                        <div style="display:flex; flex-direction:column; gap:0.2rem;">
+                            <c:forEach var="td" items="${delegatedToDos}">
+                                <c:set var="setup" value="${td.getCheckList().getSetup()}"/>
+                                <a href="ViewById?id=${setup.getId()}"
+                                   style="display:flex; align-items:center; gap:0.6rem; text-decoration:none; color:#212529;
+                                          padding:0.3rem 0.5rem; background:#f8f9fa; border:1px solid #e9ecef;
+                                          border-left: 3px solid #f59e0b; border-radius:3px; font-size:0.78rem;">
+                                    <i class="bi bi-check2-square" style="color:#f59e0b;"></i>
+                                    <span style="flex:1; font-weight:500;">${fn:escapeXml(td.getTask().getDescription())}</span>
+                                    <span style="color:#6c757d;">${fn:escapeXml(setup.getFullName())}</span>
+                                    <c:if test="${setup.getDueDate() != null}">
+                                        <span style="color:#6c757d; font-size:0.72rem;">
+                                            <i class="bi bi-calendar3"></i>
+                                            <fmt:formatDate value="${setup.getDueDate()}" pattern="MMM d, yyyy"/>
+                                        </span>
+                                    </c:if>
+                                </a>
+                            </c:forEach>
+                        </div>
+                    </div>
+                </c:if>
+
                 <%-- ══ Stat strip ══ --%>
                 <%-- compute proposal-out and negotiation counts --%>
                 <c:set var="proposalOutCount" value="0"/>

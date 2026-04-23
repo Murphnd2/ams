@@ -2,7 +2,7 @@
 
 > **Purpose:** Consolidated historical record of all build sessions. For current project state, see `project_backlog.md`. For current architecture, see `application_flow.md` and `entity_reference.md`.
 >
-> **Last Updated:** April 17, 2026 (Session 83)
+> **Last Updated:** April 23, 2026 (Session 85)
 >
 > **Note:** Sessions 1–38 (Feb 15 – Mar 5) were compressed during the Session 69 cleanup. Full details for those sessions are available in git history prior to that commit.
 
@@ -1664,4 +1664,128 @@ The guard is idempotent, a no-op for any path without the param, and doesn't tou
 - `src/main/webapp/WEB-INF/view/a/taskManager/autoPreview25.jsp`
 
 **No migration, no entity changes.** `./mvnw compile` clean.
+
+---
+
+## Session 85 — Agent delegation on Setup ToDos (V061) (April 23, 2026)
+
+Delegation of individual Setup ToDos to agents of the originating selling agency, without affecting the shared Task template used by other Setups.
+
+### Business context
+
+When a Setup originates from an outside agency (e.g. a bank set up as an Agency in AMS), PSP staff should be able to assign specific onboarding ToDos — "Provide FDIC deposit details," "Approve white-label branding," "Collect employee census" — to agents of that agency. Agents then see those ToDos on AgentHome and can complete them.
+
+Key constraint: a Task is template-level and reused across many Setups. An agent appropriate for one Setup would be wrong for another. So agent delegation lives at the **ToDo instance** level, not the Task template level — and does not touch BPO delegation (which is a separate cross-system mechanism).
+
+### Schema — V061
+
+`todo` table gets four ownership-override columns mirroring Task's shape:
+- `override_ownership` TINYINT(1) NOT NULL DEFAULT 0
+- `has_owner` TINYINT(1) NOT NULL DEFAULT 0
+- `owner_id` BIGINT NULL, FK → `assignee(id)` (Person is SINGLE_TABLE in assignee)
+- `allow_non_owner` TINYINT(1) NOT NULL DEFAULT 0
+
+Plus `idx_todo_owner` on `owner_id` to support the delegated-to-me EXISTS subquery in `ActivityLandingDao`.
+
+### Resolution semantics — "effective ownership"
+
+`ToDoOut25` resolves effective ownership in its constructor:
+- If `todo.override_ownership = 1`, use ToDo's own `hasOwner` / `owner` / `allowNonOwner`.
+- Else, inherit from `todo.task.hasOwner` / `task.owner` / `task.allowNonOwner` (pre-V061 behavior).
+
+All downstream display logic (`computeDisplayState`, blocked/delegated row classes, kebab actions, checklistBasic25.jsp) consumes the resolved values — no JSP changes required.
+
+### OriginatingAgencyResolver
+
+New resolver at `data/resolver/OriginatingAgencyResolver.java` with two public statics:
+- `Agency resolve(Setup)` — returns the originating agency
+- `Person resolveAgent(Setup)` — returns the originating agent (for UI display)
+
+Both walk the same priority chain:
+1. `proposal.sourceActivity.assignedTo` (Opportunity's agent of record — strongest signal; CreateOpportunity sets this to the outside agent)
+2. `proposal.prospect.agent`
+3. `proposal.createdBy` (fallback — typically the PSP user who built the proposal, so weakest)
+
+`agencyrates` (M:N) is deliberately NOT consulted — many agencies can share a rate, which wouldn't identify the originator.
+
+### User Assignment UI — per-Setup override sub-row
+
+`taskManager25.jsp` section label renamed "Employee Assignment" → "User Assignment". The existing top row still writes `Task.owner` (template-level default, cascades to all Setups using this Task). When `ManageTask25` resolves an originating agency for the current ToDo's Setup, a new dashed sub-row renders below the top row:
+
+- Toggle switch: "Override for this Setup only"
+- Tri-state radios (Anyone / Assigned / Exclusive)
+- Person dropdown with two optgroups: "PSP Staff" (`global.getUsers()`, roles 1/5/9) + "{AgencyName} agents" (`originatingAgency.agentList`)
+
+BPO-facing task manager view unchanged — override block is wrapped in `!sessionScope.isBpo*` guard and only renders when `requestScope.originatingAgency != null`.
+
+`UpdateTask25.updateToDoOverride()` persists the sub-row: when `overrideOwnership=1` submitted, writes the three override fields; when unchecked, clears them (override_ownership=false, has_owner=false, owner=null, allow_non_owner=false). Runs after the Task update and syncs the matching `ToDoOut25` in the session list so the activity detail refreshes correctly.
+
+### ViewHome25 — delegated-to-me picks up ToDo overrides
+
+`ActivityLandingDao.buildSql()` — the `delegated_to_me` CASE/EXISTS clause now prefers ToDo override values when set:
+```sql
+(td.override_ownership = 1 AND td.has_owner = 1 AND td.owner_id = p.me)
+OR
+(COALESCE(td.override_ownership, 0) = 0 AND tsk.has_owner = 1 AND tsk.owner_id = p.me)
+```
+No JSP/JS changes — the existing "My World" / "Helping On" filters continue to work.
+
+### AgentHome — "Tasks Delegated to Me" panel
+
+`AgentHome.getDelegatedToDos(em, agentId)` queries `ToDo` where `override_ownership=true AND has_owner=true AND owner.id=:agentId AND is_complete=false`, force-initializes `checkList.setup` / `task` lazy collections before EM close, and only returns entries with a non-null Setup.
+
+`agentHome25.jsp` renders the list as an amber-striped panel inline above the stat strip — each row shows task description, setup.fullName, due date, and links to `ViewById?id={setupId}`.
+
+### Agent access gate — GoActivityDetail25
+
+New `agentBlocked(request, response)` method: when the current session is agent-only (no PSP role, no agency admin role), blocks access to any activity-detail page unless the agent owns at least one open overridden ToDo on that activity. On block, redirects to `/AgentHome`. Uses a JPQL subquery against `Setup.checkList.id` to enforce Setup-scoped access only.
+
+### Originating agent — presentational header display (Option C)
+
+After testing revealed the Setup activity header shows "PSP Admin" in both `loggedBy` and `assignedTo` (both are set to the PSP user who clicked Create Setup — pre-existing behavior in `CreateSetup25:318-319` and `ReviewApplication:426-427`), added a third status-bar item for Setups that surfaces the originating agent without changing ownership semantics.
+
+`ViewActivity25.goToPage()` — when the current activity is a Setup, resolves `originatingAgent` and `originatingAgency` via the resolver and sets them as request attributes.
+
+`activityDetail25.jsp` — new `dsb-item` with `bi-buildings` icon shows "FirstName LastName · AgencyName" after the `assignedTo` item. Only renders when the originating agent differs from both `loggedBy` and `assignedTo`, so PSP-internal setups aren't cluttered with a redundant repeat.
+
+**Explicit trade-off accepted:** `Setup.assignedTo` remains the PSP user. Flipping it to the outside agent would preserve semantics but break PSP "My World" / "I Own" filters (Setup has no `managedBy` equivalent to Opportunity). Option C is purely presentational.
+
+### Testing caveats discovered
+
+- `proposal.createdBy` is set to the PSP user who builds the proposal in most flows (CreateSetup25:97, CreateOpportunity:166, ProposalBuilder:351). Only `proposal.prospect.agent` + `proposal.sourceActivity.assignedTo` carry the outside agent reliably.
+- Two bugs in the initial resolver (before this session): priority was `createdBy`-first, and `Assignee` was imported from the wrong package (`model.activity.Assignee` doesn't exist; it's `model.general.Assignee`).
+
+### Files changed
+
+**New (3):**
+- `docs/migrations/V061__todo_ownership_override.sql`
+- `src/main/java/net/superiorstate/ams/data/resolver/OriginatingAgencyResolver.java`
+- `docs/mockups/agent_delegation_paths.html` (design mockup, reviewable)
+
+**Modified (11):**
+- `src/main/java/net/superiorstate/ams/model/activity/checklist/tasks/ToDo.java`
+- `src/main/java/net/superiorstate/ams/model/ToDoOut25.java`
+- `src/main/java/net/superiorstate/ams/controller/checklist/ManageTask25.java`
+- `src/main/java/net/superiorstate/ams/controller/checklist/UpdateTask25.java`
+- `src/main/java/net/superiorstate/ams/data/dao/ActivityLandingDao.java`
+- `src/main/java/net/superiorstate/ams/controller/activity/setup/AgentHome.java`
+- `src/main/java/net/superiorstate/ams/controller/activity/GoActivityDetail25.java`
+- `src/main/java/net/superiorstate/ams/controller/activity/ViewActivity25.java`
+- `src/main/webapp/WEB-INF/view/a/taskManager/taskManager25.jsp`
+- `src/main/webapp/WEB-INF/view/sales/agentHome25.jsp`
+- `src/main/webapp/WEB-INF/view/a/activityDetail/activityDetail25.jsp`
+
+**Trackers updated:** `docs/analysis/migration_tracker.md` (bumped to V061 with row + note) and `docs/schema_version_migration.sql` (V061 INSERT appended).
+
+`./mvnw compile` clean.
+
+### Deployment state
+
+- V061 code-complete, not yet applied to any environment.
+- WAR not yet deployed to production.
+- Feature manually tested locally; dropdown confirmed to list outside agency agents after the resolver-priority fix.
+
+### Next (Session 86+) — agent view of Setups
+
+Work in progress. The agent can now see "Tasks Delegated to Me" on AgentHome and click through to the Setup detail (gated by `agentBlocked`), but the PSP-centric activity-detail view is not yet tailored for agent consumption. Next session: build a simplified agent-facing view of Setups — likely a read-only mode or a separate agentSetupDetail JSP that hides PSP-only controls (reopen closed ToDos, Task-level edits, navbar items agents can't use) and exposes only "complete my ToDo" + "add a note."
 

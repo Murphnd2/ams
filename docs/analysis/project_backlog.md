@@ -1,7 +1,7 @@
 # AMS Project Backlog
 
 **Created:** February 19, 2026
-**Last Updated:** March 13, 2026
+**Last Updated:** April 23, 2026
 **Reference:** `docs/ams_to_be_vision.md` for full project descriptions
 
 ---
@@ -110,6 +110,7 @@
 | 32 | Composite Task Ordering | MED | ✅ Code complete | Cross-sequence master ordering per activity type, drag-and-drop UI in sequenceManager25.jsp (V047). Session 55. |
 | 33 | Custom Landing Page System | MED | ✅ Code complete | PSP-customizable landing page with login modal, Request a Quote form, configurable header colors (V043). Sessions 45-46. |
 | 34 | Center Panel Redesign | MED | ✅ Done | Unified "Colored Tab" section headers across all activity detail panels. Navbar application review badge. Session 68. |
+| 36 | Agent Delegation on Setup ToDos | HIGH | 🔨 Active | V061 adds ToDo-level ownership override. PSP can delegate individual Setup ToDos to agents of the originating selling agency (resolved via Opportunity.assignedTo → Prospect.agent → Proposal.createdBy). User Assignment sub-row on `taskManager25.jsp`. Agent sees "Tasks Delegated to Me" on AgentHome with link to Setup detail (gated by `agentBlocked`). Originating agent surfaced in activity-detail header (Option C — presentational). Code-complete, not yet applied. Session 85. **Next: agent-facing Setup view (Session 86).** |
 
 ---
 

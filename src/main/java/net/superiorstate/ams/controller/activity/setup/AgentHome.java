@@ -10,6 +10,8 @@ import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.AmsDataLocal;
 import net.superiorstate.ams.data.dao.SalesDAO;
 import net.superiorstate.ams.model.activity.Opportunity;
+import net.superiorstate.ams.model.activity.checklist.tasks.ToDo;
+import net.superiorstate.ams.model.activity.ticket.setup.Setup;
 import net.superiorstate.ams.model.general.Person;
 import net.superiorstate.ams.model.sales.agency.Agency;
 import net.superiorstate.ams.model.sales.agency.Prospect;
@@ -118,6 +120,9 @@ public class AgentHome extends HttpServlet {
             request.setAttribute("closedOpportunityList", closedOpps);
             request.setAttribute("closedCount", (long) closedOpps.size());
 
+            // V061: load ToDos delegated to this agent (per-Setup override)
+            request.setAttribute("delegatedToDos", getDelegatedToDos(em, currentUser.getId()));
+
             // Load prospects for "New Opportunity" modal
             List<Prospect> prospects;
             if (isAgencyAdmin) {
@@ -187,6 +192,44 @@ public class AgentHome extends HttpServlet {
         try {
             return (List<Opportunity>) q.getResultList();
         } catch (NoResultException e) {
+            return new ArrayList<>();
+        }
+    }
+
+    /**
+     * V061: ToDos delegated to this agent via per-Setup override.
+     * Returns only incomplete ToDos where overrideOwnership=true, hasOwner=true,
+     * and owner = this agent. Initializes CheckList+Setup+Task lazily in-session
+     * so the JSP can render Setup name/due-date without lazy-load exceptions.
+     */
+    private List<ToDo> getDelegatedToDos(EntityManager em, long agentId) {
+        Query q = em.createQuery(
+                "SELECT td FROM ToDo td " +
+                "WHERE td.isComplete = false " +
+                "  AND td.overrideOwnership = true " +
+                "  AND td.hasOwner = true " +
+                "  AND td.owner.id = :agentId " +
+                "ORDER BY td.sortOrder ASC");
+        q.setParameter("agentId", agentId);
+        try {
+            @SuppressWarnings("unchecked")
+            List<ToDo> list = (List<ToDo>) q.getResultList();
+            // Force-initialize lazy relationships needed by the JSP
+            List<ToDo> visible = new ArrayList<>();
+            for (ToDo t : list) {
+                if (t.getTask() != null) t.getTask().getDescription();
+                if (t.getCheckList() != null) {
+                    Setup s = t.getCheckList().getSetup();
+                    if (s != null) {
+                        s.getFullName();
+                        s.getDueDate();
+                        visible.add(t);
+                    }
+                }
+            }
+            return visible;
+        } catch (Exception e) {
+            e.printStackTrace();
             return new ArrayList<>();
         }
     }

@@ -222,11 +222,18 @@ base AS (
       WHEN EXISTS (
         SELECT 1
         FROM todo td
-        JOIN task tsk
+        LEFT JOIN task tsk
           ON tsk.task_id = td.task_id
         WHERE td.checklist_id = oa.checklist_id
           AND td.is_complete = 0
-          AND (tsk.has_owner = 1 AND tsk.owner_id = p.me)
+          AND (
+            /* V061: ToDo-level override wins when enabled */
+            (td.override_ownership = 1 AND td.has_owner = 1 AND td.owner_id = p.me)
+            OR
+            /* Task-level fallback (only when ToDo override is off) */
+            (COALESCE(td.override_ownership, 0) = 0
+              AND tsk.has_owner = 1 AND tsk.owner_id = p.me)
+          )
         LIMIT 1
       ) THEN 1
       ELSE 0

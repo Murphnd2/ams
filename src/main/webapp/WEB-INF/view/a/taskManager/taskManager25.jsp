@@ -210,7 +210,7 @@
 
           <%-- ASSIGNMENT --%>
           <div class="tm-section">
-            <div class="tm-label"><i class="bi bi-person-badge me-1"></i>Employee Assignment</div>
+            <div class="tm-label"><i class="bi bi-person-badge me-1"></i>User Assignment</div>
             <div class="tm-toggle-row mb-2">
               <input type="radio" class="btn-check" id="cb3a" name="whoOwns" value="0" ${bcb1} autocomplete="off" onchange="toggleEE()">
               <label class="btn btn-outline-success" for="cb3a">Anyone</label>
@@ -229,8 +229,74 @@
                   <option value="${user.getId()}" ${uSelect}>${user.getLastName()}, ${user.getFirstName()}</option>
                 </c:forEach>
               </select>
-              <div class="tm-hint">Assigned = visible to them, anyone can complete. Exclusive = only they can complete.</div>
+              <div class="tm-hint">Template default across all Setups using this task. Assigned = visible to them, anyone can complete. Exclusive = only they can complete.</div>
             </div>
+
+            <%-- === V061: Per-Setup override (agent delegation) === --%>
+            <%-- Renders only when this ToDo's checklist belongs to a Setup whose originating agency is resolvable. --%>
+            <c:if test="${requestScope.originatingAgency != null && !sessionScope.isBpo && !sessionScope.isBpoAdmin && !sessionScope.isBpoUser}">
+              <c:set var="ovEnabled" value=""/>
+              <c:set var="ovDisplay" value="d-none"/>
+              <c:if test="${toDo.isOverrideOwnership()}">
+                <c:set var="ovEnabled" value="checked"/>
+                <c:set var="ovDisplay" value=""/>
+              </c:if>
+              <%-- Override whoOwns sub-state --%>
+              <c:set var="ovcb1" value="checked"/><c:set var="ovcb2" value=""/><c:set var="ovcb3" value=""/>
+              <c:choose>
+                <c:when test="${toDo.isOverrideOwnership() && toDo.hasOwner() && !toDo.allowNonOwner()}">
+                  <c:set var="ovcb1" value=""/><c:set var="ovcb3" value="checked"/>
+                </c:when>
+                <c:when test="${toDo.isOverrideOwnership() && toDo.hasOwner()}">
+                  <c:set var="ovcb1" value=""/><c:set var="ovcb2" value="checked"/>
+                </c:when>
+              </c:choose>
+
+              <div class="tm-override-row" style="margin-top:0.5rem; padding:0.45rem 0.55rem; background:#f4f7fb; border-radius:4px; border:1px dashed #9cb6cf;">
+                <div class="form-check form-switch" style="margin-bottom:0.35rem;">
+                  <input class="form-check-input" type="checkbox" id="ovToggle" name="overrideOwnership" value="1" ${ovEnabled} onchange="toggleOverride()">
+                  <label class="form-check-label" for="ovToggle" style="font-size:0.78rem; font-weight:600; color:#355a7a;">
+                    <i class="bi bi-arrow-return-right me-1"></i>Override for this Setup only
+                  </label>
+                </div>
+                <div id="ovBody" class="${ovDisplay}">
+                  <div class="tm-toggle-row mb-2">
+                    <input type="radio" class="btn-check" id="ovcb1" name="ovWhoOwns" value="0" ${ovcb1} autocomplete="off" onchange="toggleOvEE()">
+                    <label class="btn btn-outline-success" for="ovcb1" style="font-size:0.72rem; padding:0.2rem 0.4rem;">Anyone</label>
+                    <input type="radio" class="btn-check" id="ovcb2" name="ovWhoOwns" value="1" ${ovcb2} autocomplete="off" onchange="toggleOvEE()">
+                    <label class="btn btn-outline-warning text-dark" for="ovcb2" style="font-size:0.72rem; padding:0.2rem 0.4rem;">Assigned</label>
+                    <input type="radio" class="btn-check" id="ovcb3" name="ovWhoOwns" value="2" ${ovcb3} autocomplete="off" onchange="toggleOvEE()">
+                    <label class="btn btn-outline-danger" for="ovcb3" style="font-size:0.72rem; padding:0.2rem 0.4rem;">Exclusive</label>
+                  </div>
+                  <div id="ovDropDown" class="${ovcb1 == 'checked' ? 'd-none' : ''}">
+                    <select class="form-select form-select-sm tm-select" name="ovOwnerId" id="ovOwnerId">
+                      <optgroup label="PSP Staff">
+                        <c:forEach var="u" items="${applicationScope.global.getUsers()}">
+                          <c:set var="ovSel" value=""/>
+                          <c:if test="${toDo.isOverrideOwnership() && toDo.hasOwner() && toDo.getOwner()!=null && toDo.getOwner().getId()==u.getId()}">
+                            <c:set var="ovSel" value="selected"/>
+                          </c:if>
+                          <option value="${u.getId()}" ${ovSel}>${u.getLastName()}, ${u.getFirstName()}</option>
+                        </c:forEach>
+                      </optgroup>
+                      <c:if test="${not empty requestScope.originatingAgents}">
+                        <optgroup label="${requestScope.originatingAgency.getName()} agents">
+                          <c:forEach var="a" items="${requestScope.originatingAgents}">
+                            <c:set var="ovSel" value=""/>
+                            <c:if test="${toDo.isOverrideOwnership() && toDo.hasOwner() && toDo.getOwner()!=null && toDo.getOwner().getId()==a.getId()}">
+                              <c:set var="ovSel" value="selected"/>
+                            </c:if>
+                            <option value="${a.getId()}" ${ovSel}>${a.getLastName()}, ${a.getFirstName()}</option>
+                          </c:forEach>
+                        </optgroup>
+                      </c:if>
+                    </select>
+                  </div>
+                  <div class="tm-hint" style="margin-top:0.2rem; font-style:italic;">Applies only to this Setup's ToDo. Agents of ${requestScope.originatingAgency.getName()} are eligible here.</div>
+                </div>
+              </div>
+            </c:if>
+            <%-- === /V061 === --%>
           </div>
 
             <%-- VENDOR SOURCING (PSP only, hidden when no approved vendors) --%>
@@ -467,6 +533,16 @@
         document.getElementById('bpoDropDown').className = 'd-none';
       }
     }
+  }
+
+  // V061: per-Setup override sub-row
+  function toggleOverride(){
+    const on = document.getElementById('ovToggle').checked;
+    document.getElementById('ovBody').className = on ? '' : 'd-none';
+  }
+  function toggleOvEE(){
+    const none = document.getElementById('ovcb1').checked;
+    document.getElementById('ovDropDown').className = none ? 'd-none' : '';
   }
   function toggleBPO(){
     const none = document.getElementById('cb4a').checked;

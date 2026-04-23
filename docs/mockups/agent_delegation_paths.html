@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Agent Delegation — UI Paths Mockup (v2)</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.min.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap">
+<style>
+  :root { --ssa: #0d5681; --ssa2: #87a948; }
+  body { font-family: 'DM Sans', sans-serif; background: #f8f9fa; padding: 1.5rem; }
+  h2 { color: var(--ssa); border-bottom: 2px solid var(--ssa); padding-bottom: 0.35rem; margin-top: 2.5rem; font-size: 1.15rem; }
+  h2 .pill { font-size: 0.72rem; background: var(--ssa2); color: white; padding: 0.2rem 0.6rem; border-radius: 12px; margin-left: 0.5rem; vertical-align: middle; font-weight: 600; }
+  .path-intro { background: white; border-left: 4px solid var(--ssa); padding: 0.85rem 1rem; margin-bottom: 1rem; font-size: 0.88rem; border-radius: 4px; }
+
+  /* Reproduce taskManager25.jsp shell exactly */
+  .tm-label { font-size: 0.8rem; font-weight: 600; color: var(--ssa); margin-bottom: 0.25rem; }
+  .tm-hint { font-size: 0.72rem; color: #6c757d; margin-top: 0.15rem; }
+  .tm-card { border: 1px solid #dee2e6; border-radius: 6px; background: white; padding: 0.75rem; max-width: 520px; }
+  .tm-section { border-left: 3px solid var(--ssa); padding-left: 0.6rem; margin-bottom: 0.75rem; }
+  .tm-toggle-row { display: flex; gap: 0.35rem; }
+  .tm-toggle-row .btn { font-size: 0.78rem; padding: 0.25rem 0.5rem; flex: 1; }
+  .tm-select { font-size: 0.82rem; }
+
+  .side-by-side { display: flex; gap: 1.5rem; flex-wrap: wrap; align-items: flex-start; }
+  .panel-label { font-size: 0.78rem; font-weight: 700; text-transform: uppercase; color: #495057; margin-bottom: 0.4rem; letter-spacing: 0.03em; padding-top: 0.35rem; }
+  .context-psp { border-top: 3px solid #0d5681; }
+  .context-agent { border-top: 3px solid #87a948; }
+
+  /* Callouts */
+  .callout { background: #fff8e1; border-left: 3px solid #f9a825; font-size: 0.78rem; padding: 0.4rem 0.6rem; margin-top: 0.4rem; border-radius: 0 4px 4px 0; max-width: 520px; }
+  .callout code { background: rgba(0,0,0,0.05); padding: 1px 4px; border-radius: 3px; color: #d32f2f; font-size: 0.75rem; }
+
+  /* Inline sub-row for Path 2 override */
+  .override-row { margin-top: 0.5rem; padding: 0.45rem 0.55rem; background: #f4f7fb; border-radius: 4px; border: 1px dashed #9cb6cf; }
+  .override-row .tm-hint { margin-top: 0; font-style: italic; }
+  .override-label { font-size: 0.74rem; font-weight: 600; color: #355a7a; margin-bottom: 0.3rem; }
+
+  /* Tradeoff cards */
+  .tradeoff { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem; font-size: 0.85rem; max-width: 1080px; }
+  .tradeoff .pros { background: #f1f8e9; border-left: 3px solid #558b2f; padding: 0.6rem 0.85rem; border-radius: 0 4px 4px 0; }
+  .tradeoff .cons { background: #ffebee; border-left: 3px solid #c62828; padding: 0.6rem 0.85rem; border-radius: 0 4px 4px 0; }
+  .tradeoff h6 { font-size: 0.78rem; font-weight: 700; text-transform: uppercase; margin-bottom: 0.3rem; }
+
+  .page-header { background: white; border-radius: 6px; padding: 1.25rem 1.5rem; margin-bottom: 2rem; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+  .page-header h1 { color: var(--ssa); font-size: 1.4rem; margin: 0 0 0.3rem 0; font-weight: 700; }
+  .page-header p { margin: 0; color: #495057; font-size: 0.88rem; }
+
+  .current-state { background: #fff; border: 1px dashed #adb5bd; border-radius: 6px; padding: 1rem; margin-bottom: 2rem; max-width: 560px; }
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <h1><i class="bi bi-people-fill me-2"></i>Agent Delegation — UI Paths (v2)</h1>
+  <p>Three candidate variants of the existing <b>Employee Assignment</b> section on <code>taskManager25.jsp</code>. Agents are internal PSP users with role=2 — they already exist in the user table. The only question is how the eligible-user list is expanded and how the selection is persisted (Task.owner template-level vs ToDo.owner per-Setup).</p>
+</div>
+
+<!-- ============================================================ -->
+<!-- CURRENT STATE (reference)                                    -->
+<!-- ============================================================ -->
+<div class="current-state">
+  <div class="panel-label"><i class="bi bi-clock-history me-1"></i>Current state (for reference)</div>
+  <div class="tm-card">
+    <div class="tm-section">
+      <div class="tm-label"><i class="bi bi-person-badge me-1"></i>Employee Assignment</div>
+      <div class="tm-toggle-row mb-2">
+        <input type="radio" class="btn-check" id="cb-cur-a" name="whoOwnsCur" checked>
+        <label class="btn btn-outline-success" for="cb-cur-a">Anyone</label>
+        <input type="radio" class="btn-check" id="cb-cur-b" name="whoOwnsCur">
+        <label class="btn btn-outline-warning text-dark" for="cb-cur-b">Assigned</label>
+        <input type="radio" class="btn-check" id="cb-cur-c" name="whoOwnsCur">
+        <label class="btn btn-outline-danger" for="cb-cur-c">Exclusive</label>
+      </div>
+      <select class="form-select form-select-sm tm-select d-none">
+        <option>Smith, John</option>
+        <option>Jones, Ana</option>
+        <option>Rivera, Maya</option>
+      </select>
+      <div class="tm-hint">List populated by <code>global.getUsers()</code> — filtered to roles 1/5/9 (PSP User, PSP Admin, PSP Sales). Saves to <code>Task.owner</code>.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- PATH 1                                                        -->
+<!-- ============================================================ -->
+<h2>Path 1 <span class="pill">Expand eligible list — storage level follows entry point</span></h2>
+<div class="path-intro">
+  Single existing dropdown. Eligible-user list expands to include agents of the originating agency (resolved via <code>setup.application.proposal.createdBy</code>) when the screen is entered in a per-Setup context. Persistence follows entry point: Sequence Builder writes <code>Task.owner</code>, per-Setup ToDo edit writes <code>ToDo.owner</code>. New column <code>todo.owner_id</code> is added. Completion logic reads <code>ToDo.owner</code> first, falls back to <code>Task.owner</code>.
+</div>
+
+<div class="tm-card">
+  <div class="tm-section">
+    <div class="tm-label"><i class="bi bi-person-badge me-1"></i>Employee Assignment</div>
+    <div class="tm-toggle-row mb-2">
+      <input type="radio" class="btn-check" id="cb-p1-a" name="whoOwnsP1">
+      <label class="btn btn-outline-success" for="cb-p1-a">Anyone</label>
+      <input type="radio" class="btn-check" id="cb-p1-b" name="whoOwnsP1" checked>
+      <label class="btn btn-outline-warning text-dark" for="cb-p1-b">Assigned</label>
+      <input type="radio" class="btn-check" id="cb-p1-c" name="whoOwnsP1">
+      <label class="btn btn-outline-danger" for="cb-p1-c">Exclusive</label>
+    </div>
+    <select class="form-select form-select-sm tm-select">
+      <option>Smith, John</option>
+      <option>Jones, Ana</option>
+      <option>Rivera, Maya</option>
+      <option selected>Chen, David</option>
+      <option>Park, Sung-Ho</option>
+    </select>
+    <div class="tm-hint">Assigned = visible to them, anyone can complete. Exclusive = only they can complete.</div>
+  </div>
+</div>
+<div class="callout">
+  Agents appear in the same list as PSP users — no visual distinction. Users need to know by name who's PSP staff vs an agent.
+</div>
+<div class="tradeoff">
+  <div class="pros">
+    <h6>Pros</h6>
+    Zero UI complexity. One field, one control. Entity change is additive (<code>todo.owner_id</code>). Feels like a natural extension of the existing mechanic.
+  </div>
+  <div class="cons">
+    <h6>Cons</h6>
+    Nothing prevents selecting an agent when entered via Sequence Builder — which would pin that agent to every Setup using the Task. No visual signal of who's who.
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- PATH 2                                                        -->
+<!-- ============================================================ -->
+<h2>Path 2 <span class="pill">Template default + per-Setup override (one concept, two levels)</span></h2>
+<div class="path-intro">
+  Same Employee Assignment concept surfaced at both levels in one card. Top row = Task-template default (PSP-only, cascades to all Setups using this Task). Inline sub-row below = "Override for this Setup" (PSP + agents of originating agency, applies only to this ToDo). The override sub-row only renders in per-Setup context; in Sequence Builder, only the top row shows.
+</div>
+
+<div class="tm-card">
+  <div class="tm-section">
+    <div class="tm-label"><i class="bi bi-person-badge me-1"></i>Employee Assignment</div>
+    <div class="tm-toggle-row mb-2">
+      <input type="radio" class="btn-check" id="cb-p2-a" name="whoOwnsP2">
+      <label class="btn btn-outline-success" for="cb-p2-a">Anyone</label>
+      <input type="radio" class="btn-check" id="cb-p2-b" name="whoOwnsP2" checked>
+      <label class="btn btn-outline-warning text-dark" for="cb-p2-b">Assigned</label>
+      <input type="radio" class="btn-check" id="cb-p2-c" name="whoOwnsP2">
+      <label class="btn btn-outline-danger" for="cb-p2-c">Exclusive</label>
+    </div>
+    <select class="form-select form-select-sm tm-select">
+      <option>Smith, John</option>
+      <option selected>Jones, Ana</option>
+      <option>Rivera, Maya</option>
+    </select>
+    <div class="tm-hint">Default across all Setups using this task.</div>
+
+    <div class="override-row">
+      <div class="override-label"><i class="bi bi-arrow-return-right me-1"></i>Override for this Setup</div>
+      <select class="form-select form-select-sm tm-select">
+        <option selected>— Use default above —</option>
+        <option>Smith, John</option>
+        <option>Jones, Ana</option>
+        <option>Rivera, Maya</option>
+        <option>Chen, David</option>
+        <option>Park, Sung-Ho</option>
+      </select>
+      <div class="tm-hint">Applies only to this Setup's ToDo. Agents of the originating agency (ProsperityHSA) appear here.</div>
+    </div>
+  </div>
+</div>
+<div class="callout">
+  Top list = PSP-only (unchanged filter). Override list = PSP + agents of originating agency. Same "Employee Assignment" concept — just surfaced at the two levels where it can live.
+</div>
+<div class="tradeoff">
+  <div class="pros">
+    <h6>Pros</h6>
+    Explicit about which level is being edited. User can't accidentally cascade an agent to every Setup — the override row is clearly scoped. Easy to revert ("Use default above"). Good for mixed scenarios (PSP-default, agency-agent on specific Setups).
+  </div>
+  <div class="cons">
+    <h6>Cons</h6>
+    Two dropdowns in one section — slightly busier. If PSP default is set, the override relationship must be shown clearly so it's obvious which wins. Doubles the form-submission payload (two whoOwns states).
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- PATH 3                                                        -->
+<!-- ============================================================ -->
+<h2>Path 3 <span class="pill">Single dropdown — storage chosen by selected person's role</span></h2>
+<div class="path-intro">
+  <b>Recommended.</b> One dropdown as today. Agents never appear in Sequence Builder context — the filter hard-blocks them. In per-Setup context, agents of the originating agency appear alongside PSP users. On save, the server inspects the selected person's role: PSP (1/5/9) writes <code>Task.owner</code>; Agent (2) writes <code>ToDo.owner</code>. Only this last route requires the new <code>todo.owner_id</code> column.
+</div>
+
+<div class="side-by-side">
+
+  <div>
+    <div class="panel-label context-psp">
+      <i class="bi bi-diagram-3 me-1"></i>Sequence Builder (Task-template)
+    </div>
+    <div class="tm-card">
+      <div class="tm-section">
+        <div class="tm-label"><i class="bi bi-person-badge me-1"></i>Employee Assignment</div>
+        <div class="tm-toggle-row mb-2">
+          <input type="radio" class="btn-check" id="cb-p3a-a" name="whoOwnsP3a">
+          <label class="btn btn-outline-success" for="cb-p3a-a">Anyone</label>
+          <input type="radio" class="btn-check" id="cb-p3a-b" name="whoOwnsP3a" checked>
+          <label class="btn btn-outline-warning text-dark" for="cb-p3a-b">Assigned</label>
+          <input type="radio" class="btn-check" id="cb-p3a-c" name="whoOwnsP3a">
+          <label class="btn btn-outline-danger" for="cb-p3a-c">Exclusive</label>
+        </div>
+        <select class="form-select form-select-sm tm-select">
+          <option>Smith, John</option>
+          <option selected>Jones, Ana</option>
+          <option>Rivera, Maya</option>
+        </select>
+        <div class="tm-hint">Template default. Applies to every Setup that uses this Task.</div>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <div class="panel-label context-agent">
+      <i class="bi bi-check2-square me-1"></i>Per-Setup ToDo edit
+    </div>
+    <div class="tm-card">
+      <div class="tm-section">
+        <div class="tm-label"><i class="bi bi-person-badge me-1"></i>Employee Assignment</div>
+        <div class="tm-toggle-row mb-2">
+          <input type="radio" class="btn-check" id="cb-p3b-a" name="whoOwnsP3b">
+          <label class="btn btn-outline-success" for="cb-p3b-a">Anyone</label>
+          <input type="radio" class="btn-check" id="cb-p3b-b" name="whoOwnsP3b" checked>
+          <label class="btn btn-outline-warning text-dark" for="cb-p3b-b">Assigned</label>
+          <input type="radio" class="btn-check" id="cb-p3b-c" name="whoOwnsP3b">
+          <label class="btn btn-outline-danger" for="cb-p3b-c">Exclusive</label>
+        </div>
+        <select class="form-select form-select-sm tm-select">
+          <option>Smith, John</option>
+          <option>Jones, Ana</option>
+          <option>Rivera, Maya</option>
+          <option selected>Chen, David</option>
+          <option>Park, Sung-Ho</option>
+        </select>
+        <div class="tm-hint">List includes PSP staff and agents of ProsperityHSA (originating agency).</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="callout">
+  Storage routing is implicit and invisible to the user. If a PSP user picks an agent, save writes <code>ToDo.owner</code> (this Setup only). If they pick a PSP user, save writes <code>Task.owner</code> (all Setups) — with an optional confirmation when this would override an existing <code>ToDo.owner</code>.
+</div>
+<div class="tradeoff">
+  <div class="pros">
+    <h6>Pros</h6>
+    Single control. No Task-level misuse possible by design — agents are filtered out of the template context entirely. Simplest end-user mental model.
+  </div>
+  <div class="cons">
+    <h6>Cons</h6>
+    "Same UI, different storage" is a smart behavior that needs clear messaging on save. Two code paths in <code>UpdateTask25</code> (or a helper) to decide which level to persist to.
+  </div>
+</div>
+
+<hr style="margin: 3rem 0 1.5rem 0;">
+<p style="font-size: 0.78rem; color: #6c757d; text-align: center;">
+  All three paths modify only the Employee Assignment section. Ordering, Vendor Sourcing, Links, and Automation sections are unchanged.
+</p>
+
+</body>
+</html>
