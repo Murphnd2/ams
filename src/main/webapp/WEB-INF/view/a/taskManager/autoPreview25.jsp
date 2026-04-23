@@ -50,6 +50,9 @@
             <input type="hidden" name="sendAutoEmail" value="1" />
             <input type="hidden" name="fromPreview" value="true" />
             <input type="hidden" name="previewBody" id="previewBody" value="" />
+            <c:if test="${not empty sessionScope.a1expectedActivityId}">
+              <input type="hidden" name="expectedActivityId" value="${sessionScope.a1expectedActivityId}" />
+            </c:if>
 
             <%-- ===== TO (read-only) ===== --%>
             <div class="mb-3">

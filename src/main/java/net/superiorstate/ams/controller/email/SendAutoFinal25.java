@@ -6,6 +6,7 @@ import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.AmsDataLocal;
+import net.superiorstate.ams.data.util.ActivitySessionGuard;
 import net.superiorstate.ams.data.util.AutomationHelper;
 import net.superiorstate.ams.data.util.Validator;
 import net.superiorstate.ams.data.dao.EmailDAO;
@@ -251,10 +252,14 @@ public class SendAutoFinal25 extends HttpServlet {
             response.sendRedirect("ViewActivity25");
             return;
         }
-        Activity a = local.getCurrentActivity().getActivity();
 
         EntityManagerFactory emf = (EntityManagerFactory) getServletContext().getAttribute("emf");
         EntityManager em = emf.createEntityManager();
+
+        // Multi-tab defense: re-anchor currentActivity if the form carried the expected id.
+        ActivitySessionGuard.reanchorIfMismatch(request, em);
+        local = (AmsDataLocal) session.getAttribute("local");
+        Activity a = local.getCurrentActivity().getActivity();
 
         // ── Pull user-edited content from the preview form ──
         String subject = request.getParameter("previewSubject");
@@ -426,5 +431,6 @@ public class SendAutoFinal25 extends HttpServlet {
         session.removeAttribute("a1resolvedBody");
         session.removeAttribute("a1recipientList");
         session.removeAttribute("a1previewReady");
+        session.removeAttribute("a1expectedActivityId");
     }
 }

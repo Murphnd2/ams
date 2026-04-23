@@ -1594,3 +1594,74 @@ The underlying `assignee` rows for the failing Opportunity (id 1071, dtype=Oppor
 
 **No migration, no new files.** Pure defensive fix.
 
+---
+
+## Session 84 — Setup promotion cross-linking + automation multi-tab guard (April 23, 2026)
+
+Two related pieces of work, both driven by the Setup-from-Application flow.
+
+### 1. Setup promotion: cross-linking + Opportunity close-out
+
+When a Setup is created from an approved Application, the flow now strengthens the trail back to the sales pipeline and closes out any originating Opportunity that a PSP user was managing.
+
+**Behavior (new [SetupPromotionService](../../src/main/java/net/superiorstate/ams/data/service/SetupPromotionService.java)):**
+
+- **Step A — Application link on Setup (always):** Adds a WebLink (external, `linkType=2`) to the new Setup's Documents & Links pointing at `ReviewApplication?id={proposalId}` with label `"Application — {prospect name}"`.
+- **Step B — Resolve source Opportunity:** If `proposal.sourceActivity` is null or not an Opportunity, early-return (Step A only).
+- **Step C — Opportunity link on Setup:** Adds a second WebLink pointing at `ViewById?id={oppId}` with label `"Source Opportunity — {opp name}"`.
+- **Step D — Promote stage to WON:** If `opp.stage != "WON"`, flips it to WON (intentional LOST → WON transition too). Own transaction.
+- **Step E — Log Note on Opportunity:** Only if Step D actually changed the stage. Note detail: `"Setup created on MM/dd/yyyy for {prospect}. Services selected: {csv}. Setup: <a href='ViewById?id={setupId}'>#{id}</a>"`. Services resolved from `application.selectedLosIdList` + `selectedEnhancementIdList` (via `LOS.getShortText()` / `Enhancement.getShortText()`), falling back to `proposal.losList` then `(none specified)`. `reasonCreated=1` (Internal Note), `status=2` (No Change).
+- **Step F — Close Opportunity when PSP-managed:** If `opp.managedBy != null`, marks `complete=true` + `dateCompleted=today` + `completedBy={currentPerson}` and removes the Opportunity from `global.activitiesAllOpen` + mirrors to `local`. Mirrors the filter-rebuild idiom from `CloseActivity25`.
+
+Each sub-step (A / C / D+E / F) is wrapped in its own try/catch + own transaction. The service never throws — the Setup itself has already been persisted by the caller.
+
+**Callers (wired at equivalent points, just before the final redirect/refresh):**
+- `ReviewApplication.java` `case "approve":` — after `updateActivityCache(request, em, setup)`, before `sendRedirect`.
+- `CreateSetup25.java` — added optional `sourceOpportunityId` request param, merged onto the shell Proposal's `sourceActivity` right after the LOS-attach loop (before the existing `em.clear()` so the subsequent re-fetch picks it up). Service call placed after the global activity cache update. No UI wiring yet — the param is plumbed for a future hook from the Opportunity detail page.
+
+**No DB changes** — uses existing `weblink`, `note`, `activity.complete`/`date_completed` columns.
+
+### 2. Automation email multi-tab guard
+
+**Bug surfaced by §1:** After clicking the "Source Opportunity" WebLink on a Setup, it opens in a new tab via `ViewById?id=X target="_blank"`. That sets `local.currentActivity` to the Opportunity in the shared session. The user switches back to the original Setup tab (still showing Setup in its DOM) and clicks the automation lightning bolt — but the resulting email + note attach to the Opportunity, not the Setup.
+
+**Root cause:** `AmsDataLocal.currentActivity` is a single session slot shared across all tabs. Any deep navigation in any tab silently rebinds it. This is a general session-state problem, not specific to the new cross-links — our Setup → Opportunity cross-link just surfaced it more visibly than typical navigation.
+
+**Fix — narrow guard on the automation flow only:**
+
+New helper `ActivitySessionGuard` with one static method `reanchorIfMismatch(request, em)`:
+- Reads `expectedActivityId` from the request.
+- No-op if absent (legacy callers unaffected) or if it matches `local.currentActivity.id`.
+- Otherwise calls `local.getCurrentActivity().intializeActivity(em, expectedId)` — the same hydrator `GoActivityDetail25` uses — and writes `local` back to session. Logs a `[ActivitySessionGuard] Re-anchored currentActivity from X to Y` line for visibility.
+
+**Threaded through every hop in the automation flow:**
+1. Bolt click entry JSPs (`checklistBasic25.jsp`, `checklistAutomation25.jsp`) — href now carries `&expectedActivityId=${sessionScope.local.currentActivity.activity.id}`.
+2. `SendAuto25` — guard call + stashes the id into session as `a1expectedActivityId` so downstream forwarded JSPs can render it as a hidden field.
+3. `autoInputScreen25.jsp` — hidden `expectedActivityId` field in the form that posts to `PrepareAutoPreview25`.
+4. `PrepareAutoPreview25` — guard call, then re-reads `local` from session.
+5. `autoPreview25.jsp` — hidden field in the form that posts to `SendAutoFinal25`.
+6. `SendAutoFinal25.sendFromPreview()` — guard call at top; `clearAutomationSessionState` now also removes `a1expectedActivityId`.
+
+The guard is idempotent, a no-op for any path without the param, and doesn't touch the DB if IDs already match. No migration, no entity changes.
+
+**Not fixed in this session:** the same class of bug exists for every other activity action (Add Note, Add Email manual, Close Activity, etc.) that reads `local.currentActivity` after the user has swapped tabs. Deferred — narrow fix for the reported symptom only, per "no unsolicited refactoring."
+
+### Files changed
+
+**New (2):**
+- `src/main/java/net/superiorstate/ams/data/service/SetupPromotionService.java`
+- `src/main/java/net/superiorstate/ams/data/util/ActivitySessionGuard.java`
+
+**Modified (9):**
+- `src/main/java/net/superiorstate/ams/controller/activity/setup/ReviewApplication.java`
+- `src/main/java/net/superiorstate/ams/controller/activity/setup/CreateSetup25.java`
+- `src/main/java/net/superiorstate/ams/controller/email/SendAuto25.java`
+- `src/main/java/net/superiorstate/ams/controller/email/PrepareAutoPreview25.java`
+- `src/main/java/net/superiorstate/ams/controller/email/SendAutoFinal25.java`
+- `src/main/webapp/WEB-INF/view/a/activityDetail/columns/checklist/checklistBasic25.jsp`
+- `src/main/webapp/WEB-INF/view/a/activityDetail/columns/checklist/checklistAutomation25.jsp`
+- `src/main/webapp/WEB-INF/view/a/taskManager/autoInputScreen25.jsp`
+- `src/main/webapp/WEB-INF/view/a/taskManager/autoPreview25.jsp`
+
+**No migration, no entity changes.** `./mvnw compile` clean.
+

@@ -26,6 +26,9 @@
 
           <form method="post" action="PrepareAutoPreview25" id="autoInputForm">
             <input type="hidden" name="csrf" value="${sessionScope.csrfToken}" />
+            <c:if test="${not empty sessionScope.a1expectedActivityId}">
+              <input type="hidden" name="expectedActivityId" value="${sessionScope.a1expectedActivityId}" />
+            </c:if>
 
             <c:forEach var="input" items="${sessionScope.a1inputLabels}" varStatus="loop">
               <div class="mb-3">

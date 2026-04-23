@@ -7,6 +7,7 @@ import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.AmsDataLocal;
 import net.superiorstate.ams.data.resolver.EntityLookup;
+import net.superiorstate.ams.data.util.ActivitySessionGuard;
 import net.superiorstate.ams.data.util.AutomationHelper;
 import net.superiorstate.ams.data.util.Validator;
 import net.superiorstate.ams.model.activity.Activity;
@@ -39,6 +40,18 @@ public class SendAuto25 extends HttpServlet {
 
         EntityManagerFactory emf = (EntityManagerFactory) getServletContext().getAttribute("emf");
         EntityManager em = emf.createEntityManager();
+
+        // Multi-tab defense: re-anchor currentActivity if the caller tells us
+        // which activity this automation belongs to. No-op for legacy callers.
+        ActivitySessionGuard.reanchorIfMismatch(request, em);
+
+        // Stash the expected id so downstream JSPs can carry it forward in forms.
+        String expectedIdParam = request.getParameter("expectedActivityId");
+        if (expectedIdParam != null && !expectedIdParam.isBlank()) {
+            request.getSession().setAttribute("a1expectedActivityId", expectedIdParam.trim());
+        } else {
+            request.getSession().removeAttribute("a1expectedActivityId");
+        }
 
         // Get Automation Parameter
         Automation a = null;

@@ -16,7 +16,7 @@
           <c:if test="${sessionScope.local.getCurrentActivity().getToDoList().get(0).getTask().hasAutomation()
                         && sessionScope.local.getCurrentActivity().getToDoList().get(0).getTask().getAutomation() != null}">
             <c:set var="autoId" value="${sessionScope.local.getCurrentActivity().getToDoList().get(0).getTask().getAutomation().id}" />
-            <a href="SendAuto25?aeId=${autoId}"
+            <a href="SendAuto25?aeId=${autoId}&expectedActivityId=${sessionScope.local.currentActivity.activity.id}"
                class="btn btn-outline-info border-info"
                title="Preview Email"
                target="_blank">

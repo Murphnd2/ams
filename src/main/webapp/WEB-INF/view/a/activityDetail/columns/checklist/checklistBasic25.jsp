@@ -127,7 +127,7 @@
                    navigates straight to SendAuto25, which routes to input
                    collection (if needed) then the editable preview page. --%>
               <c:if test="${(toDo.getBtnIcon() == 'square' || sessionScope.isPspAdmin) && toDo.hasAutomation() && toDo.getAutomation() != null && empty isPast}">
-                <a class="td-auto" href="SendAuto25?aeId=${toDo.getAutomation().getId()}" title="${toDo.getAutomationText()}">
+                <a class="td-auto" href="SendAuto25?aeId=${toDo.getAutomation().getId()}&expectedActivityId=${sessionScope.local.currentActivity.activity.id}" title="${toDo.getAutomationText()}">
                   <i class="bi bi-lightning-charge-fill"></i>
                 </a>
               </c:if>

@@ -7,6 +7,7 @@ import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.AmsDataLocal;
 import net.superiorstate.ams.data.dao.EmailDAO;
+import net.superiorstate.ams.data.util.ActivitySessionGuard;
 import net.superiorstate.ams.data.util.AutoSafe;
 import net.superiorstate.ams.data.util.AutomationHelper;
 import net.superiorstate.ams.data.util.Validator;
@@ -70,6 +71,10 @@ public class PrepareAutoPreview25 extends HttpServlet {
 
         EntityManagerFactory emf = (EntityManagerFactory) getServletContext().getAttribute("emf");
         EntityManager em = emf.createEntityManager();
+
+        // Multi-tab defense: re-anchor currentActivity if the form carried the expected id.
+        ActivitySessionGuard.reanchorIfMismatch(request, em);
+        local = (AmsDataLocal) session.getAttribute("local");
 
         Activity activity = local.getCurrentActivity().getActivity();
 

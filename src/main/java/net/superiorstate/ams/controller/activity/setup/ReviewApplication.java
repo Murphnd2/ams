@@ -13,6 +13,7 @@ import net.superiorstate.ams.data.dao.AppConstantDAO;
 import net.superiorstate.ams.data.dao.ApplicationTaskDAO;
 import net.superiorstate.ams.data.dao.StorageDAO;
 import net.superiorstate.ams.data.service.BpoTaskPushService;
+import net.superiorstate.ams.data.service.SetupPromotionService;
 import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.model.Activity25;
 import net.superiorstate.ams.model.Activity25u;
@@ -319,6 +320,9 @@ public class ReviewApplication extends HttpServlet {
                     Setup setup = createSetup(em, prospect, application, checkList, currentPerson);
                     fillToDoList(em, setup, currentPerson);
                     updateActivityCache(request, em, setup);
+
+                    SetupPromotionService.promoteAfterSetupCreation(
+                            request, em, setup, application, currentPerson);
 
                     response.sendRedirect("ReviewApplications?msg=" +
                             encode("Application approved. Setup #" + setup.getId() + " created for " + prospect.getName()));

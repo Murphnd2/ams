@@ -13,9 +13,11 @@ import net.superiorstate.ams.data.dao.ActivityDAO;
 import net.superiorstate.ams.data.dao.ApplicationTaskDAO;
 import net.superiorstate.ams.data.service.BpoTaskPushService;
 import net.superiorstate.ams.data.service.QuestionnaireService;
+import net.superiorstate.ams.data.service.SetupPromotionService;
 import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.model.Activity25;
 import net.superiorstate.ams.model.Activity25u;
+import net.superiorstate.ams.model.activity.Opportunity;
 import net.superiorstate.ams.model.activity.checklist.CheckList;
 import net.superiorstate.ams.model.activity.checklist.sequences.support.ServiceItem;
 import net.superiorstate.ams.model.activity.checklist.tasks.SortedTask;
@@ -66,6 +68,15 @@ public class CreateSetup25 extends HttpServlet {
         EntityManager em = emf.createEntityManager();
 
         try {
+            // 0. Optional source opportunity (future UI hook)
+            String sourceOpportunityIdStr = request.getParameter("sourceOpportunityId");
+            Opportunity sourceOpp = null;
+            if (sourceOpportunityIdStr != null && !sourceOpportunityIdStr.isBlank()) {
+                try {
+                    sourceOpp = em.find(Opportunity.class, Long.parseLong(sourceOpportunityIdStr));
+                } catch (NumberFormatException ignored) {}
+            }
+
             // 1. Resolve prospect (existing or new)
             Prospect prospect = resolveProspect(request, em, currentPerson);
             if (prospect == null) {
@@ -98,6 +109,15 @@ public class CreateSetup25 extends HttpServlet {
                 los.getListOfProposalsThatIncludeThisLOS().add(p);
                 em.persist(p);
                 em.persist(los);
+                em.getTransaction().commit();
+            }
+
+            // Attach source Opportunity to the shell Proposal when provided
+            if (sourceOpp != null) {
+                em.getTransaction().begin();
+                Proposal pToLink = EntityLookup.getProposalById(em, proposal.getId());
+                pToLink.setSourceActivity(sourceOpp);
+                em.merge(pToLink);
                 em.getTransaction().commit();
             }
 
@@ -173,6 +193,9 @@ public class CreateSetup25 extends HttpServlet {
             } catch (Exception e) {
                 System.out.println("[CreateSetup25] Global activity cache update skipped: " + e.getMessage());
             }
+
+            SetupPromotionService.promoteAfterSetupCreation(
+                    request, em, setup, app, currentPerson);
 
             // Refresh sales data (new prospects appear immediately in dropdowns)
             global.refreshSalesData(em);
