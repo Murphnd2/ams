@@ -6,11 +6,13 @@
 
 ## Current State
 - **Branch:** `refactor/modernize-architecture`
-- **Latest migration:** V053
-- **Session count:** 78
+- **Latest migration:** V061
+- **Session count:** 85
 - **Build tool:** Maven wrapper `./mvnw compile` (no system `mvn` on PATH)
-- V025-V037 applied to Demo/BPO/Master; V038 applied to Demo/BPO; V039-V053 code-complete, not yet applied
-- Master snapshot v8 taken 2026-03-04 (V037)
+- V025-V037 applied to Demo/BPO/Master; V038 applied to Demo/BPO; V039-V061 code-complete, not yet applied
+- V060 applied to local dev + production (Outlook add-in, Session 77)
+- Master snapshot v9 taken 2026-03-20 (V057)
+- **Active feature (Session 85):** Agent Delegation on Setup ToDos (V061). Code-complete, not applied anywhere. Next session: build the agent-facing Setup detail view (simplified, hides PSP-only controls).
 
 ## Key Patterns
 - **"25" suffix** = current/modern version of servlet or JSP
@@ -26,17 +28,23 @@
 - **Application PK is `proposal_id`** (not auto-generated) — needs `LEFT JOIN FETCH p.application`
 - **Person has `listOfAgenciesWithThisAgent`** (ManyToMany), not `getAgency()`
 - **Application.reviewedBy FK** must reference `assignee(id)` not `person(id)`
+- **Person is SINGLE_TABLE in `assignee`** — any FK to a Person column must reference `assignee(id)` (applies to V060 outlook_user_link, V061 todo.owner_id, etc.)
+- **`Assignee` class is at `net.superiorstate.ams.model.general.Assignee`** (not `model.activity.Assignee`)
+- **`proposal.createdBy` is typically the PSP user** who built the proposal (not the outside agent) — unreliable as a signal for the originating agency; prefer `proposal.sourceActivity.assignedTo` or `proposal.prospect.agent`
 - **JSTL fn:contains CSV gotcha:** Use comma-padded matching: `",${ids},"` then `fn:contains(csv, ",${id},")`
 - **EclipseLink L2 cache eviction** required after entity mutations
 - **EclipseLink nested JOIN FETCH** silently dropped — use separate queries
 - **EntityManager must stay open** during JSP forward — move forward() inside try block
 
 ## Recent Sessions
-- **Session 67:** Checklist/BPO improvements — auto-close modal, vendor task management, L2 cache fixes
-- **Session 68:** Center panel redesign — unified "Colored Tab" headers, navbar application review badge
-- **Session 69:** Docs/demo cleanup — removed obsolete files, consolidated demo/, compressed session archive
 - **Session 70:** Sequence Manager enhancements — copy-from-existing modal, inline rename, unsaved changes warning, wider left panel, fixed-width badges, filter scoping fix
-- **Session 78:** Outlook add-in "Create Ticket" feature — new API endpoints (ticket-categories, create-ticket), tabbed taskpane UI, contact selection from email recipients (primary + additional contacts)
+- **Session 78:** Outlook add-in "Create Ticket" feature — new API endpoints (ticket-categories, create-ticket), tabbed taskpane UI, contact selection from email recipients
+- **Session 80:** Wasabi S3 upload reliability overhaul — `RequestBody.fromBytes()` instead of InputStream, singleton client, Apache HTTP client, 120s timeout, JSP spinner fix
+- **Session 81:** Automation email editable preview — full `autoPreview25.jsp` with Quill editor, new session flow (SendAuto25 → autoInputScreen25 → PrepareAutoPreview25 → autoPreview25 → SendAutoFinal25?fromPreview=true), recipient dedup bug fixed
+- **Session 82:** Outlook add-in polish + RequestQuote bot protection
+- **Session 83:** Fixed NPE on activity detail when CheckList lookup returns null
+- **Session 84:** Setup promotion cross-linking (SetupPromotionService: App link, Opp link, WON stage, Internal Note, close Opp when PSP-managed) + ActivitySessionGuard for automation multi-tab bug
+- **Session 85:** Agent Delegation on Setup ToDos (V061) — ToDo-level ownership override, OriginatingAgencyResolver, User Assignment sub-row, AgentHome delegated-to-me panel, GoActivityDetail25.agentBlocked(), originating-agent header item (Option C). **Next: agent-facing Setup detail view.**
 
 ## Reference Docs
 | Topic | Location |
