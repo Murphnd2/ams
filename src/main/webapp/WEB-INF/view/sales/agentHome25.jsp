@@ -95,7 +95,7 @@
 
         /* ── Kanban column ── */
         .kanban-col {
-            min-width: 240px; max-width: 280px; flex: 0 0 260px;
+            min-width: 210px; max-width: 240px; flex: 0 0 220px;
             display: flex; flex-direction: column;
             background: #fff; border-radius: 8px;
             border: 1px solid #e2e6ea;
@@ -299,7 +299,8 @@
 
                     <%-- ── Kanban board ── --%>
                     <div class="board-wrap">
-                        <c:set var="boardStages" value="NEW,CONTACTED,QUALIFIED,PROPOSAL_SENT,NEGOTIATION,ON_HOLD"/>
+                        <%-- CONTACTED removed from the board (kept in stage maps for any legacy data) --%>
+                        <c:set var="boardStages" value="NEW,QUALIFIED,PROPOSAL_SENT,NEGOTIATION,ON_HOLD"/>
                         <c:forTokens var="stage" items="${boardStages}" delims=",">
                             <c:set var="stageOpps" value="${pipelineMap[stage]}"/>
                             <c:set var="stageCount" value="${fn:length(stageOpps)}"/>
@@ -606,7 +607,6 @@
                     <div class="inline-edit">
                         <select id="drStageSelect" onchange="saveStage(this.value)">
                             <option value="NEW">New</option>
-                            <option value="CONTACTED">Contacted</option>
                             <option value="QUALIFIED">Qualified</option>
                             <option value="PROPOSAL_SENT">Proposal Sent</option>
                             <option value="NEGOTIATION">Negotiation</option>

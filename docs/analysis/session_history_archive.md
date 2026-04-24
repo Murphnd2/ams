@@ -2,7 +2,7 @@
 
 > **Purpose:** Consolidated historical record of all build sessions. For current project state, see `project_backlog.md`. For current architecture, see `application_flow.md` and `entity_reference.md`.
 >
-> **Last Updated:** April 23, 2026 (Session 85)
+> **Last Updated:** April 24, 2026 (Session 87)
 >
 > **Note:** Sessions 1–38 (Feb 15 – Mar 5) were compressed during the Session 69 cleanup. Full details for those sessions are available in git history prior to that commit.
 
@@ -1788,4 +1788,81 @@ After testing revealed the Setup activity header shows "PSP Admin" in both `logg
 ### Next (Session 86+) — agent view of Setups
 
 Work in progress. The agent can now see "Tasks Delegated to Me" on AgentHome and click through to the Setup detail (gated by `agentBlocked`), but the PSP-centric activity-detail view is not yet tailored for agent consumption. Next session: build a simplified agent-facing view of Setups — likely a read-only mode or a separate agentSetupDetail JSP that hides PSP-only controls (reopen closed ToDos, Task-level edits, navbar items agents can't use) and exposes only "complete my ToDo" + "add a note."
+
+---
+
+## Session 86 — Agent Portal Build-out on V062 (April 23–24, 2026)
+
+Detail lives in [`docs/analysis/session_86_notes.md`](session_86_notes.md). Summary:
+
+- **V062** `note.agent_visible TINYINT(1) NULL` + PSP default constant `NOTES_AGENT_VISIBLE_DEFAULT`. Resolution: per-note override → PSP default → hidden. Agent-authored notes auto-flagged visible.
+- `/AgentSetupList` new servlet + JSP — agents' list of Setups they're delegated into (agent role OR agency manager scope).
+- `agentSetupDetail25.jsp` — agent-flavored Setup detail replacing the PSP layout for agent-only sessions. Two-column: Application Snapshot (employer basics, key contacts, services, application fields via `AgentSetupSnapshotLoader`) + Messages & Tasks (own tasks, nudge composer, filtered notes timeline with agent/PSP indent).
+- `AgentHome` rebuilt to Mockup B (Kanban + 320px fixed task sidebar grouped by Setup).
+- `AgentCompleteToDo` — ownership-gated endpoint to finish a task from the AgentHome sidebar without loading the Setup.
+- `GoActivityDetail25.agentBlocked()` widened: admits originating selling agent OR delegated ToDo owner.
+- Bugs hunted: `iAmSellingAgent` JavaBean decapitalize quirk (renamed to `sellingAgentIsMe`); `ToDoOut25.allowNonOwner()` vs actual method `allowsNonOwner()`; `c:forEach` over null silently aborting column body.
+
+V062 applied to Demo only.
+
+---
+
+## Session 87 — Agent portal polish + Add Note redesign (April 24, 2026)
+
+### 1. Agent Setup detail — complete/undo wiring and scope tightening
+
+Three issues surfaced while testing Session 86's `agentSetupDetail25.jsp`:
+
+1. **Done click didn't persist.** Form posted to `CloseToDo25`, which only queues the completion (`local.markToDoClosed(toDoId)`) expecting a round-trip through `ViewHome25.processData()` to flush. Agents never hit ViewHome25, so the DB never updated. Switched both Done buttons (quick circle + labeled button) to `AgentCompleteToDo`, which persists via `em.merge()` directly.
+2. **No way to undo a click.** Mirrored `checklistBasic25.jsp`'s collapsible "Completed (N)" pattern under the open list. New servlet `AgentReopenToDo` — identical shape to `AgentCompleteToDo` with the same ownership gate, flips `isComplete=false` + clears `dateCompleted`/`completedBy`.
+3. **Shared tasks polluted the list.** Filter was `!isComplete() && (isMyTask() || allowsNonOwner())` — the `allowsNonOwner()` branch was pulling in ~11 PSP-owned tasks marked template-level "Assigned" (not Exclusive). Stripped to just `isMyTask()`. "shared" badge removed from markup.
+
+### 2. AgentHome Kanban fit on widescreen
+
+Board was `6 cols × 260px + 320px sidebar` = ~1940px — overflowed anything narrower than widescreen. Removed `CONTACTED` from `boardStages` (keeping the CSS color class and JS label/color maps for any legacy data), shrank column width from `min 240 / flex 260 / max 280` to `min 210 / flex 220 / max 240`. Now `5 × 220 + 320` = ~1460px — fits comfortably.
+
+### 3. CONTACTED stage removed from selectable UI
+
+Three spots hardcoded `CONTACTED` as a selectable option:
+- `agentHome25.jsp` new-opportunity modal stage dropdown
+- `detailOpportunity25.jsp` inline stage editor on opportunity detail
+- `AgentHome.STAGE_ORDER` list used for pipelineMap initialization
+
+Removed from all three. Existing opportunities still stored at `stage=CONTACTED` keep their value — they just can't be created-as or changed-to that stage going forward, and don't render a column. CSS and JS stage maps are deliberately retained so any legacy data still renders consistently if surfaced (e.g., in reports, search).
+
+### 4. Add Note widget redesign
+
+`detailAddNote25.jsp` had three dropdowns (Reason, Status, Agent visibility V062) in the SSA-blue header bar, all in the tab chain before the Quill editor — bad keyboard flow. Rewrote the widget to match the refined Option C in [`docs/mockups/addnote_redesign.html`](../mockups/addnote_redesign.html):
+
+- **Header:** title on the left + a tri-state agent-visibility pill on the right. Pill is a `<button type="button" tabindex="-1">` with a hidden `<input name="agentVisible">` sibling. Cycle on click: `"" → visible → hidden → ""`, with matching pill class (`default` / `visible` / `hidden`), icon (`bi-dash-circle` / `bi-eye-fill` / `bi-eye-slash-fill`), and label. `AddNoteToActivity25.resolveAgentVisible()` already reads these exact strings — no servlet change.
+- **Footer bar below the editor:** new `.note-footer-bar` containing `<select name="reasonList">`, `<select name="noteStatus">`, a flex spacer, the unsaved indicator, and Save. Selects styled for light background; `min-width: 170px` on reasonList and `140px` on noteStatus so typical option text (e.g., "Sent Email Message", "Waiting on Them") doesn't truncate.
+- **Tab order:** Quill → Reason → Status → Save. Quill's Tab key binding updated to focus `select[name="reasonList"]` first (falling back to submit if the selects aren't present — keeps the widget usable in contexts that import it without the footer).
+
+### Files changed
+
+**New (2):**
+- `src/main/java/net/superiorstate/ams/controller/activity/setup/AgentReopenToDo.java`
+- `docs/mockups/addnote_redesign.html`
+
+**Modified (5):**
+- `src/main/java/net/superiorstate/ams/controller/activity/setup/AgentHome.java` (STAGE_ORDER — CONTACTED removed)
+- `src/main/webapp/WEB-INF/view/sales/agentHome25.jsp` (board stages, column width, modal stage dropdown)
+- `src/main/webapp/WEB-INF/view/sales/agentSetupDetail25.jsp` (filter + AgentCompleteToDo/AgentReopenToDo wiring + Completed collapsible)
+- `src/main/webapp/WEB-INF/view/a/activityDetail/columns/detail/detailOpportunity25.jsp` (stage dropdown)
+- `src/main/webapp/WEB-INF/view/a/activityDetail/columns/detail/detailAddNote25.jsp` (full rewrite — tri-state pill + inline footer)
+
+No schema changes, no new migrations. `./mvnw compile` clean.
+
+### Deployment state
+
+- V060, V061, V062 applied to Demo.
+- V058–V062 not yet applied to BPO / Master / Production.
+- This session's Java + JSP changes deploy with the next WAR build — no DB step required.
+
+### Follow-ups carried forward from Session 86
+
+- Apply V062 to BPO + Master (and V058–V061 catch-up if pending).
+- Agency Manager re-delegation UI (dropdown on each agency-owned ToDo to reassign among their agents).
+- Cross-agency note-author indentation (current rule is "viewer OR selling agent" only).
+- FEIN / address / payroll-provider surfacing as key fields on the Application Snapshot.
 

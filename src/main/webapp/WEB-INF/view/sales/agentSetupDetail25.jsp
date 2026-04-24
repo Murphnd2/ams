@@ -361,21 +361,34 @@
             <div class="col-hdr"><i class="bi bi-chat-left-dots"></i> Messages &amp; Tasks</div>
             <div class="col-body">
 
-                <%-- My Tasks on this Setup. Defensive: only iterate if the session
-                     ToDoOut25 list is populated. In some paths (fresh ViewById load
-                     before the setup's checklist lazy-loads) the list can be null,
-                     and a c:forEach over null used to silently bail and abort the
-                     rest of the column body. --%>
+                <%-- My Tasks on this Setup. Only tasks specifically delegated to
+                     this agent (isMyTask() after V061 override resolution); shared
+                     tasks with allowsNonOwner but no agent owner are intentionally
+                     excluded per product decision. Actions post to
+                     AgentCompleteToDo / AgentReopenToDo which persist immediately
+                     and enforce ownership server-side (CloseToDo25 only queues the
+                     change for a PSP-home round-trip and silently no-ops for
+                     agents). Defensive: only iterate if the session ToDoOut25 list
+                     is populated — on a fresh ViewById load before the setup's
+                     checklist lazy-loads the list can be null. --%>
                 <c:set var="todoList" value="${sessionScope.local.getCurrentActivity().getToDoList()}"/>
                 <c:if test="${not empty todoList}">
                     <c:set var="myOpenTodoCount" value="0"/>
+                    <c:set var="myClosedTodoCount" value="0"/>
                     <c:forEach var="td" items="${todoList}">
-                        <c:if test="${!td.isComplete() && (td.isMyTask() || td.allowsNonOwner())}">
-                            <c:set var="myOpenTodoCount" value="${myOpenTodoCount + 1}"/>
+                        <c:if test="${td.isMyTask()}">
+                            <c:choose>
+                                <c:when test="${td.isComplete()}">
+                                    <c:set var="myClosedTodoCount" value="${myClosedTodoCount + 1}"/>
+                                </c:when>
+                                <c:otherwise>
+                                    <c:set var="myOpenTodoCount" value="${myOpenTodoCount + 1}"/>
+                                </c:otherwise>
+                            </c:choose>
                         </c:if>
                     </c:forEach>
 
-                    <c:if test="${myOpenTodoCount > 0}">
+                    <c:if test="${myOpenTodoCount > 0 || myClosedTodoCount > 0}">
                         <div style="border: 1px solid #dee2e6; border-radius: 6px; background: #fff; margin-bottom: 14px;">
                             <div style="padding: 7px 12px; font-size: 0.78rem; font-weight: 700; color: var(--ssa); border-bottom: 1px solid #dee2e6; display:flex; align-items:center; gap:6px;">
                                 <i class="bi bi-check2-square"></i>
@@ -384,35 +397,73 @@
                                     ${myOpenTodoCount} open
                                 </span>
                             </div>
-                            <div>
-                                <c:forEach var="td" items="${todoList}">
-                                    <c:if test="${!td.isComplete() && (td.isMyTask() || td.allowsNonOwner())}">
-                                        <div style="display:flex; align-items:center; gap:10px; padding: 8px 12px; border-bottom:1px solid #f0f2f5;">
-                                            <form method="post" action="CloseToDo25" style="margin:0;">
-                                                <input type="hidden" name="btnToDo" value="${td.getToDo().getId()}"/>
-                                                <button type="submit"
-                                                        title="Mark complete"
-                                                        style="border:0; background:transparent; padding:0; font-size:1.1rem; color:#198754; cursor:pointer; line-height:1;">
-                                                    <i class="bi bi-circle"></i>
-                                                </button>
-                                            </form>
-                                            <div style="flex:1; font-size:0.82rem;">
-                                                <c:out value="${td.getDescription()}"/>
-                                                <c:if test="${td.allowsNonOwner() && !td.isMyTask()}">
-                                                    <span style="font-size:0.66rem; background:#e9ecef; color:#495057; padding:1px 6px; border-radius:8px; margin-left:6px;">shared</span>
-                                                </c:if>
+
+                            <%-- Open tasks --%>
+                            <c:if test="${myOpenTodoCount > 0}">
+                                <div>
+                                    <c:forEach var="td" items="${todoList}">
+                                        <c:if test="${td.isMyTask() && !td.isComplete()}">
+                                            <div style="display:flex; align-items:center; gap:10px; padding: 8px 12px; border-bottom:1px solid #f0f2f5;">
+                                                <form method="post" action="AgentCompleteToDo" style="margin:0;">
+                                                    <input type="hidden" name="toDoId" value="${td.getToDo().getId()}"/>
+                                                    <button type="submit"
+                                                            title="Mark complete"
+                                                            style="border:0; background:transparent; padding:0; font-size:1.1rem; color:#198754; cursor:pointer; line-height:1;">
+                                                        <i class="bi bi-circle"></i>
+                                                    </button>
+                                                </form>
+                                                <div style="flex:1; font-size:0.82rem;">
+                                                    <c:out value="${td.getDescription()}"/>
+                                                </div>
+                                                <form method="post" action="AgentCompleteToDo" style="margin:0;">
+                                                    <input type="hidden" name="toDoId" value="${td.getToDo().getId()}"/>
+                                                    <button type="submit"
+                                                            style="border:1px solid var(--ssa-accent); background:#f0f7e8; color:#3f6b1f; padding:2px 10px; border-radius:4px; font-size:0.72rem; font-weight:600; cursor:pointer;">
+                                                        <i class="bi bi-check2 me-1"></i>Done
+                                                    </button>
+                                                </form>
                                             </div>
-                                            <form method="post" action="CloseToDo25" style="margin:0;">
-                                                <input type="hidden" name="btnToDo" value="${td.getToDo().getId()}"/>
-                                                <button type="submit"
-                                                        style="border:1px solid var(--ssa-accent); background:#f0f7e8; color:#3f6b1f; padding:2px 10px; border-radius:4px; font-size:0.72rem; font-weight:600; cursor:pointer;">
-                                                    <i class="bi bi-check2 me-1"></i>Done
-                                                </button>
-                                            </form>
-                                        </div>
-                                    </c:if>
-                                </c:forEach>
-                            </div>
+                                        </c:if>
+                                    </c:forEach>
+                                </div>
+                            </c:if>
+
+                            <%-- Completed tasks (collapsible, mirrors checklistBasic25.jsp pattern) --%>
+                            <c:if test="${myClosedTodoCount > 0}">
+                                <div style="padding: 6px 12px; background: #f8f9fa;">
+                                    <a class="td-closed-toggle" data-bs-toggle="collapse" href="#agentClosedItems" role="button" aria-expanded="false"
+                                       style="font-size: 0.74rem; color: #6c757d; cursor: pointer; text-decoration: none;">
+                                        <i class="bi bi-chevron-right me-1" id="agentClosedChevron"></i>Completed (${myClosedTodoCount})
+                                    </a>
+                                </div>
+                                <div class="collapse" id="agentClosedItems">
+                                    <c:forEach var="td" items="${todoList}">
+                                        <c:if test="${td.isMyTask() && td.isComplete()}">
+                                            <div style="display:flex; align-items:center; gap:10px; padding: 8px 12px; border-top:1px solid #f0f2f5; background:#f8f9fa;">
+                                                <form method="post" action="AgentReopenToDo" style="margin:0;">
+                                                    <input type="hidden" name="toDoId" value="${td.getToDo().getId()}"/>
+                                                    <button type="submit"
+                                                            title="Undo"
+                                                            style="border:0; background:transparent; padding:0; font-size:1rem; color:#198754; cursor:pointer; line-height:1;">
+                                                        <i class="bi bi-arrow-counterclockwise"></i>
+                                                    </button>
+                                                </form>
+                                                <div style="flex:1; font-size:0.82rem; color:#6c757d; text-decoration: line-through;">
+                                                    <c:out value="${td.getDescription()}"/>
+                                                </div>
+                                            </div>
+                                        </c:if>
+                                    </c:forEach>
+                                </div>
+                                <script>
+                                    document.getElementById('agentClosedItems')?.addEventListener('show.bs.collapse', function(){
+                                        document.getElementById('agentClosedChevron')?.classList.replace('bi-chevron-right','bi-chevron-down');
+                                    });
+                                    document.getElementById('agentClosedItems')?.addEventListener('hide.bs.collapse', function(){
+                                        document.getElementById('agentClosedChevron')?.classList.replace('bi-chevron-down','bi-chevron-right');
+                                    });
+                                </script>
+                            </c:if>
                         </div>
                     </c:if>
                 </c:if>

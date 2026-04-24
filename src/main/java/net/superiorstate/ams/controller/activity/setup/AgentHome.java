@@ -23,9 +23,12 @@ import java.util.stream.Collectors;
 @WebServlet(name = "AgentHome", value = "/AgentHome")
 public class AgentHome extends HttpServlet {
 
-    // Ordered stage list for pipeline display
+    // Ordered stage list for pipeline display. CONTACTED is intentionally omitted —
+    // it was removed from the selectable stages. CSS color class .stage-c-CONTACTED
+    // and the JS label/color maps remain so any legacy opportunity still on that
+    // stage renders consistently if surfaced elsewhere.
     private static final List<String> STAGE_ORDER = List.of(
-            "NEW", "CONTACTED", "QUALIFIED", "PROPOSAL_SENT", "NEGOTIATION", "ON_HOLD", "WON", "LOST"
+            "NEW", "QUALIFIED", "PROPOSAL_SENT", "NEGOTIATION", "ON_HOLD", "WON", "LOST"
     );
 
     @Override

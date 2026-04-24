@@ -38,7 +38,6 @@
                             style="font-size:0.8rem; width:auto; min-width:120px; height:26px;"
                             onchange="updateOppStage(this.value)">
                       <option value="NEW"           ${opp.getStage()=='NEW'?'selected':''}>New</option>
-                      <option value="CONTACTED"      ${opp.getStage()=='CONTACTED'?'selected':''}>Contacted</option>
                       <option value="QUALIFIED"      ${opp.getStage()=='QUALIFIED'?'selected':''}>Qualified</option>
                       <option value="PROPOSAL_SENT"  ${opp.getStage()=='PROPOSAL_SENT'?'selected':''}>Proposal Sent</option>
                       <option value="NEGOTIATION"    ${opp.getStage()=='NEGOTIATION'?'selected':''}>Negotiation</option>
