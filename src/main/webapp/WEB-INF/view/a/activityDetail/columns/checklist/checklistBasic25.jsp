@@ -1,4 +1,7 @@
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
+<%-- V062: agent-only viewer only sees ToDos they own (or that allow non-owner completion).
+     PSP users and agency admins see the full list. --%>
+<c:set var="agentOnlyView" value="${sessionScope.isAgent && !sessionScope.isPspUser && !sessionScope.isPspAdmin && !sessionScope.isPspSales && !sessionScope.isAgencyAdmin}"/>
 <style>
   /* === ToDo item rows === */
   .td-item { border-left: 4px solid #dee2e6; border-radius: 3px; padding: 0.2rem 0.35rem; margin-bottom: 0.2rem; background: white; }
@@ -53,7 +56,8 @@
 
       <%-- ===== OPEN ITEMS ===== --%>
       <c:forEach var="toDo" items="${sessionScope.local.getCurrentActivity().getToDoList()}" varStatus="tds">
-        <c:if test="${toDo.getTask().getId() != 153 && toDo.isComplete() == false}">
+        <c:set var="agentCanSee" value="${!agentOnlyView || toDo.isMyTask() || toDo.allowsNonOwner()}"/>
+        <c:if test="${toDo.getTask().getId() != 153 && toDo.isComplete() == false && agentCanSee}">
 
           <%-- Determine row class --%>
           <c:set var="rowClass" value="td-item"/>
@@ -195,7 +199,8 @@
   <%-- ===== COMPLETED ITEMS (pinned below scroll) ===== --%>
   <c:set var="closedCount" value="0"/>
       <c:forEach var="toDo" items="${sessionScope.local.getCurrentActivity().getToDoList()}">
-        <c:if test="${toDo.getTask().getId() != 153 && toDo.isComplete() == true}">
+        <c:set var="agentCanSee" value="${!agentOnlyView || toDo.isMyTask() || toDo.allowsNonOwner()}"/>
+        <c:if test="${toDo.getTask().getId() != 153 && toDo.isComplete() == true && agentCanSee}">
           <c:set var="closedCount" value="${closedCount + 1}"/>
         </c:if>
       </c:forEach>
@@ -208,7 +213,8 @@
         </div>
         <div class="collapse" id="tdClosedItems">
           <c:forEach var="toDo" items="${sessionScope.local.getCurrentActivity().getToDoList()}">
-            <c:if test="${toDo.getTask().getId() != 153 && toDo.isComplete() == true}">
+            <c:set var="agentCanSee" value="${!agentOnlyView || toDo.isMyTask() || toDo.allowsNonOwner()}"/>
+            <c:if test="${toDo.getTask().getId() != 153 && toDo.isComplete() == true && agentCanSee}">
               <div class="td-item td-closed">
                 <div class="d-flex align-items-center">
 

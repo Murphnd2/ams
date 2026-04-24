@@ -106,10 +106,30 @@ public class AddNoteToActivity25 extends HttpServlet {
             note.setReasonCreated(EntityLookup.getReasonById(em, reasonId));
             note.setDateGenerated(Date.valueOf(LocalDate.now()));
             note.setCreatedBy(local.getCurrentPerson());
+            note.setAgentVisible(resolveAgentVisible(request, local));
             return note;
         } catch (Exception e) {
             return null;
         }
+    }
+
+    /**
+     * Per-note agent visibility:
+     *   - "visible"  → TRUE (explicitly shown to agent portal)
+     *   - "hidden"   → FALSE (explicitly hidden from agent portal)
+     *   - anything else / missing → NULL (inherit PSP default)
+     * Agent-authored notes are always visible to agents regardless of the form value
+     * so the authoring agent can read back what they just wrote.
+     */
+    private Boolean resolveAgentVisible(HttpServletRequest request, AmsDataLocal local) {
+        boolean isAgent = Boolean.TRUE.equals(request.getSession().getAttribute("isAgent"))
+                || Boolean.TRUE.equals(request.getSession().getAttribute("isAgencyAdmin"));
+        if (isAgent) return Boolean.TRUE;
+
+        String v = request.getParameter("agentVisible");
+        if ("visible".equalsIgnoreCase(v)) return Boolean.TRUE;
+        if ("hidden".equalsIgnoreCase(v)) return Boolean.FALSE;
+        return null;
     }
 
     private void persistNote(EntityManager em, Note note, AmsDataLocal local) {

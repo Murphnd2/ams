@@ -81,4 +81,5 @@ INSERT IGNORE INTO schema_version (version, description, script_name) VALUES
 ('V058', 'Add renderer column to questionnaire', 'V058__questionnaire_renderer.sql'),
 ('V059', 'NDT census-based testing tables', 'V059__ndt_census_tables.sql'),
 ('V060', 'Outlook add-in user link + weblink.note_id', 'V060__outlook_user_link.sql'),
-('V061', 'ToDo-level ownership override for agent delegation', 'V061__todo_ownership_override.sql');
+('V061', 'ToDo-level ownership override for agent delegation', 'V061__todo_ownership_override.sql'),
+('V062', 'Per-note agent visibility override', 'V062__note_agent_visibility.sql');

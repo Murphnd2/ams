@@ -25,6 +25,18 @@
     <div class="d-flex align-items-center gap-2 note-dd">
       <c:import url="/WEB-INF/view/a/general/globalDropDowns/ddReasons25.jsp"></c:import>
       <c:import url="/WEB-INF/view/a/general/globalDropDowns/ddNoteStatus25.jsp"></c:import>
+      <%-- V062: Agent visibility override. PSP users pick explicit visibility when the
+           default doesn't fit; agents don't see this — their notes are always agent-visible. --%>
+      <c:set var="viewerIsAgent" value="${sessionScope.isAgent && !sessionScope.isPspUser && !sessionScope.isPspAdmin && !sessionScope.isPspSales && !sessionScope.isAgencyAdmin}"/>
+      <c:if test="${not viewerIsAgent}">
+        <select name="agentVisible" class="form-select form-select-sm"
+                title="Agent visibility (overrides PSP default)"
+                style="font-size:0.72rem; padding:0.1rem 1.2rem 0.1rem 0.3rem; width:auto;">
+          <option value="">Default</option>
+          <option value="visible">Visible to agent</option>
+          <option value="hidden">Hidden from agent</option>
+        </select>
+      </c:if>
     </div>
   </div>
   <div id="addNoteBody">

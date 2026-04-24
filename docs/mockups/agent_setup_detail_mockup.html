@@ -1,0 +1,437 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Agent Setup Detail — Mockup</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ssa: #0d5681;
+    --ssa-accent: #87a948;
+    --ssa-soft: #f5f8fb;
+    --ink: #1f2d3d;
+    --muted: #6c757d;
+    --border: #dee2e6;
+  }
+  html, body { height: 100%; margin: 0; }
+  body { font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #eef1f5; color: var(--ink); }
+
+  /* ─── Top bar (stand-in for navbar) ─── */
+  .mock-navbar {
+    background: linear-gradient(135deg, var(--ssa) 0%, #0a4468 100%);
+    color: white;
+    padding: 8px 16px;
+    font-size: 0.85rem;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .mock-navbar .brand { font-weight: 700; letter-spacing: 0.02em; }
+  .mock-navbar .spacer { flex: 1; }
+  .mock-navbar .pill {
+    background: rgba(255,255,255,0.18); color: white;
+    padding: 2px 10px; border-radius: 20px; font-size: 0.72rem;
+  }
+
+  /* ─── Page frame ─── */
+  .page-frame {
+    display: flex; flex-direction: column;
+    height: calc(100vh - 34px);
+  }
+  .toolbar {
+    background: #fff; border-bottom: 1px solid var(--border);
+    padding: 10px 18px;
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  }
+  .toolbar .back {
+    color: var(--ssa); text-decoration: none; border: 1px solid var(--border);
+    padding: 3px 10px; border-radius: 4px; font-size: 0.78rem;
+  }
+  .toolbar .back:hover { background: var(--ssa-soft); }
+  .toolbar h1 {
+    font-size: 1.05rem; font-weight: 700; color: var(--ssa); margin: 0;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .toolbar .sub { font-size: 0.78rem; color: var(--muted); margin-top: 2px; }
+  .toolbar .title-block { line-height: 1.2; }
+  .toolbar .status-pill {
+    font-size: 0.72rem; font-weight: 700; padding: 4px 10px; border-radius: 14px;
+  }
+  .pill-on-track { background: #d4edda; color: #155724; }
+  .pill-wait-psp { background: #fff3cd; color: #856404; }
+  .pill-wait-you { background: #f8d7da; color: #721c24; }
+
+  .body-grid {
+    flex: 1; overflow: hidden;
+    display: grid;
+    grid-template-columns: 3fr 2fr;
+    gap: 12px;
+    padding: 12px 16px;
+  }
+
+  /* ─── Left column: Application snapshot ─── */
+  .col {
+    background: #fff; border: 1px solid var(--border); border-radius: 8px;
+    display: flex; flex-direction: column; min-height: 0;
+  }
+  .col-hdr {
+    background: linear-gradient(135deg, var(--ssa) 0%, #0a4468 100%);
+    color: white; font-weight: 600; font-size: 0.88rem;
+    padding: 8px 14px; border-radius: 8px 8px 0 0;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .col-body { padding: 14px 16px; overflow-y: auto; flex: 1; }
+
+  .section { margin-bottom: 18px; }
+  .section-title {
+    font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em;
+    color: var(--muted); font-weight: 700; margin: 0 0 6px;
+    border-bottom: 1px solid var(--border); padding-bottom: 3px;
+  }
+  .kv-grid {
+    display: grid; grid-template-columns: 150px 1fr; gap: 4px 14px;
+    font-size: 0.82rem;
+  }
+  .kv-grid .k { color: var(--muted); font-weight: 500; }
+  .kv-grid .v { color: var(--ink); font-weight: 400; }
+
+  .plan-row {
+    display: grid;
+    grid-template-columns: 36px 1fr auto;
+    gap: 10px;
+    align-items: center;
+    padding: 8px 10px;
+    border: 1px solid var(--border); border-radius: 6px;
+    margin-bottom: 6px;
+    background: var(--ssa-soft);
+  }
+  .plan-row .icon {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: var(--ssa); color: white;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.85rem;
+  }
+  .plan-row .name { font-weight: 600; font-size: 0.88rem; }
+  .plan-row .detail { font-size: 0.72rem; color: var(--muted); }
+  .plan-row .status-chip {
+    font-size: 0.68rem; font-weight: 700; padding: 2px 8px; border-radius: 10px;
+    background: #e2e3e5; color: #383d41;
+  }
+  .status-chip.active { background: #d4edda; color: #155724; }
+  .status-chip.pending { background: #fff3cd; color: #856404; }
+
+  .contact-row {
+    display: grid; grid-template-columns: 1fr 1fr auto;
+    gap: 6px;
+    padding: 6px 8px; border-bottom: 1px dashed var(--border);
+    font-size: 0.8rem;
+  }
+  .contact-row:last-child { border-bottom: 0; }
+  .contact-row .role-chip {
+    font-size: 0.66rem; background: #e9ecef; color: #495057;
+    padding: 1px 7px; border-radius: 10px;
+  }
+
+  /* ─── Right column: Messages ─── */
+  .composer {
+    border: 1px solid var(--border); border-radius: 6px;
+    padding: 10px 12px; margin-bottom: 14px;
+    background: #fff9ec;
+  }
+  .composer label {
+    font-size: 0.76rem; font-weight: 700; color: #856404; margin-bottom: 4px; display: block;
+  }
+  .composer textarea {
+    width: 100%; border: 1px solid #e5d5b0; border-radius: 4px;
+    padding: 6px 8px; font-size: 0.82rem; resize: vertical;
+    min-height: 54px; max-height: 200px;
+    font-family: inherit;
+  }
+  .composer .sub {
+    font-size: 0.68rem; color: var(--muted); margin-top: 4px;
+  }
+  .composer .actions {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-top: 6px;
+  }
+  .btn-nudge {
+    background: var(--ssa); color: white; border: 0;
+    padding: 4px 14px; border-radius: 4px;
+    font-size: 0.8rem; font-weight: 600;
+  }
+  .btn-nudge:hover { background: #0a4468; }
+
+  .note-bubble {
+    padding: 9px 12px; border-radius: 8px;
+    font-size: 0.84rem; margin-bottom: 10px;
+    border: 1px solid var(--border);
+    position: relative;
+  }
+  .note-bubble.from-psp {
+    background: #fff;
+    border-left: 3px solid var(--ssa);
+  }
+  .note-bubble.from-agent {
+    background: #f0f7e8;
+    border-left: 3px solid var(--ssa-accent);
+    margin-left: 28px;
+  }
+  .note-bubble.info-only {
+    background: #f8f9fb;
+    border-left: 3px solid #adb5bd;
+  }
+  .note-meta {
+    font-size: 0.7rem; color: var(--muted);
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    margin-bottom: 4px;
+  }
+  .note-author { font-weight: 700; color: var(--ink); }
+  .note-chip {
+    font-size: 0.65rem; font-weight: 600; padding: 1px 7px; border-radius: 8px;
+  }
+  .chip-wait-psp { background: #fff3cd; color: #856404; }
+  .chip-wait-you { background: #d1ecf1; color: #0c5460; }
+  .chip-info     { background: #e9ecef; color: #495057; }
+  .chip-you-sent { background: #d4edda; color: #155724; }
+
+  .note-body { color: var(--ink); line-height: 1.4; }
+  .note-body p { margin: 0 0 4px; }
+  .note-body p:last-child { margin: 0; }
+
+  .empty-state {
+    text-align: center; padding: 28px 14px; color: var(--muted); font-size: 0.82rem;
+    background: #fafbfc; border: 1px dashed var(--border); border-radius: 6px;
+  }
+  .timeline-hint {
+    text-align: center; font-size: 0.7rem; color: var(--muted);
+    margin: 4px 0 10px; letter-spacing: 0.08em; text-transform: uppercase;
+  }
+</style>
+</head>
+<body>
+
+<div class="mock-navbar">
+  <span class="brand"><i class="bi bi-hexagon-fill me-1"></i>AMS · Agent Portal</span>
+  <span class="pill">Zoe Lam · Lam Benefits Group</span>
+  <span class="spacer"></span>
+  <span class="pill"><i class="bi bi-kanban me-1"></i>Pipeline</span>
+  <span class="pill"><i class="bi bi-clipboard-check me-1"></i>My Setups</span>
+  <span class="pill"><i class="bi bi-box-arrow-right me-1"></i>Sign out</span>
+</div>
+
+<div class="page-frame">
+
+  <!-- ── Top toolbar ── -->
+  <div class="toolbar">
+    <a href="#" class="back"><i class="bi bi-arrow-left"></i> My Setups</a>
+    <div class="title-block">
+      <h1>
+        <i class="bi bi-clipboard-check"></i>
+        Acme Manufacturing Co — 2026 Benefits Setup
+      </h1>
+      <div class="sub">
+        Prospect: <b>Acme Manufacturing</b> &middot;
+        Sale closed: Apr 12, 2026 &middot;
+        Effective date: <b>Jun 1, 2026</b>
+      </div>
+    </div>
+    <div class="spacer" style="flex:1"></div>
+    <span class="status-pill pill-wait-psp"><i class="bi bi-hourglass-split me-1"></i>Waiting on PSP</span>
+  </div>
+
+  <!-- ── Body: two columns ── -->
+  <div class="body-grid">
+
+    <!-- ═══════ LEFT: Application snapshot ═══════ -->
+    <div class="col">
+      <div class="col-hdr"><i class="bi bi-file-earmark-text"></i> Application Snapshot</div>
+      <div class="col-body">
+
+        <!-- Employer info -->
+        <div class="section">
+          <h3 class="section-title">Employer</h3>
+          <div class="kv-grid">
+            <div class="k">Legal name</div>       <div class="v">Acme Manufacturing Company, LLC</div>
+            <div class="k">DBA</div>              <div class="v">Acme Mfg</div>
+            <div class="k">FEIN</div>             <div class="v">48-1234567</div>
+            <div class="k">Address</div>          <div class="v">1400 Industrial Pkwy, Wichita KS 67209</div>
+            <div class="k">Industry / SIC</div>   <div class="v">Manufacturing · 3599</div>
+            <div class="k">Employee count</div>   <div class="v">184 total · 146 eligible</div>
+          </div>
+        </div>
+
+        <!-- Primary contacts -->
+        <div class="section">
+          <h3 class="section-title">Key Contacts</h3>
+          <div class="contact-row">
+            <div><b>Marta Ortega</b><br><span class="text-muted" style="font-size:0.72rem;">HR Director</span></div>
+            <div>marta@acmemfg.example<br><span class="text-muted" style="font-size:0.72rem;">316-555-0148</span></div>
+            <div><span class="role-chip">Primary</span></div>
+          </div>
+          <div class="contact-row">
+            <div><b>Dean Pollack</b><br><span class="text-muted" style="font-size:0.72rem;">CFO</span></div>
+            <div>dpollack@acmemfg.example<br><span class="text-muted" style="font-size:0.72rem;">316-555-0102</span></div>
+            <div><span class="role-chip">Billing</span></div>
+          </div>
+          <div class="contact-row">
+            <div><b>Sandra Li</b><br><span class="text-muted" style="font-size:0.72rem;">Payroll Mgr</span></div>
+            <div>sli@acmemfg.example<br><span class="text-muted" style="font-size:0.72rem;">316-555-0133</span></div>
+            <div><span class="role-chip">Payroll</span></div>
+          </div>
+        </div>
+
+        <!-- Services / plan elections -->
+        <div class="section">
+          <h3 class="section-title">Services Selected</h3>
+
+          <div class="plan-row">
+            <div class="icon"><i class="bi bi-heart-pulse"></i></div>
+            <div>
+              <div class="name">Healthcare FSA</div>
+              <div class="detail">Annual max <b>$3,300</b> · Run-out 90 days · 12 payroll cycles · Grace period: 2½ months</div>
+            </div>
+            <span class="status-chip active">Configured</span>
+          </div>
+
+          <div class="plan-row">
+            <div class="icon"><i class="bi bi-people"></i></div>
+            <div>
+              <div class="name">Dependent Care FSA</div>
+              <div class="detail">Annual max <b>$5,000</b> · Run-out 90 days</div>
+            </div>
+            <span class="status-chip active">Configured</span>
+          </div>
+
+          <div class="plan-row">
+            <div class="icon"><i class="bi bi-piggy-bank"></i></div>
+            <div>
+              <div class="name">HSA — ACME High-Deductible Plan</div>
+              <div class="detail">Employer contribution <b>$50/mo</b> single · <b>$100/mo</b> family · HDHP min $1,600 / $3,200</div>
+            </div>
+            <span class="status-chip pending">Awaiting bank feed</span>
+          </div>
+
+          <div class="plan-row">
+            <div class="icon"><i class="bi bi-shield-check"></i></div>
+            <div>
+              <div class="name">COBRA Administration</div>
+              <div class="detail">Takeover date <b>Jun 1, 2026</b> · Initial notice letters already mailed</div>
+            </div>
+            <span class="status-chip active">Configured</span>
+          </div>
+
+          <div class="plan-row">
+            <div class="icon"><i class="bi bi-folder-symlink"></i></div>
+            <div>
+              <div class="name">Direct Bill (Retiree + LOA)</div>
+              <div class="detail">12 active billees at takeover · Monthly ACH draft</div>
+            </div>
+            <span class="status-chip active">Configured</span>
+          </div>
+        </div>
+
+        <!-- Key questionnaire responses -->
+        <div class="section">
+          <h3 class="section-title">Plan Details from Application</h3>
+          <div class="kv-grid">
+            <div class="k">ERISA plan year</div>    <div class="v">Jun 1 – May 31 (calendar year fiscal)</div>
+            <div class="k">Payroll provider</div>   <div class="v">Paychex · Flex Essentials</div>
+            <div class="k">Payroll cycle</div>      <div class="v">Semi-monthly (15th / last day)</div>
+            <div class="k">Integrations</div>       <div class="v">Paychex FSA deduction sync · 834 from Blue KC</div>
+            <div class="k">Broker of record</div>   <div class="v">Lam Benefits Group (Zoe Lam)</div>
+            <div class="k">New or takeover</div>    <div class="v">Takeover from Discovery Benefits (prior TPA)</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ═══════ RIGHT: Messages ═══════ -->
+    <div class="col">
+      <div class="col-hdr"><i class="bi bi-chat-left-dots"></i> Messages</div>
+      <div class="col-body">
+
+        <!-- Nudge composer -->
+        <div class="composer">
+          <label><i class="bi bi-send me-1"></i>Send a message to the PSP</label>
+          <textarea placeholder="Ask a question or share an update. Your message sets the setup to &quot;Waiting on PSP&quot;."></textarea>
+          <div class="actions">
+            <div class="sub">
+              <i class="bi bi-info-circle me-1"></i>Your message is visible to the PSP team and yourself.
+            </div>
+            <button class="btn-nudge"><i class="bi bi-send me-1"></i>Send</button>
+          </div>
+        </div>
+
+        <div class="timeline-hint">— Activity —</div>
+
+        <!-- Note: agent-authored -->
+        <div class="note-bubble from-agent">
+          <div class="note-meta">
+            <span class="note-author">You</span>
+            <span>Apr 22, 2026 · 2:14 PM</span>
+            <span class="note-chip chip-wait-psp">Waiting on PSP</span>
+            <span class="note-chip chip-you-sent"><i class="bi bi-send"></i> Sent</span>
+          </div>
+          <div class="note-body">
+            <p>Marta confirmed she wants to add the DCFSA election window by the end of this week. Can you get her the Paychex deduction code before Friday? I'd like to wrap the setup call Monday.</p>
+          </div>
+        </div>
+
+        <!-- Note: PSP reply -->
+        <div class="note-bubble from-psp">
+          <div class="note-meta">
+            <span class="note-author">Jamie Cheng — PSP Setup Team</span>
+            <span>Apr 22, 2026 · 4:38 PM</span>
+            <span class="note-chip chip-wait-you">Waiting on You</span>
+          </div>
+          <div class="note-body">
+            <p>Deduction code is <b>DCFSA-26</b>. I've emailed Sandra (payroll) directly with mapping instructions. Please have Marta sign the revised election addendum — it's in her inbox — and we can flip the plan live.</p>
+          </div>
+        </div>
+
+        <!-- Note: info-only from PSP -->
+        <div class="note-bubble info-only">
+          <div class="note-meta">
+            <span class="note-author">PSP System</span>
+            <span>Apr 18, 2026 · 9:12 AM</span>
+            <span class="note-chip chip-info">Status update</span>
+          </div>
+          <div class="note-body">
+            <p>Setup kicked off. Target effective date June 1, 2026. Initial welcome packet mailed to HR contact.</p>
+          </div>
+        </div>
+
+        <!-- Note: agent earlier -->
+        <div class="note-bubble from-agent">
+          <div class="note-meta">
+            <span class="note-author">You</span>
+            <span>Apr 15, 2026 · 11:02 AM</span>
+            <span class="note-chip chip-info">FYI</span>
+            <span class="note-chip chip-you-sent"><i class="bi bi-send"></i> Sent</span>
+          </div>
+          <div class="note-body">
+            <p>Marta preferred a mid-June kickoff call. I gave her your Calendly link.</p>
+          </div>
+        </div>
+
+        <!-- Note: earlier PSP -->
+        <div class="note-bubble from-psp">
+          <div class="note-meta">
+            <span class="note-author">Jamie Cheng — PSP Setup Team</span>
+            <span>Apr 13, 2026 · 3:40 PM</span>
+            <span class="note-chip chip-info">FYI</span>
+          </div>
+          <div class="note-body">
+            <p>Welcome aboard! I'll be your setup contact at SSA. Feel free to ping us here whenever you need something.</p>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+</div>
+
+</body>
+</html>

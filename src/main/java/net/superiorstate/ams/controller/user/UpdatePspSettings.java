@@ -32,7 +32,8 @@ public class UpdatePspSettings extends HttpServlet {
     };
 
     private static final String[] FEATURE_KEYS = {
-            "USE_TIMECLOCK", "USE_FRIENDLY_NAMES", "USE_CUSTOM_LANDING", "CHATBOT_ALL_USERS"
+            "USE_TIMECLOCK", "USE_FRIENDLY_NAMES", "USE_CUSTOM_LANDING", "CHATBOT_ALL_USERS",
+            "NOTES_AGENT_VISIBLE_DEFAULT"
     };
 
     // HTML sanitization patterns — strips scripts, event handlers, javascript: protocols.
@@ -180,6 +181,8 @@ public class UpdatePspSettings extends HttpServlet {
             upsertConstant(em, "USE_CUSTOM_LANDING", "on".equals(useCustomLanding) ? "true" : "false");
             String chatbotAllUsers = request.getParameter("chatbotAllUsers");
             upsertConstant(em, "CHATBOT_ALL_USERS", "on".equals(chatbotAllUsers) ? "true" : "false");
+            String notesAgentVisibleDefault = request.getParameter("notesAgentVisibleDefault");
+            upsertConstant(em, "NOTES_AGENT_VISIBLE_DEFAULT", "on".equals(notesAgentVisibleDefault) ? "true" : "false");
 
             // Landing page color settings
             String headerColor = request.getParameter("landingHeaderColor");

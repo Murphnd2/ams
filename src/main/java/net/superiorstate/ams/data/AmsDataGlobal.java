@@ -104,6 +104,7 @@ public class AmsDataGlobal {
     private boolean useTimeclock = true;
     private boolean useFriendlyNames = true;
     private boolean useCustomLanding = false;
+    private boolean notesAgentVisibleDefault = false;
     private String customLandingHtml;
     private String landingHeaderColor = "#0d5681";
     private String landingHeaderTextColor = "#ffffff";
@@ -331,6 +332,11 @@ public class AmsDataGlobal {
             String ucl = getConstantValue(em, "USE_CUSTOM_LANDING");
             this.useCustomLanding = "true".equalsIgnoreCase(ucl);
         } catch (Exception e) { this.useCustomLanding = false; }
+
+        try {
+            String navd = getConstantValue(em, "NOTES_AGENT_VISIBLE_DEFAULT");
+            this.notesAgentVisibleDefault = "true".equalsIgnoreCase(navd);
+        } catch (Exception e) { this.notesAgentVisibleDefault = false; }
 
         try {
             Constant clc = AppConstantDAO.getConstant(em, "CUSTOM_LANDING_HTML");
@@ -604,6 +610,7 @@ public class AmsDataGlobal {
     public boolean isUseTimeclock() { return useTimeclock; }
     public boolean isUseFriendlyNames() { return useFriendlyNames; }
     public boolean isUseCustomLanding() { return useCustomLanding; }
+    public boolean isNotesAgentVisibleDefault() { return notesAgentVisibleDefault; }
     public String getCustomLandingHtml() { return customLandingHtml; }
     public String getLandingHeaderColor() { return landingHeaderColor; }
     public String getLandingHeaderTextColor() { return landingHeaderTextColor; }

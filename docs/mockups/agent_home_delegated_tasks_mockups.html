@@ -1,0 +1,589 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>AgentHome — Delegated Tasks, 3 Approaches</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root { --ssa:#0d5681; --ssa-accent:#87a948; --ssa-soft:#f5f8fb; --ink:#1f2d3d; --border:#dee2e6; }
+  body { font-family:'DM Sans', sans-serif; background:#f2f4f7; margin:0; color:var(--ink); }
+  .page-wrap { max-width: 1500px; margin: 0 auto; padding: 18px; }
+  .compare-hdr { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.12em;
+                 color: #6c757d; font-weight: 700; margin: 28px 0 6px; }
+  .mockup-frame {
+    background: white; border: 1px solid var(--border); border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.04); overflow: hidden; margin-bottom: 40px;
+  }
+  .mockup-hdr {
+    background: linear-gradient(135deg, var(--ssa) 0%, #0a4468 100%);
+    color: white; padding: 10px 18px;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .mockup-hdr h2 { margin:0; font-size: 1rem; font-weight: 700; }
+  .mockup-hdr .badge-label { background: rgba(255,255,255,0.2); padding: 3px 10px;
+                              font-size: 0.7rem; border-radius: 12px; font-weight: 600; }
+  .mockup-notes {
+    background: #fffaf0; border-left: 3px solid #e1b02e;
+    padding: 10px 16px; font-size: 0.82rem; color: #6b4d0a;
+  }
+  .mockup-notes b { color: #442f00; }
+  .mockup-viewport {
+    background: #eef1f5;
+    padding: 16px; min-height: 480px;
+    position: relative;
+  }
+
+  /* stub Kanban so the mockups look real */
+  .agent-subhdr {
+    background: linear-gradient(135deg, var(--ssa) 0%, #0a4468 100%);
+    color: white; padding: 8px 14px; border-radius: 6px;
+    display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;
+    font-size: 0.82rem;
+  }
+  .stub-kanban {
+    display: flex; gap: 8px; overflow-x: auto; padding-bottom: 8px;
+  }
+  .stub-col {
+    flex: 0 0 200px; background: white; border-radius: 6px;
+    border: 1px solid var(--border); padding: 8px;
+  }
+  .stub-col h5 { font-size: 0.72rem; color: var(--ssa); text-transform: uppercase;
+                 letter-spacing: 0.06em; margin: 0 0 6px; border-bottom: 1px solid #eaecef; padding-bottom: 4px; }
+  .stub-card {
+    background: var(--ssa-soft); border: 1px solid #d7e2ec; border-radius: 4px;
+    padding: 6px 8px; font-size: 0.74rem; margin-bottom: 4px; line-height: 1.3;
+  }
+  .stub-card b { color: var(--ssa); }
+
+  /* Shared task-item building block */
+  .task-card {
+    border: 1px solid var(--border); border-radius: 6px; background: white;
+    padding: 7px 10px; display: flex; align-items: center; gap: 10px;
+    font-size: 0.8rem; margin-bottom: 5px;
+  }
+  .task-card .chk-btn {
+    width: 22px; height: 22px; border-radius: 50%; border: 2px solid #198754;
+    background: white; color: transparent; display: flex; align-items: center; justify-content: center;
+    cursor: pointer; flex-shrink: 0; font-size: 0.9rem;
+  }
+  .task-card .chk-btn:hover { background: #198754; color: white; }
+  .task-card .t-body { flex: 1; min-width: 0; line-height: 1.25; }
+  .task-card .t-title { font-weight: 600; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .task-card .t-meta  { font-size: 0.68rem; color: #6c757d; display: flex; gap: 8px; flex-wrap: wrap; margin-top: 1px; }
+  .task-card .t-meta .pill { background: #eef3f8; color: var(--ssa); padding: 1px 6px; border-radius: 8px; font-weight: 600; }
+  .task-card .t-meta .pill.due-soon { background: #fff3cd; color: #856404; }
+  .task-card .t-meta .pill.due-past { background: #f8d7da; color: #721c24; }
+  .task-card .open-btn {
+    text-decoration: none; color: var(--ssa); border: 1px solid var(--ssa);
+    padding: 2px 10px; border-radius: 4px; font-size: 0.72rem; font-weight: 600;
+    white-space: nowrap;
+  }
+  .task-card .open-btn:hover { background: var(--ssa); color: white; }
+
+
+  /* ============================================================
+     MOCKUP A — PRIORITY INBOX STRIP
+     ============================================================ */
+  .m-a-strip {
+    background: white; border: 1px solid var(--border); border-radius: 6px;
+    padding: 10px 14px; margin-bottom: 14px;
+    border-left: 4px solid var(--ssa-accent);
+  }
+  .m-a-top {
+    display: flex; align-items: center; gap: 12px; margin-bottom: 8px;
+    font-size: 0.85rem; font-weight: 700; color: var(--ssa);
+  }
+  .m-a-count {
+    background: #fff3cd; color: #856404;
+    padding: 2px 10px; border-radius: 12px;
+    font-size: 0.72rem; font-weight: 700;
+  }
+  .m-a-filter {
+    margin-left: auto; font-size: 0.72rem; color: #6c757d;
+  }
+  .m-a-filter button {
+    background: transparent; border: 1px solid var(--border); color: var(--ink);
+    padding: 2px 10px; border-radius: 12px; font-size: 0.7rem; font-weight: 600; cursor: pointer;
+    margin-left: 4px;
+  }
+  .m-a-filter button.active { background: var(--ssa); color: white; border-color: var(--ssa); }
+
+
+  /* ============================================================
+     MOCKUP B — SIDEBAR TASKS (RIGHT COLUMN)
+     ============================================================ */
+  .m-b-layout { display: grid; grid-template-columns: 1fr 320px; gap: 12px; }
+  .m-b-sidebar {
+    background: white; border: 1px solid var(--border); border-radius: 6px;
+    display: flex; flex-direction: column;
+    max-height: 520px; overflow: hidden;
+  }
+  .m-b-sidebar-hdr {
+    padding: 9px 12px;
+    background: linear-gradient(135deg, var(--ssa) 0%, #0a4468 100%);
+    color: white; font-weight: 600; font-size: 0.82rem;
+    display: flex; align-items: center; gap: 8px; border-radius: 6px 6px 0 0;
+  }
+  .m-b-sidebar-hdr .count-badge {
+    margin-left: auto; background: rgba(255,255,255,0.25); padding: 2px 8px;
+    border-radius: 10px; font-size: 0.7rem; font-weight: 700;
+  }
+  .m-b-sidebar-body { padding: 8px 10px; overflow-y: auto; flex: 1; }
+  .m-b-group-hdr {
+    font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.06em;
+    color: #6c757d; font-weight: 700; margin: 6px 0 4px; padding-bottom: 2px;
+    border-bottom: 1px solid #eaecef;
+  }
+
+
+  /* ============================================================
+     MOCKUP C — SMART ATTENTION BAR + DRAWER
+     ============================================================ */
+  .m-c-banner {
+    background: linear-gradient(90deg, #fff8e1 0%, #fff3cd 100%);
+    border: 1px solid #e1b02e; border-left: 4px solid #d97706;
+    border-radius: 6px;
+    padding: 8px 14px;
+    display: flex; align-items: center; gap: 14px;
+    margin-bottom: 12px;
+    font-size: 0.85rem;
+  }
+  .m-c-banner .banner-text { flex: 1; color: #856404; }
+  .m-c-banner .banner-text b { color: #442f00; }
+  .m-c-banner .cta {
+    background: var(--ssa); color: white; border: 0;
+    padding: 4px 14px; font-size: 0.78rem; font-weight: 700; border-radius: 4px;
+    cursor: pointer;
+  }
+  .m-c-banner .cta:hover { background: #0a4468; }
+  .m-c-mini {
+    display: flex; align-items: center; gap: 8px;
+    background: #fff; border: 1px solid var(--border); border-radius: 100px;
+    padding: 3px 10px; font-size: 0.72rem; font-weight: 600;
+  }
+  .m-c-mini .pill { background: var(--ssa-accent); color: white;
+                    padding: 1px 8px; border-radius: 10px; font-size: 0.68rem; }
+  .m-c-drawer {
+    background: white; border: 1px solid var(--border); border-radius: 6px;
+    padding: 12px 14px; margin-bottom: 14px;
+    box-shadow: 0 2px 10px rgba(13,86,129,0.1);
+  }
+  .m-c-drawer-hdr {
+    display: flex; align-items: center; gap: 10px;
+    padding-bottom: 8px; margin-bottom: 8px; border-bottom: 1px solid #eaecef;
+  }
+  .m-c-drawer-hdr h3 { margin: 0; font-size: 0.95rem; font-weight: 700; color: var(--ssa); }
+  .m-c-drawer-hdr .sub { font-size: 0.72rem; color: #6c757d; margin-left: auto; }
+  .m-c-tabs {
+    display: flex; gap: 0; border-bottom: 1px solid #eaecef; margin-bottom: 8px;
+  }
+  .m-c-tab {
+    padding: 5px 12px; font-size: 0.72rem; color: #6c757d;
+    border-bottom: 2px solid transparent; cursor: pointer; font-weight: 600;
+  }
+  .m-c-tab.active { color: var(--ssa); border-bottom-color: var(--ssa); }
+
+</style>
+</head>
+<body>
+
+<div class="page-wrap">
+
+  <h1 style="font-size:1.1rem; font-weight:700; color:var(--ssa); margin:0 0 4px;">
+    AgentHome Delegated Tasks — 3 Alternatives
+  </h1>
+  <p style="font-size:0.82rem; color:#6c757d; margin:0 0 20px;">
+    Same user (Zoe Lam, Lam Benefits Group) with 5 delegated ToDos across 3 Setups.
+    Each mockup shows how the AgentHome page would frame them against the existing opportunity pipeline.
+  </p>
+
+  <!-- ========================================================
+       MOCKUP A — PRIORITY INBOX STRIP
+       ======================================================== -->
+  <div class="mockup-frame">
+    <div class="mockup-hdr">
+      <h2>A &nbsp;·&nbsp; Priority Inbox strip above the pipeline</h2>
+      <span class="badge-label">Flat list · inline complete</span>
+    </div>
+    <div class="mockup-notes">
+      <b>Idea:</b> single scannable strip at the top of the page. Every open task the
+      agent owns is a row with a one-click Complete button and a click-through to the
+      Setup. Sorted by due date; overdue floated to the top. Filter toggles by Setup so
+      a busy agent can narrow down. Keeps the Kanban as the focal point below.
+      <br><b>Best when:</b> task count is low-to-medium (≤20) and most work is quick.
+    </div>
+    <div class="mockup-viewport">
+
+      <div class="m-a-strip">
+        <div class="m-a-top">
+          <i class="bi bi-inbox-fill" style="color:var(--ssa-accent);"></i>
+          Tasks delegated to me
+          <span class="m-a-count">5 open · 2 overdue</span>
+          <div class="m-a-filter">
+            <button class="active">All</button>
+            <button>Acme</button>
+            <button>Brightpath</button>
+            <button>Kestrel</button>
+          </div>
+        </div>
+
+        <div class="task-card" style="border-left: 3px solid #dc3545;">
+          <button class="chk-btn"><i class="bi bi-check"></i></button>
+          <div class="t-body">
+            <div class="t-title">Confirm DCFSA election window with HR</div>
+            <div class="t-meta">
+              <span>Acme Manufacturing</span>
+              <span class="pill due-past">Overdue 3d</span>
+            </div>
+          </div>
+          <a href="#" class="open-btn">Open</a>
+        </div>
+
+        <div class="task-card" style="border-left: 3px solid #dc3545;">
+          <button class="chk-btn"><i class="bi bi-check"></i></button>
+          <div class="t-body">
+            <div class="t-title">Return signed BAA (HIPAA addendum)</div>
+            <div class="t-meta">
+              <span>Brightpath Dental</span>
+              <span class="pill due-past">Overdue 1d</span>
+            </div>
+          </div>
+          <a href="#" class="open-btn">Open</a>
+        </div>
+
+        <div class="task-card" style="border-left: 3px solid #f59e0b;">
+          <button class="chk-btn"><i class="bi bi-check"></i></button>
+          <div class="t-body">
+            <div class="t-title">Collect payroll schedule from Paychex</div>
+            <div class="t-meta">
+              <span>Acme Manufacturing</span>
+              <span class="pill due-soon">Due tomorrow</span>
+            </div>
+          </div>
+          <a href="#" class="open-btn">Open</a>
+        </div>
+
+        <div class="task-card">
+          <button class="chk-btn"><i class="bi bi-check"></i></button>
+          <div class="t-body">
+            <div class="t-title">Schedule onboarding call with CFO</div>
+            <div class="t-meta">
+              <span>Kestrel Legal</span>
+              <span class="pill">Due May 2</span>
+            </div>
+          </div>
+          <a href="#" class="open-btn">Open</a>
+        </div>
+
+        <div class="task-card">
+          <button class="chk-btn"><i class="bi bi-check"></i></button>
+          <div class="t-body">
+            <div class="t-title">Confirm census file delivery method (SFTP vs email)</div>
+            <div class="t-meta">
+              <span>Kestrel Legal</span>
+              <span class="pill">Due May 9</span>
+            </div>
+          </div>
+          <a href="#" class="open-btn">Open</a>
+        </div>
+      </div>
+
+      <div class="agent-subhdr">
+        <span><i class="bi bi-kanban me-1"></i>Agent Pipeline <small style="opacity:0.7">Lam Benefits Group</small></span>
+        <span>4 active · $82k pipeline</span>
+      </div>
+      <div class="stub-kanban">
+        <div class="stub-col"><h5>New</h5>
+          <div class="stub-card"><b>Dibs Creative</b><br>Proposal sent Mar 28</div></div>
+        <div class="stub-col"><h5>Qualified</h5>
+          <div class="stub-card"><b>TrueNorth Coop</b><br>Meeting Apr 29</div></div>
+        <div class="stub-col"><h5>Proposal Sent</h5>
+          <div class="stub-card"><b>Brightpath Dental</b><br>$24k · waiting</div></div>
+        <div class="stub-col"><h5>Won</h5>
+          <div class="stub-card"><b>Acme Mfg</b><br>Closed Apr 12</div></div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ========================================================
+       MOCKUP B — SIDEBAR TASKS
+       ======================================================== -->
+  <div class="mockup-frame">
+    <div class="mockup-hdr">
+      <h2>B &nbsp;·&nbsp; Persistent sidebar (right column)</h2>
+      <span class="badge-label">Always visible · grouped by Setup</span>
+    </div>
+    <div class="mockup-notes">
+      <b>Idea:</b> the Kanban keeps the majority of the page but a 300px right column
+      anchors the agent's open tasks grouped by Setup. Sticky while the Kanban scrolls
+      horizontally. Grouping keeps context tight ("all of my Acme tasks together") —
+      good when an agent typically works one Setup at a time.
+      <br><b>Best when:</b> an agent works deeply on a single Setup and moves between
+      several of them deliberately.
+    </div>
+    <div class="mockup-viewport">
+
+      <div class="agent-subhdr">
+        <span><i class="bi bi-kanban me-1"></i>Agent Pipeline <small style="opacity:0.7">Lam Benefits Group</small></span>
+        <span>4 active · $82k pipeline</span>
+      </div>
+
+      <div class="m-b-layout">
+
+        <div class="stub-kanban">
+          <div class="stub-col"><h5>New</h5>
+            <div class="stub-card"><b>Dibs Creative</b><br>Proposal sent Mar 28</div></div>
+          <div class="stub-col"><h5>Qualified</h5>
+            <div class="stub-card"><b>TrueNorth Coop</b><br>Meeting Apr 29</div></div>
+          <div class="stub-col"><h5>Proposal Sent</h5>
+            <div class="stub-card"><b>Brightpath Dental</b><br>$24k · waiting</div></div>
+          <div class="stub-col"><h5>Won</h5>
+            <div class="stub-card"><b>Acme Mfg</b><br>Closed Apr 12</div></div>
+        </div>
+
+        <div class="m-b-sidebar">
+          <div class="m-b-sidebar-hdr">
+            <i class="bi bi-check2-square"></i>
+            My Tasks
+            <span class="count-badge">5 open</span>
+          </div>
+          <div class="m-b-sidebar-body">
+
+            <div class="m-b-group-hdr">
+              <i class="bi bi-clipboard-check me-1" style="color:var(--ssa);"></i>
+              Acme Manufacturing — 2 tasks
+            </div>
+            <div class="task-card" style="border-left: 3px solid #dc3545;">
+              <button class="chk-btn"><i class="bi bi-check"></i></button>
+              <div class="t-body">
+                <div class="t-title">Confirm DCFSA election window</div>
+                <div class="t-meta"><span class="pill due-past">Overdue 3d</span></div>
+              </div>
+            </div>
+            <div class="task-card" style="border-left: 3px solid #f59e0b;">
+              <button class="chk-btn"><i class="bi bi-check"></i></button>
+              <div class="t-body">
+                <div class="t-title">Collect payroll schedule from Paychex</div>
+                <div class="t-meta"><span class="pill due-soon">Due tomorrow</span></div>
+              </div>
+            </div>
+
+            <div class="m-b-group-hdr">
+              <i class="bi bi-clipboard-check me-1" style="color:var(--ssa);"></i>
+              Brightpath Dental — 1 task
+            </div>
+            <div class="task-card" style="border-left: 3px solid #dc3545;">
+              <button class="chk-btn"><i class="bi bi-check"></i></button>
+              <div class="t-body">
+                <div class="t-title">Return signed BAA</div>
+                <div class="t-meta"><span class="pill due-past">Overdue 1d</span></div>
+              </div>
+            </div>
+
+            <div class="m-b-group-hdr">
+              <i class="bi bi-clipboard-check me-1" style="color:var(--ssa);"></i>
+              Kestrel Legal — 2 tasks
+            </div>
+            <div class="task-card">
+              <button class="chk-btn"><i class="bi bi-check"></i></button>
+              <div class="t-body">
+                <div class="t-title">Schedule onboarding call with CFO</div>
+                <div class="t-meta"><span class="pill">Due May 2</span></div>
+              </div>
+            </div>
+            <div class="task-card">
+              <button class="chk-btn"><i class="bi bi-check"></i></button>
+              <div class="t-body">
+                <div class="t-title">Confirm census file delivery method</div>
+                <div class="t-meta"><span class="pill">Due May 9</span></div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ========================================================
+       MOCKUP C — ATTENTION BANNER + DRAWER
+       ======================================================== -->
+  <div class="mockup-frame">
+    <div class="mockup-hdr">
+      <h2>C &nbsp;·&nbsp; Smart attention banner + task drawer</h2>
+      <span class="badge-label">Minimal by default · expands on demand</span>
+    </div>
+    <div class="mockup-notes">
+      <b>Idea:</b> keep the AgentHome visually dominated by the pipeline. A thin yellow
+      banner at the top calls out action-required counts (overdue, due-soon, queued).
+      Clicking opens a drawer with a tabbed task list — <i>Needs Action</i>,
+      <i>Waiting on PSP</i>, <i>Recently completed</i> — so the agent can clear their
+      plate without losing sales context. When zero open tasks, the banner becomes a
+      discreet green "All caught up" pill instead.
+      <br><b>Best when:</b> agents spend most of their time in the Kanban and
+      occasionally need to knock out setup homework.
+    </div>
+    <div class="mockup-viewport">
+
+      <div class="m-c-banner">
+        <i class="bi bi-exclamation-triangle-fill" style="color:#d97706; font-size:1.1rem;"></i>
+        <div class="banner-text">
+          You have <b>5 open tasks</b> across 3 Setups — <b>2 overdue</b>, <b>1 due tomorrow</b>.
+        </div>
+        <button class="cta"><i class="bi bi-list-task me-1"></i>Review tasks</button>
+      </div>
+
+      <div class="m-c-drawer">
+        <div class="m-c-drawer-hdr">
+          <i class="bi bi-list-task" style="color:var(--ssa); font-size:1.1rem;"></i>
+          <h3>Setup Tasks for Zoe</h3>
+          <span class="sub">Sorted by due date · 5 open · 2 waiting on PSP</span>
+        </div>
+        <div class="m-c-tabs">
+          <div class="m-c-tab active"><i class="bi bi-check2-square me-1"></i>Needs action (5)</div>
+          <div class="m-c-tab"><i class="bi bi-hourglass-split me-1"></i>Waiting on PSP (2)</div>
+          <div class="m-c-tab"><i class="bi bi-check2-circle me-1"></i>Done this week (4)</div>
+        </div>
+
+        <div class="task-card" style="border-left: 3px solid #dc3545;">
+          <button class="chk-btn"><i class="bi bi-check"></i></button>
+          <div class="t-body">
+            <div class="t-title">Confirm DCFSA election window with HR</div>
+            <div class="t-meta">
+              <span><b>Acme Manufacturing</b></span>
+              <span class="pill due-past">Overdue 3d</span>
+              <span>Delegated by Jamie Cheng · Apr 18</span>
+            </div>
+          </div>
+          <a href="#" class="open-btn">Open setup</a>
+        </div>
+
+        <div class="task-card" style="border-left: 3px solid #dc3545;">
+          <button class="chk-btn"><i class="bi bi-check"></i></button>
+          <div class="t-body">
+            <div class="t-title">Return signed BAA (HIPAA addendum)</div>
+            <div class="t-meta">
+              <span><b>Brightpath Dental</b></span>
+              <span class="pill due-past">Overdue 1d</span>
+              <span>Delegated by Jamie Cheng · Apr 16</span>
+            </div>
+          </div>
+          <a href="#" class="open-btn">Open setup</a>
+        </div>
+
+        <div class="task-card" style="border-left: 3px solid #f59e0b;">
+          <button class="chk-btn"><i class="bi bi-check"></i></button>
+          <div class="t-body">
+            <div class="t-title">Collect payroll schedule from Paychex</div>
+            <div class="t-meta">
+              <span><b>Acme Manufacturing</b></span>
+              <span class="pill due-soon">Due tomorrow</span>
+            </div>
+          </div>
+          <a href="#" class="open-btn">Open setup</a>
+        </div>
+
+        <div class="task-card">
+          <button class="chk-btn"><i class="bi bi-check"></i></button>
+          <div class="t-body">
+            <div class="t-title">Schedule onboarding call with CFO</div>
+            <div class="t-meta">
+              <span><b>Kestrel Legal</b></span>
+              <span class="pill">Due May 2</span>
+            </div>
+          </div>
+          <a href="#" class="open-btn">Open setup</a>
+        </div>
+
+        <div class="task-card">
+          <button class="chk-btn"><i class="bi bi-check"></i></button>
+          <div class="t-body">
+            <div class="t-title">Confirm census file delivery method (SFTP vs email)</div>
+            <div class="t-meta">
+              <span><b>Kestrel Legal</b></span>
+              <span class="pill">Due May 9</span>
+            </div>
+          </div>
+          <a href="#" class="open-btn">Open setup</a>
+        </div>
+      </div>
+
+      <!-- Collapsed-state preview: when zero tasks, the banner becomes a tiny "all caught up" pill -->
+      <div style="margin: 16px 0 6px; font-size: 0.7rem; color:#6c757d; text-transform:uppercase; letter-spacing:0.08em;">
+        Collapsed state — zero open tasks
+      </div>
+      <div class="m-c-mini">
+        <i class="bi bi-check2-circle" style="color:#198754;"></i>
+        <span>All caught up</span>
+        <span class="pill" style="background:#d4edda; color:#155724;">0 open</span>
+      </div>
+
+      <div style="margin-top: 16px;"></div>
+
+      <div class="agent-subhdr">
+        <span><i class="bi bi-kanban me-1"></i>Agent Pipeline <small style="opacity:0.7">Lam Benefits Group</small></span>
+        <span>4 active · $82k pipeline</span>
+      </div>
+      <div class="stub-kanban">
+        <div class="stub-col"><h5>New</h5>
+          <div class="stub-card"><b>Dibs Creative</b><br>Proposal sent Mar 28</div></div>
+        <div class="stub-col"><h5>Qualified</h5>
+          <div class="stub-card"><b>TrueNorth Coop</b><br>Meeting Apr 29</div></div>
+        <div class="stub-col"><h5>Proposal Sent</h5>
+          <div class="stub-card"><b>Brightpath Dental</b><br>$24k · waiting</div></div>
+        <div class="stub-col"><h5>Won</h5>
+          <div class="stub-card"><b>Acme Mfg</b><br>Closed Apr 12</div></div>
+      </div>
+
+    </div>
+  </div>
+
+
+  <!-- ================== Comparison table ================== -->
+  <div class="compare-hdr">Quick comparison</div>
+  <table class="table table-sm" style="background:white; border:1px solid var(--border); border-radius:6px; overflow:hidden; font-size:0.8rem;">
+    <thead style="background: var(--ssa-soft);">
+      <tr>
+        <th style="width:18%;">&nbsp;</th>
+        <th>A — Priority Inbox Strip</th>
+        <th>B — Sidebar Tasks</th>
+        <th>C — Attention Banner + Drawer</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><th>Glance time</th>
+        <td>Fast — all tasks visible immediately</td>
+        <td>Fast — sidebar is permanent</td>
+        <td>Very fast — one-line summary</td></tr>
+      <tr><th>Screen weight</th>
+        <td>Medium — strip can get tall</td>
+        <td>Heavy — sidebar always takes ~320px</td>
+        <td>Light — just a banner until opened</td></tr>
+      <tr><th>Action density</th>
+        <td>High — every row actionable inline</td>
+        <td>High — grouping by Setup aids focus</td>
+        <td>Medium — one extra click to open drawer</td></tr>
+      <tr><th>Handles high task count</th>
+        <td>Needs filters and scrolling</td>
+        <td>Scrolls cleanly inside sidebar</td>
+        <td>Best — drawer only appears when needed</td></tr>
+      <tr><th>Gets out of your way</th>
+        <td>Low — always visible</td>
+        <td>Low — always visible</td>
+        <td>High — dismiss/collapse</td></tr>
+      <tr><th>Best fit</th>
+        <td>Task-forward agents who live in the task list</td>
+        <td>Agents who treat tasks as an ever-present co-pilot</td>
+        <td>Sales-forward agents who tolerate setup homework as it arises</td></tr>
+    </tbody>
+  </table>
+
+</div>
+
+</body>
+</html>

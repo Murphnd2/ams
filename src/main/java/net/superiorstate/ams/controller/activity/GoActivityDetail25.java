@@ -36,12 +36,15 @@ public class GoActivityDetail25 extends HttpServlet {
     }
 
     /**
-     * V061: gate agent access to activity-detail pages.
+     * V061/V062: gate agent access to activity-detail pages.
      *
-     * Agents are only allowed to view an activity if they own at least one
-     * open ToDo on that activity's checklist via the per-Setup override
-     * (overrideOwnership=true, hasOwner=true, owner=them). PSP staff and
-     * agency admins are unaffected.
+     * Agents may view a Setup if EITHER:
+     *   (a) they own at least one open delegated ToDo on the Setup's checklist
+     *       (overrideOwnership=true, hasOwner=true, owner=them), OR
+     *   (b) they are the originating selling agent on the Setup's
+     *       application → proposal → prospect → agent chain.
+     *
+     * Other roles (PSP staff, agency admins) are unaffected by this gate.
      *
      * Returns true when the request was blocked (redirect issued), false
      * when the caller should continue normal processing.
@@ -72,7 +75,8 @@ public class GoActivityDetail25 extends HttpServlet {
         EntityManagerFactory emf = (EntityManagerFactory) getServletContext().getAttribute("emf");
         EntityManager em = emf.createEntityManager();
         try {
-            Query q = em.createQuery(
+            // (a) delegated ToDo on this Setup's checklist
+            Query qDelegated = em.createQuery(
                     "SELECT COUNT(td) FROM ToDo td " +
                     "WHERE td.overrideOwnership = true " +
                     "  AND td.hasOwner = true " +
@@ -80,14 +84,23 @@ public class GoActivityDetail25 extends HttpServlet {
                     "  AND td.checkList.id IN (" +
                     "    SELECT s.checkList.id FROM Setup s WHERE s.id = :actId" +
                     "  )");
-            q.setParameter("agentId", agentId);
-            q.setParameter("actId", activityId);
-            long count = ((Number) q.getSingleResult()).longValue();
-            if (count == 0) {
-                response.sendRedirect(request.getContextPath() + "/AgentHome");
-                return true;
-            }
-            return false;
+            qDelegated.setParameter("agentId", agentId);
+            qDelegated.setParameter("actId", activityId);
+            long delegatedCount = ((Number) qDelegated.getSingleResult()).longValue();
+            if (delegatedCount > 0) return false;
+
+            // (b) originating selling agent on the Setup's proposal chain
+            Query qSelling = em.createQuery(
+                    "SELECT COUNT(s) FROM Setup s " +
+                    "WHERE s.id = :actId " +
+                    "  AND s.application.proposal.prospect.agent.id = :agentId");
+            qSelling.setParameter("agentId", agentId);
+            qSelling.setParameter("actId", activityId);
+            long sellingCount = ((Number) qSelling.getSingleResult()).longValue();
+            if (sellingCount > 0) return false;
+
+            response.sendRedirect(request.getContextPath() + "/AgentHome");
+            return true;
         } catch (Exception e) {
             e.printStackTrace();
             response.sendRedirect(request.getContextPath() + "/AgentHome");

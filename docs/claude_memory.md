@@ -6,13 +6,12 @@
 
 ## Current State
 - **Branch:** `refactor/modernize-architecture`
-- **Latest migration:** V061
-- **Session count:** 85
+- **Latest migration:** V062
+- **Session count:** 86
 - **Build tool:** Maven wrapper `./mvnw compile` (no system `mvn` on PATH)
-- V025-V037 applied to Demo/BPO/Master; V038 applied to Demo/BPO; V039-V061 code-complete, not yet applied
-- V060 applied to local dev + production (Outlook add-in, Session 77)
+- V025-V037 applied to Demo/BPO/Master; V038 applied to Demo/BPO; V039-V062 code-complete, V060+V062 applied to Demo (testing agent portal)
 - Master snapshot v9 taken 2026-03-20 (V057)
-- **Active feature (Session 85):** Agent Delegation on Setup ToDos (V061). Code-complete, not applied anywhere. Next session: build the agent-facing Setup detail view (simplified, hides PSP-only controls).
+- **Active feature (Session 86):** Agent Portal build-out on V062 foundation. Shipped: AgentSetupList, agent-flavored Setup detail (Application Snapshot + Messages/Tasks), AgentHome Kanban + right-side task sidebar (Mockup B), AgentCompleteToDo endpoint, per-note agent visibility. Known follow-ups in `docs/analysis/session_86_notes.md`.
 
 ## Key Patterns
 - **"25" suffix** = current/modern version of servlet or JSP
@@ -44,7 +43,8 @@
 - **Session 82:** Outlook add-in polish + RequestQuote bot protection
 - **Session 83:** Fixed NPE on activity detail when CheckList lookup returns null
 - **Session 84:** Setup promotion cross-linking (SetupPromotionService: App link, Opp link, WON stage, Internal Note, close Opp when PSP-managed) + ActivitySessionGuard for automation multi-tab bug
-- **Session 85:** Agent Delegation on Setup ToDos (V061) — ToDo-level ownership override, OriginatingAgencyResolver, User Assignment sub-row, AgentHome delegated-to-me panel, GoActivityDetail25.agentBlocked(), originating-agent header item (Option C). **Next: agent-facing Setup detail view.**
+- **Session 85:** Agent Delegation on Setup ToDos (V061) — ToDo-level ownership override, OriginatingAgencyResolver, User Assignment sub-row, AgentHome delegated-to-me panel, GoActivityDetail25.agentBlocked(), originating-agent header item (Option C).
+- **Session 86:** Agent Portal build-out (V062 `note.agent_visible`) — per-note agent visibility + PSP-level default, `/AgentSetupList` scoped servlet/JSP (AgentSetupRow DTO + AgentSetupSnapshotLoader for application field snapshot), agent-flavored Setup detail (`agentSetupDetail25.jsp` with two-column Application Snapshot + Messages/Tasks + nudge composer + agent/PSP-indented notes timeline), AgentHome rebuilt to Mockup B (Kanban left + My Tasks sidebar grouped by Setup with urgency bands), AgentCompleteToDo endpoint (ownership-gated), widened `agentBlocked()` to admit originating selling agent, NoteVisibilityResolver helper, PSP name swapped in everywhere `${applicationScope.global.psp.fullName}`. **Two JSP bugs hunted down:** `iAmSellingAgent` EL property invisibility (JavaBean two-uppercase-letter decapitalize quirk — renamed to `sellingAgentIsMe`); `ToDoOut25.allowNonOwner()` typo (actual method is `allowsNonOwner()`, fixed in both agent and PSP JSPs). **Next:** apply V062 to BPO/Master, Agency Manager re-delegation UI, cross-agency agent author detection for note indentation.
 
 ## Reference Docs
 | Topic | Location |

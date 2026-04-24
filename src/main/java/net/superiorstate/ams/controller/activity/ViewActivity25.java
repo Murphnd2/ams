@@ -7,6 +7,7 @@ import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.AmsDataGlobal;
 import net.superiorstate.ams.data.AmsDataLocal;
+import net.superiorstate.ams.data.resolver.AgentSetupSnapshotLoader;
 import net.superiorstate.ams.data.resolver.OriginatingAgencyResolver;
 import net.superiorstate.ams.model.activity.ticket.setup.Setup;
 import net.superiorstate.ams.model.general.Person;
@@ -63,10 +64,35 @@ public class ViewActivity25 extends HttpServlet {
                 Agency originAgency = OriginatingAgencyResolver.resolve(setup);
                 if (originAgency != null) request.setAttribute("originatingAgency", originAgency);
             }
+
+            // V062: agent-only viewers (no PSP-side role) get the agent-flavored
+            // Setup page instead of the full PSP activity-detail layout.
+            if (isAgentOnlyViewer(request)) {
+                EntityManager em = getOpenEntityManager(request);
+                try {
+                    AgentSetupSnapshotLoader.load(em, setup, request);
+                } finally {
+                    em.close();
+                }
+                RequestDispatcher agentDispatcher =
+                        request.getRequestDispatcher("/WEB-INF/view/sales/agentSetupDetail25.jsp");
+                agentDispatcher.forward(request, response);
+                return;
+            }
         }
 
         RequestDispatcher dispatcher= request.getRequestDispatcher("/WEB-INF/view/a/activityDetail/activityDetail25.jsp");
         dispatcher.forward(request,response);
+    }
+
+    private boolean isAgentOnlyViewer(HttpServletRequest request) {
+        HttpSession s = request.getSession();
+        boolean isAgent = Boolean.TRUE.equals(s.getAttribute("isAgent"));
+        boolean isAgencyAdmin = Boolean.TRUE.equals(s.getAttribute("isAgencyAdmin"));
+        boolean isPspUser = Boolean.TRUE.equals(s.getAttribute("isPspUser"));
+        boolean isPspAdmin = Boolean.TRUE.equals(s.getAttribute("isPspAdmin"));
+        boolean isPspSales = Boolean.TRUE.equals(s.getAttribute("isPspSales"));
+        return (isAgent || isAgencyAdmin) && !isPspUser && !isPspAdmin && !isPspSales;
     }
     private EntityManager getOpenEntityManager(HttpServletRequest request) {
         EntityManagerFactory emf =

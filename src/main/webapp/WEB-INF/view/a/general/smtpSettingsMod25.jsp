@@ -125,6 +125,18 @@
                     </div>
                   </div>
                 </div>
+                <%-- Notes: agent visibility default --%>
+                <div class="mb-3">
+                  <div class="d-flex align-items-center justify-content-between p-3 rounded" style="background:#f8f9fb; border:1px solid #dee2e6;">
+                    <div>
+                      <div class="fw-semibold" style="font-size:0.85rem;"><i class="bi bi-chat-left-dots me-1"></i>Show New Notes to Agents by Default</div>
+                      <div class="text-muted" style="font-size:0.75rem;">When on, new Setup notes are visible to the selling agent unless flagged internal. When off (recommended), notes are hidden from agents unless explicitly marked visible.</div>
+                    </div>
+                    <div class="form-check form-switch ms-3">
+                      <input class="form-check-input" type="checkbox" role="switch" name="notesAgentVisibleDefault" id="notesAgentVisibleDefault" style="width:2.5em; height:1.25em;">
+                    </div>
+                  </div>
+                </div>
                 <%-- Landing page settings (collapsed when toggle is off) --%>
                 <div id="landingEditorPanel" style="display:none;" class="mb-3">
                   <%-- Header color pickers --%>
@@ -343,6 +355,7 @@
         }
         document.getElementById('aiKeyMessage').innerHTML = '';
         document.getElementById('chatbotAllUsers').checked = (data.CHATBOT_ALL_USERS === 'true');
+        document.getElementById('notesAgentVisibleDefault').checked = (data.NOTES_AGENT_VISIBLE_DEFAULT === 'true');
         document.getElementById('settingsLoading').style.display = 'none';
         document.getElementById('settingsFields').style.display = '';
         document.getElementById('settingsSaveBtn').disabled = false;

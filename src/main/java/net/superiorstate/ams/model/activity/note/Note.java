@@ -44,6 +44,11 @@ public class Note {
     @Column(name="is_resolution")
     private boolean isResolution;
 
+    // V062: per-note agent visibility override. NULL = use PSP default
+    // (constant NOTES_AGENT_VISIBLE_DEFAULT); true = visible; false = hidden.
+    @Column(name="agent_visible")
+    private Boolean agentVisible;
+
     @OneToMany(mappedBy = "note")
     private List<WebLink> webLinkList;
 
@@ -126,5 +131,13 @@ public class Note {
 
     public void setWebLinkList(List<WebLink> webLinkList) {
         this.webLinkList = webLinkList;
+    }
+
+    public Boolean getAgentVisible() {
+        return agentVisible;
+    }
+
+    public void setAgentVisible(Boolean agentVisible) {
+        this.agentVisible = agentVisible;
     }
 }

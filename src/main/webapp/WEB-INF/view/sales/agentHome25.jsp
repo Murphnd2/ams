@@ -14,13 +14,83 @@
         .stat-pill { font-size: 0.75rem; padding: 0.2rem 0.65rem; border-radius: 12px; font-weight: 600; white-space: nowrap; }
         .stat-pill .stat-val { font-weight: 800; }
 
+        /* ── Main two-column split: kanban board (left, flex) + tasks sidebar (right, fixed) ── */
+        .agent-main-split {
+            display: flex; flex-direction: row;
+            flex: 1; min-height: 0;
+            background: #eef1f5;
+        }
+
         /* ── Board ── */
         .board-wrap {
             display: flex; flex-direction: row; gap: 0.75rem;
             overflow-x: auto; overflow-y: hidden;
             padding: 0.75rem 1rem;
-            background: #eef1f5;
             flex: 1; min-height: 0;
+        }
+
+        /* ── Tasks sidebar (Mockup B) ── */
+        .tasks-sidebar {
+            flex: 0 0 320px; width: 320px;
+            display: flex; flex-direction: column;
+            background: #fff; border-left: 1px solid #dee2e6;
+            min-height: 0;
+        }
+        .tsb-hdr {
+            padding: 0.55rem 0.75rem;
+            background: linear-gradient(135deg, var(--ssa) 0%, #0a4468 100%);
+            color: white; font-weight: 600; font-size: 0.82rem;
+            display: flex; align-items: center; gap: 8px;
+            border-bottom: 1px solid #0a4468;
+        }
+        .tsb-hdr .count-badge {
+            margin-left: auto; background: rgba(255,255,255,0.22); padding: 2px 9px;
+            border-radius: 12px; font-size: 0.7rem; font-weight: 700;
+        }
+        .tsb-body { padding: 8px 10px; overflow-y: auto; flex: 1; min-height: 0; }
+        .tsb-group-hdr {
+            font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.06em;
+            color: #6c757d; font-weight: 700; margin: 8px 0 4px;
+            padding-bottom: 2px; border-bottom: 1px solid #eaecef;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .tsb-group-hdr a { color: var(--ssa); text-decoration: none; }
+        .tsb-group-hdr a:hover { text-decoration: underline; }
+        .tsb-task {
+            border: 1px solid #dee2e6; border-radius: 5px; background: #fff;
+            padding: 7px 9px; display: flex; align-items: flex-start; gap: 8px;
+            font-size: 0.78rem; margin-bottom: 5px;
+        }
+        .tsb-task.due-past   { border-left: 3px solid #dc3545; }
+        .tsb-task.due-soon   { border-left: 3px solid #f59e0b; }
+        .tsb-task.due-future { border-left: 3px solid #87a948; }
+        .tsb-task-body { flex: 1; min-width: 0; line-height: 1.25; }
+        .tsb-task-title { font-weight: 600; color: #212529; }
+        .tsb-task-meta {
+            font-size: 0.65rem; color: #6c757d; display: flex; gap: 6px; flex-wrap: wrap; margin-top: 2px;
+        }
+        .tsb-task-meta .pill { background: #eef3f8; color: var(--ssa);
+                               padding: 1px 6px; border-radius: 8px; font-weight: 600; }
+        .tsb-task-meta .pill.due-past { background: #f8d7da; color: #721c24; }
+        .tsb-task-meta .pill.due-soon { background: #fff3cd; color: #856404; }
+        .tsb-task-actions { display: flex; gap: 4px; flex-shrink: 0; }
+        .tsb-chk {
+            width: 24px; height: 24px; border-radius: 50%;
+            border: 2px solid #198754; background: white; color: transparent;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; font-size: 0.9rem; padding: 0; flex-shrink: 0;
+        }
+        .tsb-chk:hover { background: #198754; color: white; }
+        .tsb-open {
+            font-size: 0.66rem; text-decoration: none;
+            color: var(--ssa); border: 1px solid #dee2e6;
+            padding: 1px 7px; border-radius: 10px; white-space: nowrap;
+        }
+        .tsb-open:hover { background: var(--ssa); color: white; border-color: var(--ssa); }
+        .tsb-empty {
+            text-align: center; padding: 18px 10px; color: #6c757d;
+            font-size: 0.78rem; background: #fafbfc;
+            border: 1px dashed #dee2e6; border-radius: 6px;
         }
 
         /* ── Kanban column ── */
@@ -199,40 +269,14 @@
                         <button class="btn btn-sm btn-outline-light" data-bs-toggle="modal" data-bs-target="#newOppModal">
                             <i class="bi bi-plus-circle me-1"></i>New Opportunity
                         </button>
+                        <a href="AgentSetupList" class="btn btn-sm btn-outline-light">
+                            <i class="bi bi-clipboard-check me-1"></i>My Setups
+                        </a>
                         <a href="ReviewApplications" class="btn btn-sm btn-outline-light">
-                            <i class="bi bi-clipboard-check me-1"></i>Applications
+                            <i class="bi bi-file-earmark-text me-1"></i>Applications
                         </a>
                     </div>
                 </div>
-
-                <%-- ══ V061: Delegated ToDos (Setup tasks assigned to this agent) ══ --%>
-                <c:if test="${not empty delegatedToDos}">
-                    <div style="padding: 0.5rem 1rem 0.25rem 1rem; background:#fff; border-bottom: 1px solid #dee2e6;">
-                        <div style="display:flex; align-items:center; gap:0.4rem; margin-bottom:0.35rem;">
-                            <span style="font-size:0.78rem; font-weight:700; color:var(--ssa);"><i class="bi bi-inbox-fill me-1"></i>Tasks Delegated to Me</span>
-                            <span class="stat-pill" style="background:#fef3c7; color:#92400e;">${fn:length(delegatedToDos)}</span>
-                        </div>
-                        <div style="display:flex; flex-direction:column; gap:0.2rem;">
-                            <c:forEach var="td" items="${delegatedToDos}">
-                                <c:set var="setup" value="${td.getCheckList().getSetup()}"/>
-                                <a href="ViewById?id=${setup.getId()}"
-                                   style="display:flex; align-items:center; gap:0.6rem; text-decoration:none; color:#212529;
-                                          padding:0.3rem 0.5rem; background:#f8f9fa; border:1px solid #e9ecef;
-                                          border-left: 3px solid #f59e0b; border-radius:3px; font-size:0.78rem;">
-                                    <i class="bi bi-check2-square" style="color:#f59e0b;"></i>
-                                    <span style="flex:1; font-weight:500;">${fn:escapeXml(td.getTask().getDescription())}</span>
-                                    <span style="color:#6c757d;">${fn:escapeXml(setup.getFullName())}</span>
-                                    <c:if test="${setup.getDueDate() != null}">
-                                        <span style="color:#6c757d; font-size:0.72rem;">
-                                            <i class="bi bi-calendar3"></i>
-                                            <fmt:formatDate value="${setup.getDueDate()}" pattern="MMM d, yyyy"/>
-                                        </span>
-                                    </c:if>
-                                </a>
-                            </c:forEach>
-                        </div>
-                    </div>
-                </c:if>
 
                 <%-- ══ Stat strip ══ --%>
                 <%-- compute proposal-out and negotiation counts --%>
@@ -250,47 +294,153 @@
                     <span class="stat-pill" style="background:#e0f2fe; color:#0369a1;">Pipeline Value <span class="stat-val">$<fmt:formatNumber value="${pipelineValue}" pattern="#,##0"/></span></span>
                 </div>
 
-                <%-- ══ Kanban board ══ --%>
-                <div class="board-wrap">
-                    <c:set var="boardStages" value="NEW,CONTACTED,QUALIFIED,PROPOSAL_SENT,NEGOTIATION,ON_HOLD"/>
-                    <c:forTokens var="stage" items="${boardStages}" delims=",">
-                        <c:set var="stageOpps" value="${pipelineMap[stage]}"/>
-                        <c:set var="stageCount" value="${fn:length(stageOpps)}"/>
-                        <div class="kanban-col stage-c-${stage}">
-                            <div class="kanban-col-header">
-                                <span>${fn:replace(stage, '_', ' ')}</span>
-                                <span class="count-badge">${stageCount}</span>
-                            </div>
-                            <div class="kanban-col-body">
-                                <c:forEach var="opp" items="${stageOpps}">
-                                    <div class="kb-card" data-opp-id="${opp.getId()}" onclick="openDrawer(${opp.getId()}, this)">
-                                        <div class="kb-card-name">${fn:escapeXml(fn:toLowerCase(opp.getFullName()))}</div>
-                                        <c:if test="${sessionScope.isAgencyAdmin && opp.getAssignedTo() != null}">
-                                            <div class="kb-card-agent">${opp.getAssignedTo().getFirstName()} ${opp.getAssignedTo().getLastName()}</div>
-                                        </c:if>
-                                        <div class="kb-card-footer">
-                                            <span>
-                                                <c:if test="${opp.getEstimatedValue() != null}">
-                                                    $<fmt:formatNumber value="${opp.getEstimatedValue()}" pattern="#,##0"/>
-                                                </c:if>
-                                            </span>
-                                            <span>
-                                                <c:if test="${opp.getEstimatedEmployees() != null}">
-                                                    <i class="bi bi-people"></i> ${opp.getEstimatedEmployees()}
-                                                </c:if>
-                                            </span>
+                <%-- ══ Main split: Kanban (left, flex) + Tasks sidebar (right, 320px) ══ --%>
+                <div class="agent-main-split">
+
+                    <%-- ── Kanban board ── --%>
+                    <div class="board-wrap">
+                        <c:set var="boardStages" value="NEW,CONTACTED,QUALIFIED,PROPOSAL_SENT,NEGOTIATION,ON_HOLD"/>
+                        <c:forTokens var="stage" items="${boardStages}" delims=",">
+                            <c:set var="stageOpps" value="${pipelineMap[stage]}"/>
+                            <c:set var="stageCount" value="${fn:length(stageOpps)}"/>
+                            <div class="kanban-col stage-c-${stage}">
+                                <div class="kanban-col-header">
+                                    <span>${fn:replace(stage, '_', ' ')}</span>
+                                    <span class="count-badge">${stageCount}</span>
+                                </div>
+                                <div class="kanban-col-body">
+                                    <c:forEach var="opp" items="${stageOpps}">
+                                        <div class="kb-card" data-opp-id="${opp.getId()}" onclick="openDrawer(${opp.getId()}, this)">
+                                            <div class="kb-card-name">${fn:escapeXml(fn:toLowerCase(opp.getFullName()))}</div>
+                                            <c:if test="${sessionScope.isAgencyAdmin && opp.getAssignedTo() != null}">
+                                                <div class="kb-card-agent">${opp.getAssignedTo().getFirstName()} ${opp.getAssignedTo().getLastName()}</div>
+                                            </c:if>
+                                            <div class="kb-card-footer">
+                                                <span>
+                                                    <c:if test="${opp.getEstimatedValue() != null}">
+                                                        $<fmt:formatNumber value="${opp.getEstimatedValue()}" pattern="#,##0"/>
+                                                    </c:if>
+                                                </span>
+                                                <span>
+                                                    <c:if test="${opp.getEstimatedEmployees() != null}">
+                                                        <i class="bi bi-people"></i> ${opp.getEstimatedEmployees()}
+                                                    </c:if>
+                                                </span>
+                                            </div>
                                         </div>
-                                    </div>
-                                </c:forEach>
-                                <c:if test="${stageCount == 0}">
-                                    <div class="text-muted text-center py-3" style="font-size:0.75rem;">No opportunities</div>
-                                </c:if>
+                                    </c:forEach>
+                                    <c:if test="${stageCount == 0}">
+                                        <div class="text-muted text-center py-3" style="font-size:0.75rem;">No opportunities</div>
+                                    </c:if>
+                                </div>
+                                <div class="kanban-col-footer">
+                                    <button onclick="newOppWithStage('${stage}')"><i class="bi bi-plus me-1"></i>Add</button>
+                                </div>
                             </div>
-                            <div class="kanban-col-footer">
-                                <button onclick="newOppWithStage('${stage}')"><i class="bi bi-plus me-1"></i>Add</button>
-                            </div>
+                        </c:forTokens>
+                    </div>
+
+                    <%-- ── My Tasks sidebar (V062, Mockup B) ──
+                         Groups the agent's delegated ToDos by their parent Setup.
+                         Each task is a small card with a round check (posts to
+                         /AgentCompleteToDo) and a setup-open link. Dates are
+                         color-coded past / soon (≤3 days) / future. --%>
+                    <div class="tasks-sidebar">
+                        <div class="tsb-hdr">
+                            <i class="bi bi-check2-square"></i>
+                            <span>My Tasks</span>
+                            <span class="count-badge">${fn:length(delegatedToDos)} open</span>
                         </div>
-                    </c:forTokens>
+                        <div class="tsb-body">
+                            <c:choose>
+                                <c:when test="${empty delegatedToDos}">
+                                    <div class="tsb-empty">
+                                        <i class="bi bi-emoji-smile" style="font-size:1.4rem; display:block; margin-bottom:4px; color:#198754;"></i>
+                                        No tasks delegated to you right now.
+                                    </div>
+                                </c:when>
+                                <c:otherwise>
+                                    <%-- Group by setup. We iterate once to build a
+                                         list of unique setup IDs in order, then render
+                                         each group's header + rows. --%>
+                                    <c:set var="seenSetupIds" value=","/>
+                                    <c:forEach var="td" items="${delegatedToDos}">
+                                        <c:set var="gSetup" value="${td.getCheckList().getSetup()}"/>
+                                        <c:set var="gKey"   value=",${gSetup.getId()},"/>
+                                        <c:if test="${!fn:contains(seenSetupIds, gKey)}">
+                                            <c:set var="seenSetupIds" value="${seenSetupIds}${gSetup.getId()},"/>
+
+                                            <%-- Count this setup's tasks (inline) --%>
+                                            <c:set var="groupCount" value="0"/>
+                                            <c:forEach var="td2" items="${delegatedToDos}">
+                                                <c:if test="${td2.getCheckList().getSetup().getId() == gSetup.getId()}">
+                                                    <c:set var="groupCount" value="${groupCount + 1}"/>
+                                                </c:if>
+                                            </c:forEach>
+
+                                            <div class="tsb-group-hdr">
+                                                <i class="bi bi-clipboard-check" style="color:var(--ssa);"></i>
+                                                <a href="ViewById?id=${gSetup.getId()}"><c:out value="${gSetup.getFullName()}"/></a>
+                                                <span style="margin-left:auto; font-weight:500; color:#6c757d;">
+                                                    ${groupCount} task${groupCount == 1 ? '' : 's'}
+                                                </span>
+                                            </div>
+
+                                            <c:forEach var="td3" items="${delegatedToDos}">
+                                                <c:if test="${td3.getCheckList().getSetup().getId() == gSetup.getId()}">
+                                                    <%-- Urgency band --%>
+                                                    <c:set var="urgency" value="due-future"/>
+                                                    <c:set var="duePill" value=""/>
+                                                    <c:if test="${gSetup.getDueDate() != null}">
+                                                        <c:set var="dueMillis"  value="${gSetup.getDueDate().getTime()}"/>
+                                                        <c:set var="nowMillis"  value="${pageContext.request.session.lastAccessedTime}"/>
+                                                        <c:set var="diffDays"   value="${(dueMillis - nowMillis) / 86400000}"/>
+                                                        <c:choose>
+                                                            <c:when test="${diffDays < 0}">
+                                                                <c:set var="urgency" value="due-past"/>
+                                                                <c:set var="duePill" value="Overdue"/>
+                                                            </c:when>
+                                                            <c:when test="${diffDays <= 3}">
+                                                                <c:set var="urgency" value="due-soon"/>
+                                                                <c:set var="duePill" value="Due soon"/>
+                                                            </c:when>
+                                                        </c:choose>
+                                                    </c:if>
+
+                                                    <div class="tsb-task ${urgency}">
+                                                        <form method="post" action="AgentCompleteToDo" style="margin:0;">
+                                                            <input type="hidden" name="toDoId" value="${td3.getId()}"/>
+                                                            <button type="submit" class="tsb-chk" title="Mark complete">
+                                                                <i class="bi bi-check"></i>
+                                                            </button>
+                                                        </form>
+                                                        <div class="tsb-task-body">
+                                                            <div class="tsb-task-title">
+                                                                <c:out value="${td3.getTask().getDescription()}"/>
+                                                            </div>
+                                                            <div class="tsb-task-meta">
+                                                                <c:if test="${not empty duePill}">
+                                                                    <span class="pill ${urgency}">${duePill}</span>
+                                                                </c:if>
+                                                                <c:if test="${gSetup.getDueDate() != null}">
+                                                                    <span>
+                                                                        <i class="bi bi-calendar3"></i>
+                                                                        <fmt:formatDate value="${gSetup.getDueDate()}" pattern="MMM d"/>
+                                                                    </span>
+                                                                </c:if>
+                                                                <a class="tsb-open" href="ViewById?id=${gSetup.getId()}">Open</a>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </c:if>
+                                            </c:forEach>
+                                        </c:if>
+                                    </c:forEach>
+                                </c:otherwise>
+                            </c:choose>
+                        </div>
+                    </div>
+
                 </div>
 
                 <%-- ══ Closed Opportunities toggle + panel ══ --%>
