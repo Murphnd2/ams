@@ -1,0 +1,12 @@
+employee_id,employer_id,first_name,last_name,email,address1,city,state,zip,status
+2015,1006,Nancy,Rajala,nrajala@greatlakeseng.com,404 Quincy St,Hancock,MI,49930,Active
+2016,1006,Kevin,Jarvi,kjarvi@greatlakeseng.com,78 Elevation St,Houghton,MI,49931,Active
+2017,1007,Angela,Saari,asaari@marquettefinancial.com,550 Washington St,Marquette,MI,49855,Active
+2018,1007,Timothy,Hakala,thakala@marquettefinancial.com,22 Front St,Marquette,MI,49855,Active
+2019,1008,Donna,Koski,dkoski@keweenawadventure.com,101 Gratiot St,Copper Harbor,MI,49918,Active
+2020,1008,Joseph,Leinonen,jleinonen@keweenawadventure.com,340 US-41,Eagle River,MI,49924,Active
+2021,1009,Kathleen,Virtanen,kvirtanen@saultschools.edu,215 Bingham Ave,Sault Ste Marie,MI,49783,Active
+2022,1009,Charles,Puumala,cpuumala@saultschools.edu,62 Spruce St,Sault Ste Marie,MI,49783,Active
+2023,1010,Margaret,Toivonen,mtoivonen@mackinacbridge.gov,88 Nicolet St,Mackinaw City,MI,49701,Active
+2024,1010,George,Ketola,gketola@mackinacbridge.gov,445 Central Ave,St Ignace,MI,49781,Active
+2025,1011,Former,Employee,former@example.com,1 Closed Rd,Houghton,MI,49931,Inactive

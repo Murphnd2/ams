@@ -1,0 +1,11 @@
+plan_type_id,plan_name,plan_code
+100,(WEX) Health FSA,FSA
+101,(WEX) Dependent Care FSA,DCA
+102,(WEX) Limited Purpose FSA,LFSA
+103,(WEX) Health Reimbursement Arrangement,HRA
+104,(WEX) Health Savings Account,HSA
+105,(WEX) COBRA Administration,COBRA
+106,(WEX) Transit/Parking,TRANSIT
+107,(WEX) Premium Reimbursement Account,MERP
+108,(WEX) ICHRA,ICHRA
+109,(WEX) Excepted Benefit HRA,EBHRA
