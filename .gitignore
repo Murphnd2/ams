@@ -2,8 +2,18 @@
 /target/
 /out/
 
-# Claude Code
-.claude/
+# Claude Code — selectively track shared assets, ignore local/runtime state
+.claude/*
+!.claude/skills/
+!.claude/prompts/
+!.claude/agents/
+!.claude/hooks/
+!.claude/commands/
+!.claude/launch.json
+!.claude/CLAUDE.md
+.claude/settings.local.json
+.claude/worktrees/
+.claude/inventory/
 
 # IntelliJ (ignore everything)
 .idea/*
