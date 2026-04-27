@@ -186,6 +186,9 @@ This file collects every contradiction, dangling reference, suspected stale arti
 **Question:** Not a contradiction — just noted as architectural pain that may motivate future ORM migration. Logged for completeness.
 
 ---
+**Resolved 2026-04-27** — Three gotchas investigated: (1) `evictAll()` corruption is a confirmed bug, already fixed in `DatabaseResetUtil.evictEntityCaches()` with per-class eviction. (2) Nested `JOIN FETCH` silently dropped — confirmed bug, workaround documented in `QuestionnaireService` line 155, but three queries remain unpatched: `SalesDAO.getLosFull()`, `SalesDAO.getAgencyProspects()`, `AgentSetupSnapshotLoader`. Tracked as a backlog item. (3) EM open during forward — two patterns coexist safely in production, accepted as architectural convention (see #27).
+
+---
 
 ## 17. `LoginFilter` allow-list — `/tpo` undocumented
 
@@ -205,6 +208,9 @@ This file collects every contradiction, dangling reference, suspected stale arti
 - `data/service/UniversalImportService.java` + `InteractiveImportSession.java` + `ImportResolutionService.java` + `ImportCommitService.java` + `model/imports/` — generic interactive imports
 
 **Question:** Is the generic Universal/Interactive importer intended to eventually subsume Summit imports, or are they parallel-by-design? No design doc resolves this in `docs/`.
+
+---
+**Resolved 2026-04-27** — Three subsystems identified: (1) `SummitSync.java` is dead code with zero callers — candidate for deletion. (2) `SummitImportService` + `SummitImportWizard` is active for Summit CSV imports. (3) `UniversalImportService` is the intended provider-agnostic successor but delegates to `SummitImportService` internally. Design converges, not replaces. See `docs/analysis/summit_import_design.md`.
 
 ---
 
@@ -257,6 +263,9 @@ This file collects every contradiction, dangling reference, suspected stale arti
 **Evidence:** Each Summit-import staging table has both an unsuffixed and a `2`-suffixed sibling.
 
 **Question:** Versioned schema? Two providers? No doc consulted in Pass 1.
+
+---
+**Resolved 2026-04-27** — The `2`-suffix is a two-table delta-sync pattern: `sEmployer`/`sEmployee` are persistent staging tables (AMS's running copy of Summit data); `sEmployer2`/`sEmployee2` are fresh-import buffers populated from each Summit CSV sync. `SummitSync` diffs `*2` against `*` to find net-new/changed records. `sEmployee2` has a richer column set (SSN, DOB, banking) than `sEmployee`. Neither pair is dead code. The `order`/`Import*` classes are a newer parallel model that coexists but does not replace them.
 
 ---
 
