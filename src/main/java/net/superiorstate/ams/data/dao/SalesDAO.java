@@ -145,9 +145,18 @@ public abstract class SalesDAO {
     }
 
     public static LOS getLosFull(EntityManager em, long losId){
-        Query q = em.createQuery("SELECT DISTINCT l FROM LOS l INNER JOIN FETCH l.serviceModuleList sm INNER JOIN FETCH sm.moduleDetailList si WHERE l.id = :los_id");
-        q.setParameter("los_id",losId);
-        return (LOS) q.getSingleResult();
+        Query q = em.createQuery("SELECT DISTINCT l FROM LOS l INNER JOIN FETCH l.serviceModuleList sm WHERE l.id = :los_id");
+        q.setParameter("los_id", losId);
+        LOS los = (LOS) q.getSingleResult();
+        List<Long> smIds = los.getServiceModuleList().stream()
+                .map(sm -> sm.getId())
+                .collect(java.util.stream.Collectors.toList());
+        if (!smIds.isEmpty()) {
+            em.createQuery("SELECT sm FROM ServiceModule sm JOIN FETCH sm.moduleDetailList WHERE sm.id IN :smIds")
+                    .setParameter("smIds", smIds)
+                    .getResultList();
+        }
+        return los;
     }
 
     public static ServiceModule getModuleFull(EntityManager em, long moduleId){
