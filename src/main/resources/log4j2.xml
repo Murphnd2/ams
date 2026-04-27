@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="WARN">
+
+    <Properties>
+        <Property name="LOG_DIR">${sys:catalina.base}/logs</Property>
+        <Property name="LOG_PATTERN">%d{yyyy-MM-dd HH:mm:ss.SSS} [%t] %-5level %logger{36} - %msg%n</Property>
+    </Properties>
+
+    <Appenders>
+        <Console name="Console" target="SYSTEM_OUT">
+            <PatternLayout pattern="${LOG_PATTERN}"/>
+        </Console>
+
+        <RollingFile name="RollingFile"
+                     fileName="${LOG_DIR}/ams.log"
+                     filePattern="${LOG_DIR}/ams-%d{yyyy-MM-dd}.log.gz">
+            <PatternLayout pattern="${LOG_PATTERN}"/>
+            <Policies>
+                <TimeBasedTriggeringPolicy interval="1"/>
+            </Policies>
+            <DefaultRolloverStrategy>
+                <Delete basePath="${LOG_DIR}" maxDepth="1">
+                    <IfFileName glob="ams-*.log.gz"/>
+                    <IfLastModified age="14d"/>
+                </Delete>
+            </DefaultRolloverStrategy>
+        </RollingFile>
+    </Appenders>
+
+    <Loggers>
+        <!-- AMS code: DEBUG -->
+        <Logger name="net.superiorstate.ams" level="DEBUG" additivity="false">
+            <AppenderRef ref="Console"/>
+            <AppenderRef ref="RollingFile"/>
+        </Logger>
+
+        <!-- Noisy libraries: WARN -->
+        <Logger name="org.eclipse.persistence" level="WARN"/>
+        <Logger name="org.hibernate.validator" level="WARN"/>
+        <Logger name="org.apache.http" level="WARN"/>
+        <Logger name="org.apache.tomcat" level="WARN"/>
+        <Logger name="org.apache.catalina" level="WARN"/>
+
+        <!-- Default: INFO to both appenders -->
+        <Root level="INFO">
+            <AppenderRef ref="Console"/>
+            <AppenderRef ref="RollingFile"/>
+        </Root>
+    </Loggers>
+
+</Configuration>
