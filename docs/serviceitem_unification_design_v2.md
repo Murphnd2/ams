@@ -1,7 +1,7 @@
 # ServiceItem Unification — Design Document (v2)
 
 > **Purpose:** Consolidate the four divergent "activity item → task sequence" paths into a single, scalable model.
-> **Status:** Draft v2 — incorporating developer feedback
+> **Status:** Implemented (V020)
 > **Date:** February 27, 2026
 
 ---

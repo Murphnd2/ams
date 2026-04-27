@@ -1,7 +1,7 @@
 # Sales Pipeline — Reference Document
 
 **Last Updated:** February 20, 2026 (Session 4 — complete)
-**Replaces:** `sales_pipeline_data_model.md`, `sales_pipeline_implementation_log.md`, `sales_pipeline_session3_log.md`
+**Supersedes:** `sales_pipeline_data_model.md`, `sales_pipeline_implementation_log.md`, `sales_pipeline_session3_log.md` (no longer present in repo)
 
 ---
 
