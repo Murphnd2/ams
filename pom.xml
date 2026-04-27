@@ -203,6 +203,7 @@
                 <filtering>true</filtering>
                 <includes>
                     <include>build.properties</include>
+                    <include>META-INF/persistence-local.xml</include>
                 </includes>
             </resource>
             <resource>
@@ -210,6 +211,7 @@
                 <filtering>false</filtering>
                 <excludes>
                     <exclude>build.properties</exclude>
+                    <exclude>META-INF/persistence-local.xml</exclude>
                 </excludes>
             </resource>
         </resources>
@@ -342,6 +344,23 @@
             <build>
                 <plugins>
                     <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>properties-maven-plugin</artifactId>
+                        <version>1.2.1</version>
+                        <executions>
+                            <execution>
+                                <phase>initialize</phase>
+                                <goals><goal>read-project-properties</goal></goals>
+                                <configuration>
+                                    <files>
+                                        <file>C:\ssa\ssa.properties</file>
+                                    </files>
+                                    <quiet>true</quiet>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-antrun-plugin</artifactId>
                         <version>3.1.0</version>
@@ -353,7 +372,7 @@
                                 <configuration>
                                     <target>
                                         <mkdir dir="${project.build.outputDirectory}/META-INF"/>
-                                        <copy file="${basedir}/src/main/resources/META-INF/persistence-local.xml"
+                                        <copy file="${project.build.outputDirectory}/META-INF/persistence-local.xml"
                                               tofile="${project.build.outputDirectory}/META-INF/persistence.xml"
                                               overwrite="true"/>
                                     </target>

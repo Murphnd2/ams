@@ -6,9 +6,9 @@
   <properties>
     <!-- JDBC: change values to your DB -->
     <property name="jakarta.persistence.jdbc.driver" value="com.mysql.cj.jdbc.Driver"/>
-    <property name="jakarta.persistence.jdbc.url" value="jdbc:mysql://127.0.0.1:3306/beta_ssa?useSSL=false&amp;allowPublicKeyRetrieval=true&amp;serverTimezone=UTC"/>
-    <property name="jakarta.persistence.jdbc.user" value="root"/>
-    <property name="jakarta.persistence.jdbc.password" value="Passw0rd!"/>
+    <property name="jakarta.persistence.jdbc.url" value="${local.db.url}"/>
+    <property name="jakarta.persistence.jdbc.user" value="${local.db.user}"/>
+    <property name="jakarta.persistence.jdbc.password" value="${local.db.password}"/>
 
 
     <property name="eclipselink.logging.level" value="WARNING"/>
