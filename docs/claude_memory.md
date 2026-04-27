@@ -39,6 +39,15 @@
 - **EclipseLink nested JOIN FETCH** silently dropped — use separate queries
 - **EntityManager must stay open** during JSP forward — move forward() inside try block
 
+## Logging
+
+- Config: `src/main/resources/log4j2.xml` (Log4j 2.20.0 + `log4j-slf4j2-impl` SLF4J bridge)
+- Output: console (`catalina.out`) AND `${catalina.base}/logs/ams.log` (daily rotation, 14-day retention)
+- Levels: `net.superiorstate.ams` → DEBUG; noisy libs (EclipseLink, Apache HTTP, Tomcat) → WARN; root → INFO
+- New code pattern: `private static final Logger log = LoggerFactory.getLogger(MyClass.class);` (import `org.slf4j.*`)
+- Existing `System.out.println` calls are NOT being bulk-migrated — clean up organically when files are touched
+- Resolves open question #20
+
 ## Recent Sessions
 - **Session 70:** Sequence Manager enhancements — copy-from-existing modal, inline rename, unsaved changes warning, wider left panel, fixed-width badges, filter scoping fix
 - **Session 78:** Outlook add-in "Create Ticket" feature — new API endpoints (ticket-categories, create-ticket), tabbed taskpane UI, contact selection from email recipients
