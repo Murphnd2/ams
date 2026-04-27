@@ -49,7 +49,6 @@ public final class AgentSetupSnapshotLoader {
         Query fvq = em.createQuery(
                 "SELECT fv FROM ApplicationFieldValue fv " +
                 "JOIN FETCH fv.applicationField af " +
-                "JOIN FETCH af.applicationSection " +
                 "WHERE fv.application.proposal.id = :pid");
         fvq.setParameter("pid", proposalId);
         @SuppressWarnings("unchecked")
