@@ -14,7 +14,11 @@
 - **Active feature (Session 87):** Agent portal polish on top of Session 86's V062 foundation. Shipped: agent Setup detail completion persistence fix (`AgentCompleteToDo`/`AgentReopenToDo`), Completed collapsible, filter narrowed to owned tasks only, Kanban widescreen fit (CONTACTED column removed + column width shrunk), CONTACTED removed from all selectable stage dropdowns, Add Note redesign (tri-state agent-visibility pill in header + inline footer Reason/Status/Save).
 
 ## Key Patterns
-- **"25" suffix** = current/modern version of servlet or JSP
+- **"25" suffix** = current/modern version of servlet or JSP. For model-layer adapter classes at `model/` root, three variants exist:
+  - **`25` (no suffix):** `@Entity` mapped to a DB view — read-only JPA projection, no setters. E.g. `Activity25` → `a25_activity_list_open`.
+  - **`25p`:** `@Entity` on a separate DB view for **participating** activities — those where the current user has an assigned task/dependency. Table name confirms: `a25_activity_list_participating`. Stored in `AmsDataLocal.activitiesWithDependencies`.
+  - **`25u`:** No JPA. Mutable copy constructed from the base `25` entity; adds computed fields and view helpers (`isDelegated`, `getDateHtml()`, `Comparable`, `RecurringTaskList`). These are the in-memory working objects held in session/controllers/JSPs. Origin of "u" not preserved — best evidence: **u**nmapped (no JPA) or **u**tility (adds view computation).
+  - New view adapters should use descriptive names rather than single-letter suffixes. (Resolves open question #22.)
 - **Ghost buttons** = `.ssa-action` (modal/form), `.ghost-action` (toolbar), `.nav-ghost` (navbar)
 - **Flex page layout** = `.audit-wrap` pattern: flex column, toolbar + scrollable body, `height: calc(100vh - 64px)`
 - **sanitizeHtml():** Strips `<script>`, `on*` handlers, `javascript:` protocols. Preserves `<style>`.
