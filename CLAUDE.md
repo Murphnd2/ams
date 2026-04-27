@@ -29,7 +29,7 @@ ams/
 │   │                   monthly, sequence, user)
 │   ├── data/         (dao/, resolver/, service/, util/, plus AmsDataGlobal
 │   │                  and AmsDataLocal at the package root)
-│   ├── filter/       (LoginFilter and ApiTokenFilter)
+│   ├── filter/       (ApiTokenFilter)
 │   └── model/        (activity/, billing/, general/, imports/, sales/,
 │                       summit/, upload/ — all JPA entities and DTOs)
 ├── src/main/resources/META-INF/

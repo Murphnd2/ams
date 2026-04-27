@@ -135,6 +135,9 @@ This file collects every contradiction, dangling reference, suspected stale arti
 **Question:** Is the second one inherited from a global Claude Code skill registry, and if so, do its contents differ from this repo's copy? Cannot answer from the working tree alone.
 
 ---
+**Resolved 2026-04-27** — Informational; no repo change needed. The duplicate is Claude Code merging the repo-local skill (`.claude/skills/proposal-content-page/SKILL.md`) with an Anthropic-hosted global skill of the same name. Neither `settings.json` nor any repo config causes it — it is inherent to how Claude Code combines local and global skill registries.
+
+---
 
 ## 13. `.claude/worktrees/vigilant-jennings/` — empty directory
 
@@ -209,6 +212,9 @@ This file collects every contradiction, dangling reference, suspected stale arti
 **Question:** Branch state not verified in Pass 1.
 
 ---
+**Resolved 2026-04-27** — Branch confirmed absent. `git branch -a | grep proposal-customization` returns no output. CLAUDE.md already correctly notes the branch is not present locally or on origin.
+
+---
 
 ## 20. No `log4j2.xml` configuration file
 
@@ -255,6 +261,9 @@ This file collects every contradiction, dangling reference, suspected stale arti
 **Question:** Not a contradiction. Just noted that there is essentially no XML wiring; everything is annotation-driven.
 
 ---
+**Resolved 2026-04-27** — Informational; no change needed. Confirmed: `web.xml` is 11 lines — Jakarta EE 5.0 declaration plus a single `TldScanner.jarsToSkip` context-param. No servlet, filter, listener, or welcome-file declarations. All mappings are annotation-driven (`@WebServlet`, `@WebFilter`, `@WebListener`). This is intentional.
+
+---
 
 ## 25. `src/main/java/net/superiorstate/ams/EmfListener.java` and `LoginFilter.java` live at the package root
 
@@ -294,6 +303,9 @@ This file collects every contradiction, dangling reference, suspected stale arti
 **Evidence:** CLAUDE.md:71-78 lists eight reference docs. `AMS-DOCS-INDEX.md` (this pass) walks `docs/` and notes which of those are present and current; some are tagged "current," others may not exist at the cited path. (See AMS-DOCS-INDEX.md for per-file resolution.)
 
 **Question:** Each cited path should be cross-checked against `AMS-DOCS-INDEX.md`.
+
+---
+**Resolved 2026-04-27** — All 14 paths in CLAUDE.md's "Where deeper context lives" section verified to exist: both `docs/` references, all five `.claude/inventory/` files, and `.claude/skills/proposal-content-page/SKILL.md`. No broken or moved paths. No change needed.
 
 ---
 
