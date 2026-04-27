@@ -1,7 +1,7 @@
 # Questionnaire System Design
 
 **Date:** March 3, 2026
-**Status:** Design — Not Started
+**Status:** Implemented (V039)
 **Track:** B2 (per activity_detail_transition_plan.md)
 
 ---
