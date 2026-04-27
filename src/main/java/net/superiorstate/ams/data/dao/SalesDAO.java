@@ -170,14 +170,21 @@ public abstract class SalesDAO {
         return (UserRole) q.getSingleResult();
     }
     public static List<Prospect> getAgencyProspects(EntityManager em, Agency agency){
-        Query q = em.createQuery("SELECT a FROM Agency a INNER JOIN FETCH a.agentList ag INNER JOIN FETCH ag.prospectList pl WHERE a.id = :agency_id");
-        q.setParameter("agency_id",agency.getId());
+        Query q = em.createQuery("SELECT a FROM Agency a INNER JOIN FETCH a.agentList ag WHERE a.id = :agency_id");
+        q.setParameter("agency_id", agency.getId());
         Agency fullAgency = (Agency) q.getSingleResult();
-        List<Prospect> prospectList = new ArrayList<>();
         List<Person> agentList = fullAgency.getAgentList();
-        for (Person agent:agentList) {
-            List<Prospect> agentProspectList = agent.getProspectList();
-            for (Prospect prospect: agentProspectList) {
+        List<Long> agentIds = agentList.stream()
+                .map(ag -> ag.getId())
+                .collect(java.util.stream.Collectors.toList());
+        if (!agentIds.isEmpty()) {
+            em.createQuery("SELECT ag FROM Person ag JOIN FETCH ag.prospectList WHERE ag.id IN :agentIds")
+                    .setParameter("agentIds", agentIds)
+                    .getResultList();
+        }
+        List<Prospect> prospectList = new ArrayList<>();
+        for (Person agent : agentList) {
+            for (Prospect prospect : agent.getProspectList()) {
                 prospectList.add(prospect);
             }
         }
