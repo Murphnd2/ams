@@ -11,6 +11,7 @@
 !.claude/commands/
 !.claude/launch.json
 !.claude/CLAUDE.md
+!.claude/memory/
 .claude/settings.local.json
 .claude/worktrees/
 .claude/inventory/
