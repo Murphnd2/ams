@@ -4,13 +4,6 @@
          xsi:schemaLocation="https://jakarta.ee/xml/ns/jakartaee https://jakarta.ee/xml/ns/jakartaee/web-app_5_0.xsd"
          version="5.0">
     <context-param>
-        <description>Location to store uploaded file</description>
-        <param-name>file-upload</param-name>
-        <param-value>
-            c:\Users\kevinmurphy.SUPERIORSTATE\IdeaProjects\km_web_100\src\main\webapp\WEB-INF\view\weblink\linkfiles
-        </param-value>
-    </context-param>
-    <context-param>
         <param-name>org.apache.jasper.compiler.TldScanner.jarsToSkip</param-name>
         <param-value>antlr-*.jar,commons-logging-*.jar,log4j-*.jar</param-value>
     </context-param>
