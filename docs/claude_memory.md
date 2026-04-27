@@ -48,6 +48,21 @@
 - Existing `System.out.println` calls are NOT being bulk-migrated — clean up organically when files are touched
 - Resolves open question #20
 
+## Auth
+
+`LoginFilter` (`net.superiorstate.ams.LoginFilter`) is a `@WebFilter("/*")`. The following paths bypass session auth:
+
+- `/api/` — handled separately (lines 55-58); authenticated via `ApiTokenFilter`, not session
+- `/proposal/` — public proposal viewer (links sent to clients)
+- `/apply/` — public application / intake forms; `/saveApplication` (submit endpoint) also exempt
+- `/q/` — public questionnaires; `/saveQuestionnaire` (submit endpoint) also exempt
+- `/tpo` — **intentional legacy support**: outdated URL from a prior business website; landing page informs visitors the link is outdated; kept for backward compat with old marketing materials
+- `/uploadRateSheet` — rate sheet upload by external parties
+- `/video` — public video content
+- `/outlook/` — Outlook Web Add-in taskpane endpoint
+
+Static resources (`/images/`, `/css/`, `/js/`, `/fonts/`, etc.) are exempted before the auth check via `isStaticResource()`. Resolves open question #17.
+
 ## Recent Sessions
 - **Session 70:** Sequence Manager enhancements — copy-from-existing modal, inline rename, unsaved changes warning, wider left panel, fixed-width badges, filter scoping fix
 - **Session 78:** Outlook add-in "Create Ticket" feature — new API endpoints (ticket-categories, create-ticket), tabbed taskpane UI, contact selection from email recipients
