@@ -124,19 +124,6 @@
             <version>2.0.2</version>
         </dependency>
 
-        <!-- Microsoft Graph + MSAL -->
-        <dependency>
-            <groupId>com.microsoft.azure</groupId>
-            <artifactId>msal4j</artifactId>
-            <version>1.21.0</version>
-        </dependency>
-        <dependency>
-            <groupId>com.microsoft.graph</groupId>
-            <artifactId>microsoft-graph</artifactId>
-            <version>5.52.0</version>
-            <scope>compile</scope>
-        </dependency>
-
         <!-- JetBrains annotations -->
         <dependency>
             <groupId>org.jetbrains</groupId>
@@ -179,6 +166,13 @@
             <groupId>org.reactivestreams</groupId>
             <artifactId>reactive-streams</artifactId>
             <version>1.0.4</version>
+        </dependency>
+
+        <!-- Jackson – JSON parsing for QuestionnaireLoader (and general use) -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <version>2.21.2</version>
         </dependency>
 
         <!-- Gson – JSON parsing for Claude API -->
