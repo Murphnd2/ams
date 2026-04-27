@@ -129,3 +129,7 @@ This file is a **snapshot**. Migration versions advance, branches come and go, d
 - **Build commands actually used** → check `pom.xml` profiles and `.github/workflows/build.yml`
 
 When this file disagrees with the inventory, `MEMORY.md`, or live git/filesystem state, trust the live source over this file.
+
+## Cross-cutting knowledge
+
+Shared preferences, lessons, and conventions are in `.claude/toolkit/` (git submodule from kevin-claude-toolkit). Read those files for context on working preferences, build hygiene, EclipseLink gotchas, secret rotation procedures, and git workflow conventions.
