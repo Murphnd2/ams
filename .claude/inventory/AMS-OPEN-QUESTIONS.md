@@ -27,6 +27,9 @@ This file collects every contradiction, dangling reference, suspected stale arti
 **Question:** Three different "current" versions are stated. CLAUDE.md is the most stale; MEMORY.md trails the working tree by one. Should CLAUDE.md be regarded as a snapshot rather than a source of truth?
 
 ---
+**Resolved 2026-04-27** — Version refs updated to V062 in `migration_tracker.md` and `MEMORY.md`. CLAUDE.md correctly defers to `docs/migrations/` as the authoritative source. See this session.
+
+---
 
 ## 3. Microsoft Graph / MSAL — declared but unused
 
@@ -234,6 +237,9 @@ This file collects every contradiction, dangling reference, suspected stale arti
 **Question:** Why does SSL port serve as the readiness flag? Convention from earlier dev. Noted; not a contradiction.
 
 ---
+**Resolved 2026-04-27** — Sentinel pattern documented with inline comment in `EmfListener.java` (both `contextInitialized` and `sessionCreated` occurrences). Unconventional but correct and harmless — `SSL_PORT='443'` confirms `DatabaseInitializer` has run; the literal value is not used for SSL configuration.
+
+---
 
 ## 22. `Activity25p.java`, `Activity25u.java`, `Checklist25u.java` — naming convention not documented
 
@@ -289,12 +295,18 @@ This file collects every contradiction, dangling reference, suspected stale arti
 **Evidence:** Listed as a gotcha but not actionable as a question; flagged here only because if any servlet forwards outside a try-with-resources EM block, that's latent risk. Not investigated in Pass 1.
 
 ---
+**Resolved 2026-04-27** — Investigated across 124 servlet files. Two patterns in use: Pattern A (EM closed before forward, used by most servlets including `GoActivityDetail25`, `ViewActivity25`, `ProposalBuilder`) relies on eager pre-loading and EclipseLink L2 cache; Pattern B (forward inside try block, EM open during JSP render, used by `ReviewApplication`) matches the MEMORY.md recommendation. Both work safely in production. No immediate fix needed; accepted as architectural convention.
+
+---
 
 ## 28. `docs/migrations/` has 38 versioned scripts (V025-V062), but the lowest is V025
 
 **Evidence:** No V001-V024 in `docs/migrations/`. CLAUDE.md does not document where the baseline schema lives.
 
 **Question:** V025 is the start of versioned migrations; is there a `schema_baseline.sql` or equivalent? `docs/schema_version_migration.sql` (per CLAUDE.md:73) is the registration table — not the baseline DDL.
+
+---
+**Resolved 2026-04-27** — Baseline DDL exists at `docs/importscript/beta_ssa_dev_baseline_thru_V024.sql` (structure-only dump through V024) and `docs/importscript/beta_ssa_baseline_v031.sql` (V031 snapshot). `migration_tracker.md` documents the reset workflow. Reference added to `CLAUDE.md` migration discipline section.
 
 ---
 
@@ -314,6 +326,9 @@ This file collects every contradiction, dangling reference, suspected stale arti
 **Evidence:** `.claude/skills/` contains exactly one skill. The active conversation's available-skills list shows additional `anthropic-skills:*` skills (consolidate-memory, setup-cowork, pdf, xlsx, docx, schedule, pptx, skill-creator).
 
 **Question:** Are those installed at the user/global level (i.e., `~/.claude/skills/`)? Not visible in this repo. Documented in `AMS-CLAUDE-ASSETS.md`.
+
+---
+**Resolved 2026-04-27** — `proposal-content-page` is the only repo-local skill (`.claude/skills/proposal-content-page/SKILL.md`). All other `anthropic-skills:*` entries come from Anthropic's hosted global skill registry; they are not present in `settings.json`, `settings.local.json`, or any repo config. No repo change needed.
 
 ---
 

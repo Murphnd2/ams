@@ -45,6 +45,9 @@ public class EmfListener implements ServletContextListener, HttpSessionListener,
                 em = emf.createEntityManager();
 
                 // Guard: if metamodel is empty, JPQL may fail — catch and continue
+                // SSL_PORT='443' is used as a DB-seeded sentinel — its presence confirms
+                // DatabaseInitializer has run and the schema is bootstrapped. The literal
+                // value is not used for SSL configuration.
                 Constant c = null;
                 try {
                     Query q = em.createQuery("SELECT c FROM Constant c WHERE c.name=:name");
@@ -147,6 +150,9 @@ public class EmfListener implements ServletContextListener, HttpSessionListener,
         EntityManager em = null;
         try {
             em = emf.createEntityManager();
+            // SSL_PORT='443' is used as a DB-seeded sentinel — its presence confirms
+            // DatabaseInitializer has run and the schema is bootstrapped. The literal
+            // value is not used for SSL configuration.
             Constant c = null;
             try {
                 Query q = em.createQuery("SELECT c FROM Constant c WHERE c.name=:name");

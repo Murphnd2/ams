@@ -70,6 +70,7 @@ Schema changes follow versioned migration conventions:
 4. Update `docs/schema_version_migration.sql`
 
 No ad-hoc DDL — every schema change must be a versioned script. See an existing script under `docs/migrations/` as a template.
+- `docs/importscript/` — baseline DDL snapshots (`beta_ssa_dev_baseline_thru_V024.sql`, `beta_ssa_baseline_v031.sql`); used to reset a dev database to a known version.
 
 ## Production environment (summary)
 
