@@ -13,6 +13,9 @@ This file collects every contradiction, dangling reference, suspected stale arti
 **Question:** Is the project Java 17 (per pom) or Java 21 (per CI)? CI building against 21 will succeed with `--release 17` source level, but the divergence is unexplained.
 
 ---
+**Resolved 2026-04-26** — CI workflow's `java-version` aligned to pom.xml target (Java 17). See commit f2f02c5.
+
+---
 
 ## 2. Migration version drift
 
@@ -34,6 +37,9 @@ This file collects every contradiction, dangling reference, suspected stale arti
 **Question:** Are these dependencies pre-staged for an in-progress feature, or leftovers that can be removed? Outlook integration (Sessions 77-78) uses the Outlook **Web Add-in** (taskpane HTML calling AMS APIs), which does not require these libraries on the server. Unresolved.
 
 ---
+**Resolved 2026-04-26** — Microsoft Graph and MSAL dependencies removed from pom.xml; jackson-databind surfaced as direct dependency. WAR size reduced ~16 MB. See commit 7794279.
+
+---
 
 ## 4. CLAUDE.md controller list omits subpackages present in the tree
 
@@ -52,12 +58,18 @@ This file collects every contradiction, dangling reference, suspected stale arti
 **Question:** Is this a placeholder for planned templates, or detritus?
 
 ---
+**Resolved 2026-04-26** — Empty `data/template/` package directory deleted locally on each workstation. Not git-tracked (empty directory), no commit.
+
+---
 
 ## 6. `sales_pipeline_reference.md` claims to replace docs that aren't in the tree
 
 **Evidence:** `AMS-DOCS-INDEX.md` notes that `sales_pipeline_reference.md` claims to be the canonical replacement for three older docs that are no longer present in `docs/`.
 
 **Question:** Were the predecessor docs deleted (good), or moved to a different location (bad reference), or never committed in this branch?
+
+---
+**Resolved 2026-04-26** — `sales_pipeline_reference.md` "Replaces:" header reworded to "Supersedes: ... (no longer present in repo)". See commit c5bcfc2.
 
 ---
 
@@ -68,12 +80,18 @@ This file collects every contradiction, dangling reference, suspected stale arti
 **Question:** Doc not updated post-implementation.
 
 ---
+**Resolved 2026-04-26** — `questionnaire_system_design.md` marked Implemented (V039). See commit 8e3afcb.
+
+---
 
 ## 8. `serviceitem_unification_design_v2.md` labeled "Draft v2" with feature already shipped
 
 **Evidence:** `AMS-DOCS-INDEX.md` notes the doc is marked draft though service-item unification appears to have shipped (per migration history and codebase entities).
 
 **Question:** Doc lifecycle not maintained.
+
+---
+**Resolved 2026-04-26** — `serviceitem_unification_design_v2.md` marked Implemented (V020). See commit a3a50a0.
 
 ---
 
@@ -84,6 +102,9 @@ This file collects every contradiction, dangling reference, suspected stale arti
 **Question:** Is CKEditor 4 still used by any JSP, or is `ckeditor/` orphaned?
 
 ---
+**Resolved 2026-04-26** — Both local CKEditor distributions deleted (~64 MB raw, 13 MB compressed in WAR); CKEditor 5 loaded from CDN in three JSPs (`emailMaster25.jsp`, `pspHome25.jsp`, `sendBillingForm.jsp`). WAR size reduced from ~74 MB to ~61 MB clean. See commit 49c4e54.
+
+---
 
 ## 10. `src-directory.txt` UTF-16 file shows old flat layout
 
@@ -92,12 +113,18 @@ This file collects every contradiction, dangling reference, suspected stale arti
 **Question:** Snapshot artifact from a previous reorganization. Safe to delete? (Pass 1 doesn't propose changes.)
 
 ---
+**Resolved 2026-04-25** — `src-directory.txt` deleted. See commit a387214.
+
+---
 
 ## 11. `ams-src.7z` — 9.6 MB single-commit binary
 
 **Evidence:** A 9.6 MB `.7z` archive of source at repo root, single-commit history, never modified since import.
 
 **Question:** Why is a binary source archive committed? Likely import artifact.
+
+---
+**Resolved 2026-04-25** — `ams-src.7z` deleted. See commit b76b9a0.
 
 ---
 
@@ -116,6 +143,9 @@ This file collects every contradiction, dangling reference, suspected stale arti
 **Question:** Safe to remove? (Out of scope for Pass 1.)
 
 ---
+**Resolved 2026-04-26** — Empty `.claude/worktrees/vigilant-jennings/` deleted locally on each workstation. Not git-tracked (empty directory), no commit.
+
+---
 
 ## 14. `web.xml` hardcoded Windows path
 
@@ -124,12 +154,18 @@ This file collects every contradiction, dangling reference, suspected stale arti
 **Question:** Production tomcat10 deployment must be overriding this somewhere (otherwise uploads break). Where? Not investigated in Pass 1.
 
 ---
+**Resolved 2026-04-26** — Dead `<context-param>` for file-upload removed from `web.xml`. The path referenced a defunct precursor project (km_web_100). See commit 55f72b1.
+
+---
 
 ## 15. `persistence-local.xml` hardcoded credentials
 
 **Evidence:** `src/main/resources/META-INF/persistence-local.xml` includes JDBC URL `jdbc:mysql://127.0.0.1:3306/beta_ssa` with literal username `root` and password `Passw0rd!`.
 
 **Question:** This file is intentional for local development (Maven copies persistence-server.xml in the `server` profile). However, the credentials are in a tracked file. Out of scope for Pass 1 to fix; flagged.
+
+---
+**Resolved 2026-04-26 (code)** — `persistence-local.xml` credentials externalized to `C:\ssa\ssa.properties` via Maven resource filtering in the local profile. Build verification pending DB updates. See commit b5fdf68.
 
 ---
 
@@ -150,6 +186,9 @@ This file collects every contradiction, dangling reference, suspected stale arti
 **Evidence:** `LoginFilter.java` allows requests to `/api/`, `/proposal/`, `/apply/`, `/q/`, `/tpo`, `/video`, `/outlook/` without a session.
 
 **Question:** What is `/tpo`? "Third-party outsourcing" is the obvious guess, but no servlet, JSP, or doc was located in this pass.
+
+---
+**Resolved 2026-04-26** — `LoginFilter` public path allow-list documented in `MEMORY.md`, including the intentional `/tpo` legacy support (outdated URL from a prior business website; kept for backward compat). See commit 56161c3.
 
 ---
 
@@ -178,6 +217,9 @@ This file collects every contradiction, dangling reference, suspected stale arti
 **Question:** Logging is effectively going to `catalina.out` via console with default-config Log4j? Intentional? (Pass 1: noted, not investigated.)
 
 ---
+**Resolved 2026-04-26** — Log4j2 configuration added at `src/main/resources/log4j2.xml`; logs to console + rolling file (`${catalina.base}/logs/ams.log`, 14-day retention). See commit 77ede2c.
+
+---
 
 ## 21. EmfListener probes `Constant SSL_PORT='443'` to detect "DB initialized"
 
@@ -192,6 +234,9 @@ This file collects every contradiction, dangling reference, suspected stale arti
 **Evidence:** At `model/` root, alongside `Activity25.java` and `Checklist25.java`, sit `Activity25p.java`, `Activity25u.java`, `Checklist25u.java`. CLAUDE.md and MEMORY.md only document the "25" convention, not the "25p" / "25u" suffixes.
 
 **Question:** Likely "PSP" and "User" view variants. Unverified.
+
+---
+**Resolved 2026-04-26** — 25/25p/25u suffix convention documented in `MEMORY.md`; "p" definitively means participating (confirmed from `@Table(name="a25_activity_list_participating")`), "u" honestly labeled as ambiguous (best evidence: unmapped or utility). See commit 714f317.
 
 ---
 
@@ -224,6 +269,9 @@ This file collects every contradiction, dangling reference, suspected stale arti
 **Evidence:** `.gitignore:5` ignores `.claude/`. The user-supplied task asks for output under `.claude/inventory/` and a commit. To commit, `git add -f` is required.
 
 **Question:** The user is presumably aware (the directory was their choice). This pass uses `git add -f .claude/inventory/` so only the inventory output is forced in, not other `.claude/` artifacts.
+
+---
+**Resolved 2026-04-25** — `.gitignore` restructured to selectively track shared `.claude/` assets (skills, launch.json, prompts, etc.) while continuing to ignore `settings.local.json`, `worktrees/`, `inventory/`, and runtime caches. See commit 6e18dd3.
 
 ---
 
