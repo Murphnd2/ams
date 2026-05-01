@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  DESCRIPTIVE COPY — NOT AUTHORITATIVE
+  =====================================
+  This file is a sanitized reference copy of the Tomcat server.xml on the
+  production VPS at /var/lib/tomcat10/conf/server.xml.
+
+  The live file on the VPS is authoritative. If the two diverge, update
+  this file to match production (or vice versa after reviewing why they differ).
+
+  Last synced: 2026-05-01 (Phase 3a — RemoteIpValve added)
+  See: docs/infrastructure/production_architecture.md
+       docs/analysis/proxy_readiness_audit.md
+-->
+<Server port="-1" shutdown="SHUTDOWN">
+
+  <Listener className="org.apache.catalina.startup.VersionLoggerListener" />
+  <Listener className="org.apache.catalina.core.AprLifecycleListener" SSLEngine="on" />
+  <Listener className="org.apache.catalina.core.JreMemoryLeakPreventionListener" />
+  <Listener className="org.apache.catalina.mbeans.GlobalResourcesLifecycleListener" />
+  <Listener className="org.apache.catalina.core.ThreadLocalLeakPreventionListener" />
+
+  <GlobalNamingResources>
+    <Resource name="UserDatabase" auth="Container"
+              type="org.apache.catalina.UserDatabase"
+              description="User database that can be updated and saved"
+              factory="org.apache.catalina.users.MemoryUserDatabaseFactory"
+              pathname="conf/tomcat-users.xml" />
+  </GlobalNamingResources>
+
+  <Service name="Catalina">
+
+    <!--
+      HTTP connector — bound to loopback only.
+      nginx terminates TLS externally and forwards to this port.
+      Do NOT add a scheme="https" or secure="true" attribute here;
+      those are handled by RemoteIpValve below, which reads
+      X-Forwarded-Proto from nginx.
+    -->
+    <Connector address="127.0.0.1" port="8080" protocol="HTTP/1.1"
+               connectionTimeout="20000"
+               redirectPort="8443" />
+
+    <Engine name="Catalina" defaultHost="localhost">
+
+      <Realm className="org.apache.catalina.realm.LockOutRealm">
+        <Realm className="org.apache.catalina.realm.UserDatabaseRealm"
+               resourceName="UserDatabase"/>
+      </Realm>
+
+      <Host name="localhost" appBase="webapps"
+            unpackWARs="true" autoDeploy="true">
+
+        <!--
+          Access log: requestAttributesEnabled="true" is required so that
+          RemoteIpValve (below) can populate the real client IP into the
+          %h field. Without it, the access log records 127.0.0.1 for every
+          request even after the valve corrects request.getRemoteAddr().
+        -->
+        <Valve className="org.apache.catalina.valves.AccessLogValve"
+               directory="logs"
+               prefix="localhost_access_log"
+               suffix=".txt"
+               pattern="%h %l %u %t &quot;%r&quot; %s %b"
+               requestAttributesEnabled="true" />
+
+        <!--
+          RemoteIpValve: trust X-Forwarded-* headers from nginx loopback only.
+
+          remoteIpHeader    — header nginx sets to the real client IP chain
+                              (nginx appends its $remote_addr, which is the
+                               real IP after cloudflare-real-ip.conf rewrites
+                               $remote_addr from CF-Connecting-IP)
+          protocolHeader    — header nginx hardcodes to "https" for all proxied traffic
+          internalProxies   — ONLY 127.0.0.1 and ::1 are trusted as intermediate
+                              proxies. This prevents external X-Forwarded-For
+                              injection from being treated as a trusted internal hop.
+
+          Effect after this valve:
+            request.getScheme()     → "https"
+            request.getServerPort() → 443
+            request.getRemoteAddr() → real client IP
+            request.isSecure()      → true
+            session cookie Secure   → set
+
+          Added 2026-05-01. See docs/analysis/proxy_readiness_audit.md §4 and §13 (P0).
+        -->
+        <Valve className="org.apache.catalina.valves.RemoteIpValve"
+               remoteIpHeader="x-forwarded-for"
+               protocolHeader="x-forwarded-proto"
+               internalProxies="127\.0\.0\.1|::1" />
+
+      </Host>
+    </Engine>
+  </Service>
+</Server>

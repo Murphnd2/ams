@@ -1,6 +1,22 @@
 # SSL Setup with Nginx + Let's Encrypt
 
-**Last Updated:** March 20, 2026
+> **SUPERSEDED — 2026-05-01**
+>
+> This document describes the pre-Phase-3 setup (HTTP-01 certbot, no RemoteIpValve,
+> no Cloudflare). The production architecture was updated on 2026-05-01. For the
+> current authoritative reference see:
+>
+> - **`docs/infrastructure/production_architecture.md`** — full current architecture
+> - **`docs/infrastructure/cloudflare_setup.md`** — Cloudflare zones and proxy config
+> - **`docs/infrastructure/letsencrypt_renewal.md`** — certbot DNS-01 renewal
+> - **`docs/infrastructure/configs/server.xml`** — Tomcat server.xml with RemoteIpValve
+>
+> The content below is retained as a historical reference for the nginx setup
+> steps that remain valid for new PSP provisioning (nginx site config, certbot
+> install, port 80 redirect). The certbot command must be updated to use
+> `--dns-cloudflare` instead of `--nginx` for any deployment behind Cloudflare.
+
+**Last Updated:** March 20, 2026 (superseded 2026-05-01)
 **Referenced from:** `docs/deployment_runbook.md` Phase 3
 
 ---

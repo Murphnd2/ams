@@ -1,6 +1,6 @@
 # Deployment Backlog
 
-**Last Updated:** March 12, 2026
+**Last Updated:** 2026-05-01
 **Reference:** See `docs/deployment_strategy.md` for full context on each item.
 
 Items are ordered by dependency (earlier items unblock later ones).
@@ -440,7 +440,183 @@ Self-service AI key management via Settings modal. AI features start OFF on fres
 
 ---
 
+### D-68: Phase 3a — Tomcat RemoteIpValve ✅
+
+**Completed:** 2026-05-01  
+**Applied to:** Production only — Demo, BPO, Master pending (see D-74)
+
+Added `RemoteIpValve` to `/var/lib/tomcat10/conf/server.xml` on the production VPS, inside the `<Host>` block. Also set `requestAttributesEnabled="true"` on the existing `AccessLogValve` so the access log records real client IPs.
+
+**What this fixed:**
+- `request.getScheme()` returning `"http"` instead of `"https"` behind nginx → now returns `"https"`
+- `request.getServerPort()` returning `8080` → now returns `443`
+- `request.getRemoteAddr()` returning `127.0.0.1` → now returns real client IP
+- `request.isSecure()` returning `false` → now returns `true`
+- `NdtAccessLog.ipAddress` recording `127.0.0.1` for every audit entry → now records real client IP
+- Outbound emails (proposals, agency invitations, billing notifications) containing `http://host:8080/...` links → now generate correct `https://host/...` links
+
+**Reference:** `docs/analysis/proxy_readiness_audit.md` §4, §13 P0  
+**Config copy:** `docs/infrastructure/configs/server.xml`
+
+---
+
+### D-69: Phase 3b — Let's Encrypt DNS-01 via Cloudflare ✅
+
+**Completed:** 2026-05-01  
+**Applied to:** Production only
+
+Switched certbot from HTTP-01 (nginx authenticator) to DNS-01 (Cloudflare DNS API) on the production VPS.
+
+**Changes made:**
+- Installed `python3-certbot-dns-cloudflare` (apt)
+- Created `/etc/letsencrypt/cloudflare.ini` (mode 600, root-owned) with a Cloudflare API token scoped to DNS:Edit on `superiorstate.biz` and `superiorstate.net`
+- Re-issued both certs via `sudo certbot certonly --dns-cloudflare ...`
+- Verified renewal config at `/etc/letsencrypt/renewal/superiorstate.biz.conf` and `.../superiorstate.net.conf` shows `authenticator = dns-cloudflare`
+
+**Why:** HTTP-01 renewal is incompatible with Cloudflare proxy (orange cloud). DNS-01 is proxy-agnostic.
+
+**Reference:** `docs/infrastructure/letsencrypt_renewal.md`, `docs/analysis/proxy_readiness_audit.md` §6
+
+---
+
+### D-70: Phase 3c — Cloudflare Proxy Enabled on Production ✅
+
+**Completed:** 2026-05-01
+
+DNS for both `superiorstate.biz` and `superiorstate.net` was migrated from GoDaddy nameservers to Cloudflare nameservers, and both domain registrations were transferred from GoDaddy to Cloudflare Registrar (at-cost pricing). Cloudflare proxy (orange cloud) was then enabled on the apex and www A records for both zones.
+
+**Changes made:**
+- Nameserver delegation: GoDaddy → `dylan.ns.cloudflare.com` / `isabel.ns.cloudflare.com`
+- Domain registrar: GoDaddy → Cloudflare Registrar
+- SSL/TLS mode set to **Full (strict)** on both zones
+- A records for apex + www: gray cloud → orange cloud (proxied)
+- Email records (MX, SPF, DKIM, DMARC, autodiscover, em102001): explicitly DNS-only
+- Installed `/etc/nginx/conf.d/cloudflare-real-ip.conf` on production VPS — declares Cloudflare IP ranges as trusted, rewrites nginx `$remote_addr` from `CF-Connecting-IP` header so downstream real IPs are correct
+
+**Reference:** `docs/infrastructure/cloudflare_setup.md`, `docs/infrastructure/production_architecture.md`  
+**Config copy:** `docs/infrastructure/configs/cloudflare-real-ip.conf`
+
+---
+
 ## Open Items
+
+### D-71: Phase 3d — URL Generation Cleanup (Deferred)
+
+**Priority:** LOW — Not blocking; RemoteIpValve (D-68) already produces correct URLs  
+**Status:** Deferred
+
+Five servlets build outbound URLs (sent in emails) from raw `request.getScheme()` + `request.getServerName()` + `request.getServerPort()` instead of from the `WEB_PATH` DB constant. These now work correctly because D-68's RemoteIpValve restores the real scheme/port, but they are fragile: if the valve is ever misconfigured or removed, the links break silently.
+
+**Servlets to migrate:**
+
+| Servlet | Link type |
+|---------|-----------|
+| `ProposalDetail.java` | Proposal share link in email to prospect |
+| `SendProposal.java` | Proposal share link in outbound email |
+| `SendInvitation.java` | Agency invitation link emailed to agents |
+| `EmailBillingToEmployer.java` | Billing detail link emailed to employers |
+| `125eligibility.jsp` | Return URL for NDT eligibility questionnaire |
+
+**Target pattern:** Read `WEB_PATH` DB constant (as `HelpUserLogin` and `CreateUser25` already do), then fall back to the `SYSTEM_URL` from `AppConfig`. Do not use raw `request.getScheme()` for externally-delivered links.
+
+**Reference:** `docs/analysis/proxy_readiness_audit.md` §2, §13 P1
+
+---
+
+### D-72: Phase 3e — TPA Deployment Readiness (Deferred)
+
+**Priority:** LOW — Required before offering AMS to non-SSA TPAs  
+**Status:** Deferred
+
+Four SSA-specific hard-coded values need to be externalized before a TPA could deploy AMS under their own brand without code changes:
+
+| Location | Hard-coded value | What to do |
+|----------|-----------------|-----------|
+| `CreateUser25.java:330` + `HelpUserLogin.java:89` | `"noreply@superiorstate.net"` FROM address | Add `NOREPLY_EMAIL` DB constant seeded from initialization form |
+| `DatabaseInitializer.java:878` | `MASTER_REGISTRY_URL` defaults to `"https://superiorstate.net"` | Seed from `ssa.properties` `MASTER_URL` key or leave blank |
+| `AmsDataGlobal.java:395` | `WEB_PATH` fallback = `"https://superiorstate.biz/"` | Change fallback to empty string or generic placeholder |
+| `DocumentConstants.java` | SharePoint links + `DOC_PATH` = SSA SharePoint/docs | Convert to DB constants or configuration table |
+
+**Reference:** `docs/analysis/proxy_readiness_audit.md` §7, §12, §13 P1
+
+---
+
+### D-73: Phase 3f-1 — Origin Firewall (Recommended Soon)
+
+**Priority:** MEDIUM — Without this, the Cloudflare proxy provides IP hiding but not true access control  
+**Status:** Not started
+
+The production VPS public IP (66.179.248.171) currently accepts inbound connections on port 443 from any source. If the origin IP is discovered (e.g., via historical DNS records, certificate transparency logs, or OSINT), an attacker can bypass Cloudflare and connect directly.
+
+**Recommended implementation:** UFW rules restricting port 443 to Cloudflare's published IP ranges, plus an automated update mechanism to keep the rules current.
+
+```bash
+# Example: deny all :443, then allow Cloudflare ranges
+sudo ufw default deny incoming
+sudo ufw allow from 103.21.244.0/22 to any port 443
+sudo ufw allow from 173.245.48.0/20 to any port 443
+# ... (all ranges from docs/infrastructure/configs/cloudflare-real-ip.conf)
+```
+
+**Auto-update consideration:** Cloudflare rarely changes IP ranges but does occasionally. A cron script that fetches `https://www.cloudflare.com/ips-v4` and `https://www.cloudflare.com/ips-v6` and diffs against the UFW ruleset would prevent silent access loss if ranges change.
+
+**Escape hatch:** SSH (port 22) must remain open from the operator's IP or a bastion. The `ufw allow ssh` rule must be in place before restricting port 443.
+
+**Also bundle:** HSTS header (`Strict-Transport-Security: max-age=31536000; includeSubDomains`) in nginx site config.
+
+---
+
+### D-74: Phase 3f-2 — Demo/BPO/Master VPS Standardization
+
+**Priority:** MEDIUM — Master image is the template; misalignment affects all future clones  
+**Status:** Not started
+
+The three non-production VPSes use the pre-Phase-3 architecture. Decisions needed before the next master snapshot:
+
+| VPS | Current SSL | Current proxy | RemoteIpValve? |
+|-----|------------|--------------|----------------|
+| `demo.superiorstate.biz` | Let's Encrypt, nginx plugin (HTTP-01) | None (direct) | No |
+| `bpo.superiorstate.biz` | TODO(verify) — may be Tomcat-direct or nginx | None | No |
+| `master.superiorstate.biz` | Snapshot v9 has nginx+certbot-nginx installed | None (stopped) | No |
+
+**Recommended action:**
+1. Decide whether demo/BPO should be put behind Cloudflare proxy (probably yes for consistency)
+2. Apply D-68 (RemoteIpValve) to master image so all future clones inherit it
+3. Switch demo and BPO to DNS-01 certbot (same Cloudflare API token works for all subdomains if token is scoped correctly)
+4. Take master snapshot v10 after changes
+
+**Note:** Demo and BPO use subdomains (`demo.superiorstate.biz`, `bpo.superiorstate.biz`). The Cloudflare API token for certbot DNS-01 is already scoped to `superiorstate.biz` zone — it covers all subdomains.
+
+---
+
+### D-75: Phase 3f-3 — SameSite Cookie Configuration
+
+**Priority:** LOW — CSRF risk is low in current threat model; no user-reported issues  
+**Status:** Not started
+
+AMS `web.xml` has no `<session-config>` element. Tomcat 10 defaults apply: session cookie is `HttpOnly=true`, `Secure` is now set (via RemoteIpValve, D-68), but `SameSite` is not configured — behavior depends on browser default (which varies across browsers and versions).
+
+**Recommended change to `web.xml`:**
+
+```xml
+<session-config>
+  <cookie-config>
+    <http-only>true</http-only>
+    <secure>true</secure>
+  </cookie-config>
+</session-config>
+```
+
+Note: `SameSite` attribute is not directly configurable in servlet `web.xml` as of Servlet 5.0 (Jakarta EE 9). It requires either a Tomcat-specific `sameSiteCookies` attribute on the `Context` element in `context.xml`, or a filter that rewrites the `Set-Cookie` header.
+
+**Tomcat context.xml approach:**
+```xml
+<Context sameSiteCookies="strict">
+```
+
+This is a low-risk application code change but is bundled here as a deployment/config concern since it touches both `web.xml` and `context.xml`.
+
+---
 
 ### D-07: Externalize Database Connection
 
