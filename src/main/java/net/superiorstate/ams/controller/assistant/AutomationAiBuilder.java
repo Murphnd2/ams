@@ -2,6 +2,7 @@ package net.superiorstate.ams.controller.assistant;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
+import jakarta.persistence.EntityManagerFactory;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
@@ -198,8 +199,10 @@ public class AutomationAiBuilder extends HttpServlet {
             if (knowledgeService != null && knowledgeService.isInitialized()) return;
 
             try {
+                EntityManagerFactory emf =
+                        (EntityManagerFactory) request.getServletContext().getAttribute("emf");
                 knowledgeService = new KnowledgeSearchService();
-                knowledgeService.initialize();
+                knowledgeService.initialize(emf);
                 request.getServletContext().setAttribute("knowledgeService", knowledgeService);
                 log.info("KnowledgeSearchService initialized by AutomationAiBuilder");
             } catch (Exception e) {

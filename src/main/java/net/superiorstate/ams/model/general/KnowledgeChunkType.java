@@ -1,0 +1,18 @@
+package net.superiorstate.ams.model.general;
+
+public enum KnowledgeChunkType {
+    STYLE_RULE,
+    STYLE_EXAMPLE_GOOD,
+    STYLE_EXAMPLE_BAD,
+    FEDERAL_RULE,
+    FEDERAL_LIMIT,
+    FEDERAL_DEADLINE,
+    SSA_OFFERING,
+    SSA_PROCEDURE,
+    SSA_PRICING,
+    SSA_CONTACT,
+    SUMMIT_HOWTO,
+    SUMMIT_GOTCHA,
+    SCENARIO_PLAYBOOK,
+    ESCALATION_TRIGGER
+}

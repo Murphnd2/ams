@@ -82,4 +82,7 @@ INSERT IGNORE INTO schema_version (version, description, script_name) VALUES
 ('V059', 'NDT census-based testing tables', 'V059__ndt_census_tables.sql'),
 ('V060', 'Outlook add-in user link + weblink.note_id', 'V060__outlook_user_link.sql'),
 ('V061', 'ToDo-level ownership override for agent delegation', 'V061__todo_ownership_override.sql'),
-('V062', 'Per-note agent visibility override', 'V062__note_agent_visibility.sql');
+('V062', 'Per-note agent visibility override', 'V062__note_agent_visibility.sql'),
+('V063', 'Knowledge Base tables (knowledge_base, knowledge_chunk, knowledge_chunk_history) + 5 KB registry rows', 'V063__knowledge_base_tables.sql'),
+('V064', 'Platform JSON registry seed (proposal_page_builder, automation_email_builder)', 'V064__platform_json_registry_seed.sql'),
+('V065', 'Email Draft Assistant skill seed: unique index on chatbot_skill(psp_id,skill_name) + EMAIL_DRAFT_ASSISTANT row', 'V065__email_draft_assistant_skill.sql');

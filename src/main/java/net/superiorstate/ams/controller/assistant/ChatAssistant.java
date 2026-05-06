@@ -241,8 +241,10 @@ public class ChatAssistant extends HttpServlet {
             if (knowledgeService != null && knowledgeService.isInitialized()) return;
 
             try {
+                EntityManagerFactory emf =
+                        (EntityManagerFactory) request.getServletContext().getAttribute("emf");
                 knowledgeService = new KnowledgeSearchService();
-                knowledgeService.initialize();
+                knowledgeService.initialize(emf);
                 request.getServletContext().setAttribute("knowledgeService", knowledgeService);
                 log.info("KnowledgeSearchService initialized and stored in application scope");
             } catch (Exception e) {

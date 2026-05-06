@@ -30,6 +30,28 @@ public abstract class ChatbotSkillDAO {
     }
 
     /**
+     * Returns the first active skill matching the given name for a specific PSP,
+     * or null if no match is found.
+     * Used by internal endpoints (e.g. EmailAssistantDraft) that look up a skill
+     * by its well-known name rather than by keyword trigger.
+     */
+    public static ChatbotSkill getBySkillName(EntityManager em, String skillName, Long pspId) {
+        try {
+            List<ChatbotSkill> results = em.createQuery(
+                    "SELECT s FROM ChatbotSkill s WHERE s.skillName = :name AND s.psp.id = :pspId",
+                    ChatbotSkill.class)
+                    .setParameter("name", skillName)
+                    .setParameter("pspId", pspId)
+                    .setMaxResults(1)
+                    .getResultList();
+            return results.isEmpty() ? null : results.get(0);
+        } catch (Exception e) {
+            System.err.println("❌ getBySkillName: " + e.getMessage());
+            return null;
+        }
+    }
+
+    /**
      * Finds the best matching skill for a user message, optionally with a file.
      *
      * @param skills      active skills list (pre-filtered for role)

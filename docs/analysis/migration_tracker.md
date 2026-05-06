@@ -16,7 +16,7 @@ Tracks database schema versions across environments.
 | BPO | bpo.superiorstate.biz | beta_ssa | BPO instance (V038, initialized, release V0.37.0) |
 | Master | master.superiorstate.biz | beta_ssa | Snapshot v9 (V057, stopped) |
 
-## Current Highest Version: V062
+## Current Highest Version: V065
 
 ## Dev Baseline
 
@@ -94,7 +94,9 @@ Individual migration scripts are no longer stored in the repo. The baseline dump
 | V060 | Outlook add-in user link + weblink.note_id | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
 | V061 | ToDo-level ownership override for agent delegation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
 | V062 | Per-note agent visibility override | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
-| V062 | Per-note agent visibility override | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
+| V063 | Knowledge Base tables (knowledge_base, knowledge_chunk, knowledge_chunk_history) + 5 KB registry rows | ⬜ | ⬜ | ⬜ | ✅ | ⬜ | ⬜ | ⬜ |
+| V064 | Platform JSON registry seed (proposal_page_builder, automation_email_builder) | ⬜ | ⬜ | ⬜ | ✅ | ⬜ | ⬜ | ⬜ |
+| V065 | Email Draft Assistant skill seed: unique index on chatbot_skill(psp_id,skill_name) + EMAIL_DRAFT_ASSISTANT row | ⬜ | ⬜ | ⬜ | ✅ | ⬜ | ⬜ | ⬜ |
 
 ## Notes
 
@@ -136,3 +138,5 @@ Individual migration scripts are no longer stored in the repo. The baseline dump
 - V050 FK fix: original script referenced `person(id)` which doesn't exist as a standalone table (Person extends Assignee via JPA inheritance). Corrected to `assignee(id)`. On all environments the column was added but the FK failed silently — manually applied corrected FK on production, demo, and BPO (March 12, 2026).
 - V061 adds four ownership-override columns to the todo table: override_ownership TINYINT(1), has_owner TINYINT(1), owner_id BIGINT (FK → assignee), and allow_non_owner TINYINT(1). Mirrors Task's ownership shape at the ToDo instance level. When override_ownership=0 the ToDo inherits from Task; when 1 the ToDo's own fields are authoritative. Index on owner_id supports the delegated_to_me EXISTS subquery in ActivityLandingDao. Enables per-Setup delegation to originating-agency agents without affecting the Task template. Requires updated WAR with ToDo entity fields, ToDoOut25 resolver swap, UpdateTask25 override branch, ActivityLandingDao SQL update, OriginatingAgencyResolver, taskManager25.jsp override sub-row, and AgentHome delegated-to-me panel.
 - V062 adds nullable agent_visible TINYINT(1) column to the note table and indexes it. NULL = fall back to PSP default (constant key NOTES_AGENT_VISIBLE_DEFAULT, default 0 = hidden); 0 = hidden from agent portal; 1 = visible. Used by the agent-portal Setup detail view to filter internal PSP chatter from agent-visible status updates. Agent-authored nudge notes are always written with agent_visible=1 and surface on Waiting-On-Us via existing ActivityStatus id=3. Requires updated WAR with Note.agentVisible field, NOTES_AGENT_VISIBLE_DEFAULT added to UpdatePspSettings FEATURE_KEYS and PSP settings UI, AddNoteToActivity25 reading the toggle, NoteVisibilityResolver helper, GoActivityDetail25.agentBlocked() widened to selling-agent / agency-manager scope, AgentSetupList servlet + agentSetupList25.jsp, and agent-flavored filtering on the Setup detail JSP.
+- V063 creates the knowledge_base, knowledge_chunk, and knowledge_chunk_history tables for AMS's AI knowledge system. Schema-only; no chunk content is seeded — content for DB-backed KBs arrives in subsequent migrations or via the future admin UI. Five KB registry rows are seeded: style_voice (ALWAYS_LOAD, communication style rules), federal_rules (Section 125/FSA/HSA/COBRA/DCAP/ICHRA/HRA/transit), ssa_business (offerings, procedures, fees, escalation chains), summit_supplemental (SSA tribal Summit gotchas), and summit_official (JSON-backed pointer to the existing summit_guide_indexed.json classpath file). The registry is now the single enumeration point for all knowledge bases, DB and JSON alike. No Java entities, DAOs, or UI in this round — schema only.
+- V064 seeds two platform-JSON registry rows in `knowledge_base` (proposal_page_builder, automation_email_builder) that were missed by V063 because they were intended to be seeded by `DatabaseInitializer.seedKnowledgeBaseRegistry()`, which only runs on fresh PSP installs. Idempotent via `INSERT IGNORE`.

@@ -621,6 +621,8 @@ public abstract class DatabaseInitializer {
         createInitializationChecklist(em);
         // Seed AI Setup Guide chatbot skill
         seedAiSetupGuideSkill(em, psp);
+        // Seed KB registry (7 rows: 5 shared with V063 migration + 2 AI-builder-only)
+        seedKnowledgeBaseRegistry(em);
 
     }
 
@@ -959,6 +961,72 @@ public abstract class DatabaseInitializer {
             if (em.getTransaction().isActive()) em.getTransaction().rollback();
             System.out.println("Warning: Could not seed AI Setup Guide skill — " + e.getMessage());
         }
+    }
+
+    /**
+     * Seeds the 7 knowledge_base registry rows.
+     * The first 5 rows are also seeded by V063 migration (INSERT IGNORE there +
+     * EXISTS check here make both paths idempotent).
+     * The last 2 (proposal_page_builder, automation_email_builder) are seeded here only.
+     */
+    private static void seedKnowledgeBaseRegistry(EntityManager em) {
+        try {
+            em.getTransaction().begin();
+            seedKbRow(em, "style_voice",
+                    "Communication Style & Voice",
+                    "SSA tone, structure, length, and accuracy rules for all outbound email. Always loaded into every email-drafter prompt.",
+                    KnowledgeBaseSource.DB, null, KnowledgeBaseReloadStrategy.ALWAYS_LOAD, 10);
+            seedKbRow(em, "federal_rules",
+                    "Federal Benefits Rules",
+                    "Section 125, FSA, HSA, COBRA, DCAP, transit, ICHRA, HRA rules and limits. Effective-dated where applicable.",
+                    KnowledgeBaseSource.DB, null, KnowledgeBaseReloadStrategy.SEARCH, 20);
+            seedKbRow(em, "ssa_business",
+                    "SSA Business Knowledge",
+                    "SSA service offerings, internal procedures, fees, escalation chains, and operational rules.",
+                    KnowledgeBaseSource.DB, null, KnowledgeBaseReloadStrategy.SEARCH, 30);
+            seedKbRow(em, "summit_supplemental",
+                    "Summit Tribal Knowledge",
+                    "SSA-discovered Summit gotchas, workarounds, and how-tos not in the official Summit guide.",
+                    KnowledgeBaseSource.DB, null, KnowledgeBaseReloadStrategy.SEARCH, 40);
+            seedKbRow(em, "summit_official",
+                    "Summit User Guide",
+                    "Official DataPath Summit user guide. Loaded from JSON; updated by re-crawl.",
+                    KnowledgeBaseSource.JSON, "summit_guide_indexed.json", KnowledgeBaseReloadStrategy.SEARCH, 50);
+            seedKbRow(em, "proposal_page_builder",
+                    "Proposal Page Builder Knowledge",
+                    "Knowledge base for the AI Proposal Page Builder feature.",
+                    KnowledgeBaseSource.JSON, "proposal-page-builder.json", KnowledgeBaseReloadStrategy.SEARCH, 60);
+            seedKbRow(em, "automation_email_builder",
+                    "Automation Email Builder Knowledge",
+                    "Knowledge base for the AI Automation Email Builder feature.",
+                    KnowledgeBaseSource.JSON, "automation-email-builder.json", KnowledgeBaseReloadStrategy.SEARCH, 70);
+            em.getTransaction().commit();
+            System.out.println("Seeded KB registry (7 rows, idempotent)");
+        } catch (Exception e) {
+            if (em.getTransaction().isActive()) em.getTransaction().rollback();
+            System.out.println("Warning: Could not seed KB registry — " + e.getMessage());
+        }
+    }
+
+    private static void seedKbRow(EntityManager em, String kbKey, String label, String description,
+                                   KnowledgeBaseSource source, String jsonFilename,
+                                   KnowledgeBaseReloadStrategy reloadStrategy, int sortOrder) {
+        Long count = em.createQuery(
+                "SELECT COUNT(kb) FROM KnowledgeBase kb WHERE kb.kbKey = :kbKey", Long.class)
+                .setParameter("kbKey", kbKey)
+                .getSingleResult();
+        if (count > 0) return;
+
+        KnowledgeBase kb = new KnowledgeBase();
+        kb.setKbKey(kbKey);
+        kb.setLabel(label);
+        kb.setDescription(description);
+        kb.setSource(source);
+        kb.setJsonFilename(jsonFilename);
+        kb.setReloadStrategy(reloadStrategy);
+        kb.setSortOrder(sortOrder);
+        kb.setActive(true);
+        em.persist(kb);
     }
 
     public static void createConstant(EntityManager em, String name, String value){
