@@ -53,6 +53,13 @@ public class ApiTokenFilter implements Filter {
             return;
         }
 
+        // Skip auth for session-authenticated PSP endpoints
+        // (servlet enforces its own session check via AmsDataLocal)
+        if (uri.endsWith("/api/v1/employer-inventory")) {
+            chain.doFilter(request, response);
+            return;
+        }
+
         String authHeader = request.getHeader("Authorization");
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             sendUnauthorized(response);

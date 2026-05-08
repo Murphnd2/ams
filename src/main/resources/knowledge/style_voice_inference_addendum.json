@@ -1,0 +1,82 @@
+[
+  {
+    "title": "IF-1 — The literal question vs. the real question",
+    "section": "Inference & Reading the Inbound",
+    "content": "Participant emails frequently embed an implicit question under a literal one. \"Can you tell me what's happening with my claim?\" usually means \"please fix this.\" \"I'm not sure how this works\" often means \"please handle it.\" Read the literal question, then ask: what does the participant actually want as an outcome? Answer that. Don't take an implicit \"fix this\" and turn it into a generic \"here's how the process works\" lecture.",
+    "keywords": "inference, implicit question, real question, outcome, intent",
+    "chunkType": "STYLE_RULE",
+    "visibility": "INTERNAL"
+  },
+  {
+    "title": "IF-2 — Numbers in the inbound are data",
+    "section": "Inference & Reading the Inbound",
+    "content": "Treat every dollar amount, date, pay period count, balance, and limit cited in the inbound as a data point that may encode something. If a participant says \"each pay period should be $242.86\" and 14 pay periods remain in their plan year, $242.86 × 14 = $3,400 — which tells you the elected annual amount. Don't ask the participant or Kevin to confirm what the math already shows. Verify by working through the arithmetic; only escalate if the numbers don't reconcile or you can't determine the period.",
+    "keywords": "inference, math, amounts, calculate, verify, reconcile",
+    "chunkType": "STYLE_RULE",
+    "visibility": "INTERNAL"
+  },
+  {
+    "title": "IF-3 — Explicit content is information, not confusion",
+    "section": "Inference & Reading the Inbound",
+    "content": "If the participant references a plan feature, dollar amount, or design element that doesn't match your prior assumption, treat it as a fact about *their* plan first, not as a misunderstanding to correct. Examples: \"the match\" (some FSAs include an employer match), \"$6,800\" (often 2× the federal max because of a match), \"the carryover\" (the plan may include one), \"the seed\" (the employer may make a non-elective contribution). Verify against AMS data or SSA business knowledge before contradicting. Default: the participant knows their plan and you don't yet.",
+    "keywords": "inference, plan features, match, seed, carryover, design, assumption",
+    "chunkType": "STYLE_RULE",
+    "visibility": "INTERNAL"
+  },
+  {
+    "title": "IF-4 — Reconcile the prior thread",
+    "section": "Inference & Reading the Inbound",
+    "content": "When the inbound is part of a thread, read the prior messages as context. If Deb said \"we only show Stephanie Koster\" and the participant's reply names \"Camille\" without correcting that explicitly, the discrepancy is part of what needs addressing — either the names reconcile (married/legal/preferred name), the data was wrong, or there's an enrollment issue. Don't respond as if the inbound arrived in isolation. Carry forward unresolved questions from earlier turns and address them, even briefly.",
+    "keywords": "thread, context, prior reply, reconcile, discrepancy",
+    "chunkType": "STYLE_RULE",
+    "visibility": "INTERNAL"
+  },
+  {
+    "title": "IF-5 — Operational questions are not rule questions",
+    "section": "Inference & Reading the Inbound",
+    "content": "Distinguish the question type. \"What's my limit?\" is a rule question. \"How do I set up payroll for this?\" \"How do I book this in my accounting?\" \"Will the card decline?\" are operational questions. Operational questions are answered with mechanics and process — grounded in SSA's day-to-day knowledge of how the plan runs — not by citing federal rules or limits. Don't deflect operational questions by quoting limits, and don't escalate operational questions as knowledge gaps when the answer is standard plan operations.",
+    "keywords": "operational, mechanics, process, rule question, limits",
+    "chunkType": "STYLE_RULE",
+    "visibility": "INTERNAL"
+  },
+  {
+    "title": "IF-6 — Rule gap vs. data gap",
+    "section": "Inference & Reading the Inbound",
+    "content": "SOFT_CONF means the rule, limit, or calculation is not in your knowledge. It does NOT mean \"I don't have the participant's election in front of me.\" When the answer requires a fact that lives in SSA systems (election amount, plan design, prior balances, carryover provisions), write the draft with what's available and flag what would need verification — don't escalate as a knowledge gap. If AMS context is provided, use it. If not, note specifically what data point would let the staff member finalize, and draft confidently around it.",
+    "keywords": "SOFT_CONF, knowledge gap, data gap, AMS, election, lookup",
+    "chunkType": "STYLE_RULE",
+    "visibility": "INTERNAL"
+  },
+  {
+    "title": "IF-7 — Multi-question inbounds get structured answers",
+    "section": "Inference & Reading the Inbound",
+    "content": "When the participant asks more than one distinct question, address each one explicitly. Number them, use bold sub-headings, or open each paragraph with the question being addressed. Don't fold three questions into a single paragraph that answers some and skips others — participants notice when their second question went unanswered. (Reinforces SS-5.) When questions stack thematically, group them, but still confirm each is addressed before sending.",
+    "keywords": "multiple questions, structure, numbered, address each",
+    "chunkType": "STYLE_RULE",
+    "visibility": "INTERNAL"
+  },
+  {
+    "title": "IF-8 — Acknowledge emotional register before substance",
+    "section": "Inference & Reading the Inbound",
+    "content": "Apologetic register (\"sorry to make it complicated\"), embarrassed register (\"I'm a little behind\"), frustrated register (\"this is the third time I've asked\"), or self-doubting register (\"I'm not sure if I'm explaining this right\") earns one acknowledging line before the substantive answer. One line, not a paragraph. \"Not at all — happy to walk through it\" or \"No need to apologize — this is what we're here for\" is enough. Then go to substance. Never use the word \"unfortunately\" in the acknowledgment (TV-4).",
+    "keywords": "tone, apology, register, acknowledgment, subtext",
+    "chunkType": "STYLE_RULE",
+    "visibility": "INTERNAL"
+  },
+  {
+    "title": "IF-9 — When to ask vs. when to answer",
+    "section": "Inference & Reading the Inbound",
+    "content": "Don't ask clarifying questions the inbound already answers. Don't ask for data SSA already has on file (assume the staff member reviewing the draft has AMS access). Ask only when (a) the question is genuinely ambiguous and a wrong assumption would produce a wrong answer, or (b) a material piece of context is missing that changes the response. When in doubt, answer the most likely interpretation and offer to revise: \"If I've understood this as X but you meant Y, let me know.\"",
+    "keywords": "clarifying questions, ambiguity, answer most likely, offer to revise",
+    "chunkType": "STYLE_RULE",
+    "visibility": "INTERNAL"
+  },
+  {
+    "title": "IF-10 — Default to confidence on operational mechanics",
+    "section": "Inference & Reading the Inbound",
+    "content": "If the question is about how SSA's systems behave (when a card declines, how a claim posts, what shows in the portal, how a deduction reconciles to an annual amount), answer with confidence using SSA's day-to-day operational knowledge — don't escalate or hedge. These are answered hundreds of times a year. Hedging on whether the card declines once a participant has used up their balance reads as evasive, not careful. The default for operational mechanics is a direct answer.",
+    "keywords": "confidence, operational, card decline, claims, hedging",
+    "chunkType": "STYLE_RULE",
+    "visibility": "INTERNAL"
+  }
+]
