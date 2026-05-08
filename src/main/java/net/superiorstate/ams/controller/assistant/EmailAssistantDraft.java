@@ -12,9 +12,12 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import net.superiorstate.ams.data.AmsDataLocal;
 import net.superiorstate.ams.data.dao.ChatbotSkillDAO;
+import net.superiorstate.ams.data.dao.EmployerInventoryDAO;
 import net.superiorstate.ams.data.dao.PersonDAO;
 import net.superiorstate.ams.data.service.ClaudeApiService;
+import net.superiorstate.ams.data.service.EmployerContextResolver;
 import net.superiorstate.ams.data.service.KnowledgeSearchService;
+import net.superiorstate.ams.model.dto.inventory.EmployerInventoryDTO;
 import net.superiorstate.ams.model.general.ChatbotSkill;
 import net.superiorstate.ams.model.general.Person;
 import net.superiorstate.ams.model.summit.archive.Employee;
@@ -105,6 +108,7 @@ public class EmailAssistantDraft extends HttpServlet {
         String  name;
         String  senderType = "OTHER";
         String  employerName;
+        Long    organizationId;   // Employer.id cast to Long; null when sender is not a PARTICIPANT
         String  planYearRange;
     }
 
@@ -198,8 +202,34 @@ public class EmailAssistantDraft extends HttpServlet {
                         req.inboundSubject);
             }
 
+            // Resolve employer service-scope inventory (best-effort, never blocks)
+            String employerContext = null;
+            try {
+                if (senderCtx.organizationId != null) {
+                    // Primary path: sender is a known PARTICIPANT — direct lookup
+                    EmployerInventoryDTO inv =
+                            EmployerInventoryDAO.getByOrganizationId(em, senderCtx.organizationId);
+                    if (inv != null) {
+                        employerContext = EmployerContextResolver.formatContextBlock(List.of(inv));
+                        log.info("EmailAssistantDraft: employer inventory resolved via PARTICIPANT link for '{}'",
+                                inv.getEmployerName());
+                    }
+                }
+                if (employerContext == null) {
+                    // Fallback: sender not in AMS or not a participant — name-match in email text
+                    String searchText = req.inboundSubject + " " + req.inboundBody
+                            + (req.userNotes != null ? " " + req.userNotes : "");
+                    employerContext = EmployerContextResolver.resolveContext(em, searchText);
+                    if (employerContext != null) {
+                        log.info("EmailAssistantDraft: employer context resolved via name-matching");
+                    }
+                }
+            } catch (Exception e) {
+                log.warn("EmailAssistantDraft: employer context resolution failed; proceeding without it", e);
+            }
+
             // Assemble prompt
-            String assembledPrompt = buildPrompt(req, senderCtx, alwaysLoaded, selectedChunks);
+            String assembledPrompt = buildPrompt(req, senderCtx, alwaysLoaded, selectedChunks, employerContext);
 
             // Claude API call
             List<Map<String, String>> messages =
@@ -282,7 +312,8 @@ public class EmailAssistantDraft extends HttpServlet {
                 try {
                     Employer employer = employee.getEmployer();
                     if (employer != null) {
-                        ctx.employerName = employer.getEmployerName();
+                        ctx.employerName    = employer.getEmployerName();
+                        ctx.organizationId  = (long) employer.getId();
                     }
                 } catch (Exception e) {
                     log.warn("EmailAssistantDraft: could not resolve employer for '{}': {}",
@@ -343,7 +374,8 @@ public class EmailAssistantDraft extends HttpServlet {
 
     private String buildPrompt(DraftRequest req, SenderContext senderCtx,
                                 List<KnowledgeSearchService.Chunk> alwaysLoaded,
-                                List<KnowledgeSearchService.ScoredChunk> selectedChunks) {
+                                List<KnowledgeSearchService.ScoredChunk> selectedChunks,
+                                String employerContext) {
         StringBuilder sb = new StringBuilder();
 
         // Always-loaded style/voice rules
@@ -387,6 +419,11 @@ public class EmailAssistantDraft extends HttpServlet {
               .append("Sender email not found in AMS database. No internal context available.\n");
         }
         sb.append("\n");
+
+        // Employer service scope (resolved from EmployerInventoryDAO)
+        if (employerContext != null && !employerContext.isBlank()) {
+            sb.append(employerContext);
+        }
 
         // Inbound email
         sb.append("== INBOUND EMAIL ==\n\n");
