@@ -160,6 +160,19 @@
         .tab-pane { display: none; }
         .tab-pane.active { display: block; }
 
+        /* --- Draft Reply tab --- */
+        .draft-body {
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+            font-size: 12px;
+            padding: 10px;
+            background: #fff;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            max-height: 250px;
+            overflow-y: auto;
+            line-height: 1.5;
+        }
+
         /* --- Custom reason toggle --- */
         #customReasonWrap { margin-top: 6px; }
         #ticketDescription { font-size: 13px; }
@@ -207,6 +220,7 @@
     <div class="ams-tabs">
         <button class="ams-tab active" data-tab="logTab">Log to Activity</button>
         <button class="ams-tab" data-tab="ticketTab">Create Ticket</button>
+        <button class="ams-tab" data-tab="draftTab">Draft Reply</button>
     </div>
 
     <!-- Tab 1: Log to Activity (existing) -->
@@ -273,6 +287,38 @@
 
         <button type="button" class="btn-ams" id="createTicketBtn" disabled>Create Ticket</button>
         <div id="ticketResultAlert" class="alert hidden mt-2"></div>
+    </div>
+
+    <!-- Tab 3: Draft Reply -->
+    <div class="tab-pane" id="draftTab">
+        <div class="section">
+            <div class="section-label">Subject</div>
+            <div id="draftSubjectDisplay" class="email-preview" style="font-size:12px;"></div>
+        </div>
+
+        <div class="section">
+            <div class="section-label">Notes for the AI</div>
+            <textarea class="form-control" id="draftNotesInput" rows="3"
+                      placeholder="Optional: tell the AI what tone, what to emphasize, etc."
+                      style="font-size:13px;"></textarea>
+        </div>
+
+        <button type="button" class="btn-ams" id="generateDraftBtn">Generate Draft</button>
+
+        <div id="draftResult" class="hidden">
+            <div class="section" style="margin-top:14px;">
+                <div class="section-label">Draft Subject</div>
+                <div id="draftResultSubject" class="email-preview" style="font-size:12px;"></div>
+            </div>
+            <div class="section">
+                <div class="section-label">Draft Body</div>
+                <div id="draftResultBody" class="draft-body"></div>
+            </div>
+            <button type="button" class="btn-ams" id="openInReplyBtn" style="margin-top:8px;">Open in Reply</button>
+            <div id="draftMetaFooter" class="text-muted" style="font-size:10px;margin-top:6px;"></div>
+        </div>
+
+        <div id="draftResultAlert" class="alert hidden mt-2"></div>
     </div>
 
     <div class="text-muted mt-3" style="font-size: 10px;">
@@ -395,6 +441,12 @@
         wireActivitySearch();
         wireLogButton();
         wireTicketForm();
+        wireDraftTab();
+        var params = new URLSearchParams(window.location.search);
+        if (params.get('tab') === 'draft') {
+            var draftTabBtn = document.querySelector('.ams-tab[data-tab="draftTab"]');
+            if (draftTabBtn) draftTabBtn.click();
+        }
     }
 
     // --- Tabs ---
@@ -892,6 +944,114 @@
             btn.disabled = false;
             showResult('ticketResultAlert', 'danger', 'Network error: ' + err.message);
         });
+    }
+
+    // --- Draft Reply tab (Tab 3) ---
+    function wireDraftTab() {
+        var item = Office.context.mailbox.item;
+        if (item) {
+            document.getElementById('draftSubjectDisplay').textContent =
+                item.subject || '(no subject)';
+        }
+        document.getElementById('generateDraftBtn').addEventListener('click', generateDraft);
+        document.getElementById('openInReplyBtn').addEventListener('click', openInReply);
+    }
+
+    function generateDraft() {
+        var btn = document.getElementById('generateDraftBtn');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-sm"></span> Generating…';
+
+        document.getElementById('draftResult').classList.add('hidden');
+        document.getElementById('draftResultAlert').classList.add('hidden');
+
+        var item = Office.context.mailbox.item;
+        var senderEmail    = item.from ? (item.from.emailAddress || '') : '';
+        var inboundSubject = item.subject || '';
+        var inboundDate    = item.dateTimeCreated ? item.dateTimeCreated.toISOString() : '';
+        var userNotes      = document.getElementById('draftNotesInput').value.trim() || null;
+
+        item.body.getAsync(Office.CoercionType.Text, function (result) {
+            if (result.status !== Office.AsyncResultStatus.Succeeded) {
+                resetDraftButton();
+                showResult('draftResultAlert', 'danger', 'Could not read email body. Please try again.');
+                return;
+            }
+
+            var payload = {
+                senderEmail:    senderEmail,
+                inboundSubject: inboundSubject,
+                inboundBody:    result.value || '',
+                inboundDate:    inboundDate
+            };
+            if (userNotes) payload.userNotes = userNotes;
+
+            fetch(API_BASE + '/api/v1/outlook/draft-reply', {
+                method: 'POST',
+                headers: {
+                    'Authorization': 'Bearer ' + state.token,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payload)
+            }).then(function (res) {
+                return res.json().then(function (data) {
+                    return { status: res.status, data: data };
+                });
+            }).then(function (wrapped) {
+                resetDraftButton();
+                var s    = wrapped.status;
+                var data = wrapped.data;
+
+                if (s === 401) {
+                    localStorage.removeItem(TOKEN_KEY);
+                    state.token = null;
+                    showResult('draftResultAlert', 'danger',
+                        'Session expired. Please reload the taskpane and try again.');
+                    return;
+                }
+                if (s === 502 || (data && data.error === 'parse_error')) {
+                    showResult('draftResultAlert', 'danger',
+                        'Could not generate a draft. Try again.');
+                    return;
+                }
+                if (s !== 200 || !data || data.error) {
+                    showResult('draftResultAlert', 'danger',
+                        (data && data.error) ? data.error : 'Failed to generate draft (' + s + ').');
+                    return;
+                }
+
+                document.getElementById('draftResultSubject').textContent = data.subject || '';
+                document.getElementById('draftResultBody').innerHTML      = data.body    || '';
+                document.getElementById('draftMetaFooter').textContent    =
+                    (data.metadata && data.metadata.modelUsed)
+                        ? 'Drafted with ' + data.metadata.modelUsed : '';
+                document.getElementById('draftResult').classList.remove('hidden');
+            }).catch(function () {
+                resetDraftButton();
+                showResult('draftResultAlert', 'danger',
+                    'Could not reach AMS. Check your connection.');
+            });
+        });
+    }
+
+    function resetDraftButton() {
+        var btn = document.getElementById('generateDraftBtn');
+        btn.disabled = false;
+        btn.innerHTML = 'Generate Draft';
+    }
+
+    function openInReply() {
+        var draftBodyHtml = document.getElementById('draftResultBody').innerHTML || '';
+        Office.context.mailbox.item.displayReplyFormAsync(
+            { htmlBody: draftBodyHtml },
+            function (result) {
+                if (result.status !== Office.AsyncResultStatus.Succeeded) {
+                    showResult('draftResultAlert', 'danger',
+                        'Could not open reply form: ' +
+                        (result.error ? result.error.message : 'Unknown error'));
+                }
+            }
+        );
     }
 
     // --- Shared helpers ---
