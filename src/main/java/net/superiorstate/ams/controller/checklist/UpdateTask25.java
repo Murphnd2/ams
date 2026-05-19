@@ -208,6 +208,13 @@ public class UpdateTask25 extends HttpServlet {
             em.getTransaction().commit();
             em.refresh(t1);
             em.refresh(t);
+            // Delete any orphan automation row sharing this task's ID
+            Automation orphan = EntityLookup.getAutomationById(em, t.getId().intValue());
+            if (orphan != null) {
+                em.getTransaction().begin();
+                em.remove(em.contains(orphan) ? orphan : em.merge(orphan));
+                em.getTransaction().commit();
+            }
 
         }
 
@@ -369,12 +376,15 @@ public class UpdateTask25 extends HttpServlet {
         return t;
     }
     private Automation createAutomation(EntityManager em, String title, String html, Task t){
-        em.getTransaction().begin();
-        Automation a = new Automation();
-        a.setId(t.getId().intValue());
-        em.persist(a);
-        em.getTransaction().commit();
-
+        int autoId = t.getId().intValue();
+        Automation a = EntityLookup.getAutomationById(em, autoId);
+        if (a == null) {
+            em.getTransaction().begin();
+            a = new Automation();
+            a.setId(autoId);
+            em.persist(a);
+            em.getTransaction().commit();
+        }
         return updateAutomation(em,a,title,html);
     }
 
