@@ -14,6 +14,7 @@ import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.model.activity.checklist.sequences.support.ServiceItem;
 import net.superiorstate.ams.model.general.Address;
 import net.superiorstate.ams.model.general.Person;
+import net.superiorstate.ams.model.sales.agency.Agency;
 import net.superiorstate.ams.model.sales.agency.Proposal;
 import net.superiorstate.ams.model.sales.application.*;
 import net.superiorstate.ams.model.sales.offering.BenefitType;
@@ -78,6 +79,7 @@ public class ApplyForProposal extends HttpServlet {
                 request.setAttribute("accentColor", accentColor);
                 request.setAttribute("statusMessage", statusMsg);
                 request.setAttribute("applicationStatus", existingApp.getStatus());
+                request.setAttribute("agencyName", resolveAgencyName(em, proposal));
                 em.close();
                 request.getRequestDispatcher("/WEB-INF/view/sales/applicationConfirmation.jsp").forward(request, response);
                 return;
@@ -285,6 +287,7 @@ public class ApplyForProposal extends HttpServlet {
                     .getResultList();
             request.setAttribute("benefitTypes", benefitTypes);
             request.setAttribute("billingTypes", billingTypes);
+            request.setAttribute("agencyName", resolveAgencyName(em, proposal));
         } finally {
             em.close();
         }
@@ -466,6 +469,7 @@ public class ApplyForProposal extends HttpServlet {
             if (accentColor == null || accentColor.isEmpty()) accentColor = "#7AB648";
             request.setAttribute("primaryColor", primaryColor);
             request.setAttribute("accentColor", accentColor);
+            request.setAttribute("agencyName", resolveAgencyName(em, proposal));
 
         } finally {
             em.close();
@@ -476,6 +480,24 @@ public class ApplyForProposal extends HttpServlet {
     }
 
     // ======================== Shared Helpers ========================
+
+    /** Resolves the selling agency name from the proposal's prospect agent, or null if none. */
+    private String resolveAgencyName(EntityManager em, Proposal proposal) {
+        try {
+            if (proposal.getProspect().getContact().getPsp() == null) return null;
+            Person agent = proposal.getProspect().getAgent();
+            if (agent == null) return null;
+            List<Agency> agencies = em.createQuery(
+                    "SELECT a FROM Agency a JOIN a.agentList al WHERE al.id = :agentId AND a.psp.id = :pspId",
+                    Agency.class)
+                    .setParameter("agentId", agent.getId())
+                    .setParameter("pspId", (long) proposal.getProspect().getContact().getPsp().getId())
+                    .getResultList();
+            return agencies.isEmpty() ? null : agencies.get(0).getName();
+        } catch (Exception e) {
+            return null;
+        }
+    }
 
     /** Load application sections matching the given LOS and Enhancement IDs. */
     private List<ApplicationSection> loadSections(EntityManager em, List<Long> losIds, List<Long> enhIds) {

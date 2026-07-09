@@ -6,7 +6,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Application — ${pspName}</title>
+    <title>Application — ${not empty agencyName ? agencyName : pspName}</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     <style>
@@ -16,6 +16,7 @@
         }
         body { background: #f8f9fa; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
         .app-header { background: var(--psp-primary); color: white; padding: 2rem 0; }
+        .app-header.wl { background: #1f2937; }
         .app-header h1 { font-size: 1.6rem; font-weight: 600; margin: 0; }
         .app-header .subtitle { opacity: 0.85; font-size: 0.95rem; }
         .accent-bar { height: 4px; background: var(--psp-accent); }
@@ -57,13 +58,21 @@
 <body>
 
 <%-- Header --%>
-<div class="app-header">
+<div class="app-header ${not empty agencyName ? 'wl' : ''}">
     <div class="app-container" style="padding-top:0;padding-bottom:0;">
-        <h1>${pspName}</h1>
-        <div class="subtitle">Benefits Administration Application — ${proposal.getProspect().getName()}</div>
+        <c:choose>
+            <c:when test="${not empty agencyName}">
+                <h1>${agencyName}</h1>
+                <div class="subtitle">Application — ${proposal.getProspect().getName()}</div>
+            </c:when>
+            <c:otherwise>
+                <h1>${pspName}</h1>
+                <div class="subtitle">Benefits Administration Application — ${proposal.getProspect().getName()}</div>
+            </c:otherwise>
+        </c:choose>
     </div>
 </div>
-<div class="accent-bar"></div>
+<c:if test="${empty agencyName}"><div class="accent-bar"></div></c:if>
 
 <div class="app-container">
 
@@ -464,7 +473,14 @@
     </c:if><%-- end !showServiceSelection --%>
 
     <div class="app-footer">
-        <p class="mb-0">&copy; ${pspName} &middot; Benefits Administration Services</p>
+        <c:choose>
+            <c:when test="${not empty agencyName}">
+                <p class="mb-0">&copy; ${agencyName}</p>
+            </c:when>
+            <c:otherwise>
+                <p class="mb-0">&copy; ${pspName} &middot; Benefits Administration Services</p>
+            </c:otherwise>
+        </c:choose>
     </div>
 
 </div>

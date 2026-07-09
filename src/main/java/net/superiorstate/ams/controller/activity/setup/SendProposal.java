@@ -13,6 +13,7 @@ import net.superiorstate.ams.data.util.EmailTemplate;
 import net.superiorstate.ams.model.activity.Activity;
 import net.superiorstate.ams.model.activity.note.Email;
 import net.superiorstate.ams.model.general.Person;
+import net.superiorstate.ams.model.sales.agency.Agency;
 import net.superiorstate.ams.model.sales.agency.Proposal;
 import net.superiorstate.ams.model.sales.agency.RateTable;
 import net.superiorstate.ams.data.resolver.EntityLookup;
@@ -59,6 +60,10 @@ public class SendProposal extends HttpServlet {
             baseUrl += request.getContextPath() + "/";
             String proposalLink = baseUrl + "proposal/" + proposal.getApplicationGUID();
 
+            String agencyName = resolveSenderAgencyName(em, sender);
+            String senderCompany = agencyName != null ? agencyName
+                    : (sender.getPsp() != null ? sender.getPsp().getFullName() : "");
+
             String defaultBody = "<p>Hi " + request.getAttribute("prospectName") + ",</p>"
                     + "<p>We've prepared a benefits proposal for <strong>" + proposal.getProspect().getName() + "</strong>.</p>"
                     + "<p>Please click the link below to view your customized proposal, including pricing and plan details:</p>"
@@ -66,7 +71,7 @@ public class SendProposal extends HttpServlet {
                     + "<p>If you have any questions, simply reply to this email.</p>"
                     + "<p style=\"margin-top:24px;\">" + sender.getFirstName() + " " + sender.getLastName() + "<br/>"
                     + "<span style=\"color:#666666;\">" + (sender.getEmail() != null ? sender.getEmail() : "") + "</span><br/>"
-                    + "<span style=\"color:#7AB648;font-weight:bold;\">" + (sender.getPsp() != null ? sender.getPsp().getFullName() : "") + "</span></p>";
+                    + "<span style=\"color:#7AB648;font-weight:bold;\">" + senderCompany + "</span></p>";
 
             request.setAttribute("defaultBody", defaultBody);
             request.setAttribute("proposalLink", proposalLink);
@@ -140,6 +145,22 @@ public class SendProposal extends HttpServlet {
         }
 
         response.sendRedirect("ProposalDetail?id=" + proposalId);
+    }
+
+    /** Returns the sender's first agency name, or null if they belong to none. */
+    private String resolveSenderAgencyName(EntityManager em, Person sender) {
+        try {
+            if (sender.getPsp() == null) return null;
+            List<Agency> agencies = em.createQuery(
+                    "SELECT a FROM Agency a JOIN a.agentList al WHERE al.id = :agentId AND a.psp.id = :pspId",
+                    Agency.class)
+                    .setParameter("agentId", sender.getId())
+                    .setParameter("pspId", (long) sender.getPsp().getId())
+                    .getResultList();
+            return agencies.isEmpty() ? null : agencies.get(0).getName();
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     private void logEmailToActivity(EntityManager em, Proposal proposal, Person sender, String subject, String wrappedBody) {

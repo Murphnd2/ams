@@ -5,13 +5,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Application Submitted — ${pspName}</title>
+    <title>Application Submitted — ${not empty agencyName ? agencyName : pspName}</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     <style>
         :root { --psp-primary: ${primaryColor}; --psp-accent: ${accentColor}; }
         body { background: #f8f9fa; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
         .app-header { background: var(--psp-primary); color: white; padding: 2rem 0; }
+        .app-header.wl { background: #1f2937; }
         .app-header h1 { font-size: 1.6rem; font-weight: 600; margin: 0; }
         .accent-bar { height: 4px; background: var(--psp-accent); }
         .confirm-container { max-width: 600px; margin: 0 auto; padding: 3rem 1rem; text-align: center; }
@@ -21,12 +22,12 @@
 </head>
 <body>
 
-<div class="app-header">
+<div class="app-header ${not empty agencyName ? 'wl' : ''}">
     <div style="max-width:600px;margin:0 auto;padding:0 1rem;">
-        <h1>${pspName}</h1>
+        <h1>${not empty agencyName ? agencyName : pspName}</h1>
     </div>
 </div>
-<div class="accent-bar"></div>
+<c:if test="${empty agencyName}"><div class="accent-bar"></div></c:if>
 
 <div class="confirm-container">
     <c:choose>
@@ -60,7 +61,14 @@
 </div>
 
 <div class="app-footer">
-    <p class="mb-0">&copy; ${pspName} &middot; Benefits Administration Services</p>
+    <c:choose>
+        <c:when test="${not empty agencyName}">
+            <p class="mb-0">&copy; ${agencyName}</p>
+        </c:when>
+        <c:otherwise>
+            <p class="mb-0">&copy; ${pspName} &middot; Benefits Administration Services</p>
+        </c:otherwise>
+    </c:choose>
 </div>
 
 </body>

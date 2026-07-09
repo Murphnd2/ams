@@ -6,7 +6,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Proposal — ${pspName}</title>
+  <title>Proposal — ${not empty agencyName ? agencyName : pspName}</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
   <style>
@@ -148,7 +148,8 @@
 </head>
 <body>
 
-<%-- Header --%>
+<%-- Header — suppressed when agency-branded (TITLE section card provides the brand) --%>
+<c:if test="${empty agencyName}">
 <div class="proposal-header">
   <div class="proposal-container" style="padding-top:0;padding-bottom:0;">
     <h1>${pspName}</h1>
@@ -156,6 +157,7 @@
   </div>
 </div>
 <div class="accent-bar"></div>
+</c:if>
 
 <div class="proposal-container">
 
@@ -238,7 +240,14 @@
 
   <%-- Footer --%>
   <div class="proposal-footer">
-    <p class="mb-0">&copy; ${pspName} &middot; Benefits Administration Services</p>
+    <c:choose>
+      <c:when test="${not empty agencyName}">
+        <p class="mb-0">&copy; ${agencyName}</p>
+      </c:when>
+      <c:otherwise>
+        <p class="mb-0">&copy; ${pspName} &middot; Benefits Administration Services</p>
+      </c:otherwise>
+    </c:choose>
   </div>
 
 </div>
