@@ -11,6 +11,7 @@ import net.superiorstate.ams.AppConfig;
 import net.superiorstate.ams.data.AmsDataGlobal;
 import net.superiorstate.ams.data.dao.AppConstantDAO;
 import net.superiorstate.ams.data.service.ClaudeApiService;
+import net.superiorstate.ams.data.util.LandingSafe;
 import net.superiorstate.ams.model.Constant;
 
 import java.io.IOException;
@@ -227,7 +228,10 @@ public class UpdatePspSettings extends HttpServlet {
 
         try {
             String htmlContent = request.getParameter("landingHtml");
-            String sanitized = sanitizeHtml(htmlContent);
+            // V068: use the hardened parser-based sanitizer (Jsoup safelist) for this
+            // PUBLIC, pre-login page instead of the weaker regex sanitizeHtml below.
+            // Validated to preserve the current landing HTML (see Phase-B summary).
+            String sanitized = LandingSafe.clean(htmlContent);
 
             em.getTransaction().begin();
             Constant c = AppConstantDAO.getConstant(em, "CUSTOM_LANDING_HTML");
@@ -374,7 +378,12 @@ public class UpdatePspSettings extends HttpServlet {
      * HTML sanitization for trusted PSP admin users.
      * Strips: <script> tags, on* event handlers, javascript: protocols.
      * Preserves: <style> blocks, inline styles, CSS variables.
+     *
+     * @deprecated V068 — the landing save now uses the hardened parser-based
+     * {@link net.superiorstate.ams.data.util.LandingSafe}. This regex sanitizer is
+     * retained for reference only; it is a weaker XSS guarantee for a public page.
      */
+    @Deprecated
     static String sanitizeHtml(String html) {
         if (html == null) return "";
         String result = html;

@@ -621,6 +621,15 @@
                     Enable agent markup
                   </label>
                 </div>
+                <%-- V068: branded landing host (leave blank to disable the agency front door) --%>
+                <div class="mb-2">
+                  <label class="form-label fw-semibold mb-0" style="font-size: 0.85rem;">Landing Host</label>
+                  <input type="text" name="landingHost" class="form-control form-control-sm"
+                         placeholder="e.g. swbd.superiorstate.net"
+                         value="<c:out value='${selectedAgency.getLandingHost()}'/>">
+                  <div class="form-text" style="font-size: 0.72rem;">Bare hostname only (no https://, no path). Leave blank to disable.</div>
+                  <div id="agencyLandingHostError" class="alert alert-danger py-1 px-2 mt-1" style="display:none; font-size:0.78rem;"></div>
+                </div>
                 <hr class="my-2">
                 <h6 class="text-muted mb-2"><i class="bi bi-person me-1"></i>Primary Contact</h6>
                 <div class="row mb-2">
@@ -677,6 +686,28 @@
                   </div>
                 </div>
               </div>
+            </div>
+            <%-- V068: per-agency custom landing page (saved separately via AJAX, sanitized on save) --%>
+            <hr class="my-2">
+            <div class="p-2 rounded" style="background:#f8f9fb; border:1px solid #dee2e6;">
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <label class="form-label fw-semibold m-0" style="font-size:0.82rem;"><i class="bi bi-window me-1"></i>Landing Page HTML</label>
+                <div>
+                  <button type="button" class="btn btn-sm btn-outline-secondary" onclick="toggleAgencyLandingPreview()">
+                    <i class="bi bi-eye me-1"></i><span id="agencyLandingPreviewLabel">Preview</span>
+                  </button>
+                  <button type="button" class="btn btn-sm btn-outline-primary ms-1" onclick="saveAgencyLanding()">
+                    <i class="bi bi-floppy me-1"></i>Save HTML
+                  </button>
+                </div>
+              </div>
+              <input type="hidden" id="agencyLandingId" value="${selectedAgency.getId()}">
+              <textarea id="agencyLandingHtmlEditor" class="form-control" rows="10"
+                        style="font-family: 'Courier New', monospace; font-size:0.78rem; display:block;"
+                        placeholder="Paste this agency's landing page HTML here..."><c:out value="${selectedAgency.getLandingHtml()}"/></textarea>
+              <iframe id="agencyLandingHtmlPreview" style="width:100%; height:300px; border:1px solid #dee2e6; border-radius:4px; display:none; background:#fff;"></iframe>
+              <div id="agencyLandingHtmlStatus" class="mt-1" style="font-size:0.75rem;"></div>
+              <div class="form-text" style="font-size:0.72rem;">The white-label front door is active when this HTML is non-blank and the Landing Host resolves. "Save Changes" saves the host; "Save HTML" saves this content.</div>
             </div>
           </div>
           <div class="modal-footer justify-content-center border-0">
@@ -744,6 +775,63 @@
       document.getElementById('suppressForm').submit();
     }
   }
+
+  // ── V068: Per-agency Landing Page ───────────────────────────
+  function toggleAgencyLandingPreview() {
+    var editor = document.getElementById('agencyLandingHtmlEditor');
+    var preview = document.getElementById('agencyLandingHtmlPreview');
+    var label = document.getElementById('agencyLandingPreviewLabel');
+    if (!editor || !preview) return;
+    if (editor.style.display !== 'none') {
+      preview.srcdoc = editor.value;
+      editor.style.display = 'none';
+      preview.style.display = 'block';
+      label.textContent = 'Edit HTML';
+    } else {
+      editor.style.display = 'block';
+      preview.style.display = 'none';
+      label.textContent = 'Preview';
+    }
+  }
+
+  function saveAgencyLanding() {
+    var editor = document.getElementById('agencyLandingHtmlEditor');
+    var idEl = document.getElementById('agencyLandingId');
+    var status = document.getElementById('agencyLandingHtmlStatus');
+    if (!editor || !idEl) return;
+    status.innerHTML = '<span class="text-muted"><i class="bi bi-arrow-repeat"></i> Saving...</span>';
+    fetch('AgencyAction', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: 'action=saveAgencyLandingHtml&agencyId=' + encodeURIComponent(idEl.value)
+          + '&landingHtml=' + encodeURIComponent(editor.value)
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.status === 'ok') {
+        status.innerHTML = '<span class="text-success"><i class="bi bi-check-circle"></i> Saved.</span>';
+      } else {
+        status.innerHTML = '<span class="text-danger"><i class="bi bi-x-circle"></i> Save failed.</span>';
+      }
+      setTimeout(function() { status.innerHTML = ''; }, 3000);
+    })
+    .catch(function() {
+      status.innerHTML = '<span class="text-danger"><i class="bi bi-x-circle"></i> Save failed.</span>';
+    });
+  }
+
+  // Surface a friendly landing-host validation error (from the editAgency redirect) and reopen the modal.
+  (function() {
+    var le = new URLSearchParams(window.location.search).get('landingError');
+    if (!le) return;
+    var msg = le === 'psp' ? 'That host is reserved as a PSP host and cannot be assigned to an agency.'
+            : le === 'duplicate' ? 'That landing host is already used by another agency.'
+            : 'Invalid landing host. Use a bare hostname like agency.example.com (no https://, no path).';
+    var el = document.getElementById('agencyLandingHostError');
+    if (el) { el.textContent = msg; el.style.display = 'block'; }
+    var modalEl = document.getElementById('editAgencyModal');
+    if (modalEl && window.bootstrap) { try { new bootstrap.Modal(modalEl).show(); } catch (e) {} }
+  })();
 
   // ── Rate Assignment State Tracking ──────────────────────────
 

@@ -1130,3 +1130,22 @@ New Outlook Web Add-in that adds a "Log to AMS" button to the reading pane. When
 - Org-wide deployment via Microsoft 365 Admin Center (Integrated Apps)
 
 **Applies to:** Demo PSP ✅, BPO ⬜, Production ⬜, Master image ⬜
+
+---
+
+### D-76: Set `PSP_HOSTS` in `ssa.properties` per environment (V068 host-header agency landing) ⬜
+
+**Depends on:** V068 (`agency.landing_host` / `agency.landing_html`) deployed.
+
+The V068 host-header custom agency landing feature classifies each incoming request's `Host` header as either a **PSP host** (default landing/login, unchanged) or a **non-PSP host** (candidate for an agency-branded landing). The PSP-host allow-list is read from `ssa.properties` via `AppConfig.get("PSP_HOSTS", "superiorstate.net,superiorstate.biz")` — a comma-separated, **exact-match** (never wildcard) list, so agency front doors on subdomains like `swbd.superiorstate.net` are correctly treated as non-PSP.
+
+**Action:** on each environment's `ssa.properties` (production / demo / bpo / master), set `PSP_HOSTS` to that installation's own PSP hostname(s). If the key is absent the code falls back to the default `superiorstate.net,superiorstate.biz`, which is correct for the primary production PSP but should be reviewed per host.
+
+- `PSP_HOSTS=superiorstate.net,superiorstate.biz` (production default)
+- Demo/BPO/Master: set to the respective PSP host(s) as appropriate so their default hosts are not mistaken for agency vanity hosts.
+
+**Separate (parallel) infra track — DNS/TLS for vanity hosts (not code):**
+- `*.superiorstate.net` subdomains (e.g. `swbd.superiorstate.net`) — feasible now via Cloudflare DNS + wildcard/DNS-01 cert; nginx must forward `Host` unmodified.
+- Customer-owned domains (e.g. `admin.swbd.com`) — need Cloudflare for SaaS / custom hostnames (per-host certs). Separate epic; the application code is identical for both (it only reads `getServerName()`).
+
+**Applies to:** Production ⬜, Demo PSP ⬜, BPO ⬜, Master image ⬜

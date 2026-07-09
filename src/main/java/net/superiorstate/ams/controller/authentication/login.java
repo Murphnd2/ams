@@ -49,6 +49,28 @@ public class login extends HttpServlet {
 
         // Unauthenticated — show custom landing or default login
         AmsDataGlobal global = (AmsDataGlobal) getServletContext().getAttribute("global");
+
+        // V068: host-header custom agency landing. When AMS is reached over a NON-PSP host
+        // that maps to an agency with a non-blank landing page, serve that agency's white-label
+        // landing (PSP header chrome suppressed) instead of the default landing/login. PSP hosts,
+        // unmatched hosts, and matched-but-blank hosts fall through untouched to the PSP block below.
+        if (global != null) {
+            String host = request.getServerName();
+            if (!global.isPspHost(host)) {
+                String agencyHtml = global.getLandingHtmlForHost(host);
+                if (agencyHtml != null && !agencyHtml.isBlank()) {
+                    request.setAttribute("landingHtml", agencyHtml);
+                    request.setAttribute("whiteLabel", Boolean.TRUE);
+                    // Defense-in-depth on this public, pre-login page.
+                    response.setHeader("Content-Security-Policy", "frame-ancestors 'none'");
+                    response.setHeader("X-Content-Type-Options", "nosniff");
+                    request.getRequestDispatcher("/WEB-INF/view/authentication/customLanding25.jsp")
+                           .forward(request, response);
+                    return;
+                }
+            }
+        }
+
         if (global != null && global.isUseCustomLanding()) {
             String html = global.getCustomLandingHtml();
             if (html != null && !html.isBlank()) {

@@ -11,6 +11,7 @@ import net.superiorstate.ams.data.dao.AuthDAO;
 import net.superiorstate.ams.data.dao.SalesDAO;
 import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.data.service.DatabaseInitializer;
+import net.superiorstate.ams.data.util.LandingSafe;
 import net.superiorstate.ams.model.general.*;
 import net.superiorstate.ams.model.sales.agency.*;
 
@@ -18,6 +19,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.regex.Pattern;
 
 @WebServlet(name = "AgencyAction", value = "/AgencyAction")
 public class AgencyAction extends HttpServlet {
@@ -34,12 +36,20 @@ public class AgencyAction extends HttpServlet {
             return;
         }
 
+        String action = request.getParameter("action");
+
+        // V068: AJAX save of the agency landing-page HTML (mirrors UpdatePspSettings.saveLandingHtml).
+        // Sanitized on save via LandingSafe; returns JSON and does not fall through to the redirect.
+        if ("saveAgencyLandingHtml".equals(action)) {
+            saveAgencyLandingHtml(request, response);
+            return;
+        }
+
         EntityManagerFactory emf = (EntityManagerFactory) getServletContext().getAttribute("emf");
         EntityManager em = emf.createEntityManager();
         AmsDataLocal local = (AmsDataLocal) request.getSession().getAttribute("local");
         PSP psp = local.getCurrentPerson().getPsp();
 
-        String action = request.getParameter("action");
         String agencyIdParam = request.getParameter("agencyId");
 
         try {
@@ -117,6 +127,20 @@ public class AgencyAction extends HttpServlet {
 
                 case "editAgency" -> {
                     long agencyId = Long.parseLong(agencyIdParam);
+
+                    // V068: validate the optional landing host BEFORE any mutation. A blank
+                    // host clears it; a bad/duplicate/PSP host is rejected with a friendly
+                    // redirect (not a bubbled 500 from the unique index).
+                    String landingHost = AmsDataGlobal.normalizeHost(request.getParameter("landingHost"));
+                    if (!landingHost.isEmpty()) {
+                        AmsDataGlobal g = (AmsDataGlobal) getServletContext().getAttribute("global");
+                        String hostError = validateLandingHost(em, landingHost, agencyId, g);
+                        if (hostError != null) {
+                            response.sendRedirect("PspAgencyHome?agencyId=" + agencyId + "&landingError=" + hostError);
+                            return; // outer finally closes the EntityManager
+                        }
+                    }
+
                     Agency agency = em.find(Agency.class, agencyId);
 
                     agency.setName(request.getParameter("agencyName").trim());
@@ -125,6 +149,7 @@ public class AgencyAction extends HttpServlet {
                     String taxId = request.getParameter("taxId");
                     agency.setTaxId(taxId != null ? taxId.trim() : null);
                     agency.setMarkupEnabled("on".equals(request.getParameter("markupEnabled")));
+                    agency.setLandingHost(landingHost.isEmpty() ? null : landingHost);
 
                     // Update address
                     Address address = agency.getAddress();
@@ -313,5 +338,77 @@ public class AgencyAction extends HttpServlet {
             redirectUrl += "?agencyId=" + agencyIdParam;
         }
         response.sendRedirect(redirectUrl);
+    }
+
+    // ═══ V068: agency landing-page HTML + host validation ═══
+
+    /** Hostname format (already normalized lowercase): dotted labels, no scheme/path/space/*. */
+    private static final Pattern HOST_PATTERN =
+            Pattern.compile("^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$");
+
+    /**
+     * AJAX handler: sanitize (LandingSafe) and store the agency's custom landing HTML in
+     * agency.landing_html, then rebuild the global caches so it serves immediately.
+     * Mirrors {@code UpdatePspSettings.saveLandingHtml}. Returns JSON.
+     */
+    private void saveAgencyLandingHtml(HttpServletRequest request, HttpServletResponse response) throws IOException {
+        EntityManagerFactory emf = (EntityManagerFactory) getServletContext().getAttribute("emf");
+        EntityManager em = emf.createEntityManager();
+        try {
+            long agencyId = Long.parseLong(request.getParameter("agencyId"));
+            String sanitized = LandingSafe.clean(request.getParameter("landingHtml"));
+
+            em.getTransaction().begin();
+            Agency agency = em.find(Agency.class, agencyId);
+            if (agency == null) {
+                if (em.getTransaction().isActive()) em.getTransaction().rollback();
+                writeJson(response, "{\"status\":\"error\",\"message\":\"Agency not found\"}");
+                return;
+            }
+            agency.setLandingHtml(sanitized);
+            em.merge(agency);
+            em.getTransaction().commit();
+
+            // Rebuild caches (incl. the host → agency map) so the new HTML serves immediately.
+            AmsDataGlobal global = (AmsDataGlobal) getServletContext().getAttribute("global");
+            if (global != null) {
+                EntityManager em2 = emf.createEntityManager();
+                try {
+                    global.refreshSalesData(em2);
+                    getServletContext().setAttribute("global", global);
+                } finally {
+                    em2.close();
+                }
+            }
+            writeJson(response, "{\"status\":\"ok\"}");
+        } catch (Exception e) {
+            if (em.getTransaction().isActive()) em.getTransaction().rollback();
+            e.printStackTrace();
+            writeJson(response, "{\"status\":\"error\"}");
+        } finally {
+            em.close();
+        }
+    }
+
+    /**
+     * Validate a normalized-lowercase landing host. Returns an error code
+     * ("format" | "psp" | "duplicate") for a friendly redirect, or null if valid and free.
+     */
+    private String validateLandingHost(EntityManager em, String host, long agencyId, AmsDataGlobal global) {
+        if (host.length() > 255 || !HOST_PATTERN.matcher(host).matches()) return "format";
+        if (global != null && global.isPspHost(host)) return "psp";
+        Long count = em.createQuery(
+                        "SELECT COUNT(a) FROM Agency a WHERE a.landingHost = :h AND a.id <> :id", Long.class)
+                .setParameter("h", host)
+                .setParameter("id", agencyId)
+                .getSingleResult();
+        if (count != null && count > 0) return "duplicate";
+        return null;
+    }
+
+    private void writeJson(HttpServletResponse response, String json) throws IOException {
+        response.setContentType("application/json");
+        response.setCharacterEncoding("UTF-8");
+        response.getWriter().print(json);
     }
 }

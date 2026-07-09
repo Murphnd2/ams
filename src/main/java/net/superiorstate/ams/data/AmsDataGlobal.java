@@ -35,10 +35,13 @@ import net.superiorstate.ams.model.summit.archive.Employer;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.HashMap;
+import java.util.Set;
 
 public class AmsDataGlobal {
 
@@ -127,6 +130,11 @@ public class AmsDataGlobal {
     private Map<Long, Long> agencyManagerMap;
     private Long pspHomeAgencyId;
 
+    // V068: host-header custom agency landing. Built from the cached agency list.
+    private Map<String, Long> hostToAgencyId = new HashMap<>();
+    private Map<String, String> hostToLandingHtml = new HashMap<>();
+    private volatile Set<String> pspHosts;
+
     public AmsDataGlobal(){};
 
     public void initializeGlobalData(EntityManager em){
@@ -189,6 +197,7 @@ public class AmsDataGlobal {
                 setSetupAgents(buildAgentList(em));
                 setProspectAgencyMap(buildProspectAgencyMap(em));
                 setAgencyManagerMap(SalesDAO.getAgencyManagerMap(em));
+                rebuildHostMap();
             }
         } catch (Exception e) {
             System.err.println("❌ initializeGlobalData FAILED: " + e.getMessage());
@@ -948,6 +957,7 @@ public class AmsDataGlobal {
         setSetupAgents(buildAgentList(em));
         setProspectAgencyMap(buildProspectAgencyMap(em));
         setAgencyManagerMap(SalesDAO.getAgencyManagerMap(em));
+        rebuildHostMap();
     }
 
     /** Comma-separated LOS IDs available in the given rate (for JSP data attributes). */
@@ -1070,5 +1080,85 @@ public class AmsDataGlobal {
             if (ai.getId() == personId) return ai.getAgencyIds();
         }
         return "";
+    }
+
+    // ═══ V068: Host-header custom agency landing ═══
+
+    /**
+     * Rebuild the host → agency lookup from the cached agency list. Skips suppressed
+     * agencies (V057), keys on the normalized-lowercase {@code landing_host}, and only
+     * includes agencies whose {@code landing_html} is non-blank (the white-label switch).
+     * Invoked after {@code setAgencies(...)} in both {@code initializeGlobalData} and
+     * {@code refreshSalesData}, so an agency host/HTML edit through AgencyAction (which
+     * already calls {@code refreshSalesData}) invalidates this map for free.
+     */
+    private void rebuildHostMap() {
+        Map<String, Long> byHost = new HashMap<>();
+        Map<String, String> htmlByHost = new HashMap<>();
+        if (agencies != null) {
+            for (Agency a : agencies) {
+                if (a == null || a.isSuppressed()) continue;
+                String host = normalizeHost(a.getLandingHost());
+                String html = a.getLandingHtml();
+                if (host.isEmpty() || html == null || html.isBlank()) continue;
+                byHost.put(host, a.getId());
+                htmlByHost.put(host, html);
+            }
+        }
+        this.hostToAgencyId = byHost;
+        this.hostToLandingHtml = htmlByHost;
+    }
+
+    /** Normalize a hostname for case-insensitive comparison: trim, lowercase, strip trailing dots. */
+    public static String normalizeHost(String host) {
+        if (host == null) return "";
+        String h = host.strip().toLowerCase(Locale.ROOT);
+        while (h.endsWith(".")) h = h.substring(0, h.length() - 1);
+        return h;
+    }
+
+    /**
+     * Resolve an agency id by incoming host, or null if the host is blank, a PSP host,
+     * or has no matching non-suppressed agency with a non-blank landing page.
+     */
+    public Long getAgencyIdForHost(String host) {
+        String h = normalizeHost(host);
+        if (h.isEmpty()) return null;
+        return hostToAgencyId.get(h);
+    }
+
+    /** The sanitized landing HTML for the agency owning this host, or null if none. */
+    public String getLandingHtmlForHost(String host) {
+        String h = normalizeHost(host);
+        if (h.isEmpty()) return null;
+        return hostToLandingHtml.get(h);
+    }
+
+    /**
+     * The set of PSP hosts (exact-match) from ssa.properties {@code PSP_HOSTS}
+     * (default {@code superiorstate.net,superiorstate.biz}), normalized lowercase.
+     * Lazily built and cached; ssa.properties is read-only after startup.
+     */
+    public Set<String> getPspHosts() {
+        Set<String> cached = pspHosts;
+        if (cached == null) {
+            Set<String> built = new HashSet<>();
+            String raw = AppConfig.get("PSP_HOSTS", "superiorstate.net,superiorstate.biz");
+            if (raw != null) {
+                for (String part : raw.split(",")) {
+                    String h = normalizeHost(part);
+                    if (!h.isEmpty()) built.add(h);
+                }
+            }
+            cached = built;
+            pspHosts = built;
+        }
+        return cached;
+    }
+
+    /** True if the given host is a configured PSP host (exact match, never wildcard). */
+    public boolean isPspHost(String host) {
+        String h = normalizeHost(host);
+        return !h.isEmpty() && getPspHosts().contains(h);
     }
 }

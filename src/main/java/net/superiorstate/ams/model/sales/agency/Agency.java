@@ -27,6 +27,14 @@ public class Agency implements Comparable<Agency> {
     @Column(name="markup_enabled", nullable = false)
     private boolean markupEnabled;
 
+    /** V068: vanity host for this agency's branded landing page (stored lowercase, unique). */
+    @Column(name="landing_host", columnDefinition = "varchar(255)")
+    private String landingHost;
+
+    /** V068: sanitized custom landing-page HTML; non-blank = white-label front door enabled. */
+    @Column(name="landing_html", columnDefinition = "MEDIUMTEXT")
+    private String landingHtml;
+
     @ManyToOne
     @JoinColumn(name="psp_id")
     private PSP psp;
@@ -101,6 +109,22 @@ public class Agency implements Comparable<Agency> {
 
     public void setMarkupEnabled(boolean markupEnabled) {
         this.markupEnabled = markupEnabled;
+    }
+
+    public String getLandingHost() {
+        return landingHost;
+    }
+
+    public void setLandingHost(String landingHost) {
+        this.landingHost = landingHost;
+    }
+
+    public String getLandingHtml() {
+        return landingHtml;
+    }
+
+    public void setLandingHtml(String landingHtml) {
+        this.landingHtml = landingHtml;
     }
 
     public PSP getPsp() {

@@ -38,10 +38,14 @@
             color: ${applicationScope.global.landingHeaderTextColor};
         }
         .landing-body { padding-top: 56px; }
+        .landing-body.white-label { padding-top: 0; }
     </style>
 </head>
 <body>
-    <%-- FIXED HEADER: logo left, login right --%>
+    <%-- FIXED HEADER: logo left, login right.
+         V068: suppressed for white-label agency landings (requestScope.whiteLabel) so the
+         agency owns the page; the login modal and scroll scripts below remain available. --%>
+    <c:if test="${empty requestScope.whiteLabel}">
     <div class="landing-header">
         <div>
             <c:set var="navLogo" value="${not empty applicationScope.global.logoNavbar ? applicationScope.global.logoNavbar : '/images/logoA.png'}"/>
@@ -51,9 +55,10 @@
             <i class="bi bi-box-arrow-in-right"></i>Login
         </button>
     </div>
+    </c:if>
 
     <%-- CUSTOM HTML CONTENT (pre-sanitized on save) --%>
-    <div class="landing-body">
+    <div class="landing-body${not empty requestScope.whiteLabel ? ' white-label' : ''}">
         ${requestScope.landingHtml}
     </div>
 
