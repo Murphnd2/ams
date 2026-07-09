@@ -12,7 +12,7 @@ import net.superiorstate.ams.data.dao.SalesDAO;
 import net.superiorstate.ams.data.dao.StorageDAO;
 import net.superiorstate.ams.model.sales.agency.Agency;
 import net.superiorstate.ams.model.sales.agency.Proposal;
-import net.superiorstate.ams.model.sales.agency.RateTable;
+import net.superiorstate.ams.model.sales.agency.ProposalPriceLine;
 import net.superiorstate.ams.model.sales.offering.Enhancement;
 import net.superiorstate.ams.model.sales.offering.Feature;
 import net.superiorstate.ams.model.sales.offering.LOS;
@@ -73,8 +73,8 @@ public class ViewProposal extends HttpServlet {
                 em.getTransaction().commit();
             }
 
-            // Load pricing
-            List<RateTable> pricing = SalesDAO.getPricing(em, proposal);
+            // Load pricing (sell price only — base/markup breakdown is internal-only, see proposalDetail.jsp)
+            List<ProposalPriceLine> pricing = SalesDAO.getPricingWithAdjustments(em, proposal);
 
             // Collect direct-FK module IDs for all proposed LOSs and all Enhancements with pricing
             Set<Long> featureModuleIds = new LinkedHashSet<>();
@@ -92,9 +92,9 @@ public class ViewProposal extends HttpServlet {
 
             // Enhancement modules (direct FK: servicemodule.enhancement_id) — only for enhancements with pricing
             Set<Long> enhancementIdsWithPricing = new HashSet<>();
-            for (RateTable rt : pricing) {
-                if (rt.getModule() != null && rt.getModule().getEnhancement() != null) {
-                    enhancementIdsWithPricing.add(rt.getModule().getEnhancement().getId());
+            for (ProposalPriceLine line : pricing) {
+                if (line.getModule() != null && line.getModule().getEnhancement() != null) {
+                    enhancementIdsWithPricing.add(line.getModule().getEnhancement().getId());
                 }
             }
             for (Long enhId : enhancementIdsWithPricing) {
@@ -196,9 +196,9 @@ public class ViewProposal extends HttpServlet {
                 }
 
                 Set<Long> proposalEnhIds = new HashSet<>();
-                for (RateTable rt : pricing) {
-                    if (rt.getModule() != null && rt.getModule().getEnhancement() != null) {
-                        proposalEnhIds.add(rt.getModule().getEnhancement().getId());
+                for (ProposalPriceLine line : pricing) {
+                    if (line.getModule() != null && line.getModule().getEnhancement() != null) {
+                        proposalEnhIds.add(line.getModule().getEnhancement().getId());
                     }
                 }
 
@@ -300,6 +300,8 @@ public class ViewProposal extends HttpServlet {
                     request.setAttribute("proposalSections", sections);
                     request.setAttribute("sectionHtml", sectionHtml);
                 }
+
+                request.setAttribute("agencyName", proposalAgency != null ? proposalAgency.getName() : null);
             }
 
         } finally {

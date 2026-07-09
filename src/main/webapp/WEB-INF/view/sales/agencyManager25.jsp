@@ -614,6 +614,13 @@
                   <label class="form-label fw-semibold mb-0" style="font-size: 0.85rem;">Tax ID</label>
                   <input type="text" name="taxId" class="form-control form-control-sm" value="${selectedAgency.getTaxId()}">
                 </div>
+                <div class="mb-2 form-check">
+                  <input type="checkbox" class="form-check-input" id="markupEnabledCheck" name="markupEnabled"
+                         ${selectedAgency.isMarkupEnabled() ? 'checked' : ''}>
+                  <label class="form-check-label" for="markupEnabledCheck" style="font-size: 0.85rem;">
+                    Enable agent markup
+                  </label>
+                </div>
                 <hr class="my-2">
                 <h6 class="text-muted mb-2"><i class="bi bi-person me-1"></i>Primary Contact</h6>
                 <div class="row mb-2">

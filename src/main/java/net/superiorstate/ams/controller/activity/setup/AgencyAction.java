@@ -24,6 +24,16 @@ public class AgencyAction extends HttpServlet {
 
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        // V067 hardening: Agency Manager (agencyManager25.jsp) is nav-gated to PSP admins
+        // only, but this servlet itself had no server-side check — every action here
+        // (including the new markup_enabled toggle) is a capability grant, so enforce it
+        // here directly rather than relying solely on the nav link being hidden.
+        boolean isPspAdmin = Boolean.TRUE.equals(request.getSession().getAttribute("isPspAdmin"));
+        if (!isPspAdmin) {
+            response.sendError(HttpServletResponse.SC_FORBIDDEN);
+            return;
+        }
+
         EntityManagerFactory emf = (EntityManagerFactory) getServletContext().getAttribute("emf");
         EntityManager em = emf.createEntityManager();
         AmsDataLocal local = (AmsDataLocal) request.getSession().getAttribute("local");
@@ -114,6 +124,7 @@ public class AgencyAction extends HttpServlet {
                     agency.setPhone(phone != null ? phone.trim() : null);
                     String taxId = request.getParameter("taxId");
                     agency.setTaxId(taxId != null ? taxId.trim() : null);
+                    agency.setMarkupEnabled("on".equals(request.getParameter("markupEnabled")));
 
                     // Update address
                     Address address = agency.getAddress();

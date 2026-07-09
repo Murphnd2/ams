@@ -13,13 +13,16 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * Resolves the Agency that originated the sale behind a given Setup — the
- * agency whose agents may be delegated specific ToDos on the Setup's checklist.
+ * Resolves the Agency that originated a sale — the agency whose agents may be
+ * delegated specific ToDos on a Setup's checklist ({@link #resolve(Setup)}),
+ * or whose agency-level settings (e.g. proposal markup enablement) apply to a
+ * Proposal directly, before a Setup necessarily exists ({@link #resolve(Proposal)}).
  *
- * Resolution order (V061 agent-delegation feature):
- *   1. setup.application.proposal.sourceActivity.assignedTo  (Opportunity's agent of record — strongest signal)
- *   2. setup.application.proposal.prospect.agent             (prospect's agent of record — outside agent)
- *   3. setup.application.proposal.createdBy                  (fallback: whoever built the proposal)
+ * Resolution order (V061 agent-delegation feature; reused as-is by the V067
+ * per-agency markup gate):
+ *   1. proposal.sourceActivity.assignedTo  (Opportunity's agent of record — strongest signal)
+ *   2. proposal.prospect.agent             (prospect's agent of record — outside agent)
+ *   3. proposal.createdBy                  (fallback: whoever built the proposal)
  *
  * The Rate → agencyrates join is intentionally NOT consulted (many agencies
  * can share a rate, which wouldn't identify the originator).
@@ -28,6 +31,8 @@ import java.util.List;
  * on behalf of an outside agency, `createdBy` resolves to the PSP user (and
  * therefore the PSP's own "agency," not the outside one). `prospect.agent`
  * and the Opportunity's `assignedTo` are the reliable outside-agent signals.
+ * This ordering is intentional — a real selling agent on the prospect must
+ * win over whoever happened to click "new proposal" — do not reorder it.
  */
 public class OriginatingAgencyResolver {
 
@@ -49,6 +54,27 @@ public class OriginatingAgencyResolver {
         Application app = setup.getApplication();
         if (app == null) return null;
         Proposal proposal = app.getProposal();
+        if (proposal == null) return null;
+
+        return resolveAgent(proposal);
+    }
+
+    /**
+     * Same resolution as {@link #resolve(Setup)}, but starting directly from
+     * a Proposal — for callers (e.g. proposal pricing/markup) that need the
+     * originating agency before a Setup necessarily exists.
+     */
+    public static Agency resolve(Proposal proposal) {
+        Person p = resolveAgent(proposal);
+        return agencyOf(p);
+    }
+
+    /**
+     * Returns the Person whose agency is treated as the originating one for
+     * this Proposal. Same three-step chain as {@link #resolveAgent(Setup)},
+     * starting directly from the Proposal (no Setup/Application unwrap).
+     */
+    public static Person resolveAgent(Proposal proposal) {
         if (proposal == null) return null;
 
         // 1. Source Opportunity's assigned agent

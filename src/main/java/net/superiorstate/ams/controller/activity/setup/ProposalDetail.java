@@ -9,10 +9,14 @@ import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.AmsDataLocal;
 import net.superiorstate.ams.data.dao.EmailDAO;
 import net.superiorstate.ams.data.dao.SalesDAO;
+import net.superiorstate.ams.data.resolver.OriginatingAgencyResolver;
 import net.superiorstate.ams.data.util.EmailTemplate;
 import net.superiorstate.ams.model.general.Person;
+import net.superiorstate.ams.model.sales.agency.Agency;
+import net.superiorstate.ams.model.sales.agency.PriceItem;
 import net.superiorstate.ams.model.sales.agency.Proposal;
-import net.superiorstate.ams.model.sales.agency.RateTable;
+import net.superiorstate.ams.model.sales.agency.ProposalPriceLine;
+import net.superiorstate.ams.model.sales.offering.ServiceModule;
 
 import java.io.IOException;
 import java.sql.Timestamp;
@@ -34,7 +38,7 @@ public class ProposalDetail extends HttpServlet {
             q.setParameter("id", proposalId);
             Proposal proposal = (Proposal) q.getSingleResult();
 
-            List<RateTable> pricing = SalesDAO.getPricing(em, proposal);
+            List<ProposalPriceLine> pricing = SalesDAO.getPricingWithAdjustments(em, proposal);
 
             // Build proposal link dynamically from request (adapts to any host/port/context)
             String baseUrl = request.getScheme() + "://" + request.getServerName();
@@ -43,9 +47,19 @@ public class ProposalDetail extends HttpServlet {
             baseUrl += request.getContextPath() + "/";
             String proposalLink = baseUrl + "proposal/" + proposal.getApplicationGUID();
 
+            boolean isPspAdmin = Boolean.TRUE.equals(request.getSession().getAttribute("isPspAdmin"));
+            boolean isAgent = Boolean.TRUE.equals(request.getSession().getAttribute("isAgent"));
+            boolean isAgencyAdmin = Boolean.TRUE.equals(request.getSession().getAttribute("isAgencyAdmin"));
+
+            // V067: markup is off by default for every agency (and for the no-agency /
+            // PSP-direct case — no admin exception) until explicitly enabled on the agency.
+            Agency originatingAgency = OriginatingAgencyResolver.resolve(proposal);
+            boolean agencyMarkupEnabled = originatingAgency != null && originatingAgency.isMarkupEnabled();
+
             request.setAttribute("proposal", proposal);
             request.setAttribute("pricing", pricing);
             request.setAttribute("proposalLink", proposalLink);
+            request.setAttribute("canEditMarkup", (isPspAdmin || isAgent || isAgencyAdmin) && agencyMarkupEnabled);
 
         } finally {
             em.close();
@@ -101,6 +115,56 @@ public class ProposalDetail extends HttpServlet {
                 em.getTransaction().commit();
 
                 System.out.println("Proposal #" + proposalId + " sent to " + toEmail);
+            } else if ("saveMarkup".equals(action)) {
+                boolean isPspAdmin = Boolean.TRUE.equals(request.getSession().getAttribute("isPspAdmin"));
+                boolean isAgent = Boolean.TRUE.equals(request.getSession().getAttribute("isAgent"));
+                boolean isAgencyAdmin = Boolean.TRUE.equals(request.getSession().getAttribute("isAgencyAdmin"));
+                if (!isPspAdmin && !isAgent && !isAgencyAdmin) {
+                    response.sendError(HttpServletResponse.SC_FORBIDDEN);
+                    return;
+                }
+
+                Proposal proposal = em.find(Proposal.class, proposalId);
+                if (proposal == null) {
+                    response.sendError(HttpServletResponse.SC_NOT_FOUND);
+                    return;
+                }
+
+                // V067: authoritative gate — a hand-crafted POST must be rejected the same
+                // as the UI hides the control, in case the agency isn't markup-enabled (or
+                // no agency resolves at all, e.g. a PSP-direct proposal).
+                Agency originatingAgency = OriginatingAgencyResolver.resolve(proposal);
+                boolean agencyMarkupEnabled = originatingAgency != null && originatingAgency.isMarkupEnabled();
+                if (!agencyMarkupEnabled) {
+                    response.sendError(HttpServletResponse.SC_FORBIDDEN);
+                    return;
+                }
+
+                String[] moduleIds = request.getParameterValues("moduleId");
+                String[] priceItemIds = request.getParameterValues("priceItemId");
+                String[] markups = request.getParameterValues("markup");
+
+                if (moduleIds != null && priceItemIds != null && markups != null
+                        && moduleIds.length == priceItemIds.length && moduleIds.length == markups.length) {
+                    Person currentUser = local.getCurrentPerson();
+                    for (int i = 0; i < moduleIds.length; i++) {
+                        double markupAmount;
+                        try {
+                            markupAmount = Double.parseDouble(markups[i]);
+                        } catch (NumberFormatException e) {
+                            continue;
+                        }
+                        if (markupAmount < 0) continue; // upward-only — silently skip invalid negative input
+
+                        ServiceModule module = em.find(ServiceModule.class, Long.parseLong(moduleIds[i]));
+                        PriceItem priceItem = em.find(PriceItem.class, Long.parseLong(priceItemIds[i]));
+                        if (module == null || priceItem == null) continue;
+
+                        SalesDAO.saveProposalPriceAdjustment(em, proposal, module, priceItem, markupAmount, currentUser);
+                    }
+                }
+
+                System.out.println("Proposal #" + proposalId + " markup updated by " + local.getCurrentPerson().getId());
             }
         } catch (Exception e) {
             e.printStackTrace();

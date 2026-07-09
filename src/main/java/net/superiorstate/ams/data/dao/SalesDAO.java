@@ -316,6 +316,75 @@ public abstract class SalesDAO {
         return result;
     }
 
+    /**
+     * Same rows as getPricing(), annotated with this proposal's per-line markup
+     * (defaults to 0 when no ProposalPriceAdjustment row exists). Resolution is
+     * proposal-only today; an agency-default fall-through can be added here
+     * later without changing the RateTable/ProposalPriceAdjustment shapes.
+     */
+    public static List<ProposalPriceLine> getPricingWithAdjustments(EntityManager em, Proposal p) {
+        List<RateTable> baseRows = getPricing(em, p);
+        if (baseRows.isEmpty()) return new ArrayList<>();
+
+        List<ProposalPriceAdjustment> adjustments = em.createQuery(
+                        "SELECT a FROM ProposalPriceAdjustment a WHERE a.proposal.id = :proposalId", ProposalPriceAdjustment.class)
+                .setParameter("proposalId", p.getId())
+                .getResultList();
+
+        Map<String, Double> markupByLine = new HashMap<>();
+        for (ProposalPriceAdjustment a : adjustments) {
+            markupByLine.put(a.getModule().getId() + ":" + a.getPriceItem().getId(), a.getMarkupAmount());
+        }
+
+        List<ProposalPriceLine> result = new ArrayList<>();
+        for (RateTable rt : baseRows) {
+            double markup = markupByLine.getOrDefault(rt.getModule().getId() + ":" + rt.getPriceItem().getId(), 0.0);
+            result.add(new ProposalPriceLine(rt.getModule(), rt.getPriceItem(), rt.getPrice(), markup));
+        }
+        return result;
+    }
+
+    /** Fetch all price adjustment rows for a proposal (unfiltered — internal/admin use). */
+    public static List<ProposalPriceAdjustment> getPriceAdjustmentsForProposal(EntityManager em, long proposalId) {
+        return em.createQuery(
+                        "SELECT a FROM ProposalPriceAdjustment a WHERE a.proposal.id = :proposalId", ProposalPriceAdjustment.class)
+                .setParameter("proposalId", proposalId)
+                .getResultList();
+    }
+
+    /** Upsert a single proposal line's markup, honoring the (proposal, module, priceItem) unique key. Upward-only: rejects negative markup. */
+    public static void saveProposalPriceAdjustment(EntityManager em, Proposal proposal, ServiceModule module, PriceItem priceItem, double markupAmount, Person createdBy) {
+        if (markupAmount < 0) {
+            throw new IllegalArgumentException("markup_amount must be >= 0");
+        }
+
+        ProposalPriceAdjustment existing = null;
+        try {
+            existing = em.createQuery(
+                            "SELECT a FROM ProposalPriceAdjustment a WHERE a.proposal.id = :proposalId AND a.module.id = :moduleId AND a.priceItem.id = :priceItemId",
+                            ProposalPriceAdjustment.class)
+                    .setParameter("proposalId", proposal.getId())
+                    .setParameter("moduleId", module.getId())
+                    .setParameter("priceItemId", priceItem.getId())
+                    .getSingleResult();
+        } catch (NoResultException ignored) {}
+
+        em.getTransaction().begin();
+        if (existing != null) {
+            existing.setMarkupAmount(markupAmount);
+            em.merge(existing);
+        } else {
+            ProposalPriceAdjustment adj = new ProposalPriceAdjustment();
+            adj.setProposal(proposal);
+            adj.setModule(module);
+            adj.setPriceItem(priceItem);
+            adj.setMarkupAmount(markupAmount);
+            adj.setCreatedBy(createdBy);
+            em.persist(adj);
+        }
+        em.getTransaction().commit();
+    }
+
     public static List<ServiceModule> getDistinctListOfServiceModulesForThisProposal(Proposal proposal){
         List<LOS> quotedServices = proposal.getLosList();
         List<ServiceModule> serviceModuleList = new ArrayList<>();

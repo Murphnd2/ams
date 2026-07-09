@@ -90,44 +90,138 @@
 
     <%-- Pricing --%>
     <div class="card mb-3">
-        <div class="card-header bg-white py-3">
+        <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
             <h5 class="mb-0 fw-semibold">Pricing Summary</h5>
+            <c:if test="${canEditMarkup}">
+                <small class="text-muted">Agent markup is a flat dollar amount added to the standard price. Markup cannot be negative.</small>
+            </c:if>
         </div>
         <div class="card-body p-0">
-            <c:set var="currentModule" value=""/>
-            <c:set var="hasVisibleRows" value="false"/>
-            <table class="table table-sm mb-0">
-                <c:forEach var="rt" items="${pricing}">
-                    <%-- Skip $0.00 rows entirely --%>
-                    <c:if test="${rt.getPrice() > 0.001}">
-                        <c:if test="${rt.getModule().getId() != currentModule}">
-                            <c:set var="currentModule" value="${rt.getModule().getId()}"/>
-                            <tr class="pricing-header">
-                                <td colspan="2" class="fw-semibold py-2 px-3">
-                                    <c:choose>
-                                        <c:when test="${not empty rt.getModule().getLos()}">${rt.getModule().getLos().getDescription()}</c:when>
-                                        <c:when test="${not empty rt.getModule().getEnhancement()}">${rt.getModule().getEnhancement().getDescription()}</c:when>
-                                        <c:otherwise>${rt.getModule().getDescription()}</c:otherwise>
-                                    </c:choose>
-                                </td>
-                            </tr>
+            <c:choose>
+                <%-- Editable breakdown: every line is shown, including $0.00 "Included" lines, so a
+                     markup can be added to any of them. Gated the same way the save action is gated
+                     server-side (ProposalDetail.doPost, saveMarkup): agent, agency admin, or PSP admin. --%>
+                <c:when test="${canEditMarkup}">
+                    <form method="post" action="ProposalDetail">
+                        <input type="hidden" name="id" value="${proposal.getId()}">
+                        <input type="hidden" name="action" value="saveMarkup">
+                        <c:set var="currentModule" value=""/>
+                        <table class="table table-sm mb-0">
+                            <thead>
+                                <tr class="pricing-header">
+                                    <th class="ps-5">Item</th>
+                                    <th class="text-end">Standard</th>
+                                    <th class="text-end" style="width:130px;">Agent Markup</th>
+                                    <th class="text-end pe-3">Sell</th>
+                                </tr>
+                            </thead>
+                            <c:forEach var="line" items="${pricing}">
+                                <c:if test="${line.getModule().getId() != currentModule}">
+                                    <c:set var="currentModule" value="${line.getModule().getId()}"/>
+                                    <tr class="pricing-header">
+                                        <td colspan="4" class="fw-semibold py-2 px-3">
+                                            <c:choose>
+                                                <c:when test="${not empty line.getModule().getLos()}">${line.getModule().getLos().getDescription()}</c:when>
+                                                <c:when test="${not empty line.getModule().getEnhancement()}">${line.getModule().getEnhancement().getDescription()}</c:when>
+                                                <c:otherwise>${line.getModule().getDescription()}</c:otherwise>
+                                            </c:choose>
+                                        </td>
+                                    </tr>
+                                </c:if>
+                                <tr>
+                                    <td class="ps-5">${line.getPriceItem().getDescription()}</td>
+                                    <td class="text-end">
+                                        <c:choose>
+                                            <c:when test="${line.getBasePrice() < 0.02}">Included</c:when>
+                                            <c:otherwise><fmt:formatNumber value="${line.getBasePrice()}" type="currency"/></c:otherwise>
+                                        </c:choose>
+                                    </td>
+                                    <td class="text-end">
+                                        <input type="hidden" name="moduleId" value="${line.getModule().getId()}">
+                                        <input type="hidden" name="priceItemId" value="${line.getPriceItem().getId()}">
+                                        <input type="number" class="form-control form-control-sm text-end d-inline-block"
+                                               name="markup" min="0" step="0.01" style="max-width:110px;"
+                                               value="<fmt:formatNumber value='${line.getMarkup()}' pattern='0.00'/>">
+                                    </td>
+                                    <td class="text-end pe-3 fw-semibold">
+                                        <c:choose>
+                                            <c:when test="${line.getSellPrice() < 0.02}">Included</c:when>
+                                            <c:otherwise><fmt:formatNumber value="${line.getSellPrice()}" type="currency"/></c:otherwise>
+                                        </c:choose>
+                                    </td>
+                                </tr>
+                            </c:forEach>
+                            <c:if test="${empty pricing}">
+                                <tr><td class="text-muted p-3" colspan="4">No pricing available for this rate/LOS combination</td></tr>
+                            </c:if>
+                        </table>
+                        <c:if test="${not empty pricing}">
+                            <div class="p-3">
+                                <button type="submit" class="btn btn-outline-primary btn-sm">
+                                    <i class="bi bi-check2 me-1"></i>Save Markup
+                                </button>
+                            </div>
                         </c:if>
-                        <tr>
-                            <td class="ps-5">${rt.getPriceItem().getDescription()}</td>
-                            <td class="text-end pe-3">
-                                <c:choose>
-                                    <c:when test="${rt.getPrice() < 0.02}">Included</c:when>
-                                    <c:otherwise><fmt:formatNumber value="${rt.getPrice()}" type="currency"/></c:otherwise>
-                                </c:choose>
-                            </td>
-                        </tr>
-                        <c:set var="hasVisibleRows" value="true"/>
-                    </c:if>
-                </c:forEach>
-                <c:if test="${empty pricing || hasVisibleRows == 'false'}">
-                    <tr><td class="text-muted p-3" colspan="2">No pricing available for this rate/LOS combination</td></tr>
-                </c:if>
-            </table>
+                    </form>
+                </c:when>
+                <%-- Read-only breakdown for viewers who can't edit markup — $0.00 sell rows are hidden,
+                     same visibility rule as the public proposalPricing.jsp. --%>
+                <c:otherwise>
+                    <c:set var="currentModule" value=""/>
+                    <c:set var="hasVisibleRows" value="false"/>
+                    <table class="table table-sm mb-0">
+                        <thead>
+                            <tr class="pricing-header">
+                                <th class="ps-5">Item</th>
+                                <th class="text-end">Standard</th>
+                                <th class="text-end">Agent Markup</th>
+                                <th class="text-end pe-3">Sell</th>
+                            </tr>
+                        </thead>
+                        <c:forEach var="line" items="${pricing}">
+                            <c:if test="${line.getSellPrice() > 0.001}">
+                                <c:if test="${line.getModule().getId() != currentModule}">
+                                    <c:set var="currentModule" value="${line.getModule().getId()}"/>
+                                    <tr class="pricing-header">
+                                        <td colspan="4" class="fw-semibold py-2 px-3">
+                                            <c:choose>
+                                                <c:when test="${not empty line.getModule().getLos()}">${line.getModule().getLos().getDescription()}</c:when>
+                                                <c:when test="${not empty line.getModule().getEnhancement()}">${line.getModule().getEnhancement().getDescription()}</c:when>
+                                                <c:otherwise>${line.getModule().getDescription()}</c:otherwise>
+                                            </c:choose>
+                                        </td>
+                                    </tr>
+                                </c:if>
+                                <tr>
+                                    <td class="ps-5">${line.getPriceItem().getDescription()}</td>
+                                    <td class="text-end">
+                                        <c:choose>
+                                            <c:when test="${line.getBasePrice() < 0.02}">Included</c:when>
+                                            <c:otherwise><fmt:formatNumber value="${line.getBasePrice()}" type="currency"/></c:otherwise>
+                                        </c:choose>
+                                    </td>
+                                    <td class="text-end">
+                                        <c:choose>
+                                            <c:when test="${line.getMarkup() < 0.02}">&mdash;</c:when>
+                                            <c:otherwise><fmt:formatNumber value="${line.getMarkup()}" type="currency"/></c:otherwise>
+                                        </c:choose>
+                                    </td>
+                                    <td class="text-end pe-3 fw-semibold">
+                                        <c:choose>
+                                            <c:when test="${line.getSellPrice() < 0.02}">Included</c:when>
+                                            <c:otherwise><fmt:formatNumber value="${line.getSellPrice()}" type="currency"/></c:otherwise>
+                                        </c:choose>
+                                    </td>
+                                </tr>
+                                <c:set var="hasVisibleRows" value="true"/>
+                            </c:if>
+                        </c:forEach>
+                        <c:if test="${empty pricing || hasVisibleRows == 'false'}">
+                            <tr><td class="text-muted p-3" colspan="4">No pricing available for this rate/LOS combination</td></tr>
+                        </c:if>
+                    </table>
+                </c:otherwise>
+            </c:choose>
         </div>
     </div>
 

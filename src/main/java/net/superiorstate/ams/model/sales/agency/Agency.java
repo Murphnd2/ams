@@ -24,6 +24,9 @@ public class Agency implements Comparable<Agency> {
     @Column(name="suppressed", nullable = false)
     private boolean suppressed;
 
+    @Column(name="markup_enabled", nullable = false)
+    private boolean markupEnabled;
+
     @ManyToOne
     @JoinColumn(name="psp_id")
     private PSP psp;
@@ -90,6 +93,14 @@ public class Agency implements Comparable<Agency> {
 
     public void setSuppressed(boolean suppressed) {
         this.suppressed = suppressed;
+    }
+
+    public boolean isMarkupEnabled() {
+        return markupEnabled;
+    }
+
+    public void setMarkupEnabled(boolean markupEnabled) {
+        this.markupEnabled = markupEnabled;
     }
 
     public PSP getPsp() {
