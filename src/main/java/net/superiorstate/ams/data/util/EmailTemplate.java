@@ -5,6 +5,7 @@ import net.superiorstate.ams.data.dao.AppConstantDAO;
 import net.superiorstate.ams.data.dao.StorageDAO;
 import net.superiorstate.ams.model.general.Person;
 import net.superiorstate.ams.model.general.WebLink;
+import net.superiorstate.ams.model.sales.agency.Agency;
 
 import java.time.Duration;
 import java.util.List;
@@ -41,6 +42,19 @@ public abstract class EmailTemplate {
      * @return fully wrapped HTML email string
      */
     public static String wrap(String body, Person sender, List<WebLink> attachments, EntityManager em) {
+        return wrap(body, sender, null, attachments, em);
+    }
+
+    /**
+     * V069 signature-source fix: the visible signature "company" line reflects the resolved
+     * From identity — the originating agency's name when one is supplied (Tier-1 white-label),
+     * otherwise the PSP name. Resolves the prior inconsistency where the proposal quick-send
+     * signed the PSP name while other paths signed the agency. The Wasabi storage prefix stays
+     * on the PSP name (attachments are stored under the PSP slug, unchanged).
+     *
+     * @param agency the originating agency whose name should appear in the signature, or null
+     */
+    public static String wrap(String body, Person sender, Agency agency, List<WebLink> attachments, EntityManager em) {
 
         String linkColor = safe(AppConstantDAO.getConstantValue(em, "EMAIL_COLOR_PRIMARY"), "#1a56db");
         String footerText = safe(AppConstantDAO.getConstantValue(em, "EMAIL_FOOTER_TEXT"), "");
@@ -57,7 +71,11 @@ public abstract class EmailTemplate {
             }
         }
 
-        // PSP slug for Wasabi storage prefix
+        // Company line for the signature: agency name when present, else PSP name.
+        String companyName = (agency != null && agency.getName() != null && !agency.getName().isBlank())
+                ? agency.getName() : pspName;
+
+        // PSP slug for Wasabi storage prefix (always PSP-scoped, not agency)
         String pspNameForStorage = pspName.isEmpty() ? "default" : pspName;
 
         StringBuilder sb = new StringBuilder();
@@ -94,8 +112,8 @@ public abstract class EmailTemplate {
             if (!senderEmail.isBlank()) {
                 sb.append("<p style=\"font-size:13.5px;color:#888888;margin:0 0 3px;line-height:1.5;\">").append(senderEmail).append("</p>");
             }
-            if (!pspName.isBlank()) {
-                sb.append("<p style=\"font-size:13.5px;color:#888888;margin:0 0 3px;line-height:1.5;\">").append(pspName).append("</p>");
+            if (!companyName.isBlank()) {
+                sb.append("<p style=\"font-size:13.5px;color:#888888;margin:0 0 3px;line-height:1.5;\">").append(companyName).append("</p>");
             }
             sb.append("</div>");
         }

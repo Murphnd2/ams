@@ -126,3 +126,54 @@ Cloudflare proxy state. The valve continues to work correctly.
 
 - **Audit trail:** The proxy was enabled 2026-05-01. The pre-enablement analysis is
   in `docs/analysis/proxy_readiness_audit.md`.
+
+---
+
+## Per-Agency White-Label Email Sending (V069)
+
+AMS can send an agency's outbound mail `From:` the agency's own subdomain
+(e.g. `admin.swbd.com`) instead of a Superior State address, without landing in spam.
+This requires the agency's sending domain to be **verified in SMTP2GO** *before* the
+per-agency `email_verified` flag is turned on in AMS. The application code path is
+`EmailIdentityResolver` (Tier 1); see `docs/analysis/email_identity_current_state.md`
+and the V069 migration header for the tier model.
+
+### Onboarding an agency sending domain (per agency)
+
+1. **Pick the sending subdomain.** Typically the same subdomain as the agency's web
+   landing host (V068 `landing_host`, e.g. `admin.swbd.com`). The Agency Manager UI
+   pre-fills the Sending Domain field from the landing host, but the two are stored and
+   verified **independently** — web presence (A/CNAME) is not relay verification.
+
+2. **Add the domain in SMTP2GO** (Sender Domains → Add Sending Domain →
+   `admin.swbd.com`). SMTP2GO issues the DNS records to publish **on the agency-owned
+   zone** (the agency's DNS, not ours):
+   - **SPF return-path CNAME** — `em<id>.admin.swbd.com` → SMTP2GO target
+     (same mechanism as our own `em102001` record, table above). This is what makes
+     SMTP2GO's VERP return-path align for the subdomain.
+   - **DKIM CNAME(s)** — `s<id>._domainkey.admin.swbd.com` → SMTP2GO DKIM target
+     (same mechanism as our own `s102001._domainkey`).
+   - These are **DNS-only** (never proxied) — mail senders must resolve them directly,
+     exactly like our apex mail records (see the Summary table: MX / SPF / DKIM = ❌ No).
+
+3. **Wait for SMTP2GO to show the domain "Verified."** SMTP2GO polls the DNS records;
+   propagation can take up to a few hours.
+
+4. **Only then flip `email_verified`** in the AMS Agency Manager (Edit Agency →
+   Verified toggle, PSP-admin only). **Strict sequencing gate:** never enable
+   `email_verified` before SMTP2GO reports Verified. Turning it on early makes AMS send
+   `From: <localpart>@admin.swbd.com` with no aligned SPF/DKIM → DMARC failure / spam,
+   which is worse than the Tier-2 fallback (`notifications@superiorstate.net`).
+
+### Notes
+
+- **DMARC on the agency zone:** if the agency publishes a strict `p=reject`/`p=quarantine`
+  DMARC policy on `swbd.com`, the subdomain `admin.swbd.com` inherits it unless it has its
+  own `_dmarc.admin.swbd.com` record. SMTP2GO DKIM/SPF alignment on the subdomain satisfies
+  DMARC once verified — hence the gate.
+- **Envelope / return-path:** AMS does **not** set an explicit envelope sender (the V069
+  build removed the `mail.smtp.from` override); SMTP2GO's own return-path (the `em<id>`
+  CNAME) owns SPF alignment per verified domain.
+- **Fallback is safe by default:** until an agency is verified, its agents send Tier-2
+  (`From: notifications@superiorstate.net`, `Reply-To:` the agent's real address) — aligned
+  and deliverable. No agency change is required for that fallback to work.

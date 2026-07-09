@@ -88,4 +88,5 @@ INSERT IGNORE INTO schema_version (version, description, script_name) VALUES
 ('V065', 'Email Draft Assistant skill seed: unique index on chatbot_skill(psp_id,skill_name) + EMAIL_DRAFT_ASSISTANT row', 'V065__email_draft_assistant_skill.sql'),
 ('V066', 'Per-proposal, per-line agent markup on pricing (proposal_price_adjustment)', 'V066__proposal_price_adjustment.sql'),
 ('V067', 'Per-agency enable flag for proposal markup (agency.markup_enabled, default OFF)', 'V067__agency_markup_enabled.sql'),
-('V068', 'Host-header custom agency landing pages (agency.landing_host unique + landing_html)', 'V068__agency_landing_host.sql');
+('V068', 'Host-header custom agency landing pages (agency.landing_host unique + landing_html)', 'V068__agency_landing_host.sql'),
+('V069', 'Per-agency white-label email sending (agency.email_domain unique + email_verified)', 'V069__agency_email_sending.sql');

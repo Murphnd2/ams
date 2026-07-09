@@ -327,7 +327,10 @@ public class CreateUser25 extends HttpServlet {
 
             String wrappedBody = EmailTemplate.wrapBodyOnly(body, pspName, em);
 
-            EmailDAO.sendEmail("noreply@superiorstate.net", newUser.getEmail(),
+            // V069: system/security mail always sends as noreply@superiorstate.net (never white-labeled), no Reply-To.
+            EmailDAO.sendEmail(net.superiorstate.ams.data.util.EmailIdentityResolver.systemIdentity(),
+                    java.util.List.of(newUser.getEmail()),
+                    java.util.Collections.emptyList(), java.util.Collections.emptyList(),
                     "Your Account Has Been Created", wrappedBody, em);
             System.out.println("✅ Welcome email sent to " + newUser.getEmail());
         } catch (Exception e) {

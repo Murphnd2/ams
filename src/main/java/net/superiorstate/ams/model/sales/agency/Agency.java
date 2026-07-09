@@ -35,6 +35,14 @@ public class Agency implements Comparable<Agency> {
     @Column(name="landing_html", columnDefinition = "MEDIUMTEXT")
     private String landingHtml;
 
+    /** V069: agency's verified sending (sub)domain, e.g. admin.swbd.com (stored lowercase, unique). */
+    @Column(name="email_domain", columnDefinition = "varchar(255)")
+    private String emailDomain;
+
+    /** V069: manual PSP-admin flag — true only once email_domain is Verified in SMTP2GO. Gates Tier-1 sending. */
+    @Column(name="email_verified", nullable = false)
+    private boolean emailVerified;
+
     @ManyToOne
     @JoinColumn(name="psp_id")
     private PSP psp;
@@ -125,6 +133,22 @@ public class Agency implements Comparable<Agency> {
 
     public void setLandingHtml(String landingHtml) {
         this.landingHtml = landingHtml;
+    }
+
+    public String getEmailDomain() {
+        return emailDomain;
+    }
+
+    public void setEmailDomain(String emailDomain) {
+        this.emailDomain = emailDomain;
+    }
+
+    public boolean isEmailVerified() {
+        return emailVerified;
+    }
+
+    public void setEmailVerified(boolean emailVerified) {
+        this.emailVerified = emailVerified;
     }
 
     public PSP getPsp() {

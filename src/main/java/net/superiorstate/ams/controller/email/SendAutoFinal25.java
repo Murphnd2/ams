@@ -11,10 +11,14 @@ import net.superiorstate.ams.data.util.AutomationHelper;
 import net.superiorstate.ams.data.util.Validator;
 import net.superiorstate.ams.data.dao.EmailDAO;
 import net.superiorstate.ams.data.resolver.EntityLookup;
+import net.superiorstate.ams.data.resolver.OriginatingAgencyResolver;
+import net.superiorstate.ams.data.util.EmailIdentity;
+import net.superiorstate.ams.data.util.EmailIdentityResolver;
 import net.superiorstate.ams.model.activity.Activity;
 import net.superiorstate.ams.model.activity.note.Email;
 import net.superiorstate.ams.model.general.Automation;
 import net.superiorstate.ams.model.general.Person;
+import net.superiorstate.ams.model.sales.agency.Agency;
 import net.superiorstate.ams.model.summit.archive.Employer;
 import net.superiorstate.ams.data.util.AutoSafe;
 import jakarta.mail.MessagingException;
@@ -189,7 +193,13 @@ public class SendAutoFinal25 extends HttpServlet {
             //Send Email Message
             boolean emailSent = true;
             try {
-                EmailDAO.sendEmail(email, em);
+                // V069: resolve identity from the email's author (Tier 0 for PSP staff,
+                // Tier 1 if authored by a verified-agency user, else Tier 2 fallback).
+                Person autoSender = email.getCreatedBy();
+                Agency autoAgency = OriginatingAgencyResolver.resolve(autoSender);
+                EmailIdentity identity = EmailIdentityResolver.resolve(autoSender, autoAgency,
+                        autoSender != null ? autoSender.getPsp() : null, em);
+                EmailDAO.sendEmail(email, identity, em);
                 System.out.println("SENT");
                 System.out.println(local.getCurrentEmail().getRecipientList().get(0).getEmail());
             } catch (Exception exception) {
@@ -359,7 +369,12 @@ public class SendAutoFinal25 extends HttpServlet {
         if (email != null) {
             boolean emailSent = true;
             try {
-                EmailDAO.sendEmail(email, em);
+                // V069: resolve identity from the email's author (same tier rules as above).
+                Person autoSender = email.getCreatedBy();
+                Agency autoAgency = OriginatingAgencyResolver.resolve(autoSender);
+                EmailIdentity identity = EmailIdentityResolver.resolve(autoSender, autoAgency,
+                        autoSender != null ? autoSender.getPsp() : null, em);
+                EmailDAO.sendEmail(email, identity, em);
                 System.out.println("=========== PREVIEW-SEND EMAIL SENT =========================");
             } catch (Exception ex) {
                 emailSent = false;

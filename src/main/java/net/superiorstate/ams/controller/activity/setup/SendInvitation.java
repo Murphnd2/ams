@@ -9,6 +9,9 @@ import net.superiorstate.ams.data.AmsDataGlobal;
 import net.superiorstate.ams.data.AmsDataLocal;
 import net.superiorstate.ams.data.dao.EmailDAO;
 import net.superiorstate.ams.data.resolver.EntityLookup;
+import net.superiorstate.ams.data.resolver.OriginatingAgencyResolver;
+import net.superiorstate.ams.data.util.EmailIdentity;
+import net.superiorstate.ams.data.util.EmailIdentityResolver;
 import net.superiorstate.ams.model.general.Address;
 import net.superiorstate.ams.model.general.Person;
 import net.superiorstate.ams.model.sales.agency.*;
@@ -158,10 +161,13 @@ public class SendInvitation extends HttpServlet {
                 + "<p>Thank you,<br>" + global.getPsp().getFullName() + "</p>";
 
             try {
-                String fromEmail = local.getCurrentPerson().getEmail();
+                // V069: resolve the inviter's white-label sending identity.
+                Person inviter = local.getCurrentPerson();
+                Agency inviterAgency = OriginatingAgencyResolver.resolve(inviter);
+                EmailIdentity identity = EmailIdentityResolver.resolve(inviter, inviterAgency, inviter.getPsp(), em);
                 List<String> toList = new ArrayList<>();
                 toList.add(email);
-                EmailDAO.sendEmail(fromEmail, toList, new ArrayList<>(), new ArrayList<>(), subject, body, em);
+                EmailDAO.sendEmail(identity, toList, new ArrayList<>(), new ArrayList<>(), subject, body, em);
                 System.out.println("✅ Invitation email sent to " + email + " (guid: " + guid + ")");
             } catch (Exception emailEx) {
                 System.err.println("❌ Failed to send invitation email to " + email + ": " + emailEx.getMessage());

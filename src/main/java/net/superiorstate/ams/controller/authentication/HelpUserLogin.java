@@ -86,7 +86,11 @@ public class HelpUserLogin extends HttpServlet {
             // Wrap in PSP-branded template
             String wrappedBody = EmailTemplate.wrapBodyOnly(body, pspName, em);
 
-            EmailDAO.sendEmail("noreply@superiorstate.net", user.getEmail(), subject, wrappedBody, em);
+            // V069: system/security mail always sends as noreply@superiorstate.net (never white-labeled), no Reply-To.
+            EmailDAO.sendEmail(net.superiorstate.ams.data.util.EmailIdentityResolver.systemIdentity(),
+                    java.util.List.of(user.getEmail()),
+                    java.util.Collections.emptyList(), java.util.Collections.emptyList(),
+                    subject, wrappedBody, em);
             System.out.println("✅ Login help email sent to " + user.getEmail() + " (method=" + helpMethod + ")");
         } finally {
             em.close();

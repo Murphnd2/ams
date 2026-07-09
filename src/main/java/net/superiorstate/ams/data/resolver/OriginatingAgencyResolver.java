@@ -44,6 +44,16 @@ public class OriginatingAgencyResolver {
     }
 
     /**
+     * The agency a given Person belongs to as an agent (their first agency membership),
+     * or null if they belong to none. Promoted to public in V069 so email-identity
+     * resolution (and any non-Proposal send path) can resolve an agency directly from a
+     * sender Person — the same "first agency" walk used internally by {@link #resolve(Proposal)}.
+     */
+    public static Agency resolve(Person person) {
+        return agencyOf(person);
+    }
+
+    /**
      * Returns the Person whose agency is treated as the originating one
      * (i.e., the "originating agent"). Same walk as {@link #resolve(Setup)};
      * useful when the UI wants to display the agent's name in addition to

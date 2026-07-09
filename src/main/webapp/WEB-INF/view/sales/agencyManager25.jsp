@@ -630,6 +630,29 @@
                   <div class="form-text" style="font-size: 0.72rem;">Bare hostname only (no https://, no path). Leave blank to disable.</div>
                   <div id="agencyLandingHostError" class="alert alert-danger py-1 px-2 mt-1" style="display:none; font-size:0.78rem;"></div>
                 </div>
+                <%-- V069: white-label email sending domain (pre-fills from landing host; verified independently) --%>
+                <div class="mb-2">
+                  <label class="form-label fw-semibold mb-0" style="font-size: 0.85rem;">Sending Domain</label>
+                  <input type="text" name="emailDomain" id="agencyEmailDomain" class="form-control form-control-sm"
+                         placeholder="e.g. admin.swbd.com"
+                         value="<c:out value='${selectedAgency.getEmailDomain()}'/>">
+                  <div class="form-text" style="font-size: 0.72rem;">
+                    Bare domain only. Agents send <code>From: name@&lt;domain&gt;</code> once Verified.
+                    Leave blank to send from the Superior State fallback.
+                  </div>
+                  <div class="form-check mt-1">
+                    <input type="checkbox" class="form-check-input" id="emailVerifiedCheck" name="emailVerified"
+                           ${selectedAgency.isEmailVerified() ? 'checked' : ''}>
+                    <label class="form-check-label" for="emailVerifiedCheck" style="font-size: 0.85rem;">
+                      Verified in SMTP2GO
+                    </label>
+                    <div class="form-text" style="font-size: 0.7rem; color:#b45309;">
+                      Only check this after the domain shows <strong>Verified</strong> in SMTP2GO (SPF return-path + DKIM).
+                      Enabling early sends unaligned mail (spam/DMARC failure).
+                    </div>
+                  </div>
+                  <div id="agencyEmailDomainError" class="alert alert-danger py-1 px-2 mt-1" style="display:none; font-size:0.78rem;"></div>
+                </div>
                 <hr class="my-2">
                 <h6 class="text-muted mb-2"><i class="bi bi-person me-1"></i>Primary Contact</h6>
                 <div class="row mb-2">
@@ -831,6 +854,30 @@
     if (el) { el.textContent = msg; el.style.display = 'block'; }
     var modalEl = document.getElementById('editAgencyModal');
     if (modalEl && window.bootstrap) { try { new bootstrap.Modal(modalEl).show(); } catch (e) {} }
+  })();
+
+  // V069: surface a friendly email-domain validation error (from the editAgency redirect).
+  (function() {
+    var ee = new URLSearchParams(window.location.search).get('emailError');
+    if (!ee) return;
+    var msg = ee === 'duplicate' ? 'That sending domain is already used by another agency.'
+            : 'Invalid sending domain. Use a bare domain like admin.example.com (no https://, no path).';
+    var el = document.getElementById('agencyEmailDomainError');
+    if (el) { el.textContent = msg; el.style.display = 'block'; }
+    var modalEl = document.getElementById('editAgencyModal');
+    if (modalEl && window.bootstrap) { try { new bootstrap.Modal(modalEl).show(); } catch (e) {} }
+  })();
+
+  // V069: pre-fill the Sending Domain from the Landing Host when the domain is still blank.
+  (function() {
+    var hostEl = document.querySelector('#editAgencyModal input[name="landingHost"]');
+    var domEl = document.getElementById('agencyEmailDomain');
+    if (!hostEl || !domEl) return;
+    function prefill() {
+      if (!domEl.value.trim() && hostEl.value.trim()) domEl.value = hostEl.value.trim();
+    }
+    hostEl.addEventListener('blur', prefill);
+    hostEl.addEventListener('change', prefill);
   })();
 
   // ── Rate Assignment State Tracking ──────────────────────────

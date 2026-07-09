@@ -1632,88 +1632,11 @@ public class AmsDataLocal implements AutoCloseable {
             this.fileUploadText = fileUploadText;
         }
 
-        private Email createEmailNotPersisted(){
-            Email e = new Email();
-            e.setCreatedBy(getSender());
-            e.setRecipientList(getRecipientList());
-            e.setSubject(getSubject());
-            e.setDetail(getBody());
-            e.setDateGenerated(Date.valueOf(LocalDate.now()));
-            e.setWebLinkList(getAttachments());
-            return e;
-        }
-        private Email createEmail(EntityManager em){
-            em.getTransaction().begin();
-            Email email = createEmailNotPersisted();
-            email.setStatus(EntityLookup.getActivityStatusById(em,1));
-            email.setReasonCreated(EntityLookup.getReasonById(em,7));
-            em.persist(email);
-            em.getTransaction().commit();
-            return email;
-        }
-        private Message getMessage(AmsDataGlobal global){
-            Properties prop = new Properties();
-            prop.put("mail.smtp.auth",true);
-            prop.put("mail.smtp.starttls.enable","true");
-            prop.put("mail.smtp.host",global.getSmtpServer());
-            prop.put("mail.smtp.port",global.getSmtpPort());
-            prop.put("mail.smtp.ssl.trust",global.getSmtpServer());
-            Session session = Session.getInstance(prop, new Authenticator() {
-                @Override
-                protected PasswordAuthentication getPasswordAuthentication(){
-                    return new PasswordAuthentication(global.getSmtpUser(),global.getSmtpPassword());
-                }
-            });
-            return new MimeMessage(session);
-        }
-
-        private boolean isReadyToSend(){
-            if(getSender()==null || getSender().getEmail()==null || !Validator.isValidEmail(getSender().getEmail()))
-                return false;
-            if(getSubject()==null || getSubject().equals("") || getBody()==null || getBody().equals(""))
-                return false;
-            if(getRecipientList()==null || getRecipientList().size()==0)
-                return false;
-            boolean foundValidEmail = false;
-            for(Person p: getRecipientList())
-                if(p.getEmail()!=null && Validator.isValidEmail(p.getEmail())){
-                    foundValidEmail = true;
-                    break;
-                }
-            return foundValidEmail;
-        }
-        public void sendEmail(EntityManager em, AmsDataGlobal global){
-            setMessageSent(true);
-            if(!isReadyToSend()){
-                setMessageSent(false);
-                return;
-            }
-            try{
-                Message m = getMessage(global);
-                m.setFrom(new InternetAddress(getSender().getEmail()));
-                StringBuilder whoToArray= new StringBuilder();
-                for(Person p:getRecipientList()){
-                    whoToArray.append(p.getEmail().toLowerCase().trim()).append(",");
-                }
-                String whoTo = whoToArray.toString();
-                whoTo = whoTo.substring(0,whoTo.length()-1);
-                InternetAddress[] parse = InternetAddress.parse(whoTo,true);
-                m.setRecipients(Message.RecipientType.TO,parse);
-                m.setSubject(getSubject());
-                MimeBodyPart mimeBodyPart = new MimeBodyPart();
-                mimeBodyPart.setContent(getBody(),"text/html; charset=utf-8");
-                Multipart multipart = new MimeMultipart();
-                multipart.addBodyPart(mimeBodyPart);
-                m.setContent(multipart);
-                Transport.send(m);
-            } catch (MessagingException e) {
-                setMessageSent(false);
-                throw new RuntimeException(e);
-            }
-            Email e = createEmail(em);
-            if(getCurrentActivity().getActivity()!=null)
-                respondToActivityUpdate(em,"NOTE",e);
-        }
+        // V069: the legacy inline SMTP send path (sendEmail(EntityManager, AmsDataGlobal)
+        // and its private helpers createEmail/createEmailNotPersisted/getMessage/isReadyToSend)
+        // was removed. It had zero callers and set From = sender email with no Reply-To,
+        // bypassing EmailDAO. All sending now goes through the single EmailDAO choke point
+        // with EmailIdentityResolver (see docs/analysis/email_identity_current_state.md).
         public void fillRecipientList(){
             List<Person> recipients = new ArrayList<>();
             // Add primary contact if valid

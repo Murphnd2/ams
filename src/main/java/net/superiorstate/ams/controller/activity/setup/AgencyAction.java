@@ -141,6 +141,18 @@ public class AgencyAction extends HttpServlet {
                         }
                     }
 
+                    // V069: validate the optional email sending domain BEFORE any mutation.
+                    String emailDomain = AmsDataGlobal.normalizeHost(request.getParameter("emailDomain"));
+                    if (!emailDomain.isEmpty()) {
+                        String domainError = validateEmailDomain(em, emailDomain, agencyId);
+                        if (domainError != null) {
+                            response.sendRedirect("PspAgencyHome?agencyId=" + agencyId + "&emailError=" + domainError);
+                            return; // outer finally closes the EntityManager
+                        }
+                    }
+                    // email_verified can only be true when a domain is present.
+                    boolean emailVerified = !emailDomain.isEmpty() && "on".equals(request.getParameter("emailVerified"));
+
                     Agency agency = em.find(Agency.class, agencyId);
 
                     agency.setName(request.getParameter("agencyName").trim());
@@ -150,6 +162,8 @@ public class AgencyAction extends HttpServlet {
                     agency.setTaxId(taxId != null ? taxId.trim() : null);
                     agency.setMarkupEnabled("on".equals(request.getParameter("markupEnabled")));
                     agency.setLandingHost(landingHost.isEmpty() ? null : landingHost);
+                    agency.setEmailDomain(emailDomain.isEmpty() ? null : emailDomain);
+                    agency.setEmailVerified(emailVerified);
 
                     // Update address
                     Address address = agency.getAddress();
@@ -388,6 +402,21 @@ public class AgencyAction extends HttpServlet {
         } finally {
             em.close();
         }
+    }
+
+    /**
+     * V069: validate a normalized-lowercase email sending domain. Returns an error code
+     * ("format" | "duplicate") for a friendly redirect, or null if valid and free.
+     */
+    private String validateEmailDomain(EntityManager em, String domain, long agencyId) {
+        if (domain.length() > 255 || !HOST_PATTERN.matcher(domain).matches()) return "format";
+        Long count = em.createQuery(
+                        "SELECT COUNT(a) FROM Agency a WHERE a.emailDomain = :d AND a.id <> :id", Long.class)
+                .setParameter("d", domain)
+                .setParameter("id", agencyId)
+                .getSingleResult();
+        if (count != null && count > 0) return "duplicate";
+        return null;
     }
 
     /**

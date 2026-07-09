@@ -10,6 +10,8 @@ import net.superiorstate.ams.data.AmsDataLocal;
 import net.superiorstate.ams.data.dao.EmailDAO;
 import net.superiorstate.ams.data.dao.SalesDAO;
 import net.superiorstate.ams.data.resolver.OriginatingAgencyResolver;
+import net.superiorstate.ams.data.util.EmailIdentity;
+import net.superiorstate.ams.data.util.EmailIdentityResolver;
 import net.superiorstate.ams.data.util.EmailTemplate;
 import net.superiorstate.ams.model.general.Person;
 import net.superiorstate.ams.model.sales.agency.Agency;
@@ -87,7 +89,6 @@ public class ProposalDetail extends HttpServlet {
                 Person contact = proposal.getProspect().getContact();
                 Person sender = local.getCurrentPerson();
                 String toEmail = contact.getEmail();
-                String fromEmail = sender.getEmail();
 
                 String baseUrl = request.getScheme() + "://" + request.getServerName();
                 int port = request.getServerPort();
@@ -102,10 +103,15 @@ public class ProposalDetail extends HttpServlet {
                         + "<p><a href=\"" + proposalLink + "\" style=\"display:inline-block;padding:12px 24px;background-color:#2B5F8A;color:#ffffff;text-decoration:none;border-radius:4px;font-weight:bold;\">View Your Proposal</a></p>"
                         + "<p>If you have any questions, simply reply to this email.</p>";
 
-                String wrappedBody = EmailTemplate.wrap(bodyHtml, sender, null, em);
+                // V069: white-label sender identity + agency-signed body (matches the From).
+                Agency agency = OriginatingAgencyResolver.resolve(proposal);
+                String wrappedBody = EmailTemplate.wrap(bodyHtml, sender, agency, null, em);
                 String subject = "Your Benefits Proposal — " + proposal.getProspect().getName();
 
-                EmailDAO.sendEmail(fromEmail, toEmail, subject, wrappedBody, em);
+                EmailIdentity identity = EmailIdentityResolver.resolve(sender, agency, sender.getPsp(), em);
+                EmailDAO.sendEmail(identity, java.util.List.of(toEmail),
+                        java.util.Collections.emptyList(), java.util.Collections.emptyList(),
+                        subject, wrappedBody, em);
 
                 // Update status
                 em.getTransaction().begin();

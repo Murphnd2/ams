@@ -5,6 +5,7 @@ import jakarta.mail.internet.*;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.NoResultException;
 import jakarta.persistence.Query;
+import net.superiorstate.ams.data.util.EmailIdentity;
 import net.superiorstate.ams.data.util.EmailTemplate;
 import net.superiorstate.ams.model.activity.note.Email;
 import net.superiorstate.ams.model.activity.note.EmailComparator;
@@ -123,10 +124,11 @@ public abstract class EmailDAO {
 
         msg.setContent(alternative);
 
-        // Envelope sender (return-path) – important for SMTP2GO acceptance
-        session.getProperties().put("mail.smtp.from", smtpFrom);
+        // V069: the explicit `mail.smtp.from` envelope override was removed here. SMTP2GO's
+        // per-domain VERP owns the return-path (SPF alignment per verified sender domain);
+        // forcing envelope-from = header From fought that alignment for verified domains.
 
-        // Send using explicit Transport (honors timeouts & envelope)
+        // Send using explicit Transport (honors timeouts)
         Transport transport = null;
         try {
             transport = session.getTransport("smtp");
@@ -135,6 +137,110 @@ public abstract class EmailDAO {
         } finally {
             if (transport != null) try { transport.close(); } catch (MessagingException ignore) {}
         }
+    }
+
+    /* ----------------------------- public API (identity-aware, V069) ----------------------------- */
+
+    /**
+     * Identity-aware send (V069). The {@link EmailIdentity} fully specifies the
+     * {@code From:} header (address + optional display name), {@code Reply-To:}, and
+     * (optionally) the SMTP envelope sender. This is the path used by the resolver-wired
+     * call sites; unlike the legacy {@code fromWho} overloads it does not derive From from
+     * SMTP_FROM/recipient heuristics.
+     *
+     * @param identity resolved sender identity (must be non-null with a valid From address)
+     */
+    public static void sendEmail(EmailIdentity identity,
+                                 List<String> toWhoList,
+                                 List<String> ccList,
+                                 List<String> bccList,
+                                 String subject,
+                                 String htmlBody,
+                                 EntityManager em) throws MessagingException {
+
+        if (identity == null || !isValidEmail(identity.fromAddress())) {
+            throw new MessagingException("EmailIdentity is missing a valid From address.");
+        }
+
+        Session session = getSession(em);
+        try {
+            String dbg = AppConstantDAO.getConstantValue(em, "SMTP_DEBUG");
+            if (dbg != null && dbg.equalsIgnoreCase("true")) session.setDebug(true);
+        } catch (Exception ignore) {}
+
+        MimeMessage msg = new MimeMessage(session);
+
+        // From header, with optional friendly display name.
+        try {
+            if (identity.hasDisplayName()) {
+                msg.setFrom(new InternetAddress(identity.fromAddress(), identity.displayName(), "UTF-8"));
+            } else {
+                msg.setFrom(new InternetAddress(identity.fromAddress()));
+            }
+        } catch (java.io.UnsupportedEncodingException e) {
+            throw new MessagingException("Could not encode From display name.", e);
+        }
+
+        // Reply-To (sender's real inbox for human tiers).
+        if (identity.hasReplyTo() && isValidEmail(identity.replyTo())) {
+            msg.setReplyTo(new Address[]{new InternetAddress(identity.replyTo())});
+        }
+
+        InternetAddress[] to = toAddresses(toWhoList);
+        InternetAddress[] cc = toAddresses(ccList);
+        InternetAddress[] bcc = toAddresses(bccList);
+        if (to.length == 0 && cc.length == 0 && bcc.length == 0) {
+            throw new MessagingException("No valid recipients (To/Cc/Bcc).");
+        }
+        if (to.length > 0)  msg.setRecipients(Message.RecipientType.TO, to);
+        if (cc.length > 0)  msg.setRecipients(Message.RecipientType.CC, cc);
+        if (bcc.length > 0) msg.setRecipients(Message.RecipientType.BCC, bcc);
+
+        msg.setSubject(safe(subject));
+
+        MimeMultipart alternative = new MimeMultipart("alternative");
+        MimeBodyPart textPart = new MimeBodyPart();
+        textPart.setText(stripHtml(htmlBody), "utf-8", "plain");
+        alternative.addBodyPart(textPart);
+        MimeBodyPart htmlPart = new MimeBodyPart();
+        htmlPart.setContent(safe(htmlBody), "text/html; charset=utf-8");
+        alternative.addBodyPart(htmlPart);
+        msg.setContent(alternative);
+
+        // Envelope sender: only when the identity explicitly carries one. Null (the v1
+        // default for every tier) leaves the return-path to SMTP2GO's per-domain VERP.
+        if (identity.hasEnvelopeFrom()) {
+            session.getProperties().put("mail.smtp.from", identity.envelopeFrom());
+        }
+
+        Transport transport = null;
+        try {
+            transport = session.getTransport("smtp");
+            transport.connect();
+            transport.sendMessage(msg, msg.getAllRecipients());
+        } finally {
+            if (transport != null) try { transport.close(); } catch (MessagingException ignore) {}
+        }
+    }
+
+    /**
+     * Identity-aware send from an {@link Email} model (V069): builds the recipient list and
+     * body from the model, then sends with the given identity. If {@code identity} is null,
+     * delegates to the legacy {@link #sendEmail(Email, EntityManager)} for rollout safety.
+     */
+    public static void sendEmail(Email email, EmailIdentity identity, EntityManager em) throws MessagingException {
+        if (identity == null) {
+            sendEmail(email, em); // legacy fallback
+            return;
+        }
+        List<String> toWhoList = new ArrayList<>();
+        if (email.getRecipientList() != null) {
+            for (Person r : email.getRecipientList()) {
+                if (r != null && isValidEmail(r.getEmail())) toWhoList.add(r.getEmail().trim());
+            }
+        }
+        sendEmail(identity, toWhoList, Collections.emptyList(), Collections.emptyList(),
+                safe(email.getSubject()), safe(email.getDetail()), em);
     }
 
     /* ----------------------------- public API (Email model) ----------------------------- */

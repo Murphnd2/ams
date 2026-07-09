@@ -9,6 +9,8 @@ import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.AmsDataLocal;
 import net.superiorstate.ams.data.dao.EmailDAO;
 import net.superiorstate.ams.data.dao.SalesDAO;
+import net.superiorstate.ams.data.util.EmailIdentity;
+import net.superiorstate.ams.data.util.EmailIdentityResolver;
 import net.superiorstate.ams.data.util.EmailTemplate;
 import net.superiorstate.ams.model.activity.Activity;
 import net.superiorstate.ams.model.activity.note.Email;
@@ -17,6 +19,7 @@ import net.superiorstate.ams.model.sales.agency.Agency;
 import net.superiorstate.ams.model.sales.agency.Proposal;
 import net.superiorstate.ams.model.sales.agency.RateTable;
 import net.superiorstate.ams.data.resolver.EntityLookup;
+import net.superiorstate.ams.data.resolver.OriginatingAgencyResolver;
 
 import java.io.IOException;
 import java.sql.Date;
@@ -60,7 +63,9 @@ public class SendProposal extends HttpServlet {
             baseUrl += request.getContextPath() + "/";
             String proposalLink = baseUrl + "proposal/" + proposal.getApplicationGUID();
 
-            String agencyName = resolveSenderAgencyName(em, sender);
+            // V069: originating agency drives both the visible signature and the From identity.
+            Agency originatingAgency = OriginatingAgencyResolver.resolve(proposal);
+            String agencyName = originatingAgency != null ? originatingAgency.getName() : null;
             String senderCompany = agencyName != null ? agencyName
                     : (sender.getPsp() != null ? sender.getPsp().getFullName() : "");
 
@@ -119,7 +124,11 @@ public class SendProposal extends HttpServlet {
             // Wrap and send
             String pspName = sender.getPsp() != null ? sender.getPsp().getFullName() : "";
             String wrappedBody = EmailTemplate.wrapBodyOnly(body, pspName, em);
-            EmailDAO.sendEmail(fromEmail, toList, ccList, Collections.emptyList(), subject, wrappedBody, em);
+
+            // V069: resolve the white-label sender identity (agency = proposal's originating agency).
+            Agency agency = OriginatingAgencyResolver.resolve(proposal);
+            EmailIdentity identity = EmailIdentityResolver.resolve(sender, agency, sender.getPsp(), em);
+            EmailDAO.sendEmail(identity, toList, ccList, Collections.emptyList(), subject, wrappedBody, em);
 
             // Update proposal status
             em.getTransaction().begin();
@@ -145,22 +154,6 @@ public class SendProposal extends HttpServlet {
         }
 
         response.sendRedirect("ProposalDetail?id=" + proposalId);
-    }
-
-    /** Returns the sender's first agency name, or null if they belong to none. */
-    private String resolveSenderAgencyName(EntityManager em, Person sender) {
-        try {
-            if (sender.getPsp() == null) return null;
-            List<Agency> agencies = em.createQuery(
-                    "SELECT a FROM Agency a JOIN a.agentList al WHERE al.id = :agentId AND a.psp.id = :pspId",
-                    Agency.class)
-                    .setParameter("agentId", sender.getId())
-                    .setParameter("pspId", (long) sender.getPsp().getId())
-                    .getResultList();
-            return agencies.isEmpty() ? null : agencies.get(0).getName();
-        } catch (Exception e) {
-            return null;
-        }
     }
 
     private void logEmailToActivity(EntityManager em, Proposal proposal, Person sender, String subject, String wrappedBody) {

@@ -9,6 +9,9 @@ import net.superiorstate.ams.controller.activity.StdAuto;
 import net.superiorstate.ams.controller.activity.contact.AddContactToActivity;
 import net.superiorstate.ams.data.dao.EmailDAO;
 import net.superiorstate.ams.data.resolver.EntityLookup;
+import net.superiorstate.ams.data.resolver.OriginatingAgencyResolver;
+import net.superiorstate.ams.data.util.EmailIdentity;
+import net.superiorstate.ams.data.util.EmailIdentityResolver;
 import net.superiorstate.ams.model.activity.Activity;
 import net.superiorstate.ams.model.activity.checklist.CheckList;
 import net.superiorstate.ams.model.activity.checklist.tasks.Task;
@@ -16,6 +19,7 @@ import net.superiorstate.ams.model.activity.checklist.tasks.ToDo;
 import net.superiorstate.ams.model.activity.note.Email;
 import net.superiorstate.ams.model.activity.ticket.Ticket;
 import net.superiorstate.ams.model.general.Person;
+import net.superiorstate.ams.model.sales.agency.Agency;
 import net.superiorstate.ams.model.summit.archive.Employer;
 
 import jakarta.mail.MessagingException;
@@ -49,8 +53,14 @@ public class SendEmployerBillingDetail extends HttpServlet {
         try {
             Email e = EntityLookup.getEmailById(em, email.getId());
             try {
-                EmailDAO.sendEmail(e.getCreatedBy().getEmail(),
+                // V069: resolve the billing sender's white-label identity from the email author.
+                Person billSender = e.getCreatedBy();
+                Agency billAgency = OriginatingAgencyResolver.resolve(billSender);
+                EmailIdentity identity = EmailIdentityResolver.resolve(billSender, billAgency,
+                        billSender != null ? billSender.getPsp() : null, em);
+                EmailDAO.sendEmail(identity,
                         e.getRecipientList().stream().map(Person::getEmail).toList(),
+                        new ArrayList<>(), new ArrayList<>(),
                         e.getSubject(), e.getDetail(), em);
             } catch (MessagingException ex) {
                 throw new RuntimeException(ex);

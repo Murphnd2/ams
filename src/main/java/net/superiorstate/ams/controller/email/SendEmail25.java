@@ -9,12 +9,16 @@ import net.superiorstate.ams.data.AmsDataLocal;
 import net.superiorstate.ams.data.dao.EmailDAO;
 import net.superiorstate.ams.data.dao.SequenceDAO;
 import net.superiorstate.ams.data.resolver.EntityLookup;
+import net.superiorstate.ams.data.resolver.OriginatingAgencyResolver;
+import net.superiorstate.ams.data.util.EmailIdentity;
+import net.superiorstate.ams.data.util.EmailIdentityResolver;
 import net.superiorstate.ams.data.util.EmailTemplate;
 import net.superiorstate.ams.model.activity.Activity;
 import net.superiorstate.ams.model.activity.checklist.CheckList;
 import net.superiorstate.ams.model.activity.note.Email;
 import net.superiorstate.ams.model.general.Person;
 import net.superiorstate.ams.model.general.WebLink;
+import net.superiorstate.ams.model.sales.agency.Agency;
 
 import java.io.IOException;
 import java.sql.Date;
@@ -43,10 +47,15 @@ public class SendEmail25 extends HttpServlet {
         // Get attachments for template rendering
         List<WebLink> attachments = local.getCurrentEmail().getAttachments();
 
+        // V069: originating agency drives both the signature and the From identity.
+        Person emailSender = local.getCurrentPerson();
+        Agency senderAgency = OriginatingAgencyResolver.resolve(emailSender);
+
         // Wrap the user's message body in the branded email template (includes attachments at top)
         String wrappedBody = EmailTemplate.wrap(
                 local.getCurrentEmail().getBody(),
-                local.getCurrentPerson(),
+                emailSender,
+                senderAgency,
                 attachments,
                 em
         );
@@ -110,8 +119,9 @@ public class SendEmail25 extends HttpServlet {
 
             System.out.println("RETRIEVED UPDATED EMAIL");
 
-            // Send via SMTP
-            EmailDAO.sendEmail(e1, em);
+            // Send via SMTP with the resolved white-label identity
+            EmailIdentity identity = EmailIdentityResolver.resolve(emailSender, senderAgency, emailSender.getPsp(), em);
+            EmailDAO.sendEmail(e1, identity, em);
             System.out.println("SENT THE EMAIL");
 
         } catch (Exception e) {
