@@ -110,6 +110,7 @@
 | 32 | Composite Task Ordering | MED | ✅ Code complete | Cross-sequence master ordering per activity type, drag-and-drop UI in sequenceManager25.jsp (V047). Session 55. |
 | 33 | Custom Landing Page System | MED | ✅ Code complete | PSP-customizable landing page with login modal, Request a Quote form, configurable header colors (V043). Sessions 45-46. |
 | 34 | Center Panel Redesign | MED | ✅ Done | Unified "Colored Tab" section headers across all activity detail panels. Navbar application review badge. Session 68. |
+| 37 | White-Label Proposal → Application Flow | MED | ✅ Done | Session 88. No migration. Public proposal/application/confirmation pages suppress PSP band when selling agency present; agency name in header, charcoal neutral band, `© AgencyName` footer. Compose email pre-fill signature also uses sender's agency. `EmailTemplate.wrap()` (activity emails, quick-send) uses PSP name — separate future task if needed. |
 | 36 | Agent Delegation on Setup ToDos | HIGH | 🔨 Active | V061 adds ToDo-level ownership override. PSP can delegate individual Setup ToDos to agents of the originating selling agency (resolved via Opportunity.assignedTo → Prospect.agent → Proposal.createdBy). User Assignment sub-row on `taskManager25.jsp`. Agent sees "Tasks Delegated to Me" on AgentHome with link to Setup detail (gated by `agentBlocked`). Originating agent surfaced in activity-detail header (Option C — presentational). Code-complete, not yet applied. Session 85. **Next: agent-facing Setup view (Session 86).** |
 
 ---

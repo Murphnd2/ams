@@ -2,7 +2,7 @@
 
 > **Purpose:** Consolidated historical record of all build sessions. For current project state, see `project_backlog.md`. For current architecture, see `application_flow.md` and `entity_reference.md`.
 >
-> **Last Updated:** April 24, 2026 (Session 87)
+> **Last Updated:** July 10, 2026 (Session 88)
 >
 > **Note:** Sessions 1–38 (Feb 15 – Mar 5) were compressed during the Session 69 cleanup. Full details for those sessions are available in git history prior to that commit.
 
@@ -1865,4 +1865,67 @@ No schema changes, no new migrations. `./mvnw compile` clean.
 - Agency Manager re-delegation UI (dropdown on each agency-owned ToDo to reassign among their agents).
 - Cross-agency note-author indentation (current rule is "viewer OR selling agent" only).
 - FEIN / address / payroll-provider surfacing as key fields on the Application Snapshot.
+
+---
+
+## Session 88 — White-Label Proposal → Application Flow + Email Signature (July 10, 2026)
+
+Fully agency-branded public-facing proposal/application chain. No schema change — pure view and request-attribute work. Motivated by SWBD engagement (prospective PSP with their own agency brand).
+
+### White-label proposal page (`viewProposal.jsp` + `ViewProposal.java`)
+
+When the proposal's selling agent belongs to an agency, the PSP header band and accent bar are **suppressed entirely** — the agency-branded TITLE section card is the only branding. Footer becomes `© {agencyName}`. Page `<title>` reflects agency name. Falls back to full PSP chrome when no agency.
+
+- **`ViewProposal.java`** — `proposalAgency` was already resolved for TITLE/CLOSING section overrides; added one `request.setAttribute("agencyName", ...)` line at the end of the `if (psp != null)` block.
+- **`viewProposal.jsp`** — header+accent-bar wrapped in `<c:if test="${empty agencyName}">`, footer in `<c:choose>`, `<title>` uses EL conditional.
+
+### White-label application page (`applyForProposal.jsp` + `ApplyForProposal.java`)
+
+When agency is present: `<h1>` shows agency name (replacing PSP name), subtitle drops "Benefits Administration" prefix (keeps "Application — Company"), accent bar suppressed, band overrides to neutral charcoal (`#1f2937`) via `.app-header.wl` modifier class, footer `© {agencyName}`.
+
+- **`ApplyForProposal.java`** — added private `resolveAgencyName(EntityManager, Proposal)` helper (same JPQL as ViewProposal's agent→agency lookup, wrapped in try/catch). Called in all three forward paths: `doGet` main path → `applyForProposal.jsp`; `doGet` early-return status guard → `applicationConfirmation.jsp`; `doPost` submit → `applicationConfirmation.jsp`.
+- **`applyForProposal.jsp`** — `<c:choose>` on header h1/subtitle, `<c:if>` on accent-bar div, `.app-header.wl { background: #1f2937; }` CSS rule + EL class modifier, `<c:choose>` on footer.
+
+### White-label confirmation page (`applicationConfirmation.jsp`)
+
+Same treatment as application page. Previously used plain EL only; added JSTL core taglib (already declared line 1 from prior Phase 2 work), `<c:if>` on accent-bar, `.app-header.wl` rule and EL class modifier, `<c:choose>` on footer.
+
+### Agency-branded email signature (`SendProposal.java`)
+
+On the Send Proposal compose screen, the pre-filled signature block showed the PSP name in the green-bold company line. Added `resolveSenderAgencyName(EntityManager, Person)` private helper (same JPQL pattern, falls back to null). `doGet` now resolves `senderCompany = agencyName != null ? agencyName : psp.getFullName()` and uses it in the signature span. The sent email picks this up automatically (compose body is passed through `wrapBodyOnly()` which adds no second signature). `EmailTemplate.wrap()` (used by quick-send and activity emails) left unchanged — separate broader decision.
+
+### Agency resolution pattern (shared across all four files)
+
+```java
+em.createQuery(
+    "SELECT a FROM Agency a JOIN a.agentList al WHERE al.id = :agentId AND a.psp.id = :pspId",
+    Agency.class)
+  .setParameter("agentId", personId)
+  .setParameter("pspId", pspId)
+  .getResultList()   // first result → getName(), empty → null → fallback to PSP name
+```
+
+### Files changed
+
+**Modified (5 Java):**
+- `src/main/java/net/superiorstate/ams/controller/activity/setup/ViewProposal.java`
+- `src/main/java/net/superiorstate/ams/controller/activity/setup/ApplyForProposal.java`
+- `src/main/java/net/superiorstate/ams/controller/activity/setup/SendProposal.java`
+
+**Modified (5 JSP):**
+- `src/main/webapp/WEB-INF/view/sales/viewProposal.jsp`
+- `src/main/webapp/WEB-INF/view/sales/applyForProposal.jsp`
+- `src/main/webapp/WEB-INF/view/sales/applicationConfirmation.jsp`
+
+No schema changes, no migrations. Build clean (`./mvnw clean package` → BUILD SUCCESS). Changes staged but not committed; not yet deployed.
+
+### Behavior matrix
+
+| Path | Agency present | No agency |
+|------|---------------|-----------|
+| Proposal page | No band, no accent bar — card only; `© AgencyName` | SSA navy band + subtitle + olive bar + `© PSP` (unchanged) |
+| Application page | Charcoal band + agency name + "Application — Company"; no accent bar; `© AgencyName` | PSP band + "Benefits Administration Application — Company" + olive bar + `© PSP` (unchanged) |
+| Confirmation page | Charcoal band + agency name; no accent bar; `© AgencyName` | PSP band + olive bar + `© PSP` (unchanged) |
+| Compose email pre-fill | Agency name in green-bold company line | PSP name (unchanged) |
+
 
