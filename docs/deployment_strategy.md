@@ -361,51 +361,53 @@ Then paste the password directly at the `mysql>` prompt.
 
 | Branch | Purpose | Status |
 |--------|---------|--------|
-| `main` | **Production releases.** Tagged, released, deployed to PSP servers. | Active — merge here when ready to release |
-| `refactor/modernize-architecture` | Active development. All new features and cleanup work. | Current working branch |
+| `main` | Legacy. Frozen at 2026-02-12 (`390ad7f`); no longer the default branch and no longer part of the release flow. | Retired — historical reference only |
+| `refactor/modernize-architecture` | Active development **and release branch**. Repo default branch since 2026-07-09. Release tags are created directly on this branch. | Current working branch |
 | `beta` | Legacy. Represents the pre-cleanup codebase. | Retired — keep for historical reference only |
 | Feature branches | Short-lived branches off the working branch for specific features | Create as needed |
 
-### 10.2 Release Process
+### 10.2 Release Process (Tag-First)
 
-When ready to deploy a new version to PSP servers:
+> **History (2026-07-09):** ~85 release tags (`v0.31.0`–`v0.69.02`) were created through the GitHub Releases web UI by typing a new tag name, which creates the tag on the **default branch HEAD** — at the time, a `main` frozen since 2026-02-12. All of those tags point at the same stale commit, so per-version source traceability for that range is lost. Deploys were never affected (`update.sh` ships release *assets* — a locally built WAR + SQL — not source built from tags). Two fixes are in effect: the default branch is now `refactor/modernize-architecture`, and every release follows the tag-first procedure below.
 
-1. **Merge working branch into main:**
-   ```bash
-   git checkout main
-   git merge refactor/modernize-architecture
-   ```
+When ready to deploy a new version:
 
-2. **Tag the release:**
-   ```bash
-   git tag v1.0.0
-   ```
-   Use semantic versioning: `vMAJOR.MINOR.PATCH`
-   - MAJOR = breaking changes or major milestones
-   - MINOR = new features
-   - PATCH = bug fixes
+1. **Commit first.** Everything going into the release must be committed on `refactor/modernize-architecture` **before** the WAR is built. Never build a release WAR from a dirty working tree — a tag is only trustworthy if the tree it points at is the tree that was built. (The v0.69.0x releases shipped uncommitted white-label code for exactly this reason.)
 
-3. **Push to GitHub:**
-   ```bash
-   git push origin main --tags
-   ```
+2. **Build the WAR:**
 
-4. **Build the WAR:**
-   ```bash
+```powershell
    mvn clean package -P server
-   ```
-   The WAR is built with the server profile (JNDI datasource). Output is in `target/`.
+```
 
-5. **Create GitHub Release:**
-   - Go to the repo on GitHub → Releases → Draft a new release
-   - Choose the tag you just pushed
-   - Title: `v1.0.0` (or descriptive name)
-   - Description: list what changed (features, fixes, migration scripts required)
-   - Attach: the WAR file from `target/`
-   - Attach: any new SQL migration scripts
+   Stage the WAR and any new `V0NN__*.sql` migration scripts in the local `release/` folder (untracked; never committed).
+
+3. **Pick the version number** (`v0.NN.PP`):
+   - Bump **PP** (patch) for WAR-only releases with no new migration (e.g., `v0.69.02` → `v0.69.03`)
+   - Bump **NN** and reset patch (e.g., → `v0.70.00`) when the release carries a new migration script
+   - The new tag must sort **above** production's `/opt/ssa/current_version.txt` under `sort -V`, or `update.sh` will not apply it
+
+4. **Tag the release commit and push the tag:**
+
+```powershell
+   git tag v0.NN.PP
+   git push origin v0.NN.PP
+```
+
+5. **Create the GitHub Release:**
+   - Repo → Releases → Draft a new release
+   - **Select the existing tag `v0.NN.PP` from the dropdown — never type a new tag name.** Typing a new name creates the tag on the default branch HEAD instead of the release commit.
+   - Notes: what changed and which migrations are required
+   - Attach: `ROOT.war` plus any new `V0NN__*.sql` from `release/`
    - Publish
 
-6. **PSP VMs pick up the release** via their nightly update script (or manual trigger).
+6. **Deploy:** production applies it at the 02:30 cron, or trigger manually:
+
+```bash
+   sudo /opt/ssa/scripts/update.sh
+```
+
+   `update.sh` applies any missed migrations oldest-first, then swaps the WAR, then records the version in `current_version.txt`.
 
 ### 10.3 Migration Script Naming Convention
 
