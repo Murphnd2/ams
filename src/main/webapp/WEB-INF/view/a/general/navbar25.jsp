@@ -114,7 +114,14 @@
         </c:when>
         <c:when test="${sessionScope.isAgent || sessionScope.isAgencyAdmin}">
           <a href="AgentHome" class="me-2">
-            <img src="${pageContext.request.contextPath}${not empty applicationScope.global.logoNavbar ? applicationScope.global.logoNavbar : '/images/logoA.png'}" alt="Home" style="height:36px;">
+            <c:choose>
+              <c:when test="${not empty sessionScope.local.getCurrentAgencyName()}">
+                <span class="fw-bold" style="font-size:1.1rem; color:#01376F; line-height:36px; display:inline-block; vertical-align:middle;"><c:out value="${sessionScope.local.getCurrentAgencyName()}"/></span>
+              </c:when>
+              <c:otherwise>
+                <img src="${pageContext.request.contextPath}${not empty applicationScope.global.logoNavbar ? applicationScope.global.logoNavbar : '/images/logoA.png'}" alt="Home" style="height:36px;">
+              </c:otherwise>
+            </c:choose>
           </a>
         </c:when>
         <c:when test="${sessionScope.local.isAuthenticated() == true}">
@@ -166,6 +173,13 @@
             </c:if>
           </a>
 
+        </c:if>
+
+        <%-- ═══ PSP SALES (manager) — Email affordance only; no duplicate for PSP User/Admin ═══ --%>
+        <c:if test="${sessionScope.isPspSales && !sessionScope.isPspUser && !sessionScope.isPspAdmin}">
+          <a class="nav-ghost" href="CreateEmail25">
+            <i class="bi bi-send-fill"></i><span class="d-lg-none d-xl-inline ms-1">Email</span>
+          </a>
         </c:if>
 
         <%-- ═══ SALES DROPDOWN (Agent / Agency Admin / PSP Admin) ═══ --%>

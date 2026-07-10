@@ -4,9 +4,10 @@
 <c:set var="opp" value="${sessionScope.local.getCurrentActivity().getActivity()}"/>
 <c:set var="opportunityProposals" value="${sessionScope.local.getCurrentActivity().getOpportunityProposals()}"/>
 <c:set var="allProspectProposals" value="${sessionScope.local.getCurrentActivity().getAllProspectProposals()}"/>
-<c:set var="canEditStage" value="${sessionScope.isPspAdmin
+<c:set var="canEditStage" value="${sessionScope.isPspAdmin || sessionScope.isPspUser || sessionScope.isPspSales
     || sessionScope.isAgent || sessionScope.isAgencyAdmin
-    || (opp.getAssignedTo() != null && opp.getAssignedTo().getId() == sessionScope.local.getCurrentPerson().getId())}"/>
+    || (opp.getAssignedTo() != null && opp.getAssignedTo().getId() == sessionScope.local.getCurrentPerson().getId())
+    || (opp.getManagedBy() != null && opp.getManagedBy().getId() == sessionScope.local.getCurrentPerson().getId())}"/>
 
 <%-- Key Info Card --%>
 <div class="detail-section-card">

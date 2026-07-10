@@ -446,6 +446,24 @@
     initDrag(divL, left, true);
     if (divR) initDrag(divR, right, false);
   })();
+
+  // Log Note deep-link: when arriving at #note (from the agent pipeline "Log Note" button),
+  // scroll the note composer into view and focus the editor. Fully inert otherwise:
+  // - no #note in the URL  -> guard returns immediately
+  // - closed (WON/LOST) opp -> #addNoteForm not rendered, so this no-ops
+  // Runs on DOMContentLoaded so it fires after detailAddNote25's own Quill init listener.
+  (function() {
+    if (window.location.hash !== '#note') return;
+    document.addEventListener('DOMContentLoaded', function() {
+      var form = document.getElementById('addNoteForm');
+      if (!form) return; // composer not present (e.g. completed activity)
+      form.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      // Best-effort focus after scroll; _noteEditor is set by detailAddNote25's Quill init.
+      window.requestAnimationFrame(function() {
+        try { if (window._noteEditor) window._noteEditor.focus(); } catch (e) {}
+      });
+    });
+  })();
 </script>
 </body>
 </html>

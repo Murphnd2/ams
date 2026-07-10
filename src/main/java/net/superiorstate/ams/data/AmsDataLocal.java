@@ -31,7 +31,9 @@ import net.superiorstate.ams.model.activity.renewal.RenewalItem;
 import net.superiorstate.ams.model.activity.ticket.Ticket;
 import net.superiorstate.ams.model.activity.ticket.setup.Setup;
 import net.superiorstate.ams.model.general.*;
+import net.superiorstate.ams.model.sales.agency.Agency;
 import net.superiorstate.ams.model.sales.agency.Proposal;
+import net.superiorstate.ams.data.resolver.OriginatingAgencyResolver;
 import net.superiorstate.ams.model.sales.application.ApplicationModule;
 import net.superiorstate.ams.data.dao.SalesDAO;
 import net.superiorstate.ams.data.service.QuestionnaireService;
@@ -73,6 +75,7 @@ public class AmsDataLocal implements AutoCloseable {
     private ActivityFilter activityFilter;
     private int daysSinceContactWarning;
     private String nextView;
+    private String currentAgencyName;
     private boolean isPspAdmin;
     private boolean isAuthenticated;
 
@@ -87,6 +90,15 @@ public class AmsDataLocal implements AutoCloseable {
         AmsDataGlobal global = (AmsDataGlobal) request.getServletContext().getAttribute("global");
         Person p = (Person) request.getSession().getAttribute("currentPerson");
         setCurrentPerson(p);
+        // B1: resolve the user's agency name once (while em is open) for the shared navbar
+        // wordmark on every page. User-driven (keyed off the Person's agency membership),
+        // never host-driven. Null/empty for users with no agency — navbar then keeps the logo.
+        try {
+            Agency resolvedAgency = OriginatingAgencyResolver.resolve(p);
+            this.currentAgencyName = (resolvedAgency != null) ? resolvedAgency.getName() : null;
+        } catch (Exception e) {
+            this.currentAgencyName = null;
+        }
         setCurrentUser(getUserFromPerson(em,getCurrentPerson()));
         setCurrentActivity(new CurrentActivity());
         setCurrentChecklist(new CurrentChecklist());
@@ -321,6 +333,9 @@ public class AmsDataLocal implements AutoCloseable {
 
     public String getNextView() {
         return nextView;
+    }
+    public String getCurrentAgencyName() {
+        return currentAgencyName;
     }
     public void setNextView(String nextView) {
         this.nextView = nextView;

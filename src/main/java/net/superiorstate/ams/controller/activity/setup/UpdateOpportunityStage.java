@@ -6,6 +6,7 @@ import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.resolver.EntityLookup;
+import net.superiorstate.ams.data.util.OpportunityAuthz;
 import net.superiorstate.ams.model.activity.Opportunity;
 import net.superiorstate.ams.model.general.Person;
 
@@ -24,6 +25,21 @@ public class UpdateOpportunityStage extends HttpServlet {
             Opportunity opp = EntityLookup.getOpportunityById(em, oppId);
             if (opp == null) return;
 
+            // Server-side authorization: owner / manager / agency-admin / PSP.
+            // Closes the cross-tenant IDOR — an arbitrary oppId can no longer be mutated
+            // by a user who has no rights to this opportunity. Checked while em is open
+            // (agency membership is a query) and before any transaction begins.
+            if (!OpportunityAuthz.canAccessOpportunity(em, request, opp)) {
+                if ("true".equals(request.getParameter("ajax"))) {
+                    response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                    response.setContentType("application/json");
+                    response.getWriter().write("{\"ok\":false,\"error\":\"forbidden\"}");
+                } else {
+                    response.sendRedirect("AgentHome");
+                }
+                return;
+            }
+
             em.getTransaction().begin();
 
             // Update stage if provided
@@ -35,9 +51,9 @@ public class UpdateOpportunityStage extends HttpServlet {
                 }
             }
 
-            // Update managedBy if provided
+            // Update managedBy if provided — reassigning the manager is PSP-Admin only.
             String managedByParam = request.getParameter("managedById");
-            if (managedByParam != null) {
+            if (managedByParam != null && OpportunityAuthz.canReassignManager(request)) {
                 if (managedByParam.isEmpty() || "0".equals(managedByParam)) {
                     opp.setManagedBy(null);
                 } else {

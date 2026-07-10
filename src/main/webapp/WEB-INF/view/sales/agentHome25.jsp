@@ -849,7 +849,7 @@ function openDrawer(oppId, cardEl) {
     // Footer links
     document.getElementById('drFullDetail').href = 'ViewById?id=' + oppId;
     document.getElementById('drEmail').href = 'CreateEmail25?activityId=' + oppId;
-    document.getElementById('drLogNote').href = 'ViewById?id=' + oppId;
+    document.getElementById('drLogNote').href = 'ViewById?id=' + oppId + '#note';
 
     // Open
     document.getElementById('detailDrawer').classList.add('open');

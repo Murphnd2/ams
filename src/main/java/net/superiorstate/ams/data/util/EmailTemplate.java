@@ -150,10 +150,15 @@ public abstract class EmailTemplate {
         sb.append("</tr>");
 
         // ── Footer ──
+        // Tier-1 white-label: foot agency-branded mail with the agency name (mirrors the
+        // signature company line). Falls back to the PSP EMAIL_FOOTER_TEXT constant when no
+        // agency is present (the 4-arg delegate passes agency=null and keeps today's footer).
+        String footerLine = (agency != null && agency.getName() != null && !agency.getName().isBlank())
+                ? agency.getName() : footerText;
         sb.append("<tr>");
         sb.append("<td style=\"padding:16px 44px 20px;text-align:center;border-top:1px solid #f0f0f0;\">");
         sb.append("<p style=\"font-size:11px;color:#bbbbbb;margin:0;line-height:1.5;\">");
-        sb.append(nullSafe(footerText));
+        sb.append(nullSafe(footerLine));
         sb.append("</p>");
         sb.append("</td>");
         sb.append("</tr>");

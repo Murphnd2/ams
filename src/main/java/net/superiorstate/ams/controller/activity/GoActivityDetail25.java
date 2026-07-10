@@ -7,6 +7,7 @@ import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.AmsDataLocal;
+import net.superiorstate.ams.data.util.OpportunityAuthz;
 import net.superiorstate.ams.data.util.Validator;
 import net.superiorstate.ams.model.general.Person;
 
@@ -98,6 +99,12 @@ public class GoActivityDetail25 extends HttpServlet {
             qSelling.setParameter("actId", activityId);
             long sellingCount = ((Number) qSelling.getSingleResult()).longValue();
             if (sellingCount > 0) return false;
+
+            // (c) opportunity the agent owns, manages, or (agency admin) belongs to.
+            // Shared server-side predicate. For non-Opportunity ids em.find(Opportunity,id)
+            // returns null, so this is a no-op and existing Setup/Ticket/Renewal behavior
+            // is unchanged.
+            if (OpportunityAuthz.canAccessOpportunity(em, request, activityId)) return false;
 
             response.sendRedirect(request.getContextPath() + "/AgentHome");
             return true;
