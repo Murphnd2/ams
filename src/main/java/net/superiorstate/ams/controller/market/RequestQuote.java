@@ -283,7 +283,9 @@ public class RequestQuote extends HttpServlet {
     private void setGlobalAttrs(HttpServletRequest request, AmsDataGlobal global) {
         Long hostAgencyId = resolveHostAgencyId(request, global);
         String brandName = resolveHostAgencyName(hostAgencyId, global);
-        request.setAttribute("losList", global.getLosList());
+        request.setAttribute("losList", hostAgencyId != null
+                ? global.getPricedLosForAgency(hostAgencyId)
+                : global.getLosList());
         request.setAttribute("pspName", brandName != null ? brandName
                 : (global.getPsp() != null ? global.getPsp().getFullName() : ""));
         request.setAttribute("brandName", brandName);

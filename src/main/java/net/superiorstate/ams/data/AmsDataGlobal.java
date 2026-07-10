@@ -122,6 +122,7 @@ public class AmsDataGlobal {
     private List<Enhancement> enhancementList;
     private List<Rate> rateList;
     private Map<Long, List<Long>> rateLosMap;
+    private Map<Long, List<Long>> pricedRateLosMap;
     private Map<Long, List<Integer>> rateExtraMap;
     private Map<Long, List<Long>> enhLosMap;
     private Map<Long, List<Long>> agencyRateMap;
@@ -191,6 +192,7 @@ public class AmsDataGlobal {
                 setEnhancementList(loadEnhancementList(em));
                 setRateList(SalesDAO.getRateList(em, getPsp().getId().intValue()));
                 setRateLosMap(SalesDAO.getRateLosMap(em));
+                setPricedRateLosMap(SalesDAO.getPricedRateLosMap(em));
                 setRateExtraMap(SalesDAO.getRateExtraMap(em));
                 setEnhLosMap(buildEnhLosMap(em));
                 setAgencyRateMap(SalesDAO.getAgencyRateMap(em));
@@ -908,6 +910,14 @@ public class AmsDataGlobal {
         this.rateLosMap = rateLosMap;
     }
 
+    public Map<Long, List<Long>> getPricedRateLosMap() {
+        return pricedRateLosMap;
+    }
+
+    public void setPricedRateLosMap(Map<Long, List<Long>> pricedRateLosMap) {
+        this.pricedRateLosMap = pricedRateLosMap;
+    }
+
     public Map<Long, List<Integer>> getRateExtraMap() {
         return rateExtraMap;
     }
@@ -943,12 +953,38 @@ public class AmsDataGlobal {
         return sb.toString();
     }
 
+    /** LOS list offered to a given agency: LOS with at least one priced
+     *  (price > 0.001) RateTable row under any active rate assigned to the
+     *  agency. Preserves losList ordering and suppression filtering.
+     *  Returns an empty list if the agency has no rates or no priced LOS. */
+    public List<LOS> getPricedLosForAgency(Long agencyId) {
+        List<LOS> result = new ArrayList<>();
+        if (agencyId == null || agencyRateMap == null) return result;
+        List<Long> rateIds = agencyRateMap.get(agencyId);
+        if (rateIds == null || rateIds.isEmpty()) return result;
+
+        Set<Long> pricedLosIds = new HashSet<>();
+        if (pricedRateLosMap != null) {
+            for (Long rateId : rateIds) {
+                List<Long> losIds = pricedRateLosMap.get(rateId);
+                if (losIds != null) pricedLosIds.addAll(losIds);
+            }
+        }
+        if (pricedLosIds.isEmpty() || losList == null) return result;
+
+        for (LOS los : losList) {
+            if (pricedLosIds.contains(los.getId())) result.add(los);
+        }
+        return result;
+    }
+
     /** Reload rate/LOS/enhancement/agency/agent caches after sales data changes. */
     public void refreshSalesData(EntityManager em) {
         setLosList(loadLosList(em));
         setEnhancementList(loadEnhancementList(em));
         setRateList(SalesDAO.getRateList(em, getPsp().getId().intValue()));
         setRateLosMap(SalesDAO.getRateLosMap(em));
+        setPricedRateLosMap(SalesDAO.getPricedRateLosMap(em));
         setRateExtraMap(SalesDAO.getRateExtraMap(em));
         setEnhLosMap(buildEnhLosMap(em));
         setAgencyRateMap(SalesDAO.getAgencyRateMap(em));

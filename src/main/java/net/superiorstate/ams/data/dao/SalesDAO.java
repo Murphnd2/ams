@@ -500,6 +500,21 @@ public abstract class SalesDAO {
         return map;
     }
 
+    /** Returns a map of rateId -> list of LOS IDs that have at least one priced
+     *  (price > 0.001) RateTable row in that rate. Mirrors the proposal display
+     *  visibility rule in proposalPricing.jsp. */
+    public static Map<Long, List<Long>> getPricedRateLosMap(EntityManager em) {
+        Query q = em.createQuery(
+                "SELECT DISTINCT rt.rate.id, sm.los.id FROM RateTable rt " +
+                "JOIN rt.module sm WHERE sm.los IS NOT NULL AND rt.price > 0.001");
+        List<Object[]> results = (List<Object[]>) q.getResultList();
+        Map<Long, List<Long>> map = new HashMap<>();
+        for (Object[] row : results) {
+            map.computeIfAbsent((Long) row[0], k -> new ArrayList<>()).add((Long) row[1]);
+        }
+        return map;
+    }
+
     public static List<Opportunity> getClosedOpportunitiesByAgency(EntityManager em, long agencyId) {
         Query q = em.createQuery(
                 "SELECT DISTINCT o FROM Opportunity o " +
