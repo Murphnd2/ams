@@ -208,6 +208,19 @@ public abstract class SalesDAO {
         return agency;
     }
 
+    /** Resolves an agency by its public quote token (nullable-unique). Returns null when the
+     *  token is blank or matches no agency -- a miss is an expected, not exceptional, outcome. */
+    public static Agency getAgencyByQuoteToken(EntityManager em, String token){
+        if (token == null || token.isBlank()) return null;
+        try {
+            return em.createQuery("SELECT a FROM Agency a WHERE a.quoteToken = :tok", Agency.class)
+                    .setParameter("tok", token.trim())
+                    .getSingleResult();
+        } catch (NoResultException ignored) {
+            return null;
+        }
+    }
+
     public static List<Person> getAgencyAgents(EntityManager em, long agencyId){
         Query q = em.createQuery("SELECT a FROM Agency a INNER JOIN FETCH a.agentList agent WHERE a.id = :agency_id");
         q.setParameter("agency_id", agencyId);

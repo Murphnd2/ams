@@ -73,6 +73,9 @@ public class Agency implements Comparable<Agency> {
     @JoinColumn(name="parent_agency_id")
     private Agency parentAgency;
 
+    @Column(name="quote_token")
+    private String quoteToken;
+
    public Agency(){}
 
     public Long getId() {
@@ -209,6 +212,14 @@ public class Agency implements Comparable<Agency> {
 
     public void setParentAgency(Agency parentAgency) {
         this.parentAgency = parentAgency;
+    }
+
+    public String getQuoteToken() {
+        return quoteToken;
+    }
+
+    public void setQuoteToken(String quoteToken) {
+        this.quoteToken = quoteToken;
     }
 
     public void addRate(Rate rate){

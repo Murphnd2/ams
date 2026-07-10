@@ -6,6 +6,7 @@ import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.AmsDataGlobal;
+import net.superiorstate.ams.data.dao.SalesDAO;
 import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.model.activity.Opportunity;
 import net.superiorstate.ams.model.activity.checklist.CheckList;
@@ -90,10 +91,12 @@ public class RequestQuote extends HttpServlet {
             return;
         }
 
-        // Resolve the attributing agency: the host-mapped agency (V068) if this request
-        // arrived on an agency's white-label host, otherwise the PSP home agency.
-        Long hostAgencyId = resolveHostAgencyId(request, global);
-        Long targetAgencyId = hostAgencyId != null ? hostAgencyId : global.getPspHomeAgencyId();
+        // Resolve the attributing agency. Precedence: a valid ?k= quote token (points at a
+        // specific agency -- e.g. a GA sub-agency riding the GA's white-label host) wins;
+        // else the host-mapped agency (V068); else the PSP home agency. Branding stays
+        // host-driven regardless (see setGlobalAttrs).
+        Long resolvedAgencyId = resolveTokenOrHostAgencyId(request, global);
+        Long targetAgencyId = resolvedAgencyId != null ? resolvedAgencyId : global.getPspHomeAgencyId();
         if (targetAgencyId == null) {
             request.setAttribute("error", "Quote requests are not yet available. Please contact us directly.");
             setGlobalAttrs(request, global);
@@ -281,16 +284,47 @@ public class RequestQuote extends HttpServlet {
     }
 
     private void setGlobalAttrs(HttpServletRequest request, AmsDataGlobal global) {
+        // Branding is host-driven: the wordmark / brandName follows the host the page was
+        // served from, never the ?k= token.
         Long hostAgencyId = resolveHostAgencyId(request, global);
         String brandName = resolveHostAgencyName(hostAgencyId, global);
-        request.setAttribute("losList", hostAgencyId != null
-                ? global.getPricedLosForAgency(hostAgencyId)
+        // LOS follows the resolved target agency: a valid ?k= token agency takes precedence
+        // over the host agency; else the full PSP list.
+        Long losAgencyId = resolveTokenOrHostAgencyId(request, global);
+        request.setAttribute("losList", losAgencyId != null
+                ? global.getPricedLosForAgency(losAgencyId)
                 : global.getLosList());
         request.setAttribute("pspName", brandName != null ? brandName
                 : (global.getPsp() != null ? global.getPsp().getFullName() : ""));
         request.setAttribute("brandName", brandName);
         request.setAttribute("logoNavbar", global.getLogoNavbar());
         request.setAttribute("favicon", global.getFavicon());
+        // Echo a well-formed quote token back so the form's hidden field survives GET->POST
+        // and validation-error re-renders. Only UUID-safe characters are echoed (XSS guard).
+        String token = request.getParameter("k");
+        request.setAttribute("quoteToken",
+                (token != null && token.matches("[A-Za-z0-9\\-]{1,64}")) ? token : "");
+    }
+
+    /**
+     * Resolves the agency this request should attribute to and show LOS for: a valid
+     * ?k= quote-token agency (looked up in a short-lived read-only EntityManager) takes
+     * precedence; otherwise the host-mapped agency (V068); otherwise null (PSP home /
+     * full LOS list). Branding is intentionally NOT driven by this -- see setGlobalAttrs.
+     */
+    private Long resolveTokenOrHostAgencyId(HttpServletRequest request, AmsDataGlobal global) {
+        String token = request.getParameter("k");
+        if (token != null && !token.isBlank()) {
+            EntityManagerFactory emf = (EntityManagerFactory) getServletContext().getAttribute("emf");
+            EntityManager em = emf.createEntityManager();
+            try {
+                Agency a = SalesDAO.getAgencyByQuoteToken(em, token.trim());
+                if (a != null) return a.getId();
+            } finally {
+                em.close();
+            }
+        }
+        return resolveHostAgencyId(request, global);
     }
 
     /**

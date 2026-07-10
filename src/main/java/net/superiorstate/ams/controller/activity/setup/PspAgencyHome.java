@@ -5,6 +5,7 @@ import jakarta.persistence.EntityManagerFactory;
 import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
+import net.superiorstate.ams.data.AmsDataGlobal;
 import net.superiorstate.ams.data.AmsDataLocal;
 import net.superiorstate.ams.data.dao.SalesDAO;
 import net.superiorstate.ams.model.general.Person;
@@ -78,6 +79,21 @@ public class PspAgencyHome extends HttpServlet {
                     Collections.sort(gaRates);
                     request.setAttribute("allRates", gaRates);
                 }
+
+                // Quote-link base host (V071): the host a RequestQuote?k=<token> link for this
+                // agency should ride. Precedence: the agency's own white-label host, else its
+                // parent GA's host, else the primary PSP host. em is open; parentAgency is
+                // EAGER and landingHost is a scalar, so both are safe to read here.
+                String quoteLinkBase = selectedAgency.getLandingHost();
+                if ((quoteLinkBase == null || quoteLinkBase.isBlank())
+                        && selectedAgency.getParentAgency() != null) {
+                    quoteLinkBase = selectedAgency.getParentAgency().getLandingHost();
+                }
+                if (quoteLinkBase == null || quoteLinkBase.isBlank()) {
+                    AmsDataGlobal global = (AmsDataGlobal) getServletContext().getAttribute("global");
+                    if (global != null) quoteLinkBase = global.getPrimaryPspHost();
+                }
+                request.setAttribute("quoteLinkBase", quoteLinkBase);
 
                 // Load agents for this agency
                 List<Person> agents;

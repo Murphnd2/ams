@@ -346,6 +346,21 @@ public class AgencyAction extends HttpServlet {
                     em.merge(agency);
                     em.getTransaction().commit();
                 }
+
+                case "mintQuoteToken" -> {
+                    // Mint (or regenerate) the agency's public quote token (V071). A fresh
+                    // random token overwrites any prior value; the old token stops resolving
+                    // immediately (SalesDAO.getAgencyByQuoteToken is a live query). Used to
+                    // build https://<host>/RequestQuote?k=<token> links that attribute a lead
+                    // to this specific agency regardless of the white-label host it rides on.
+                    long agencyId = Long.parseLong(agencyIdParam);
+                    Agency agency = em.find(Agency.class, agencyId);
+
+                    agency.setQuoteToken(UUID.randomUUID().toString());
+                    em.getTransaction().begin();
+                    em.merge(agency);
+                    em.getTransaction().commit();
+                }
             }
 
         } finally {

@@ -1207,6 +1207,19 @@ public class AmsDataGlobal {
         return cached;
     }
 
+    /** The canonical/primary PSP host: the FIRST comma-token of PSP_HOSTS (config order =
+     *  operator's primary host, aliases after). Unlike getPspHosts()'s unordered set, this
+     *  is deterministic. Returns null only when PSP_HOSTS is explicitly blank. */
+    public String getPrimaryPspHost() {
+        String raw = AppConfig.get("PSP_HOSTS", "superiorstate.net,superiorstate.biz");
+        if (raw == null) return null;
+        for (String part : raw.split(",")) {
+            String h = normalizeHost(part);
+            if (!h.isEmpty()) return h;
+        }
+        return null;
+    }
+
     /** True if the given host is a configured PSP host (exact match, never wildcard). */
     public boolean isPspHost(String host) {
         String h = normalizeHost(host);

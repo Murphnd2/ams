@@ -136,8 +136,28 @@
                   <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#editAgencyModal">
                     <i class="bi bi-pencil me-1"></i>Edit
                   </button>
+                  <form method="post" action="AgencyAction" class="d-inline">
+                    <input type="hidden" name="action" value="mintQuoteToken"/>
+                    <input type="hidden" name="agencyId" value="${selectedAgency.getId()}"/>
+                    <button type="submit" class="btn btn-outline-secondary btn-sm">
+                      <i class="bi bi-link-45deg me-1"></i>${empty selectedAgency.getQuoteToken() ? 'Generate Quote Link' : 'Regenerate Link'}
+                    </button>
+                  </form>
                 </div>
               </div>
+              <c:if test="${not empty selectedAgency.getQuoteToken()}">
+                <div class="mt-2 pt-2 border-top">
+                  <label class="form-label mb-1 small text-muted">Public quote-request link</label>
+                  <div class="input-group input-group-sm">
+                    <input type="text" class="form-control" id="quoteLinkField" readonly
+                           value="https://${quoteLinkBase}/RequestQuote?k=${selectedAgency.getQuoteToken()}">
+                    <button type="button" class="btn btn-outline-secondary" onclick="copyQuoteLink()">
+                      <i class="bi bi-clipboard"></i>
+                    </button>
+                  </div>
+                  <small class="text-muted">Leads from this link are attributed to ${selectedAgency.getName()}.</small>
+                </div>
+              </c:if>
             </div>
           </div>
 
@@ -1119,6 +1139,15 @@
     rows.forEach(function(r) { tbody.appendChild(r); });
     label.textContent = isAZ ? 'Newest' : 'A-Z';
   }
+</script>
+<script>
+function copyQuoteLink() {
+    var f = document.getElementById('quoteLinkField');
+    if (!f) return;
+    f.select();
+    f.setSelectionRange(0, 99999);
+    navigator.clipboard.writeText(f.value);
+}
 </script>
 </body>
 </html>

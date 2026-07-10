@@ -16,7 +16,7 @@ Tracks database schema versions across environments.
 | BPO | bpo.superiorstate.biz | beta_ssa | BPO instance (V038, initialized, release V0.37.0) |
 | Master | master.superiorstate.biz | beta_ssa | Snapshot v9 (V057, stopped) |
 
-## Current Highest Version: V070
+## Current Highest Version: V071
 
 ## Dev Baseline
 
@@ -102,6 +102,7 @@ Individual migration scripts are no longer stored in the repo. The baseline dump
 | V068 | Host-header custom agency landing pages (agency.landing_host unique + landing_html) | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
 | V069 | Per-agency white-label email sending (agency.email_domain unique + email_verified) | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
 | V070 | Self-referential agency parent link (GA -> sub-agency hierarchy): agency.parent_agency_id nullable + child index | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
+| V071 | Per-agency public quote token (agency.quote_token unique) for RequestQuote sub-agency attribution links | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
 
 ## Notes
 
