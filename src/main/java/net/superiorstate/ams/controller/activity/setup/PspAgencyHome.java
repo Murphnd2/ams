@@ -80,6 +80,23 @@ public class PspAgencyHome extends HttpServlet {
                     request.setAttribute("allRates", gaRates);
                 }
 
+                // Increment 3: parent-GA selector data. Eligible parents = top-level agencies
+                // (no parent of their own) under this PSP, excluding self. hasChildren gates the
+                // selector off entirely for an agency that is itself a GA (strict two levels).
+                final Long selId = selectedAgency.getId();
+                List<Agency> eligibleParents = new ArrayList<>();
+                boolean selectedAgencyHasChildren = false;
+                for (Agency a : agencyList) {
+                    if (a.getParentAgency() == null && !a.getId().equals(selId)) {
+                        eligibleParents.add(a);
+                    }
+                    if (a.getParentAgency() != null && a.getParentAgency().getId().equals(selId)) {
+                        selectedAgencyHasChildren = true;
+                    }
+                }
+                request.setAttribute("eligibleParents", eligibleParents);
+                request.setAttribute("selectedAgencyHasChildren", selectedAgencyHasChildren);
+
                 // Quote-link base host (V071): the host a RequestQuote?k=<token> link for this
                 // agency should ride. Precedence: the agency's own white-label host, else its
                 // parent GA's host, else the primary PSP host. em is open; parentAgency is

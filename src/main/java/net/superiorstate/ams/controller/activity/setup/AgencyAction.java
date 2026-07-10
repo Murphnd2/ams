@@ -167,6 +167,42 @@ public class AgencyAction extends HttpServlet {
                     agency.setEmailDomain(emailDomain.isEmpty() ? null : emailDomain);
                     agency.setEmailVerified(emailVerified);
 
+                    // Increment 3: parent (general agency) assignment, strict two-level hierarchy.
+                    // Empty/0/absent clears the parent (agency becomes top-level). Otherwise the
+                    // chosen parent must satisfy: R1 not self; R2 the parent is itself top-level
+                    // (no chains); R3 this agency has no children of its own (a GA cannot become a
+                    // sub). Any violation redirects with &parentError= (mirrors landing/email errors).
+                    String parentParam = request.getParameter("parentAgencyId");
+                    if (parentParam == null || parentParam.isBlank() || "0".equals(parentParam.trim())) {
+                        agency.setParentAgency(null);
+                    } else {
+                        long parentId;
+                        try {
+                            parentId = Long.parseLong(parentParam.trim());
+                        } catch (NumberFormatException nfe) {
+                            response.sendRedirect("PspAgencyHome?agencyId=" + agencyId + "&parentError=invalid");
+                            return; // outer finally closes the EntityManager
+                        }
+                        if (parentId == agencyId) { // R1
+                            response.sendRedirect("PspAgencyHome?agencyId=" + agencyId + "&parentError=self");
+                            return;
+                        }
+                        if (SalesDAO.countChildAgencies(em, agencyId) > 0) { // R3
+                            response.sendRedirect("PspAgencyHome?agencyId=" + agencyId + "&parentError=haschildren");
+                            return;
+                        }
+                        Agency parent = em.find(Agency.class, parentId);
+                        if (parent == null) {
+                            response.sendRedirect("PspAgencyHome?agencyId=" + agencyId + "&parentError=notfound");
+                            return;
+                        }
+                        if (parent.getParentAgency() != null) { // R2
+                            response.sendRedirect("PspAgencyHome?agencyId=" + agencyId + "&parentError=notoplevel");
+                            return;
+                        }
+                        agency.setParentAgency(parent);
+                    }
+
                     // Update address
                     Address address = agency.getAddress();
                     if (address == null) {

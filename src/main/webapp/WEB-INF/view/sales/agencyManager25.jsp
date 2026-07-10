@@ -673,6 +673,23 @@
                   </div>
                   <div id="agencyEmailDomainError" class="alert alert-danger py-1 px-2 mt-1" style="display:none; font-size:0.78rem;"></div>
                 </div>
+                <div class="mb-2">
+                  <label class="form-label fw-semibold mb-0" style="font-size: 0.85rem;">Parent (General Agency)</label>
+                  <select name="parentAgencyId" class="form-select form-select-sm"
+                          ${selectedAgencyHasChildren ? 'disabled' : ''}>
+                    <option value="0">None (top-level agency)</option>
+                    <c:forEach var="ga" items="${eligibleParents}">
+                      <option value="${ga.getId()}"
+                        ${selectedAgency.getParentAgency() != null && selectedAgency.getParentAgency().getId() == ga.getId() ? 'selected' : ''}>
+                        ${ga.getName()}
+                      </option>
+                    </c:forEach>
+                  </select>
+                  <c:if test="${selectedAgencyHasChildren}">
+                    <small class="text-muted">This agency is a general agency with sub-agencies, so it can't be made a sub-agency itself.</small>
+                  </c:if>
+                  <div id="agencyParentError" class="alert alert-danger py-1 px-2 mt-1" style="display:none; font-size:0.78rem;"></div>
+                </div>
                 <hr class="my-2">
                 <h6 class="text-muted mb-2"><i class="bi bi-person me-1"></i>Primary Contact</h6>
                 <div class="row mb-2">
@@ -862,6 +879,21 @@
       status.innerHTML = '<span class="text-danger"><i class="bi bi-x-circle"></i> Save failed.</span>';
     });
   }
+
+  // Increment 3: surface a friendly parent-agency validation error (from the editAgency redirect) and reopen the modal.
+  (function() {
+    var pe = new URLSearchParams(window.location.search).get('parentError');
+    if (!pe) return;
+    var msg = pe === 'self' ? "An agency can't be its own general agency."
+            : pe === 'haschildren' ? "This agency has sub-agencies, so it can't become a sub-agency itself."
+            : pe === 'notoplevel' ? 'The selected agency is already a sub-agency; only top-level agencies can be a parent.'
+            : pe === 'notfound' ? 'Selected parent agency not found.'
+            : 'Invalid parent selection.';
+    var el = document.getElementById('agencyParentError');
+    if (el) { el.textContent = msg; el.style.display = 'block'; }
+    var modalEl = document.getElementById('editAgencyModal');
+    if (modalEl && window.bootstrap) { try { new bootstrap.Modal(modalEl).show(); } catch (e) {} }
+  })();
 
   // Surface a friendly landing-host validation error (from the editAgency redirect) and reopen the modal.
   (function() {

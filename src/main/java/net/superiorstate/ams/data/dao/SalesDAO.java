@@ -115,6 +115,14 @@ public abstract class SalesDAO {
         q.setParameter("psp_id",pspID);
         return (List<Agency>) q.getResultList();
     }
+
+    /** Count of agencies whose parent GA is the given agency (i.e. how many sub-agencies it has).
+     *  Used to enforce the strict two-level rule: an agency with children cannot itself get a parent. */
+    public static long countChildAgencies(EntityManager em, long agencyId){
+        Query q = em.createQuery("SELECT COUNT(a) FROM Agency a WHERE a.parentAgency.id = :id");
+        q.setParameter("id", agencyId);
+        return (Long) q.getSingleResult();
+    }
     public static List<ServiceModule> getServiceModuleList(EntityManager em, int pspID){
         Query q = em.createQuery("SELECT sm FROM ServiceModule sm WHERE sm.psp.id = :psp_id");
         q.setParameter("psp_id",pspID);
