@@ -50,7 +50,7 @@ ams/
 
 - **Base branch:** `refactor/modernize-architecture`
 - **Active feature branches (verified against `git branch -a`):** `feature/automation-email-preview`. The branch `feature/proposal-customization` referenced in older notes is **not present** locally or on origin.
-- **Latest migration in tree:** **V062** (`docs/migrations/V062__note_agent_visibility.sql`). Always re-check `docs/migrations/` directly — versions move quickly. The authoritative tracker is `docs/analysis/migration_tracker.md`.
+- **Latest migration in tree:** **V069** (`docs/migrations/V069__agency_email_sending.sql`). Always re-check `docs/migrations/` directly — versions move quickly. The authoritative tracker is `docs/analysis/migration_tracker.md`.
 - **Per-installation migration state** (Production / Master / Demo / BPO) is tracked in `MEMORY.md`, not here.
 
 ## How to run things locally
@@ -111,7 +111,7 @@ No ad-hoc DDL — every schema change must be a versioned script. See an existin
 A future session should be aware of these unresolved items. Numbers reference `.claude/inventory/AMS-OPEN-QUESTIONS.md`.
 
 1. **Java 17 vs Java 21** — `pom.xml` targets 17, CI runs on 21. Don't assume a version; check both before answering toolchain questions. (Open Question #1)
-2. **Migration versions move fast** — `docs/migrations/` is the source of truth, not this file or `MEMORY.md`. As of writing, latest is V062 but expect drift. (Open Question #2)
+2. **Migration versions move fast** — `docs/migrations/` is the source of truth, not this file or `MEMORY.md`. As of writing, latest is V069 but expect drift. (Open Question #2)
 3. **Active branch claims drift** — verify any "current feature branch" against `git branch -a` before relying on it. The legacy `feature/proposal-customization` is gone. (Open Question #19)
 4. **`/tpo` route purpose** — `LoginFilter` allows `/tpo` without a session, but no servlet, JSP, or doc explains it. Treat with caution if you encounter it. (Open Question #17)
 5. **No `log4j2.xml`** — Log4j is declared but unconfigured; behavior is console-default and there's also direct `System.out.println` use. Don't assume structured logging exists. (Open Question #20)

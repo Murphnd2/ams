@@ -214,7 +214,7 @@ JSPs aren't compiled at Maven build time — Tomcat compiles them at first reque
 - `src/main/resources/knowledge/automation_email_builder.json` — JSON-source
 
 ### Analysis & tracking
-- `docs/analysis/migration_tracker.md` — V065 is current highest
+- `docs/analysis/migration_tracker.md` — V069 is current highest
 - `docs/schema_version_migration.sql` — retroactive insert block
 - `docs/analysis/email_assistant_handoff.md` — this file
 - `docs/analysis/email_assistant_calibration_log.md` — calibration findings (next session updates)

@@ -62,3 +62,6 @@ src/main/webapp/WEB-INF/lib/
 
 # Maven wrapper
 !.mvn/wrapper/maven-wrapper.jar
+
+# Local release-staging folder (WAR + migration SQL staged for GitHub Releases; never committed)
+release/

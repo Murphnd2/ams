@@ -2,10 +2,10 @@
 
 ## Current State
 - **Branch:** `refactor/modernize-architecture`
-- **Latest migration:** V062
+- **Latest migration:** V069
 - **Session count:** 85
 - **Build tool:** Maven wrapper `./mvnw compile` (no system `mvn` on PATH)
-- V025-V057 applied to Production and Master; V038 applied to Demo and BPO; V058-V062 code-complete, not yet applied anywhere (V060 applied to local dev + production only)
+- Per-environment apply status is tracked authoritatively in `docs/analysis/migration_tracker.md`.
 - Master snapshot v9 taken 2026-03-20 (V057, nginx SSL, hostname ssa-master)
 - Production SSL migrated from Comodo wildcard to Let's Encrypt via nginx (2026-03-20)
 - **Active feature (Session 85+):** Agent delegation per-Setup — V061 ToDo owner override shipped; next = agent-facing Setup detail view in agent portal (see Session 86 planning)

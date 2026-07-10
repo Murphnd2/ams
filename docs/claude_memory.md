@@ -6,10 +6,10 @@
 
 ## Current State
 - **Branch:** `refactor/modernize-architecture`
-- **Latest migration:** V062
+- **Latest migration:** V069
 - **Session count:** 87
 - **Build tool:** Maven wrapper `./mvnw compile` (no system `mvn` on PATH)
-- V025-V037 applied to Demo/BPO/Master; V038 applied to Demo/BPO; V039-V062 code-complete, V060+V062 applied to Demo (testing agent portal)
+- Per-environment apply status is tracked authoritatively in `docs/analysis/migration_tracker.md`.
 - Master snapshot v9 taken 2026-03-20 (V057)
 - **Active feature (Session 87):** Agent portal polish on top of Session 86's V062 foundation. Shipped: agent Setup detail completion persistence fix (`AgentCompleteToDo`/`AgentReopenToDo`), Completed collapsible, filter narrowed to owned tasks only, Kanban widescreen fit (CONTACTED column removed + column width shrunk), CONTACTED removed from all selectable stage dropdowns, Add Note redesign (tri-state agent-visibility pill in header + inline footer Reason/Status/Save).
 
