@@ -17,7 +17,9 @@ import net.superiorstate.ams.model.sales.agency.*;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
@@ -237,6 +239,21 @@ public class AgencyAction extends HttpServlet {
                     }
                     for (Rate r : toRemove) {
                         agency.removeRate(r);
+                    }
+
+                    // Sub-agency rate constraint (V070): if this agency has a parent GA,
+                    // it may only be assigned rates the GA itself holds. Any selected rate
+                    // outside the GA's set is silently dropped (defense-in-depth; the picker
+                    // already hides these, so a hit here means a stale/tampered form).
+                    if (agency.getParentAgency() != null) {
+                        Agency parentGa = SalesDAO.getAgencyFull(em, agency.getParentAgency().getId());
+                        Set<Long> allowedRateIds = new HashSet<>();
+                        if (parentGa.getAgencyRateList() != null) {
+                            for (Rate pr : parentGa.getAgencyRateList()) {
+                                allowedRateIds.add(pr.getId());
+                            }
+                        }
+                        selectedRateIds.removeIf(rid -> !allowedRateIds.contains(rid));
                     }
 
                     // Add newly checked rates

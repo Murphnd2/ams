@@ -69,6 +69,10 @@ public class Agency implements Comparable<Agency> {
             joinColumns = @JoinColumn(name="agency_id"),inverseJoinColumns = @JoinColumn(name="person_id"))
     List<Person> agentList;
 
+    @ManyToOne
+    @JoinColumn(name="parent_agency_id")
+    private Agency parentAgency;
+
    public Agency(){}
 
     public Long getId() {
@@ -197,6 +201,14 @@ public class Agency implements Comparable<Agency> {
 
     public void setAgentList(List<Person> agentList) {
         this.agentList = agentList;
+    }
+
+    public Agency getParentAgency() {
+        return parentAgency;
+    }
+
+    public void setParentAgency(Agency parentAgency) {
+        this.parentAgency = parentAgency;
     }
 
     public void addRate(Rate rate){

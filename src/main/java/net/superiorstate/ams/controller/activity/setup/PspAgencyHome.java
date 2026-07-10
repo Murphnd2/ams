@@ -66,6 +66,19 @@ public class PspAgencyHome extends HttpServlet {
                 Agency selectedAgency = SalesDAO.getAgencyFull(em, agencyId);
                 request.setAttribute("selectedAgency", selectedAgency);
 
+                // Sub-agency picker constraint (V070): if this agency is downstream of a
+                // parent GA, restrict the assignable-rate checklist to the GA's own rate
+                // set (overwriting the PSP-wide allRates built above). Top-level agencies
+                // keep the full PSP list. em is still open, so getAgencyFull is safe.
+                if (selectedAgency.getParentAgency() != null) {
+                    Agency parentGa = SalesDAO.getAgencyFull(em, selectedAgency.getParentAgency().getId());
+                    List<Rate> gaRates = parentGa.getAgencyRateList() != null
+                            ? new ArrayList<>(parentGa.getAgencyRateList())
+                            : new ArrayList<>();
+                    Collections.sort(gaRates);
+                    request.setAttribute("allRates", gaRates);
+                }
+
                 // Load agents for this agency
                 List<Person> agents;
                 try {
