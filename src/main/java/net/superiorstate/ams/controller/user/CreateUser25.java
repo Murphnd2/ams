@@ -356,6 +356,14 @@ public class CreateUser25 extends HttpServlet {
         if (hasPspRole) {
             global.refreshUserCaches(em);
         }
+
+        // Refresh sales data (agencies + setupAgents) if an Agent/Agency Admin role was
+        // assigned — otherwise the new agent doesn't appear in the "create opportunity"
+        // popup's agent list until a server restart rebuilds AmsDataGlobal.setupAgents.
+        boolean hasAgencyRole = roleIds.contains(2) || roleIds.contains(8);
+        if (hasAgencyRole) {
+            global.refreshSalesData(em);
+        }
     }
 
     /** Capitalize first letter, lowercase the rest. e.g. "KEVIN" → "Kevin" */

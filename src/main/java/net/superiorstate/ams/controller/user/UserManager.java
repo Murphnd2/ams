@@ -376,7 +376,7 @@ public class UserManager extends HttpServlet {
 
         AmsDataGlobal global = (AmsDataGlobal) getServletContext().getAttribute("global");
         global.refreshUserCaches(em);
-        global.setAgencies(loadAgencies(em));
+        global.refreshSalesData(em);
         getServletContext().setAttribute("global", global);
 
         sendJson(response, 200, "{\"success\":true}");
@@ -449,7 +449,7 @@ public class UserManager extends HttpServlet {
 
         AmsDataGlobal global = (AmsDataGlobal) getServletContext().getAttribute("global");
         global.refreshUserCaches(em);
-        global.setAgencies(loadAgencies(em));
+        global.refreshSalesData(em);
         getServletContext().setAttribute("global", global);
 
         sendJson(response, 200, "{\"success\":true}");
@@ -528,19 +528,6 @@ public class UserManager extends HttpServlet {
             return agencies.isEmpty() ? null : agencies.get(0);
         } catch (Exception e) {
             return null;
-        }
-    }
-
-    @SuppressWarnings("unchecked")
-    private List<Agency> loadAgencies(EntityManager em) {
-        try {
-            return em.createQuery(
-                    "SELECT a FROM Agency a WHERE a.psp.id = :pspId ORDER BY a.name",
-                    Agency.class)
-                    .setParameter("pspId", 4L)
-                    .getResultList();
-        } catch (Exception e) {
-            return List.of();
         }
     }
 

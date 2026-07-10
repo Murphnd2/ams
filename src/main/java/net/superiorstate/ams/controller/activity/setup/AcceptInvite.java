@@ -7,6 +7,7 @@ import jakarta.persistence.Query;
 import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
+import net.superiorstate.ams.data.AmsDataGlobal;
 import net.superiorstate.ams.data.dao.AuthDAO;
 import net.superiorstate.ams.model.general.Address;
 import net.superiorstate.ams.model.general.Person;
@@ -67,6 +68,7 @@ public class AcceptInvite extends HttpServlet {
 
         EntityManagerFactory emf = (EntityManagerFactory) getServletContext().getAttribute("emf");
         EntityManager em = emf.createEntityManager();
+        AmsDataGlobal global = (AmsDataGlobal) getServletContext().getAttribute("global");
 
         try {
             Invitation invitation = findInvitation(em, guid);
@@ -180,6 +182,11 @@ public class AcceptInvite extends HttpServlet {
                 em.getTransaction().commit();
 
                 System.out.println("✅ Existing user " + email + " auto-granted " + invitation.getRole() + " for " + agency.getName());
+
+                if (global != null) {
+                    global.refreshSalesData(em);
+                    getServletContext().setAttribute("global", global);
+                }
 
                 response.sendRedirect(request.getContextPath() + "/login?updated=true");
                 return;
@@ -297,6 +304,11 @@ public class AcceptInvite extends HttpServlet {
             em.getTransaction().commit();
 
             System.out.println("✅ Invitation accepted: " + email + " joined " + agency.getName() + " as " + invitation.getRole());
+
+            if (global != null) {
+                global.refreshSalesData(em);
+                getServletContext().setAttribute("global", global);
+            }
 
             // Redirect to login page
             response.sendRedirect(request.getContextPath() + "/login?registered=true");
