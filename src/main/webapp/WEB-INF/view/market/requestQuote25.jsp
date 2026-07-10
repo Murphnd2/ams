@@ -35,6 +35,10 @@
             transition: color 0.2s;
         }
         .quote-header a:hover { color: ${applicationScope.global.landingHeaderTextColor}; }
+        .quote-brand-wordmark {
+            color: ${applicationScope.global.landingHeaderTextColor};
+            font-weight: 700; font-size: 1.1rem; letter-spacing: 0.02em;
+        }
         .quote-body {
             padding-top: 80px; padding-bottom: 3rem;
             display: flex; justify-content: center; align-items: flex-start;
@@ -123,8 +127,16 @@
     <%-- FIXED HEADER --%>
     <div class="quote-header">
         <div>
-            <c:set var="navLogo" value="${not empty logoNavbar ? logoNavbar : '/images/logoA.png'}"/>
-            <img src="${pageContext.request.contextPath}${navLogo}" alt="Home">
+            <c:choose>
+                <%-- Agency host resolved (V068): name-only wordmark, no PSP logo. --%>
+                <c:when test="${not empty brandName}">
+                    <span class="quote-brand-wordmark">${brandName}</span>
+                </c:when>
+                <c:otherwise>
+                    <c:set var="navLogo" value="${not empty logoNavbar ? logoNavbar : '/images/logoA.png'}"/>
+                    <img src="${pageContext.request.contextPath}${navLogo}" alt="Home">
+                </c:otherwise>
+            </c:choose>
         </div>
         <a href="${pageContext.request.contextPath}/login">
             <i class="bi bi-arrow-left"></i> Back

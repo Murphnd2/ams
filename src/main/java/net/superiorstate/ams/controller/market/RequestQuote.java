@@ -31,10 +31,7 @@ public class RequestQuote extends HttpServlet {
             response.sendError(HttpServletResponse.SC_SERVICE_UNAVAILABLE, "System not initialized");
             return;
         }
-        request.setAttribute("losList", global.getLosList());
-        request.setAttribute("pspName", global.getPsp() != null ? global.getPsp().getFullName() : "");
-        request.setAttribute("logoNavbar", global.getLogoNavbar());
-        request.setAttribute("favicon", global.getFavicon());
+        setGlobalAttrs(request, global);
         request.getRequestDispatcher("/WEB-INF/view/market/requestQuote25.jsp").forward(request, response);
     }
 
@@ -93,9 +90,11 @@ public class RequestQuote extends HttpServlet {
             return;
         }
 
-        // Check home agency is configured
-        Long homeAgencyId = global.getPspHomeAgencyId();
-        if (homeAgencyId == null) {
+        // Resolve the attributing agency: the host-mapped agency (V068) if this request
+        // arrived on an agency's white-label host, otherwise the PSP home agency.
+        Long hostAgencyId = resolveHostAgencyId(request, global);
+        Long targetAgencyId = hostAgencyId != null ? hostAgencyId : global.getPspHomeAgencyId();
+        if (targetAgencyId == null) {
             request.setAttribute("error", "Quote requests are not yet available. Please contact us directly.");
             setGlobalAttrs(request, global);
             request.getRequestDispatcher("/WEB-INF/view/market/requestQuote25.jsp").forward(request, response);
@@ -107,14 +106,14 @@ public class RequestQuote extends HttpServlet {
 
         try {
             // Resolve agency manager
-            long managerId = global.getAgencyManagerId(homeAgencyId);
+            long managerId = global.getAgencyManagerId(targetAgencyId);
             Person manager;
             if (managerId > 0) {
                 manager = EntityLookup.getPersonById(em, managerId);
             } else {
-                Agency homeAgency = EntityLookup.getAgencyById(em, homeAgencyId);
-                manager = (homeAgency != null && homeAgency.getManager() != null)
-                        ? homeAgency.getManager()
+                Agency targetAgency = EntityLookup.getAgencyById(em, targetAgencyId);
+                manager = (targetAgency != null && targetAgency.getManager() != null)
+                        ? targetAgency.getManager()
                         : null;
             }
             if (manager == null) {
@@ -124,7 +123,7 @@ public class RequestQuote extends HttpServlet {
                 return;
             }
 
-            Agency agency = EntityLookup.getAgencyById(em, homeAgencyId);
+            Agency agency = EntityLookup.getAgencyById(em, targetAgencyId);
 
             // 1. Create Person contact
             em.getTransaction().begin();
@@ -219,9 +218,7 @@ public class RequestQuote extends HttpServlet {
             // Show confirmation
             request.setAttribute("submitted", true);
             request.setAttribute("companyName", companyName.trim());
-            request.setAttribute("pspName", global.getPsp() != null ? global.getPsp().getFullName() : "");
-            request.setAttribute("logoNavbar", global.getLogoNavbar());
-            request.setAttribute("favicon", global.getFavicon());
+            setGlobalAttrs(request, global);
             request.getRequestDispatcher("/WEB-INF/view/market/requestQuote25.jsp").forward(request, response);
 
         } catch (Exception e) {
@@ -284,10 +281,33 @@ public class RequestQuote extends HttpServlet {
     }
 
     private void setGlobalAttrs(HttpServletRequest request, AmsDataGlobal global) {
+        Long hostAgencyId = resolveHostAgencyId(request, global);
+        String brandName = resolveHostAgencyName(hostAgencyId, global);
         request.setAttribute("losList", global.getLosList());
-        request.setAttribute("pspName", global.getPsp() != null ? global.getPsp().getFullName() : "");
+        request.setAttribute("pspName", brandName != null ? brandName
+                : (global.getPsp() != null ? global.getPsp().getFullName() : ""));
+        request.setAttribute("brandName", brandName);
         request.setAttribute("logoNavbar", global.getLogoNavbar());
         request.setAttribute("favicon", global.getFavicon());
+    }
+
+    /**
+     * Resolves the requesting host to an agency ID via the V068 host map
+     * (AmsDataGlobal.getAgencyIdForHost), or null for PSP hosts / unmatched hosts.
+     */
+    private Long resolveHostAgencyId(HttpServletRequest request, AmsDataGlobal global) {
+        String host = request.getServerName();
+        if (global.isPspHost(host)) return null;
+        return global.getAgencyIdForHost(host);
+    }
+
+    /** Agency display name for the resolved host agency, read from the cached agency list (no DB hit). */
+    private String resolveHostAgencyName(Long hostAgencyId, AmsDataGlobal global) {
+        if (hostAgencyId == null || global.getAgencies() == null) return null;
+        for (Agency a : global.getAgencies()) {
+            if (hostAgencyId.equals(a.getId())) return a.getName();
+        }
+        return null;
     }
 
     private boolean isBlank(String s) {

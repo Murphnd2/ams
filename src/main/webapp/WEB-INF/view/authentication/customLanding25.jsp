@@ -39,6 +39,17 @@
         }
         .landing-body { padding-top: 56px; }
         .landing-body.white-label { padding-top: 0; }
+        .wl-login-fab {
+            position: fixed; top: 1rem; right: 1rem; z-index: 1001;
+            width: 44px; height: 44px; border-radius: 50%;
+            background: rgba(0,0,0,0.55); color: #fff;
+            border: 1.5px solid rgba(255,255,255,0.4);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.1rem; cursor: pointer;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.25);
+            transition: background 0.2s, border-color 0.2s;
+        }
+        .wl-login-fab:hover { background: rgba(0,0,0,0.75); border-color: rgba(255,255,255,0.7); }
     </style>
 </head>
 <body>
@@ -55,6 +66,16 @@
             <i class="bi bi-box-arrow-in-right"></i>Login
         </button>
     </div>
+    </c:if>
+
+    <%-- WRAPPER-OWNED LOGIN TRIGGER (white-label only): the fixed chrome above (and its
+         login button) is suppressed for agency hosts, so this floating button is the
+         guaranteed fallback trigger for #loginModal. Rendered in the wrapper (not agency
+         content) so its data-bs-* attributes survive LandingSafe sanitization. --%>
+    <c:if test="${not empty requestScope.whiteLabel}">
+    <button type="button" class="wl-login-fab" data-bs-toggle="modal" data-bs-target="#loginModal" aria-label="Login">
+        <i class="bi bi-box-arrow-in-right"></i>
+    </button>
     </c:if>
 
     <%-- CUSTOM HTML CONTENT (pre-sanitized on save) --%>
@@ -100,6 +121,18 @@
                 });
             }, { threshold: 0.08, rootMargin: '0px 0px -40px 0px' });
             document.querySelectorAll('.ss-fade, .fade-in').forEach(function(el) { obs.observe(el); });
+
+            // Delegated login trigger for agency content: data-bs-* attributes don't survive
+            // LandingSafe sanitization, so agency HTML opens the modal via class name instead —
+            // any element marked "wl-login" opens #loginModal through this wrapper-owned handler.
+            document.addEventListener('click', function(e) {
+                var trigger = e.target.closest('.wl-login');
+                if (trigger) {
+                    e.preventDefault();
+                    var modalEl = document.getElementById('loginModal');
+                    if (modalEl) new bootstrap.Modal(modalEl).show();
+                }
+            });
 
             // Smooth scroll for anchor links within the landing content
             document.querySelectorAll('.landing-body a[href^="#"]').forEach(function(anchor) {
