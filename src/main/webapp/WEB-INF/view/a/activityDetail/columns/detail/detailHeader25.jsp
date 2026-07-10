@@ -55,7 +55,7 @@
       </c:otherwise>
     </c:choose>
   </span>
-  <c:if test="${sessionScope.local.getCurrentActivity().getActivity().isComplete() == false}">
+  <c:if test="${sessionScope.local.getCurrentActivity().getActivity().isComplete() == false && (sessionScope.isPspUser || sessionScope.isPspAdmin)}">
     <button type="button" class="btn btn-sm btn-outline-light border-0 p-0 px-1 ms-1"
             data-bs-toggle="modal" data-bs-target="#ownershipModal" title="Change Owner">
       <i class="bi bi-key" style="font-size: 0.8rem;"></i>

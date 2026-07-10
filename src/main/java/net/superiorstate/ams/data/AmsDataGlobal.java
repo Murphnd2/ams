@@ -1171,6 +1171,21 @@ public class AmsDataGlobal {
     }
 
     /**
+     * The display name (Agency.getName) for the agency owning this host, or null if the
+     * host is blank, a PSP host, or has no matching white-label agency. Linear scan of the
+     * cached agency list keyed off the V068 host->id map — no DB hit. Mirrors the resolution
+     * RequestQuote uses for its wordmark, exposed here so the landing <title> can reuse it.
+     */
+    public String getAgencyNameForHost(String host) {
+        Long id = getAgencyIdForHost(host);
+        if (id == null || agencies == null) return null;
+        for (Agency a : agencies) {
+            if (a != null && id.equals(a.getId())) return a.getName();
+        }
+        return null;
+    }
+
+    /**
      * The set of PSP hosts (exact-match) from ssa.properties {@code PSP_HOSTS}
      * (default {@code superiorstate.net,superiorstate.biz}), normalized lowercase.
      * Lazily built and cached; ssa.properties is read-only after startup.

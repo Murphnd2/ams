@@ -6,6 +6,7 @@
 <c:if test="${sessionScope.isPspAdmin==true}">
   <c:set var="allDone" value=""/>
 </c:if>
+<c:if test="${sessionScope.isPspUser || sessionScope.isPspAdmin}">
 <form method="post" action="CloseActivity25">
   <div class="mt-2 mb-1">
     <c:choose>
@@ -33,6 +34,7 @@
   </div>
   <c:import url="/WEB-INF/view/a/activityDetail/columns/checklist/modals/closeActivityModal.jsp"/>
 </form>
+</c:if>
 <c:if test="${autoShowCloseModal == true}">
 <script>
   document.addEventListener('DOMContentLoaded', function() {

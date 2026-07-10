@@ -10,7 +10,11 @@
         :root { --ssa: #0d5681; }
 
         /* ── Stat strip ── */
-        .stat-strip { display: flex; gap: 0.5rem; padding: 0.4rem 1rem; background: #fff; border-bottom: 1px solid #dee2e6; flex-wrap: wrap; }
+        .stat-strip { display: flex; align-items: center; gap: 0.5rem; padding: 0.4rem 1rem; background: #fff; border-bottom: 1px solid #dee2e6; flex-wrap: wrap; }
+        .stat-strip .stat-pills { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+        .stat-strip .pipeline-actions { display: flex; gap: 0.4rem; margin-left: auto; flex-wrap: wrap; }
+        .stat-strip .btn-pipeline { color: #0d5681; background: #fff; border: 1px solid #0d5681; }
+        .stat-strip .btn-pipeline:hover { color: #fff; background: #0d5681; border-color: #0d5681; }
         .stat-pill { font-size: 0.75rem; padding: 0.2rem 0.65rem; border-radius: 12px; font-weight: 600; white-space: nowrap; }
         .stat-pill .stat-val { font-weight: 800; }
 
@@ -259,25 +263,6 @@
         <c:otherwise>
             <div class="agent-page-wrap">
 
-                <%-- ══ Hdr-bar ══ --%>
-                <div class="hdr-bar d-flex justify-content-between align-items-center">
-                    <span>
-                        <i class="bi bi-kanban me-1"></i>Agent Pipeline
-                        <small class="text-white-50 ms-2">${fn:escapeXml(agency.getName())}</small>
-                    </span>
-                    <div class="d-flex gap-2">
-                        <button class="btn btn-sm btn-outline-light" data-bs-toggle="modal" data-bs-target="#newOppModal">
-                            <i class="bi bi-plus-circle me-1"></i>New Opportunity
-                        </button>
-                        <a href="AgentSetupList" class="btn btn-sm btn-outline-light">
-                            <i class="bi bi-clipboard-check me-1"></i>My Setups
-                        </a>
-                        <a href="ReviewApplications" class="btn btn-sm btn-outline-light">
-                            <i class="bi bi-file-earmark-text me-1"></i>Applications
-                        </a>
-                    </div>
-                </div>
-
                 <%-- ══ Stat strip ══ --%>
                 <%-- compute proposal-out and negotiation counts --%>
                 <c:set var="proposalOutCount" value="0"/>
@@ -287,11 +272,24 @@
                     <c:if test="${opp.getStage() == 'NEGOTIATION'}"><c:set var="negotiationCount" value="${negotiationCount + 1}"/></c:if>
                 </c:forEach>
                 <div class="stat-strip">
-                    <span class="stat-pill" style="background:#dbeafe; color:#2563eb;">Active <span class="stat-val">${activeCount}</span></span>
-                    <span class="stat-pill" style="background:#ede9fe; color:#7c3aed;">Proposal Out <span class="stat-val">${proposalOutCount}</span></span>
-                    <span class="stat-pill" style="background:#fce7f3; color:#db2777;">Negotiation <span class="stat-val">${negotiationCount}</span></span>
-                    <span class="stat-pill" style="background:#dcfce7; color:#16a34a;">Won <span class="stat-val">${wonCount}</span></span>
-                    <span class="stat-pill" style="background:#e0f2fe; color:#0369a1;">Pipeline Value <span class="stat-val">$<fmt:formatNumber value="${pipelineValue}" pattern="#,##0"/></span></span>
+                    <div class="stat-pills">
+                        <span class="stat-pill" style="background:#dbeafe; color:#2563eb;">Active <span class="stat-val">${activeCount}</span></span>
+                        <span class="stat-pill" style="background:#ede9fe; color:#7c3aed;">Proposal Out <span class="stat-val">${proposalOutCount}</span></span>
+                        <span class="stat-pill" style="background:#fce7f3; color:#db2777;">Negotiation <span class="stat-val">${negotiationCount}</span></span>
+                        <span class="stat-pill" style="background:#dcfce7; color:#16a34a;">Won <span class="stat-val">${wonCount}</span></span>
+                        <span class="stat-pill" style="background:#e0f2fe; color:#0369a1;">Pipeline Value <span class="stat-val">$<fmt:formatNumber value="${pipelineValue}" pattern="#,##0"/></span></span>
+                    </div>
+                    <div class="pipeline-actions">
+                        <button class="btn btn-sm btn-pipeline" data-bs-toggle="modal" data-bs-target="#newOppModal">
+                            <i class="bi bi-plus-circle me-1"></i>New Opportunity
+                        </button>
+                        <a href="AgentSetupList" class="btn btn-sm btn-pipeline">
+                            <i class="bi bi-clipboard-check me-1"></i>My Setups
+                        </a>
+                        <a href="ReviewApplications" class="btn btn-sm btn-pipeline">
+                            <i class="bi bi-file-earmark-text me-1"></i>Applications
+                        </a>
+                    </div>
                 </div>
 
                 <%-- ══ Main split: Kanban (left, flex) + Tasks sidebar (right, 320px) ══ --%>

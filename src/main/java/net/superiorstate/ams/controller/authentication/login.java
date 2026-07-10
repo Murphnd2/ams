@@ -61,6 +61,7 @@ public class login extends HttpServlet {
                 if (agencyHtml != null && !agencyHtml.isBlank()) {
                     request.setAttribute("landingHtml", agencyHtml);
                     request.setAttribute("whiteLabel", Boolean.TRUE);
+                    request.setAttribute("brandName", global.getAgencyNameForHost(host));
                     // Defense-in-depth on this public, pre-login page.
                     response.setHeader("Content-Security-Policy", "frame-ancestors 'none'");
                     response.setHeader("X-Content-Type-Options", "nosniff");

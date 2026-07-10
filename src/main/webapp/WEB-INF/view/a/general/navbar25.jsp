@@ -116,7 +116,7 @@
           <a href="AgentHome" class="me-2">
             <c:choose>
               <c:when test="${not empty sessionScope.local.getCurrentAgencyName()}">
-                <span class="fw-bold" style="font-size:1.1rem; color:#01376F; line-height:36px; display:inline-block; vertical-align:middle;"><c:out value="${sessionScope.local.getCurrentAgencyName()}"/></span>
+                <span class="fw-bold" style="font-size:1.1rem; color:#ffffff; line-height:36px; display:inline-block; vertical-align:middle;"><c:out value="${sessionScope.local.getCurrentAgencyName()}"/></span>
               </c:when>
               <c:otherwise>
                 <img src="${pageContext.request.contextPath}${not empty applicationScope.global.logoNavbar ? applicationScope.global.logoNavbar : '/images/logoA.png'}" alt="Home" style="height:36px;">
@@ -135,7 +135,7 @@
       </c:choose>
       <span class="me-2 text-light">&nbsp;|</span>
       <c:if test="${not empty pageTitle}">
-        <span class="text-white fw-semibold" style="font-size: 1.1rem; letter-spacing: 0.01em;">
+        <span class="fw-semibold" style="font-size: 1.1rem; letter-spacing: 0.01em; color: rgba(255,255,255,0.75);">
           <c:if test="${not empty pageIcon}"><i class="bi ${pageIcon} me-1"></i></c:if>${pageTitle}
         </span>
       </c:if>
