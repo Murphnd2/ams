@@ -8,6 +8,8 @@ import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.AmsDataGlobal;
 import net.superiorstate.ams.data.AmsDataLocal;
 import net.superiorstate.ams.model.Activity25u;
+import net.superiorstate.ams.data.resolver.AgencyScope;
+import net.superiorstate.ams.data.resolver.AgencyScopeResolver;
 import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.model.activity.Opportunity;
 import net.superiorstate.ams.model.activity.checklist.CheckList;
@@ -25,6 +27,7 @@ import java.sql.Date;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 
 @WebServlet(name = "CreateOpportunity", value = "/CreateOpportunity")
@@ -37,6 +40,11 @@ public class CreateOpportunity extends HttpServlet {
 
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        if (!isAuthorizedForAgency(request)) {
+            response.sendError(HttpServletResponse.SC_FORBIDDEN);
+            return;
+        }
+
         Opportunity opp = createOpportunity(request);
 
         String returnTo = request.getParameter("returnTo");
@@ -48,6 +56,37 @@ public class CreateOpportunity extends HttpServlet {
             dispatcher.forward(request, response);
         } else {
             response.sendRedirect("AgentHome");
+        }
+    }
+
+    /**
+     * PHASE 2 (closing AGENCY_STRUCTURE_AUDIT.md §2.2 #5): agencyId was previously
+     * an unchecked request param. Gate via AgencyScopeResolver.canSeeDetail(), never
+     * the raw detailAgencyIds set (the pspWide trap). The primaryAgencyId OR-clause
+     * preserves the legitimate Plain Agent "New Opportunity" workflow — a Plain
+     * Agent's detail scope set is intentionally EMPTY (agent_id scoping, not
+     * agency_id), so without this carve-out they could no longer submit their own
+     * agency's hidden agencyId field. See PHASE2_NOTES.md.
+     */
+    private boolean isAuthorizedForAgency(HttpServletRequest request) {
+        String agencyIdParam = request.getParameter("agencyId");
+        if (agencyIdParam == null || agencyIdParam.isBlank()) return false;
+
+        long agencyId;
+        try {
+            agencyId = Long.parseLong(agencyIdParam.trim());
+        } catch (NumberFormatException e) {
+            return false;
+        }
+
+        EntityManagerFactory emf = (EntityManagerFactory) getServletContext().getAttribute("emf");
+        EntityManager em = emf.createEntityManager();
+        try {
+            AgencyScope scope = AgencyScopeResolver.resolve(em, request);
+            return AgencyScopeResolver.canSeeDetail(scope, agencyId)
+                    || Objects.equals(scope.primaryAgencyId(), agencyId);
+        } finally {
+            em.close();
         }
     }
 
@@ -234,13 +273,24 @@ public class CreateOpportunity extends HttpServlet {
     /**
      * Resolve the agent for the given agency.
      * Priority: explicit agentId param > current user if in agency > first agent in agency > fallback to currentUser
+     *
+     * PHASE 2: a valid agency plus a foreign agentId is still an IDOR — a caller
+     * authorized for agencyId could otherwise attribute the opportunity to any
+     * arbitrary Person system-wide. The submitted agentId is now discarded (falling
+     * through to the existing membership-based resolution below, same as if no
+     * agentId had been sent at all) unless it actually belongs to this agency's
+     * agentList.
      */
     private Person resolveAgent(EntityManager em, HttpServletRequest request, Agency agency, Person currentUser) {
         Person agent = null;
         String agentIdParam = request.getParameter("agentId");
         if (agentIdParam != null && !agentIdParam.isEmpty()) {
             try {
-                agent = EntityLookup.getPersonById(em, Long.parseLong(agentIdParam));
+                Person candidate = EntityLookup.getPersonById(em, Long.parseLong(agentIdParam));
+                if (candidate != null && agency.getAgentList() != null
+                        && agency.getAgentList().stream().anyMatch(p -> p.getId().equals(candidate.getId()))) {
+                    agent = candidate;
+                }
             } catch (NumberFormatException ignored) {}
         }
         if (agent == null && agency.getAgentList() != null && !agency.getAgentList().isEmpty()) {

@@ -35,14 +35,39 @@ public class AgentHome extends HttpServlet {
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        if (!isAuthorized(request)) {
+            response.sendError(HttpServletResponse.SC_FORBIDDEN);
+            return;
+        }
         loadData(request);
         goToPage(request, response);
     }
 
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        if (!isAuthorized(request)) {
+            response.sendError(HttpServletResponse.SC_FORBIDDEN);
+            return;
+        }
         loadData(request);
         goToPage(request, response);
+    }
+
+    /**
+     * PHASE 2 (closing PHASE1_NOTES.md behavior change #1 / AGENCY_STRUCTURE_AUDIT.md
+     * §2.2 #5): /AgentHome previously had no role gate at all — any authenticated
+     * session (Client, Applicant, BPO user, etc.) could load it. Gate on the same
+     * role set AgencyScopeResolver treats as non-empty buckets, so a session that
+     * reaches loadData() below never lands in the resolver's "anyone else" bucket —
+     * this also closes the stale-membership edge case flagged in PHASE1_NOTES.md as
+     * a side effect. Matches the GenerateProp25 (8a4c8d2) 403 idiom exactly.
+     */
+    private boolean isAuthorized(HttpServletRequest request) {
+        return Boolean.TRUE.equals(request.getSession().getAttribute("isAgent"))
+                || Boolean.TRUE.equals(request.getSession().getAttribute("isAgencyAdmin"))
+                || Boolean.TRUE.equals(request.getSession().getAttribute("isPspAdmin"))
+                || Boolean.TRUE.equals(request.getSession().getAttribute("isPspUser"))
+                || Boolean.TRUE.equals(request.getSession().getAttribute("isPspSales"));
     }
 
     private void goToPage(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {

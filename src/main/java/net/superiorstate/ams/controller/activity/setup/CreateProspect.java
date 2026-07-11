@@ -7,12 +7,15 @@ import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.AmsDataGlobal;
 import net.superiorstate.ams.data.AmsDataLocal;
+import net.superiorstate.ams.data.resolver.AgencyScope;
+import net.superiorstate.ams.data.resolver.AgencyScopeResolver;
 import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.model.general.Person;
 import net.superiorstate.ams.model.sales.agency.Agency;
 import net.superiorstate.ams.model.sales.agency.Prospect;
 
 import java.io.IOException;
+import java.util.Objects;
 
 @WebServlet(name = "CreateProspect", value = "/CreateProspect")
 public class CreateProspect extends HttpServlet {
@@ -30,6 +33,23 @@ public class CreateProspect extends HttpServlet {
             String contactEmail = request.getParameter("contactEmail");
             String contactPhone = request.getParameter("contactPhone");
             long agencyId = Long.parseLong(request.getParameter("agencyId"));
+
+            // PHASE 2 (closing AGENCY_STRUCTURE_AUDIT.md §2.2 #5): agencyId was
+            // previously an unchecked request param — any authenticated user could
+            // attribute a new prospect to an arbitrary agency. Gate via
+            // AgencyScopeResolver.canSeeDetail(), never the raw detailAgencyIds set
+            // (the pspWide trap). The primaryAgencyId OR-clause preserves the
+            // legitimate Plain Agent "New Opportunity" workflow — a Plain Agent's
+            // detail scope set is intentionally EMPTY (they scope by agent_id, not
+            // agency_id), so without this they could no longer submit their own
+            // agency's hidden agencyId field. See PHASE2_NOTES.md.
+            AgencyScope scope = AgencyScopeResolver.resolve(em, request);
+            boolean canCreateForAgency = AgencyScopeResolver.canSeeDetail(scope, agencyId)
+                    || Objects.equals(scope.primaryAgencyId(), agencyId);
+            if (!canCreateForAgency) {
+                response.sendError(HttpServletResponse.SC_FORBIDDEN);
+                return;
+            }
 
             Agency agency = em.find(Agency.class, agencyId);
 
