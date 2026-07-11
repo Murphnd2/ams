@@ -38,8 +38,25 @@ import java.util.List;
 
 @WebServlet(name = "GenerateProp25", value = "/GenerateProp25")
 public class GenerateProp25 extends HttpServlet {
+    /**
+     * Manual Setup is a PSP-staff capability. The Application Review page link was
+     * ungated, and this servlet had no check at all, so any logged-in user (including
+     * an agency-only agent) could reach /GenerateProp25 directly and create a setup.
+     * Allow-list on PSP roles rather than excluding agent roles, so PSP staff who also
+     * hold an agent role still pass.
+     */
+    private boolean isPspStaff(HttpServletRequest request) {
+        return Boolean.TRUE.equals(request.getSession().getAttribute("isPspAdmin"))
+                || Boolean.TRUE.equals(request.getSession().getAttribute("isPspUser"))
+                || Boolean.TRUE.equals(request.getSession().getAttribute("isPspSales"));
+    }
+
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        if (!isPspStaff(request)) {
+            response.sendError(HttpServletResponse.SC_FORBIDDEN);
+            return;
+        }
         // If required params are missing, show the manual setup form
         String contact = request.getParameter("contact");
         String email = request.getParameter("email");
@@ -53,6 +70,10 @@ public class GenerateProp25 extends HttpServlet {
 
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        if (!isPspStaff(request)) {
+            response.sendError(HttpServletResponse.SC_FORBIDDEN);
+            return;
+        }
         doThis(request,response);
     }
 

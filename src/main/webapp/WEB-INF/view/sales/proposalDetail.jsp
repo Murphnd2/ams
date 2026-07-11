@@ -68,6 +68,9 @@
                 <button class="btn btn-outline-secondary" type="button" onclick="copyLink()">
                     <i class="bi bi-clipboard me-1"></i>Copy
                 </button>
+                <a class="btn btn-outline-secondary" href="${proposalLink}" target="_blank" rel="noopener">
+                    <i class="bi bi-box-arrow-up-right me-1"></i>View
+                </a>
             </div>
             <small class="text-muted mt-1 d-block">Share this link with the prospect to view the proposal.</small>
         </div>
@@ -92,9 +95,6 @@
     <div class="card mb-3">
         <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
             <h5 class="mb-0 fw-semibold">Pricing Summary</h5>
-            <c:if test="${canEditMarkup}">
-                <small class="text-muted">Agent markup is a flat dollar amount added to the standard price. Markup cannot be negative.</small>
-            </c:if>
         </div>
         <div class="card-body p-0">
             <c:choose>
@@ -111,7 +111,7 @@
                                 <tr class="pricing-header">
                                     <th class="ps-5">Item</th>
                                     <th class="text-end">Standard</th>
-                                    <th class="text-end" style="width:130px;">Agent Markup</th>
+                                    <th class="text-end text-nowrap" style="width:130px;">Markup<i class="bi bi-question-circle text-muted ms-1" style="cursor:help;" data-bs-toggle="tooltip" data-bs-placement="top" title="Agent markup is a flat dollar amount added to the standard price. Markup cannot be negative."></i></th>
                                     <th class="text-end pe-3">Sell</th>
                                 </tr>
                             </thead>
@@ -174,7 +174,7 @@
                             <tr class="pricing-header">
                                 <th class="ps-5">Item</th>
                                 <th class="text-end">Standard</th>
-                                <th class="text-end">Agent Markup</th>
+                                <th class="text-end text-nowrap">Markup</th>
                                 <th class="text-end pe-3">Sell</th>
                             </tr>
                         </thead>
@@ -283,6 +283,11 @@
             btn.innerHTML = '<i class="bi bi-clipboard me-1"></i>Copy';
         }, 2000);
     }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        var tips = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        tips.forEach(function(el) { new bootstrap.Tooltip(el); });
+    });
 </script>
 </body>
 </html>

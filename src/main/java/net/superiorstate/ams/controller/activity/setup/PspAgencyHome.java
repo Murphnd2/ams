@@ -121,6 +121,23 @@ public class PspAgencyHome extends HttpServlet {
                 }
                 request.setAttribute("agentList", agents);
 
+                // Manager-eligibility: which of these agents have an ACTIVE user account.
+                java.util.Set<Long> activeAgentIds = new java.util.HashSet<>();
+                if (!agents.isEmpty()) {
+                    java.util.List<Long> agentIds = new java.util.ArrayList<>();
+                    for (Person p : agents) agentIds.add(p.getId());
+                    try {
+                        java.util.List<Long> found = em.createQuery(
+                                "SELECT u.person.id FROM User u WHERE u.isActive = true AND u.person.id IN :ids", Long.class)
+                                .setParameter("ids", agentIds)
+                                .getResultList();
+                        activeAgentIds.addAll(found);
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+                request.setAttribute("activeAgentIds", activeAgentIds);
+
                 // Load proposals for this agency (with losList fetch-joined)
                 List<Proposal> proposalList = SalesDAO.getProposalsByAgency(em, agencyId);
                 request.setAttribute("proposalList", proposalList);

@@ -43,9 +43,11 @@
     <div class="hdr-bar d-flex justify-content-between align-items-center mb-3">
         <span><i class="bi bi-clipboard-check me-1"></i>Application Review</span>
         <div class="d-flex gap-2">
-            <a href="GenerateProp25" class="btn btn-sm btn-outline-light">
-                <i class="bi bi-building-add me-1"></i>Manual Setup
-            </a>
+            <c:if test="${sessionScope.isPspAdmin || sessionScope.isPspUser || sessionScope.isPspSales}">
+                <a href="GenerateProp25" class="btn btn-sm btn-outline-light">
+                    <i class="bi bi-building-add me-1"></i>Manual Setup
+                </a>
+            </c:if>
             <a href="ProposalBuilder" class="btn btn-sm btn-outline-light">
                 <i class="bi bi-plus-lg me-1"></i>New Proposal
             </a>

@@ -349,7 +349,70 @@ public class AgencyAction extends HttpServlet {
                     Agency agency = em.find(Agency.class, agencyId);
                     Person agent = EntityLookup.getPersonById(em, agentId);
 
+                    // Manager guard: an agency must never be left with a dangling or missing
+                    // manager while it still has agents. Removing the designated manager
+                    // requires promoting another ACTIVE agent user in the same action.
+                    boolean removingManager = agency.getManager() != null
+                            && agency.getManager().getId().equals(agentId);
+
+                    if (removingManager) {
+                        List<Person> current = agency.getAgentList() != null
+                                ? agency.getAgentList() : new ArrayList<>();
+
+                        List<Long> eligible = new ArrayList<>();
+                        for (Person p : current) {
+                            if (p.getId().equals(agentId)) continue;
+                            if (isActiveUser(em, p.getId())) eligible.add(p.getId());
+                        }
+
+                        if (eligible.isEmpty()) {
+                            if (current.size() <= 1) {
+                                // Last agent in the agency — allowed; agency left with no manager.
+                                agency.setManager(null);
+                            } else {
+                                response.sendRedirect("PspAgencyHome?agencyId=" + agencyId + "&agentError=nosuccessor");
+                                return; // outer finally closes the EntityManager
+                            }
+                        } else {
+                            String newManagerParam = request.getParameter("newManagerId");
+                            Long newManagerId = null;
+                            if (newManagerParam != null && !newManagerParam.isBlank()) {
+                                try {
+                                    newManagerId = Long.parseLong(newManagerParam.trim());
+                                } catch (NumberFormatException ignored) { }
+                            }
+                            if (newManagerId == null || !eligible.contains(newManagerId)) {
+                                response.sendRedirect("PspAgencyHome?agencyId=" + agencyId + "&agentError=needmanager");
+                                return; // outer finally closes the EntityManager
+                            }
+                            agency.setManager(EntityLookup.getPersonById(em, newManagerId));
+                        }
+                    }
+
                     agency.removeAgent(agent);
+                    em.getTransaction().begin();
+                    em.merge(agency);
+                    em.getTransaction().commit();
+                }
+
+                case "setManager" -> {
+                    long agencyId = Long.parseLong(agencyIdParam);
+                    long agentId = Long.parseLong(request.getParameter("agentId"));
+
+                    Agency agency = em.find(Agency.class, agencyId);
+
+                    boolean inAgency = false;
+                    if (agency.getAgentList() != null) {
+                        for (Person p : agency.getAgentList()) {
+                            if (p.getId().equals(agentId)) { inAgency = true; break; }
+                        }
+                    }
+                    if (!inAgency || !isActiveUser(em, agentId)) {
+                        response.sendRedirect("PspAgencyHome?agencyId=" + agencyId + "&agentError=badmanager");
+                        return; // outer finally closes the EntityManager
+                    }
+
+                    agency.setManager(EntityLookup.getPersonById(em, agentId));
                     em.getTransaction().begin();
                     em.merge(agency);
                     em.getTransaction().commit();
@@ -485,6 +548,18 @@ public class AgencyAction extends HttpServlet {
                 .getSingleResult();
         if (count != null && count > 0) return "duplicate";
         return null;
+    }
+
+    /** True when this Person has a User account that is active. Manager eligibility. */
+    private boolean isActiveUser(EntityManager em, long personId) {
+        try {
+            User u = em.createQuery("SELECT u FROM User u WHERE u.person.id = :pid", User.class)
+                    .setParameter("pid", personId)
+                    .getSingleResult();
+            return u.isActive();
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     /**

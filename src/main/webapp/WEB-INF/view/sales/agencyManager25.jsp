@@ -33,6 +33,23 @@
   <c:set var="pageIcon" value="bi-people-fill" scope="request"/>
   <c:import url="/WEB-INF/view/a/general/navbar25.jsp"/>
 
+  <c:if test="${not empty param.agentError}">
+    <c:set var="agentErrorMsg" value="Unable to complete that agent action."/>
+    <c:if test="${param.agentError == 'nosuccessor'}">
+      <c:set var="agentErrorMsg" value="Cannot remove the agency manager: no other agent in this agency has an active user account."/>
+    </c:if>
+    <c:if test="${param.agentError == 'needmanager'}">
+      <c:set var="agentErrorMsg" value="Cannot remove the agency manager without selecting a replacement."/>
+    </c:if>
+    <c:if test="${param.agentError == 'badmanager'}">
+      <c:set var="agentErrorMsg" value="That person cannot be made agency manager (not an active agent in this agency)."/>
+    </c:if>
+    <div class="alert alert-danger alert-dismissible fade show mt-2" role="alert">
+      ${fn:escapeXml(agentErrorMsg)}
+      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+  </c:if>
+
   <div class="row" style="margin-top:0.5rem">
     <%-- ======================== LEFT COLUMN: Agency List ======================== --%>
     <div class="col-lg-3">
@@ -200,6 +217,14 @@
           </div>
 
           <%-- Agents Card --%>
+          <c:set var="mgrId" value="${selectedAgency.getManager() != null ? selectedAgency.getManager().getId() : 0}"/>
+          <c:set var="eligibleCount" value="0"/>
+          <c:forEach var="ea" items="${agentList}">
+            <c:if test="${ea.getId() != mgrId && activeAgentIds.contains(ea.getId())}">
+              <c:set var="eligibleCount" value="${eligibleCount + 1}"/>
+            </c:if>
+          </c:forEach>
+
           <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center fw-bold">
               <span><i class="bi bi-person-badge me-1"></i>Agents</span>
@@ -211,25 +236,81 @@
               <c:choose>
                 <c:when test="${not empty agentList}">
                   <c:forEach var="agent" items="${agentList}">
+                    <c:set var="isMgr" value="${agent.getId() == mgrId}"/>
+                    <c:set var="isActiveAgent" value="${activeAgentIds.contains(agent.getId())}"/>
                     <div class="agent-row d-flex justify-content-between align-items-center px-3">
                       <div>
                         <span class="fw-semibold">${agent.getFirstName()} ${agent.getLastName()}</span>
-                        <c:if test="${selectedAgency.getManager() != null && selectedAgency.getManager().getId() == agent.getId()}">
+                        <c:if test="${isMgr}">
                           <span class="badge bg-primary ms-1" style="font-size: 0.65rem;">Manager</span>
+                        </c:if>
+                        <c:if test="${!isActiveAgent}">
+                          <span class="badge bg-secondary ms-1" style="font-size: 0.65rem;">Inactive</span>
                         </c:if>
                         <c:if test="${agent.getEmail() != null}">
                           <br><small class="text-muted">${agent.getEmail()}</small>
                         </c:if>
                       </div>
-                      <form method="post" action="AgencyAction" class="d-inline">
-                        <input type="hidden" name="action" value="removeAgent"/>
-                        <input type="hidden" name="agencyId" value="${selectedAgency.getId()}"/>
-                        <input type="hidden" name="agentId" value="${agent.getId()}"/>
-                        <button type="submit" class="btn btn-sm btn-outline-danger" style="padding: 0.1rem 0.35rem; font-size: 0.75rem;"
-                                onclick="return confirm('Remove ${agent.getFirstName()} ${agent.getLastName()} from this agency?');">
-                          <i class="bi bi-x-lg"></i>
-                        </button>
-                      </form>
+                      <div class="d-flex align-items-center gap-1">
+
+                        <%-- Make Manager (non-manager, active agents only) --%>
+                        <c:if test="${!isMgr && isActiveAgent}">
+                          <form method="post" action="AgencyAction" class="d-inline">
+                            <input type="hidden" name="action" value="setManager"/>
+                            <input type="hidden" name="agencyId" value="${selectedAgency.getId()}"/>
+                            <input type="hidden" name="agentId" value="${agent.getId()}"/>
+                            <button type="submit" class="btn btn-sm btn-outline-primary" style="padding: 0.1rem 0.35rem; font-size: 0.75rem;"
+                                    title="Make agency manager"
+                                    onclick="return confirm('Make ${fn:escapeXml(agent.getFirstName())} ${fn:escapeXml(agent.getLastName())} the agency manager?');">
+                              <i class="bi bi-person-check"></i>
+                            </button>
+                          </form>
+                        </c:if>
+
+                        <%-- Remove --%>
+                        <c:choose>
+                          <%-- Manager, successors available: must reassign --%>
+                          <c:when test="${isMgr && eligibleCount > 0}">
+                            <button type="button" class="btn btn-sm btn-outline-danger" style="padding: 0.1rem 0.35rem; font-size: 0.75rem;"
+                                    title="Reassign manager, then remove"
+                                    data-bs-toggle="modal" data-bs-target="#reassignManagerModal">
+                              <i class="bi bi-x-lg"></i>
+                            </button>
+                          </c:when>
+                          <%-- Manager and the only agent: allowed, warn --%>
+                          <c:when test="${isMgr && fn:length(agentList) <= 1}">
+                            <form method="post" action="AgencyAction" class="d-inline">
+                              <input type="hidden" name="action" value="removeAgent"/>
+                              <input type="hidden" name="agencyId" value="${selectedAgency.getId()}"/>
+                              <input type="hidden" name="agentId" value="${agent.getId()}"/>
+                              <button type="submit" class="btn btn-sm btn-outline-danger" style="padding: 0.1rem 0.35rem; font-size: 0.75rem;"
+                                      onclick="return confirm('WARNING: ${fn:escapeXml(agent.getFirstName())} ${fn:escapeXml(agent.getLastName())} is the agency manager and the only agent. Removing them leaves this agency with no agents and no manager. Continue?');">
+                                <i class="bi bi-x-lg"></i>
+                              </button>
+                            </form>
+                          </c:when>
+                          <%-- Manager, other agents exist but none active: blocked --%>
+                          <c:when test="${isMgr}">
+                            <button type="button" class="btn btn-sm btn-outline-danger" disabled
+                                    style="padding: 0.1rem 0.35rem; font-size: 0.75rem;"
+                                    title="This agent is the agency manager. No other active agent is available to take over.">
+                              <i class="bi bi-x-lg"></i>
+                            </button>
+                          </c:when>
+                          <%-- Normal agent --%>
+                          <c:otherwise>
+                            <form method="post" action="AgencyAction" class="d-inline">
+                              <input type="hidden" name="action" value="removeAgent"/>
+                              <input type="hidden" name="agencyId" value="${selectedAgency.getId()}"/>
+                              <input type="hidden" name="agentId" value="${agent.getId()}"/>
+                              <button type="submit" class="btn btn-sm btn-outline-danger" style="padding: 0.1rem 0.35rem; font-size: 0.75rem;"
+                                      onclick="return confirm('Remove ${fn:escapeXml(agent.getFirstName())} ${fn:escapeXml(agent.getLastName())} from this agency?');">
+                                <i class="bi bi-x-lg"></i>
+                              </button>
+                            </form>
+                          </c:otherwise>
+                        </c:choose>
+                      </div>
                     </div>
                   </c:forEach>
                 </c:when>
@@ -781,6 +862,51 @@
   </div>
 
   <%-- Assign Agent Modal --%>
+  <%-- Reassign Manager + Remove --%>
+  <c:if test="${not empty selectedAgency && selectedAgency.getManager() != null && eligibleCount > 0}">
+  <div class="modal fade" id="reassignManagerModal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <form method="post" action="AgencyAction">
+          <input type="hidden" name="action" value="removeAgent"/>
+          <input type="hidden" name="agencyId" value="${selectedAgency.getId()}"/>
+          <input type="hidden" name="agentId" value="${mgrId}"/>
+          <div class="modal-header py-2" style="background-color: var(--ssa); color: white;">
+            <h6 class="modal-title fw-semibold"><i class="bi bi-person-gear me-2"></i>Reassign Agency Manager</h6>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="close"></button>
+          </div>
+          <div class="modal-body">
+            <p class="mb-3">
+              <strong>${fn:escapeXml(selectedAgency.getManager().getFirstName())} ${fn:escapeXml(selectedAgency.getManager().getLastName())}</strong>
+              is the designated agency manager. Select the agent who will take over as manager.
+              They will be promoted and the current manager removed from this agency.
+            </p>
+            <label class="form-label fw-semibold">New Agency Manager</label>
+            <select name="newManagerId" class="form-select" required>
+              <c:if test="${eligibleCount > 1}">
+                <option value="">-- Select --</option>
+              </c:if>
+              <c:forEach var="cand" items="${agentList}">
+                <c:if test="${cand.getId() != mgrId && activeAgentIds.contains(cand.getId())}">
+                  <option value="${cand.getId()}">${fn:escapeXml(cand.getFirstName())} ${fn:escapeXml(cand.getLastName())}
+                    <c:if test="${cand.getEmail() != null}"> (${fn:escapeXml(cand.getEmail())})</c:if>
+                  </option>
+                </c:if>
+              </c:forEach>
+            </select>
+            <small class="text-muted mt-1 d-block">Only agents with an active user account can be manager.</small>
+          </div>
+          <div class="modal-footer justify-content-center border-0">
+            <button type="submit" class="ssa-action save"><i class="bi bi-check-lg me-1"></i>Promote &amp; Remove</button>
+            <span class="ssa-action-sep">|</span>
+            <button type="button" class="ssa-action cancel" data-bs-dismiss="modal"><i class="bi bi-x-lg me-1"></i>Cancel</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+  </c:if>
+
   <div class="modal fade" id="assignAgentModal" tabindex="-1">
     <div class="modal-dialog">
       <div class="modal-content">
