@@ -7,6 +7,8 @@ import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.AmsDataLocal;
 import net.superiorstate.ams.data.dao.SalesDAO;
+import net.superiorstate.ams.data.resolver.AgencyScope;
+import net.superiorstate.ams.data.resolver.AgencyScopeResolver;
 import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.model.activity.Activity;
 import net.superiorstate.ams.model.general.Person;
@@ -47,7 +49,8 @@ public class ProposalBuilder extends HttpServlet {
             // ── Resolve the current user's agency (if they belong to one) ──
             Agency userAgency = null;
             if (isAgent || isAgencyAdmin) {
-                userAgency = findAgencyForUser(em, local.getCurrentPerson());
+                AgencyScope userScope = AgencyScopeResolver.resolve(em, request);
+                userAgency = AgencyScopeResolver.primaryAgencyEntity(em, userScope);
             }
             request.setAttribute("userAgency", userAgency);
 
@@ -120,7 +123,8 @@ public class ProposalBuilder extends HttpServlet {
             if (isPspAdmin) {
                 // PSP Admin default: all prospects from the PSP admin's own agency (if they have one)
                 // with a button to expand to ALL prospects across all agencies
-                Agency pspUserAgency = findAgencyForUser(em, local.getCurrentPerson());
+                AgencyScope pspUserScope = AgencyScopeResolver.resolve(em, request);
+                Agency pspUserAgency = AgencyScopeResolver.primaryAgencyEntity(em, pspUserScope);
                 if (pspUserAgency != null && pspUserAgency.getAgentList() != null) {
                     List<Long> agentIds = pspUserAgency.getAgentList().stream()
                             .map(Person::getId).collect(Collectors.toList());
@@ -391,19 +395,4 @@ public class ProposalBuilder extends HttpServlet {
         return emf.createEntityManager();
     }
 
-    private Agency findAgencyForUser(EntityManager em, Person person) {
-        try {
-            return em.createQuery("SELECT a FROM Agency a WHERE a.manager.id = :pid", Agency.class)
-                    .setParameter("pid", person.getId())
-                    .getSingleResult();
-        } catch (Exception e) {
-            try {
-                return em.createQuery("SELECT a FROM Agency a JOIN a.agentList al WHERE al.id = :pid", Agency.class)
-                        .setParameter("pid", person.getId())
-                        .getSingleResult();
-            } catch (Exception e2) {
-                return null;
-            }
-        }
-    }
 }

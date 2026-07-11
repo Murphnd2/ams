@@ -2,8 +2,6 @@ package net.superiorstate.ams.controller.user;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
-import jakarta.persistence.NoResultException;
-import jakarta.persistence.Query;
 import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
@@ -14,6 +12,8 @@ import net.superiorstate.ams.data.service.DatabaseInitializer;
 import net.superiorstate.ams.data.dao.AppConstantDAO;
 import net.superiorstate.ams.data.dao.EmailDAO;
 import net.superiorstate.ams.data.dao.PersonDAO;
+import net.superiorstate.ams.data.resolver.AgencyScope;
+import net.superiorstate.ams.data.resolver.AgencyScopeResolver;
 import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.data.util.EmailTemplate;
 import net.superiorstate.ams.model.general.PSP;
@@ -155,7 +155,8 @@ public class CreateUser25 extends HttpServlet {
                 case "agencyAdmin" -> {
                     if (!isAgencyAdmin) return "Only Agency Admins can create agents.";
                     roleIds.add(2); // Agent
-                    Agency agency = findAgencyForUser(em, admin);
+                    AgencyScope scope = AgencyScopeResolver.resolve(em, request);
+                    Agency agency = AgencyScopeResolver.primaryAgencyEntity(em, scope);
                     if (agency == null) return "Could not determine your agency.";
                     agencyId = agency.getId();
                 }
@@ -273,23 +274,6 @@ public class CreateUser25 extends HttpServlet {
             em.merge(person);
             em.getTransaction().commit();
         }
-    }
-
-    private Agency findAgencyForUser(EntityManager em, Person user) {
-        Query q = em.createQuery("SELECT a FROM Agency a WHERE a.manager.id = :userId");
-        q.setParameter("userId", user.getId());
-        try {
-            return (Agency) q.getSingleResult();
-        } catch (NoResultException ignored) {}
-
-        Query q2 = em.createQuery("SELECT a FROM Agency a JOIN a.agentList ag WHERE ag.id = :userId");
-        q2.setParameter("userId", user.getId());
-        try {
-            List<Agency> agencies = q2.getResultList();
-            if (!agencies.isEmpty()) return agencies.get(0);
-        } catch (NoResultException ignored) {}
-
-        return null;
     }
 
     private void sendWelcomeEmail(EntityManager em, User newUser, String firstName, AmsDataGlobal global) {
