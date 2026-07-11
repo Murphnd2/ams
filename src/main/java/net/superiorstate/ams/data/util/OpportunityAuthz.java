@@ -87,16 +87,18 @@ public abstract class OpportunityAuthz {
     // ────────────────────────────────────────────────────────────────
 
     /**
-     * PHASE 1 (AgencyScopeResolver introduction): true when this agency is in the
-     * current session's resolved DETAIL scope. For an Agency Admin that scope is the
-     * singleton {primaryAgencyId} produced by AgencyScopeResolver's deterministic
-     * tie-break (manager match, else lowest agentId membership) — see PHASE1_NOTES.md
-     * for how this differs from the old "any membership row" check this replaces.
+     * PHASE 1b: true when this agency is in the current session's resolved DETAIL
+     * scope, via AgencyScopeResolver.canSeeDetail() (never the raw set — see that
+     * method's javadoc for why). For an Agency Admin, detailAgencyIds is every agency
+     * where they are the manager OR a plain agentList member — exactly reproducing
+     * this method's pre-Phase-1 predicate (a.manager.id = :personId OR ag.id =
+     * :personId) for the target agency. See PHASE1_NOTES.md "Phase 1b" for the
+     * equivalence check.
      */
     private static boolean belongsToAgency(EntityManager em, HttpServletRequest request, Long agencyId) {
         if (agencyId == null) return false;
         AgencyScope scope = AgencyScopeResolver.resolve(em, request);
-        return scope.detailAgencyIds().contains(agencyId);
+        return AgencyScopeResolver.canSeeDetail(scope, agencyId);
     }
 
     private static Person currentPerson(HttpServletRequest request) {
