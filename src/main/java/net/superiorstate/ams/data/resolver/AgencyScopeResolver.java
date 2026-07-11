@@ -31,6 +31,21 @@ import java.util.Set;
  * admin who manages one agency but is a plain member of another (Person<->Agency is
  * genuinely many-to-many). Fixed: detail/rollup are now their own membership query,
  * independent of primaryAgencyId. See PHASE1_NOTES.md "Phase 1b" for the verification.
+ *
+ * PHASE 2b correction: the Plain Agent bucket's "rollup = detail = EMPTY SET" rule from
+ * Phase 1 was itself a spec error — it forced write-path callers (CreateProspect,
+ * CreateOpportunity) to bolt on an {@code || agencyId == primaryAgencyId} carve-out just
+ * so a plain agent could act on their own agency at all. Plain Agent now gets the same
+ * real membership-based detail/rollup set as Agency Admin (see {@link
+ * #resolveAgencyMembershipIds}). This is an AUTHORIZATION change only ("is this agency
+ * in my world" — may I write a prospect/opportunity here, is this proposal's owning
+ * agency one I'm affiliated with). It must NOT be read as a READ-path row-filtering
+ * change: no caller derives Plain-Agent row filtering from these sets. AgentHome's
+ * opportunity query stays assigned_to_id-based, ReviewApplications' Plain Agent branch
+ * stays pr.agent.id-based, and ProposalDetail's broad "any agency in my detail scope"
+ * visibility check is Agency-Admin-role-gated specifically (not merely "detail set is
+ * non-empty") so a Plain Agent still can't open a colleague's proposal through it — see
+ * PHASE2B_NOTES.md for the full verification of all three read paths.
  */
 public final class AgencyScopeResolver {
 
@@ -70,9 +85,14 @@ public final class AgencyScopeResolver {
      *      singular); rollup = detail = EVERY agency where this person is the manager
      *      OR a plain agentList member (set-valued, independent of primaryAgencyId —
      *      see the PHASE 1b class-level note).
-     *   3. Plain Agent (role 2, not role 8) -> primaryAgencyId = resolved agency;
-     *      rollup = detail = EMPTY SET (agents scope by agent_id, not agency_id —
-     *      unchanged from today).
+     *   3. Plain Agent (role 2, not role 8) -> primaryAgencyId = resolved agency
+     *      (tie-break, singular); rollup = detail = EVERY agency where this person is
+     *      the manager OR a plain agentList member — same query as the Agency Admin
+     *      bucket (PHASE 2b — see the class-level note; Phase 1's "empty set" rule
+     *      here was a spec error). This governs AUTHORIZATION only. Read-path row
+     *      filtering for a Plain Agent stays agent_id-based everywhere it already
+     *      was — this bucket change does not by itself alter what any read query
+     *      returns.
      *   4. Anyone else (no currentUser, or none of the above flags) -> AgencyScope.empty().
      */
     public static AgencyScope resolve(EntityManager em, Person currentUser,
@@ -98,7 +118,8 @@ public final class AgencyScopeResolver {
 
         if (isAgent) {
             Long primaryAgencyId = resolvePrimaryAgencyId(em, currentUser.getId());
-            return new AgencyScope(false, null, primaryAgencyId, Set.of(), Set.of());
+            Set<Long> ids = resolveAgencyMembershipIds(em, currentUser.getId());
+            return new AgencyScope(false, null, primaryAgencyId, ids, ids);
         }
 
         return AgencyScope.empty();
@@ -138,15 +159,16 @@ public final class AgencyScopeResolver {
     }
 
     /**
-     * All agencies this person is authorized to see under the Agency Admin bucket —
-     * every Agency where they are the designated manager OR a plain agentList member.
-     * This is the SET-valued counterpart to {@link #resolvePrimaryAgencyId} and is
-     * intentionally NOT derived from it: Person<->Agency is genuinely many-to-many, and
-     * an admin can manage one agency while also being a plain member of another. This
-     * query reproduces OpportunityAuthz's pre-Phase-1 predicate exactly
-     * ({@code a.manager.id = :personId OR ag.id = :personId}) for a given target
-     * agency, just expressed as "give me the whole set" instead of "check one id" —
-     * see PHASE1_NOTES.md "Phase 1b" for the equivalence check.
+     * All agencies this person is authorized to see — every Agency where they are the
+     * designated manager OR a plain agentList member. Used by both the Agency Admin
+     * and (since Phase 2b) Plain Agent buckets. This is the SET-valued counterpart to
+     * {@link #resolvePrimaryAgencyId} and is intentionally NOT derived from it:
+     * Person<->Agency is genuinely many-to-many, and a person can manage one agency
+     * while also being a plain member of another. This query reproduces
+     * OpportunityAuthz's pre-Phase-1 predicate exactly ({@code a.manager.id =
+     * :personId OR ag.id = :personId}) for a given target agency, just expressed as
+     * "give me the whole set" instead of "check one id" — see PHASE1_NOTES.md
+     * "Phase 1b" for the original equivalence check.
      */
     private static Set<Long> resolveAgencyMembershipIds(EntityManager em, Long personId) {
         if (personId == null) return Set.of();
@@ -175,6 +197,14 @@ public final class AgencyScopeResolver {
      * {@code scope.detailAgencyIds()} directly — because PSP staff have
      * {@code pspWide = true} with EMPTY scope sets; checking the raw set alone would
      * incorrectly deny PSP staff access to agencies in their own tenant.
+     *
+     * This answers "is agencyId in my world" for AUTHORIZATION purposes only (may I
+     * write/see-that-it-exists). It is not a substitute for role-specific READ-path
+     * row filtering — e.g. ProposalDetail still gates "may I open any proposal
+     * belonging to this agency, regardless of which agent within it created it" on
+     * the Agency Admin role specifically, since Phase 2b gave Plain Agent the same
+     * non-empty detail set for authorization purposes without granting that broader
+     * per-record read visibility.
      */
     public static boolean canSeeDetail(AgencyScope scope, Long agencyId) {
         if (scope == null || agencyId == null) return false;

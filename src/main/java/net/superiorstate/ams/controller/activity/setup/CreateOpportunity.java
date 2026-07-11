@@ -27,7 +27,6 @@ import java.sql.Date;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import java.util.UUID;
 
 @WebServlet(name = "CreateOpportunity", value = "/CreateOpportunity")
@@ -60,13 +59,12 @@ public class CreateOpportunity extends HttpServlet {
     }
 
     /**
-     * PHASE 2 (closing AGENCY_STRUCTURE_AUDIT.md §2.2 #5): agencyId was previously
-     * an unchecked request param. Gate via AgencyScopeResolver.canSeeDetail(), never
-     * the raw detailAgencyIds set (the pspWide trap). The primaryAgencyId OR-clause
-     * preserves the legitimate Plain Agent "New Opportunity" workflow — a Plain
-     * Agent's detail scope set is intentionally EMPTY (agent_id scoping, not
-     * agency_id), so without this carve-out they could no longer submit their own
-     * agency's hidden agencyId field. See PHASE2_NOTES.md.
+     * PHASE 2 (closing AGENCY_STRUCTURE_AUDIT.md §2.2 #5), PHASE 2b: agencyId was
+     * previously an unchecked request param. Gate via AgencyScopeResolver.canSeeDetail(),
+     * never the raw detailAgencyIds set (the pspWide trap). No carve-out needed here
+     * since Phase 2b — a Plain Agent's detailAgencyIds now includes their own real
+     * agency memberships, so canSeeDetail() alone covers their legitimate own-agency
+     * "New Opportunity" submissions.
      */
     private boolean isAuthorizedForAgency(HttpServletRequest request) {
         String agencyIdParam = request.getParameter("agencyId");
@@ -83,8 +81,7 @@ public class CreateOpportunity extends HttpServlet {
         EntityManager em = emf.createEntityManager();
         try {
             AgencyScope scope = AgencyScopeResolver.resolve(em, request);
-            return AgencyScopeResolver.canSeeDetail(scope, agencyId)
-                    || Objects.equals(scope.primaryAgencyId(), agencyId);
+            return AgencyScopeResolver.canSeeDetail(scope, agencyId);
         } finally {
             em.close();
         }
