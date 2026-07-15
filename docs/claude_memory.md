@@ -8,7 +8,8 @@
 - **Integration branch:** `refactor/modernize-architecture` — feature branches are cut from / merged back to it, so it trails the in-flight feature by only a few commits. `main` is ~345 commits stale and is **not** the working line.
 - **In-flight branch:** none — the agency-scope-resolver work merged to trunk 2026-07-15 (`e0a62d1`); branch deleted.
 - **Latest migration:** V071 (always re-check `ls docs/migrations/` — this line lags)
-- **Session count:** 88 logged in `session_history_archive.md`. The agency/white-label epic below spans several sessions since that were never numbered — the archive needs a catch-up entry.
+- **Latest release:** v0.71.08 (2026-07-15) — Agent Pipeline sidebar-proposals fix (de-nested JOIN FETCH) + optional create-proposal hand-off. No migration (latest migration still V071).
+- **Session count:** 88 numbered sessions logged in `session_history_archive.md`, plus one dated (unnumbered) entry — **July 15, 2026: Agent Pipeline sidebar proposals + create-proposal hand-off (v0.71.08)**. The agency/white-label epic (V068-V071, `AgencyScopeResolver`) below still spans several sessions that were never written up — that catch-up entry is still outstanding.
 - **Build tool:** Maven wrapper `./mvnw compile` (no system `mvn` on PATH)
 - Per-environment apply status is tracked authoritatively in `docs/analysis/migration_tracker.md`.
 - Master snapshot v9 taken 2026-03-20 (V057)
@@ -26,6 +27,14 @@
 - **Never use bare `return;`** in servlets — always forward/redirect
 - **PSP ID from session:** `local.getCurrentPerson().getPsp().getId()` (NOT `getCurrentPsp()`)
 - **selectOptions delimiter:** pipe-delimited (`|`), not comma
+- **EclipseLink nested `JOIN FETCH` (2-level) drops the deep collection.** A query like
+  `Opportunity → prospect → proposalList` silently fails to populate the 2nd-level collection. Load the
+  deep collection via a **separate flat query off its own root** (pattern in `SalesDAO`,
+  `QuestionnaireService`, `FillQuestionnaire`). Confirmed + fixed in `AgentHome` (2026-07-15).
+- **User identity can split across three fields.** Login authenticates on `user.user_name`
+  (`AuthDAO.validateLogin`); `User.email` and `Person.email` can diverge (Agency Manager shows
+  `Person.email`; User Manager shows `User.email`). Always confirm the actual `user_name` before telling
+  someone to run a password reset. (Cost debugging time on the SWBD/Forrest login, 2026-07-15.)
 
 ## Key Entity Gotchas
 - **ApplicationField PK** is `String fieldKey` (not Long)

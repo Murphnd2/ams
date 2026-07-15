@@ -1928,4 +1928,42 @@ No schema changes, no migrations. Build clean (`./mvnw clean package` → BUILD 
 | Confirmation page | Charcoal band + agency name; no accent bar; `© AgencyName` | PSP band + olive bar + `© PSP` (unchanged) |
 | Compose email pre-fill | Agency name in green-bold company line | PSP name (unchanged) |
 
+---
+
+## July 15, 2026 — Agent Pipeline sidebar proposals + optional create-proposal hand-off (v0.71.08)
+
+*(Numbering note: several unnumbered sessions were logged between Session 88 and this entry as part of
+the agency/white-label epic — see `docs/claude_memory.md`. Titled by date rather than a sequential
+session number to avoid a false collision.)*
+
+Fixed two Agent-Pipeline defects ahead of the SWBD/PremiumPath live-hub reveal to Forrest.
+
+### Bug A — card sidebar showed no proposals
+Root cause: `AgentHome.getOpportunitiesByAgency()` / `getOpportunitiesByAgent()` used a two-level nested
+`JOIN FETCH` (`Opportunity → prospect → proposalList`); EclipseLink silently dropped the 2nd-level
+collection — the same anti-pattern already commented/worked-around in `QuestionnaireService` and
+`FillQuestionnaire`. Full Detail View worked because it loads proposals via flat single-hop queries off
+`Proposal` (`SalesDAO.getProposalsBySourceActivity` / `getProposalListFull`).
+Fix: de-nested both queries (flat `o.prospect` fetch only); added `SalesDAO.getActiveProposalsByProspectIds()`
+(batched flat `IN` query, `LEFT JOIN FETCH losList`/`application`, `isInactive=false`); grouped results onto
+each prospect's `proposalList`. JSP contract preserved (`OPPS.proposals[]` still reads
+`prospect.getProposalList()`).
+
+### Bug B — New Opportunity didn't offer to create a proposal
+Added an optional "Create a proposal now" checkbox to `#newOppModal`; `CreateOpportunity.doPost` branches
+(when checked and NOT the `returnTo=home` PSP path) to `ProposalBuilder?prospectId=…&sourceActivityId=…`
+— the proven deep-link that reuses the builder + LOS picker. The `returnTo=home` PSP path and the dormant
+rate/LOS branch (~:189-224) were left untouched.
+
+### Files Changed
+`AgentHome.java`, `SalesDAO.java`, `CreateOpportunity.java`,
+`src/main/webapp/WEB-INF/view/sales/agentHome25.jsp`
+
+### Release
+**v0.71.08** — web-UI tag on trunk HEAD, `ROOT.war` attached. **No database changes / no migration.**
+
+### Smoke tests (passed on production)
+Card → proposal shows in sidebar; L2-cache reload after create is clean (no stale/empty collection, so no
+eviction added); New Opportunity with checkbox → lands in Proposal Builder pre-filled; unchecked → normal.
+
 

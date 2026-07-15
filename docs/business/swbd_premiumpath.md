@@ -20,6 +20,12 @@ small-employer clients, delivered under SWBD's white-label brand (`premiumpath.n
 - **One payroll-deduction experience** to pay premiums; voluntary/ancillary products run post-tax on
   the card; optional **HSA+** (§125 payroll HSA) for bronze-plan employees.
 
+**Branding / name:** **"PremiumPath" is a working placeholder name** Kevin coined after the 7/14 call
+(rolling with Forrest's half-joke about patenting the concept). The agency landing site + custom domain
+(`premiumpath.net`) are live, and Forrest's agency, users, and custom proposals are configured to
+match. **Name/branding is deferred to Forrest** for final direction — fully rebrandable via config
+(Landing Host / Sending Domain toggles per the white-label runbook), no code change required.
+
 ## The relationship
 
 - **Forrest Huggins** — SWBD owner; problem-solving consultant/FMO, not a pure producer.
@@ -42,9 +48,15 @@ small-employer clients, delivered under SWBD's white-label brand (`premiumpath.n
   + individual list/direct billing with consolidated remittances for Forrest's Presidio model.
   Post-tax basis agreed (§125 pre-tax not feasible). Pilot-first.
 - **2026-07-14 (Tue)** — Deep-dive (Forrest, Tracy, Kevin). Locked the management-Presidio-post-tax +
-  staff-minimal-QSEHRA model and the PremiumPath Card mechanism. Forrest's ask: fees/pricing + a setup
-  video + a revenue share; numbers by Wednesday.
+  staff-minimal-QSEHRA model and the PremiumPath Card mechanism. Forrest's ask: fees/pricing + a
+  revenue share; numbers by Wednesday. (Forrest also *assumed* SSA would have a "setup video" — an
+  offhand remark in his closing recap, not a firm request; see transcript.)
 - **2026-07-15 (today)** — SSA proposal delivered: *"The SWBD PremiumPath Program — Services & Pricing."*
+- **2026-07-15 (send)** — Full package emailed to Forrest: (1) **Services & Pricing** PDF, (2) the
+  **live client-facing sample proposal** on the SWBD-branded hub (`premiumpath.net`, with a working
+  apply flow — sent as a link, not a static file), and (3) a **PremiumPath Quick-Start** walkthrough
+  guide. Framed as "built, not just spec'd": Forrest given his own agent login (`fhuggins@swbdmg.com`,
+  scoped to SWBD) to drive the live hub. Awaiting his response, including direction on the program name.
 
 ## Opportunity streams (Forrest's framing)
 
@@ -79,6 +91,12 @@ GA→sub-agency hierarchy (V070/V071), open decision #39.
   Contribution-Schedule-driven, MCC 6300 loaded). Remaining gates: **live carrier authorization test**
   + **issuing-bank purse classification**. Rename the working template code **"PTC"** before client
   exposure (collides with *premium tax credit*) → PIP/PPA; participant-facing "Insurance Payment Account."
+- **Agent-facing value-add (e.g. persistency / lapse alerts) is SWBD's to offer, not SSA's promise.**
+  Delivered via **agency-level Summit broker access** — SWBD *staff* run enrollment/status reporting
+  across their book (agency-wide login; **not** per-agent logins, **not** agent-filtered). SSA provides
+  the broker access at **no charge**; whether SWBD features it to its downline is SWBD's revenue-gated
+  call. This lives in the **consolidated SWBD (agent/network-facing) proposal**, never as a
+  client/employer promise and never on the SSA service agreement.
 - **QSEHRA-Lite admin** — plan docs + adoption paperwork, SEP documentation + **dated per-employee
   eligibility letters** (Marketplace proof), reimbursement by direct deposit/check, W-2 Box 12 Code FF.
   **Administered on DataPath Summit** as well (a separate plan type from the card); the likely **AMS**
@@ -134,7 +152,7 @@ supplemental into near-comprehensive coverage.
 
 ## Open items / next
 
-- Deliver pricing + a **setup video** to Forrest (pricing done in the proposal).
+- Deliver pricing to Forrest — **done 2026-07-15** (full package sent; see history). The "setup video" was never a firm ask; the PremiumPath Quick-Start guide serves that purpose.
 - Agree a **pilot case**; map the end-to-end workflow (Forrest to provide a flowchart).
 - **Producing-agent count** — the opportunity-sizing question.
 - Decision on **carrier quoting / Sherpa** (volume-gated).
