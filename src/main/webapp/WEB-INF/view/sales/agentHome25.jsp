@@ -714,6 +714,12 @@
                             <input type="date" name="expectedCloseDate" class="form-control form-control-sm">
                         </div>
                     </div>
+                    <div class="form-check">
+                        <input type="checkbox" class="form-check-input" name="createProposalNow" id="createProposalNow" value="true">
+                        <label class="form-check-label" for="createProposalNow" style="font-size:0.85rem;">
+                            Create a proposal now
+                        </label>
+                    </div>
                 </div>
                 <div class="modal-footer justify-content-center border-0">
                     <button type="submit" class="ssa-action save"><i class="bi bi-plus-circle me-1"></i>Create</button>

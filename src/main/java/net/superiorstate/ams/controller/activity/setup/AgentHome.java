@@ -16,6 +16,7 @@ import net.superiorstate.ams.model.activity.checklist.tasks.ToDo;
 import net.superiorstate.ams.model.activity.ticket.setup.Setup;
 import net.superiorstate.ams.model.general.Person;
 import net.superiorstate.ams.model.sales.agency.Agency;
+import net.superiorstate.ams.model.sales.agency.Proposal;
 import net.superiorstate.ams.model.sales.agency.Prospect;
 
 import java.io.IOException;
@@ -108,14 +109,27 @@ public class AgentHome extends HttpServlet {
             }
             request.setAttribute("opportunities", opportunities);
 
-            // Force-initialize lazy collections while EM is open (needed for JSP rendering)
+            // Bug A fix: the old code force-initialized o.prospect.proposalList via a
+            // nested JOIN FETCH (Opportunity -> prospect -> proposalList) that EclipseLink
+            // silently failed to populate. Load proposals with one flat, batched query off
+            // Proposal instead (same pattern as SalesDAO.getProposalsBySourceActivity /
+            // getProposalListFull) and assign them onto each opportunity's prospect while
+            // the EM is still open.
+            List<Long> prospectIds = new ArrayList<>();
             for (Opportunity opp : opportunities) {
-                if (opp.getProspect() != null && opp.getProspect().getProposalList() != null) {
-                    opp.getProspect().getProposalList().size(); // trigger lazy load
-                    for (var prop : opp.getProspect().getProposalList()) {
-                        if (prop.getLosList() != null) prop.getLosList().size();
-                        if (prop.getApplication() != null) prop.getApplication().getStatus();
-                    }
+                if (opp.getProspect() != null && !prospectIds.contains(opp.getProspect().getId())) {
+                    prospectIds.add(opp.getProspect().getId());
+                }
+            }
+            List<Proposal> activeProposals = SalesDAO.getActiveProposalsByProspectIds(em, prospectIds);
+            Map<Long, List<Proposal>> proposalsByProspectId = new HashMap<>();
+            for (Proposal p : activeProposals) {
+                proposalsByProspectId.computeIfAbsent(p.getProspect().getId(), k -> new ArrayList<>()).add(p);
+            }
+            for (Opportunity opp : opportunities) {
+                if (opp.getProspect() != null) {
+                    opp.getProspect().setProposalList(
+                            proposalsByProspectId.getOrDefault(opp.getProspect().getId(), new ArrayList<>()));
                 }
             }
 
@@ -184,7 +198,6 @@ public class AgentHome extends HttpServlet {
         Query q = em.createQuery(
                 "SELECT DISTINCT o FROM Opportunity o " +
                 "LEFT JOIN FETCH o.prospect p " +
-                "LEFT JOIN FETCH p.proposalList " +
                 "WHERE o.agency.id = :agencyId ORDER BY o.stage, o.id DESC");
         q.setParameter("agencyId", agencyId);
         try {
@@ -198,7 +211,6 @@ public class AgentHome extends HttpServlet {
         Query q = em.createQuery(
                 "SELECT DISTINCT o FROM Opportunity o " +
                 "LEFT JOIN FETCH o.prospect p " +
-                "LEFT JOIN FETCH p.proposalList " +
                 "WHERE o.assignedTo.id = :agentId ORDER BY o.stage, o.id DESC");
         q.setParameter("agentId", agentId);
         try {

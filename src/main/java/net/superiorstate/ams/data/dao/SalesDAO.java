@@ -263,6 +263,21 @@ public abstract class SalesDAO {
         return (List<Proposal>) q.getResultList();
     }
 
+    /**
+     * Flat, single-hop batched load of active proposals for a set of prospects — same
+     * pattern as getProposalsBySourceActivity/getProposalListFull. Used by AgentHome to
+     * avoid the nested JOIN FETCH (Opportunity -> prospect -> proposalList) that
+     * EclipseLink silently fails to populate.
+     */
+    public static List<Proposal> getActiveProposalsByProspectIds(EntityManager em, List<Long> prospectIds) {
+        if (prospectIds == null || prospectIds.isEmpty()) return new ArrayList<>();
+        Query q = em.createQuery(
+                "SELECT DISTINCT p FROM Proposal p LEFT JOIN FETCH p.losList LEFT JOIN FETCH p.application " +
+                "WHERE p.prospect.id IN :prospectIds AND p.isInactive = false");
+        q.setParameter("prospectIds", prospectIds);
+        return (List<Proposal>) q.getResultList();
+    }
+
     public static List<Rate> getRatesByAgency(EntityManager em, Agency agency){
         Query q = em.createQuery("Select r FROM Rate r INNER JOIN FETCH r.listOfAgenciesWithThisRate a WHERE r.isSuppressed = false AND a.id = :agency_id");
         q.setParameter("agency_id",agency.getId());

@@ -53,6 +53,13 @@ public class CreateOpportunity extends HttpServlet {
             }
             RequestDispatcher dispatcher = getServletContext().getNamedDispatcher("ViewHome25");
             dispatcher.forward(request, response);
+        } else if (opp != null && opp.getProspect() != null
+                && Boolean.parseBoolean(request.getParameter("createProposalNow"))) {
+            // Bug B hand-off: reuse the proven ProposalBuilder deep-link (same format as
+            // agentHome25.jsp:826 and detailOpportunity25.jsp:126) to pre-fill the prospect
+            // and link the new proposal back to this opportunity.
+            response.sendRedirect("ProposalBuilder?prospectId=" + opp.getProspect().getId()
+                    + "&sourceActivityId=" + opp.getId());
         } else {
             response.sendRedirect("AgentHome");
         }
