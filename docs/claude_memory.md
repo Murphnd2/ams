@@ -6,13 +6,13 @@
 
 ## Current State
 - **Integration branch:** `refactor/modernize-architecture` — feature branches are cut from / merged back to it, so it trails the in-flight feature by only a few commits. `main` is ~345 commits stale and is **not** the working line.
-- **In-flight branch:** `feat/agency-scope-resolver`
+- **In-flight branch:** none — the agency-scope-resolver work merged to trunk 2026-07-15 (`e0a62d1`); branch deleted.
 - **Latest migration:** V071 (always re-check `ls docs/migrations/` — this line lags)
 - **Session count:** 88 logged in `session_history_archive.md`. The agency/white-label epic below spans several sessions since that were never numbered — the archive needs a catch-up entry.
 - **Build tool:** Maven wrapper `./mvnw compile` (no system `mvn` on PATH)
 - Per-environment apply status is tracked authoritatively in `docs/analysis/migration_tracker.md`.
 - Master snapshot v9 taken 2026-03-20 (V057)
-- **Active epic (post-Session-88):** Agency / white-label / multi-agency hierarchy + access-scope hardening. Shipped in order: **V068** host-header agency landing pages → **V069** per-agency white-label email sending (`EmailIdentityResolver`, 4-tier sender identity) → white-label proposal/application wrapper + RequestQuote host-awareness → **V070** GA→sub-agency parent link (strict two-level hierarchy) → **V071** per-agency public quote tokens for RequestQuote attribution → agency manager-reassignment guards + PSP-staff gate on manual setup. **Current (`feat/agency-scope-resolver`):** introduced `AgencyScopeResolver` (retired 4 duplicated agency resolvers), decoupled scope sets from the `primaryAgencyId` singleton, and closed residual IDOR gaps via `canSeeDetail()` (Phases 1–2b).
+- **Active epic (post-Session-88):** Agency / white-label / multi-agency hierarchy + access-scope hardening. Shipped in order: **V068** host-header agency landing pages → **V069** per-agency white-label email sending (`EmailIdentityResolver`, 4-tier sender identity) → white-label proposal/application wrapper + RequestQuote host-awareness → **V070** GA→sub-agency parent link (strict two-level hierarchy) → **V071** per-agency public quote tokens for RequestQuote attribution → agency manager-reassignment guards + PSP-staff gate on manual setup. **Landed (merged to trunk 2026-07-15, `e0a62d1`):** introduced `AgencyScopeResolver` (retired 4 duplicated agency resolvers), decoupled scope sets from the `primaryAgencyId` singleton, closed residual IDOR gaps via `canSeeDetail()` (Phases 1–2b), and routed `ViewProposal` agency/agent resolution through `OriginatingAgencyResolver`.
 
 ## Key Patterns
 - **"25" suffix** = current/modern version of servlet or JSP. For model-layer adapter classes at `model/` root, three variants exist:

@@ -49,7 +49,7 @@ ams/
 ## Current development context
 
 - **Trunk:** `refactor/modernize-architecture` — the working mainline **and the GitHub default branch**. Most work is committed **directly** here. (`main` is retired: fully merged, ~345 commits behind, kept only for history.)
-- **Feature branches are situational** — spun off only when a safe fallback point is needed (e.g., risky work tested on production before a demo), then folded back to trunk. Current example: `feat/agency-scope-resolver` (agency access-scope / IDOR hardening; introduces `AgencyScopeResolver`). Always verify live branches with `git branch -a`.
+- **Feature branches are situational** — spun off only when a safe fallback point is needed (e.g., risky work tested on production before a demo), then folded back to trunk. **No feature branch is currently in flight** — the agency access-scope / IDOR-hardening work (`AgencyScopeResolver`) merged to trunk 2026-07-15 (`e0a62d1`) and its branch was deleted. Always verify live branches with `git branch -a`.
 - **Latest migration in tree:** **V071** (`docs/migrations/V071__agency_quote_token.sql`). Always re-check `ls docs/migrations/` directly — versions move quickly. The authoritative tracker is `docs/analysis/migration_tracker.md`.
 - **Per-installation migration state** (Production / Master / Demo / BPO) is tracked in `MEMORY.md`, not here.
 
