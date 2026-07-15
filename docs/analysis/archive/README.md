@@ -15,3 +15,6 @@ These are kept for provenance and git history but are **not** part of the curren
 | `proxy_readiness_audit_prompt.md` | The prompt that generated the audit | `proxy_readiness_audit.md` (kept as current) |
 | `dead_jsp_cleanup_summary.md` | Result report from `cleanup/dead-jsp-removal` (Mar 2026) | Completed one-off |
 | `dead_jsp_investigation.md` | Companion investigation report | Completed one-off |
+| `PHASE1_NOTES.md` | Dev-scratch notes — Phase 1 `AgencyScopeResolver` (was at repo root) | Merged to trunk `e0a62d1`; see `AgencyScopeResolver.java` |
+| `PHASE2_NOTES.md` | Dev-scratch notes — Phase 2 IDOR-gap closure (was at repo root) | Merged to trunk `e0a62d1` |
+| `PHASE2B_NOTES.md` | Dev-scratch notes — Phase 2b plain-agent scope + residual IDOR gaps (was at repo root) | Merged to trunk `e0a62d1` |
