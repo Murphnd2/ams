@@ -9,6 +9,8 @@ import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.AmsDataLocal;
 import net.superiorstate.ams.data.dao.SalesDAO;
+import net.superiorstate.ams.data.resolver.AgencyScope;
+import net.superiorstate.ams.data.resolver.AgencyScopeResolver;
 import net.superiorstate.ams.model.activity.Opportunity;
 import net.superiorstate.ams.model.activity.checklist.tasks.ToDo;
 import net.superiorstate.ams.model.activity.ticket.setup.Setup;
@@ -33,14 +35,39 @@ public class AgentHome extends HttpServlet {
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        if (!isAuthorized(request)) {
+            response.sendError(HttpServletResponse.SC_FORBIDDEN);
+            return;
+        }
         loadData(request);
         goToPage(request, response);
     }
 
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        if (!isAuthorized(request)) {
+            response.sendError(HttpServletResponse.SC_FORBIDDEN);
+            return;
+        }
         loadData(request);
         goToPage(request, response);
+    }
+
+    /**
+     * PHASE 2 (closing PHASE1_NOTES.md behavior change #1 / AGENCY_STRUCTURE_AUDIT.md
+     * §2.2 #5): /AgentHome previously had no role gate at all — any authenticated
+     * session (Client, Applicant, BPO user, etc.) could load it. Gate on the same
+     * role set AgencyScopeResolver treats as non-empty buckets, so a session that
+     * reaches loadData() below never lands in the resolver's "anyone else" bucket —
+     * this also closes the stale-membership edge case flagged in PHASE1_NOTES.md as
+     * a side effect. Matches the GenerateProp25 (8a4c8d2) 403 idiom exactly.
+     */
+    private boolean isAuthorized(HttpServletRequest request) {
+        return Boolean.TRUE.equals(request.getSession().getAttribute("isAgent"))
+                || Boolean.TRUE.equals(request.getSession().getAttribute("isAgencyAdmin"))
+                || Boolean.TRUE.equals(request.getSession().getAttribute("isPspAdmin"))
+                || Boolean.TRUE.equals(request.getSession().getAttribute("isPspUser"))
+                || Boolean.TRUE.equals(request.getSession().getAttribute("isPspSales"));
     }
 
     private void goToPage(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
@@ -60,7 +87,8 @@ public class AgentHome extends HttpServlet {
             boolean isAgencyAdmin = Boolean.TRUE.equals(request.getSession().getAttribute("isAgencyAdmin"));
 
             // Find agency for this user
-            Agency agency = findAgencyForUser(em, currentUser);
+            AgencyScope scope = AgencyScopeResolver.resolve(em, request);
+            Agency agency = AgencyScopeResolver.primaryAgencyEntity(em, scope);
             request.setAttribute("agency", agency);
 
             if (agency == null) {
@@ -150,25 +178,6 @@ public class AgentHome extends HttpServlet {
         } finally {
             em.close();
         }
-    }
-
-    private Agency findAgencyForUser(EntityManager em, Person user) {
-        // Check if user is a manager of an agency
-        Query q = em.createQuery("SELECT a FROM Agency a WHERE a.manager.id = :userId");
-        q.setParameter("userId", user.getId());
-        try {
-            return (Agency) q.getSingleResult();
-        } catch (NoResultException ignored) {}
-
-        // Check if user is an agent in an agency
-        Query q2 = em.createQuery("SELECT a FROM Agency a JOIN a.agentList ag WHERE ag.id = :userId");
-        q2.setParameter("userId", user.getId());
-        try {
-            List<Agency> agencies = (List<Agency>) q2.getResultList();
-            if (!agencies.isEmpty()) return agencies.get(0);
-        } catch (NoResultException ignored) {}
-
-        return null;
     }
 
     private List<Opportunity> getOpportunitiesByAgency(EntityManager em, long agencyId) {

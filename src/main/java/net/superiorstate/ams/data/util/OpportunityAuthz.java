@@ -3,6 +3,8 @@ package net.superiorstate.ams.data.util;
 import jakarta.persistence.EntityManager;
 import jakarta.servlet.http.HttpServletRequest;
 import net.superiorstate.ams.data.AmsDataLocal;
+import net.superiorstate.ams.data.resolver.AgencyScope;
+import net.superiorstate.ams.data.resolver.AgencyScopeResolver;
 import net.superiorstate.ams.model.activity.Opportunity;
 import net.superiorstate.ams.model.general.Person;
 
@@ -64,7 +66,7 @@ public abstract class OpportunityAuthz {
 
         // Agency Admin over the opportunity's agency.
         if (flag(request, "isAgencyAdmin") && opp.getAgency() != null
-                && belongsToAgency(em, meId, opp.getAgency().getId())) {
+                && belongsToAgency(em, request, opp.getAgency().getId())) {
             return true;
         }
 
@@ -85,20 +87,18 @@ public abstract class OpportunityAuthz {
     // ────────────────────────────────────────────────────────────────
 
     /**
-     * True when the person is the manager of the agency OR a member of its agent list.
-     * Mirrors AgentHome.findAgencyForUser resolution as a single COUNT query.
+     * PHASE 1b: true when this agency is in the current session's resolved DETAIL
+     * scope, via AgencyScopeResolver.canSeeDetail() (never the raw set — see that
+     * method's javadoc for why). For an Agency Admin, detailAgencyIds is every agency
+     * where they are the manager OR a plain agentList member — exactly reproducing
+     * this method's pre-Phase-1 predicate (a.manager.id = :personId OR ag.id =
+     * :personId) for the target agency. See PHASE1_NOTES.md "Phase 1b" for the
+     * equivalence check.
      */
-    private static boolean belongsToAgency(EntityManager em, Long personId, Long agencyId) {
-        if (personId == null || agencyId == null) return false;
-        Long count = em.createQuery(
-                        "SELECT COUNT(a) FROM Agency a LEFT JOIN a.agentList ag " +
-                                "WHERE a.id = :agencyId " +
-                                "AND (a.manager.id = :personId OR ag.id = :personId)",
-                        Long.class)
-                .setParameter("agencyId", agencyId)
-                .setParameter("personId", personId)
-                .getSingleResult();
-        return count != null && count > 0;
+    private static boolean belongsToAgency(EntityManager em, HttpServletRequest request, Long agencyId) {
+        if (agencyId == null) return false;
+        AgencyScope scope = AgencyScopeResolver.resolve(em, request);
+        return AgencyScopeResolver.canSeeDetail(scope, agencyId);
     }
 
     private static Person currentPerson(HttpServletRequest request) {

@@ -9,6 +9,8 @@ import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.AmsDataLocal;
 import net.superiorstate.ams.data.dao.EmailDAO;
 import net.superiorstate.ams.data.dao.SalesDAO;
+import net.superiorstate.ams.data.resolver.AgencyScope;
+import net.superiorstate.ams.data.resolver.AgencyScopeResolver;
 import net.superiorstate.ams.data.resolver.OriginatingAgencyResolver;
 import net.superiorstate.ams.data.util.EmailIdentity;
 import net.superiorstate.ams.data.util.EmailIdentityResolver;
@@ -18,12 +20,14 @@ import net.superiorstate.ams.model.sales.agency.Agency;
 import net.superiorstate.ams.model.sales.agency.PriceItem;
 import net.superiorstate.ams.model.sales.agency.Proposal;
 import net.superiorstate.ams.model.sales.agency.ProposalPriceLine;
+import net.superiorstate.ams.model.sales.agency.Prospect;
 import net.superiorstate.ams.model.sales.offering.ServiceModule;
 
 import java.io.IOException;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.List;
+import java.util.Objects;
 
 @WebServlet(name = "ProposalDetail", value = "/ProposalDetail")
 public class ProposalDetail extends HttpServlet {
@@ -39,6 +43,11 @@ public class ProposalDetail extends HttpServlet {
             Query q = em.createQuery("SELECT p FROM Proposal p LEFT JOIN FETCH p.losList LEFT JOIN FETCH p.application WHERE p.id = :id");
             q.setParameter("id", proposalId);
             Proposal proposal = (Proposal) q.getSingleResult();
+
+            if (!canViewProposal(em, request, proposal)) {
+                response.sendError(HttpServletResponse.SC_FORBIDDEN);
+                return;
+            }
 
             List<ProposalPriceLine> pricing = SalesDAO.getPricingWithAdjustments(em, proposal);
 
@@ -71,6 +80,60 @@ public class ProposalDetail extends HttpServlet {
         dispatcher.forward(request, response);
     }
 
+    /**
+     * PHASE 2 (closing AGENCY_STRUCTURE_AUDIT.md §2.2 #3): Proposal has no direct
+     * agency FK — ownership is derived via prospect.agent's agency membership, the
+     * same 3-hop relationship SalesDAO.getProposalsByAgency (:295-304) walks in the
+     * other direction. Every agency-based decision routes through
+     * AgencyScopeResolver.canSeeDetail() — never the raw detailAgencyIds set — per
+     * that method's javadoc on the pspWide trap.
+     *
+     * PHASE 2b: since Fix 1 gave Plain Agent a real (non-empty) detailAgencyIds set
+     * for AUTHORIZATION purposes (may I write into this agency), the broad "any
+     * agency in my detail scope" READ visibility below is now deliberately gated on
+     * the isAgencyAdmin role flag specifically — not merely on "detail set is
+     * non-empty" — so a Plain Agent still cannot open a colleague's proposal within
+     * their own agency through this path. Their visibility stays exactly the
+     * self-ownership check above it. See PHASE2B_NOTES.md for the read-path
+     * verification.
+     */
+    private boolean canViewProposal(EntityManager em, HttpServletRequest request, Proposal proposal) {
+        AgencyScope scope = AgencyScopeResolver.resolve(em, request);
+
+        // PSP staff see every proposal in their tenant, including ones with no
+        // resolvable owning agency (e.g. created directly, prospect.agent == null).
+        // Checked directly rather than via canSeeDetail(scope, null), which returns
+        // false for a null agencyId even when pspWide is true — there's no id to gate.
+        if (scope.pspWide()) return true;
+
+        Object localObj = request.getSession().getAttribute("local");
+        Person currentUser = (localObj instanceof AmsDataLocal local) ? local.getCurrentPerson() : null;
+        if (currentUser == null) return false;
+
+        Prospect prospect = proposal.getProspect();
+        Person prospectAgent = (prospect != null) ? prospect.getAgent() : null;
+
+        // Own proposal — every role, including Plain Agent, may always view this.
+        if (prospectAgent != null && Objects.equals(prospectAgent.getId(), currentUser.getId())) {
+            return true;
+        }
+
+        // Agency Admin only: does the prospect's agent belong to any agency in my
+        // detail scope? Deliberately NOT extended to Plain Agent — see class doc above.
+        boolean isAgencyAdmin = Boolean.TRUE.equals(request.getSession().getAttribute("isAgencyAdmin"));
+        if (isAgencyAdmin && prospectAgent != null) {
+            List<Long> agentAgencyIds = em.createQuery(
+                            "SELECT a.id FROM Agency a JOIN a.agentList ag WHERE ag.id = :aid", Long.class)
+                    .setParameter("aid", prospectAgent.getId())
+                    .getResultList();
+            for (Long agencyId : agentAgencyIds) {
+                if (AgencyScopeResolver.canSeeDetail(scope, agencyId)) return true;
+            }
+        }
+
+        return false;
+    }
+
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         String action = request.getParameter("action");
@@ -85,6 +148,13 @@ public class ProposalDetail extends HttpServlet {
                 Query q = em.createQuery("SELECT p FROM Proposal p LEFT JOIN FETCH p.losList LEFT JOIN FETCH p.application WHERE p.id = :id");
                 q.setParameter("id", proposalId);
                 Proposal proposal = (Proposal) q.getSingleResult();
+
+                // PHASE 2b (Fix 2): sendToProspect was completely unscoped — apply the
+                // same ownership check doGet uses.
+                if (!canViewProposal(em, request, proposal)) {
+                    response.sendError(HttpServletResponse.SC_FORBIDDEN);
+                    return;
+                }
 
                 Person contact = proposal.getProspect().getContact();
                 Person sender = local.getCurrentPerson();
@@ -133,6 +203,15 @@ public class ProposalDetail extends HttpServlet {
                 Proposal proposal = em.find(Proposal.class, proposalId);
                 if (proposal == null) {
                     response.sendError(HttpServletResponse.SC_NOT_FOUND);
+                    return;
+                }
+
+                // PHASE 2b (Fix 2): saveMarkup was role-flag-gated only, with no
+                // per-proposal ownership check — an agent from Agency A could edit
+                // markup on a proposal belonging to Agency B as long as they held any
+                // of the three roles. Apply the same ownership check doGet uses.
+                if (!canViewProposal(em, request, proposal)) {
+                    response.sendError(HttpServletResponse.SC_FORBIDDEN);
                     return;
                 }
 

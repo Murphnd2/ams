@@ -6,10 +6,13 @@ import jakarta.persistence.Query;
 import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
+import net.superiorstate.ams.data.resolver.AgencyScope;
+import net.superiorstate.ams.data.resolver.AgencyScopeResolver;
 import net.superiorstate.ams.model.general.Person;
 import net.superiorstate.ams.model.sales.application.Application;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -27,10 +30,8 @@ public class ReviewApplications extends HttpServlet {
             return;
         }
 
-        boolean isPspAdmin = Boolean.TRUE.equals(request.getSession().getAttribute("isPspAdmin"));
-        boolean isPspUser = Boolean.TRUE.equals(request.getSession().getAttribute("isPspUser"));
+        boolean isAgencyAdmin = Boolean.TRUE.equals(request.getSession().getAttribute("isAgencyAdmin"));
         boolean isAgent = Boolean.TRUE.equals(request.getSession().getAttribute("isAgent"));
-        boolean agentOnly = isAgent && !isPspAdmin && !isPspUser;
 
         EntityManagerFactory emf = (EntityManagerFactory) getServletContext().getAttribute("emf");
         EntityManager em = emf.createEntityManager();
@@ -54,21 +55,24 @@ public class ReviewApplications extends HttpServlet {
                 }
             }
 
-            // Agent-only users see only their own prospects' applications
-            String jpql = "SELECT a FROM Application a " +
-                    "JOIN FETCH a.proposal p " +
-                    "JOIN FETCH p.prospect pr " +
-                    "JOIN FETCH pr.contact " +
-                    "LEFT JOIN FETCH p.losList " +
-                    "WHERE a.status IN :statuses " +
-                    (agentOnly ? "AND pr.agent.id = :agentId " : "") +
-                    "ORDER BY a.dateSubmitted DESC";
-            Query q = em.createQuery(jpql);
-            q.setParameter("statuses", selectedStatuses);
-            if (agentOnly) {
-                q.setParameter("agentId", currentPerson.getId());
+            // PHASE 2 (closing AGENCY_STRUCTURE_AUDIT.md §2.2 #3): resolver-driven
+            // scoping instead of the old agentOnly boolean, which had no Agency Admin
+            // carve-out at all (they fell through to fully unscoped) and ignored
+            // isPspSales when combined with isAgent. See PHASE2_NOTES.md.
+            AgencyScope scope = AgencyScopeResolver.resolve(em, request);
+            List<Application> applications;
+            if (scope.pspWide()) {
+                applications = queryApplications(em, selectedStatuses, null, null);
+            } else if (isAgencyAdmin) {
+                List<Long> agencyIds = new ArrayList<>(scope.detailAgencyIds());
+                applications = agencyIds.isEmpty()
+                        ? new ArrayList<>()
+                        : queryApplications(em, selectedStatuses, agencyIds, null);
+            } else if (isAgent) {
+                applications = queryApplications(em, selectedStatuses, null, currentPerson.getId());
+            } else {
+                applications = new ArrayList<>();
             }
-            List<Application> applications = q.getResultList();
 
             request.setAttribute("applications", applications);
             request.setAttribute("selectedStatuses", selectedStatuses);
@@ -88,5 +92,35 @@ public class ReviewApplications extends HttpServlet {
         } finally {
             em.close();
         }
+    }
+
+    /**
+     * Builds and runs the Application query for one of three predicate shapes:
+     * agencyIds != null -> restrict to applications whose proposal's prospect's
+     * agent belongs to one of those agencies (Agency Admin bucket, same 3-hop
+     * relationship as SalesDAO.getProposalsByAgency, generalized to a set of
+     * agencies instead of one). agentId != null -> self-only (Plain Agent bucket,
+     * unchanged from before). Neither set -> no predicate beyond status (pspWide).
+     */
+    private List<Application> queryApplications(EntityManager em, List<String> statuses,
+                                                  List<Long> agencyIds, Long agentId) {
+        String jpql = "SELECT a FROM Application a " +
+                "JOIN FETCH a.proposal p " +
+                "JOIN FETCH p.prospect pr " +
+                "JOIN FETCH pr.contact " +
+                "LEFT JOIN FETCH p.losList " +
+                "WHERE a.status IN :statuses ";
+        if (agencyIds != null) {
+            jpql += "AND pr.agent.id IN (SELECT agt.id FROM Agency agy JOIN agy.agentList agt WHERE agy.id IN :agencyIds) ";
+        } else if (agentId != null) {
+            jpql += "AND pr.agent.id = :agentId ";
+        }
+        jpql += "ORDER BY a.dateSubmitted DESC";
+
+        Query q = em.createQuery(jpql);
+        q.setParameter("statuses", statuses);
+        if (agencyIds != null) q.setParameter("agencyIds", agencyIds);
+        if (agentId != null) q.setParameter("agentId", agentId);
+        return q.getResultList();
     }
 }

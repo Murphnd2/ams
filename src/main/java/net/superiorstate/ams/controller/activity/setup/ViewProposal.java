@@ -10,6 +10,7 @@ import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.dao.AppConstantDAO;
 import net.superiorstate.ams.data.dao.SalesDAO;
 import net.superiorstate.ams.data.dao.StorageDAO;
+import net.superiorstate.ams.data.resolver.OriginatingAgencyResolver;
 import net.superiorstate.ams.model.sales.agency.Agency;
 import net.superiorstate.ams.model.sales.agency.Proposal;
 import net.superiorstate.ams.model.sales.agency.ProposalPriceLine;
@@ -233,19 +234,7 @@ public class ViewProposal extends HttpServlet {
                 sections = filteredSections;
 
                 // Agency override for TITLE and CLOSING
-                Agency proposalAgency = null;
-                Person agent = proposal.getProspect().getAgent();
-                if (agent != null) {
-                    List<Agency> agentAgencies = em.createQuery(
-                            "SELECT a FROM Agency a JOIN a.agentList al WHERE al.id = :agentId AND a.psp.id = :pspId",
-                            Agency.class)
-                            .setParameter("agentId", agent.getId())
-                            .setParameter("pspId", psp.getId())
-                            .getResultList();
-                    if (!agentAgencies.isEmpty()) {
-                        proposalAgency = agentAgencies.get(0);
-                    }
-                }
+                Agency proposalAgency = OriginatingAgencyResolver.resolve(proposal);
 
                 if (proposalAgency != null) {
                     // Separate agency-scoped and default TITLE/CLOSING
@@ -397,11 +386,9 @@ public class ViewProposal extends HttpServlet {
         // Prospect
         tokens.put("PROSPECT_NAME", proposal.getProspect().getName() != null ? proposal.getProspect().getName() : "");
 
-        // Agent — prefer prospect's assigned agent, fall back to proposal creator
-        Person agent = proposal.getProspect().getAgent();
-        if (agent == null) {
-            agent = proposal.getCreatedBy();
-        }
+        // Agent — resolve via OriginatingAgencyResolver
+        // (walks sourceActivity.assignedTo → prospect.agent → createdBy)
+        Person agent = OriginatingAgencyResolver.resolveAgent(proposal);
         if (agent != null) {
             String agentName = (agent.getFirstName() != null ? agent.getFirstName() : "") +
                     " " + (agent.getLastName() != null ? agent.getLastName() : "");
@@ -412,12 +399,11 @@ public class ViewProposal extends HttpServlet {
             tokens.put("AGENT_EMAIL", "");
         }
 
-        // Agency — use agent's first agency, fall back to PSP name
-        String agencyName = psp.getFullName() != null ? psp.getFullName() : "";
-        if (agent != null && agent.getListOfAgenciesWithThisAgent() != null
-                && !agent.getListOfAgenciesWithThisAgent().isEmpty()) {
-            agencyName = agent.getListOfAgenciesWithThisAgent().get(0).getName();
-        }
+        // Agency — resolved agency name; fall back to PSP name only if none resolves
+        Agency resolvedAgency = OriginatingAgencyResolver.resolve(proposal);
+        String agencyName = (resolvedAgency != null && resolvedAgency.getName() != null)
+                ? resolvedAgency.getName()
+                : (psp.getFullName() != null ? psp.getFullName() : "");
         tokens.put("AGENCY_NAME", agencyName);
         tokens.put("PSP_NAME", psp.getFullName() != null ? psp.getFullName() : "");
 
