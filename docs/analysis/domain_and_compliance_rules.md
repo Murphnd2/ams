@@ -3,7 +3,7 @@
 Cross-cutting rules that shape feature design and must not be violated. Short by design; linked from
 `CLAUDE.md`. Update here when a rule changes.
 
-**Last reviewed:** 2026-07-15.
+**Last reviewed:** 2026-07-15 (rev. b — SWBD brief v4 sync: §213(d) filed-form test, MEC floor, endorsement boundary).
 
 ---
 
@@ -56,6 +56,14 @@ Relevant to QSEHRA-based products (e.g. the SWBD/PremiumPath program — `docs/b
   cleanly with a *premium-only* QSEHRA for HSA-qualified bronze plans.
 - **Entity eligibility:** no classes/opt-outs; C-corp owner/employees can participate; **sole proprietors,
   partners, and >2% S-corp shareholders cannot**.
-- **Reimbursement scope:** a QSEHRA can reimburse premiums and §213(d) expenses; a non-ACA supplemental
-  premium is reimbursable only if the policy pays on **expenses, not indemnity** (relevant to the parked
-  "stack-wrap" idea in the SWBD doc).
+- **Reimbursement scope:** a QSEHRA can reimburse premiums and §213(d) expenses. A non-ACA supplemental
+  premium is reimbursable **only if the filed policy form pays on expenses, not indemnity**: expense-
+  incurred (% of actual charges) qualifies; per-period cash ($X/day) does **not**; a per-service fixed
+  schedule is a **gray zone**. Allocation trap (Treas. Reg. §1.213-1(e)(4)): a bundled premium reimburses
+  **only the separately-stated medical charge**. Get the filed form + counsel sign-off before the first
+  claim. (Relevant to the SWBD "stack-wrap" — `docs/business/swbd_premiumpath.md`.)
+- **MEC floor:** a QSEHRA reimburses nothing unless the participant holds **MEC somewhere** (any source —
+  spouse/parent/Medicaid/Medicare). ICHRA, by contrast, locks out participants who have other MEC.
+- **Endorsement boundary:** keep **carrier names off all SSA-drafted paper** (plan docs, notices, card,
+  proposals). Program-because-of-one-carrier conduct risks reclassification as an employer-sponsored group
+  health plan (→ QSEHRA disqualified, §4980D). Parallel to the agent-markup confidentiality boundary (§4).
