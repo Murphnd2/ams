@@ -65,7 +65,7 @@
 
 | Path | Description | Last commit | Touches | Tag |
 |---|---|---|---|---|
-| `docs/analysis/CONTEXT_DataPath_Partnership_Strategy.md` | "DataPath Partnership Strategy — Complete Context"; partnership/business strategy with DataPath; updated April 16, 2026 (docs/analysis/CONTEXT_DataPath_Partnership_Strategy.md:1-5). | 2026-04-23 | 2 | current |
+| `docs/business/datapath.md` | "DataPath Partnership Strategy — Complete Context"; partnership/business strategy with DataPath. **Moved 2026-07-15** from `docs/analysis/CONTEXT_DataPath_Partnership_Strategy.md` into the new `docs/business/` opportunity register (see `docs/business/README.md`). | 2026-04-23 | 2 | current |
 | `docs/analysis/activity_detail_transition_plan.md` | "Activity Detail Page — Transition Plan"; status "Track A complete — A1–A14 + S4 done. S5 (mobile polish) remaining" (docs/analysis/activity_detail_transition_plan.md:1-5). | 2026-02-23 | 5 | current (in-progress per status field). |
 | `docs/analysis/application_flow.md` | "SSA Web Application — Entry Point & Flow Analysis"; mapping of 100+ servlets and how requests flow (docs/analysis/application_flow.md:1-6). | 2026-02-21 | 2 | current (servlet count grew since — see AMS-OPEN-QUESTIONS.md). |
 | `docs/analysis/bpo_cross_system_brainstorm.md` | "PSP ↔ BPO Cross-System Communication — Brainstorm & Process Plan"; explicitly self-labels "Brainstorm — not a build plan yet" (docs/analysis/bpo_cross_system_brainstorm.md:1-7). | 2026-03-01 | 1 (single-commit) | unclear (brainstorm; some elements clearly built — V030 BPO foundation — but the doc is not a "current state" reference). |

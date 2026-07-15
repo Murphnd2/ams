@@ -21,7 +21,7 @@ Eight tracked files — lean, high-signal, and covering orientation + domain + s
 | 7 | `docs/analysis/project_backlog.md` | Feature priorities (what to plan next) | medium |
 | 8 | `docs/ams_to_be_vision.md` | Product/strategy narrative (the "why") | slow |
 
-Optional adds: `docs/analysis/sales_pipeline_reference.md` (if you do sales-pipeline work often) and `docs/analysis/CONTEXT_DataPath_Partnership_Strategy.md` (the DataPath licensing/partnership track — your project's second major thread).
+Optional adds: `docs/analysis/sales_pipeline_reference.md` (if you do sales-pipeline work often) and the `docs/business/` opportunity register — `docs/business/datapath.md` (the DataPath licensing/partnership track) + `docs/business/README.md` (the index).
 
 ## 2. What to EXCLUDE from the sync
 
