@@ -9,7 +9,7 @@ cost when prioritizing.
 | Opportunity | Type | Status | Size / stakes | AMS work it drives |
 |---|---|---|---|---|
 | [DataPath](datapath.md) | Platform partnership | Active | Ecosystem-wide licensing (AMS across DataPath's PSP network) | Multi-PSP / distributed architecture, BPO federation, managed installations (V054), super-user dashboard |
-| [SWBD / PremiumPath](swbd_premiumpath.md) | Agency / GA demand | Live — first white-label agency | 1 GA + its contracted agent network | White-label (V068–V071), agent markup (V066/V067), GA→sub-agency hierarchy (V070/V071), GA rate-assignment decision (#39) |
+| [SWBD / PremiumPath](swbd_premiumpath.md) | Agency/GA demand + benefits-admin partnership | **Active** — proposal delivered 2026-07-15; pilot-first | Small-employer program + 2 streams (TPA ICHRA under-25/50; <10-life groups w/ rev-share) | White-label delivery (V068–V071, markup V066/V067, GA hierarchy V070/V071, #39) + **PremiumPath Program**: QSEHRA-Lite admin, post-tax PremiumPath Card, list billing/remittance, rev-share markup, HSA+; future: carrier quoting (Sherpa) + QSEHRA stack-wrap |
 
 ## Types
 

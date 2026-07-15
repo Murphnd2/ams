@@ -40,3 +40,22 @@ SSA's HRA/MERP/DRiP with federal HRA types.
 - The `base | markup | sell` breakdown is **internal-only** (`proposalDetail.jsp`). Guard this whenever
   touching proposal-pricing rendering — leaking base/markup into public page source is a
   confidentiality break. (V066/V067.)
+
+## 5. QSEHRA design constraints (IRS Notice 2017-67)
+
+Relevant to QSEHRA-based products (e.g. the SWBD/PremiumPath program — `docs/business/swbd_premiumpath.md`):
+
+- **An employer offering a QSEHRA may NOT sponsor any group health plan** — *including* plans of only
+  "excepted benefits" (dental, vision, accident, hospital-indemnity, cancer). Do **not** wrap those in a
+  §125 cafeteria plan: doing so makes them employer-sponsored plans → disqualifies the QSEHRA and risks a
+  **$100/day/employee** excise tax. Keep voluntary/ancillary products **post-tax**.
+- **Compliant employer funding is "bonus up," not employer-paid premiums.** Employer raising post-tax pay
+  is fine; an employer paying/collecting a carrier bill directly counts as sponsoring a plan (same
+  disqualification + excise exposure).
+- **One §125 is safe and recommended:** an **individual HSA** payroll pre-tax cafeteria plan pairs
+  cleanly with a *premium-only* QSEHRA for HSA-qualified bronze plans.
+- **Entity eligibility:** no classes/opt-outs; C-corp owner/employees can participate; **sole proprietors,
+  partners, and >2% S-corp shareholders cannot**.
+- **Reimbursement scope:** a QSEHRA can reimburse premiums and §213(d) expenses; a non-ACA supplemental
+  premium is reimbursable only if the policy pays on **expenses, not indemnity** (relevant to the parked
+  "stack-wrap" idea in the SWBD doc).
