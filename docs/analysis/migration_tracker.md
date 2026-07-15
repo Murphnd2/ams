@@ -2,7 +2,7 @@
 
 Tracks database schema versions across environments.
 
-**Last Updated:** April 23, 2026
+**Last Updated:** July 15, 2026
 
 ## Environments
 
@@ -44,9 +44,11 @@ All new schema changes must follow these rules:
 3. Update this tracker with the new version
 4. Update `docs/schema_version_migration.sql` with the new INSERT row
 
-Individual migration scripts are no longer stored in the repo. The baseline dump + `schema_version_migration.sql` are the source of truth. Session summaries document what each version changed.
+Individual migration scripts **are** stored in `docs/migrations/` (`V025__…` through the latest version). The source of truth is the V024 baseline dump (`docs/importscript/beta_ssa_dev_baseline_thru_V024.sql`) plus the incremental `V025+` scripts applied on top; `schema_version_migration.sql` registers every applied version in the `schema_version` table for databases created outside the baseline. Session summaries document what each version changed.
 
 ## Version History
+
+_N/A = environment decommissioned / not maintained (applies to Demo PSP, BPO, Master — see Environments table above)._
 
 | Version | Description | beta_ssa (work) | beta_ssa (home) | dev_ssa | Production | Demo PSP | BPO | Master |
 |---------|-------------|-----------------|-----------------|---------|------------|----------|-----|--------|
@@ -100,9 +102,9 @@ Individual migration scripts are no longer stored in the repo. The baseline dump
 | V066 | Per-proposal, per-line agent markup on pricing (proposal_price_adjustment) | ⬜ | ⬜ | ⬜ | ✅ | ⬜ | ⬜ | ⬜ |
 | V067 | Per-agency enable flag for proposal markup (agency.markup_enabled, default OFF) | ⬜ | ⬜ | ⬜ | ✅ | ⬜ | ⬜ | ⬜ |
 | V068 | Host-header custom agency landing pages (agency.landing_host unique + landing_html) | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
-| V069 | Per-agency white-label email sending (agency.email_domain unique + email_verified) | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
-| V070 | Self-referential agency parent link (GA -> sub-agency hierarchy): agency.parent_agency_id nullable + child index | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
-| V071 | Per-agency public quote token (agency.quote_token unique) for RequestQuote sub-agency attribution links | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
+| V069 | Per-agency white-label email sending (agency.email_domain unique + email_verified) | ⬜ | ⬜ | ⬜ | ✅ | N/A | N/A | N/A |
+| V070 | Self-referential agency parent link (GA -> sub-agency hierarchy): agency.parent_agency_id nullable + child index | ⬜ | ⬜ | ⬜ | ✅ | N/A | N/A | N/A |
+| V071 | Per-agency public quote token (agency.quote_token unique) for RequestQuote sub-agency attribution links | ⬜ | ⬜ | ⬜ | ✅ | N/A | N/A | N/A |
 
 ## Notes
 

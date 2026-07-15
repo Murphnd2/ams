@@ -1,12 +1,48 @@
-# AMS `docs/` Index — Pass 1
+# AMS `docs/` Index
 
-For each file: path, one-line description (read from contents), git last-modified date, git touch count, and a tag (`current`, `historical`, `unclear`, `superseded`).
+> **Pass 2 current-state update — 2026-07-15.** The Pass 1 tables (below) were accurate as of 2026-04-25 / migration V062 / Session 87. This section supersedes them where they disagree. When re-running the full inventory, fold this back into the tables.
 
-**Staleness rule of thumb:** the user supplied today's date as 2026-04-25. Files not touched since 2024-04-25 (24+ months) would be tagged "possibly stale" — at present, every doc in the repo is younger than that threshold. Single-commit files are flagged inline.
+## Pass 2 — what changed since Pass 1
+
+**Highest migration:** now **V071** (Pass 1 stopped at V062). Added since:
+
+| File | Description | Tag |
+|---|---|---|
+| V063__knowledge_base_tables.sql | knowledge_base / knowledge_chunk / knowledge_chunk_history + 5 KB registry rows | historical (applied) |
+| V064__platform_json_registry_seed.sql | proposal_page_builder + automation_email_builder KB registry rows | historical (applied) |
+| V065__email_draft_assistant_skill.sql | unique index on chatbot_skill + EMAIL_DRAFT_ASSISTANT seed | historical (applied) |
+| V066__proposal_price_adjustment.sql | per-proposal, per-line agent markup on pricing | historical (applied) |
+| V067__agency_markup_enabled.sql | per-agency enable flag for V066 markup (default OFF) | historical (applied) |
+| V068__agency_landing_host.sql | host-header custom agency landing pages | historical (applied) |
+| V069__agency_email_sending.sql | per-agency white-label email (email_domain + email_verified) | historical (applied) |
+| V070__agency_parent.sql | self-referential GA→sub-agency parent link | historical (applied) |
+| V071__agency_quote_token.sql | per-agency public quote token for RequestQuote attribution | historical (applied) |
+| seed_ndt125_questionnaire.sql | NDT-125 questionnaire seed data | unclear (seed, not versioned) |
+
+**New docs since Pass 1:**
+
+| Path | Description | Tag |
+|---|---|---|
+| `docs/analysis/host_agency_landing_phase1_plan.md` | Host-agency landing (V068) phase-1 plan | historical (shipped) |
+| `docs/analysis/host_agency_landing_phase2A_confirmation.md` | Phase-2A confirmation note | historical (one-off) |
+| `docs/analysis/email_identity_current_state.md` | Email sender-identity current-state map (pre-V069) | current |
+| `docs/analysis/email_whitelabel_phaseA_confirmation.md` | White-label email (V069) phase-A confirmation | historical (one-off) |
+| `docs/analysis/email_assistant_handoff.md` | Email Draft Assistant session handoff prompt | historical (one-off) |
+| `docs/analysis/email_assistant_calibration_log.md` | Email-assistant calibration log | current (living log) |
+| `docs/analysis/proxy_readiness_audit.md` | Reverse-proxy / host-routing readiness audit | current |
+| `docs/analysis/proxy_readiness_audit_prompt.md` | The prompt that generated the audit | historical (one-off) |
+| `docs/analysis/qsehra_attestation_claims_engine.md` | QSEHRA monthly-attestation claims-engine design (backlog #38) | current (design, not started) |
+| `docs/infrastructure/production_architecture.md` | Production host/proxy architecture | current |
+| `docs/infrastructure/letsencrypt_renewal.md` | Let's Encrypt renewal procedure | current |
+| `docs/infrastructure/cloudflare_setup.md` | Cloudflare setup for vanity/customer hosts | current |
+
+**Re-tagged since Pass 1** (resolved in `AMS-OPEN-QUESTIONS.md`): `questionnaire_system_design.md` → **implemented (V039)**; `serviceitem_unification_design_v2.md` → **implemented (V020)**; `summit_import_design.md` → **shipped** (Summit + Universal converge, not one replacing the other); `sales_pipeline_reference.md` "Replaces" → reworded "Supersedes".
+
+**Archive candidates** (one-off/session-scoped — Phase 2 of the 2026-07 cleanup will move these under `docs/analysis/archive/`): `session_86_notes.md`, `bpo_feature_session_history.md`, `outlook-addin-handoff.md`, `email_assistant_handoff.md`, `host_agency_landing_phase2A_confirmation.md`, `email_whitelabel_phaseA_confirmation.md`, `proxy_readiness_audit_prompt.md`, `dead_jsp_cleanup_summary.md`, `dead_jsp_investigation.md`.
 
 ---
 
-## `docs/` top-level
+## `docs/` top-level (Pass 1)
 
 | Path | Description (from file head) | Last commit | Touches | Tag |
 |---|---|---|---|---|

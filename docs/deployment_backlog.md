@@ -544,9 +544,9 @@ Four SSA-specific hard-coded values need to be externalized before a TPA could d
 ### D-73: Phase 3f-1 — Origin Firewall (Recommended Soon)
 
 **Priority:** MEDIUM — Without this, the Cloudflare proxy provides IP hiding but not true access control  
-**Status:** Not started
+**Status:** ⚠️ Appears implemented — verify & close. External probe (2026-07-15): direct port-443 to the origin **times out** from a non-Cloudflare host (`Test-NetConnection 66.179.248.171 -Port 443`), so direct access is now blocked. Confirm the VPS mechanism (UFW Cloudflare-range rules vs. tunnel) and close this item; the HSTS sub-item below may still be outstanding.
 
-The production VPS public IP (66.179.248.171) currently accepts inbound connections on port 443 from any source. If the origin IP is discovered (e.g., via historical DNS records, certificate transparency logs, or OSINT), an attacker can bypass Cloudflare and connect directly.
+The production VPS public IP (66.179.248.171) previously accepted inbound connections on port 443 from any source, letting an attacker who discovered the origin IP bypass Cloudflare. The 2026-07-15 probe indicates that path is now closed.
 
 **Recommended implementation:** UFW rules restricting port 443 to Cloudflare's published IP ranges, plus an automated update mechanism to keep the rules current.
 

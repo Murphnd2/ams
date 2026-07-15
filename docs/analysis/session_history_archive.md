@@ -44,7 +44,7 @@
 - **Cross-system architecture:** Push/pull API, note sync, file attachments, vendor registry, partnership management (V027, V032, V033)
 - **BPO initialization path:** D-45, co-located and federated modes
 - **PSP note viewer:** BPO notes modal in checklistBasic25.jsp, AddNoteToToDo25 with cross-system callback
-- **Living reference:** `bpo_feature_session_history.md`
+- **Living reference:** `archive/bpo_feature_session_history.md`
 
 ### ServiceItem Unification (Sessions 14–18, Feb 27)
 - **6-phase project:** TemplatePurpose → ServiceItem, TicketSubCategory eliminated, unified activity item → task sequence model (V020–V024)
@@ -1793,7 +1793,7 @@ Work in progress. The agent can now see "Tasks Delegated to Me" on AgentHome and
 
 ## Session 86 — Agent Portal Build-out on V062 (April 23–24, 2026)
 
-Detail lives in [`docs/analysis/session_86_notes.md`](session_86_notes.md). Summary:
+Detail lives in [`docs/analysis/archive/session_86_notes.md`](archive/session_86_notes.md). Summary:
 
 - **V062** `note.agent_visible TINYINT(1) NULL` + PSP default constant `NOTES_AGENT_VISIBLE_DEFAULT`. Resolution: per-note override → PSP default → hidden. Agent-authored notes auto-flagged visible.
 - `/AgentSetupList` new servlet + JSP — agents' list of Setups they're delegated into (agent role OR agency manager scope).
