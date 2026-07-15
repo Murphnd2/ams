@@ -361,23 +361,25 @@ Then paste the password directly at the `mysql>` prompt.
 
 | Branch | Purpose | Status |
 |--------|---------|--------|
-| `main` | Legacy. Frozen at 2026-02-12 (`390ad7f`); no longer the default branch and no longer part of the release flow. | Retired — historical reference only |
-| `refactor/modernize-architecture` | Active development **and release branch**. Repo default branch since 2026-07-09. Release tags are created directly on this branch. | Current working branch |
-| `beta` | Legacy. Represents the pre-cleanup codebase. | Retired — keep for historical reference only |
-| Feature branches | Short-lived branches off the working branch for specific features | Create as needed |
+| `refactor/modernize-architecture` | Active development **and release branch**; repo default branch since 2026-07-09. Most work is committed directly here; release tags are created on it via the GitHub web UI (§10.2). | **Current trunk** |
+| Feature branches (e.g. `feat/agency-scope-resolver`) | Situational — spun off only when a safe fallback is needed (e.g., risky work tested on production before a demo), then folded back to trunk. | Create as needed |
+| `main_fix` | Legacy fallback carrying a few unmerged commits (Feb 2026); retained pending review. | Retained |
+| `main`, `beta`, `dev`, `feature/automation-email-preview` | Legacy/abandoned; fully merged into trunk. **Deleted 2026-07-15** (local + remote) — history preserved in trunk. | Deleted |
 
-### 10.2 Release Process (Tag-First)
+### 10.2 Release Process (GitHub web UI)
 
-> **History (2026-07-09):** ~85 release tags (`v0.31.0`–`v0.69.02`) were created through the GitHub Releases web UI by typing a new tag name, which creates the tag on the **default branch HEAD** — at the time, a `main` frozen since 2026-02-12. All of those tags point at the same stale commit, so per-version source traceability for that range is lost. Deploys were never affected (`update.sh` ships release *assets* — a locally built WAR + SQL — not source built from tags). Two fixes are in effect: the default branch is now `refactor/modernize-architecture`, and every release follows the tag-first procedure below.
+> **How releases are actually cut.** Releases are created by hand in the GitHub Releases web UI (github.com/Murphnd2/ams/releases) — the tag is **typed there**, not pushed from local git. Because the default branch is now `refactor/modernize-architecture`, a new tag typed in the web UI is created at **trunk HEAD**, which is correct *provided trunk HEAD is exactly the commit you're shipping* (step 1).
+>
+> **History (2026-07-09):** ~85 tags (`v0.31.0`–`v0.69.02`) were created this same way while the default branch was a `main` frozen at 2026-02-12, so they all point at that one stale commit and per-version source traceability for that range is lost. Deploys were never affected — `update.sh` ships release *assets* (a locally built WAR + SQL), not source built from tags. The default branch is now trunk, so new web-UI tags land on the right commit.
 
 When ready to deploy a new version:
 
-1. **Commit first.** Everything going into the release must be committed on `refactor/modernize-architecture` **before** the WAR is built. Never build a release WAR from a dirty working tree — a tag is only trustworthy if the tree it points at is the tree that was built. (The v0.69.0x releases shipped uncommitted white-label code for exactly this reason.)
+1. **Commit AND push everything to trunk first.** The web-UI tag attaches to `refactor/modernize-architecture` HEAD, so HEAD must already be the exact tree you built and pushed. Never release from a dirty or unpushed working tree. (The v0.69.0x releases shipped uncommitted white-label code for exactly this reason.)
 
 2. **Build the WAR:**
 
 ```powershell
-   mvn clean package -P server
+   .\mvnw.cmd clean package -P server
 ```
 
    Stage the WAR and any new `V0NN__*.sql` migration scripts in the local `release/` folder (untracked; never committed).
@@ -387,19 +389,14 @@ When ready to deploy a new version:
    - Bump **NN** and reset patch (e.g., → `v0.70.00`) when the release carries a new migration script
    - The new tag must sort **above** production's `/opt/ssa/current_version.txt` under `sort -V`, or `update.sh` will not apply it
 
-4. **Tag the release commit and push the tag:**
-
-```powershell
-   git tag v0.NN.PP
-   git push origin v0.NN.PP
-```
-
-5. **Create the GitHub Release:**
+4. **Create the GitHub Release** (this is where the tag is made):
    - Repo → Releases → Draft a new release
-   - **Select the existing tag `v0.NN.PP` from the dropdown — never type a new tag name.** Typing a new name creates the tag on the default branch HEAD instead of the release commit.
+   - **Type the new tag `v0.NN.PP`** in the tag field — it is created on the default branch (trunk) HEAD, i.e. the commit you pushed in step 1
    - Notes: what changed and which migrations are required
    - Attach: `ROOT.war` plus any new `V0NN__*.sql` from `release/`
    - Publish
+
+5. **Do not create or push tags from local git for a release.** Running `git tag` / `git push origin <tag>` around a web-UI release causes the tag conflicts/errors you've hit. If you want the published tag in your local clone afterward, `git fetch --tags`.
 
 6. **Deploy:** production applies it at the 02:30 cron, or trigger manually:
 

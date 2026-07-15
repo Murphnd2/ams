@@ -2,11 +2,11 @@
 
 ## What AMS is
 
-AMS is a Java/Jakarta EE web application owned by Superior State Administration (SSA). It is a benefits-administration companion platform intended to be used alongside the third-party Datapath/Summit benefits platform by entities called PSPs (Plan Service Providers). It supports activity management, sales pipeline (LOS → Module → Rate → Agency → Prospect → Proposal → Application → Setup), monthly billing, time tracking, NDT compliance, questionnaires, an Outlook web add-in, and a federated BPO task-outsourcing model. The codebase has 196 `@WebServlet`s and 138 `@Entity` classes; deployment target is `superiorstate.biz` on IONOS Cloud Tomcat 10. See `.claude/inventory/AMS-DOMAIN-KNOWLEDGE.md` for the full domain map.
+AMS is a Java/Jakarta EE web application owned by Superior State Administration (SSA). It is a benefits-administration companion platform intended to be used alongside the third-party Datapath/Summit benefits platform by entities called PSPs (Plan Service Providers). It supports activity management, sales pipeline (LOS → Module → Rate → Agency → Prospect → Proposal → Application → Setup), monthly billing, time tracking, NDT compliance, questionnaires, an Outlook web add-in, and a federated BPO task-outsourcing model. The codebase has 201 `@WebServlet`s and 142 `@Entity` classes; deployment target is `superiorstate.biz` on IONOS Cloud Tomcat 10. See `.claude/inventory/AMS-DOMAIN-KNOWLEDGE.md` for the full domain map.
 
 ## Stack and runtime
 
-- **Java:** `pom.xml` sets compiler `source`/`target` to **17**. CI (`.github/workflows/build.yml`) runs `actions/setup-java@v4` with `java-version: 21`. The discrepancy is unresolved — see Known Unknowns #1.
+- **Java:** `pom.xml` sets `<maven.compiler.release>17</maven.compiler.release>`; CI (`.github/workflows/build.yml`) also runs `actions/setup-java@v4` with `java-version: '17'`. (The earlier 17-vs-21 divergence was reconciled — resolved Open Question #1.)
 - **Build:** Maven, WAR packaging, final WAR named `ROOT.war`. Profiles:
   - `server` (default) — JNDI datasource `java:comp/env/jdbc/ssa`, `persistence-server.xml`
   - `local` — direct JDBC to `127.0.0.1:3306/beta_ssa`, `persistence-local.xml`
@@ -15,8 +15,8 @@ AMS is a Java/Jakarta EE web application owned by Superior State Administration 
 - **Maven wrapper only** — there is no system `mvn` on the dev workstation. Use `./mvnw` (PowerShell: `.\mvnw.cmd`).
 - **Servlet container:** Tomcat 10 (Jakarta EE namespace; `jakarta.servlet` 5.0).
 - **Persistence:** MySQL 8 schema `beta_ssa`, EclipseLink JPA 3.0.2, persistence unit `ssaPU`.
-- **Logging:** `pom.xml` declares Log4j 2.20.0 + SLF4J→Log4j bridge, but no `log4j2.xml` (or equivalent) exists in `src/main/resources/`. Logging falls back to console defaults; the codebase also uses `System.out.println` in many places. See Known Unknowns #5.
-- **Other notable libs:** Apache POI 5.2.3, opencsv 5.9, PDFBox 3.0.4, Eclipse Angus mail 2.0.3, AWS SDK v2 (Wasabi/S3), jsoup 1.17.2, Anthropic Claude API client (custom). MSAL4j and Microsoft Graph are declared in `pom.xml` but have no imports in `src/main/java/` (Open Question #3).
+- **Logging:** Log4j 2.20.0 + SLF4J→Log4j bridge, configured at `src/main/resources/log4j2.xml` (console `catalina.out` + rolling `${catalina.base}/logs/ams.log`, 14-day retention; `net.superiorstate.ams` → DEBUG, noisy libs → WARN). New code uses `LoggerFactory.getLogger(...)`; legacy `System.out.println` calls remain and are migrated organically when files are touched. (Resolved Open Question #20.)
+- **Other notable libs:** Apache POI 5.2.3, opencsv 5.9, PDFBox 3.0.4, Eclipse Angus mail 2.0.3, AWS SDK v2 (Wasabi/S3), jsoup 1.17.2, Anthropic Claude API client (custom). (MSAL4j and Microsoft Graph were **removed** from `pom.xml` — Outlook integration is a Web Add-in calling AMS REST endpoints, not a server-side Graph SDK; resolved Open Question #3.)
 
 ## Repository layout
 
@@ -35,7 +35,7 @@ ams/
 ├── src/main/resources/META-INF/
 │   ├── persistence-local.xml   (RESOURCE_LOCAL, dev creds — see warnings)
 │   └── persistence-server.xml  (JTA, JNDI lookup)
-├── src/main/webapp/            (JSPs, static assets, ckeditor/ + ckeditor5/,
+├── src/main/webapp/            (JSPs, static assets, CKEditor 5 via CDN,
 │                                outlook/, WEB-INF/web.xml, WEB-INF/tags/)
 ├── docs/                       (design docs and references — see AMS-DOCS-INDEX.md)
 ├── docs/migrations/            (V025-V0XX schema migrations)
@@ -48,9 +48,9 @@ ams/
 
 ## Current development context
 
-- **Base branch:** `refactor/modernize-architecture`
-- **Active feature branches (verified against `git branch -a`):** `feature/automation-email-preview`. The branch `feature/proposal-customization` referenced in older notes is **not present** locally or on origin.
-- **Latest migration in tree:** **V069** (`docs/migrations/V069__agency_email_sending.sql`). Always re-check `docs/migrations/` directly — versions move quickly. The authoritative tracker is `docs/analysis/migration_tracker.md`.
+- **Trunk:** `refactor/modernize-architecture` — the working mainline **and the GitHub default branch**. Most work is committed **directly** here. (`main` is retired: fully merged, ~345 commits behind, kept only for history.)
+- **Feature branches are situational** — spun off only when a safe fallback point is needed (e.g., risky work tested on production before a demo), then folded back to trunk. Current example: `feat/agency-scope-resolver` (agency access-scope / IDOR hardening; introduces `AgencyScopeResolver`). Always verify live branches with `git branch -a`.
+- **Latest migration in tree:** **V071** (`docs/migrations/V071__agency_quote_token.sql`). Always re-check `ls docs/migrations/` directly — versions move quickly. The authoritative tracker is `docs/analysis/migration_tracker.md`.
 - **Per-installation migration state** (Production / Master / Demo / BPO) is tracked in `MEMORY.md`, not here.
 
 ## How to run things locally
@@ -108,15 +108,14 @@ No ad-hoc DDL — every schema change must be a versioned script. See an existin
 
 ## Known unknowns
 
-A future session should be aware of these unresolved items. Numbers reference `.claude/inventory/AMS-OPEN-QUESTIONS.md`.
+Numbers reference `.claude/inventory/AMS-OPEN-QUESTIONS.md` — all 30 Pass-1 items are now **resolved** there; consult it for the settled answers rather than re-investigating.
 
-1. **Java 17 vs Java 21** — `pom.xml` targets 17, CI runs on 21. Don't assume a version; check both before answering toolchain questions. (Open Question #1)
-2. **Migration versions move fast** — `docs/migrations/` is the source of truth, not this file or `MEMORY.md`. As of writing, latest is V069 but expect drift. (Open Question #2)
-3. **Active branch claims drift** — verify any "current feature branch" against `git branch -a` before relying on it. The legacy `feature/proposal-customization` is gone. (Open Question #19)
-4. **`/tpo` route purpose** — `LoginFilter` allows `/tpo` without a session, but no servlet, JSP, or doc explains it. Treat with caution if you encounter it. (Open Question #17)
-5. **No `log4j2.xml`** — Log4j is declared but unconfigured; behavior is console-default and there's also direct `System.out.println` use. Don't assume structured logging exists. (Open Question #20)
-6. **Two import subsystems coexist** — Summit-specific (`SummitImportService`, `model/summit/imports/`) and generic Universal/Interactive (`UniversalImportService`, `model/imports/`). Whether one supersedes the other is undocumented. (Open Question #18)
-7. **MS Graph / MSAL declared, no imports** — Outlook integration is via the Outlook Web Add-in calling AMS REST endpoints, not server-side Graph SDK. The pom dependencies appear unused. (Open Question #3)
+Two things genuinely keep moving — always re-check live state:
+
+1. **Migration versions move fast** — `ls docs/migrations/` is the source of truth, not this file or `MEMORY.md`. Latest as of this writing is V071; expect drift. (Open Question #2)
+2. **Branch claims drift** — verify any "current feature branch" against `git branch -a` before relying on it. Working line is `refactor/modernize-architecture` → feature branches; `main` is far behind. (Open Question #19)
+
+Settled since Pass 1 (don't re-litigate): Java is **17** across pom + CI (#1); `log4j2.xml` **exists** and is configured (#5/#20); MSAL/Graph were **removed** from pom — Outlook is a Web Add-in (#3/#7); `/tpo` is **intentional** legacy-URL support (#4/#17); Summit and Universal import subsystems **converge** rather than one replacing the other (#6/#18).
 
 ## What NOT to assume
 

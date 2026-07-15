@@ -28,19 +28,28 @@ Both zones point to the same production VPS (66.179.248.171). See
 
 ### SSL/TLS Mode
 
-**Both zones: Full (strict)**
+**`superiorstate.biz`: Full (strict)** · **`superiorstate.net`: Full (not strict)**
 
-This mode requires a valid, CA-trusted certificate on the origin (nginx). The
-Let's Encrypt cert satisfies this. Do not change to "Flexible" — that would
-allow Cloudflare to accept an invalid origin cert and create a false sense of
-security.
+- **`superiorstate.biz`** stays **Full (strict)** — Cloudflare validates the origin's
+  Let's Encrypt cert. Safer default for the primary PSP zone.
+- **`superiorstate.net`** was moved to **Full (not strict)** to clear **error 526** on
+  agency white-label **custom hostnames** (Cloudflare for SaaS). A custom hostname reaches
+  the origin with the *agency* domain as SNI, but the origin's LE cert only covers
+  `superiorstate.net` + `www` (no wildcard/SAN for agency domains), so strict validation
+  fails → 526. The strict-preserving fix (Custom Origin SNI) is **Enterprise-only**
+  (Cloudflare API error 1456), so Full (not strict) is the practical setting. Cloudflare→origin
+  traffic is still HTTPS to the valid LE cert; only origin-cert *validation* is skipped.
+  See `docs/runbooks/agency_white_label_domain_onboarding.md`.
 
-| Mode | Cloudflare→Client | Cloudflare→Origin | Origin cert required |
-|------|------------------|-------------------|---------------------|
-| Off | HTTP only | HTTP | No |
-| Flexible | HTTPS | HTTP | No |
-| Full | HTTPS | HTTPS | Any cert (self-signed OK) |
-| **Full (strict)** | **HTTPS** | **HTTPS** | **Valid CA cert** ← current |
+**Never use "Flexible"** on either zone — it would let Cloudflare accept an invalid/plaintext
+origin and create a false sense of security.
+
+| Mode | Cloudflare→Client | Cloudflare→Origin | Origin cert validated |
+|------|------------------|-------------------|----------------------|
+| Off | HTTP only | HTTP | — |
+| Flexible | HTTPS | HTTP | — (never use) |
+| **Full** | **HTTPS** | **HTTPS** | No ← `.net` (SaaS custom hostnames) |
+| **Full (strict)** | **HTTPS** | **HTTPS** | Yes (valid CA cert) ← `.biz` |
 
 ---
 
@@ -116,10 +125,11 @@ Cloudflare proxy state. The valve continues to work correctly.
 
 ## Operational Notes
 
-- **Origin IP exposure:** The production IP (66.179.248.171) is not yet blocked at the
-  firewall for non-Cloudflare connections. See D-73 in the deployment backlog.
-  Until D-73 is implemented, a determined attacker can bypass Cloudflare by connecting
-  directly to the origin IP.
+- **Origin IP exposure:** The production IP (66.179.248.171) **no longer accepts direct
+  inbound connections on port 443** from non-Cloudflare sources — verified 2026-07-15 by an
+  external probe (`Test-NetConnection 66.179.248.171 -Port 443` from a non-Cloudflare host
+  times out). This realizes the intent of D-73 (origin firewall); confirm the VPS ruleset
+  and close D-73 in the deployment backlog.
 
 - **Cloudflare Analytics:** With proxy enabled, Cloudflare's dashboard shows traffic
   statistics. Bot traffic and DDoS attempts are visible there.
