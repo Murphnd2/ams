@@ -5,7 +5,8 @@
 domain and an `admin.` subdomain, so a new agency can be onboarded either way.
 
 This is the **SSA-internal** procedure. The **agency-facing** DNS instructions are the companion
-one-pager: `docs/runbooks/agency_dns_setup_onepager.md`.
+one-pagers: `docs/runbooks/agency_dns_setup_onepager.md` (subdomain, default) and
+`docs/runbooks/agency_dns_setup_onepager_apex.md` (root/apex domain).
 
 **Related:** `docs/infrastructure/cloudflare_setup.md` · `docs/infrastructure/production_architecture.md` ·
 `docs/analysis/email_identity_current_state.md` · migrations `V068__agency_landing_host.sql`, `V069__agency_email_sending.sql`.

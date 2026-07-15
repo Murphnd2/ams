@@ -1,15 +1,15 @@
-# Branded Portal & Email — DNS Setup
+# Branded Portal & Email — DNS Setup (Subdomain)
 
-> **Agency-facing template.** This is the one-pager Superior State sends to an agency's IT/DNS
-> administrator when onboarding a white-label custom domain. Fill the `‹…›` placeholders per agency
-> before sending. The SSA-internal procedure that pairs with this is
-> `docs/runbooks/agency_white_label_domain_onboarding.md`.
+> **Agency-facing template — SUBDOMAIN version (`admin.‹domain›`).** This is the default one-pager
+> Superior State sends to an agency's IT/DNS administrator. Fill the `‹…›` placeholders per agency
+> before sending. For a dedicated program domain that should run on its **root** instead, use
+> `agency_dns_setup_onepager_apex.md`. Internal procedure: `agency_white_label_domain_onboarding.md`.
 
 **For:** ‹AGENCY NAME› IT / DNS administrator
 **Prepared by:** Superior State Administrators
 **What this does:** points a subdomain of your domain (e.g. `admin.‹yourdomain›.com`) at your branded client portal, and lets proposal/notification emails send **as your domain** so they land in inboxes, not spam.
 
-**Time required:** ~10 minutes, one time. **Records to add:** 3 (plus 1 optional).
+**Time required:** ~10–15 minutes, one time. **Records to add:** 5 (plus 1 optional).
 **Does NOT affect:** your main website, your existing email, or your MX/mail flow. This only adds a subdomain and mail-authentication records — nothing that touches your primary domain's mail.
 
 ---
@@ -17,7 +17,7 @@
 ## Before you start
 
 - Add these at whatever DNS provider hosts **‹yourdomain›.com** (GoDaddy, Cloudflare, your registrar, etc.).
-- **If your DNS is on Cloudflare:** set every record below to **DNS only (gray cloud)**, not proxied (orange). These won't verify while proxied.
+- **Proxy setting:** the **email and validation records are always DNS only (gray cloud)** — never proxied. For the **portal record (#1)**, we'll tell you whether to leave it **DNS only** or **proxy it (orange)** — it depends on whether your DNS is on Cloudflare.
 - Some providers auto-append your domain to the "Host/Name" field — enter only the part shown (e.g. `admin`, not `admin.yourdomain.com`). If unsure, check one existing record to see how your provider formats it.
 
 ---
@@ -31,21 +31,33 @@
 | **Type** | CNAME |
 | **Host / Name** | `admin` |
 | **Value / Target** | `‹SSA PROVIDES — portal target›` |
-| **Proxy / Cloud** | DNS only (gray) |
+| **Proxy / Cloud** | `‹SSA SPECIFIES — DNS only, or proxied if your DNS is on Cloudflare›` |
 | **TTL** | Auto / default |
 
-### 2. Email — sender authentication (2 records)
+### 2. Certificate validation (1 record)
 
-These let email send as `‹yourdomain›.com` with a valid signature, so it passes spam/authentication checks.
+This proves you control the subdomain so the HTTPS certificate can be issued and auto-renewed. We give you the exact value; add it precisely as provided.
 
-| # | Type | Host / Name | Value / Target | Proxy |
+| Field | Value |
+|---|---|
+| **Type** | TXT *(occasionally a CNAME — we'll tell you which)* |
+| **Host / Name** | `_acme-challenge.admin` |
+| **Value / Target** | `‹SSA PROVIDES›` |
+| **Proxy / Cloud** | DNS only |
+
+### 3. Email — sender authentication (3 records)
+
+These let email send as your domain with a valid signature, so it passes spam/authentication checks. All **DNS only**.
+
+| # | Type | Host / Name | Value / Target | Purpose |
 |---|---|---|---|---|
-| 2a | CNAME | `‹SSA PROVIDES — e.g. em1234.admin›` | `‹SSA PROVIDES›` | DNS only |
-| 2b | CNAME | `‹SSA PROVIDES — e.g. s1234._domainkey.admin›` | `‹SSA PROVIDES›` | DNS only |
+| 3a | CNAME | `‹SSA PROVIDES — e.g. em1234.admin›` | `‹SSA PROVIDES›` | Return-path / SPF |
+| 3b | CNAME | `‹SSA PROVIDES — e.g. s1234._domainkey.admin›` | `‹SSA PROVIDES›` | DKIM signature |
+| 3c | CNAME | `‹SSA PROVIDES — e.g. link.admin›` | `‹SSA PROVIDES›` | Click tracking |
 
-*(These two authenticate mail for the `admin.‹yourdomain›.com` sending subdomain. They sit at deeper names than the portal record in step 1, so they don't conflict with it.)*
+*(These sit at deeper names than the portal record in step 1, so they don't conflict with it.)*
 
-### 3. (Optional) DMARC — only if you don't already have one
+### 4. (Optional) DMARC — only if you don't already have one
 
 If `‹yourdomain›.com` has **no** DMARC record yet, adding this improves trust. If you already have one, **leave it as is** — don't add a second.
 
@@ -59,8 +71,8 @@ If `‹yourdomain›.com` has **no** DMARC record yet, adding this improves trus
 
 ## What Superior State handles (you don't need to)
 
-- **SSL/HTTPS certificate** for the portal — issued and renewed automatically on our side. You do not provision or manage any certificate.
-- **SPF/DKIM signing** — handled by our email platform once records 2a/2b are live; you don't edit your existing SPF record.
+- **SSL/HTTPS certificate** for the portal — issued and renewed automatically on our side once the validation record (#2) is live. You do not provision or manage any certificate.
+- **SPF/DKIM signing** — handled by our email platform once records 3a/3b are live; you **don't edit your existing SPF record**. Mail still authenticates and aligns to your domain.
 - **No mailbox needed** at the subdomain — the portal emails send *outbound* only; replies route to the sending agent's real inbox automatically. You don't need to create `admin@‹yourdomain›.com` or any mailbox, and you don't need an MX record for the subdomain.
 
 ---
