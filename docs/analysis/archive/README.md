@@ -18,3 +18,4 @@ These are kept for provenance and git history but are **not** part of the curren
 | `PHASE1_NOTES.md` | Dev-scratch notes — Phase 1 `AgencyScopeResolver` (was at repo root) | Merged to trunk `e0a62d1`; see `AgencyScopeResolver.java` |
 | `PHASE2_NOTES.md` | Dev-scratch notes — Phase 2 IDOR-gap closure (was at repo root) | Merged to trunk `e0a62d1` |
 | `PHASE2B_NOTES.md` | Dev-scratch notes — Phase 2b plain-agent scope + residual IDOR gaps (was at repo root) | Merged to trunk `e0a62d1` |
+| `plan.md` | Shipped design plan — J5 benefit-year import + renewal-date audit (was at repo root) | Completed (V028) |

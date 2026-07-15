@@ -95,6 +95,7 @@ No ad-hoc DDL — every schema change must be a versioned script. See an existin
 - **`docs/analysis/project_backlog.md`** — feature priorities
 - **`docs/deployment_backlog.md`** — deployment-side work items (D-NN)
 - **`docs/ams_to_be_vision.md`** — sales-portal pipeline narrative
+- **`docs/analysis/domain_and_compliance_rules.md`** — cross-cutting rules: SSA plan taxonomy (HRA/MERP/DRiP), HIPAA/BAA (PHI→Bedrock), agent-markup public-page boundary, compliance data-source constraint (`CoverageStatus` disqualified)
 - **`.claude/skills/proposal-content-page/SKILL.md`** — repo-local skill for generating proposal HTML blocks
 
 ## Developer preferences
