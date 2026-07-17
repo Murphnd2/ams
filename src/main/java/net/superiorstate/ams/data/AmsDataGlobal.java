@@ -88,6 +88,7 @@ public class AmsDataGlobal {
     private PSP psp;
     private String webPath;
     private String summitPath;
+    private String summitTpaGuid;
     private String savePath;
     private String falseClose;
     private int daysSinceDanger;
@@ -399,6 +400,12 @@ public class AmsDataGlobal {
             summitPath = getConstantValue(em,"SUMMIT_PATH");
         } catch (Exception e){summitPath = "https://superiorstate.summitwith.us";}
         setSummitPath(summitPath);
+
+        String summitTpaGuid;
+        try{
+            summitTpaGuid = getConstantValue(em,"SUMMIT_TPA_GUID");
+        } catch (Exception e){summitTpaGuid = "22bec8d2-cd1c-4795-aebe-fa3f60522b6d";}
+        setSummitTpaGuid(summitTpaGuid);
 
         String webPath;
         try{
@@ -756,6 +763,14 @@ public class AmsDataGlobal {
 
     public String getSummitPath() {
         return summitPath;
+    }
+
+    public String getSummitTpaGuid() {
+        return summitTpaGuid;
+    }
+
+    public void setSummitTpaGuid(String summitTpaGuid) {
+        this.summitTpaGuid = summitTpaGuid;
     }
 
     public String getSavePath() {

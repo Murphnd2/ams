@@ -303,8 +303,8 @@ public class SummitImportService {
             String phone = coalesce(row.get("phonenumber"), row.get("phone"));
             String primaryContact = row.getOrDefault("primarycontact", "").trim();
             String taxId = row.getOrDefault("taxid", "").trim();
-            int employerId = parseIntSafe(row.getOrDefault("employer_id",
-                    row.getOrDefault("employerorganizationid", "0")));
+            int employerId = parseIntSafe(row.getOrDefault("employerid",
+                    row.getOrDefault("employer_id", "0")));
 
             Employer existing = em.find(Employer.class, orgId);
 
@@ -314,6 +314,7 @@ public class SummitImportService {
                 if (!Objects.equals(email, blankToNull(existing.getEmail()))) { existing.setEmail(email); changed = true; }
                 if (!Objects.equals(phone, blankToNull(existing.getPhone()))) { existing.setPhone(phone); changed = true; }
                 if (!Objects.equals(primaryContact, blankToNull(existing.getContactName()))) { existing.setContactName(primaryContact); changed = true; }
+                if (employerId > 0 && existing.getAltId() != employerId) { existing.setAltId(employerId); changed = true; }
 
                 if (changed) {
                     em.getTransaction().begin();
