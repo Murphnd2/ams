@@ -243,6 +243,7 @@
               <li><a class="dropdown-item" href="ProviderSetup"><i class="bi bi-plug me-2"></i>Import Providers</a></li>
               <li><a class="dropdown-item" href="InteractiveImport"><i class="bi bi-cloud-upload me-2"></i>Interactive Import</a></li>
               <li><a class="dropdown-item" href="ImportHistory"><i class="bi bi-clock-history me-2"></i>Import History</a></li>
+              <li><a class="dropdown-item" href="MonthlyBillingLauncher"><i class="bi bi-calculator me-2"></i>Monthly Billing</a></li>
 
               <%-- ── SETTINGS / ABOUT ── --%>
               <li><hr class="dropdown-divider"></li>

@@ -91,4 +91,5 @@ INSERT IGNORE INTO schema_version (version, description, script_name) VALUES
 ('V068', 'Host-header custom agency landing pages (agency.landing_host unique + landing_html)', 'V068__agency_landing_host.sql'),
 ('V069', 'Per-agency white-label email sending (agency.email_domain unique + email_verified)', 'V069__agency_email_sending.sql'),
 ('V070', 'Self-referential agency parent link (GA -> sub-agency hierarchy): agency.parent_agency_id + child index', 'V070__agency_parent.sql'),
-('V071', 'Per-agency public quote token (agency.quote_token unique) for RequestQuote sub-agency attribution', 'V071__agency_quote_token.sql');
+('V071', 'Per-agency public quote token (agency.quote_token unique) for RequestQuote sub-agency attribution', 'V071__agency_quote_token.sql'),
+('V072', 'Monthly billing run tracking: billing_run + billing_run_step', 'V072__monthly_billing_run_tracking.sql');

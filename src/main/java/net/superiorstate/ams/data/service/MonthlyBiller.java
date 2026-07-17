@@ -51,6 +51,62 @@ public class MonthlyBiller extends Biller {
         fillDualParticipantGrid();
     }
 
+    // SYNC-GUARD: frozen copy of the current-month billing-clear logic in ClearBilling25
+    // (the monthly-process fallback path). Copied here so the Monthly Billing Launcher's
+    // background worker can clear the current month off-request. Preserved from the twin:
+    // the current-month resolution + early-return guard, the exact FK-safe JPQL delete
+    // order, and the single atomic transaction. Intentional divergence: exceptions
+    // rollback-then-propagate (no request/response/forward), so the worker can mark the
+    // step FAILED. Keep in sync with ClearBilling25 until the launcher is proven in
+    // production, then unify and delete the duplicate.
+    // See DESIGN_monthly_billing_launcher.md section 9.
+    public void clearCurrentMonth() {
+        try {
+            int monthId = BillingHelper.resolveMonthId(em);
+            if (monthId == -1) return; // no billing month exists, nothing to clear
+
+            em.getTransaction().begin();
+
+            // Delete in FK-safe order: children first, then parent
+
+            // 1. BillingLink references BillingMonth
+            em.createQuery("DELETE FROM BillingLink bl WHERE bl.billingMonth.monthId = :mId")
+                    .setParameter("mId", monthId)
+                    .executeUpdate();
+
+            // 2. BillingGrid references BillingMonth
+            em.createQuery("DELETE FROM BillingGrid bg WHERE bg.billingMonth.monthId = :mId")
+                    .setParameter("mId", monthId)
+                    .executeUpdate();
+
+            // 3. BillingItem references BillingMonth
+            em.createQuery("DELETE FROM BillingItem bi WHERE bi.billingMonth.monthId = :mId")
+                    .setParameter("mId", monthId)
+                    .executeUpdate();
+
+            // 4. CoverageStatus by month date
+            em.createQuery("DELETE FROM CoverageStatus cs WHERE cs.monthFor = :mf")
+                    .setParameter("mf", BillingHelper.getMonthFor())
+                    .executeUpdate();
+
+            // 5. Coverage (staging table, no month FK — full clear)
+            em.createQuery("DELETE FROM Coverage").executeUpdate();
+
+            // 6. Enrollment2 (staging table — full clear)
+            em.createQuery("DELETE FROM Enrollment2").executeUpdate();
+
+            // 7. Now safe to delete BillingMonth
+            em.createQuery("DELETE FROM BillingMonth bm WHERE bm.monthId = :mId")
+                    .setParameter("mId", monthId)
+                    .executeUpdate();
+
+            em.getTransaction().commit();
+        } catch (Exception e) {
+            if (em.getTransaction().isActive()) em.getTransaction().rollback();
+            throw new RuntimeException(e);
+        }
+    }
+
     // ── Step 1: Set billing flags on employers ─────────────────────
 
     protected void setBillingFlags() {

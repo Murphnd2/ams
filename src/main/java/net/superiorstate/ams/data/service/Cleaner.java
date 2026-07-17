@@ -9,6 +9,27 @@ import java.util.List;
 
 public abstract class Cleaner {
 
+    // SYNC-GUARD: frozen copy of WipeTables25.TABLES (the monthly-process fallback path).
+    // The Monthly Billing Launcher's background worker wipes via this constant so it never
+    // depends on WipeTables25. Keep this list in sync with WipeTables25.TABLES until the
+    // launcher is proven in production, then unify and delete the duplicate.
+    // See DESIGN_monthly_billing_launcher.md section 9.
+    public static final List<String> MONTHLY_STAGING_TABLES = List.of(
+            "import1employer",
+            "import2employee",
+            "import3employeealt",
+            "import4benefitcdh",
+            "import5benefityear",
+            "import6enrollment",
+            "import7benefitpb",
+            "import8cobraqb",
+            "import9cobrapart",
+            "importacoverage",
+            "importbcobraterm",
+            "importbenefittier",
+            "hsaaccount"
+    );
+
     protected final EntityManager em;
 
     public Cleaner(EntityManager em) {

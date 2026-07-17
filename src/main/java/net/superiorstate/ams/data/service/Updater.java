@@ -31,6 +31,35 @@ public abstract class Updater {
             "Terminated", 0
     );
 
+    // SYNC-GUARD: frozen copy of the ordered Updater.* promotion sequence in
+    // UpdateTables25.process() (the monthly-process fallback path). Copied here so the
+    // Monthly Billing Launcher's background worker can run the promotion off-request.
+    // Intentional divergences from process(): (1) NO try/catch — exceptions propagate so
+    // the worker can mark the step FAILED; (2) the global.miniUpdate(em) and
+    // local.refreshRenewals(em) tail calls are NOT included (worker calls miniUpdate
+    // separately; renewal refresh is handled by the renewals_refreshed flag).
+    // Keep the promotion-call list in sync with UpdateTables25.process() until the launcher
+    // is proven in production, then unify and delete the duplicate.
+    // See DESIGN_monthly_billing_launcher.md section 9.
+    public static void runMonthlyPromotion(EntityManager em) {
+        processEmployerImportI1FastAddsActiveOnly(em);
+        processEmployerImportI1SelectiveUpdates(em);
+        processEmployeeAddsFromI2I3(em);
+        processEmployeeUpdatesFromI2Efficient(em);
+        reAssociateOrphanEmployees(em);
+        updateEmployeeActiveStatusQueryDriven(em);
+        makeEmployeesInactiveIfNotInI2OrI3(em);
+        updateEmployeeStatusFromCobraList(em);
+        updateEeCobraStatus(em);
+        ensurePrimaryContactEmployee(em);
+        mergeNegativeToPositiveEmployees(em);
+        processNewBenefitI4Fast(em, BillingHelper.SKIPPED_DIR);
+        processNewBenefitI7Fast(em, BillingHelper.SKIPPED_DIR);
+        syncBenefit(em);
+        processBenefitTiersFromI7Import(em);
+        processHsaErFromAccounts(em);
+        processHsaEeFromAccounts(em);
+    }
 
     public static void processEmployerImportI1FastAddsActiveOnly(EntityManager em) {
         System.out.println("Firing: I1 Fast");

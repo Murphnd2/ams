@@ -18,11 +18,14 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.sql.Date;
 import java.time.LocalDate;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 @WebListener
 public class EmfListener implements ServletContextListener, HttpSessionListener, HttpSessionAttributeListener {
 
     private InstallationHealthScheduler healthScheduler;
+    private ExecutorService billingExecutor;
 
     public EmfListener() {}
 
@@ -64,6 +67,15 @@ public class EmfListener implements ServletContextListener, HttpSessionListener,
                     AmsDataGlobal global = new AmsDataGlobal();
                     global.initializeGlobalData(em);
                     sce.getServletContext().setAttribute("global", global);
+
+                    // Monthly Billing Launcher background worker executor — runs on the
+                    // production PSP, deliberately NOT gated by AppConfig.isMaster().
+                    billingExecutor = Executors.newSingleThreadExecutor(r -> {
+                        Thread t = new Thread(r, "billing-pipeline-runner");
+                        t.setDaemon(true);
+                        return t;
+                    });
+                    sce.getServletContext().setAttribute("billingExecutor", billingExecutor);
 
                     // Refresh system type attributes — initializeGlobalData may have
                     // cached the authoritative SYSTEM_TYPE from the DB constant
@@ -124,6 +136,10 @@ public class EmfListener implements ServletContextListener, HttpSessionListener,
         // Stop health scheduler before closing EMF
         if (healthScheduler != null) {
             healthScheduler.stop();
+        }
+
+        if (billingExecutor != null) {
+            billingExecutor.shutdownNow();
         }
 
         EntityManagerFactory emf = (EntityManagerFactory) sce.getServletContext().getAttribute("emf");
