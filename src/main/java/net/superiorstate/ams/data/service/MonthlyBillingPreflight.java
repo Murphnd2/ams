@@ -10,6 +10,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Read-only pre-flight verification for the Monthly Billing Launcher. Given the
@@ -36,12 +37,7 @@ public abstract class MonthlyBillingPreflight {
         List<String> unrecognizedFiles = new ArrayList<>();
 
         for (Path file : folderFiles) {
-            Importer.TableMapping mapping;
-            try {
-                mapping = Importer.findMatchingTableMapping(file);
-            } catch (IOException e) {
-                mapping = null;
-            }
+            Importer.TableMapping mapping = matchMapping(file);
 
             if (mapping == null) {
                 unrecognizedFiles.add(file.getFileName().toString());
@@ -130,6 +126,39 @@ public abstract class MonthlyBillingPreflight {
     }
 
     // ── Helpers ──────────────────────────────────────────────────────
+
+    // SYNC-GUARD: mirrors the file↔mapping matching in
+    // Importer.importAllMatchingFilesInMappingOrder (the real import path) — override-aware
+    // and strongly normalized — so the pre-flight recognizes exactly the files the import will.
+    // Do NOT use Importer.findMatchingTableMapping here: it is override-blind and weakly
+    // normalized, which falsely reports override-carrying mappings (I1/I3/I8) as Missing.
+    // Keep in sync with importAllMatchingFilesInMappingOrder until the two are unified.
+    private static Importer.TableMapping matchMapping(Path file) {
+        String fileNameLower = file.getFileName().toString().toLowerCase();
+
+        for (Importer.TableMapping mapping : Importer.TABLE_MAPPINGS) {
+            if (mapping.requiresHeaders()) {
+                Set<String> fileHeaders = Importer.extractHeaders(file.toFile()).stream()
+                        .map(h -> h.trim().toLowerCase().replaceAll("[^a-z0-9]", ""))
+                        .collect(Collectors.toSet());
+
+                Set<String> expectedHeaders = mapping.columns().stream()
+                        .map(col -> mapping.headerOverrides().getOrDefault(col, col))
+                        .map(h -> h.trim().toLowerCase().replaceAll("[^a-z0-9]", ""))
+                        .collect(Collectors.toSet());
+
+                if (fileHeaders.containsAll(expectedHeaders)) {
+                    return mapping;
+                }
+            } else {
+                if (fileNameLower.startsWith(mapping.filePrefix().toLowerCase())) {
+                    return mapping;
+                }
+            }
+        }
+
+        return null;
+    }
 
     private static List<Path> listRelevantFiles(Path uploadDir) throws IOException {
         List<Path> result = new ArrayList<>();
