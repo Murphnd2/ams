@@ -1155,7 +1155,7 @@ The V068 host-header custom agency landing feature classifies each incoming requ
 ### D-77: Seed `SUMMIT_TPA_GUID` constant on already-initialized environments
 
 **Priority:** MEDIUM — Required for the `SummitEditEmployer` redirect to produce a working link
-**Status:** Pending (production insert not yet run)
+**Status:** Done — SUMMIT_TPA_GUID inserted on production (beta_ssa) 2026-07-17.
 
 `AmsDataGlobal.getSummitTpaGuid()` reads the `SUMMIT_TPA_GUID` constant. `getConstantValue()` catches `NoResultException` and returns `""` rather than throwing, so `AmsDataGlobal`'s hardcoded fallback is unreachable for the missing-row case — `getSummitTpaGuid()` currently resolves to `""` in production. The `SummitEditEmployer` redirect needs a real `tpaGuid` value in its outbound URL.
 
