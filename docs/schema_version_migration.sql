@@ -92,4 +92,5 @@ INSERT IGNORE INTO schema_version (version, description, script_name) VALUES
 ('V069', 'Per-agency white-label email sending (agency.email_domain unique + email_verified)', 'V069__agency_email_sending.sql'),
 ('V070', 'Self-referential agency parent link (GA -> sub-agency hierarchy): agency.parent_agency_id + child index', 'V070__agency_parent.sql'),
 ('V071', 'Per-agency public quote token (agency.quote_token unique) for RequestQuote sub-agency attribution', 'V071__agency_quote_token.sql'),
-('V072', 'Monthly billing run tracking: billing_run + billing_run_step', 'V072__monthly_billing_run_tracking.sql');
+('V072', 'Monthly billing run tracking: billing_run + billing_run_step', 'V072__monthly_billing_run_tracking.sql'),
+('V073', 'Widen billing_run.current_step to VARCHAR(255)', 'V073__widen_billing_run_current_step.sql');
