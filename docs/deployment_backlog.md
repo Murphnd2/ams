@@ -1149,3 +1149,27 @@ The V068 host-header custom agency landing feature classifies each incoming requ
 - Customer-owned domains (e.g. `admin.swbd.com`) — need Cloudflare for SaaS / custom hostnames (per-host certs). Separate epic; the application code is identical for both (it only reads `getServerName()`).
 
 **Applies to:** Production ⬜, Demo PSP ⬜, BPO ⬜, Master image ⬜
+
+---
+
+### D-77: Seed `SUMMIT_TPA_GUID` constant on already-initialized environments
+
+**Priority:** MEDIUM — Required for the `SummitEditEmployer` redirect to produce a working link
+**Status:** Pending (production insert not yet run)
+
+`AmsDataGlobal.getSummitTpaGuid()` reads the `SUMMIT_TPA_GUID` constant. `getConstantValue()` catches `NoResultException` and returns `""` rather than throwing, so `AmsDataGlobal`'s hardcoded fallback is unreachable for the missing-row case — `getSummitTpaGuid()` currently resolves to `""` in production. The `SummitEditEmployer` redirect needs a real `tpaGuid` value in its outbound URL.
+
+**Action** — run on production (`beta_ssa`) as a write-capable account (`ams_app`):
+```sql
+INSERT INTO constant (name, value)
+VALUES ('SUMMIT_TPA_GUID', '22bec8d2-cd1c-4795-aebe-fa3f60522b6d')
+ON DUPLICATE KEY UPDATE value = VALUES(value);
+```
+
+Also apply to demo / bpo / master only if the Summit EditEmployer redirect is used on that environment.
+
+**Verify:**
+```sql
+SELECT value FROM constant WHERE name='SUMMIT_TPA_GUID';
+```
+Should return the GUID.
