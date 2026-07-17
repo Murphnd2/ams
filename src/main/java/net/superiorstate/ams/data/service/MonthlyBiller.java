@@ -567,20 +567,26 @@ public class MonthlyBiller extends Biller {
                     .setParameter("mId", bm.getMonthId())
                     .getResultList();
 
+            // T27 de-N+1: pre-load existing BillingLink PKs for this month in ONE query, replacing the
+            // per-grid-row COUNT(bl). The PK (billingId) already encodes (month, employer) uniqueness as
+            // "fullDate-employerId", so a set-membership test on that string is exactly what a duplicate
+            // persist would collide on. Because grid rows are per-employee and many share one employer,
+            // the same key can recur within a run; using Set.add() as the guard both tests membership and
+            // records the new key in-memory, so a later grid row for the same employer is correctly skipped
+            // (this is what the per-row COUNT + AUTO-flush used to provide).
+            java.util.Set<String> existingLinkIds = new java.util.HashSet<>(em.createQuery(
+                            "SELECT bl.billingId FROM BillingLink bl WHERE bl.billingMonth.monthId = :mId", String.class)
+                    .setParameter("mId", bm.getMonthId())
+                    .getResultList());
+
             for (BillingGrid bg : grids) {
                 if (bg.getEmployer() == null) continue;
 
-                Long linkCount = em.createQuery("""
-                    SELECT COUNT(bl) FROM BillingLink bl
-                    WHERE bl.billingMonth.monthId = :mId AND bl.employer.id = :eId
-                    """, Long.class)
-                        .setParameter("mId", bm.getMonthId())
-                        .setParameter("eId", bg.getEmployer().getId())
-                        .getSingleResult();
+                String candidateId = bm.getFullDate() + "-" + bg.getEmployer().getId();
 
-                if (linkCount == 0) {
+                if (existingLinkIds.add(candidateId)) {
                     BillingLink bl = new BillingLink();
-                    bl.setBillingId(bm.getFullDate() + "-" + bg.getEmployer().getId());
+                    bl.setBillingId(candidateId);
                     bl.setBillingMonth(bm);
                     bl.setEmployer(bg.getEmployer());
                     bl.setUniqueId(UUID.randomUUID().toString());
