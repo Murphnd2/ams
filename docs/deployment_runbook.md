@@ -47,7 +47,7 @@ Before deploying any PSP, ensure:
    DB_PORT=3306
    DB_NAME=beta_ssa
    DB_USER=ams_app
-   DB_PASSWORD=ams_app_2026
+   DB_PASSWORD=<set per docs/runbooks/ams_app_credential_rotation.md>
    SAVE_PATH=/var/lib/tomcat10/data/
    LOG_PATH=/var/lib/tomcat10/logs/
    BRANDING_PATH=/var/lib/tomcat10/branding/
@@ -315,6 +315,13 @@ LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu mysql --socket=/var/run/mysqld/mysqld.
 ```
 
 **Password operations** (CREATE USER, ALTER USER) must be done in the **interactive MySQL shell**, not via the `-e` flag. Bash interprets special characters (`!`, `$`, `\`, `` ` ``) in passwords. Always enter the interactive shell and paste the password directly.
+
+**Rotating the `ams_app` password:** the user exists as TWO account rows (`'ams_app'@'localhost'` used by
+socket CLI, `'ams_app'@'127.0.0.1'` used by the Tomcat datasource over TCP) — **both must be rotated together**
+or Tomcat fails auth while manual socket tests still pass. The password must also match in
+`/etc/tomcat10/context.xml` and `/etc/tomcat10/ssa.properties`. Using an **alphanumeric-only** password lets
+you use the `-e` flag safely (it also avoids breaking the XML attribute and properties file, not just the
+shell). Full step-by-step procedure, character rules, and verification: `docs/runbooks/ams_app_credential_rotation.md`.
 
 ---
 
