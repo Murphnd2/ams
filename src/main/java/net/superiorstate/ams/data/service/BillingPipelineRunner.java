@@ -1,11 +1,18 @@
 package net.superiorstate.ams.data.service;
 
+import jakarta.persistence.Cache;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
 import net.superiorstate.ams.data.AmsDataGlobal;
 import net.superiorstate.ams.data.util.PathUtil;
+import net.superiorstate.ams.model.billing.BillingGrid;
+import net.superiorstate.ams.model.billing.BillingItem;
+import net.superiorstate.ams.model.billing.BillingLink;
 import net.superiorstate.ams.model.billing.BillingRun;
 import net.superiorstate.ams.model.billing.BillingRunStep;
+import net.superiorstate.ams.model.summit.archive.CoverageStatus;
+import net.superiorstate.ams.model.summit.temp.Coverage;
+import net.superiorstate.ams.model.summit.temp.Enrollment2;
 
 import java.nio.file.Path;
 
@@ -34,6 +41,10 @@ public class BillingPipelineRunner implements Runnable {
     public void run() {
         boolean full = BillingRun.MODE_FULL.equals(mode);
         try {
+            // Clear any prior (e.g. failed) run's billing-entity residue from the shared
+            // L2 cache before this run persists anything of its own — see evictBillingCaches().
+            evictBillingCaches();
+
             if (full) { if (!step(BillingRunStep.STEP_WIPE, this::doWipe)) return; }
             else BillingRunService.skipStep(emf, runId, BillingRunStep.STEP_WIPE);
 
@@ -72,6 +83,28 @@ public class BillingPipelineRunner implements Runnable {
 
     private static String describe(Throwable t) {
         return t.getClass().getSimpleName() + ": " + t.getMessage();
+    }
+
+    // ── L2 cache ─────────────────────────────────────────────────────
+
+    // SYNC-GUARD: EclipseLink caches every entity in the shared L2 cache by default (no
+    // <shared-cache-mode>, no @Cacheable anywhere in model/ — opt-out default = ON). Nothing
+    // in MonthlyBiller/Biller ever evicts it; em.clear() only clears the first-level (per-EM)
+    // cache. Left unchecked, a CREATE_BILLING run accumulates thousands of Coverage/
+    // Enrollment2/CoverageStatus/BillingGrid/BillingLink/BillingItem entities in shared
+    // memory, and a prior FAILED run's entities stay resident into the next run — the
+    // confirmed driver of the GC death-spiral OOM on a 1GB heap. MonthlyBiller/Biller/
+    // CreateBilling25 (the legacy path) are intentionally left untouched — this evicts from
+    // the worker side only, per-class (never evictAll() — corrupts EclipseLink descriptors).
+    private void evictBillingCaches() {
+        Cache cache = emf.getCache();
+        if (cache == null) return;
+        cache.evict(Coverage.class);
+        cache.evict(Enrollment2.class);
+        cache.evict(CoverageStatus.class);
+        cache.evict(BillingGrid.class);
+        cache.evict(BillingLink.class);
+        cache.evict(BillingItem.class);
     }
 
     // ── Step bodies ──────────────────────────────────────────────────
@@ -148,6 +181,8 @@ public class BillingPipelineRunner implements Runnable {
             em2.close();
         }
 
+        evictBillingCaches();
+
         return null;
     }
 
@@ -168,49 +203,64 @@ public class BillingPipelineRunner implements Runnable {
 
             BillingRunService.setCurrentStep(emf, runId, "CREATE_BILLING: Set billing flags (1/14)");
             biller.step_setBillingFlags();
+            evictBillingCaches();
 
             BillingRunService.setCurrentStep(emf, runId, "CREATE_BILLING: Create billing month (2/14)");
             biller.step_createBillingMonth();
+            evictBillingCaches();
 
             BillingRunService.setCurrentStep(emf, runId, "CREATE_BILLING: Clear billing enrollment table (3/14)");
             biller.step_clearBillingEnrollmentTable();
+            evictBillingCaches();
 
             BillingRunService.setCurrentStep(emf, runId, "CREATE_BILLING: Fill billing enrollment table (4/14)");
             biller.step_fillBillingEnrollmentTable();
+            evictBillingCaches();
 
             BillingRunService.setCurrentStep(emf, runId, "CREATE_BILLING: Clear billing coverage table (5/14)");
             biller.step_clearBillingCoverageTable();
+            evictBillingCaches();
 
             BillingRunService.setCurrentStep(emf, runId, "CREATE_BILLING: Clear coverage status for month (6/14)");
             biller.step_clearCoverageStatusForMonth();
+            evictBillingCaches();
 
             BillingRunService.setCurrentStep(emf, runId, "CREATE_BILLING: Fill billing coverage table (7/14)");
             biller.step_fillBillingCoverageTableAlt();
+            evictBillingCaches();
 
             BillingRunService.setCurrentStep(emf, runId, "CREATE_BILLING: Log coverage status CDH (8/14)");
             biller.step_logCoverageStatusCDH();
+            evictBillingCaches();
 
             BillingRunService.setCurrentStep(emf, runId, "CREATE_BILLING: Log coverage status PB (9/14)");
             biller.step_logCoverageStatusPB();
+            evictBillingCaches();
 
             BillingRunService.setCurrentStep(emf, runId, "CREATE_BILLING: Clear billing grid for month (10/14)");
             biller.step_clearBillingGridForMonth();
+            evictBillingCaches();
 
             BillingRunService.setCurrentStep(emf, runId, "CREATE_BILLING: Fill billing grid (11/14)");
             biller.step_fillBillingGrid();
+            evictBillingCaches();
 
             BillingRunService.setCurrentStep(emf, runId, "CREATE_BILLING: Fill HSA billing grid (12/14)");
             biller.step_fillHsaBillingGrid();
+            evictBillingCaches();
 
             BillingRunService.setCurrentStep(emf, runId, "CREATE_BILLING: Fill billing links (13/14)");
             biller.step_fillBillingLinks();
+            evictBillingCaches();
 
             BillingRunService.setCurrentStep(emf, runId, "CREATE_BILLING: Fill dual participant grid (14/14)");
             biller.step_fillDualParticipantGrid();
+            evictBillingCaches();
 
             return null;
         } finally {
             em.close();
+            evictBillingCaches();
         }
     }
 }

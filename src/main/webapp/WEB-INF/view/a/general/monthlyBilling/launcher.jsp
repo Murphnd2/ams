@@ -168,10 +168,11 @@
                     <i class="bi bi-play-fill me-1"></i>Run Monthly Billing
                 </button>
                 <c:if test="${not preflight.canLaunch}">
-                    <div class="text-muted mt-2" style="font-size: 0.82rem;">Resolve the items above to enable.</div>
+                    <div id="runHint" class="text-muted mt-2" style="font-size: 0.82rem;">Resolve the items above to enable.</div>
                 </c:if>
                 <div id="billingLauncherData"
                      data-plan-type-supplied="${preflight.planTypeSupplied}"
+                     data-can-launch="${preflight.canLaunch}"
                      data-latest-run-id="${latestRunId}"
                      data-latest-run-status="${latestRunStatus}"></div>
                 <div id="billingProgress" class="mt-3"></div>
@@ -188,9 +189,12 @@
   if (!data) return;
 
   const planTypeSupplied = data.dataset.planTypeSupplied === 'true';
+  const canLaunch = data.dataset.canLaunch === 'true';
   const runBtn = document.getElementById('runBillingBtn');
+  const runHint = document.getElementById('runHint');
   const progress = document.getElementById('billingProgress');
   let pollTimer = null;
+  let runActive = false;
 
   const STEP_LABELS = {
     WIPE: 'Wipe Staging Tables',
@@ -216,6 +220,7 @@
   }
 
   function launch(mode) {
+    runActive = true;
     setControlsDisabled(true);
     const body = 'mode=' + encodeURIComponent(mode) +
                  '&planTypeSupplied=' + (planTypeSupplied ? 'true' : 'false');
@@ -230,14 +235,20 @@
       } else if (res.status === 409 || res.status === 503) {
         const json = await res.json().catch(() => ({}));
         showMessage(json.error || 'Unable to start the run.', 'warning');
+        runActive = false;
         setControlsDisabled(false);
+        updateButtonState();
       } else {
         showMessage('Launch failed (HTTP ' + res.status + ').', 'danger');
+        runActive = false;
         setControlsDisabled(false);
+        updateButtonState();
       }
     }).catch(() => {
       showMessage('Network error starting the run.', 'danger');
+      runActive = false;
       setControlsDisabled(false);
+      updateButtonState();
     });
   }
 
@@ -254,7 +265,9 @@
         render(run);
         if (run.status === 'COMPLETED' || run.status === 'FAILED') {
           if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+          runActive = false;
           setControlsDisabled(false);
+          updateButtonState();
         }
       })
       .catch(() => { /* transient — keep polling; the run continues server-side */ });
@@ -336,6 +349,22 @@
     progress.innerHTML = '<div class="alert alert-' + esc(level) + '">' + esc(msg) + '</div>';
   }
 
+  // Mode-aware button state: FULL requires canLaunch (files present); BILLING_ONLY
+  // never touches the files, so it's always enabled; either mode stays disabled
+  // while a run is active.
+  function updateButtonState() {
+    const sel = document.querySelector('input[name="billingMode"]:checked');
+    const mode = sel ? sel.value : 'FULL';
+    if (runActive) { if (runBtn) runBtn.disabled = true; return; }
+    if (mode === 'BILLING_ONLY') {
+      if (runBtn) runBtn.disabled = false;
+      if (runHint) runHint.style.display = 'none';
+    } else {
+      if (runBtn) runBtn.disabled = !canLaunch;
+      if (runHint) runHint.style.display = canLaunch ? 'none' : '';
+    }
+  }
+
   if (runBtn) {
     runBtn.addEventListener('click', function () {
       const sel = document.querySelector('input[name="billingMode"]:checked');
@@ -343,13 +372,20 @@
     });
   }
 
+  document.querySelectorAll('input[name="billingMode"]').forEach(function (r) {
+    r.addEventListener('change', updateButtonState);
+  });
+
   // Resume-on-refresh: if a run is already in progress, pick up polling immediately.
   const latestId = data.dataset.latestRunId;
   const latestStatus = data.dataset.latestRunStatus;
   if (latestId && latestStatus === 'RUNNING') {
+    runActive = true;
     setControlsDisabled(true);
     startPolling(latestId);
   }
+
+  updateButtonState();
 })();
 </script>
 </body>

@@ -59,6 +59,7 @@ public class LaunchMonthlyBilling extends HttpServlet {
             return;
         }
 
+        BillingRunService.reapStaleRuns(emf, 30);
         if (BillingRunService.isRunActive(emf)) {
             writeError(response, HttpServletResponse.SC_CONFLICT,
                     "A billing run is already in progress.");

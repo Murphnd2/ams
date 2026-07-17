@@ -228,6 +228,42 @@ public abstract class BillingRunService {
         }
     }
 
+    // SYNC-GUARD: automated recovery for a worker that died hard (GC-starved / OOM / JVM
+    // restart) — its billing_run row stays RUNNING forever because the top-level failRun
+    // safety net in BillingPipelineRunner.run() can't fire from a dead thread. Left
+    // unreaped, isRunActive() would return true on every future launch attempt, 409-ing
+    // forever until someone hand-edits the row. 30 minutes is the threshold: billing runs
+    // complete in minutes even when slow, so this cannot plausibly reap a legitimately-
+    // running job, but reaps a truly-dead one promptly. Call from LaunchMonthlyBilling
+    // before the isRunActive() guard.
+    public static int reapStaleRuns(EntityManagerFactory emf, int thresholdMinutes) {
+        LocalDateTime cutoff = LocalDateTime.now().minusMinutes(thresholdMinutes);
+        EntityManager em = emf.createEntityManager();
+        try {
+            em.getTransaction().begin();
+
+            int updated = em.createQuery(
+                    "UPDATE BillingRun b SET b.status = :failed, b.completedAt = :now, b.errorText = :msg " +
+                    "WHERE b.status = :running AND b.startedAt < :cutoff")
+                    .setParameter("failed", BillingRun.STATUS_FAILED)
+                    .setParameter("now", LocalDateTime.now())
+                    .setParameter("msg", "Reaped: run exceeded " + thresholdMinutes
+                            + "-minute staleness threshold (worker presumed dead — e.g. JVM restart or OOM).")
+                    .setParameter("running", BillingRun.STATUS_RUNNING)
+                    .setParameter("cutoff", cutoff)
+                    .executeUpdate();
+
+            em.getTransaction().commit();
+            evict(emf);
+            return updated;
+        } catch (RuntimeException e) {
+            if (em.getTransaction().isActive()) em.getTransaction().rollback();
+            throw e;
+        } finally {
+            em.close();
+        }
+    }
+
     public static BillingRun findRun(EntityManagerFactory emf, long runId) {
         EntityManager em = emf.createEntityManager();
         try {
