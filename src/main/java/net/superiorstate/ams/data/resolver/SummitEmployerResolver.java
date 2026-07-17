@@ -20,7 +20,9 @@ public final class SummitEmployerResolver {
     /** @return the employer altId, or null if not applicable. */
     public static Integer resolveAltId(Activity activity) {
         Employer employer = resolveEmployer(activity);
-        return employer == null ? null : employer.getAltId();
+        if (employer == null) return null;
+        int altId = employer.getAltId();
+        return altId > 0 ? Integer.valueOf(altId) : null;
     }
 
     private static Employer resolveEmployer(Activity activity) {
