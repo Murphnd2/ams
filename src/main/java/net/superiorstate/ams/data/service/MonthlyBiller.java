@@ -549,8 +549,14 @@ public class MonthlyBiller extends Biller {
 
     @SuppressWarnings("unchecked")
     protected void fillBillingLinks() {
-        List<BillingMonth> months = em.createQuery(
-                "SELECT bm FROM BillingMonth bm ORDER BY bm.year, bm.month", BillingMonth.class).getResultList();
+        // T27: scope to the current billing month only. The prior unfiltered query iterated every
+        // BillingGrid row across all historical months (~195k on prod), which made a normal run look like
+        // a hang. Grid rows are per-month, so processing only the current month is the intended behavior
+        // and collapses the iteration count ~34x. Affects legacy CreateBilling25 (same method) — intended.
+        BillingMonth currentMonth = getBillingMonthByDate(BillingHelper.getMonthFor());
+        List<BillingMonth> months = (currentMonth == null)
+                ? java.util.Collections.emptyList()
+                : java.util.List.of(currentMonth);
 
         em.getTransaction().begin();
         int count = 0;
