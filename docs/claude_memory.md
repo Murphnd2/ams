@@ -9,6 +9,9 @@
 - **In-flight branch:** none — the agency-scope-resolver work merged to trunk 2026-07-15 (`e0a62d1`); branch deleted.
 - **Latest migration:** V071 (always re-check `ls docs/migrations/` — this line lags)
 - **Latest release:** v0.71.08 (2026-07-15) — Agent Pipeline sidebar-proposals fix (de-nested JOIN FETCH) + optional create-proposal hand-off. No migration (latest migration still V071).
+- **ICHRA-admin stream now active** (SWBD / zizzl displacement on the Sandoval group). **HealthSherpa**
+  EDE-API integration **under evaluation** — free ICHRA quote/enroll rails (supplier, not competitor);
+  its Policy Status API may unblock #38 (attestation). Read-only eval first; see `docs/business/healthsherpa.md`.
 - **Session count:** 88 numbered sessions logged in `session_history_archive.md`, plus one dated (unnumbered) entry — **July 15, 2026: Agent Pipeline sidebar proposals + create-proposal hand-off (v0.71.08)**. The agency/white-label epic (V068-V071, `AgencyScopeResolver`) below still spans several sessions that were never written up — that catch-up entry is still outstanding.
 - **Build tool:** Maven wrapper `./mvnw compile` (no system `mvn` on PATH)
 - Per-environment apply status is tracked authoritatively in `docs/analysis/migration_tracker.md`.

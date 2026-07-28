@@ -57,10 +57,21 @@ match. **Name/branding is deferred to Forrest** for final direction — fully re
   apply flow — sent as a link, not a static file), and (3) a **PremiumPath Quick-Start** walkthrough
   guide. Framed as "built, not just spec'd": Forrest given his own agent login (`fhuggins@swbdmg.com`,
   scoped to SWBD) to drive the live hub. Awaiting his response, including direction on the program name.
+- **2026-07-28 (ICHRA-admin thread)** — Call with Forrest re: quoting. Origin decoded: SWBD had been
+  quoting ICHRA for **Sandoval Process Solutions** (3 EEs, Hopkins TX, 9/1/26) through **zizzl health**,
+  which gated carriers (turned off Christus; wouldn't put Forrest's carriers on the quote) and charged a
+  ~$660/mo minimum admin fee. Forrest's unbundle logic: if he's doing the carrier legwork anyway, better
+  to administer elsewhere (SSA). Call also surfaced a **minor §125 opportunity** (details TBD). Forrest is
+  focused on integration and raised **HealthSherpa** ("Sherpa") — now under evaluation as the ICHRA
+  quote/enroll rail (see `healthsherpa.md`).
 
 ## Opportunity streams (Forrest's framing)
 
 1. **Larger TPA relationships** seeking ICHRA options for **under-25 / under-50 markets**.
+   - *Now concrete (2026-07-28):* the **ICHRA-admin / zizzl-displacement** angle. SSA's wedge is lean
+     small-group admin economics (vs. zizzl's ~$660/mo minimum) + carrier flexibility; the quoting piece
+     is solved by integrating a **CMS-approved EDE (HealthSherpa)** rather than a gated vendor — see
+     `healthsherpa.md`.
 2. **Small employers (<10 lives)** — per-head admin fees + **revenue share** to SWBD.
 
 Both parties want a **non-VC-backed, flexible, long-term** relationship with room to experiment.
@@ -111,6 +122,9 @@ GA→sub-agency hierarchy (V070/V071), open decision #39.
   own agents (kills the differentiator). A neutral rate *menu* is generally fine; steering is not; any
   enrollment-for-commission needs a licensed agent or a CMS-approved EDE partner. A neutral quoting
   convenience (e.g. a Sherpa-type API) is a **volume-gated maybe**, not a roadmap commitment.
+  **Update (2026-07-28):** HealthSherpa is the concrete "CMS-approved EDE / Sherpa-type API" this bullet
+  anticipated — integrating a **free** EDE API is a different calculus than building a rate engine from
+  scratch, so this moves from "don't build" to **"integrate, under evaluation"** (see `healthsherpa.md`).
 
 ## Compliance guardrails (this model)
 
@@ -157,6 +171,8 @@ supplemental into near-comprehensive coverage.
 - **Producing-agent count** — the opportunity-sizing question.
 - Decision on **carrier quoting / Sherpa** (volume-gated).
 - Develop the **stack-wrap** opportunity (above) as a later track.
+- **Minor §125 opportunity** surfaced on the 2026-07-28 call — details TBD from Kevin.
+- **HealthSherpa ICHRA integration** — read-only evaluation (see `healthsherpa.md`, backlog #42).
 
 ## Positioning, structure & liability (from brief v4)
 
