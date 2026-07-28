@@ -77,11 +77,48 @@ Docs: `docs.ichra.healthsherpa.com` (ICHRA Partner API), `one.healthsherpa.com` 
   Medium build; well-documented, API-first.
 - **Dependency** on HealthSherpa as rails (like the Summit dependency) — a conscious strategic bet.
 
+## Eval results (2026-07-28) — quoting proven at rate-parity with zizzl
+
+Ran a read-only quoting test via **HealthSherpa One** (the free self-serve developer tier) against the
+Sandoval group's market (Hopkins County, TX — ZIP 75482, FIPS 48223, age 40, plan year 2026).
+
+**Corrected API facts (the docs.ichra.* partner endpoint is a different, gated product):**
+- Base URL: **`https://api.one.healthsherpa.com`** · auth header `x-api-key`.
+- Quote endpoint: **`POST /v1/quotes`** with a **nested** body: `context` (product `aca`, `exchange`
+  = `on_exchange` | `off_exchange`, coverage_family/type `medical`, plan_year), `location`
+  (`zip_code`, `fips_code`, `state`), `household` (`household_size`, `effective_date`, `applicants[]`
+  with `member_id`, `age`, `relationship`, `uses_tobacco`), `sort`, `page`. One request per exchange.
+  Note field names: `fips_code` (not `fip_code`), `uses_tobacco` (not `smoker`); premiums come back as
+  **strings** under `pricing.gross_premium`; metal under `details.metal_level`; carrier under `issuer.name`.
+- Useful reference endpoints: `GET /v1/ping` (key check), `GET /v1/reference/counties?zip_code=`,
+  `GET /v1/reference/issuers?state=TX&plan_year=2026`.
+
+**Findings:**
+- **Forrest's gated carriers are freely quotable.** The TX issuer list and the Hopkins quote both return
+  **CHRISTUS Health Plan**, **Ambetter (Superior HealthPlan)**, and **Blue Cross and Blue Shield of TX** —
+  i.e. exactly the carriers zizzl gated ("turned off Christus"), with no vendor gate, on the free tier.
+- **Rate parity confirmed to the penny.** The zizzl CSA baseline — **BCBS Blue Advantage Silver HMO 306
+  @ $582.78** — is an **off-exchange** plan (it does not appear on-exchange for rating area 20), and the
+  off-exchange quote returned it at **exactly $582.78**. HealthSherpa is quoting the same source-of-truth
+  rate data zizzl was.
+- **Both exchanges quote freely** on the self-serve tier (on-ex: Christus/Ambetter/BCBS present; off-ex:
+  65 plans incl. the 306 baseline). Full plan detail returns (deductible, MOOP, SBC/formulary/brochure
+  URLs) — enough to assemble a CSA.
+- **Name-matching caveat:** BCBS plan names carry a `℠` service-mark glyph (`HMO℠ 306`), not `HMO SM 306`
+  — match on plan numbers, not the "SM".
+
+**Verdict:** At the **quoting** layer, HealthSherpa fully replaces what zizzl gated — Forrest's carriers,
+both exchanges, matching rates, free and un-gated. Open items are unchanged and both are the
+**rep conversation, not code**: (1) off-exchange **enrollment** approval — plans carry `api_enrollable`
+(the sample Christus plan was `false`), and direct off-ex enrollment is approval-gated; (2) **AOR/BAA** —
+agent-of-record is derived **server-side from the linked HealthSherpa agent account** (`agent_of_record`,
+`_agent_id`, `tpa_slug` are all rejected if caller-supplied), so how SWBD's agents map to that account is
+the attribution question to settle.
+
 ## Recommended next step (before any build)
 
 Read-only evaluation, **no AMS integration commitment yet**:
-1. Grab the free QuoteConnect key; sanity-test plans/rates for a TX county like **Hopkins** (Sandoval's) —
-   confirm sane output and off-exchange carrier coverage.
+1. ~~Quote sanity-test~~ **DONE 2026-07-28** — quoting proven at rate-parity (see Eval results above).
 2. Onboarding-rep conversation: **AOR attribution**, **BAA / PHI**, off-exchange carrier network,
    production-access requirements.
 3. Only then scope an AMS integration (a Phase-A read-only investigation).
