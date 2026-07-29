@@ -1,5 +1,15 @@
 # AMS Domain Knowledge — Pass 1
 
+> **⚠️ STALE SNAPSHOT.** Generated 2026-04-25 (Pass 1). Confirmed stale 2026-07-28 — this file still
+> claims the highest migration is V062; the actual highest is **V073**. Structural/package
+> information remains broadly useful; **any claim about migration numbers, current branch, or which
+> reference-data rows exist is unreliable.** Verify against `docs/analysis/migration_tracker.md`,
+> `docs/claude_memory.md`, live `DatabaseInitializer` code, or the database itself.
+>
+> See also the accuracy warning at the top of `docs/analysis/entity_reference.md` — several
+> "what data exists" claims in these inventory files trace to the same dead seeder
+> (`ReferenceDataSeeder.java`, unreachable via the commented-out `Main.java:35`).
+
 This document captures the **business domain** of AMS as it can be reconstructed from source code, JPA entities, controller subpackages, configuration, and `docs/`. Citations refer to files actually present in the working tree. Where a fact comes from a doc rather than code, the doc is named explicitly. Where the doc and the code disagree, the contradiction is logged in `AMS-OPEN-QUESTIONS.md` rather than reconciled here.
 
 ---

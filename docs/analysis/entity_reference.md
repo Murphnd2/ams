@@ -1,5 +1,36 @@
 # Entity Reference — SSA Web Application
 
+> ## ⚠️ ACCURACY WARNING — read before trusting any "what data exists" claim in this document
+>
+> **Verified 2026-07-28 (Phase A investigation).** Several claims in this document about *which
+> reference-data rows exist* were written from `ReferenceDataSeeder.java`, which is **dead code**:
+> its only entry point is `Main.java:35`, which is commented out, and `Main.java` is not wired into
+> the servlet container at all.
+>
+> The live seeding path is `DatabaseInitializer.initializeDataBase()`. Its **LOS-creation block is
+> itself commented out (lines 476-510)** — meaning no code path creates any `LOS` row in a fresh
+> install. LOS rows in live databases exist only via manual admin-UI entry and **cannot be verified
+> by static analysis**.
+>
+> **Specific claims in this document that are NOT substantiated by live code:**
+>
+> | Claim | Location | Reality |
+> |---|---|---|
+> | LOS IDs 5–19 incl. ICHRA, EBHRA, QSEHRA | LOS section | No live seeder creates these. The dead `ReferenceDataSeeder.fillLOS()` creates only POP/FSA/HRA/COBRA/HSA/TRANSIT — not the HRA variants. |
+> | CDH PlanTypes incl. ICHRA, EBHRA, DRiP, PRA | PlanType section | Live `DatabaseInitializer.java:437-452` seeds IDs 1-16 only (DCA, FSA, HRA, HSA, LFSA, MERP, PRK, TRN, Dental, EAP, Life, Medical, Pharmacy, Vision, NEFSA, LSA). ICHRA(1002)/EBHRA(1003)/DRiP(1004)/PRA(1001) exist **only in the dead seeder**. **No QSEHRA PlanType exists anywhere, live or dead.** |
+> | 20 seeded ApplicationSections | ApplicationSection section | `DatabaseInitializer.createApplicationSections()` exists but its only call site is commented out, and it creates 3 stub sections. |
+> | UserRole 6 = Pending Agent, 7 = Anonymous | UserRole section | **Never seeded anywhere.** Live seeding (`DatabaseInitializer.fillUserRoles`, lines 544-553) creates: 1=PSP User, 2=Agent, 3=Client, 4=Applicant, 5=PSP Admin, 8=Agency Admin, 9=PSP Super User, 102=BPO Admin, 103=BPO User. Role 101 is referenced in `AuthDAO`'s switch and `AuthenticateUser.getUsersByRole(em,101)` but is likewise never seeded. |
+> | `LOS.longText` field | LOS section | The actual field is `description`. |
+> | `TemplatePurpose` entity | Task template chain | **There is no Java class named `TemplatePurpose`.** The entity is `ServiceItem` (`model/activity/checklist/sequences/support/ServiceItem.java`), annotated `@Table(name="templatepurpose")`. The name survives only as the DB table name. The real chain is `ApplicationModule → ServiceItem → RequiredTaskList → TaskSequenceTable → Task`. |
+>
+> **Rule going forward:** treat this document as authoritative for *entity structure and
+> relationships*, and as **unverified** for *which rows exist in any database*. Confirm data claims
+> against live `DatabaseInitializer` code or by querying the target database directly.
+>
+> The same caution applies to `.claude/inventory/AMS-DOMAIN-KNOWLEDGE.md`, which repeats several of
+> these claims and is additionally a stale Pass-1 snapshot (generated 2026-04-25, still claims
+> highest migration V062).
+
 > **Last Updated:** February 21, 2026
 > **Package root:** `net.superiorstate.ams.model`
 > **Persistence:** EclipseLink JPA, `ssaPU`, MySQL `beta_ssa`

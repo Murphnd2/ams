@@ -7,16 +7,33 @@
 ## Current State
 - **Integration branch:** `refactor/modernize-architecture` — feature branches are cut from / merged back to it, so it trails the in-flight feature by only a few commits. `main` is ~345 commits stale and is **not** the working line.
 - **In-flight branch:** none — the agency-scope-resolver work merged to trunk 2026-07-15 (`e0a62d1`); branch deleted.
-- **Latest migration:** V071 (always re-check `ls docs/migrations/` — this line lags)
+- **Latest migration:** V073 (always re-check `ls docs/migrations/` — this line lags)
 - **Latest release:** v0.71.08 (2026-07-15) — Agent Pipeline sidebar-proposals fix (de-nested JOIN FETCH) + optional create-proposal hand-off. No migration (latest migration still V071).
-- **ICHRA-admin stream now active** (SWBD / zizzl displacement on the Sandoval group). **HealthSherpa**
-  EDE-API integration **under evaluation** — free ICHRA quote/enroll rails (supplier, not competitor);
-  its Policy Status API may unblock #38 (attestation). Read-only eval first; see `docs/business/healthsherpa.md`.
+- **ICHRA/QSEHRA admin stream active.** Origin: SWBD (Forrest) quoting ICHRA through zizzl, which gated
+  carriers and charged a ~$660/mo admin minimum — unbundle logic gives the admin to SSA. Target rail is
+  the **HealthSherpa ICHRA Partner API** (`docs.ichra.healthsherpa.com`) — **not** HSOne, and **not**
+  EDE; it is an **off-exchange** rail, free to use, purpose-built for ICHRA administrators.
+  **Evaluation only — no build approved.** Its **Policy Status webhook** would unblock #38
+  (attestation), but availability is **carrier-gated**: live for Ambetter/Cigna/Molina/Oscar/UHC
+  (metro TX covered), **not** for BCBS TX (2026) or CHRISTUS (unlisted) — so rural TX has no automated
+  coverage verification today. See `docs/business/healthsherpa.md` for the full evaluation, carrier
+  matrix, and open questions.
 - **Session count:** 88 numbered sessions logged in `session_history_archive.md`, plus one dated (unnumbered) entry — **July 15, 2026: Agent Pipeline sidebar proposals + create-proposal hand-off (v0.71.08)**. The agency/white-label epic (V068-V071, `AgencyScopeResolver`) below still spans several sessions that were never written up — that catch-up entry is still outstanding.
 - **Build tool:** Maven wrapper `./mvnw compile` (no system `mvn` on PATH)
 - Per-environment apply status is tracked authoritatively in `docs/analysis/migration_tracker.md`.
 - Master snapshot v9 taken 2026-03-20 (V057)
 - **Active epic (post-Session-88):** Agency / white-label / multi-agency hierarchy + access-scope hardening. Shipped in order: **V068** host-header agency landing pages → **V069** per-agency white-label email sending (`EmailIdentityResolver`, 4-tier sender identity) → white-label proposal/application wrapper + RequestQuote host-awareness → **V070** GA→sub-agency parent link (strict two-level hierarchy) → **V071** per-agency public quote tokens for RequestQuote attribution → agency manager-reassignment guards + PSP-staff gate on manual setup. **Landed (merged to trunk 2026-07-15, `e0a62d1`):** introduced `AgencyScopeResolver` (retired 4 duplicated agency resolvers), decoupled scope sets from the `primaryAgencyId` singleton, closed residual IDOR gaps via `canSeeDetail()` (Phases 1–2b), and routed `ViewProposal` agency/agent resolution through `OriginatingAgencyResolver`.
+
+> **Active workstream (2026-07-29):** ICHRA/QSEHRA administration on the HealthSherpa **ICHRA Partner
+> API** (`docs.ichra.healthsherpa.com` — **not** HSOne). Evaluation only; **no build approved.**
+> See `docs/business/healthsherpa.md` (API evaluation, carrier matrix, open questions),
+> `docs/business/ichra_administration_scope.md` (service scope and MEC/subsidy segmentation),
+> `docs/business/ichra_platform_capability_map.md` (offering model), and
+> `docs/analysis/phase_a_ichra_enrollment_portal.md` (AMS feasibility).
+>
+> **Also outstanding and unrelated to ICHRA:** `docs/analysis/security_findings_2026-07-28.md` —
+> FINDING 1 (`/CreateBpoTestUser`, unauthenticated account creation with a hard-coded password printed
+> in the response) should be remediated ahead of feature work. Tracked as **T29**.
 
 ## Key Patterns
 - **"25" suffix** = current/modern version of servlet or JSP. For model-layer adapter classes at `model/` root, three variants exist:
@@ -100,3 +117,97 @@ Static resources (`/images/`, `/css/`, `/js/`, `/fonts/`, etc.) are exempted bef
 | Deployment backlog | `docs/deployment_backlog.md` |
 | Entity data model | `docs/analysis/entity_reference.md` |
 | Servlet/endpoint map | `docs/analysis/application_flow.md` |
+
+---
+
+## Session 2026-07-28 — ICHRA / HealthSherpa (docs only, no code)
+
+**No code, schema, or SQL changes. Highest migration remains V073.**
+
+**Business:**
+- Off-exchange enrollment access **requested** via HealthSherpa developer portal.
+- **Marketplace account deliberately not linked** — linking binds a single agent profile and would
+  pre-answer the open AOR question in the wrong direction. See `docs/business/healthsherpa.md`.
+- Contact established: **KJ Sherman**, HealthSherpa Technical Product Team. Five written questions
+  sent; call offer deferred pending written answers. Questions logged in `healthsherpa.md`.
+- **Blocking answer:** whether `GET /v1/enrollments` surfaces lapse/termination/grace states or only
+  current status. Determines whether monthly attestation is automatable — and therefore whether the
+  economics work against zizzl.
+
+**Investigation:**
+- Phase A complete → `docs/analysis/phase_a_ichra_enrollment_portal.md`. **No Phase B approved.**
+- Security findings → `docs/analysis/security_findings_2026-07-28.md`. **FINDING 1
+  (`/CreateBpoTestUser`, unauthenticated account creation with hard-coded password) is unrelated to
+  ICHRA and should be remediated ahead of feature work.**
+- ICHRA service scope → `docs/business/ichra_administration_scope.md`.
+
+**Documentation accuracy — important for future sessions:**
+- `docs/analysis/entity_reference.md` contains data claims derived from **dead code**
+  (`ReferenceDataSeeder.java`; entry point `Main.java:35` commented out). **ICHRA/EBHRA/QSEHRA LOS
+  rows are not created by any live seeder**, and the live `DatabaseInitializer` LOS block is itself
+  commented out (476-510). An accuracy warning has been added to that file. **Read it before relying
+  on any "what data exists" claim.**
+- `.claude/inventory/*` files are stale Pass-1 snapshots (2026-04-25, claim V062). Warnings added.
+- `UserRole` 6 and 7 do not exist in seeding. Role 4 "Applicant" is seeded but **inert** — zero
+  readers, never assigned to any user.
+- There is **no `TemplatePurpose` Java class** — the entity is `ServiceItem`,
+  `@Table(name="templatepurpose")`.
+
+**Unresolved and blocking Phase B scoping:** whether any live database contains manually-entered
+ICHRA/EBHRA/QSEHRA `LOS`, `ServiceItem`, `PlanType`, or task-sequence rows. **Requires a direct
+database query — static analysis cannot answer it.**
+
+---
+
+## Session 2026-07-29 — HealthSherpa product correction (docs only, no code)
+
+**No code, schema, or SQL changes. Highest migration remains V073.**
+
+**The headline: the ICHRA Partner API (`docs.ichra.healthsherpa.com`) is a separate, more capable
+product from HSOne.** Confirmed by HealthSherpa's product owner for ICHRA/off-exchange. This
+**reinstates** a framing `docs/business/healthsherpa.md` had previously retracted — **the retraction
+was wrong.** Full correction appended to that file.
+
+**Resolved favorably:**
+- **AOR is per-application by NPN**, not fixed per key — the go/no-go question. `_agent_id` is
+  *required* on the deeplink (HSOne rejected it). Maps cleanly onto SWBD's downline, and means SSA is
+  structurally not competing with an agency's agents for the policy.
+- **Webhooks exist** — Submission Confirmation and Policy Status. The prior note said unconfirmed.
+- **`paid_through_date` and `grace_period_start_date`** are in the payload — the attestation primitive.
+- **Staging environments exist.** **Free to use**, no contract or pricing gate.
+- **QSEHRA is supported** on the off-exchange rail.
+
+**Resolved unfavorably:**
+- **Policy status is carrier-gated off-exchange.** BCBS TX ☑️ 2026, **CHRISTUS blank**, HCSC payment
+  webhook *In Progress*. **Rural Texas has no automated coverage verification today.** Metro Texas
+  does — Ambetter, Cigna, Molina, Oscar, and UHC all have it live.
+
+**Architecture change:** enrollment is **deeplink-out** — HealthSherpa collects the PHI, AMS sends
+prefill demographics only. **This substantially reduces the Phase A PHI problem.** The alternative path
+(EnrollConnect) reinstates it. Noted on `docs/analysis/phase_a_ichra_enrollment_portal.md`.
+
+**Unresolved, blocking design:** whether the deeplink supports **employee self-service** or assumes an
+**agent** completes it. Determines whether AMS builds an employee portal or an agent workstation.
+
+**On-exchange is worth pursuing** — status there is granted at **state level** (FFM states plus
+Georgia; Texas is FFM), not carrier by carrier, making it currently the *more* mature rail for coverage
+automation in Texas. Blocked on ⚖️ licensure (a counsel question — FFM web-broker rules; SSA holds no
+licensure or appointments) and on a Marketplace agent-account link SSA cannot satisfy. **Julian said
+"entirely off-exchange" but the docs describe on-exchange enrollment for FFM carriers — ask, do not
+infer.**
+
+**New docs this session:** `docs/business/ichra_platform_capability_map.md` (five-layer offering model
+for GAs and agents; **Layers 1 and 5 — sales/modeling tools and the GA console with its alert engine —
+are the defensible ones**). MEC/subsidy segmentation appended to
+`docs/business/ichra_administration_scope.md` — **off-exchange coverage is MEC, and subsidies only
+matter to the subsidy-eligible, so PremiumPath splits by population rather than failing outright.**
+
+**Contacts:** Julian Ferdman (product, ICHRA/off-ex), KJ Sherman (technical product), Michael Levin
+(role unknown, CC'd without introduction). **No onboarding rep assigned — this blocks staging
+credentials and the webhook configuration form.**
+
+**Still unaddressed by anyone: the BAA.** Counterparty Geozoning, Inc. DBA HealthSherpa.
+
+**Useful for future Claude Code work:** the ICHRA docs expose `GET <page>.md?ask=<question>` for
+dynamic querying, a full index at `/llms.txt`, and an MCP integration at
+`/getting-started/ai-agents-and-mcp`.

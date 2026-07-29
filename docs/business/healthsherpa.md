@@ -355,3 +355,338 @@ Read-only evaluation, **no AMS integration commitment yet**:
 - `docs/analysis/domain_and_compliance_rules.md` §3 — PHI / HIPAA tiering.
 - `docs/business/datapath.md` — parallel integration-partner pattern.
 - Contract: `https://one.healthsherpa.com/openapi.json` · Docs: `https://one.healthsherpa.com/docs.html`
+
+---
+
+# 2026-07-29 — PRODUCT CORRECTION: the ICHRA Partner API is a separate product
+
+> **This section supersedes earlier conclusions in this document.** Superseded text is retained above
+> deliberately. The framing reversed twice; the trail is worth keeping.
+
+## What was wrong
+
+This document previously recorded that the "`docs.ichra.*` is a different product" framing was
+mistaken, and retracted it — concluding there was **one** API surface (`api.one.healthsherpa.com`)
+with per-workflow account approval as the only gate.
+
+**That retraction was wrong.** Confirmed 2026-07-29 by **Julian Ferdman**, who oversees product
+management for ICHRA and off-exchange at HealthSherpa, and by **KJ Sherman** (technical product team),
+whose framing was: *"For HSOne we leverage simplified versions of the ICHRA APIs. For your use case,
+integrating with those will provide a much better experience."*
+
+There are two products. HSOne exposes a simplified subset. **The dedicated ICHRA Partner API is the
+correct target for SSA's use case.**
+
+## The correct product
+
+**Docs:** `https://docs.ichra.healthsherpa.com/`
+**Full doc index:** `https://docs.ichra.healthsherpa.com/llms.txt`
+**Per-page markdown:** append `.md` to any page URL.
+**Documentation query endpoint:** `GET <page-url>.md?ask=<natural-language-question>` — returns a
+direct answer with sourced excerpts. Useful for Claude Code work; there is also an MCP integration
+documented at `/getting-started/ai-agents-and-mcp`.
+
+**Positioning (HealthSherpa's own):** the ICHRA Partner API is built for ICHRA
+platforms/administrators to power quoting, enrollment, payment, member management, and policy updates.
+40+ ICHRA platforms are on it. **Free to use** — confirmed directly by Julian, no contract or pricing
+gate.
+
+**Environments:**
+
+| | URL |
+|---|---|
+| Quoting/APTC staging | `https://api.ichra-staging.healthsherpa.com` |
+| Quoting/APTC production | `https://api.ichra.healthsherpa.com` |
+| Deeplink staging | `https://staging.healthsherpa.com` |
+| Deeplink production | `https://www.healthsherpa.com` |
+
+Staging deeplink requires **Basic Auth credentials from an onboarding representative**. Production
+deeplink: API key optional but recommended — passing it auto-whitelists any valid `_agent_id` in the
+request.
+
+## Corrections to specific prior conclusions
+
+### 1. Webhooks EXIST — prior note said "UNCONFIRMED, don't plan around them"
+
+**Two webhook APIs**, sharing a schema, independently subscribable:
+
+- **Submission Confirmation** — fires when an application is submitted through HealthSherpa.
+- **Policy Status** — fires when a policy is effectuated, cancelled (never took effect), or terminated
+  (ended after being in force).
+
+`event_type` is `submission` or `sync`. `policy_status` values: `pending_effectuation`, `effectuated`,
+`cancelled`, `terminated`, plus `unknown` and `blank` (on-exchange only).
+
+**Not enabled by default.** Setup is a manual, coordinated step: send webhook URL, chosen
+authentication method, exchange scope (on/off/both), which webhooks, and environment (sandbox or
+production) to an account manager or implementation specialist, who provides a form. They confirm when
+the webhook is live in staging for testing.
+
+**Architectural consequence:** this is inbound **push**, not polling. AMS needs a public authenticated
+HTTPS endpoint. The existing `/api/*` prefix with `ApiTokenFilter` is the natural home.
+
+### 2. The attestation primitive exists in the payload
+
+The Policy Status payload carries a per-policy `payment` object:
+
+`payment_status`, `payment_status_updated_date`, **`grace_period_start_date`**,
+**`paid_through_date`**, `past_due_member_responsibility_balance_due`,
+`current_member_responsibility_balance_due`, `autopay_indicator`.
+
+**`paid_through_date` is exactly what the monthly reimbursement obligation needs** — not "is this
+person currently active" but "coverage was in force through this date," which is a defensible record
+for releasing a given month's reimbursement.
+
+Also in the payload: `external_id` (SSA's correlation key), `application_id`, `transaction_id`,
+`issuer_hios_id`, `members[]` (with `member_id`, `effective_date`, `removed_date` — so dependents are
+tracked individually), and `policies[]` with `effective_date`, `expiration_date`, `status`,
+`plan_hios_id`, `gross_premium`.
+
+**⚠️ Availability is carrier-gated. See the carrier matrix below — this is where it breaks for rural
+Texas.**
+
+### 3. AOR is per-application, by NPN — the go/no-go question resolved favorably
+
+Julian, directly: *"Each application can have it's own agent AOR attribution, and if they have
+HealthSherpa accounts you can actually assign the enrollment to their individual HealthSherpa
+account if you want."*
+
+Mechanically confirmed in the docs:
+
+- The Application Deeplink **requires `_agent_id`** — the opposite of HSOne, which rejected
+  caller-supplied `_agent_id`. Passing an API key auto-whitelists any valid `_agent_id`.
+- The webhook payload carries three distinct NPN fields — `policy_aor_npn`, `submitter_npn`,
+  `npn_used_at_submission` — plus a per-policy `agent_of_record` object (NPN, name, state license
+  number, email).
+
+**AOR travels per application, keyed on NPN. It is not fixed per API key.** This maps cleanly onto
+SWBD's downline and resolves the question that could have killed the design. It also means SSA is
+structurally *not* competing with an agency's agents for the policy.
+
+### 4. QSEHRA is supported on this rail — but only off-exchange
+
+Julian: *"These APIs are labeled as ICHRA, but they are really for all off-exchange enrollments,
+including QSEHRA. That said, it is entirely off-exchange."*
+
+See the MEC/subsidy segmentation section in `docs/business/ichra_administration_scope.md` for what
+this does and does not mean for PremiumPath. **Short version: it serves the non-subsidy-eligible
+population fully, and does not serve the subsidy-eligible population at all.**
+
+### 5. Enrollment architecture — two paths, with opposite PHI consequences
+
+**This is the most consequential finding for the AMS build.**
+
+| | Deeplink (`POST /ichra/off_ex`) | EnrollConnect API |
+|---|---|---|
+| Model | Returns HTTP 302 with `Location`; SSA redirects the browser. Applicant completes the application **on HealthSherpa**. | SSA collects everything and submits via API. |
+| PHI | **HealthSherpa collects SSN, immigration status, incarceration status, attestations.** SSA transmits prefill demographics only. | **SSA collects and stores all of it**, including carrier-specific attestation content returned via `include=enrollment_requirements`, passed back in the `attestations`/`signatures` objects. |
+| Availability | Live for every carrier in the matrix. | Per-carrier; state exclusions NJ and NY only. |
+
+**The deeplink path substantially dissolves the hardest problem identified in Phase A** — the
+authenticated PHI-bearing employee portal. It shrinks the BAA surface to prefill demographics plus
+inbound webhook member/policy data.
+
+**Do not treat the choice as a detail.** EnrollConnect reintroduces the entire PHI-collection problem,
+including presenting carrier attestation text and capturing electronic signature consent.
+
+**Unresolved:** whether the deeplink supports **employee self-service** or assumes an **agent**
+completes it on the employee's behalf. The Use Cases documentation describes *"redirect agents to
+complete each employee's enrollment."* This determines whether AMS builds an employee portal or an
+agent workstation. **Asked, not yet answered.**
+
+## Carrier support matrix — off-exchange
+
+Source: `docs.ichra.healthsherpa.com/integration-guide/supported-carriers`, last updated 2026-05-19.
+✅ = live, ☑️ = coming in 2026, blank = not listed.
+
+**Hopkins County TX (the carriers actually available there):**
+
+| | BCBS TX | CHRISTUS | UHC |
+|---|---|---|---|
+| QuoteConnect | ✅ | ✅ | ✅ |
+| Deeplink enrollment | ✅ | ✅ | ✅ |
+| EnrollConnect API | ☑️ 2026 | ✅ | ✅ |
+| Submission confirmation | ✅ | ✅ | ✅ |
+| **Policy status updates** | **☑️ 2026** | **blank** | ✅ |
+
+Payment webhook table: **HCSC** (the Blue Cross entity covering IL/MT/NM/OK/**TX**) is *In Progress*
+for both markets. **CHRISTUS Health Plan is live on-exchange only.**
+
+**Consequence for a rural Texas group:** enrollment works today; **automated coverage verification
+does not.** Attestation falls back to manual — the exact labor that forces competitors into per-group
+minimums.
+
+**Consequence for metro Texas:** Ambetter, Cigna, Molina, Oscar, and UHC are all in Texas and all have
+Policy Status live. **The automated model works in metro Texas today.** Hopkins County is a worst case,
+not a representative one — do not scope the platform against the thinnest rural county.
+
+Also corrected: an older cached version of the carriers page listed EnrollConnect state exclusions as
+"NJ, CO, UT, NY and TX." **The live page lists only NJ and NY.** Texas is not excluded.
+
+## On-exchange — worth pursuing, and for a non-obvious reason
+
+Off-exchange policy status is granted **carrier by carrier** (hence BCBS TX at 2026 and CHRISTUS
+blank). On-exchange, the docs state submission confirmation and policy status are supported **for FFM
+states plus Georgia** — a **state-level** grant. **Texas is an FFM state.**
+
+**So the automation gap that breaks rural Texas off-exchange does not exist on-exchange in Texas.** The
+payment webhook table points the same way: CHRISTUS is live on-exchange, absent off-exchange.
+Counterintuitively, **on-exchange is currently the more mature rail for coverage-status automation in
+Texas.**
+
+On-exchange is also the only path for the subsidy-eligible population — which is PremiumPath's entire
+premise, and also covers ICHRA employees whose offer is unaffordable and who opt out for a credit.
+
+**Two blockers, neither technical:**
+
+1. ⚖️ **Licensure.** On-exchange enrollment assistance is regulated; FFM web-broker rules govern who
+   may present plans and assist enrollment, with registration, training, and agreement requirements.
+   SSA holds no licensure and no carrier appointments. Consumer self-enrollment and agent-assisted
+   models both exist, but **this is a counsel question, not a HealthSherpa question**, and it must be
+   answered before building.
+2. **The on-exchange access request is gated behind linking a HealthSherpa Marketplace agent account,
+   which SSA does not have.** The request cannot be submitted. So the live question is not "should we
+   request access" but **"what is the account model for an administrator without agent licensure."**
+
+**Contradiction to resolve:** Julian said these APIs are *"entirely off-exchange."* The docs describe
+on-exchange quoting **and** enrollment for FFM carriers, on-exchange webhook subscription options,
+on-exchange-only `policy_status` values, and an on-exchange webhook payload example. Either he meant
+the enrollment path he was steering toward, or on-exchange sits behind a separate permission. **Ask;
+do not infer.**
+
+## Contacts
+
+| Name | Role | Email |
+|---|---|---|
+| Julian Ferdman | Product management, ICHRA and off-exchange | `julian.ferdman@healthsherpa.com` |
+| KJ Sherman | Technical product team | `kj.sherman@healthsherpa.com` |
+| Michael Levin | **Unknown** — CC'd 2026-07-29 without introduction | `michael.levin@healthsherpa.com` |
+
+**No onboarding representative or account manager has been assigned.** The docs route staging
+credentials and the webhook configuration form through that person. **Nothing is testable until one is
+assigned.** Asked, not yet answered.
+
+## Status of the HSOne work
+
+The HSOne evaluation remains **accurate about HSOne** and largely **irrelevant** if the ICHRA Partner
+API is the target. Specifically: the `api_enrollable` semantics, the 42-of-65 Hopkins enrollability
+count, the `POST /v1/enrollments` payload shape, and the `employer_external_id` + `updated_since`
+polling design all describe HSOne, not this product.
+
+**The HSOne off-exchange portal access request submitted 2026-07-28 was left in place deliberately** —
+it costs nothing and remains a fallback.
+
+## Open items — 2026-07-29
+
+1. **BCBS TX policy status: when in 2026?** This single date largely determines whether SSA builds for
+   a 2026 or 2027 launch.
+2. **CHRISTUS policy status: planned at all?** (Cell is blank, not ☑️.)
+3. **HCSC payment webhook timing** (currently *In Progress*).
+4. **Deeplink: employee self-service, or agent-completed?**
+5. **Deeplink vs EnrollConnect** — which does HealthSherpa steer a TPA toward, given the PHI tradeoff?
+6. **Onboarding contact assignment** — blocks staging credentials and the webhook form.
+7. **BAA path** — unaddressed by anyone so far. Counterparty: Geozoning, Inc. DBA HealthSherpa.
+8. **On-exchange account model** for an unlicensed administrator; and the off-ex/on-ex contradiction.
+
+Items 1–7 sent to Julian 2026-07-29 (item 8 to be added before sending).
+
+---
+
+## Outreach log
+
+> **Note added 2026-07-29:** this log records the **HSOne-era** evaluation. The product correction
+> section above it (dated 2026-07-29) supersedes the interaction model and API-surface conclusions
+> here. The outreach record itself — what was submitted, what was asked, and the Marketplace-link
+> decision — remains accurate.
+
+### 2026-07-28 — Off-exchange enrollment access requested
+
+**Submitted** the off-exchange enrollment workflow access request via the developer portal.
+
+**Marketplace account deliberately NOT linked.** The portal offers two independent requests;
+on-exchange is gated behind linking a HealthSherpa Marketplace account, off-exchange is not. The
+linking copy reads: *"connect your agent profile, so access is tied to the right account"* —
+**singular agent profile**. Linking would answer the open AOR/attribution question by default, in the
+direction SSA does not want, and SSA holds no agent licensure of its own. **Decision: ask first, link
+only if the answer supports it.** Nothing needed for an off-exchange ICHRA group sits behind that
+link.
+
+**Request text submitted (~105 words):**
+
+> Superior State Administrators is a third-party administrator providing administrative services to
+> employer-sponsored ICHRA plans. We're already using the quoting API and want to add enrollment.
+>
+> Workflow: employees shop plans in our portal, we create and submit off-exchange ICHRA applications,
+> upload SEP documentation, and hand off to carrier payment. We then poll enrollment status by
+> employer to verify coverage monthly, which is what our reimbursement obligation runs on.
+>
+> Users: our staff, plus employees of our employer clients enrolling through our portal.
+>
+> To launch: off-exchange enrollment access, clarity on the TPA account and attribution model, and a
+> BAA — the application payload carries PHI.
+
+**QSEHRA deliberately omitted** from the request: off-exchange `POST /v1/enrollments` accepts
+`product=ichra` only. QSEHRA participants generally belong on-exchange to preserve the premium tax
+credit, which is the whole design premise of PremiumPath. Naming QSEHRA in an off-exchange request
+would confuse the reviewer or secure approval for something that does not exist.
+
+### 2026-07-28 — Contact established: KJ Sherman
+
+**KJ Sherman**, HealthSherpa Technical Product Team, `kj.sherman@healthsherpa.com`. Sent a signup
+welcome email confirming quoting is self-serve and that enrollment APIs require the portal request
+(so the email does **not** substitute for the request). Offered to answer questions or take a call.
+
+**Response sent — written questions, call declined for now.** Rationale: written answers on record
+before committing engineering time, rather than improvising in a live conversation. Call offer kept
+open.
+
+**Questions pending answers — update this section when they arrive:**
+
+1. **Account and attribution model.** Does the TPA account model support multiple linked agents with
+   per-application attribution, or is agent of record fixed per key? *(The go/no-go question — maps
+   onto nothing in the GA/sub-agency model, V070/V071.)*
+2. **Status data.** Sample `GET /v1/enrollments` response for an off-exchange ICHRA enrollment —
+   specifically whether it surfaces lapse, termination, and grace-period states, or only current
+   status. *(The single most important answer: it determines whether attestation is automatable or
+   whether a human chases coverage confirmations monthly — which is the labor that forces
+   competitors into high minimums.)*
+3. **Webhooks.** Absent from `openapi.json` and current docs. Do they exist, or is polling the
+   intended mechanism?
+4. **Test environment.** Is there a sandbox for enrollment workflows, or would the first real
+   `POST /v1/enrollments` necessarily create a live policy?
+5. **QSEHRA.** Off-exchange appears ICHRA-only. Is on-exchange the only route for QSEHRA participants?
+
+**BAA** flagged in both the request and the email as a launch requirement. Counterparty: Geozoning,
+Inc. DBA HealthSherpa.
+
+### Still self-answerable without approval
+
+**Quoting is free and live** — every question about the shopping experience is testable today with the
+existing key. Highest-value untested item: **whether plan objects include provider networks, drug
+formularies, and benefit summaries.** If they do not, the shopping UI is a price list with phone
+calls behind it. Test with a real Hopkins County household including dependents.
+
+## Interaction model (as understood 2026-07-28)
+
+**Per employer at setup:** N affordability quotes, one per employee (lowest-cost silver plan for age
+and rating area).
+
+**Per employee at enrollment:** 1+ shopping quotes (repeat on household or filter change) → `POST
+/v1/enrollments` → `/submissions` → `/supporting_documentation` → **`/payment_redirect`, which sends
+the member off SSA's site to the carrier's own browser payment form.**
+
+**Per employer ongoing:** one `GET /v1/enrollments` poll per cycle, `employer_external_id` +
+`updated_since` — a single call covering everyone. **The cheapest and highest-value call in the whole
+integration.**
+
+### Two corrections worth keeping visible
+
+1. **Quoting is per-household, not per-employer.** The census cannot produce plan lists: dependents,
+   dependent DOBs, and tobacco status are not census fields and are collected at enrollment.
+   **The census gates who may enroll; it does not produce the plan list.**
+2. **Enrollment cannot be fully headless.** Carrier payment is a browser form. SSA's flow ends by
+   handing the member off, and members will complete the flow and never pay. A return path, status
+   page, and chase process are required, and `GET /v1/enrollments` is the only way to know who fell
+   off. **There is no carrier feed — SSA has no carrier relationship. All post-enrollment visibility
+   depends on HealthSherpa's status data**, which makes question 2 above load-bearing for the entire
+   design.
