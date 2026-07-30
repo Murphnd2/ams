@@ -37,7 +37,7 @@ ams/
 │   └── persistence-server.xml  (JTA, JNDI lookup)
 ├── src/main/webapp/            (JSPs, static assets, CKEditor 5 via CDN,
 │                                outlook/, WEB-INF/web.xml, WEB-INF/tags/)
-├── docs/                       (design docs and references — see AMS-DOCS-INDEX.md)
+├── docs/                       (design docs and references)
 ├── docs/migrations/            (V025-V0XX schema migrations)
 ├── docs/analysis/              (migration_tracker.md, project_backlog.md, etc.)
 ├── demo/                       (CSV/HTML test data — not loaded by Java)
@@ -51,14 +51,14 @@ ams/
 - **Trunk:** `refactor/modernize-architecture` — the working mainline **and the GitHub default branch**. Most work is committed **directly** here. (`main` is retired: fully merged, ~345 commits behind, kept only for history.)
 - **Feature branches are situational** — spun off only when a safe fallback point is needed (e.g., risky work tested on production before a demo), then folded back to trunk. **No feature branch is currently in flight** — the agency access-scope / IDOR-hardening work (`AgencyScopeResolver`) merged to trunk 2026-07-15 (`e0a62d1`) and its branch was deleted. Always verify live branches with `git branch -a`.
 - **Latest migration in tree:** **V073** (`docs/migrations/V073__widen_billing_run_current_step.sql`). Always re-check `ls docs/migrations/` directly — versions move quickly. The authoritative tracker is `docs/analysis/migration_tracker.md`.
-- **Per-installation migration state** (Production / Master / Demo / BPO) is tracked in `MEMORY.md`, not here.
+- **Per-installation migration state** (Production / Master / Demo / BPO) is tracked in `docs/claude_memory.md`, not here.
 
 ## How to run things locally
 
 - **Compile:** `./mvnw compile` (PowerShell: `.\mvnw.cmd compile`)
 - **Build WAR:** `./mvnw -P local clean package` for local dev, or `./mvnw -P server clean package` for deployment artifacts.
 - **Local DB:** MySQL on `127.0.0.1:3306`, schema `beta_ssa`. Credentials live in `src/main/resources/META-INF/persistence-local.xml` (literal credentials in a tracked file — Open Question #15).
-- **Deploy locally:** typically run via IntelliJ Tomcat run-config; relaunch options documented in `MEMORY.md` ("IntelliJ Relaunch Options").
+- **Deploy locally:** typically run via IntelliJ Tomcat run-config; relaunch options documented in `docs/claude_memory.md` ("IntelliJ Relaunch Options").
 
 ### Migration discipline
 
@@ -72,6 +72,22 @@ Schema changes follow versioned migration conventions:
 No ad-hoc DDL — every schema change must be a versioned script. See an existing script under `docs/migrations/` as a template.
 - `docs/importscript/` — baseline DDL snapshots (`beta_ssa_dev_baseline_thru_V024.sql`, `beta_ssa_baseline_v031.sql`); used to reset a dev database to a known version.
 
+### Releases
+
+Releases are created by hand in the GitHub Releases web UI (github.com/Murphnd2/ams/releases) — the tag (`v0.NN.PP`) is **typed there**, not pushed from local git, and attaches to `refactor/modernize-architecture` HEAD. Never create or push a release tag from local git — it conflicts with the web-created tag. Full step-by-step procedure: `docs/deployment_strategy.md` §10.2.
+
+⚠️ **Local `git tag` is stale by design and is not evidence of the current release.** Your local clone only has the tags you've explicitly fetched; a web-UI-created tag doesn't show up until you fetch it. To check the actual current release, run `git fetch --tags` first, or read the GitHub Releases page directly — do not infer "latest release" from a local `git tag` listing.
+
+### Keeping state docs current
+
+At the end of any session that lands a migration or a notable feature:
+
+1. Update `docs/claude_memory.md`'s Current State block (branch, latest migration, active epic) and add a dated/Recent-Sessions entry.
+2. Update `docs/analysis/migration_tracker.md` — add the new version row **and** flip the per-environment status once (and only once) that environment has actually received it. Backfilling production status is not optional or automatic: a version marked unapplied at authoring time and never revisited after it actually shipped is exactly what let the tracker's Production column drift for months (reconciled 2026-07-30). Do this as part of landing the deploy, not as a follow-up.
+3. Commit those doc updates together with the feature/migration that motivated them.
+
+(Folded in from `docs/project_knowledge_sync.md`'s per-session sync ritual — archived 2026-07-30 to `docs/analysis/archive/project_knowledge_sync.md`; it had zero inbound references and was itself stale by exactly the drift it existed to prevent.)
+
 ## Production environment (summary)
 
 - **VPS:** IONOS Cloud, Ubuntu 24.04, four hosts: `ssa-production`, `ssa-demo`, `ssa-bpo`, `ssa-master`.
@@ -82,14 +98,14 @@ No ad-hoc DDL — every schema change must be a versioned script. See an existin
 
 ## Where deeper context lives
 
-- **`MEMORY.md`** — operational gotchas (EclipseLink L2 cache, nested JOIN FETCH, EM-open-during-forward), role IDs, key entity quirks, recent session log.
-- **`.claude/inventory/`** — the full audit pass:
+- **`docs/claude_memory.md`** — operational gotchas (EclipseLink L2 cache, nested JOIN FETCH, EM-open-during-forward), role IDs, key entity quirks, recent session log. The single authoritative current-state document (see "Current development context" above).
+- **`.claude/inventory/`** — the Pass-1 audit (2026-04-25), of varying currency:
   - `AMS-INVENTORY.md` — factual file/package map
   - `AMS-DOMAIN-KNOWLEDGE.md` — business-domain map
   - `AMS-TECHNICAL-ARCHITECTURE.md` — stack and architecture
-  - `AMS-DOCS-INDEX.md` — every `docs/` file tagged current/historical/superseded
-  - `AMS-OPEN-QUESTIONS.md` — 30 unresolved items (referenced below as "Open Question #N")
   - `AMS-CLAUDE-ASSETS.md` — `.claude/` contents
+  - `docs/analysis/archive/AMS-OPEN-QUESTIONS.md` — 30 items, all resolved (referenced below as "Open Question #N"); archived 2026-07-30, retained for provenance
+  - `docs/analysis/archive/AMS-DOCS-INDEX.md` — archived 2026-07-30 (it had gone stale on the exact thing it existed to track — current-vs-archived doc state — and was never corrected; do not treat it as a live index)
 - **`docs/analysis/migration_tracker.md`** — authoritative migration version log
 - **`docs/analysis/session_history_archive.md`** — long-form session history
 - **`docs/analysis/project_backlog.md`** — feature priorities
@@ -109,26 +125,26 @@ No ad-hoc DDL — every schema change must be a versioned script. See an existin
 
 ## Known unknowns
 
-Numbers reference `.claude/inventory/AMS-OPEN-QUESTIONS.md` — all 30 Pass-1 items are now **resolved** there; consult it for the settled answers rather than re-investigating.
+Numbers reference `docs/analysis/archive/AMS-OPEN-QUESTIONS.md` — all 30 Pass-1 items are now **resolved** there; consult it for the settled answers rather than re-investigating. (Archived 2026-07-30 for provenance — the questions are resolved, not the file's currency.)
 
 Two things genuinely keep moving — always re-check live state:
 
-1. **Migration versions move fast** — `ls docs/migrations/` is the source of truth, not this file or `MEMORY.md`. Latest as of this writing is V071; expect drift. (Open Question #2)
+1. **Migration versions move fast** — `ls docs/migrations/` is the source of truth, not this file or `docs/claude_memory.md`. Latest as of this writing is V073; expect drift. (Open Question #2)
 2. **Branch claims drift** — verify any "current feature branch" against `git branch -a` before relying on it. Working line is `refactor/modernize-architecture` → feature branches; `main` is far behind. (Open Question #19)
 
 Settled since Pass 1 (don't re-litigate): Java is **17** across pom + CI (#1); `log4j2.xml` **exists** and is configured (#5/#20); MSAL/Graph were **removed** from pom — Outlook is a Web Add-in (#3/#7); `/tpo` is **intentional** legacy-URL support (#4/#17); Summit and Universal import subsystems **converge** rather than one replacing the other (#6/#18).
 
 ## What NOT to assume
 
-This file is a **snapshot**. Migration versions advance, branches come and go, dependencies get added and removed, and `MEMORY.md` is updated more often than this file. For anything time-sensitive:
+This file is a **snapshot**. Migration versions advance, branches come and go, dependencies get added and removed, and `docs/claude_memory.md` is updated more often than this file. For anything time-sensitive:
 
 - **Migration version** → `ls docs/migrations/`
 - **Active branches** → `git branch -a`
-- **Current PSP/BPO/Master/Demo schema state** → `MEMORY.md`
-- **Recent work / sessions** → `MEMORY.md` "Recent Sessions" or `docs/analysis/session_history_archive.md`
+- **Current PSP/BPO/Master/Demo schema state** → `docs/claude_memory.md`
+- **Recent work / sessions** → `docs/claude_memory.md` "Recent Sessions" or `docs/analysis/session_history_archive.md`
 - **Build commands actually used** → check `pom.xml` profiles and `.github/workflows/build.yml`
 
-When this file disagrees with the inventory, `MEMORY.md`, or live git/filesystem state, trust the live source over this file.
+When this file disagrees with the inventory, `docs/claude_memory.md`, or live git/filesystem state, trust the live source over this file.
 
 ## Cross-cutting knowledge
 

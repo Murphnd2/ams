@@ -1,5 +1,14 @@
 # AMS `.claude/` Asset Inventory — Pass 1
 
+> **⚠️ STALE SNAPSHOT.** Generated 2026-04-25 (Pass 1), same vintage as `AMS-INVENTORY.md` and
+> `AMS-DOMAIN-KNOWLEDGE.md` (both confirmed stale 2026-07-28). This file makes no migration-version
+> claim of its own, but its `.claude/` asset inventory (file lists, mtimes, staleness guesses) has not
+> been re-verified since generation — treat every claim here as a snapshot, not current state.
+>
+> See also the accuracy warning at the top of `docs/analysis/entity_reference.md` — several
+> "what data exists" claims in these inventory files trace to the same dead seeder
+> (`ReferenceDataSeeder.java`, unreachable via the commented-out `Main.java:35`).
+
 `.claude/` is excluded from version control by `.gitignore` (.gitignore:5). All dates below come from filesystem `mtime` rather than git. There is no commit history for these files.
 
 ---
@@ -34,7 +43,7 @@
 - **Type:** skill
 - **Last-modified (mtime):** 2026-03-06 16:49:36
 - **Touch count:** N/A — not git-tracked
-- **Staleness:** possibly stale (mtime ~7 weeks old; the SKILL system message in this conversation lists the skill as both `proposal-content-page` and `anthropic-skills:proposal-content-page` — see AMS-OPEN-QUESTIONS.md).
+- **Staleness:** possibly stale (mtime ~7 weeks old; the SKILL system message in this conversation lists the skill as both `proposal-content-page` and `anthropic-skills:proposal-content-page` — see docs/analysis/archive/AMS-OPEN-QUESTIONS.md).
 - **AMS-specific:** AMS-specific. Skill body explicitly references the AMS proposal builder, the `sanitizeHtml()` server method (described in MEMORY.md), and the SSA proposal viewer DOM structure (`.proposal-container`, `.proposal-section.custom-section`).
 - **Size:** 11,612 bytes / 275 lines.
 - **Summary (read from SKILL.md, not filename):**
@@ -64,7 +73,7 @@
 - **Path:** `.claude/inventory/`
 - **Type:** other (this pass's output directory)
 - **Last-modified:** 2026-04-25 (created during this session)
-- **Summary:** Populated by this inventory task with `AMS-INVENTORY.md`, `AMS-CLAUDE-ASSETS.md`, `AMS-DOCS-INDEX.md`, `AMS-TECHNICAL-ARCHITECTURE.md`, `AMS-DOMAIN-KNOWLEDGE.md`, `AMS-OPEN-QUESTIONS.md`.
+- **Summary:** Populated by this inventory task with `AMS-INVENTORY.md`, `AMS-CLAUDE-ASSETS.md`, `AMS-DOCS-INDEX.md`, `AMS-TECHNICAL-ARCHITECTURE.md`, `AMS-DOMAIN-KNOWLEDGE.md`, `docs/analysis/archive/AMS-OPEN-QUESTIONS.md`.
 
 ---
 
@@ -80,5 +89,5 @@
 
 **Notes for the human reviewer:**
 - The directory `.claude/skills/` contains exactly one skill (`proposal-content-page`).
-- Three AMS-related skills appear in the active conversation's available-skills list — `proposal-content-page`, `anthropic-skills:proposal-content-page`, and several `anthropic-skills:*` skills (consolidate-memory, setup-cowork, pdf, xlsx, docx, schedule, pptx, skill-creator). Of those, only `proposal-content-page` is materialized in this repo's `.claude/skills/`. The others appear to come from a parent/global Claude Code install. (See AMS-OPEN-QUESTIONS.md.)
+- Three AMS-related skills appear in the active conversation's available-skills list — `proposal-content-page`, `anthropic-skills:proposal-content-page`, and several `anthropic-skills:*` skills (consolidate-memory, setup-cowork, pdf, xlsx, docx, schedule, pptx, skill-creator). Of those, only `proposal-content-page` is materialized in this repo's `.claude/skills/`. The others appear to come from a parent/global Claude Code install. (See docs/analysis/archive/AMS-OPEN-QUESTIONS.md.)
 - No prompts, agents, hooks, or other skill files exist under `.claude/`.

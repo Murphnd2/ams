@@ -1,3 +1,7 @@
+> **📦 ARCHIVED 2026-07-30.** All 30 Pass-1 questions below are resolved — this file is retained for
+> provenance only, not as a live reference. `CLAUDE.md` still cites specific items by number (e.g.
+> "resolved Open Question #1") — those citations now point at this archive path.
+
 # AMS Inventory — Open Questions & Contradictions
 
 This file collects every contradiction, dangling reference, suspected stale artifact, and decision-point surfaced during Pass 1. Each item names the evidence and is left **unresolved** — this pass documents what exists; reconciliation is for a human.

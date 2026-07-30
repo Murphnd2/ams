@@ -1,7 +1,7 @@
 # SSA Web Application — Entry Point & Flow Analysis
 
 **Last Updated:** February 21, 2026
-**Total Servlets Mapped:** 100+
+**Total Servlets Mapped:** compute via `git grep -c "@WebServlet" src/main/java | wc -l` rather than trusting a static number — this figure changes with the code and any hand-maintained count here is guaranteed to drift.
 
 ---
 
@@ -281,11 +281,15 @@ src/main/java/net/superiorstate/ams/
 │   │   │                     AgentHome, CreateOpportunity, SendInvitation, AcceptInvite,
 │   │   │                     PspAdminHome, PspAgencyHome, ServiceManagerHome, LibraryHome
 │   │   └── ticket/         ← CreateTicket25
+│   ├── admin/              ← Admin tooling
+│   ├── api/                ← M2M API + Outlook integration
 │   ├── assistant/          ← ChatAssistant (AI chatbot)
 │   ├── authentication/     ← AuthenticateUser, login
 │   ├── checklist/          ← Checklist management, AddRecurringSequence
 │   ├── data/               ← Import/export servlets
 │   ├── email/              ← Email workflow, ViewEmail
+│   ├── home/               ← Home dashboards (likely per role)
+│   ├── market/             ← Marketing/library
 │   ├── monthly/            ← Billing servlets
 │   ├── sequence/           ← SequenceBuilder25, SequenceAction25
 │   └── user/               ← User management
@@ -328,7 +332,6 @@ src/main/java/net/superiorstate/ams/
 - **32 cryptic data classes renamed**
 - **`previous/` package entirely eliminated**
 - All code now in clean `controller/`, `data/`, `model/` packages
-- See `cleanup_sweep_summary.md` for full history
 
 ---
 

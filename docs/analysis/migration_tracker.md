@@ -2,7 +2,7 @@
 
 Tracks database schema versions across environments.
 
-**Last Updated:** July 17, 2026
+**Last Updated:** July 30, 2026
 
 ## Environments
 
@@ -17,6 +17,14 @@ Tracks database schema versions across environments.
 | Master | master.superiorstate.biz | beta_ssa | Snapshot v9 (V057, stopped) |
 
 ## Current Highest Version: V073
+
+⚠️ **Maintenance note (added 2026-07-30):** production status in the table below must be back-filled
+*after a deployment actually succeeds*, not only when the migration is written. The V072/V073 rows
+were correctly marked unapplied for Production the day they were authored (2026-07-17) — then never
+revisited after they shipped hours later that same day. That gap, repeated silently for months, is
+what let this tracker's Production column drift ~49 versions out of date before the 2026-07-30
+reconciliation below. Flipping the Production cell is part of landing the deploy, not a follow-up
+task. See also `CLAUDE.md`'s "Keeping state docs current" section.
 
 ## Dev Baseline
 
@@ -58,55 +66,63 @@ _N/A = environment decommissioned / not maintained (applies to Demo PSP, BPO, Ma
 | V022 | Orphaned ticket ServiceItem backfill | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | V023 | Drop ticketsubcategory table and FK | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | V024 | Fix views referencing dropped ticket_category column | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| V025 | Add level, los, employer_name to plantype for Summit import | ⬜ | ⬜ | ⬜ | ⬜ | ✅ | ✅ | ✅ |
-| V026 | Benefit table: surrogate auto-increment PK with source tracking | ⬜ | ⬜ | ⬜ | ⬜ | ✅ | ✅ | ✅ |
-| V027 | BPO Registration: task source refactor from Person to BpoRegistration | ⬜ | ⬜ | ⬜ | ⬜ | ✅ | ✅ | ✅ |
-| V028 | Benefit plan year start/end columns for renewal date correction | ⬜ | ⬜ | ⬜ | ⬜ | ✅ | ✅ | ✅ |
-| V029 | Add is_active column to user table for user deactivation | ⬜ | ⬜ | ⬜ | ⬜ | ✅ | ✅ | ✅ |
-| V030 | BPO cross-system foundation: psp_clients, delegated_todo, API columns, todo_note GUID | ⬜ | ⬜ | ⬜ | ⬜ | ✅ | ✅ | ✅ |
-| V031 | ToDoNote cross-system: nullable todo_id/created_by_id, author_name column | ⬜ | ⬜ | ⬜ | ⬜ | ✅ | ✅ | ✅ |
-| V032 | Approved vendors registry table | ⬜ | ⬜ | ⬜ | ⬜ | ✅ | ✅ | ✅ |
-| V033 | ToDoNote attachments: todo_note_id FK on weblink | ⬜ | ⬜ | ⬜ | ⬜ | ✅ | ✅ | ✅ |
-| V034 | Add template_key to applicationsection for starter packages | ⬜ | ⬜ | ⬜ | ⬜ | ✅ | ✅ | ✅ |
-| V035 | Feature headline column and description widening | ⬜ | ⬜ | ⬜ | ⬜ | ✅ | ✅ | ✅ |
-| V036 | Proposal section table for composable proposal content | ⬜ | ⬜ | ⬜ | ⬜ | ✅ | ✅ | ✅ |
-| V037 | Add LOS/Enhancement scoping to proposal_section | ⬜ | ⬜ | ⬜ | ⬜ | ✅ | ✅ | ✅ |
-| V038 | Add sort_order to delegated_todo for BPO ordering | ⬜ | ⬜ | ⬜ | ⬜ | ✅ | ✅ | ⬜ |
-| V039 | Questionnaire system: templates, fields, instances, values, scoping | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
-| V040 | Add recurring_series_id to delegated_todo for BPO recurring history | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
-| V041 | Add reviewer tracking fields to application table | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
-| V042 | BPO pending approval workflow - status PENDING support | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
-| V043 | Add text_value column to constant for custom landing page HTML | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
-| V044 | Add agency scoping to proposal_section for TITLE/CLOSING overrides | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
-| V045 | Application selected LOS and Enhancement IDs | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
-| V046 | Chatbot skill table for extensible AI assistant capabilities | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
-| V047 | Composite task order table for cross-sequence ordering | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
-| V048 | Universal import system tables and seed data | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
-| V049 | Add source_task_id to delegated_todo for required-sequence auto-approval | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
+| V025 | Add level, los, employer_name to plantype for Summit import | ⬜ | ⬜ | ⬜ | ✅ | ✅ | ✅ | ✅ |
+| V026 | Benefit table: surrogate auto-increment PK with source tracking | ⬜ | ⬜ | ⬜ | ✅ | ✅ | ✅ | ✅ |
+| V027 | BPO Registration: task source refactor from Person to BpoRegistration | ⬜ | ⬜ | ⬜ | ✅ | ✅ | ✅ | ✅ |
+| V028 | Benefit plan year start/end columns for renewal date correction | ⬜ | ⬜ | ⬜ | ✅ | ✅ | ✅ | ✅ |
+| V029 | Add is_active column to user table for user deactivation | ⬜ | ⬜ | ⬜ | ✅ | ✅ | ✅ | ✅ |
+| V030 | BPO cross-system foundation: psp_clients, delegated_todo, API columns, todo_note GUID | ⬜ | ⬜ | ⬜ | ✅ | ✅ | ✅ | ✅ |
+| V031 | ToDoNote cross-system: nullable todo_id/created_by_id, author_name column | ⬜ | ⬜ | ⬜ | ✅ | ✅ | ✅ | ✅ |
+| V032 | Approved vendors registry table | ⬜ | ⬜ | ⬜ | ✅ | ✅ | ✅ | ✅ |
+| V033 | ToDoNote attachments: todo_note_id FK on weblink | ⬜ | ⬜ | ⬜ | ✅ | ✅ | ✅ | ✅ |
+| V034 | Add template_key to applicationsection for starter packages | ⬜ | ⬜ | ⬜ | ✅ | ✅ | ✅ | ✅ |
+| V035 | Feature headline column and description widening | ⬜ | ⬜ | ⬜ | ✅ | ✅ | ✅ | ✅ |
+| V036 | Proposal section table for composable proposal content | ⬜ | ⬜ | ⬜ | ✅ | ✅ | ✅ | ✅ |
+| V037 | Add LOS/Enhancement scoping to proposal_section | ⬜ | ⬜ | ⬜ | ✅ | ✅ | ✅ | ✅ |
+| V038 | Add sort_order to delegated_todo for BPO ordering | ⬜ | ⬜ | ⬜ | ✅ | ✅ | ✅ | ⬜ |
+| V039 | Questionnaire system: templates, fields, instances, values, scoping | ⬜ | ⬜ | ⬜ | ✅ | ⬜ | ⬜ | ⬜ |
+| V040 | Add recurring_series_id to delegated_todo for BPO recurring history | ⬜ | ⬜ | ⬜ | ✅ | ⬜ | ⬜ | ⬜ |
+| V041 | Add reviewer tracking fields to application table | ⬜ | ⬜ | ⬜ | ✅ | ⬜ | ⬜ | ⬜ |
+| V042 | BPO pending approval workflow - status PENDING support | ⬜ | ⬜ | ⬜ | ✅ | ⬜ | ⬜ | ⬜ |
+| V043 | Add text_value column to constant for custom landing page HTML | ⬜ | ⬜ | ⬜ | ✅ | ⬜ | ⬜ | ⬜ |
+| V044 | Add agency scoping to proposal_section for TITLE/CLOSING overrides | ⬜ | ⬜ | ⬜ | ✅ | ⬜ | ⬜ | ⬜ |
+| V045 | Application selected LOS and Enhancement IDs | ⬜ | ⬜ | ⬜ | ✅ | ⬜ | ⬜ | ⬜ |
+| V046 | Chatbot skill table for extensible AI assistant capabilities | ⬜ | ⬜ | ⬜ | ✅ | ⬜ | ⬜ | ⬜ |
+| V047 | Composite task order table for cross-sequence ordering | ⬜ | ⬜ | ⬜ | ✅ | ⬜ | ⬜ | ⬜ |
+| V048 | Universal import system tables and seed data | ⬜ | ⬜ | ⬜ | ✅ | ⬜ | ⬜ | ⬜ |
+| V049 | Add source_task_id to delegated_todo for required-sequence auto-approval | ⬜ | ⬜ | ⬜ | ✅ | ⬜ | ⬜ | ⬜ |
 | V050 | BPO default assignee per PSP client | ⬜ | ⬜ | ⬜ | ✅ | ✅ | ✅ | ⬜ |
-| V051 | Import ID mapping cross-reference table | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
-| V052 | Import run log cross-reference tracking columns | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
-| V053 | Interactive import enhancements: update mode, mapping status, FK flags | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
+| V051 | Import ID mapping cross-reference table | ⬜ | ⬜ | ⬜ | ✅ | ⬜ | ⬜ | ⬜ |
+| V052 | Import run log cross-reference tracking columns | ⬜ | ⬜ | ⬜ | ✅ | ⬜ | ⬜ | ⬜ |
+| V053 | Interactive import enhancements: update mode, mapping status, FK flags | ⬜ | ⬜ | ⬜ | ✅ | ⬜ | ⬜ | ⬜ |
 | V054 | Super User Dashboard — managed_installation table | ⬜ | ⬜ | ⬜ | ✅ | ⬜ | ⬜ | ⬜ |
 | V055 | Schema info view for structural version identification | ⬜ | ⬜ | ⬜ | ✅ | ⬜ | ⬜ | ⬜ |
 | V056 | Training video and single-use token tables | ⬜ | ⬜ | ⬜ | ✅ | ⬜ | ⬜ | ⬜ |
 | V057 | Add suppressed flag to agency table | ⬜ | ⬜ | ⬜ | ✅ | ⬜ | ⬜ | ⬜ |
-| V058 | Add renderer column to questionnaire | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
-| V059 | NDT census-based testing tables | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
-| V060 | Outlook add-in user link + weblink.note_id | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
-| V061 | ToDo-level ownership override for agent delegation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
-| V062 | Per-note agent visibility override | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
+| V058 | Add renderer column to questionnaire | ⬜ | ⬜ | ⬜ | ✅ | ⬜ | ⬜ | ⬜ |
+| V059 | NDT census-based testing tables | ⬜ | ⬜ | ⬜ | ✅ | ⬜ | ⬜ | ⬜ |
+| V060 | Outlook add-in user link + weblink.note_id | ⬜ | ⬜ | ⬜ | ✅ | ⬜ | ⬜ | ⬜ |
+| V061 | ToDo-level ownership override for agent delegation | ⬜ | ⬜ | ⬜ | ✅ | ⬜ | ⬜ | ⬜ |
+| V062 | Per-note agent visibility override | ⬜ | ⬜ | ⬜ | ✅ | ⬜ | ⬜ | ⬜ |
 | V063 | Knowledge Base tables (knowledge_base, knowledge_chunk, knowledge_chunk_history) + 5 KB registry rows | ⬜ | ⬜ | ⬜ | ✅ | ⬜ | ⬜ | ⬜ |
 | V064 | Platform JSON registry seed (proposal_page_builder, automation_email_builder) | ⬜ | ⬜ | ⬜ | ✅ | ⬜ | ⬜ | ⬜ |
 | V065 | Email Draft Assistant skill seed: unique index on chatbot_skill(psp_id,skill_name) + EMAIL_DRAFT_ASSISTANT row | ⬜ | ⬜ | ⬜ | ✅ | ⬜ | ⬜ | ⬜ |
 | V066 | Per-proposal, per-line agent markup on pricing (proposal_price_adjustment) | ⬜ | ⬜ | ⬜ | ✅ | ⬜ | ⬜ | ⬜ |
 | V067 | Per-agency enable flag for proposal markup (agency.markup_enabled, default OFF) | ⬜ | ⬜ | ⬜ | ✅ | ⬜ | ⬜ | ⬜ |
-| V068 | Host-header custom agency landing pages (agency.landing_host unique + landing_html) | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
+| V068 | Host-header custom agency landing pages (agency.landing_host unique + landing_html) | ⬜ | ⬜ | ⬜ | ✅ | ⬜ | ⬜ | ⬜ |
 | V069 | Per-agency white-label email sending (agency.email_domain unique + email_verified) | ⬜ | ⬜ | ⬜ | ✅ | N/A | N/A | N/A |
 | V070 | Self-referential agency parent link (GA -> sub-agency hierarchy): agency.parent_agency_id nullable + child index | ⬜ | ⬜ | ⬜ | ✅ | N/A | N/A | N/A |
 | V071 | Per-agency public quote token (agency.quote_token unique) for RequestQuote sub-agency attribution links | ⬜ | ⬜ | ⬜ | ✅ | N/A | N/A | N/A |
-| V072 | Monthly billing run tracking: billing_run + billing_run_step | ⬜ | ⬜ | ⬜ | ⬜ | N/A | N/A | N/A |
-| V073 | Widen billing_run.current_step to VARCHAR(255) (fixes 1406 truncation on CREATE_BILLING sub-step labels) | ⬜ | ⬜ | ⬜ | ⬜ | N/A | N/A | N/A |
+| V072 | Monthly billing run tracking: billing_run + billing_run_step | ⬜ | ⬜ | ⬜ | ✅ | N/A | N/A | N/A |
+| V073 | Widen billing_run.current_step to VARCHAR(255) (fixes 1406 truncation on CREATE_BILLING sub-step labels) | ⬜ | ⬜ | ⬜ | ✅ | N/A | N/A | N/A |
+
+**Production column reconciled 2026-07-30** against a live, read-only `schema_version` probe run
+directly against the production database — that probe is the source of truth for the corrections
+above, not developer memory or release notes. The probe returned 73 versions recorded (V001 through
+V073), each with an `applied_on` timestamp; V072 applied 2026-07-17 12:54:26, V073 applied 2026-07-17
+14:11:18. Every V0NN row's Production cell above is now ✅. (`beta_ssa (work)`, `beta_ssa (home)`,
+`dev_ssa`, and the Demo/BPO/Master columns were **not** re-probed in this pass and are unchanged —
+they still reflect whatever was last recorded for them.)
 
 ## Notes
 
@@ -126,7 +142,6 @@ _N/A = environment decommissioned / not maintained (applies to Demo PSP, BPO, Ma
 - V032 creates the approved_vendors table for a centralized BPO vendor directory. Table exists on all deployments (same WAR/schema), only populated on master.
 - V033 adds todo_note_id FK column to the weblink table, enabling file attachments on BPO task notes. Follows the same pattern as email_id FK for email attachments.
 - Demo PSP, BPO, and Master environments upgraded to V037 via release V0.37.0 on March 4, 2026. Master snapshot v8 (`SSA-Master-Base-v8-2026-03-04`).
-- Production remains at V024 and is intentionally isolated from conference demo infrastructure.
 - V051 creates the import_id_mapping cross-reference table for multi-provider ID resolution. Maps (provider_id, entity_type, external_id) → internal_id with is_primary flag for transition scenarios. Includes back-fill from existing archive data (Summit provider assumed). Requires updated WAR with ImportIdMapping entity, ImportIdResolver class, and updated SummitImportService/UniversalImportService.
 - V052 adds xref_resolved, pk_allocated, and mappings_recorded INT columns to import_run_log for tracking cross-reference resolution metrics during import runs. Requires updated WAR with ImportRunLog entity fields.
 - V053 adds update_mode and mapping_status columns to import_file_type; adds is_fk and fk_entity_type columns to import_field_mapping. Part of Phase A (Provider Setup Rework) — enables sample-file-driven column mapping with PK/FK flagging and readiness status tracking. Requires updated WAR with ImportFileType/ImportFieldMapping entity fields and reworked ProviderSetup servlet.

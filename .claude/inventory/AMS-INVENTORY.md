@@ -179,11 +179,11 @@ net.superiorstate.ams                                                  5
 
 ### Servlet count
 
-196 files contain `@WebServlet` (grep across `src/main/java`).
+Compute via `git grep -c "@WebServlet" src/main/java | wc -l` — do not trust a hand-maintained number here. A count recorded at Pass-1 time (196) already contradicts `CLAUDE.md`'s more recently maintained figure (201); the servlet count changes with the code and any static number in this file is guaranteed to drift.
 
 ### Entity count
 
-138 files contain `@Entity` (grep across `src/main/java`).
+Compute via `git grep -c "@Entity" src/main/java | wc -l` — same caveat: a Pass-1 count (138) already contradicts `CLAUDE.md`'s more recently maintained figure (142).
 
 ---
 
@@ -419,7 +419,7 @@ seed_ndt125_questionnaire.sql
 
 ### Subdirectories
 
-- `docs/analysis/` — 17 markdown files (architecture, transition plans, dead-JSP investigations, BPO brainstorm, NDT design, sales pipeline reference, session history archive, etc.). See AMS-DOCS-INDEX.md for per-file summaries.
+- `docs/analysis/` — 17 markdown files (architecture, transition plans, dead-JSP investigations, BPO brainstorm, NDT design, sales pipeline reference, session history archive, etc.). See `docs/analysis/archive/AMS-DOCS-INDEX.md` (archived 2026-07-30, provenance only) for per-file summaries as of Pass 1/2.
 - `docs/importscript/` — 2 SQL baseline dumps + 3 NDT-125 design markdowns.
 - `docs/migrations/` — 38 versioned `V025…V062` SQL files + `seed_ndt125_questionnaire.sql`.
 - `docs/mockups/` — 7 HTML mockups (BPO panels, agent home, agent setup detail, add-note redesign, agent delegation paths, center-panel alternatives).
@@ -466,4 +466,4 @@ Per `demo/README.md`: "None of these files are loaded by application code — th
 - Build command: `mvn -B -Pserver -DskipTests=false clean package`.
 - Uploads `target/*.war` artifact named `ams-war`.
 
-(Note: pom declares `<maven.compiler.release>17</maven.compiler.release>` while CI uses JDK 21 — see AMS-OPEN-QUESTIONS.md.)
+(Note: pom declares `<maven.compiler.release>17</maven.compiler.release>` while CI uses JDK 21 — see `docs/analysis/archive/AMS-OPEN-QUESTIONS.md`.)

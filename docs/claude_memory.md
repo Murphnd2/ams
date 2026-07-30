@@ -1,14 +1,17 @@
-# AMS Claude Memory (Cross-Workstation)
+# AMS Claude Memory
 
-> This file travels via git to bootstrap Claude sessions on either workstation.
-> The auto-memory system (`~/.claude/projects/.../memory/MEMORY.md`) holds per-machine session state.
+> This is the single authoritative current-state document for AMS — branch, latest migration, active
+> epic, recent sessions, key gotchas. AMS is now developed on a single workstation; the earlier
+> two-file, cross-workstation arrangement (this file plus a second `.claude/memory/MEMORY.md`) no
+> longer applies and has been retired (2026-07-30) — `.claude/memory/MEMORY.md` is stale (V069,
+> Session 85) and should not be read for current state.
 > For full project architecture, see `CLAUDE.md` in the project root.
 
 ## Current State
 - **Integration branch:** `refactor/modernize-architecture` — feature branches are cut from / merged back to it, so it trails the in-flight feature by only a few commits. `main` is ~345 commits stale and is **not** the working line.
 - **In-flight branch:** none — the agency-scope-resolver work merged to trunk 2026-07-15 (`e0a62d1`); branch deleted.
 - **Latest migration:** V073 (always re-check `ls docs/migrations/` — this line lags)
-- **Latest release:** v0.71.08 (2026-07-15) — Agent Pipeline sidebar-proposals fix (de-nested JOIN FETCH) + optional create-proposal hand-off. No migration (latest migration still V071).
+- **Latest release:** v0.73.02 (reconciled 2026-07-30; release-note detail not verified in this pass — local `git tag` is stale by design since releases are cut in the GitHub web UI, see CLAUDE.md's Releases section — check the GitHub Releases page for what v0.73.02 actually shipped). Prior entry here (v0.71.08, 2026-07-15) is superseded.
 - **ICHRA/QSEHRA admin stream active.** Origin: SWBD (Forrest) quoting ICHRA through zizzl, which gated
   carriers and charged a ~$660/mo admin minimum — unbundle logic gives the admin to SSA. Target rail is
   the **HealthSherpa ICHRA Partner API** (`docs.ichra.healthsherpa.com`) — **not** HSOne, and **not**

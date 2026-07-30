@@ -10,7 +10,7 @@
 > "what data exists" claims in these inventory files trace to the same dead seeder
 > (`ReferenceDataSeeder.java`, unreachable via the commented-out `Main.java:35`).
 
-This document captures the **business domain** of AMS as it can be reconstructed from source code, JPA entities, controller subpackages, configuration, and `docs/`. Citations refer to files actually present in the working tree. Where a fact comes from a doc rather than code, the doc is named explicitly. Where the doc and the code disagree, the contradiction is logged in `AMS-OPEN-QUESTIONS.md` rather than reconciled here.
+This document captures the **business domain** of AMS as it can be reconstructed from source code, JPA entities, controller subpackages, configuration, and `docs/`. Citations refer to files actually present in the working tree. Where a fact comes from a doc rather than code, the doc is named explicitly. Where the doc and the code disagree, the contradiction is logged in `docs/analysis/archive/AMS-OPEN-QUESTIONS.md` rather than reconciled here.
 
 ---
 
@@ -52,9 +52,11 @@ Concrete Person types are differentiated by **role IDs** (see `general/UserRole.
 
 ```
 1=PSP User, 2=Agent, 3=Client, 4=Applicant,
-5=PSP Admin, 8=Agency Admin, 9=PSP Sales,
+5=PSP Admin, 8=Agency Admin, 9=PSP Super User,
 102=BPO Admin, 103=BPO User
 ```
+
+(Role 9's DB-seeded label is "PSP Super User", not "PSP Sales" — `DatabaseInitializer.java`; the session flag it maps to is still `isPspSales`, a cosmetic label/functional-name mismatch, not a numeric-ID error.)
 
 `UserRole.java:11-21` is a thin entity (id+description, mapped on `userRoleList` ManyToMany on `User`); the role IDs themselves are seed-data driven.
 
@@ -148,7 +150,7 @@ The runtime distinguishes three deployment **system types** at the installation 
 | 4 | Applicant | Prospect/applicant |
 | 5 | PSP Admin | Internal admin |
 | 8 | Agency Admin | External agency manager |
-| 9 | PSP Sales | Internal sales |
+| 9 | PSP Super User | Internal sales; session flag is `isPspSales` despite the DB label (label/functional-name mismatch, cosmetic) |
 | 102 | BPO Admin | Business-process-outsourcing admin (federated vendor) |
 | 103 | BPO User | BPO worker |
 
@@ -176,7 +178,7 @@ Reconstructed from `pom.xml`, `data/service/`, `data/dao/`, `controller/api/`, a
 | **opencsv 5.9** | CSV import | `pom.xml` |
 | **PDFBox 3.0.4** | PDF generation/parsing | `pom.xml` |
 | **Eclipse Angus mail 2.0.3** | SMTP | `pom.xml`; `controller/email/` |
-| **MSAL4j + Microsoft Graph** | Declared but unused | `pom.xml` declares `msal4j` 1.21.0 and `microsoft-graph` 5.52.0; no imports found in `src/main/java` (see AMS-OPEN-QUESTIONS.md) |
+| **MSAL4j + Microsoft Graph** | Declared but unused | `pom.xml` declares `msal4j` 1.21.0 and `microsoft-graph` 5.52.0; no imports found in `src/main/java` (see docs/analysis/archive/AMS-OPEN-QUESTIONS.md) |
 | **Outlook Web Add-in** | Inbound REST | `controller/api/outlook/` (NoteAddedCallbackApi, etc. — see API table below). MEMORY.md Sessions 77-78 describe the add-in. |
 | **Datapath / Summit** | CSV imports + sync | `model/summit/imports/`, `data/service/SummitSync.java`, `data/service/SummitImportService.java` |
 | **Anthropic Claude API** | AI assistant | `data/service/ClaudeApiService.java`; `controller/assistant/` |
@@ -230,7 +232,7 @@ controller/
 └── user/             ← User management
 ```
 
-CLAUDE.md:14-23 lists this structure but omits `admin`, `assistant`, `home`, and `market` — those appear in the live tree only. (See AMS-OPEN-QUESTIONS.md.)
+CLAUDE.md:14-23 lists this structure but omits `admin`, `assistant`, `home`, and `market` — those appear in the live tree only. (See docs/analysis/archive/AMS-OPEN-QUESTIONS.md.)
 
 ---
 
@@ -317,7 +319,7 @@ CLAUDE.md and MEMORY.md (Session 66) describe the Interactive Import Wizard as r
 - Service: `data/service/ClaudeApiService.java`, `KnowledgeSearchService.java`
 - Entity: `model/general/ChatbotSkill.java`
 - Controller subpackage: `controller/assistant/`
-- Doc: `docs/ai_assistant_design.md` (referenced in `AMS-DOCS-INDEX.md`)
+- Doc: `docs/ai_assistant_design.md` (referenced in `docs/analysis/archive/AMS-DOCS-INDEX.md`)
 
 ---
 
@@ -345,7 +347,7 @@ MEMORY.md tracks per-installation schema state:
 - V060 applied to local dev + production only
 - Latest migration in tree (per `AMS-INVENTORY.md`): **V062**
 
-CLAUDE.md:42 records the "current highest version" as **V044**, which conflicts with the actual contents of `docs/migrations/`. Logged in `AMS-OPEN-QUESTIONS.md`.
+CLAUDE.md:42 records the "current highest version" as **V044**, which conflicts with the actual contents of `docs/migrations/`. Logged in `docs/analysis/archive/AMS-OPEN-QUESTIONS.md`.
 
 ---
 
@@ -359,7 +361,7 @@ CLAUDE.md:42 records the "current highest version" as **V044**, which conflicts 
 | **LOS** | Line of Service — top of the offering catalog (`model/sales/offering/LOS.java`) |
 | **Module / ServiceModule** | A purchasable line item under an LOS (`model/sales/offering/ServiceModule.java`) |
 | **Rate / Rate Table** | Pricing applied to a Module for a given Agency (`Rate.java`, `RateTable.java`) |
-| **Prospect** | Potential client, sourced by an Agency or PSP Sales (`Prospect.java`) |
+| **Prospect** | Potential client, sourced by an Agency or PSP Super User (`Prospect.java`) |
 | **Proposal** | Quotation issued to a Prospect (`Proposal.java`) |
 | **Application** | Signed Proposal in onboarding state, parent of section/module/field tree (`Application.java`) |
 | **Setup** | Activity subclass — onboarding work created from an accepted Application (`Setup.java`) |

@@ -438,17 +438,11 @@ High-level categories:
 
 ---
 
-# deployment_strategy.md — Section 12 Replacement
-
-Replace the entire §12 block in `docs/deployment_strategy.md` with:
-
----
-
 ## 12. Current Deployed Instances
 
 | Instance | URL | IP | Type | Schema | Status |
 |----------|-----|----|------|--------|--------|
-| Production PSP | https://superiorstate.biz | (production IP) | PSP | V024 | Running |
+| Production PSP | https://superiorstate.biz | (production IP) | PSP | V073 | Running |
 | Demo PSP | https://demo.superiorstate.biz | 192.152.28.73 (static) | PSP | V037 | Running, seeded with demo data, release V0.37.0 |
 | BPO | https://bpo.superiorstate.biz | 158.222.102.168 (DHCP) | BPO | V037 | Running, initialized, partnered with Demo PSP, release V0.37.0 |
 | Master | master.superiorstate.biz | 208.94.39.77 | Master image | V037 | Snapshot v8 (`SSA-Master-Base-v9-2026-03-20`), stopped |
@@ -456,5 +450,5 @@ Replace the entire §12 block in `docs/deployment_strategy.md` with:
 **Notes:**
 - Demo PSP and BPO are partnered — cross-system BPO task delegation is functional between the two instances.
 - BPO IP is DHCP-assigned (stable as long as VM is not deallocated). Static IP reservation was not needed for a demo/test instance.
-- Production remains intentionally isolated at V024 until conference demo infrastructure is proven.
+- Production is at **V073** per a live `schema_version` probe reconciled 2026-07-30 (see `docs/analysis/migration_tracker.md`) — the earlier "intentionally isolated at V024" framing predates that reconciliation. Demo PSP/BPO/Master figures in this table were not independently re-verified in this pass.
 - Demo PSP was provisioned March 2–3, 2026 from master snapshot v7. See `docs/analysis/session_summary_2026-03-03_demo_standup.md` for full standup details and lessons learned.

@@ -11,11 +11,14 @@
 !.claude/commands/
 !.claude/launch.json
 !.claude/CLAUDE.md
-!.claude/memory/
 !.claude/toolkit
 .claude/settings.local.json
 .claude/worktrees/
 .claude/inventory/
+# .claude/memory/ intentionally NOT un-ignored (2026-07-30): docs/claude_memory.md is now the
+# single authoritative current-state doc; .claude/memory/MEMORY.md is a stale, duplicate,
+# git-tracked file kept only so Claude Code can still write to it locally. Adding this rule does
+# NOT untrack the already-tracked .claude/memory/MEMORY.md — run `git rm --cached .claude/memory/MEMORY.md` to finish untracking it.
 
 # IntelliJ (ignore everything)
 .idea/*

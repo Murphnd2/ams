@@ -1,3 +1,9 @@
+> **📦 ARCHIVED 2026-07-30.** This file had zero inbound references from anywhere in the repo and was
+> itself stale by exactly the drift it existed to prevent (it claimed "Last aligned: 2026-07-15 ·
+> migration V071" while the tree had moved to V073). Its operative instruction — the per-session sync
+> ritual in §4 — has been folded into `CLAUDE.md`'s "Keeping state docs current" section. Retained
+> here for provenance only.
+
 # claude.ai Project ↔ Repo Sync
 
 How the AMS **claude.ai project** (Opus — planning, decisions, Claude Code prompt authoring) stays aligned with this **repo** (the source of truth, executed by Claude Code / Sonnet).

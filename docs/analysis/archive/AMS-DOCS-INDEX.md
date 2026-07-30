@@ -1,3 +1,17 @@
+> **📦 ARCHIVED 2026-07-30.** This file claimed to be the current-vs-archived index for `docs/`, but
+> had gone stale on exactly the thing it existed to track: its Pass 1 tables below still list at
+> least 9 files (`dead_jsp_cleanup_summary.md`, `dead_jsp_investigation.md`,
+> `email_assistant_handoff.md`, `host_agency_landing_phase2A_confirmation.md`,
+> `email_whitelabel_phaseA_confirmation.md`, `proxy_readiness_audit_prompt.md`, `session_86_notes.md`,
+> `bpo_feature_session_history.md`, `outlook-addin-handoff.md`) at their pre-move paths under
+> `docs/analysis/`, even though this file's own "Pass 2" section (immediately below) announced the
+> move to `docs/analysis/archive/` on 2026-07-15 — the fold-back into the Pass 1 tables it promised
+> never happened. It also predates roughly 25 documents created after its last edit (the entire
+> `docs/business/` ICHRA cluster, `AGENCY_STRUCTURE_AUDIT.md`, `security_findings_2026-07-28.md`,
+> `domain_and_compliance_rules.md`, the `docs/runbooks/*` files, and more) and omits them entirely.
+> Retained here for provenance only — do not use this file to determine what is current or where
+> anything lives.
+
 # AMS `docs/` Index
 
 > **Pass 2 current-state update — 2026-07-15.** The Pass 1 tables (below) were accurate as of 2026-04-25 / migration V062 / Session 87. This section supersedes them where they disagree. When re-running the full inventory, fold this back into the tables.

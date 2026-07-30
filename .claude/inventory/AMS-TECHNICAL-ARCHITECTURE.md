@@ -1,5 +1,15 @@
 # AMS Technical Architecture — Pass 1
 
+> **⚠️ STALE SNAPSHOT.** Generated 2026-04-25 (Pass 1), same vintage as `AMS-INVENTORY.md` and
+> `AMS-DOMAIN-KNOWLEDGE.md` (both confirmed stale 2026-07-28). This file makes no migration-version
+> claim of its own, but any other time-sensitive fact here — servlet/entity counts, branch state,
+> dependency list — should be treated the same way: **verify, don't trust.** Verify against
+> `docs/analysis/migration_tracker.md`, `docs/claude_memory.md`, live code, or the database itself.
+>
+> See also the accuracy warning at the top of `docs/analysis/entity_reference.md` — several
+> "what data exists" claims in these inventory files trace to the same dead seeder
+> (`ReferenceDataSeeder.java`, unreachable via the commented-out `Main.java:35`).
+
 A factual snapshot of the stack and structure as observed in the working tree. No interpretation of "should be." Citations point to evidence in the code.
 
 ---
@@ -73,10 +83,10 @@ NewInstall.java
 ```
 
 ### Servlet count
-196 files contain `@WebServlet` (grep across `src/main/java`).
+Compute via `git grep -c "@WebServlet" src/main/java | wc -l` — do not trust a hand-maintained number here. A count recorded at Pass-1 time (196) already contradicts `CLAUDE.md`'s more recently maintained figure (201); the servlet count changes with the code and any static number in this file is guaranteed to drift.
 
 ### Entity count
-138 files contain `@Entity` (grep across `src/main/java`).
+Compute via `git grep -c "@Entity" src/main/java | wc -l` — same caveat: a Pass-1 count (138) already contradicts `CLAUDE.md`'s more recently maintained figure (142).
 
 ### Examples by layer
 
@@ -148,7 +158,7 @@ Per CLAUDE.md:34, "view-backed entities (e.g., `Activity25`, `Checklist25`, `Emp
 ### Servlet declarations
 
 - All servlets use `@WebServlet` annotations — confirmed by `failOnMissingWebXml=false` in pom and the absence of any `<servlet>` mappings in `src/main/webapp/WEB-INF/web.xml` (src/main/webapp/WEB-INF/web.xml:1-19, pom.xml:233).
-- 196 servlet files (grep `@WebServlet`).
+- Servlet file count: compute via `git grep -c "@WebServlet" src/main/java | wc -l` rather than trusting a static number (see Section 3 above for why).
 
 ### `web.xml`
 
@@ -195,9 +205,9 @@ Two `@WebFilter` files:
 
 ### Roles
 
-`UserRole` is an entity with `Integer roleId`, `String description`, and a `ManyToMany` back-reference to `User` (src/main/java/net/superiorstate/ams/model/general/UserRole.java:10-22). Per CLAUDE memory `MEMORY.md`:
-> 1=PSP User, 2=Agent, 3=Client, 4=Applicant, 5=PSP Admin, 8=Agency Admin, 9=PSP Sales, 102=BPO Admin, 103=BPO User
-(That mapping is in user-supplied memory; the codebase itself uses numeric `roleId` values throughout — see CLAUDE.md context block.)
+`UserRole` is an entity with `Integer roleId`, `String description`, and a `ManyToMany` back-reference to `User` (src/main/java/net/superiorstate/ams/model/general/UserRole.java:10-22). Per `docs/claude_memory.md`:
+> 1=PSP User, 2=Agent, 3=Client, 4=Applicant, 5=PSP Admin, 8=Agency Admin, 9=PSP Super User, 102=BPO Admin, 103=BPO User
+(That mapping is in project memory; role 9's DB-seeded label is "PSP Super User", not "PSP Sales" — `DatabaseInitializer.java` — though the session flag it maps to is still `isPspSales`, a cosmetic label/functional-name mismatch. The codebase itself uses numeric `roleId` values throughout — see CLAUDE.md context block.)
 
 ### TLS / SSL
 
@@ -263,4 +273,4 @@ These dependencies are declared in `pom.xml` but no `import` of their packages w
 - `com.microsoft.azure:msal4j:1.21.0`
 - `com.microsoft.graph:microsoft-graph:5.52.0`
 
-(See `AMS-OPEN-QUESTIONS.md` — they may be reflectively loaded, removed but not deleted from pom, or this pass missed an import.)
+(See `docs/analysis/archive/AMS-OPEN-QUESTIONS.md` — they may be reflectively loaded, removed but not deleted from pom, or this pass missed an import.)

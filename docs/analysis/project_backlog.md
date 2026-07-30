@@ -64,7 +64,7 @@
 | T3 | Data layer rename | HIGH | ✅ Done | All cryptic names replaced. |
 | T4 | Modal servlet analysis | MED | ✅ Done | All modals mapped to servlets. |
 | T5 | Sequence builder old page cleanup | LOW | 📋 Planned | Delete old builder JSPs/servlets after new builder proven. |
-| T6 | Database migration tracking | HIGH | ✅ Done | 53 versions tracked (V001–V053). V001-V024 on all environments, V025-V037 on Demo/BPO/Master, V038 on Demo/BPO. V039-V053 code-complete. Production at V024. |
+| T6 | Database migration tracking | HIGH | ✅ Done | 73 versions tracked (V001–V073) and Production reconciled to V073 as of 2026-07-30 (see `docs/analysis/migration_tracker.md`). Historical build-out, as of this row's original writing: V001-V024 on all environments, V025-V037 on Demo/BPO/Master, V038 on Demo/BPO, V039-V053 code-complete. |
 | T7 | Docs cleanup & consolidation | MED | ✅ Done | Session 69 cleanup: removed 4 obsolete files, consolidated demo materials, compressed session archive (2397→1163 lines), replaced claude_memory.md with pointer file. |
 | T8 | Empty checklist / todo list handling | LOW | 💡 Backlog | Remove task-153 dummy workaround. Audit display chain for empty todo list safety. |
 | T9 | Refactor manual setup to dynamic LOS | CONF | 📋 Planned | `GenerateProp25` uses hardcoded `q1`–`q8` flags. Needs refactor to dynamic LOS from DB. **In scope for the "+" catalog phase (B1):** `GenerateProp25` hardcodes LOS ids 5–10 and ServiceItem ids 11–19 with literal `.equals("1")` checks and never reads `Proposal.getLosList()`, so it would **silently drop a "+" selection**. Scoped to `GenerateProp25` only — `ApplyForProposal` and `CreateSetup25` are fully dynamic. |
@@ -152,13 +152,13 @@ Built and functional. Client-side JS filtering. Placeholder cards for Agent Pipe
 
 | Instance | URL | IP | Type | Schema | Status |
 |----------|-----|----|------|--------|--------|
-| Production PSP | https://superiorstate.biz | (production IP) | PSP | V024 | Running |
+| Production PSP | https://superiorstate.biz | (production IP) | PSP | V073 | Running |
 | Demo PSP | https://demo.superiorstate.biz | 192.152.28.73 | PSP | V038 | Running, seeded with demo data |
 | BPO | https://bpo.superiorstate.biz | 158.222.102.168 (DHCP) | BPO | V038 | Running, initialized, partnered with Demo PSP |
 | Master | master.superiorstate.biz | 208.94.39.77 | Master image | V037 | Snapshot v8 taken 2026-03-04, stopped |
 
 **Migrations pending application:**
-- V025–V037: Applied to Demo/BPO/Master.
+- V025–V037: Applied to Demo/BPO/Master (Demo/BPO/Master figures in this table not independently re-verified in the 2026-07-30 pass — see `docs/analysis/migration_tracker.md` for the last recorded per-environment state).
 - V038: Applied to Demo/BPO.
-- V039–V053: Code-complete, not yet applied to any environment.
-- Production intentionally isolated at V024 until conference demo infrastructure is proven.
+- V039–V053: Code-complete as of this row's original writing (not re-verified against Demo/BPO/Master in this pass).
+- Production is at **V073** per a live `schema_version` probe reconciled 2026-07-30 (see `docs/analysis/migration_tracker.md`) — the earlier "intentionally isolated at V024" framing predates that reconciliation and no longer describes current state.

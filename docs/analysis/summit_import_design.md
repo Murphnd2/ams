@@ -1,7 +1,7 @@
 # Summit Data Import & Sync — Design Document
 
 **Created:** February 28, 2026
-**Status:** Draft — pending review
+**Status:** Implemented — shipped (Summit + Universal import subsystems converge rather than one replacing the other; see `SummitImportService.java`, `SummitImportWizard.java`, V025-V026 + V048/V051-V053). Design content below reflects the original proposal and may not describe every detail of the shipped implementation.
 **Backlog Item:** D-35 (new)
 
 ---
