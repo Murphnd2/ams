@@ -8,6 +8,21 @@
 
 ---
 
+> **Provenance and precedence.** This document was written 2026-07-29 in a session that did **not**
+> have `docs/business/healthsherpa.md` in context, and contained factual errors — corrected below.
+>
+> Several design assumptions descend from **HSOne-era** findings that `healthsherpa.md` explicitly
+> disclaims as not describing the **ICHRA Partner API**: the `api_enrollable` semantics, the Hopkins
+> enrollability count, the `POST /v1/enrollments` payload shape, and the `employer_external_id` +
+> `updated_since` polling design. These remain **unverified for the target product**.
+>
+> **Document split.** This file holds product and design intent, and decisions **D1–D17**.
+> `docs/analysis/plus_tier_build_plan.md` is **canonical** for build-mechanism decisions
+> **D18–D37**, the open-item series **O1–O38**, the phased build list, and the prioritised question
+> list. Product decisions that amend D1–D14 belong here; build decisions belong there.
+
+---
+
 ## What the "+" tier is
 
 Two new lines of service — `ICHRA+` and `QSEHRA+` — that bundle HealthSherpa marketplace
@@ -24,7 +39,7 @@ adjudication, disbursement, notice mailing — is untouched.
 
 | # | Decision | Rationale |
 |---|---|---|
-| D1 | LOS granularity is `ICHRA+` / `QSEHRA+` only. Add-ons are enhancements, not LOS. | Avoids combinatorial LOS rows. |
+| D1 | LOS granularity is `ICHRA+` / `QSEHRA+` only. Add-ons are enhancements, not LOS. **"Additive" is conditional on Gate 0.** | Avoids combinatorial LOS rows. No live seeder creates ICHRA/EBHRA/QSEHRA LOS rows: `ReferenceDataSeeder.java` is dead code and the `DatabaseInitializer` LOS block is commented out (476–510). Even the dead-code ICHRA/EBHRA PlanTypes point at the **generic HRA ServiceItem (id 5)**, and **no QSEHRA PlanType exists at all**. A favourable Gate 0 result still leaves the ServiceItem, PlanType, task-sequence and checklist gaps intact — plan for Branch A-minus. See the build plan, Part 4. |
 | D2 | **Single bundled PEPM.** Card included; no per-proposal add-on election. | Verification method varies *per participant* and isn't known until after enrollment — months after the proposal is signed. No rate-table mechanism can express it. Employer sees one number. |
 | D3 | No per-employee pricing at any stage. | Pricing is aggregate: zone illustration at quote, PEPM on headcount at billing. |
 | D4 | Enhancement visibility is controlled by rate-table pricing. | An enhancement with no priced `RateTable` row does not render. No `optional` flag needed. |
@@ -36,8 +51,11 @@ adjudication, disbursement, notice mailing — is untouched.
 | D10 | Participant correlation via **HMAC-SHA256 of normalized SSN**, secret key in `ssa.properties`. Store hash + last four; never store raw SSN. | The Summit mailing export carries no participant ID — only name, SSN, DOB. Hashing gives a deterministic join with no SSN at rest. A custom Summit export was priced as an alternative and declined. |
 | D11 | Raw SSN lifetime: census intake → Summit creation export → discarded. | Summit is the system of record for SSN. AMS needs it only for the initial handoff. |
 | D12 | Employer correlation via `EmployerCustomID`, typed into the Summit setup form as a setup task. | No import automation needed for a once-per-employer value. |
-| D13 | PremiumPath Card is **MCC-restricted to insurance codes** (6300, 5960) at issuance. | Every approved transaction is then a premium payment by construction. Merchant-name matching becomes a convenience, not a dependency. |
+| D13 | PremiumPath Card is **MCC-restricted to insurance codes** (6300, 5960) at issuance. **In flight, not pending** — Summit configuration in progress, MCC 6300 loaded. Remaining gates: live carrier authorization test, issuing-bank purse classification. | Every approved transaction is then a premium payment by construction. Merchant-name matching becomes a convenience, not a dependency. The authorization test also settles the former O9 — does a carrier accept card payment for individual premiums, and **under which MCC does it post**. **Risk:** `swbd_premiumpath.md` records 6300 loaded while this row claims 6300 **and** 5960. If only 6300 is loaded and an acquirer posts under 5960 (direct marketing — insurance services), the transaction **declines** — a failed premium payment on an individual policy, which is a lapse path. Confirm loaded MCCs before the live test. The working template code **"PTC" must be renamed before client exposure** (collides with *premium tax credit*) and before any AMS-side plan-type mapping is written. |
 | D14 | A "+" pricing proposal section, scoped to the "+" LOS, with a flag selecting which HTML variant renders. | Range illustration vs. age-band net-cost table are two renderings of one section, chosen by what the quote snapshot contains. |
+| D15 | **ICHRA+ and QSEHRA+ are not symmetric on the enrollment rail.** ICHRA+ gets an SSA-mediated enrollment leg; QSEHRA+ does not — its "+" content is quoting, illustration, verification and administration. | The off-exchange rail carries no APTC and does not serve the subsidy-eligible population. PremiumPath's QSEHRA is designed to preserve the PTC, so its population is subsidy-eligible by construction. QSEHRA is supported off-exchange as a `type` value, but that serves a QSEHRA population that has forgone the subsidy — not PremiumPath's. |
+| D16 | **Off-exchange only at launch.** | On-exchange `/v1/policy-status/*` is agent-scoped and alpha; the rail requires agent licensure SSA does not hold and a Marketplace agent-account link SSA declined to make. |
+| D17 | **Verification-source ladder:** `ATTESTATION` primary at launch → `CARD_TRANSACTION` promoted once the live carrier authorization test passes → `HS_POLICY_STATUS` per carrier as the matrix fills in. No data-model change; `verification_source` already accommodates all three. | Policy Status is **carrier-gated** — Hopkins County TX: UHC live, BCBS TX planned 2026, CHRISTUS not listed — and SSA **cannot steer carrier choice** under the ERISA safe harbor, so verification method is neither knowable at proposal time nor influenceable. This independently confirms **D2**. The card's premium-payment capability is untested until the authorization test passes. `ATTESTATION` is the only source with no external gate. Subject to counsel confirming a signed attestation suffices as a reimbursement-release record (**O18** in the build plan). |
 
 ---
 
@@ -59,12 +77,27 @@ agency can only quote a "+" LOS that is both priced for it and legal for the pro
 Full census into staging: SSN, names, DOB, hire date, home address, division. Employer-
 supplied.
 
-Employee-supplied only where the employer cannot answer: marketplace consent, PTC waiver
-acknowledgment (ICHRA+), tobacco, dependent detail. **See open item O1 — HealthSherpa's own
-EDE consent may cover this, in which case no AMS consent artifact is needed.**
+Employee-supplied only where the employer cannot answer: substantiation attestation, PTC waiver
+acknowledgment (ICHRA+), tobacco, dependent detail. The target rail is the **ICHRA Partner API**,
+**off-exchange**. HealthSherpa is a CMS-approved EDE provider, but EDE is the on-exchange FFM
+pathway and is **not** the product being integrated. On the deeplink path HealthSherpa collects
+SSN, immigration status, incarceration status, attestations and signatures within its own flow.
 
 Two-pass Summit export: create participants at setup, then update post-enrollment with
 carrier, plan, premium, and effective date.
+
+**Why a per-employee artifact is required regardless of HealthSherpa.** The artifact was originally
+justified as marketplace consent, which was malformed — there is no EDE transaction on the
+off-exchange rail. It is nonetheless required, for reasons unrelated to HealthSherpa:
+
+1. **ICHRA PTC opt-out / waiver** — employees must be permitted to opt out and waive future
+   reimbursements annually. A per-employee, per-plan-year signed record held by the plan
+   administrator; HealthSherpa is not a party to it.
+2. **Initial MEC substantiation** — proof of individual-market or Medicare coverage before the first
+   reimbursement. Where no carrier status feed exists (see D17), this is a per-employee artifact by
+   necessity.
+
+No `plus_consent` table ever existed in this design — the correction is textual, not structural.
 
 ### Ongoing
 
@@ -108,6 +141,33 @@ automated-vs-manual mix is reportable and so exceptions are findable.
   dissolves the constraint that currently blocks one-template-to-many-recipients.
 - `ProposalSection` LOS scoping: does not exist today (`ApplicationSection` has it via
   `applicationsectionlos`; `ProposalSection` does not). Required for D14.
+
+---
+
+## Correlation keys
+
+Keys sit at two grains; a flat list would mislead.
+
+**Employer level**
+
+| Key | Owner | Direction | Status |
+|---|---|---|---|
+| `Employer.id` (= Summit Organization ID) | AMS | internal | exists |
+| Summit `EmployerCustomID` / `ERCustomID` | Summit | AMS ↔ Summit | D12, typed in at setup |
+| HealthSherpa `employer.external_id` | AMS-supplied | AMS → HS | **HSOne-era, unverified** — see O2 in the build plan |
+
+**Participant level**
+
+| Key | Owner | Direction | Status |
+|---|---|---|---|
+| `Employee.id` (= Summit `Participant_ID`) | Summit | AMS ↔ Summit | exists |
+| **Summit Participant Custom ID** | **AMS-minted at census import** | AMS ↔ Summit | **May retire the SSN hash entirely — see D35 in the build plan.** Open: does it round-trip in the mailing export and J2/J3? |
+| `ssn_hash` (HMAC-SHA256) | AMS | **internal only** | D10 — sole purpose is the mailing-export join, which carries no participant ID |
+| HealthSherpa per-policy `external_id` | AMS-supplied | AMS ↔ HS | correct-product confirmed |
+
+**`ssn_hash` never leaves AMS.** Outbound correlation to HealthSherpa uses a **separate opaque
+UUID** — using the hash would put a pseudonymous SSN derivative on the wire to a third party and pin
+the hash space. The shortcut is obvious and wrong.
 
 ---
 
@@ -163,17 +223,20 @@ Carries `FirstName`, `LastName`, `SSN`, `DOB`, `ERCustomID`, `EmployerName`, `Or
 
 ## Open items
 
-| # | Item | Consequence |
+| Old | Item | Disposition |
 |---|---|---|
-| O1 | Does HealthSherpa's EDE applicant consent cover Policy Status access by the administering TPA? | If yes, the AMS consent artifact and the per-employee questionnaire requirement both disappear. This is the only open item that could **delete** a table rather than fill one in. |
-| O2 | Summit `EventTypeID` value set | Blocks `notice_event_map`, which is the core of the notice engine. |
-| O3 | Card feed `Date` — post date or swipe date? | Determines which month a premium payment verifies. |
-| O4 | HealthSherpa Policy Status coverage of **off-exchange** enrollments | Off-exchange participants fall back to card verification. Since the card is MCC-restricted (D13), this is survivable — but the automated/manual mix drives ops cost and should be known before pricing. |
-| O5 | Summit `DivisionName` as ICHRA class carrier | If it can carry class and vary contribution, no AMS class model is needed. |
-| O6 | Summit dependent DOB availability | If absent, dependent DOBs must be collected from the employee. |
-| O7 | Employer funding mechanics (ACH pull vs. prefund), and whether carded participants differ | Shapes whether invoicing needs a funding line. |
-| O8 | Counsel: QSEHRA SEP window, §213(d) filed-form question, MEC-floor design, PCORI applicability | Unchanged from prior sessions. |
-| O9 | Whether a carrier accepts card payment for individual premiums at all, and posts as 6300/5960 | Untested. One real carded premium transaction settles it. Worth engineering before the tier is priced. |
+| O1 | HealthSherpa EDE consent → TPA Policy Status access | **Dissolved — malformed.** There is no EDE transaction on the off-exchange rail. Its schema consequence is settled: a per-employee artifact is required regardless (see Setup, above). Replaced by **O2** and **O19** in the build plan. |
+| O2 | Summit `EventTypeID` value set | → **O5**, rescoped. Gates notice *reconciliation* only, not obligation tracking. **No longer DataPath-gated** — observable by performing the status change and reading the mailing export. |
+| O3 | Card feed `Date` — post or swipe | → **O6** + **D19**. Resolvable from the secondary report, which carries both `PostDate` and `SwipeDate`. |
+| O4 | Policy Status coverage of off-exchange | **RESOLVED, unfavourably** — exists but **carrier-gated**. See D17. Remainder → **O16**. |
+| O5 | `DivisionName` as ICHRA class carrier | → **O4** + **O7**. See also **O38** — `DivisionName` appears at rate level in the J7 benefit export, suggesting division-scoped contributions. |
+| O6 | Summit dependent DOB availability | → **O8**, downgraded. HealthSherpa collects household detail on the deeplink path. |
+| O7 | Employer funding mechanics | → **O11**, unchanged. |
+| O8 | Counsel: SEP window · §213(d) · MEC floor · PCORI | → **O17–O21**. Three were individually plan-shaping and were buried by aggregation. |
+| O9 | Carrier card acceptance / MCC posting | Merged into D13's remaining gate → **O10**. |
+
+The current open-item series is **O1–O38** in `docs/analysis/plus_tier_build_plan.md`, which is
+canonical. It is not duplicated here.
 
 ---
 
@@ -191,6 +254,13 @@ A read-only repo investigation (2026-07-29) established:
   `assignee(id)`. A missing FK, not a missing entity.
 - **New LOS creation and pricing is fully additive** — no existing `RateTable`, `losmodules`,
   or `agencyrates` rows need to change.
+  **Clarification (2026-07-30):** "Fully additive" describes the **pricing mechanism** — a new LOS
+  prices through its own `ServiceModule` → `RateTable` rows without disturbing existing ones. It
+  does **not** mean the standard `ICHRA` / `QSEHRA` LOS rows exist to be added to. No live seeder
+  creates them: `ReferenceDataSeeder.java` is dead code and the `DatabaseInitializer` LOS block is
+  commented out (476–510). Even the dead-code ICHRA/EBHRA PlanTypes point at the **generic HRA
+  ServiceItem (id 5)**, and **no QSEHRA PlanType exists at all**. See **D1** and the Gate 0 branch
+  in `docs/analysis/plus_tier_build_plan.md`.
 - **`ProposalSection.sectionType` is a free `VARCHAR(20)`** with JSP `<c:choose>` dispatch and
   no default branch — an unmatched type renders silently. New section types need no schema
   change, but do need a JSP branch. `ProposalSection` has no LOS scoping.

@@ -38,6 +38,28 @@
 > FINDING 1 (`/CreateBpoTestUser`, unauthenticated account creation with a hard-coded password printed
 > in the response) should be remediated ahead of feature work. Tracked as **T29**.
 
+**ICHRA+ / QSEHRA+ planning — Rev 5 (2026-07-30)**
+- `docs/analysis/plus_tier_build_plan.md` is **canonical** — decisions D1–D37, open items O1–O38,
+  phased build list, prioritised question list. Seven parts; **precedence runs Part 7 > Part 6 >
+  Part 5 > Part 4 > Parts 1–3** (earlier parts retained for provenance, superseded where they
+  conflict).
+- **Participant architecture settled:** census intake at AMS → generated Summit import file → Summit
+  creates participants → J2/J3 back into AMS. **No negative-ID employees for "+" participants**, so
+  the `mergeNegativeToPositiveEmployees` data-loss path (T33) is off the route.
+- **Ongoing new hires are entered Summit-first.** Only the setup census is AMS-first.
+- **Notice mechanism:** a **notional COBRA-type benefit** whose status change fires Summit's
+  tracked-letter vehicle. It also **flags eligibility counts**, and is **not billable** by DataPath
+  while participants remain active employees — cost is notice mailing only.
+- **All eligibles are loaded**, not only enrollees, which separates the eligible and enrolled counts
+  at source.
+- **Sequencing criterion:** earliest evidence that SSA makes SWBD's network win more cases — not
+  earliest live administration.
+- **Known risk:** the census/participant phase changes `SummitImportService` / `SummitImportWizard`,
+  live production import code where T36's divergent status mapping lives. **Needs its own Phase A.**
+- `docs/analysis/summit_notice_automation_discovery.md` — Summit test protocol, **not yet run**.
+- **No SQL was produced.** Highest migration remains **V073**, pending re-verification against
+  `ls docs/migrations/`.
+
 ## Key Patterns
 - **"25" suffix** = current/modern version of servlet or JSP. For model-layer adapter classes at `model/` root, three variants exist:
   - **`25` (no suffix):** `@Entity` mapped to a DB view — read-only JPA projection, no setters. E.g. `Activity25` → `a25_activity_list_open`.

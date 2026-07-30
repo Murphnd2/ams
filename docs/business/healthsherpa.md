@@ -8,7 +8,13 @@
 
 HealthSherpa is a CMS-approved Enhanced Direct Enrollment (EDE) provider and the leading **connectivity
 layer** for the ICHRA market — API-first infrastructure connecting carriers with ICHRA platforms for
-quoting, enrollment, and compliance. It powers 40+ ICHRA platforms behind the scenes and is integrated by
+quoting, enrollment, and compliance.
+
+> **Note:** the product SSA is integrating is the **off-exchange ICHRA Partner API**
+> (`docs.ichra.healthsherpa.com`), **not** EDE and **not** HSOne. See the 2026-07-29 product
+> correction section below before relying on any endpoint detail in this document.
+
+It powers 40+ ICHRA platforms behind the scenes and is integrated by
 admin platforms (e.g. Alegeus/WealthCare) as the shop-and-enroll layer under their ICHRA administration.
 
 Crucially for AMS: **HealthSherpa is a supplier/enabler, not a competing administrator.** The fit is —

@@ -178,9 +178,13 @@ supplemental into near-comprehensive coverage.
 - Develop the **stack-wrap** opportunity (above) as a later track.
 - **Minor §125 opportunity** surfaced on the 2026-07-28 call — details TBD from Kevin.
 - **HealthSherpa ICHRA integration** — read-only evaluation (see `healthsherpa.md`, backlog #42).
-- ICHRA+/QSEHRA+ build — requirements settled, data model designed. See `plus_tier.md`. Highest-value open
-  item is whether HealthSherpa's EDE consent covers TPA Policy Status access; if it does, the AMS consent
-  artifact is unnecessary.
+- ICHRA+/QSEHRA+ build — requirements settled, data model designed. See
+  `docs/analysis/plus_tier_build_plan.md` (canonical) and `plus_tier.md` (design intent). The former
+  "EDE consent" open item was **malformed** — there is no EDE transaction on the off-exchange ICHRA
+  Partner API rail, and the per-employee artifact is required regardless (PTC waiver + MEC
+  substantiation). Current highest-value open items are **O34** (does Summit's Participant Custom ID
+  round-trip in the mailing export and J2/J3 — it may retire the SSN hash entirely) and **O18**
+  (counsel: does a signed attestation suffice as a reimbursement-release record).
 
 ## Positioning, structure & liability (from brief v4)
 

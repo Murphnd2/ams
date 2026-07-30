@@ -67,3 +67,11 @@ Relevant to QSEHRA-based products (e.g. the SWBD/PremiumPath program — `docs/b
 - **Endorsement boundary:** keep **carrier names off all SSA-drafted paper** (plan docs, notices, card,
   proposals). Program-because-of-one-carrier conduct risks reclassification as an employer-sponsored group
   health plan (→ QSEHRA disqualified, §4980D). Parallel to the agent-markup confidentiality boundary (§4).
+- **⚠️ Unresolved tension (O25) — pending counsel.** The endorsement boundary above and the ERISA
+  safe harbor pull in opposite directions: the safe harbor requires a **complete, neutral plan
+  list** with employee-controlled sort and filter, no recommended badge, no default selection, no
+  curation and no hidden carriers — and a complete list necessarily **names carriers**. Proposed
+  reconciliation, **not yet confirmed**: carrier names **may** appear in neutral, complete,
+  employee-facing market displays; they **must not** appear in SSA-drafted plan documents, notices,
+  or program marketing. This gates every display SSA builds — illustration, provider check, design
+  output, enrollment handoff. Tracked as **O25** in `docs/analysis/plus_tier_build_plan.md`.
