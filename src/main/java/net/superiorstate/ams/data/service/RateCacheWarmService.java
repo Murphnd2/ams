@@ -15,40 +15,53 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
- * Warms {@link RatingAreaRateCache} for every configured county. Follows
- * InstallationHealthScheduler's lifecycle shape (single-thread scheduled executor,
- * daemon thread, scheduleAtFixedRate, shutdownNow() then awaitTermination(10s)) and
- * BillingPipelineRunner's per-class L2-eviction pattern.
+ * Warms {@link RatingAreaRateCache} for every configured county and plan year.
+ * Follows InstallationHealthScheduler's lifecycle shape (single-thread scheduled
+ * executor, daemon thread, scheduleAtFixedRate, shutdownNow() then
+ * awaitTermination(10s)) and BillingPipelineRunner's per-class L2-eviction pattern.
+ *
+ * <p><b>Plan years are configuration, never derived from the current date.</b> An
+ * earlier version of this class used {@code Year.now()}. That is wrong during the
+ * period it matters most: open enrollment for the next plan year begins November 1,
+ * and from that date an agent illustrating a group with a January 1 effective date
+ * needs the *next* year's rates while {@code Year.now()} still returns the current
+ * year until January 1. The cache would have silently served the wrong plan year
+ * — no error, no warning, just wrong numbers during the busiest quoting window of
+ * the year. Plan years now come from the {@code RATE_CACHE_PLAN_YEARS} constant
+ * (D-84), re-read at the start of every run (not cached at construction) so a
+ * change takes effect on the next scheduled tick without a restart. A year with no
+ * {@link AgeCurve} entry is skipped with a logged error, never guessed.
  *
  * <p><b>Deviations from the original Phase B-1b design, both forced by the "no
- * changes to HealthSherpaService.java beyond Part 0" constraint and both flagged
- * in the Phase B-1b report — do not silently "fix" these back without re-reading
- * that report's reasoning:</b>
+ * changes to HealthSherpaService.java" constraint and both flagged in the
+ * Phase B-1b report — do not silently "fix" these back without re-reading that
+ * report's reasoning:</b>
  * <ol>
- *   <li><b>Two sequential single-applicant calls, not one two-applicant call.</b>
- *       HealthSherpaService only exposes {@code quoteSingleApplicant} (one
- *       applicant per request, flat premium fields). It has no method taking a
- *       {primary, spouse} applicant pair, and {@link net.superiorstate.ams.data.service.HealthSherpaService.PlanSummary}
- *       does not parse a per-applicant premium breakdown. Building that would mean
- *       editing HealthSherpaService.java, which was out of scope. This class instead
- *       calls quoteSingleApplicant once at age 21 (the market-classification call)
- *       and once at age 45 (the canary-check call), matching plans between the two
- *       responses by hiosId. Two calls per county instead of one, but still far
- *       fewer than one per age (45).</li>
+ *   <li><b>Two sequential single-applicant calls per county per year, not one
+ *       two-applicant call.</b> HealthSherpaService only exposes
+ *       {@code quoteSingleApplicant}. This class calls it once at age 21 (market
+ *       classification) and, for the canary check, once more at age 45 — but see
+ *       point 3 below, the age-45 call is now made only once per plan year, not
+ *       once per county.</li>
  *   <li><b>RATE_CACHE_COUNTIES is {@code zip:fips:state}, not {@code fips:state}.</b>
- *       quoteSingleApplicant requires a zipCode parameter; the county list as
- *       originally specified had no ZIP. Rather than guess a representative ZIP per
- *       county myself (a real correctness risk — the wrong ZIP could silently
- *       return the wrong rating area), the constant format carries one, supplied by
- *       whoever configures the constant. See D-83 in deployment_backlog.md.</li>
+ *       quoteSingleApplicant requires a zipCode parameter the county list as
+ *       originally specified didn't carry.</li>
+ *   <li><b>Canary runs once per plan year, not once per county (Phase B-1b
+ *       follow-up).</b> The uniform age rating curve is statutory and identical
+ *       across every county in every state — validating it per county bought
+ *       nothing and doubled the call count. It now runs once per plan year,
+ *       against the first county processed for that year: {@code counties + 1}
+ *       calls per plan year instead of {@code counties * 2}.</li>
  * </ol>
  */
 public class RateCacheWarmService {
@@ -67,16 +80,14 @@ public class RateCacheWarmService {
 
     private final ScheduledExecutorService executor;
     private final EntityManagerFactory emf;
-    private final int planYear;
 
     private final AtomicBoolean running = new AtomicBoolean(false);
 
     private static volatile String lastRunSummary;
     private static volatile LocalDateTime lastRunAt;
 
-    public RateCacheWarmService(EntityManagerFactory emf, int planYear) {
+    public RateCacheWarmService(EntityManagerFactory emf) {
         this.emf = emf;
-        this.planYear = planYear;
         this.executor = Executors.newSingleThreadScheduledExecutor(r -> {
             Thread t = new Thread(r, "rate-cache-warm-service");
             t.setDaemon(true);
@@ -121,10 +132,6 @@ public class RateCacheWarmService {
 
     public LocalDateTime getLastRunAt() {
         return lastRunAt;
-    }
-
-    public int getPlanYear() {
-        return planYear;
     }
 
     /** STAGING if the configured base URL contains "ichra-staging", otherwise PRODUCTION. */
@@ -174,54 +181,91 @@ public class RateCacheWarmService {
     }
 
     private void warmAll() {
-        List<CountyTarget> counties = readConfiguredCounties();
+        EntityManager configEm = emf.createEntityManager();
+        List<Integer> planYears;
+        List<CountyTarget> counties;
+        try {
+            planYears = readConfiguredPlanYears(configEm);
+            counties = readConfiguredCounties(configEm);
+        } finally {
+            configEm.close();
+        }
+
+        if (planYears.isEmpty()) {
+            log.error("[RATE-CACHE] RATE_CACHE_PLAN_YEARS is absent, empty, or wholly unparseable — skipping run entirely");
+            lastRunSummary = "SKIPPED: no valid plan years configured";
+            lastRunAt = LocalDateTime.now();
+            return;
+        }
         if (counties.isEmpty()) {
             log.warn("[RATE-CACHE] No valid counties configured in RATE_CACHE_COUNTIES — nothing to warm");
-            lastRunSummary = "0 counties configured";
+            lastRunSummary = "SKIPPED: no counties configured";
             lastRunAt = LocalDateTime.now();
             return;
         }
 
+        int yearsWarmed = 0, yearsSkipped = 0;
         int succeeded = 0, skipped = 0, failed = 0;
-        for (CountyTarget county : counties) {
-            try {
-                if (warmCounty(county)) {
-                    succeeded++;
-                } else {
-                    skipped++;
+
+        for (int planYear : planYears) {
+            if (!AgeCurve.hasCurveFor(planYear)) {
+                log.error("[RATE-CACHE] No AgeCurve configured for plan year {} — skipping this year only, other configured years continue", planYear);
+                yearsSkipped++;
+                continue;
+            }
+
+            yearsWarmed++;
+            boolean canaryDoneForYear = false;
+            for (CountyTarget county : counties) {
+                try {
+                    if (warmCounty(planYear, county, !canaryDoneForYear)) {
+                        succeeded++;
+                    } else {
+                        skipped++;
+                    }
+                    canaryDoneForYear = true; // attempted (or intentionally skipped) — never retried for this year
+                } catch (Exception e) {
+                    failed++;
+                    canaryDoneForYear = true;
+                    log.error("[RATE-CACHE] Plan year {} county {} failed: {}", planYear, county, e.getMessage(), e);
                 }
-            } catch (Exception e) {
-                failed++;
-                log.error("[RATE-CACHE] County {} failed: {}", county, e.getMessage(), e);
             }
         }
 
-        lastRunSummary = succeeded + " warmed, " + skipped + " skipped, " + failed + " failed (of " + counties.size() + ")";
+        lastRunSummary = yearsWarmed + " plan year(s) warmed, " + yearsSkipped + " plan year(s) skipped (no AgeCurve); "
+                + succeeded + " county-years warmed, " + skipped + " skipped, " + failed + " failed";
         lastRunAt = LocalDateTime.now();
         log.info("[RATE-CACHE] Run complete: {}", lastRunSummary);
     }
 
     /** @return true if the county was successfully warmed (rows written), false if skipped (e.g. zero plans). */
-    private boolean warmCounty(CountyTarget county) {
+    private boolean warmCounty(int planYear, CountyTarget county, boolean runCanary) {
         HealthSherpaService.HealthSherpaQuoteResponse baseResponse = HealthSherpaService.quoteSingleApplicant(
                 county.zip, county.fips, county.state, planYear, BASE_AGE, false, true);
 
         if (!baseResponse.isSuccess()) {
-            log.warn("[RATE-CACHE] County {} base (age {}) call failed: {}", county, BASE_AGE, baseResponse.getErrorMessage());
+            log.warn("[RATE-CACHE] Plan year {} county {} base (age {}) call failed: {}",
+                    planYear, county, BASE_AGE, baseResponse.getErrorMessage());
             return false;
         }
         List<HealthSherpaService.PlanSummary> basePlans = baseResponse.getPlans();
         if (basePlans.isEmpty()) {
-            log.info("[RATE-CACHE] County {} returned zero plans — skipping", county);
+            log.info("[RATE-CACHE] Plan year {} county {} returned zero plans — skipping", planYear, county);
             return false;
         }
 
-        canaryCheck(county, basePlans);
+        // Canary once per plan year, not once per county: the age curve is statutory and
+        // county-invariant (identical for every county in every state that uses the federal
+        // default), so re-validating it against every county bought nothing and doubled the
+        // call count. See class Javadoc point 3.
+        if (runCanary) {
+            canaryCheck(planYear, county, basePlans);
+        }
 
         BigDecimal marketLow = null, marketHigh = null;
         BigDecimal lcsp = null, benchmarkSilver = null, lowestBronze = null;
         List<BigDecimal> silverPremiumsSorted = new ArrayList<>();
-        java.util.Set<String> issuers = new java.util.HashSet<>();
+        Set<String> issuers = new LinkedHashSet<>();
 
         for (HealthSherpaService.PlanSummary plan : basePlans) {
             BigDecimal premium = basePremiumOf(plan);
@@ -264,11 +308,11 @@ public class RateCacheWarmService {
             row.setState(county.state);
             row.setAge(age);
             row.setUsesTobacco(false); // unused pending O19 — see V074 header
-            row.setMarketLowPremium(scaleOrNull(marketLow, age));
-            row.setMarketHighPremium(scaleOrNull(marketHigh, age));
-            row.setLcspPremium(scaleOrNull(lcsp, age));
-            row.setBenchmarkSilverPremium(scaleOrNull(benchmarkSilver, age));
-            row.setLowestBronzePremium(scaleOrNull(lowestBronze, age));
+            row.setMarketLowPremium(scaleOrNull(marketLow, planYear, age));
+            row.setMarketHighPremium(scaleOrNull(marketHigh, planYear, age));
+            row.setLcspPremium(scaleOrNull(lcsp, planYear, age));
+            row.setBenchmarkSilverPremium(scaleOrNull(benchmarkSilver, planYear, age));
+            row.setLowestBronzePremium(scaleOrNull(lowestBronze, planYear, age));
             row.setCarrierCount(carrierCount);
             row.setPlanCount(planCount);
             row.setFetchedAt(fetchedAt);
@@ -287,7 +331,7 @@ public class RateCacheWarmService {
         return true;
     }
 
-    private BigDecimal scaleOrNull(BigDecimal baseAt21, int age) {
+    private BigDecimal scaleOrNull(BigDecimal baseAt21, int planYear, int age) {
         return baseAt21 == null ? null : AgeCurve.scale(baseAt21, planYear, age);
     }
 
@@ -303,19 +347,21 @@ public class RateCacheWarmService {
     }
 
     /**
-     * Standing check that the age-factor table is still correct. Makes a second
-     * quoteSingleApplicant call at CANARY_AGE, matches at least one plan present in
-     * both responses by hiosId, and compares the observed ratio against
-     * AgeCurve.factorFor. On any mismatch or failure, logs a clear warning naming
-     * both values and returns — never aborts the county.
+     * Standing check that the age-factor table is still correct for this plan year.
+     * Called once per plan year (against the first county processed for that year —
+     * see the runCanary flag in warmCounty). Makes a second quoteSingleApplicant call
+     * at CANARY_AGE, matches at least one plan present in both responses by hiosId,
+     * and compares the observed ratio against AgeCurve.factorFor. On any mismatch or
+     * failure, logs a clear warning naming both values and returns — never aborts
+     * the county or the run.
      */
-    private void canaryCheck(CountyTarget county, List<HealthSherpaService.PlanSummary> basePlans) {
+    private void canaryCheck(int planYear, CountyTarget county, List<HealthSherpaService.PlanSummary> basePlans) {
         HealthSherpaService.HealthSherpaQuoteResponse canaryResponse = HealthSherpaService.quoteSingleApplicant(
                 county.zip, county.fips, county.state, planYear, CANARY_AGE, false, true);
 
         if (!canaryResponse.isSuccess()) {
-            log.warn("[RATE-CACHE] County {} canary (age {}) call failed: {} — age curve unverified this run",
-                    county, CANARY_AGE, canaryResponse.getErrorMessage());
+            log.warn("[RATE-CACHE] Plan year {} canary (age {}, county {}) call failed: {} — age curve unverified this run",
+                    planYear, CANARY_AGE, county, canaryResponse.getErrorMessage());
             return;
         }
 
@@ -337,18 +383,18 @@ public class RateCacheWarmService {
             BigDecimal expectedCanary = AgeCurve.scale(basePremium, planYear, CANARY_AGE);
             BigDecimal diff = canaryPremium.subtract(expectedCanary).abs();
             if (diff.compareTo(CANARY_TOLERANCE) > 0) {
-                log.warn("[RATE-CACHE] Canary mismatch for county {} plan {}: age-{} premium {} scaled to age-{} " +
+                log.warn("[RATE-CACHE] Canary mismatch for plan year {} county {} plan {}: age-{} premium {} scaled to age-{} " +
                                 "expects {}, HealthSherpa returned {} (diff {}) — AgeCurve may be stale for plan year {}",
-                        county, basePlan.getHiosId(), BASE_AGE, basePremium, CANARY_AGE, expectedCanary,
+                        planYear, county, basePlan.getHiosId(), BASE_AGE, basePremium, CANARY_AGE, expectedCanary,
                         canaryPremium, diff, planYear);
             } else {
-                log.debug("[RATE-CACHE] Canary check passed for county {} plan {}", county, basePlan.getHiosId());
+                log.debug("[RATE-CACHE] Canary check passed for plan year {} county {} plan {}", planYear, county, basePlan.getHiosId());
             }
             return; // one confirmed match is sufficient per Part 4 step 4
         }
 
-        log.warn("[RATE-CACHE] County {} — no plan matched by hiosId between age-{} and age-{} responses; " +
-                "canary check skipped this run", county, BASE_AGE, CANARY_AGE);
+        log.warn("[RATE-CACHE] Plan year {} county {} — no plan matched by hiosId between age-{} and age-{} responses; " +
+                "canary check skipped this run", planYear, county, BASE_AGE, CANARY_AGE);
     }
 
     // ── L2 cache ─────────────────────────────────────────────────────
@@ -363,19 +409,37 @@ public class RateCacheWarmService {
     // ── Config parsing ───────────────────────────────────────────────
 
     /**
+     * Reads RATE_CACHE_PLAN_YEARS as a comma-separated list of plan years (D-84).
+     * Individual malformed tokens are logged and skipped; the list is only treated
+     * as wholly unparseable (empty result, triggering a full-run skip in warmAll())
+     * if zero valid years survive.
+     */
+    private List<Integer> readConfiguredPlanYears(EntityManager em) {
+        List<Integer> result = new ArrayList<>();
+        String raw = AppConstantDAO.getConstantValue(em, "RATE_CACHE_PLAN_YEARS");
+        if (raw == null || raw.isBlank()) {
+            return result;
+        }
+        for (String entry : raw.split(",")) {
+            String trimmed = entry.trim();
+            if (trimmed.isEmpty()) continue;
+            try {
+                result.add(Integer.parseInt(trimmed));
+            } catch (NumberFormatException e) {
+                log.warn("[RATE-CACHE] Skipping malformed RATE_CACHE_PLAN_YEARS entry: '{}'", trimmed);
+            }
+        }
+        return result;
+    }
+
+    /**
      * Reads RATE_CACHE_COUNTIES as comma-separated {@code zip:fips:state} triples
      * (see class-level deviation note #2). Malformed entries are logged and
      * skipped, not fatal to the run.
      */
-    private List<CountyTarget> readConfiguredCounties() {
+    private List<CountyTarget> readConfiguredCounties(EntityManager em) {
         List<CountyTarget> result = new ArrayList<>();
-        EntityManager em = emf.createEntityManager();
-        String raw;
-        try {
-            raw = AppConstantDAO.getConstantValue(em, "RATE_CACHE_COUNTIES");
-        } finally {
-            em.close();
-        }
+        String raw = AppConstantDAO.getConstantValue(em, "RATE_CACHE_COUNTIES");
         if (raw == null || raw.isBlank()) {
             return result;
         }

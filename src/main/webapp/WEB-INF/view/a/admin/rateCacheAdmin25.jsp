@@ -58,7 +58,12 @@
 
 <div class="audit-wrap">
     <div class="toolbar">
-        <h1 class="t-title m-0"><i class="bi bi-graph-up me-1"></i>Rate Cache — Plan Year ${planYear}</h1>
+        <h1 class="t-title m-0">
+            <i class="bi bi-graph-up me-1"></i>Rate Cache
+            <c:if test="${not empty configuredPlanYears}"> — Plan Years:
+                <c:forEach var="y" items="${configuredPlanYears}" varStatus="ys">${y}<c:if test="${!ys.last}">, </c:if></c:forEach>
+            </c:if>
+        </h1>
     </div>
 
     <div class="rc-body">
@@ -98,6 +103,21 @@
                 <dt>Source environment</dt>
                 <dd><c:out value="${sourceEnv}"/></dd>
 
+                <dt>Configured plan years</dt>
+                <dd>
+                    <c:choose>
+                        <c:when test="${not empty configuredPlanYears}">
+                            <c:forEach var="y" items="${configuredPlanYears}" varStatus="ys">${y}<c:if test="${!ys.last}">, </c:if></c:forEach>
+                        </c:when>
+                        <c:otherwise>
+                            <span class="text-muted">
+                                None — RATE_CACHE_PLAN_YEARS = <c:out value="${empty planYearsConstant ? '(not set)' : planYearsConstant}"/>.
+                                The warm job skips its entire run until this is configured (D-84).
+                            </span>
+                        </c:otherwise>
+                    </c:choose>
+                </dd>
+
                 <dt>Run status</dt>
                 <dd>
                     <c:choose>
@@ -130,51 +150,63 @@
             </form>
         </div>
 
-        <div class="card">
-            <div class="hdr-bar d-flex align-items-center">
-                <i class="bi bi-map me-2"></i>Configured Counties
-            </div>
-            <c:choose>
-                <c:when test="${not empty countySummaries}">
-                    <table class="county-table">
-                        <thead>
-                        <tr>
-                            <th>County FIPS</th>
-                            <th>Row Count</th>
-                            <th>Oldest Fetched</th>
-                            <th>Newest Fetched</th>
-                            <th>Source</th>
-                        </tr>
-                        </thead>
-                        <tbody>
-                        <c:forEach var="cs" items="${countySummaries}">
-                            <tr>
-                                <td><c:out value="${cs.countyFips}"/></td>
-                                <td>${cs.rowCount}</td>
-                                <td>
-                                    <c:if test="${not empty cs.oldestFetchedAt}">
-                                        <fmt:formatDate value="${cs.oldestFetchedAt}" pattern="yyyy-MM-dd HH:mm"/>
-                                    </c:if>
-                                </td>
-                                <td>
-                                    <c:if test="${not empty cs.newestFetchedAt}">
-                                        <fmt:formatDate value="${cs.newestFetchedAt}" pattern="yyyy-MM-dd HH:mm"/>
-                                    </c:if>
-                                </td>
-                                <td><c:out value="${cs.sourceEnv}"/></td>
-                            </tr>
-                        </c:forEach>
-                        </tbody>
-                    </table>
-                </c:when>
-                <c:otherwise>
-                    <div class="empty-state">
-                        <i class="bi bi-map"></i>
-                        <div style="font-size:0.85rem; margin-top:0.5rem;">No cached counties for plan year ${planYear} yet.</div>
+        <c:choose>
+            <c:when test="${not empty countySummariesByYear}">
+                <c:forEach var="yearEntry" items="${countySummariesByYear}">
+                    <div class="card mb-3">
+                        <div class="hdr-bar d-flex align-items-center">
+                            <i class="bi bi-map me-2"></i>Plan Year ${yearEntry.key} — Configured Counties
+                        </div>
+                        <c:choose>
+                            <c:when test="${not empty yearEntry.value}">
+                                <table class="county-table">
+                                    <thead>
+                                    <tr>
+                                        <th>County FIPS</th>
+                                        <th>Row Count</th>
+                                        <th>Oldest Fetched</th>
+                                        <th>Newest Fetched</th>
+                                        <th>Source</th>
+                                    </tr>
+                                    </thead>
+                                    <tbody>
+                                    <c:forEach var="cs" items="${yearEntry.value}">
+                                        <tr>
+                                            <td><c:out value="${cs.countyFips}"/></td>
+                                            <td>${cs.rowCount}</td>
+                                            <td>
+                                                <c:if test="${not empty cs.oldestFetchedAt}">
+                                                    <fmt:formatDate value="${cs.oldestFetchedAt}" pattern="yyyy-MM-dd HH:mm"/>
+                                                </c:if>
+                                            </td>
+                                            <td>
+                                                <c:if test="${not empty cs.newestFetchedAt}">
+                                                    <fmt:formatDate value="${cs.newestFetchedAt}" pattern="yyyy-MM-dd HH:mm"/>
+                                                </c:if>
+                                            </td>
+                                            <td><c:out value="${cs.sourceEnv}"/></td>
+                                        </tr>
+                                    </c:forEach>
+                                    </tbody>
+                                </table>
+                            </c:when>
+                            <c:otherwise>
+                                <div class="empty-state">
+                                    <i class="bi bi-map"></i>
+                                    <div style="font-size:0.85rem; margin-top:0.5rem;">No cached counties for plan year ${yearEntry.key} yet.</div>
+                                </div>
+                            </c:otherwise>
+                        </c:choose>
                     </div>
-                </c:otherwise>
-            </c:choose>
-        </div>
+                </c:forEach>
+            </c:when>
+            <c:otherwise>
+                <div class="empty-state">
+                    <i class="bi bi-map"></i>
+                    <div style="font-size:0.85rem; margin-top:0.5rem;">No plan years configured (RATE_CACHE_PLAN_YEARS) — nothing to show.</div>
+                </div>
+            </c:otherwise>
+        </c:choose>
 
     </div>
 </div>

@@ -96,6 +96,11 @@ public final class AgeCurve {
         return new BigDecimal(s);
     }
 
+    /** Returns true if a curve is configured for the given plan year. */
+    public static boolean hasCurveFor(int planYear) {
+        return CURVES_BY_PLAN_YEAR.containsKey(planYear);
+    }
+
     /**
      * Returns the age-rating factor for the given plan year and age. Ages below
      * {@value #MIN_AGE} clamp to {@value #MIN_AGE}; ages above {@value #MAX_AGE}

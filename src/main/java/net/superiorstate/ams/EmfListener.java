@@ -20,7 +20,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.sql.Date;
 import java.time.LocalDate;
-import java.time.Year;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -104,7 +103,7 @@ public class EmfListener implements ServletContextListener, HttpSessionListener,
                     // four installations hammering it at once would be worse than one.
                     String warmEnabled = AppConstantDAO.getConstantValue(em, "RATE_CACHE_WARM_ENABLED");
                     if ("true".equalsIgnoreCase(warmEnabled)) {
-                        rateCacheWarmService = new RateCacheWarmService(emf, Year.now().getValue());
+                        rateCacheWarmService = new RateCacheWarmService(emf);
                         rateCacheWarmService.start();
                         sce.getServletContext().setAttribute("rateCacheWarmService", rateCacheWarmService);
                     }

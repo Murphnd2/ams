@@ -13,8 +13,10 @@ import net.superiorstate.ams.data.dao.RateCacheDAO;
 import net.superiorstate.ams.data.service.RateCacheWarmService;
 
 import java.io.IOException;
-import java.time.Year;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * PSP Admin — A1 rate-cache status page. Displays whether the warm job is enabled
@@ -34,27 +36,53 @@ public class RateCacheAdmin extends HttpServlet {
         RateCacheWarmService warmService = (RateCacheWarmService) getServletContext().getAttribute("rateCacheWarmService");
         EntityManagerFactory emf = (EntityManagerFactory) getServletContext().getAttribute("emf");
 
-        int planYear = warmService != null ? warmService.getPlanYear() : Year.now().getValue();
-
         EntityManager em = emf.createEntityManager();
         try {
             String warmEnabledConstant = AppConstantDAO.getConstantValue(em, "RATE_CACHE_WARM_ENABLED");
-            List<RateCacheDAO.CountySummary> countySummaries = RateCacheDAO.getCountySummaries(em, planYear);
+            String planYearsConstant = AppConstantDAO.getConstantValue(em, "RATE_CACHE_PLAN_YEARS");
+            List<Integer> planYears = parsePlanYears(planYearsConstant);
+
+            // Plan years are configuration (RATE_CACHE_PLAN_YEARS, D-84), never derived from
+            // the current date — see RateCacheWarmService's class Javadoc for why. This page
+            // displays whatever is actually configured, which may be zero, one, or several years
+            // (e.g. "2026,2027" during open enrollment).
+            Map<Integer, List<RateCacheDAO.CountySummary>> countySummariesByYear = new LinkedHashMap<>();
+            for (Integer year : planYears) {
+                countySummariesByYear.put(year, RateCacheDAO.getCountySummaries(em, year));
+            }
 
             request.setAttribute("warmEnabled", warmService != null);
             request.setAttribute("warmEnabledConstant", warmEnabledConstant);
             request.setAttribute("sourceEnv", RateCacheWarmService.currentSourceEnv());
-            request.setAttribute("planYear", planYear);
+            request.setAttribute("planYearsConstant", planYearsConstant);
+            request.setAttribute("configuredPlanYears", planYears);
             request.setAttribute("runInProgress", warmService != null && warmService.isRunInProgress());
             request.setAttribute("lastRunSummary", warmService != null ? warmService.getLastRunSummary() : null);
             request.setAttribute("lastRunAt", warmService != null ? warmService.getLastRunAt() : null);
-            request.setAttribute("countySummaries", countySummaries);
+            request.setAttribute("countySummariesByYear", countySummariesByYear);
             request.setAttribute("pageTitle", "Rate Cache");
             request.setAttribute("pageIcon", "bi-graph-up");
             request.getRequestDispatcher("/WEB-INF/view/a/admin/rateCacheAdmin25.jsp").forward(request, response);
         } finally {
             if (em.isOpen()) em.close();
         }
+    }
+
+    /** Tolerant parse matching RateCacheWarmService's own RATE_CACHE_PLAN_YEARS handling — display only. */
+    private List<Integer> parsePlanYears(String raw) {
+        List<Integer> years = new ArrayList<>();
+        if (raw == null || raw.isBlank()) return years;
+        for (String entry : raw.split(",")) {
+            String trimmed = entry.trim();
+            if (trimmed.isEmpty()) continue;
+            try {
+                years.add(Integer.parseInt(trimmed));
+            } catch (NumberFormatException ignored) {
+                // malformed entries are reported by RateCacheWarmService's own run logs; this
+                // display-only parse just skips them
+            }
+        }
+        return years;
     }
 
     @Override

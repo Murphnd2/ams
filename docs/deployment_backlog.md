@@ -1255,3 +1255,25 @@ ON DUPLICATE KEY UPDATE value = VALUES(value);
 ⚠️ **Format is `zip:fips:state` triples, comma-separated — not the `fips:state` pairs originally specified in the A1 Phase B-1b prompt.** `HealthSherpaService.quoteSingleApplicant` requires a ZIP code as a real request field; the county list as originally specified had no ZIP. Rather than guess a representative ZIP per county in code (a real correctness risk — the wrong ZIP could silently return the wrong rating area), the format carries one, supplied here by whoever configures the constant. Malformed entries (wrong part count, blank segment) are skipped and logged by `RateCacheWarmService`, not fatal to the run.
 
 **Applies to:** Production ⬜ — the actual county list is a business decision (which markets SSA quotes), not yet made.
+
+---
+
+### D-84: Seed `RATE_CACHE_PLAN_YEARS` constant
+
+**Priority:** HIGH — Without this, the cache silently serves the wrong plan year during open enrollment
+**Status:** Not started
+
+Insert a `constant` row named `RATE_CACHE_PLAN_YEARS` listing which plan years the warm job populates, comma-separated:
+
+```sql
+INSERT INTO constant (name, value) VALUES ('RATE_CACHE_PLAN_YEARS', '2026')
+ON DUPLICATE KEY UPDATE value = VALUES(value);
+```
+
+**Why this exists.** `RateCacheWarmService` originally derived its plan year from `Year.now()` — wrong during the period it matters most. Open enrollment for plan year 2027 begins November 1, 2026. From that date, an agent illustrating a group with a January 1, 2027 effective date needs 2027 rates, but `Year.now()` returns 2026 until January 1. The cache would have served the wrong plan year while appearing perfectly healthy — no error, no warning, just wrong numbers during the busiest quoting window of the year. `plan_year` is already part of `rating_area_rate_cache`'s unique key, so the cache can hold multiple years simultaneously — the fix is configuration, not schema.
+
+**During open enrollment (November 1 onward), configure both the current and upcoming plan year**, e.g. `2026,2027`, so illustrations for either effective date resolve correctly.
+
+**A year with no `AgeCurve` entry is skipped with a logged error, never guessed or silently substituted with a different year's curve.** `RateCacheWarmService` reads this constant fresh at the start of every run (not once at startup), so a change takes effect on the next scheduled tick without a restart. If the constant is absent, empty, or wholly unparseable, the run is skipped entirely and logged as an error rather than falling back to any default year.
+
+**Applies to:** Production ⬜, Demo PSP ⬜, BPO ⬜, Master image ⬜ — same environments as D-82/D-83.
