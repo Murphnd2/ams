@@ -10,6 +10,8 @@ import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.AmsDataGlobal;
 import net.superiorstate.ams.model.Constant;
 
+import net.superiorstate.ams.data.dao.AppConstantDAO;
+import net.superiorstate.ams.data.service.RateCacheWarmService;
 import net.superiorstate.ams.service.InstallationHealthScheduler;
 
 import java.io.IOException;
@@ -18,6 +20,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.sql.Date;
 import java.time.LocalDate;
+import java.time.Year;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -26,6 +29,7 @@ public class EmfListener implements ServletContextListener, HttpSessionListener,
 
     private InstallationHealthScheduler healthScheduler;
     private ExecutorService billingExecutor;
+    private RateCacheWarmService rateCacheWarmService;
 
     public EmfListener() {}
 
@@ -91,6 +95,19 @@ public class EmfListener implements ServletContextListener, HttpSessionListener,
                         healthScheduler = new InstallationHealthScheduler(emf, global);
                         healthScheduler.start();
                     }
+
+                    // A1 rate-cache warm job — runs on the production PSP, deliberately NOT
+                    // gated by AppConfig.isMaster() (same rationale as billingExecutor above).
+                    // Gated on its own per-instance constant so it can be enabled/disabled
+                    // independently per environment (D-82) rather than piggybacking on the
+                    // master flag, since rate limits on the HealthSherpa key are unknown and
+                    // four installations hammering it at once would be worse than one.
+                    String warmEnabled = AppConstantDAO.getConstantValue(em, "RATE_CACHE_WARM_ENABLED");
+                    if ("true".equalsIgnoreCase(warmEnabled)) {
+                        rateCacheWarmService = new RateCacheWarmService(emf, Year.now().getValue());
+                        rateCacheWarmService.start();
+                        sce.getServletContext().setAttribute("rateCacheWarmService", rateCacheWarmService);
+                    }
                 }
             } finally {
                 if (em != null && em.isOpen()) {
@@ -136,6 +153,10 @@ public class EmfListener implements ServletContextListener, HttpSessionListener,
         // Stop health scheduler before closing EMF
         if (healthScheduler != null) {
             healthScheduler.stop();
+        }
+
+        if (rateCacheWarmService != null) {
+            rateCacheWarmService.stop();
         }
 
         if (billingExecutor != null) {

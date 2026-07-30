@@ -1214,3 +1214,44 @@ ON DUPLICATE KEY UPDATE value = VALUES(value);
 **Note:** `AppConfig.getHealthSherpaBaseUrl()` falls back to `ssa.properties` (`HEALTHSHERPA_BASE_URL`), then to the hardcoded production default, when the DB row is absent or empty.
 
 **Applies to:** Any environment testing against HealthSherpa staging — not yet decided which, if any.
+
+---
+
+### D-82: Seed `RATE_CACHE_WARM_ENABLED` constant per instance
+
+**Priority:** MEDIUM — Controls whether the A1 rate-cache warm job runs on this instance at all
+**Status:** Not started
+
+Insert a `constant` row named `RATE_CACHE_WARM_ENABLED` (value `true` or `false`) on every instance. Without a per-instance flag, all four installations (Production, Demo, Master, BPO) would each register the scheduled warm job and independently hammer the HealthSherpa API on a key whose rate limits are unknown.
+
+```sql
+INSERT INTO constant (name, value) VALUES ('RATE_CACHE_WARM_ENABLED', 'true')
+ON DUPLICATE KEY UPDATE value = VALUES(value);
+```
+
+- **Production:** `true`.
+- **Demo:** optional — set `true` only if the demo environment needs live rate-cache data.
+- **Master:** `false`.
+- **BPO:** `false`.
+
+**Note:** `EmfListener` reads this via `AppConstantDAO.getConstantValue(em, "RATE_CACHE_WARM_ENABLED")` at startup, case-insensitive `"true"` check — matching the `IS_MASTER` constant pattern. Absent or any other value means the job does not register at all (no executor thread, no scheduling). Deliberately **not** gated on `AppConfig.isMaster()` — this job needs to run on production, not master, mirroring the `billingExecutor` precedent.
+
+**Applies to:** Production ⬜, Demo PSP ⬜, BPO ⬜, Master image ⬜.
+
+---
+
+### D-83: Seed `RATE_CACHE_COUNTIES` constant
+
+**Priority:** MEDIUM — Required before the warm job has anything to warm
+**Status:** Not started — no counties configured yet
+
+Insert a `constant` row named `RATE_CACHE_COUNTIES` listing the counties the warm job populates, so a new market needs no redeploy — just a constant update.
+
+```sql
+INSERT INTO constant (name, value) VALUES ('RATE_CACHE_COUNTIES', '75482:48223:TX')
+ON DUPLICATE KEY UPDATE value = VALUES(value);
+```
+
+⚠️ **Format is `zip:fips:state` triples, comma-separated — not the `fips:state` pairs originally specified in the A1 Phase B-1b prompt.** `HealthSherpaService.quoteSingleApplicant` requires a ZIP code as a real request field; the county list as originally specified had no ZIP. Rather than guess a representative ZIP per county in code (a real correctness risk — the wrong ZIP could silently return the wrong rating area), the format carries one, supplied here by whoever configures the constant. Malformed entries (wrong part count, blank segment) are skipped and logged by `RateCacheWarmService`, not fatal to the run.
+
+**Applies to:** Production ⬜ — the actual county list is a business decision (which markets SSA quotes), not yet made.
