@@ -4,8 +4,13 @@
 **Date:** 29 July 2026
 **Status:** Planning only. No code, no schema, no SQL produced.
 **Baseline:** Migration **V073**, to be re-verified against `ls docs/migrations/` before any script is written.
-**Revision 5** — Summit Data Exchange capabilities, correlation keys, and the J7 benefit export.
-**Part 7 governs.** It adds three decisions (D35–D37), revises D34, may retire D10/D11/D32, adds a
+**Revision 6** — Custom ID mailing-export correlation resolved negatively, division-scoped ICHRA
+classes, the two-report notice model, and the HealthSherpa provider-check resolution.
+**Part 8 governs.** It resolves O34 (negatively), O35, O36, and O38, narrows B4a's reconciliation
+problem, adds O39–O40, and resolves O23 favorably.
+
+*Revision 5* — Summit Data Exchange capabilities, correlation keys, and the J7 benefit export.
+**Part 7** adds three decisions (D35–D37), revises D34, may retire D10/D11/D32, adds a
 new platform phase, and carries the **consolidated build list and question list**.
 
 *Revision 4* — notice automation, census intake and the notional COBRA mechanism settled. **Part 6**
@@ -52,7 +57,13 @@ and J7 benefit-export correlation keys, and the manual-benefit-setup constraint.
 O34–O38, revises D34, and ends with the **consolidated build list and prioritised question list** —
 the two working artifacts.
 
-**Precedence: Part 7 > Part 6 > Part 5 > Part 4 > Parts 1–3.**
+**Part 8** resolves the Participant Custom ID mailing-export question negatively (O34) — the SSN hash
+correlation mechanism (D10/D11/D32) survives — narrows O35 and O36 with the J2/J7 employer-identifier
+bridge, finds strong evidence for division-scoped ICHRA classes (O38), and establishes that the two
+notice reports are complementary rather than competing, narrowing B4a's reconciliation problem. It
+adds O39–O40 and resolves O23 favorably via `docs/business/healthsherpa.md`'s 2026-07-30 section.
+
+**Precedence: Part 8 > Part 7 > Part 6 > Part 5 > Part 4 > Parts 1–3.**
 
 ### Provenance warning governing everything below
 
@@ -1891,3 +1902,59 @@ invoicing 🟠 O28.
 - **Orphaned SQL flagged:** `docs/migrations/seed_ndt125_questionnaire.sql` — unversioned, outside the
   numbered sequence (T38). Needs renaming with a self-registering `INSERT IGNORE INTO schema_version`,
   plus registration in `migration_tracker.md` and `schema_version_migration.sql`.
+
+---
+---
+
+# Part 8 — Correlation keys resolved: Custom ID, division-scoped classes, and the two-report notice model
+
+**Date:** 30 July 2026
+
+## O34 — resolved NEGATIVELY
+
+`ParticipantCustomID` appears in J2 but **not** in the mailing export. D35 does not fire. D10 (the SSN
+hash), D11, D32, and O32 all survive — the hash remains the correlation mechanism for notice
+reconciliation. Minting the Custom ID is still worthwhile for the AMS-controlled participant key, but
+it is **not** the mailing-export join.
+
+## O35 — resolved
+
+J7 is Premium Billing only. But J4 covers CDH, and AMS already imports both, so AMS is not blind to
+the real ICHRA benefit. The setup-completeness check works; it reads two exports rather than one.
+`ImportPlanID` is present in both J4 and J7, so D36 holds on both sides.
+
+## O36 — narrowed
+
+`EmployerCustomID` appears only in J2, never in J7. J7 must join on a system identifier, and J2 is the
+bridge — it carries `EmployerCustomID` alongside `Employer_ID`, `Organization_ID`, and
+`EmployerOrganizationID`.
+
+## O38 — strong affirmative evidence
+
+Division fields appear at rate grain in J7 and at participant grain in the PB Initial Notice Event
+Report. Together that indicates participants are division-assignable and contributions can vary by
+division — **ICHRA classes may be natively supportable, with no AMS class model needed.** Confirmation
+is a Summit UI check.
+
+## New — the two notice reports are complementary, not competing
+
+The **PB Initial Notice Event Report** is participant-keyed (`ParticipantSystemID`,
+`ParticipantCustomID`), carries a real `MailedDate`, no SSN or DOB, and identifies new hires needing
+the notice sequence — **it creates the obligation.** The **mailing report** is the only artifact
+proving a notice was sent, and carries no participant ID. They map onto the two ends of
+`PENDING → EXPORTED → MAILED → RECONCILED`. B4a needs both.
+
+**Consequence for B4a:** because obligations are created from a participant-keyed report,
+reconciliation matches a mailing row against a small set of open obligations already scoped to one
+employer — a much narrower problem than D10 was designed for. Worth revisiting whether
+`(employer + surname + DOB)` suffices before building the hash into B4a.
+
+## New open items
+
+- **O39** — which export file feeds `import7premiumenrollment` (the PB enrollment feed)?
+- **O40** — is `ImportPlanID` persisted anywhere in AMS today? It is absent from `Benefit`'s field
+  list, so D36 likely needs a new column.
+
+## O23 — resolved favorably
+
+See the 2026-07-30 section of `docs/business/healthsherpa.md`. **A2 stays in the plan.**

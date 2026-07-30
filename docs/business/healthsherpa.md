@@ -12,7 +12,9 @@ quoting, enrollment, and compliance.
 
 > **Note:** the product SSA is integrating is the **off-exchange ICHRA Partner API**
 > (`docs.ichra.healthsherpa.com`), **not** EDE and **not** HSOne. See the 2026-07-29 product
-> correction section below before relying on any endpoint detail in this document.
+> correction section **and** the 2026-07-30 verified-request-shape section (both below) before relying
+> on any endpoint detail in this document — most request/response field names above predate both and
+> describe HSOne, not this product.
 
 It powers 40+ ICHRA platforms behind the scenes and is integrated by
 admin platforms (e.g. Alegeus/WealthCare) as the shop-and-enroll layer under their ICHRA administration.
@@ -696,3 +698,107 @@ integration.**
    off. **There is no carrier feed — SSA has no carrier relationship. All post-enrollment visibility
    depends on HealthSherpa's status data**, which makes question 2 above load-bearing for the entire
    design.
+
+---
+
+# 2026-07-30 — VERIFIED REQUEST SHAPE, ACCESS MODEL CORRECTION, AND THE AGE-CURVE FINDING
+
+> **This section adds to, and in two places corrects, earlier conclusions in this document.** The
+> 2026-07-29 product-correction section (above) focused on webhooks, the attestation primitive, AOR,
+> and QSEHRA — it never revisited the request/response shape or the cost/access model, both recorded
+> in the original 2026-07-28 sections and both HSOne's, not this product's. Every item below was
+> verified against the live OpenAPI schema for the ICHRA Partner API and against successful staging
+> API calls made 2026-07-30.
+
+## Verified request shape (ICHRA Partner API)
+
+- `POST {baseUrl}/api/v1/quotes` — note the `/api` path segment. This document has so far recorded the
+  endpoint as `/v1/quotes` (see "Confirmed request shape" and the endpoint inventory, both 2026-07-28)
+  — that is the HSOne path, not this product's.
+- **Environments:** production `https://api.ichra.healthsherpa.com`; staging
+  `https://api.ichra-staging.healthsherpa.com`.
+- **Auth:** `x-api-key` header.
+- **Body is flat** — not the nested `context` / `location` / `household` shape recorded in the
+  2026-07-28 section (that shape is HSOne's).
+- **Required fields:** `zip_code`, `fip_code`, `applicants[]` (each entry: `age`, `relationship`,
+  `smoker`).
+- ⚠️ **`fip_code`, NOT `fips_code`. `smoker`, NOT `uses_tobacco`.** This document's existing
+  "Field-name traps" note (2026-07-28 section, "Confirmed request shape") states the **opposite** for
+  both — that note is correct for HSOne and wrong for this product. State this explicitly so nobody
+  "fixes" working code (`HealthSherpaService.java`, Phase B-1a/B-1b, verified against this section) to
+  match the old note.
+- `off_ex: true` returns off-exchange plans only — **not** one request per exchange, contrary to the
+  2026-07-28 "one request per exchange" note.
+- The `metal_levels` request filter enum accepts only `Bronze | Silver | Gold | Platinum |
+  Catastrophic` — but **"Expanded Bronze" is a real returned value** (`metal_level` in the response),
+  so server-side metal filtering silently drops plans. Pull the full plan set unfiltered and classify
+  client-side. (`RateCacheWarmService`, Phase B-1b, does this deliberately — see its class Javadoc.)
+
+## Access model corrected
+
+**Quoting is not free and self-serve on this product.** The "Cost / access model" section above
+(2026-07-28) states it is — that is true of HSOne only. ICHRA Partner API keys are **issued**
+("generated as needed and shared with you"), not self-service-generated.
+
+The key issued 2026-07-30 works against **staging**; production returns `403`. Consistent with the
+documented onboarding flow, where production allow-listing is a follow-up step after staging access.
+
+## Rate parity confirmed at the correct product
+
+Hopkins County TX (ZIP 75482, FIPS 48223), age 40, plan year 2026, off-exchange: **65 plans** — BCBS
+24, CHRISTUS 18, UnitedHealthcare 23. Matches the plan-count/carrier split already recorded for HSOne
+(2026-07-28) — the two products return the same underlying market data for this county.
+
+**Blue Advantage Silver HMO 306** (HIOS `33602TX0460776`) at **$582.78** — matching both the zizzl CSA
+baseline and the earlier HSOne result exactly.
+
+**Staging returns real rate data, not synthetic** — this is not a sandbox with placeholder numbers.
+
+## ⭐ Age curve — the load-bearing finding
+
+Premiums follow the **statutory uniform age rating curve**; carriers cannot deviate from it.
+
+Confirmed across **two carriers, five ages, three separate calls**: one base rate at age 21
+reproduces every observed premium **to the cent**. Age 64 ÷ age 21 = **exactly 3.000**.
+
+**Consequence:** one quote at age 21 derives the whole 21–64 curve for every plan in a county — no
+need to call the API once per age. Plan **rankings** are age-invariant too, so LCSP, benchmark silver,
+and lowest bronze (computed once at age 21) hold at every other age.
+
+**Caveats:**
+- Tobacco use is a **separate, plan-specific load** (capped at 1.5×), not part of the age curve — the
+  two must not be conflated.
+- The curve is **plan-year scoped** — CMS may revise it for a new plan year.
+- **State-specific curves exist.** Texas uses the federal default, but this does not generalize to
+  every state without a state dimension.
+
+See `net.superiorstate.ams.data.util.AgeCurve` (Phase B-1b) for the implementation — its own Javadoc
+carries the same caveats and flags the interior (non-empirically-confirmed) factors as unverified.
+
+## O23 resolved — favorably
+
+The quote request accepts a `providers` array of NPIs; each returned plan carries `covered` (`true` /
+`false` / `null`) plus `covered_addresses`.
+
+**A2's provider check is viable.** This document's own earlier warning (2026-07-28, "Still
+self-answerable without approval": *"If they do not [include provider networks], the shopping UI is a
+price list with phone calls behind it"*) does not apply to this product — network data is present.
+
+## Additional endpoints
+
+- `POST /api/v1/aptc_estimates` — standalone subsidy estimate. Useful for the ICHRA affordability
+  threshold independent of a full quote call.
+- `GET /api/v1/plans?state=&plan_year=` — state-level plan listing. A non-per-household warming path
+  worth evaluating against the per-county `quoteSingleApplicant` approach `RateCacheWarmService`
+  currently uses.
+- `GET /api/v1/plans/{hios_id}` — single plan lookup, carrying `deeplink_enrollment` /
+  `api_enrollment` capability flags and, on request, carrier attestation content.
+- `ichra_only: true` flags plans available **only** to applicants with an ICHRA offer.
+
+## Related to this section
+
+- `net.superiorstate.ams.data.service.HealthSherpaService` (Phase B-1a/B-1b) — implements the request
+  shape verified above.
+- `net.superiorstate.ams.data.util.AgeCurve` (Phase B-1b) — implements the age-curve finding above.
+- `docs/analysis/project_backlog.md` T39 — HealthSherpaService needs multi-applicant support (A2, A3,
+  and folding the rate-cache canary into the primary call).
