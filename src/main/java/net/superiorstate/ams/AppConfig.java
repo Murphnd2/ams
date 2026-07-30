@@ -25,6 +25,8 @@ public final class AppConfig {
     private static String resolvedPath = null;
     private static volatile String cachedSystemType = null;
     private static volatile String cachedAnthropicApiKey = null;
+    private static volatile String cachedHealthSherpaApiKey = null;
+    private static volatile String cachedHealthSherpaBaseUrl = null;
     private static volatile boolean masterFlag = false;
 
     private AppConfig() {}
@@ -157,6 +159,70 @@ public final class AppConfig {
      */
     public static boolean hasAnthropicApiKey() {
         return getAnthropicApiKey() != null;
+    }
+
+    // --- HealthSherpa API Key (DB-first, ssa.properties fallback) ---
+
+    /**
+     * Cache the HealthSherpa API key read from the DB constants table.
+     * Called by AmsDataGlobal during global data initialization.
+     *
+     * @param key the DB value, or null if no DB constant exists (falls back to ssa.properties)
+     */
+    public static void setHealthSherpaApiKey(String key) {
+        cachedHealthSherpaApiKey = key;
+    }
+
+    /**
+     * Resolves the HealthSherpa API key: DB constant first, ssa.properties fallback.
+     * Returns null if no valid key is configured anywhere.
+     */
+    public static String getHealthSherpaApiKey() {
+        String key = cachedHealthSherpaApiKey;
+        if (key == null) {
+            // No DB constant loaded yet — fall back to properties
+            key = get("HEALTHSHERPA_API_KEY");
+        }
+        if (key == null || key.isBlank() || "FILL_ME_IN".equals(key)) {
+            return null;
+        }
+        return key;
+    }
+
+    /**
+     * Returns true if a valid HealthSherpa API key is configured (DB or ssa.properties).
+     */
+    public static boolean hasHealthSherpaApiKey() {
+        return getHealthSherpaApiKey() != null;
+    }
+
+    // --- HealthSherpa Base URL (DB-first, ssa.properties fallback, hardcoded default) ---
+
+    private static final String HEALTHSHERPA_DEFAULT_BASE_URL = "https://api.ichra.healthsherpa.com";
+
+    /**
+     * Cache the HealthSherpa base URL read from the DB constants table.
+     * Called by AmsDataGlobal during global data initialization.
+     *
+     * @param baseUrl the DB value, or null if no DB constant exists (falls back to ssa.properties, then the default)
+     */
+    public static void setHealthSherpaBaseUrl(String baseUrl) {
+        cachedHealthSherpaBaseUrl = baseUrl;
+    }
+
+    /**
+     * Resolves the HealthSherpa base URL: DB constant first, ssa.properties fallback,
+     * defaulting to the production ICHRA Partner API when neither is configured.
+     */
+    public static String getHealthSherpaBaseUrl() {
+        String url = cachedHealthSherpaBaseUrl;
+        if (url == null || url.isBlank()) {
+            url = get("HEALTHSHERPA_BASE_URL");
+        }
+        if (url == null || url.isBlank()) {
+            return HEALTHSHERPA_DEFAULT_BASE_URL;
+        }
+        return url;
     }
 
     // --- Build Info ---

@@ -320,6 +320,30 @@ public class AmsDataGlobal {
         }
         this.chatbotEnabled = AppConfig.hasAnthropicApiKey();
 
+        // Resolve HEALTHSHERPA_API_KEY: DB constant first, ssa.properties fallback
+        try {
+            String dbHealthSherpaKey = getConstantValue(em, "HEALTHSHERPA_API_KEY");
+            if (dbHealthSherpaKey != null && !dbHealthSherpaKey.isEmpty()) {
+                AppConfig.setHealthSherpaApiKey(dbHealthSherpaKey);
+            } else {
+                AppConfig.setHealthSherpaApiKey(null);
+            }
+        } catch (Exception e) {
+            AppConfig.setHealthSherpaApiKey(null);
+        }
+
+        // Resolve HEALTHSHERPA_BASE_URL: DB constant first, ssa.properties fallback, then hardcoded default
+        try {
+            String dbHealthSherpaBaseUrl = getConstantValue(em, "HEALTHSHERPA_BASE_URL");
+            if (dbHealthSherpaBaseUrl != null && !dbHealthSherpaBaseUrl.isEmpty()) {
+                AppConfig.setHealthSherpaBaseUrl(dbHealthSherpaBaseUrl);
+            } else {
+                AppConfig.setHealthSherpaBaseUrl(null);
+            }
+        } catch (Exception e) {
+            AppConfig.setHealthSherpaBaseUrl(null);
+        }
+
         try {
             String cau = getConstantValue(em, "CHATBOT_ALL_USERS");
             this.chatbotAllUsers = "true".equalsIgnoreCase(cau);

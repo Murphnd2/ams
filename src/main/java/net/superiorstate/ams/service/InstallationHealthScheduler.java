@@ -55,11 +55,22 @@ public class InstallationHealthScheduler {
     }
 
     /**
-     * Shuts down the scheduler gracefully.
+     * Shuts down the scheduler gracefully. Waits up to 10s for an in-flight refresh to
+     * finish so it doesn't keep running against a closing/closed EntityManagerFactory
+     * after EmfListener.contextDestroyed() proceeds to emf.close().
      */
     public void stop() {
         executor.shutdownNow();
-        System.out.println("[HEALTH-SCHEDULER] Stopped");
+        try {
+            if (executor.awaitTermination(10, TimeUnit.SECONDS)) {
+                System.out.println("[HEALTH-SCHEDULER] Stopped");
+            } else {
+                System.out.println("[HEALTH-SCHEDULER] Stopped — task still running after 10s shutdown timeout");
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            System.out.println("[HEALTH-SCHEDULER] Stop interrupted while awaiting termination");
+        }
     }
 
     /**

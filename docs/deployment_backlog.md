@@ -1173,3 +1173,44 @@ Also apply to demo / bpo / master only if the Summit EditEmployer redirect is us
 SELECT value FROM constant WHERE name='SUMMIT_TPA_GUID';
 ```
 Should return the GUID.
+
+---
+
+### D-78: Seed `HEALTHSHERPA_API_KEY` constant on environments running rate-cache warming
+
+**Priority:** MEDIUM — Blocks the A1 rating-illustration rate-cache warm job until issued
+**Status:** Not started — key not yet issued
+
+**Depends on:** HealthSherpa ICHRA Partner API portal access being granted (request submitted 2026-07-28, no onboarding contact assigned as of 2026-07-29 — see `docs/business/healthsherpa.md`).
+
+Insert a `constant` row named `HEALTHSHERPA_API_KEY` with the issued key value, on each environment that runs the rate-cache warm job:
+
+```sql
+INSERT INTO constant (name, value) VALUES ('HEALTHSHERPA_API_KEY', '<issued-key>')
+ON DUPLICATE KEY UPDATE value = VALUES(value);
+```
+
+**Note:** the value is not yet issued — this item is blocked until HealthSherpa credentials for the ICHRA Partner API arrive. `AppConfig.getHealthSherpaApiKey()` falls back to `ssa.properties` (`HEALTHSHERPA_API_KEY`) when the DB row is absent or empty, matching the existing `ANTHROPIC_API_KEY` pattern.
+
+**Applies to:** Production ⬜, Demo PSP ⬜, BPO ⬜, Master image ⬜ — whichever environment(s) end up running the scheduled warm job (not yet decided).
+
+---
+
+### D-79: Seed `HEALTHSHERPA_BASE_URL` constant (optional — defaults to production)
+
+**Priority:** LOW — Optional; `AppConfig` defaults to the production HealthSherpa URL when absent
+**Status:** Not started
+
+Insert a `constant` row named `HEALTHSHERPA_BASE_URL` to point an environment at HealthSherpa's staging API without a redeploy:
+
+```sql
+INSERT INTO constant (name, value) VALUES ('HEALTHSHERPA_BASE_URL', 'https://api.ichra-staging.healthsherpa.com')
+ON DUPLICATE KEY UPDATE value = VALUES(value);
+```
+
+- Production value: `https://api.ichra.healthsherpa.com` — this is also `AppConfig.getHealthSherpaBaseUrl()`'s hardcoded default, so the row is not required on production.
+- Staging value: `https://api.ichra-staging.healthsherpa.com`.
+
+**Note:** `AppConfig.getHealthSherpaBaseUrl()` falls back to `ssa.properties` (`HEALTHSHERPA_BASE_URL`), then to the hardcoded production default, when the DB row is absent or empty.
+
+**Applies to:** Any environment testing against HealthSherpa staging — not yet decided which, if any.
