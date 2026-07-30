@@ -854,7 +854,7 @@ Recurring checklist history tracking: each recurring cycle gets a UUID series ID
 
 ---
 
-### D-58: Apply V041 + Application Visibility & Role Walls
+### D-80: Apply V041 + Application Visibility & Role Walls
 
 **Priority:** MEDIUM
 **Status:** Code complete — needs V041 applied + browser testing
@@ -1077,7 +1077,7 @@ ReadWritePaths=/var/lib/tomcat10/data/
 
 ---
 
-### D-67: Apply V060 + Outlook Web Add-in ("Log to AMS")
+### D-81: Apply V060 + Outlook Web Add-in ("Log to AMS")
 
 **Priority:** MEDIUM — New feature, no urgency, but adds value for PSP users handling client email
 **Status:** Code complete — V060 not yet applied anywhere

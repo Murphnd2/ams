@@ -1340,7 +1340,7 @@ This avoids cookie/session issues with Office.js iframes entirely. If no link ro
 - `docs/schema_version_migration.sql` — V060 INSERT
 
 ### Deployment
-See D-67 in `docs/deployment_backlog.md`. Not yet applied to any environment.
+See D-81 in `docs/deployment_backlog.md`. Not yet applied to any environment.
 
 ---
 

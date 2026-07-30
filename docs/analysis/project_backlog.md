@@ -104,7 +104,7 @@
 
 | # | Feature | Priority | Status | Notes |
 |---|---------|----------|--------|-------|
-| 16 | Social Media Marketing Automation | LOW | 💡 Backlog | AI-powered content for LSA, ICHRA, HSA growth. |
+| 44 | Social Media Marketing Automation | LOW | 💡 Backlog | AI-powered content for LSA, ICHRA, HSA growth. |
 | 17 | BPO Questionnaire System | LOW | 💡 Backlog | Structured task responses using ApplicationSection/ApplicationField framework. |
 | 18 | Microsoft 365 SSO | LOW | 💡 Backlog | D-31. Optional per-PSP, OpenID Connect. |
 | 19 | Master Admin Dashboard | LOW | 💡 Backlog | D-14. Central management console for all PSP instances. |
