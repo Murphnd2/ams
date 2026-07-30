@@ -64,6 +64,11 @@ match. **Name/branding is deferred to Forrest** for final direction — fully re
   to administer elsewhere (SSA). Call also surfaced a **minor §125 opportunity** (details TBD). Forrest is
   focused on integration and raised **HealthSherpa** ("Sherpa") — now under evaluation as the ICHRA
   quote/enroll rail (see `healthsherpa.md`).
+- **2026-07-29 (+ tier design session)** — ICHRA+/QSEHRA+ scoped as new LOS bundling HealthSherpa services
+  and automated coverage verification; standard ICHRA/QSEHRA unchanged for existing agencies. Summit
+  card-transaction and mailing/coverage-event exports both confirmed viable. Single bundled PEPM (card
+  included) — verification method varies per participant and can't be a proposal-time election. Billing
+  stays on the existing headcount-to-Wave path. Full design and decision log in `plus_tier.md`.
 
 ## Opportunity streams (Forrest's framing)
 
@@ -173,6 +178,9 @@ supplemental into near-comprehensive coverage.
 - Develop the **stack-wrap** opportunity (above) as a later track.
 - **Minor §125 opportunity** surfaced on the 2026-07-28 call — details TBD from Kevin.
 - **HealthSherpa ICHRA integration** — read-only evaluation (see `healthsherpa.md`, backlog #42).
+- ICHRA+/QSEHRA+ build — requirements settled, data model designed. See `plus_tier.md`. Highest-value open
+  item is whether HealthSherpa's EDE consent covers TPA Policy Status access; if it does, the AMS consent
+  artifact is unnecessary.
 
 ## Positioning, structure & liability (from brief v4)
 
