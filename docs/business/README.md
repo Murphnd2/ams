@@ -4,6 +4,8 @@ Business relationships and opportunities that **influence the AMS roadmap** or a
 Each entry links to the concrete AMS work it drives, so opportunity size can be weighed against build
 cost when prioritizing.
 
+> **ICHRA / HealthSherpa work starts at [`docs/ichra_strategy.md`](../ichra_strategy.md)**, not here — it is the strategy entry point, and it flags the rows below that are known stale.
+
 ## Register
 
 | Opportunity | Type | Status | Size / stakes | AMS work it drives |
