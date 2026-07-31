@@ -5,6 +5,13 @@
 
 Items are ordered by dependency (earlier items unblock later ones).
 
+⚠️ **Maintenance note (added 2026-07-30):** migration-status claims below were reconciled
+2026-07-30 against a live `schema_version` probe and `docs/analysis/migration_tracker.md`
+(V001–V073 confirmed applied to production; V074/V075 not). Status must be back-filled
+*after a deployment actually succeeds*, not only when an item is authored — the same
+maintenance rule added to `migration_tracker.md` on the same date, for the same reason:
+this is exactly how the drift accumulated.
+
 ---
 
 ## Completed Items
@@ -835,7 +842,7 @@ This aligns existing databases with the updated DatabaseInitializer behavior.
 ### D-57: Apply V040 + Recurring Checklist History
 
 **Priority:** MEDIUM
-**Status:** Code complete — needs V040 applied + browser testing
+**Status:** Code complete — V040 applied to production (verified 2026-07-30 via `schema_version` probe) — needs browser testing
 
 **Prerequisite:** V040 migration (`recurring_series_id` + `recurring_cycle_number` on `delegated_todo`)
 
@@ -857,7 +864,7 @@ Recurring checklist history tracking: each recurring cycle gets a UUID series ID
 ### D-80: Apply V041 + Application Visibility & Role Walls
 
 **Priority:** MEDIUM
-**Status:** Code complete — needs V041 applied + browser testing
+**Status:** Code complete — V041 applied to production (verified 2026-07-30 via `schema_version` probe) — needs browser testing
 
 **Prerequisite:** V041 migration (`reviewed_by`, `review_notes`, `date_reviewed` on application table)
 
@@ -896,7 +903,7 @@ Inline AI assistant for building styled HTML proposal custom pages. Adds "Build 
 ### D-61: Apply V046 + Chatbot Skill System
 
 **Priority:** MEDIUM — New feature, no dependencies on existing data
-**Status:** Code complete — needs V046 applied + skill creation via UI
+**Status:** Code complete — V046 applied to production (verified 2026-07-30 via `schema_version` probe) — needs skill creation via UI
 
 Deploy steps:
 1. Apply `docs/migrations/V046__chatbot_skill_table.sql` to target databases
@@ -916,7 +923,7 @@ Deploy steps:
 ### D-62: Apply V047 + Composite Task Ordering
 
 **Priority:** MEDIUM — New feature, no dependencies on existing data
-**Status:** Code complete — needs V047 applied + browser testing
+**Status:** Code complete — V047 applied to production (verified 2026-07-30 via `schema_version` probe) — needs browser testing
 
 **Prerequisite:** V047 migration (`composite_task_order` table)
 
@@ -933,7 +940,7 @@ Cross-sequence composite task ordering for multi-LOS/Enhancement setups. PSP adm
 ### D-63: Apply V048 + Universal Import System
 
 **Priority:** MEDIUM — New feature, no dependencies on existing data
-**Status:** Code complete — needs V048 applied + browser testing
+**Status:** Code complete — V048 applied to production (verified 2026-07-30 via `schema_version` probe) — needs browser testing
 
 **Prerequisite:** V048 migration (universal import system tables + seed data)
 
@@ -966,7 +973,7 @@ Provider-agnostic data import system for non-Summit TPA platforms. Configuration
 ### D-64: Apply V051-V053 + Import Cross-Reference System + Phase A Provider Rework
 
 **Priority:** HIGH — Required for interactive import wizard
-**Status:** Code complete — needs V051, V052, V053 applied + browser testing
+**Status:** Code complete — V051, V052, V053 all applied to production (verified 2026-07-30 via `schema_version` probe) — needs browser testing
 
 **Prerequisite:** D-63 (V048 Universal Import System) must be applied first
 
@@ -1080,7 +1087,7 @@ ReadWritePaths=/var/lib/tomcat10/data/
 ### D-81: Apply V060 + Outlook Web Add-in ("Log to AMS")
 
 **Priority:** MEDIUM — New feature, no urgency, but adds value for PSP users handling client email
-**Status:** Code complete — V060 not yet applied anywhere
+**Status:** Code complete — V060 applied to production (verified 2026-07-30 via `schema_version` probe); add-in not yet deployed/registered
 
 New Outlook Web Add-in that adds a "Log to AMS" button to the reading pane. When clicked, a taskpane opens, auto-authenticates via the user's Microsoft 365 email, and lets them pick an open AMS activity and log the email as a Note. Any email attachments are uploaded to Wasabi and linked to the note via WebLink records.
 
