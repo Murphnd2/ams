@@ -10,28 +10,34 @@
 ## Current State
 - **Integration branch:** `refactor/modernize-architecture` — feature branches are cut from / merged back to it, so it trails the in-flight feature by only a few commits. `main` is ~345 commits stale and is **not** the working line.
 - **In-flight branch:** none — the agency-scope-resolver work merged to trunk 2026-07-15 (`e0a62d1`); branch deleted.
-- **Latest migration:** V075 (always re-check `ls docs/migrations/` — this line lags)
-- **Latest release:** v0.73.02 (reconciled 2026-07-30; release-note detail not verified in this pass — local `git tag` is stale by design since releases are cut in the GitHub web UI, see CLAUDE.md's Releases section — check the GitHub Releases page for what v0.73.02 actually shipped). Prior entry here (v0.71.08, 2026-07-15) is superseded.
-- **ICHRA/QSEHRA admin stream active.** Origin: SWBD (Forrest) quoting ICHRA through zizzl, which gated
+- **Latest migration:** V081 (`illustration_log.opportunity_id`) — always re-check `ls docs/migrations/`; this line lags
+- **Latest release:** **v0.78.01**, pointing at `4556ecd` (ICHRA item 9). **Verified 2026-07-31 by `git fetch --tags`**, which is the method CLAUDE.md prescribes — an un-fetched local `git tag` showed nothing past `v0.71.06` and is stale by design. Supersedes the prior unverified `v0.73.02` entry here. ⚠️ **V079, V080 and V081 are all unreleased and unapplied everywhere** — the next release is `v0.81.00` carrying all three plus a WAR.
+- **ICHRA/QSEHRA admin stream active — and now BUILT.** Origin: SWBD (Forrest) quoting ICHRA through zizzl, which gated
   carriers and charged a ~$660/mo admin minimum — unbundle logic gives the admin to SSA. Target rail is
   the **HealthSherpa ICHRA Partner API** (`docs.ichra.healthsherpa.com`) — **not** HSOne, and **not**
   EDE; it is an **off-exchange** rail, free to use, purpose-built for ICHRA administrators.
-  **Evaluation only — no build approved.** Its **Policy Status webhook** would unblock #38
+  ⚠️ **"Evaluation only — no build approved" is superseded (2026-07-31): the entire 13-item build
+  sequence in `docs/swbd_ichra_build_plan.md` §3 shipped that day**, across three sessions. The
+  *enrollment* rail remains unbuilt and still blocked on HealthSherpa (rep, BAA, allow-listing). Its **Policy Status webhook** would unblock #38
   (attestation), but availability is **carrier-gated**: live for Ambetter/Cigna/Molina/Oscar/UHC
   (metro TX covered), **not** for BCBS TX (2026) or CHRISTUS (unlisted) — so rural TX has no automated
   coverage verification today. See `docs/business/healthsherpa.md` for the full evaluation, carrier
   matrix, and open questions.
-- **Session count:** 88 numbered sessions logged in `session_history_archive.md`, plus one dated (unnumbered) entry — **July 15, 2026: Agent Pipeline sidebar proposals + create-proposal hand-off (v0.71.08)**. The agency/white-label epic (V068-V071, `AgencyScopeResolver`) below still spans several sessions that were never written up — that catch-up entry is still outstanding.
+- **Session count:** 88 numbered sessions logged in `session_history_archive.md`, plus dated (unnumbered) entries — **July 15, 2026** (Agent Pipeline sidebar proposals + create-proposal hand-off, v0.71.08) and **July 31, 2026 × 3** (the ICHRA sequence; sessions 2 and 3 have their own close-out documents in `docs/`). ⚠️ **Two write-up debts outstanding:** the agency/white-label epic (V068–V071, `AgencyScopeResolver`) and the three 2026-07-31 ICHRA sessions are all still missing from `session_history_archive.md`.
 - **Build tool:** Maven wrapper `./mvnw compile` (no system `mvn` on PATH)
 - Per-environment apply status is tracked authoritatively in `docs/analysis/migration_tracker.md`.
 - Master snapshot v9 taken 2026-03-20 (V057)
-- **Active epic (post-Session-88):** Agency / white-label / multi-agency hierarchy + access-scope hardening. Shipped in order: **V068** host-header agency landing pages → **V069** per-agency white-label email sending (`EmailIdentityResolver`, 4-tier sender identity) → white-label proposal/application wrapper + RequestQuote host-awareness → **V070** GA→sub-agency parent link (strict two-level hierarchy) → **V071** per-agency public quote tokens for RequestQuote attribution → agency manager-reassignment guards + PSP-staff gate on manual setup. **Landed (merged to trunk 2026-07-15, `e0a62d1`):** introduced `AgencyScopeResolver` (retired 4 duplicated agency resolvers), decoupled scope sets from the `primaryAgencyId` singleton, closed residual IDOR gaps via `canSeeDetail()` (Phases 1–2b), and routed `ViewProposal` agency/agent resolution through `OriginatingAgencyResolver`.
+- ⭐ **Active epic (2026-07-31): ICHRA.** The 13-item sequence in `docs/swbd_ichra_build_plan.md` §3 is **complete** and all six structural decisions (S1–S6) are resolved. Shipped: gated front door + `IchraAccessResolver` + AGE_BAND mode (`0b4711b`) → on-exchange LCSP (`ba023bd`) → affordability threshold (`4556ecd`) → proposal hand-off + LOS-scoped section, V079 (`e5b2009`/`b0e524b`) → design advisor, V080 (`e25ee4e`) → setup checklist content (`4775252`) → group-to-ICHRA conversion (`7db188d`) → opportunity attribution, V081 (`a71b79d`) + the drawer console read (`619461f`). **What remains is Kevin's, not a build queue:** release `v0.81.00`, the ICHRA/QSEHRA LOS reference rows, the item-10 checklist through the Sequence Builder, D-86/D-87, production allow-listing, and the two unsent SWBD emails. Close-outs: `docs/session_closeout_2026-07-31_session{2,3}.md`.
+- **Prior epic (post-Session-88, complete):** Agency / white-label / multi-agency hierarchy + access-scope hardening. Shipped in order: **V068** host-header agency landing pages → **V069** per-agency white-label email sending (`EmailIdentityResolver`, 4-tier sender identity) → white-label proposal/application wrapper + RequestQuote host-awareness → **V070** GA→sub-agency parent link (strict two-level hierarchy) → **V071** per-agency public quote tokens for RequestQuote attribution → agency manager-reassignment guards + PSP-staff gate on manual setup. **Landed (merged to trunk 2026-07-15, `e0a62d1`):** introduced `AgencyScopeResolver` (retired 4 duplicated agency resolvers), decoupled scope sets from the `primaryAgencyId` singleton, closed residual IDOR gaps via `canSeeDetail()` (Phases 1–2b), and routed `ViewProposal` agency/agent resolution through `OriginatingAgencyResolver`.
 - ICHRA+/QSEHRA+ tier — requirements settled and data model designed 2026-07-29; not built. Canonical doc: `docs/business/plus_tier.md`. Decision highlights: single bundled PEPM (no per-proposal add-on election, because verification method varies per participant); no per-employee pricing; billing unchanged (headcount → Wave, both enrolled and eligible counts); participant verification ledger isolated from the billing pipeline (whose only correction mechanism is whole-month wipe-and-recreate); participant correlation via HMAC-SHA256 of normalized SSN with the key in `ssa.properties`, storing hash + last four only; PremiumPath Card MCC-restricted to 6300/5960 at issuance.
 - Summit feeds confirmed — card transaction export (`MCC`, `MerchantName`, `UserID`; `UserID` is the participant's ID even on dependent cards; `MerchantName` truncates at 16 chars) and mailing/coverage-event export (`EventTypeID`, `EventName`, `Mailed`; no participant ID, joined on SSN hash). Both schedulable and employer-filterable. Summit export columns can't be modified; a custom export was priced and declined.
-- Tracker discrepancy to resolve — `migration_tracker.md` shows V072/V073 unapplied to every environment, but the Monthly Billing Launcher is live in production and depends on `billing_run` / `billing_run_step`. Either the tracker is stale or the pending `v0.73.PP` release is not actually WAR-only. Resolve before cutting it.
+- ~~Tracker discrepancy to resolve — V072/V073 shown unapplied while the Monthly Billing Launcher runs in production.~~ **Resolved** — `migration_tracker.md` now shows both `✅` on Production (verified 2026-07-31). The tracker had been stale, not the release.
 
 > **Active workstream (2026-07-29):** ICHRA/QSEHRA administration on the HealthSherpa **ICHRA Partner
-> API** (`docs.ichra.healthsherpa.com` — **not** HSOne). Evaluation only; **no build approved.**
+> API** (`docs.ichra.healthsherpa.com` — **not** HSOne). ⚠️ **"Evaluation only; no build approved" was
+> true when written on 2026-07-29 and is superseded as of 2026-07-31** — the 13-item agent-facing
+> sequence shipped (see the ICHRA epic bullet above). The *enrollment* rail is still unbuilt and still
+> externally blocked.
 > See `docs/business/healthsherpa.md` (API evaluation, carrier matrix, open questions),
 > `docs/business/ichra_administration_scope.md` (service scope and MEC/subsidy segmentation),
 > `docs/business/ichra_platform_capability_map.md` (offering model), and
@@ -159,6 +165,24 @@ Static resources (`/images/`, `/css/`, `/js/`, `/fonts/`, etc.) are exempted bef
   environment**, so `AppConfig.getHealthSherpaApiKey()` has always returned null and no AMS
   installation has ever authenticated to HealthSherpa. `getHealthSherpaBaseUrl()` defaults to
   **production** when unset — open decision whether to default to staging or refuse to call.
+- **2026-07-31 (sessions 2 and 3) — the ICHRA build sequence, items 1–13, shipped in one day.**
+  Full detail lives in the two close-out documents (`docs/session_closeout_2026-07-31_session2.md`,
+  `…_session3.md`); only what a future session needs up front is repeated here.
+  **Session 2** (`e25ee4e`…`77eb56c`): design advisor (V080) + setup checklist content; **LA-13** added
+  (SSA's assumptions register is internal work product — LA identifiers stripped from agent-facing
+  output); **T50–T55** logged.
+  **Session 3** (`7db188d`…`682bc8f`): group-to-ICHRA conversion analysis; **V081** opportunity
+  attribution on `illustration_log`; the opportunity-drawer console read; **T56** logged.
+  ⚠️ **Three things a future session should not re-derive.** (1) **Item 9 is not a separate servlet** —
+  it is an `affordabilityBasis` sub-mode inside `IllustrationServlet`'s `AGE_BAND` path; several docs
+  read it as a page. (2) **`Opportunity` has no table** — `Opportunity extends Activity extends
+  Assignee`, `SINGLE_TABLE`, so any FK targets **`assignee(id)`** (V050 and V060 got this wrong before).
+  (3) **No delete path for an `Opportunity`/`Activity`/`Assignee` row exists anywhere in AMS**, verified
+  by grep — an assumption about *absence*, so one new admin servlet falsifies it silently.
+  ⚠️ **A retraction worth remembering as method, not trivia:** V081's `ON DELETE SET NULL` was justified
+  in its own header as fixing a live foreign-key failure. The verification grep found no delete path
+  exists at all. The decision was right for other reasons and stands; the claim was written into the
+  migration header *and* the build plan before anyone checked. Corrected in `cf15ff8` / `682bc8f`.
 
 ## Reference Docs
 | Topic | Location |
