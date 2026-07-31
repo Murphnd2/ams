@@ -5,6 +5,15 @@ Cross-cutting rules that shape feature design and must not be violated. Short by
 
 **Last reviewed:** 2026-07-15 (rev. b — SWBD brief v4 sync: §213(d) filed-form test, MEC floor, endorsement boundary).
 
+> **Decisions made under uncertainty live in `docs/analysis/legal_assumptions.md`.** This file holds
+> **settled rules** — things nobody is guessing about. The register holds **assumptions**: compliance-relevant
+> design decisions made from research into primary sources, with no counsel review, each carrying its
+> reversal cost and the event that should trigger confirmation. Research-based answers now exist there for
+> **O18** (attestation sufficiency → **LA-01/02/03**), **O25** (carrier names, completeness, neutral ordering →
+> **LA-04/05/06**) and the QSEHRA half of **O17** (notice runway → **LA-07**; the ICHRA half is **LA-08**,
+> still open with no basis). **None of them is legal advice or counsel-confirmed** — they are recorded so the
+> assumptions are visible and priceable rather than buried in code.
+
 ---
 
 ## 1. SSA plan taxonomy (internal terms — not the federal categories)
@@ -75,3 +84,9 @@ Relevant to QSEHRA-based products (e.g. the SWBD/PremiumPath program — `docs/b
   employee-facing market displays; they **must not** appear in SSA-drafted plan documents, notices,
   or program marketing. This gates every display SSA builds — illustration, provider check, design
   output, enrollment handoff. Tracked as **O25** in `docs/analysis/plus_tier_build_plan.md`.
+  **Research-based answer now recorded — still not counsel-confirmed.** The two rules govern different
+  artifacts and are not actually in tension: the safe harbor prohibits *selecting or endorsing*, not
+  *identifying*. See **LA-04** in `docs/analysis/legal_assumptions.md` — which nonetheless keeps carrier
+  names off everything until a demonstrable need exists, because reversal is a display edit either
+  direction. Neutral ordering (**LA-06**) and the forced completeness disclosure (**LA-05**) are the other
+  two halves of the same question.

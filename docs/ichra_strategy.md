@@ -231,6 +231,8 @@ Hopkins TX, ZIP **75482**, FIPS **48223**, plan year 2026, off-exchange, age 40 
 
 **O18, O25 and O17 should go to counsel as one package.** They gate work three phases out and counsel is the longest lead in the plan.
 
+⚖️ **Research-based answers to O18, O25 and the QSEHRA half of O17 are now recorded in `docs/analysis/legal_assumptions.md`** as LA-01/02/03, LA-04/05/06 and LA-07 — assumptions, not counsel review, each with its reversal cost and the event that should trigger confirmation. That register is also what scopes the eventual engagement: **LA-10 (Tex. Ins. Code ch. 4151) leads it, because it attaches to the existing book today rather than to ICHRA later.**
+
 **Detail:** `docs/analysis/domain_and_compliance_rules.md` (the standing rules, including O25's self-declared tension); `docs/business/ichra_administration_scope.md` (the ⚖️-marked end-to-end service scope).
 
 ---
@@ -281,6 +283,8 @@ The whole thesis is that agent utility earns the administration business. Right 
 - **Not B1 (the "+" catalog).** Gate-0-blocked, realistically weeks rather than days, and it sells *administration* — the thing the thesis says utility must earn first.
 - **Not B2/B3.** B2 touches `SummitImportService` on the live production import path and **needs its own Phase A**. B3 is O18-terminal.
 - **Not the enrollment rail.** Every gate is external and none has moved since 2026-07-29.
+
+🛠 **The executable version of this sequence is `docs/swbd_ichra_build_plan.md`** — numbered work items in build order against a concrete demo target, each with its gate, dependencies, size and reversal cost. **That document is what a session picks up; this one is what tells it why.** It also corrects several "current state" claims in this file and in `plus_tier_build_plan.md` against the shipped code — notably that `proposalsectionlos` already exists (V037), so B1's V081 is largely built.
 
 **Detail:** `docs/analysis/plus_tier_build_plan.md` Parts 3–8 for full per-phase scope, schema and deferrals.
 
@@ -509,9 +513,10 @@ The operating rule for future sessions. **This section exists because the failur
 
 - **Strategy and product:** `docs/business/plus_tier.md` · `docs/business/ichra_platform_capability_map.md` · `docs/business/ichra_administration_scope.md`
 - **The build plan (canonical for mechanics):** `docs/analysis/plus_tier_build_plan.md`
+- **The execution sequence (what to build next):** `docs/swbd_ichra_build_plan.md`
 - **The API:** `docs/business/healthsherpa.md`
 - **The relationship:** `docs/business/swbd_premiumpath.md` · `docs/business/README.md` (opportunity register) · `docs/business/datapath.md`
 - **Summit-side discovery:** `docs/analysis/summit_plus_tier_discovery.md` · `docs/analysis/summit_notice_automation_discovery.md` (written, not yet run)
 - **Prior investigations:** `docs/analysis/phase_a_ichra_enrollment_portal.md` · `docs/analysis/qsehra_attestation_claims_engine.md`
-- **Compliance:** `docs/analysis/domain_and_compliance_rules.md`
+- **Compliance:** `docs/analysis/domain_and_compliance_rules.md` (settled rules) · `docs/analysis/legal_assumptions.md` (decisions made under uncertainty — LA-01…LA-12, not legal advice)
 - **State:** `docs/analysis/migration_tracker.md` · `docs/deployment_backlog.md` · `docs/analysis/project_backlog.md`
