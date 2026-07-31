@@ -26,6 +26,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -189,7 +190,34 @@ public class ChatAssistant extends HttpServlet {
             return ClaudeApiService.askWithContent(
                     skill.getSystemPrompt(), contentBlocks, skill.getModel(), skill.getMaxTokens());
         } else {
-            // Text-only skill (specialized system prompt, no file)
+            // Text-only skill (specialized system prompt, no file).
+            //
+            // T52: honour the skill's configured model/max_tokens when BOTH are actually
+            // set, otherwise fall through to the historical call verbatim. The 3-arg
+            // ask(EntityManager, String, String) hardcodes DEFAULT_MODEL/DEFAULT_MAX_TOKENS
+            // internally, so a skill configured for Sonnet/2048 was silently answering on
+            // Haiku/1024 — harmless while these skills were PSP-admin-only, but the ICHRA
+            // design advisor became agent-facing (T57/T58, V082) and a citation-bearing
+            // answer truncated at 1024 tokens can stop mid-citation.
+            //
+            // Deliberately defensive: a skill that configured nothing behaves byte-for-byte
+            // as before. The four-arg overload builds an identical request body to the
+            // three-arg one for a single-message list (same system/messages shape, headers,
+            // timeout and extractResponseText) — only model and max_tokens differ. Values
+            // are passed through unvalidated on purpose: no allow-list, no correction, no
+            // warning on an unfamiliar model. Let the API reject a bad value.
+            String skillModel = skill.getModel();
+            int skillMaxTokens = skill.getMaxTokens();
+            boolean honourConfig = skillModel != null && !skillModel.isBlank() && skillMaxTokens > 0;
+
+            if (honourConfig) {
+                log.info("Executing skill '{}' (text-only) on model {} / {} max tokens",
+                        skill.getSkillName(), skillModel, skillMaxTokens);
+                return ClaudeApiService.ask(skill.getSystemPrompt(),
+                        List.of(Map.of("role", "user", "content", question)),
+                        skillModel, skillMaxTokens);
+            }
+
             log.info("Executing skill '{}' (text-only)", skill.getSkillName());
             return ClaudeApiService.ask(null, skill.getSystemPrompt(), question);
         }
