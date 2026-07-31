@@ -193,6 +193,7 @@
                 <li><a class="dropdown-item" href="AgentHome"><i class="bi bi-kanban me-2"></i>Pipeline</a></li>
                 <li><a class="dropdown-item" href="ProposalBuilder"><i class="bi bi-file-earmark-plus me-2"></i>New Proposal</a></li>
               </c:if>
+              <li><a class="dropdown-item" href="Illustration"><i class="bi bi-calculator me-2"></i>ICHRA Illustration</a></li>
               <c:if test="${sessionScope.isPspAdmin}">
               </c:if>
               <c:if test="${sessionScope.isAgencyAdmin}">
