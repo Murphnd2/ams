@@ -112,6 +112,7 @@ spent deliberately rather than drifted across.
 | **LA-10** | Texas TPA licensing (ch. 4151) is unresolved and may already apply | Unknown — potentially **licensure, not code** | Scaling past pilot; each new state | **Open — material** |
 | **LA-11** | Design census stays at minimum scope | Config change | Any field added to the design census | Assumed |
 | **LA-12** | Affordability is computed for the employer, not presented to the employee | Display edit — but **gated on T44 correctness** | Any employee-facing affordability figure | Assumed |
+| **LA-13** | This register is internal work product and is not disclosed to partner agencies through SSA-built tools | ⭐ **Low, one direction only** — restoring disclosure is a data edit; a disclosure already made cannot be withdrawn | Any disclosure of SSA's regulatory status or the review state of its positions to a partner | Assumed |
 
 ---
 
@@ -766,6 +767,72 @@ gate and the correctness fix are separate obligations and the correctness one co
 
 **Status.** Assumed — 2026-07-31. T44's compliance half belongs in the counsel package with LA-01,
 LA-04 and LA-07.
+
+---
+
+### LA-13 — This register is internal work product and is not disclosed to partner agencies
+
+**Assumption.** SSA's internal record of unresolved compliance questions — this document — is work
+product for SSA and its eventual counsel. It is **not disclosed to partner agencies through SSA-built
+tools.** An agent asking a question SSA has not settled gets *"SSA has not finalized a position on
+this. I can't give you an answer; take it to SSA directly."* They do not get the register entry, they
+do not get its status, they do not get an LA number, and they do not get any characterization of SSA's
+own legal or regulatory exposure.
+
+**Basis — and this one is a judgment call, not a researched legal conclusion.** No statute or
+regulation was read for this entry and none is being relied on. The reasoning is about audience. The
+ICHRA design advisor's users are licensed agents at a **partner agency** — SWBD — not SSA staff. As
+first built (V080, item 12), the advisor would have told that audience, by default and unprompted,
+that whether Tex. Ins. Code ch. 4151 requires a certificate of authority for what SSA does today is
+unresolved and may already apply, that SSA's substantiation approach is unreviewed, and that one of
+its positions is irreversible once a dollar has moved. **Telling a partner agency that SSA may be
+operating without a required certificate of authority is a business and legal disclosure.** It may
+eventually be the right thing to say — but it is a decision for Kevin to make deliberately, in a
+channel he chooses, not one made by default inside a chatbot's system prompt.
+
+⚠️ **The prompt as built also contradicted itself**, which is what surfaced this. Boundary 5 ordered
+*name the LA number when you rely on one* and, in the same paragraph, *never cite the assumptions
+register as authority to anyone outside SSA*. The audience is outside SSA. Both instructions could not
+hold, and the failure mode of that contradiction is disclosure, not silence.
+
+**Design choice.** Register identifiers and exposure characterizations are stripped from **all
+agent-facing output** — the skill's `system_prompt` and every `knowledge_chunk` title, section and
+body. What is deliberately **retained in full**:
+
+- **The settled-versus-unfinalized distinction.** Deleting it would make the advisor present
+  unreviewed positions as settled law, which is worse than the disclosure it fixes. The advisor still
+  separates *"this is SSA's rule"* from *"SSA has not finalized this"* — it just stops naming the
+  register while doing so.
+- **Every refusal boundary, at full force** — plan selection, licensure, ICHRA notice timing,
+  per-person affordability, and the "no written rule → say so and stop" fallback.
+- **The LA-07 QSEHRA runway qualifications** — operational-not-legal, January 1 is the hardest first
+  year, never backdate. Those are operational cautions the agent needs in order to sell competently,
+  not disclosures about SSA, so they are stated as SSA's current operating guidance rather than as an
+  unconfirmed assumption. The ICHRA scope fence on that content is unchanged.
+- **Licensing questions route to SSA** with *no* characterization in either direction — not "resolved",
+  not "open", and no reassurance.
+
+`source_citation` on each chunk still carries the LA references. That field is internal: it is never
+copied onto the in-memory chunk (`KnowledgeSearchService.toChunks`) and never emitted into a prompt
+(`buildContext`), so it reaches only the Knowledge Manager admin UI. It is the provenance trail for
+Kevin and for counsel, and it stays.
+
+**Risk if wrong.** An agent receives less context about how firm a position is than full candour would
+give, and could over-rely on an answer. **Mitigated structurally:** where a position is unfinalized the
+advisor does not answer at all — it declines and routes to SSA. The agent never receives a soft answer
+they might mistake for a firm one; they receive no answer and a person to ask. The residual risk is an
+agent who does not follow up.
+
+**Reversal cost.** ⭐ **Low, and asymmetric — this is the entry the standing principle most obviously
+governs.** Restoring disclosure is a data edit to V080's prompt and chunks. **A disclosure already made
+to a partner agency cannot be withdrawn** — it has been read, and it may have been repeated. When one
+direction is a text edit and the other is unrecoverable, the default is to withhold and decide later.
+
+**Confirm before.** Any decision to disclose SSA's regulatory status, or the review state of its
+compliance positions, to a partner agency **in any channel** — not only this tool. The trigger is the
+disclosure, not the feature.
+
+**Status.** Assumed — 2026-07-31. Applied to V080 the same day, before it was committed or deployed.
 
 ---
 

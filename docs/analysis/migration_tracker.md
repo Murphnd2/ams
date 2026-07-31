@@ -16,7 +16,7 @@ Tracks database schema versions across environments.
 | BPO | bpo.superiorstate.biz | beta_ssa | BPO instance (V038, initialized, release V0.37.0) |
 | Master | master.superiorstate.biz | beta_ssa | Snapshot v9 (V057, stopped) |
 
-## Current Highest Version: V079
+## Current Highest Version: V080
 
 ⚠️ **Maintenance note (added 2026-07-30):** production status in the table below must be back-filled
 *after a deployment actually succeeds*, not only when the migration is written. The V072/V073 rows
@@ -118,9 +118,10 @@ _N/A = environment decommissioned / not maintained (applies to Demo PSP, BPO, Ma
 | V074 | Rating-area rate cache for A1 ICHRA illustration (rating_area_rate_cache table) | ⬜ | ⬜ | ⬜ | ✅ | N/A | N/A | N/A |
 | V075 | Illustration log for A1 ICHRA rating illustration, no PII (illustration_log table) | ⬜ | ⬜ | ⬜ | ✅ | N/A | N/A | N/A |
 | V076 | County reference data (FIPS, state, name, representative ZIP) -- Texas seed (county_reference table) | ⬜ | ⬜ | ⬜ | ✅ | N/A | N/A | N/A |
-| V077 | Per-agency enable flag for ICHRA capability access (agency.ichra_enabled, default OFF) | ⬜ | ⬜ | ⬜ | ⬜ | N/A | N/A | N/A |
-| V078 | On-exchange LCSP and benchmark-silver columns for T44 (rating_area_rate_cache.onex_lcsp_premium/onex_benchmark_silver_premium, default NULL) | ⬜ | ⬜ | ⬜ | ⬜ | N/A | N/A | N/A |
+| V077 | Per-agency enable flag for ICHRA capability access (agency.ichra_enabled, default OFF) | ⬜ | ⬜ | ⬜ | ✅ | N/A | N/A | N/A |
+| V078 | On-exchange LCSP and benchmark-silver columns for T44 (rating_area_rate_cache.onex_lcsp_premium/onex_benchmark_silver_premium, default NULL) | ⬜ | ⬜ | ⬜ | ✅ | N/A | N/A | N/A |
 | V079 | ICHRA illustration snapshot on a proposal (proposal_ichra_snapshot + proposal_ichra_snapshot_band) | ⬜ | ⬜ | ⬜ | ⬜ | N/A | N/A | N/A |
+| V080 | ICHRA/QSEHRA Design Advisor: ICHRA_DESIGN_ADVISOR chatbot_skill row + ichra_design knowledge base and chunks | ⬜ | ⬜ | ⬜ | ⬜ | N/A | N/A | N/A |
 
 **Production column reconciled 2026-07-30** against a live, read-only `schema_version` probe run
 directly against the production database — that probe is the source of truth for the corrections
@@ -136,6 +137,26 @@ directly against the production database afterward: `county_reference` row count
 `48223` → `Hopkins County`, representative ZIP `75437`); `schema_version` contains V074, V075, V076
 with 2026-07-31 timestamps; `schema_info` reports V076. Production cells for V074–V076 above reflect
 this. `beta_ssa (work)`, `beta_ssa (home)`, and `dev_ssa` are unchanged — still unapplied.
+
+**Production V077/V078 status — verified empirically, 2026-07-31, re-confirmation pending.** These two
+rows are corrected from unapplied to applied on Production, but **not from a deployment log entry** the
+way V074–V076 above are — no `update.sh` run or WAR-swap record was consulted for this correction. The
+evidence is behavioral: `Agency.ichraEnabled` maps and production serves ICHRA-gated pages (requires
+V077), and a verification `SELECT` against the production database returned populated
+`onex_lcsp_premium` values on `rating_area_rate_cache` (requires V078). ⚠️ **This session could not
+reach the production database directly to re-run that `SELECT` itself** — the correction above rests on
+the empirical evidence already on record for 2026-07-31, not on a fresh query run from this workstation.
+Kevin can re-confirm directly with:
+
+```
+LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu mysql --socket=/var/run/mysqld/mysqld.sock -u <user> -p beta_ssa \
+  -e "SELECT version, description, applied_on FROM schema_version WHERE version IN ('V077','V078') \
+      UNION ALL \
+      SELECT 'V078-data', CONCAT('onex_lcsp_premium populated rows: ', COUNT(*)), NULL \
+      FROM rating_area_rate_cache WHERE onex_lcsp_premium IS NOT NULL;"
+```
+
+V079 is **not yet applied to any environment** — committed in `b0e524b`, awaiting release `v0.79.00`.
 
 ## Notes
 
@@ -191,3 +212,4 @@ this. `beta_ssa (work)`, `beta_ssa (home)`, and `dev_ssa` are unchanged — stil
 - V077 adds `ichra_enabled TINYINT(1) NOT NULL DEFAULT 0` to `agency` — OFF for every existing and future agency, no backfill, mirroring the V067 `markup_enabled` precedent. Backs the new `IchraAccessResolver.isAvailable(EntityManager, HttpServletRequest)` (session PSP-admin → available; otherwise resolve the caller's primary agency via `AgencyScopeResolver` and read this flag → available if set; anything else, or any exception, fails closed to not-available). Gates both the `/Illustration` servlet guard and the new `/IchraHome` hub servlet guard with the same resolver call, and the top-level ICHRA nav entry in `navbar25.jsp`. No agency is entitled by this migration — Kevin flips it per agency at deployment time. Requires updated WAR with Agency.ichraEnabled field, IchraAccessResolver, IchraHome servlet + ichraHome25.jsp hub, and the navbar/IllustrationServlet gate changes.
 - V078 adds `onex_lcsp_premium DECIMAL(8,2) NULL` and `onex_benchmark_silver_premium DECIMAL(8,2) NULL` to `rating_area_rate_cache` — same type/precision as the existing `lcsp_premium`/`benchmark_silver_premium` (V074), nullable, no default, no backfill. T44: a live staging probe against Hopkins TX (48223, PY2026, 2026-07-31) confirmed the existing off-exchange-derived `lcsp_premium` understates the true on-exchange LCSP by ~44% at age 40 ($489.38 vs. $705.37) — the dangerous direction for affordability (LA-12). `lcsp_premium`/`benchmark_silver_premium` are unchanged in name, meaning and data; the illustration keeps displaying them as off-exchange figures. `RateCacheWarmService` fetches one additional on-exchange base quote per county-year (age 21, mirroring the existing off-exchange base-call-plus-`AgeCurve`-scaling strategy — the probe confirmed the federal age curve holds identically on both rails, so this does not become a per-age call), non-fatal on failure (columns stay null for that county-year). Schema only — populated by the next warm run after this migration and the corresponding WAR ship; not yet read by anything (item 9 is the first reader). Requires updated WAR with RatingAreaRateCache.onexLcspPremium/onexBenchmarkSilverPremium fields and RateCacheWarmService's on-exchange derivation.
 - V079 creates `proposal_ichra_snapshot` (one row per proposal, `proposal_id` FK UNIQUE ON DELETE CASCADE, `mode`, `county_fips`/`state`/`county_name` denormalized, `plan_year`, `contribution`/`headcount` inputs, `group_monthly_low`/`group_monthly_high`/`group_net_total`/`employer_outlay` outputs, `source_env` NOT NULL, `rates_fetched_at`, `snapshot_at`, `created_by` FK→assignee) and `proposal_ichra_snapshot_band` (AGE_BAND rows only, FK ON DELETE CASCADE to the parent, `age`/`lives`/`floor_premium`/`net_per_employee`/`band_net`/`sort_order`). S2 overturned from re-derive to snapshot on the Phase A finding (2026-07-31) that no per-proposal section content table exists anywhere — every existing `ProposalSection` is static template HTML or reads the `Proposal` graph directly, so re-derive needed a new table too and was never the cheaper path. No affordability column of any kind — the schema is structurally incapable of carrying one, since `/proposal/*` is public and unauthenticated (LA-12). DECIMAL precision copied exactly from `rating_area_rate_cache` (V074). Not a scenario system — `proposal_id UNIQUE` enforces exactly one design per proposal; N scenarios later costs dropping that index and adding `is_selected`, not built now. Schema only — populated by `ProposalBuilder.createProposal` when ICHRA hand-off params are present; read by `ViewProposal`/`proposalIchra.jsp` via the new `ICHRA_ILLUSTRATION` `ProposalSection` type, created through `ProposalSettings`'s admin UI once an ICHRA LOS exists. Requires updated WAR with `ProposalIchraSnapshot`/`ProposalIchraSnapshotBand` entities, `ProposalIchraSnapshotDAO`, and the `ProposalBuilder`/`ProposalSettings`/`ViewProposal` wiring.
+- V080 seeds the ICHRA/QSEHRA Design Advisor (build-plan item 12 / A6): one `chatbot_skill` row (`ICHRA_DESIGN_ADVISOR`, psp_id=4, `is_admin_only=1`) plus an `ichra_design` `knowledge_base` registry row and 18 `knowledge_chunk` rows. **Data only — no new tables, no Java, no JSP, no UI entry point**, so no WAR change is required; the skill is reachable through the existing `/ChatAssistant` chatbot surface. Gating is rule-2 by construction: `ChatAssistant.doPost` strips admin-only skills for any caller who is not `isPspAdmin`/`isBpoAdmin`, and `KnowledgeSearchService.getEligibleKBs(false)` returns only `summit_official`/`summit_supplemental`, so a non-admin reaches neither the skill nor the chunks. `IchraAccessResolver` is deliberately **not** called — there is no new UI element to gate. Content traces to `domain_and_compliance_rules.md` §1/§5, `ichra_strategy.md` §7, `ichra_administration_scope.md`, and the LA-numbered assumptions in `legal_assumptions.md`, with settled rules and assumptions kept distinct; the skill declines ICHRA notice timing outright per LA-08. Idempotent: `INSERT IGNORE` on the skill (via V065's `uq_cs_psp_name`) and the KB row (via V063's `uq_kb_key`); the chunks have no natural unique key so each is guarded with `WHERE NOT EXISTS` on (kb_id, title). ⚠️ The rule text is duplicated between `system_prompt` and the chunks **by design** — `ChatAssistant.executeSkill` injects no KB content, so a matched skill's system prompt is its entire context, while the chunks serve the no-match fallback path and the Knowledge Manager edit UI. A `SYNC-GUARD` comment in the script records this. Prerequisites: V046, V063, V065.
