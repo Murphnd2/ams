@@ -404,17 +404,17 @@ in, six named compliance gaps recorded rather than invented.
 
 ---
 
-### 11 — A4a: sample group-to-ICHRA conversion analysis
+### 11 — ~~A4a: sample group-to-ICHRA conversion analysis~~ ✅ Done 2026-07-31, `7db188d`
 
 | | |
 |---|---|
 | **What** | Three to five renewing groups entered by hand. Current group premium in; ICHRA comparison and per-employee net position out |
 | **Agent-visible outcome** | ⭐ *"Your renewal is $9,840/month, up 14%. ICHRA at $430/head is $6,020, and eleven of your fourteen come out ahead."* A case-winning conversation, not a feature |
-| **Attaches at** | The illustration hub. A thin increment over item 9 — current group cost is the only new input |
+| **Attaches at** | The illustration hub, via a new `GroupConversionServlet` (`/GroupConversion`) — a separate servlet by deliberate choice (POST-computed, unlike item 9's GET-only `/Illustration`, because a current-premium/payroll-deduction input has no business in a URL). A thin increment over item 9 — current group cost is the only new input. Structural note found during the build: **item 9 is not a separate servlet or JSP** — it is an opt-in `affordabilityBasis` sub-mode inside `IllustrationServlet`'s `AGE_BAND` path, rendered in `illustration25.jsp` |
 | **Gate** | Inherits. ⚖️ **D24, non-negotiable: output goes to the agent, never to the employer** |
 | **Phase A?** | **Not required** |
 | **Schema** | Likely none. Hand-entered, not imported — **`agency_book_group` is A4b and is not in this sequence** |
-| **Depends on** | Item 9. **External: three to five renewing groups from Forrest — an easy yes, and it has not been asked** |
+| **Depends on** | Item 9. **The three-to-five-renewing-groups email from Forrest gates having a compelling case to *demo* this, not the build — the page ships with hand-entered input regardless of whether that email is ever sent** |
 | **Size** | **~2 days** |
 | **Reversal** | Delete the page |
 
