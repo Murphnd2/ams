@@ -101,7 +101,16 @@
                 </dd>
 
                 <dt>Source environment</dt>
-                <dd><c:out value="${sourceEnv}"/></dd>
+                <dd>
+                    <c:choose>
+                        <c:when test="${empty sourceEnv}">
+                            <span class="text-muted">Not configured</span>
+                        </c:when>
+                        <c:otherwise>
+                            <c:out value="${sourceEnv}"/>
+                        </c:otherwise>
+                    </c:choose>
+                </dd>
 
                 <dt>Configured plan years</dt>
                 <dd>

@@ -1192,8 +1192,9 @@ previous "key not yet issued" blocker is resolved.
 **Depends on:** Nothing external for staging. A key issued 2026-07-30 authenticates against
 `https://api.ichra-staging.healthsherpa.com`. **Production returns 403 pending allow-listing** —
 follow-up open with KJ Sherman / Julian Ferdman — so a production seeding of this constant must pair
-with **D-79** pointing at staging until allow-listing lands, or the warm job will fail against a
-production endpoint that rejects it.
+with **D-79** pointing at staging until allow-listing lands. As of T43, seeding this key without D-79
+set doesn't reach HealthSherpa at all: `HealthSherpaService` fails closed locally on the missing base
+URL, logging and skipping rather than calling out to any endpoint.
 
 Insert a `constant` row named `HEALTHSHERPA_API_KEY` with the issued key value, on each environment that runs the rate-cache warm job:
 
@@ -1213,36 +1214,44 @@ null in the running application, so the path `AppConfig` → `AmsDataGlobal` sta
 `HealthSherpaService` is code-complete and **entirely unexercised** — every HealthSherpa verification
 recorded to date was made out-of-band with a manually supplied key, never through AMS. Applying this
 item is a prerequisite for any HealthSherpa call from AMS, including the D-82 rate-cache warm job.
-See also **T43** — with no base URL configured, `getHealthSherpaBaseUrl()` falls through to the
-**production** endpoint.
+See also **T43** — with no base URL configured, `getHealthSherpaBaseUrl()` now returns null and
+`HealthSherpaService` refuses the call rather than falling through to the **production** endpoint.
 
 ---
 
 ### D-79: Seed `HEALTHSHERPA_BASE_URL` constant
 
-**Priority:** MEDIUM — **not optional in the way this item was originally written.** When absent,
-`AppConfig.getHealthSherpaBaseUrl()` falls through to the **production** endpoint
-(`https://api.ichra.healthsherpa.com`). That is latent only while production returns 403; once
-allow-listing lands, any installation holding a key and no configured base URL silently targets
-production. Any environment that is not production — demo especially, since D-82 makes the warm job
-optional there — **must** have this constant set. See **T43** for the underlying fix (default to
-staging, or return null and refuse to call).
+**Priority:** HIGH — **required on every environment that runs the warm job, production included.**
+As of T43, `AppConfig.getHealthSherpaBaseUrl()` has no default. Absent or blank means HealthSherpa is
+not configured on that installation: `HealthSherpaService` refuses the call and logs an error, and
+`RateCacheWarmService`'s warm job logs and skips rather than guessing an environment. There is no
+value inherited from anywhere else — the operator chooses staging or production deliberately, per
+installation, by setting this constant.
 
 **Status:** Not started
 
-Insert a `constant` row named `HEALTHSHERPA_BASE_URL` to point an environment at HealthSherpa's staging API without a redeploy:
+Each of the four installations (Production, Demo, Master, BPO) has its own database and its own
+`ssa.properties`, so each needs this value set independently — nothing here is shared or inherited
+across environments.
+
+Insert a `constant` row named `HEALTHSHERPA_BASE_URL` to point an environment at HealthSherpa's staging or production API:
 
 ```sql
 INSERT INTO constant (name, value) VALUES ('HEALTHSHERPA_BASE_URL', 'https://api.ichra-staging.healthsherpa.com')
 ON DUPLICATE KEY UPDATE value = VALUES(value);
 ```
 
-- Production value: `https://api.ichra.healthsherpa.com` — this is also `AppConfig.getHealthSherpaBaseUrl()`'s hardcoded default, so the row is not required on production.
 - Staging value: `https://api.ichra-staging.healthsherpa.com`.
+- Production value: `https://api.ichra.healthsherpa.com` — pending allow-listing (see D-78), currently
+  403s regardless of whether it's configured.
 
-**Note:** `AppConfig.getHealthSherpaBaseUrl()` falls back to `ssa.properties` (`HEALTHSHERPA_BASE_URL`), then to the hardcoded production default, when the DB row is absent or empty.
+The value can also be set on a running installation without a redeploy — either this `constant` row
+directly, or the `HEALTHSHERPA_BASE_URL` property in `ssa.properties`. The `SystemConstantsApi` PUT
+path refreshes `AppConfig`'s cached value immediately, no restart required.
 
-**Applies to:** Any environment testing against HealthSherpa staging — not yet decided which, if any.
+**Note:** `AppConfig.getHealthSherpaBaseUrl()` falls back to `ssa.properties` (`HEALTHSHERPA_BASE_URL`), then returns null, when the DB row is absent or empty. There is no hardcoded default of any kind.
+
+**Applies to:** Production ⬜, Demo PSP ⬜, BPO ⬜, Master image ⬜ — every environment that runs the rate-cache warm job now requires this constant; none may rely on an inherited or default value.
 
 **Verified 2026-07-31:** not applied to **any** environment. A `SELECT name FROM constant` against
 local dev returned zero rows for `HEALTHSHERPA_API_KEY` and `HEALTHSHERPA_BASE_URL`, and neither
@@ -1251,8 +1260,8 @@ null in the running application, so the path `AppConfig` → `AmsDataGlobal` sta
 `HealthSherpaService` is code-complete and **entirely unexercised** — every HealthSherpa verification
 recorded to date was made out-of-band with a manually supplied key, never through AMS. Applying this
 item is a prerequisite for any HealthSherpa call from AMS, including the D-82 rate-cache warm job.
-See also **T43** — with no base URL configured, `getHealthSherpaBaseUrl()` falls through to the
-**production** endpoint.
+See also **T43** — with no base URL configured, `getHealthSherpaBaseUrl()` now returns null and the
+warm job fails closed rather than targeting **production**.
 
 ---
 

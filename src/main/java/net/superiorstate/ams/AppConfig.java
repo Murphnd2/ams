@@ -196,15 +196,13 @@ public final class AppConfig {
         return getHealthSherpaApiKey() != null;
     }
 
-    // --- HealthSherpa Base URL (DB-first, ssa.properties fallback, hardcoded default) ---
-
-    private static final String HEALTHSHERPA_DEFAULT_BASE_URL = "https://api.ichra.healthsherpa.com";
+    // --- HealthSherpa Base URL (DB-first, ssa.properties fallback, no default — fails closed) ---
 
     /**
      * Cache the HealthSherpa base URL read from the DB constants table.
      * Called by AmsDataGlobal during global data initialization.
      *
-     * @param baseUrl the DB value, or null if no DB constant exists (falls back to ssa.properties, then the default)
+     * @param baseUrl the DB value, or null if no DB constant exists (falls back to ssa.properties, then null)
      */
     public static void setHealthSherpaBaseUrl(String baseUrl) {
         cachedHealthSherpaBaseUrl = baseUrl;
@@ -212,7 +210,9 @@ public final class AppConfig {
 
     /**
      * Resolves the HealthSherpa base URL: DB constant first, ssa.properties fallback,
-     * defaulting to the production ICHRA Partner API when neither is configured.
+     * null when neither is configured. There is deliberately no default: a missing base
+     * URL means HealthSherpa is not configured on this installation, never a guess at
+     * which environment (staging or production) to call.
      */
     public static String getHealthSherpaBaseUrl() {
         String url = cachedHealthSherpaBaseUrl;
@@ -220,7 +220,7 @@ public final class AppConfig {
             url = get("HEALTHSHERPA_BASE_URL");
         }
         if (url == null || url.isBlank()) {
-            return HEALTHSHERPA_DEFAULT_BASE_URL;
+            return null;
         }
         return url;
     }

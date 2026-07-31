@@ -48,7 +48,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * <p><b>Deviations from the original Phase B-1b design, both forced by the "no
  * changes to HealthSherpaService.java" constraint and both flagged in the
  * Phase B-1b report — do not silently "fix" these back without re-reading that
- * report's reasoning:</b>
+ * report's reasoning:</b> (that constraint itself was released in T43, which does
+ * edit HealthSherpaService.java — the two deviations below stand regardless.)
  * <ol>
  *   <li><b>Two sequential single-applicant calls per county per year, not one
  *       two-applicant call.</b> HealthSherpaService only exposes
@@ -150,10 +151,14 @@ public class RateCacheWarmService {
         return lastRunAt;
     }
 
-    /** STAGING if the configured base URL contains "ichra-staging", otherwise PRODUCTION. */
+    /** STAGING if the configured base URL contains "ichra-staging", PRODUCTION if configured
+     *  and not staging, or null if the base URL is not configured at all. */
     public static String currentSourceEnv() {
         String baseUrl = AppConfig.getHealthSherpaBaseUrl();
-        return baseUrl != null && baseUrl.contains("ichra-staging")
+        if (baseUrl == null || baseUrl.isBlank()) {
+            return null;
+        }
+        return baseUrl.contains("ichra-staging")
                 ? RatingAreaRateCache.SOURCE_ENV_STAGING
                 : RatingAreaRateCache.SOURCE_ENV_PRODUCTION;
     }

@@ -26,10 +26,10 @@ import java.util.Optional;
  * <p>
  * API key resolved via AppConfig.getHealthSherpaApiKey() (DB constant first, ssa.properties
  * fallback). Base URL resolved via AppConfig.getHealthSherpaBaseUrl() (DB constant first,
- * ssa.properties fallback, default https://api.ichra.healthsherpa.com).
+ * ssa.properties fallback, no default — null if neither is configured, in which case this
+ * service refuses the call rather than guessing an environment).
  * <p>
- * Not yet called from anywhere — the rate-cache warm job that will use this arrives in a
- * later phase.
+ * Called from RateCacheWarmService (warmCounty), which warms the rating-area rate cache.
  */
 public class HealthSherpaService {
 
@@ -82,7 +82,13 @@ public class HealthSherpaService {
             return HealthSherpaQuoteResponse.failure("HealthSherpa is not configured.");
         }
 
-        String url = AppConfig.getHealthSherpaBaseUrl() + "/api/v1/quotes";
+        String baseUrl = AppConfig.getHealthSherpaBaseUrl();
+        if (baseUrl == null || baseUrl.isBlank()) {
+            log.error("HEALTHSHERPA_BASE_URL not configured");
+            return HealthSherpaQuoteResponse.failure("HealthSherpa base URL is not configured.");
+        }
+
+        String url = baseUrl + "/api/v1/quotes";
 
         List<PlanSummary> allPlans = new ArrayList<>();
         for (int currentPage = 1; currentPage <= MAX_PAGES; currentPage++) {
