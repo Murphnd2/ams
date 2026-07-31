@@ -95,4 +95,5 @@ INSERT IGNORE INTO schema_version (version, description, script_name) VALUES
 ('V072', 'Monthly billing run tracking: billing_run + billing_run_step', 'V072__monthly_billing_run_tracking.sql'),
 ('V073', 'Widen billing_run.current_step to VARCHAR(255)', 'V073__widen_billing_run_current_step.sql'),
 ('V074', 'Rating-area rate cache for A1 ICHRA illustration', 'V074__rating_area_rate_cache.sql'),
-('V075', 'Illustration log for A1 ICHRA rating illustration (no PII)', 'V075__illustration_log.sql');
+('V075', 'Illustration log for A1 ICHRA rating illustration (no PII)', 'V075__illustration_log.sql'),
+('V076', 'County reference data (FIPS, state, name, representative ZIP) -- Texas seed', 'V076__county_reference.sql');

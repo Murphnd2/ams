@@ -5,8 +5,10 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
 import net.superiorstate.ams.AppConfig;
 import net.superiorstate.ams.data.dao.AppConstantDAO;
+import net.superiorstate.ams.data.dao.CountyReferenceDAO;
 import net.superiorstate.ams.data.dao.RateCacheDAO;
 import net.superiorstate.ams.data.util.AgeCurve;
+import net.superiorstate.ams.model.market.CountyReference;
 import net.superiorstate.ams.model.market.RatingAreaRateCache;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -56,7 +58,11 @@ import java.util.concurrent.atomic.AtomicBoolean;
  *       once per county.</li>
  *   <li><b>RATE_CACHE_COUNTIES is {@code zip:fips:state}, not {@code fips:state}.</b>
  *       quoteSingleApplicant requires a zipCode parameter the county list as
- *       originally specified didn't carry.</li>
+ *       originally specified didn't carry. As of V076, an entry may instead be a
+ *       bare {@code county_fips} resolved through {@link CountyReferenceDAO},
+ *       which supplies the zip and state from the county_reference row — the
+ *       triple form still works unchanged and is not being phased out, this is
+ *       an additional accepted format, not a replacement.</li>
  *   <li><b>Canary runs once per plan year, not once per county (Phase B-1b
  *       follow-up).</b> The uniform age rating curve is statutory and identical
  *       across every county in every state — validating it per county bought
@@ -449,9 +455,14 @@ public class RateCacheWarmService {
     }
 
     /**
-     * Reads RATE_CACHE_COUNTIES as comma-separated {@code zip:fips:state} triples
-     * (see class-level deviation note #2). Malformed entries are logged and
-     * skipped, not fatal to the run.
+     * Reads RATE_CACHE_COUNTIES as a comma-separated list of entries, each in one
+     * of two forms (see class-level deviation note #2):
+     * <ul>
+     *   <li>Legacy triple {@code zip:fips:state} — used as-is, no database lookup.</li>
+     *   <li>Bare {@code county_fips} — resolved via {@link CountyReferenceDAO#findByFips}
+     *       to supply zip and state from the {@code county_reference} row (V076).</li>
+     * </ul>
+     * Malformed or unresolvable entries are logged and skipped, not fatal to the run.
      */
     private List<CountyTarget> readConfiguredCounties(EntityManager em) {
         List<CountyTarget> result = new ArrayList<>();
@@ -464,11 +475,23 @@ public class RateCacheWarmService {
             String trimmed = entry.trim();
             if (trimmed.isEmpty()) continue;
             String[] parts = trimmed.split(":");
-            if (parts.length != 3 || parts[0].isBlank() || parts[1].isBlank() || parts[2].isBlank()) {
-                log.warn("[RATE-CACHE] Skipping malformed RATE_CACHE_COUNTIES entry: '{}' (expected zip:fips:state)", trimmed);
-                continue;
+
+            if (parts.length == 3) {
+                if (parts[0].isBlank() || parts[1].isBlank() || parts[2].isBlank()) {
+                    log.warn("[RATE-CACHE] Skipping malformed RATE_CACHE_COUNTIES entry: '{}' (expected zip:fips:state or bare county_fips)", trimmed);
+                    continue;
+                }
+                result.add(new CountyTarget(parts[0].trim(), parts[1].trim(), parts[2].trim().toUpperCase()));
+            } else if (parts.length == 1) {
+                CountyReference county = CountyReferenceDAO.findByFips(em, parts[0]);
+                if (county == null) {
+                    log.warn("[RATE-CACHE] Skipping RATE_CACHE_COUNTIES entry '{}' — no county_reference row for FIPS '{}'", trimmed, parts[0]);
+                    continue;
+                }
+                result.add(new CountyTarget(county.getRepresentativeZip(), county.getCountyFips(), county.getState()));
+            } else {
+                log.warn("[RATE-CACHE] Skipping malformed RATE_CACHE_COUNTIES entry: '{}' (expected zip:fips:state or bare county_fips)", trimmed);
             }
-            result.add(new CountyTarget(parts[0].trim(), parts[1].trim(), parts[2].trim().toUpperCase()));
         }
         return result;
     }

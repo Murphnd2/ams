@@ -1293,6 +1293,8 @@ ON DUPLICATE KEY UPDATE value = VALUES(value);
 
 ⚠️ **Format is `zip:fips:state` triples, comma-separated — not the `fips:state` pairs originally specified in the A1 Phase B-1b prompt.** `HealthSherpaService.quoteSingleApplicant` requires a ZIP code as a real request field; the county list as originally specified had no ZIP. Rather than guess a representative ZIP per county in code (a real correctness risk — the wrong ZIP could silently return the wrong rating area), the format carries one, supplied here by whoever configures the constant. Malformed entries (wrong part count, blank segment) are skipped and logged by `RateCacheWarmService`, not fatal to the run.
 
+**Update 2026-07-30 (V076) — bare-FIPS form now also accepted.** `RATE_CACHE_COUNTIES` entries now accept two formats, both supported indefinitely with no cutover required: the legacy `zip:fips:state` triple above, and a bare `county_fips` (e.g. `48223`) resolved through the new `county_reference` table (V076) via `CountyReferenceDAO.findByFips`, which supplies the zip and state from that row. `RateCacheWarmService.readConfiguredCounties` dispatches on entry shape — 3 colon-separated parts is the legacy triple, 1 part is the bare-FIPS form, anything else is malformed and skipped as before. Bare FIPS is preferred for new entries going forward since it keeps county identity in one place (`county_reference`) instead of duplicating a hand-picked ZIP into every constant entry, but the triple form is not deprecated — it still works unchanged and needs no migration.
+
 **Applies to:** Production ⬜ — the actual county list is a business decision (which markets SSA quotes), not yet made.
 
 ---
