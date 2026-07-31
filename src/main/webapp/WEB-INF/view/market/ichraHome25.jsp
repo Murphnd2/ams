@@ -87,19 +87,19 @@
                 <div class="hub-desc">Cache status and manual refresh for the rating-area rate cache.</div>
             </a>
 
-            <div class="hub-card disabled">
-                <span class="hub-badge coming">Coming</span>
+            <a class="hub-card" href="Illustration?mode=AGE_BAND">
+                <span class="hub-badge live">Live</span>
                 <div class="hub-icon"><i class="bi bi-bar-chart-steps"></i></div>
                 <div class="hub-title">Age-Band Net Cost</div>
                 <div class="hub-desc">Per-employee net cost after contribution, by age band.</div>
-            </div>
+            </a>
 
-            <div class="hub-card disabled">
-                <span class="hub-badge coming">Coming</span>
+            <a class="hub-card" href="Illustration?mode=AGE_BAND">
+                <span class="hub-badge live">Live</span>
                 <div class="hub-icon"><i class="bi bi-shield-check"></i></div>
                 <div class="hub-title">Affordability Threshold</div>
                 <div class="hub-desc">Employer- and agent-facing affordability check against the benchmark plan.</div>
-            </div>
+            </a>
 
             <div class="hub-card disabled">
                 <span class="hub-badge coming">Coming</span>
