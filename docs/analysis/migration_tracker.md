@@ -16,7 +16,7 @@ Tracks database schema versions across environments.
 | BPO | bpo.superiorstate.biz | beta_ssa | BPO instance (V038, initialized, release V0.37.0) |
 | Master | master.superiorstate.biz | beta_ssa | Snapshot v9 (V057, stopped) |
 
-## Current Highest Version: V081
+## Current Highest Version: V082
 
 ⚠️ **Maintenance note (added 2026-07-30):** production status in the table below must be back-filled
 *after a deployment actually succeeds*, not only when the migration is written. The V072/V073 rows
@@ -123,6 +123,7 @@ _N/A = environment decommissioned / not maintained (applies to Demo PSP, BPO, Ma
 | V079 | ICHRA illustration snapshot on a proposal (proposal_ichra_snapshot + proposal_ichra_snapshot_band) | ⬜ | ⬜ | ⬜ | ⬜ | N/A | N/A | N/A |
 | V080 | ICHRA/QSEHRA Design Advisor: ICHRA_DESIGN_ADVISOR chatbot_skill row + ichra_design knowledge base and chunks | ⬜ | ⬜ | ⬜ | ⬜ | N/A | N/A | N/A |
 | V081 | Optional opportunity attribution on illustration_log (illustration_log.opportunity_id, nullable, FK to assignee(id)) | ⬜ | ⬜ | ⬜ | ⬜ | N/A | N/A | N/A |
+| V082 | Make ICHRA_DESIGN_ADVISOR available to non-admin callers (chatbot_skill.is_admin_only 1 → 0) | ⬜ | ⬜ | ⬜ | ⬜ | N/A | N/A | N/A |
 
 **Production column reconciled 2026-07-30** against a live, read-only `schema_version` probe run
 directly against the production database — that probe is the source of truth for the corrections
