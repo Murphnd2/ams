@@ -115,9 +115,9 @@ _N/A = environment decommissioned / not maintained (applies to Demo PSP, BPO, Ma
 | V071 | Per-agency public quote token (agency.quote_token unique) for RequestQuote sub-agency attribution links | ⬜ | ⬜ | ⬜ | ✅ | N/A | N/A | N/A |
 | V072 | Monthly billing run tracking: billing_run + billing_run_step | ⬜ | ⬜ | ⬜ | ✅ | N/A | N/A | N/A |
 | V073 | Widen billing_run.current_step to VARCHAR(255) (fixes 1406 truncation on CREATE_BILLING sub-step labels) | ⬜ | ⬜ | ⬜ | ✅ | N/A | N/A | N/A |
-| V074 | Rating-area rate cache for A1 ICHRA illustration (rating_area_rate_cache table) | ⬜ | ⬜ | ⬜ | ⬜ | N/A | N/A | N/A |
-| V075 | Illustration log for A1 ICHRA rating illustration, no PII (illustration_log table) | ⬜ | ⬜ | ⬜ | ⬜ | N/A | N/A | N/A |
-| V076 | County reference data (FIPS, state, name, representative ZIP) -- Texas seed (county_reference table) | ⬜ | ⬜ | ⬜ | ⬜ | N/A | N/A | N/A |
+| V074 | Rating-area rate cache for A1 ICHRA illustration (rating_area_rate_cache table) | ⬜ | ⬜ | ⬜ | ✅ | N/A | N/A | N/A |
+| V075 | Illustration log for A1 ICHRA rating illustration, no PII (illustration_log table) | ⬜ | ⬜ | ⬜ | ✅ | N/A | N/A | N/A |
+| V076 | County reference data (FIPS, state, name, representative ZIP) -- Texas seed (county_reference table) | ⬜ | ⬜ | ⬜ | ✅ | N/A | N/A | N/A |
 
 **Production column reconciled 2026-07-30** against a live, read-only `schema_version` probe run
 directly against the production database — that probe is the source of truth for the corrections
@@ -126,6 +126,13 @@ V073), each with an `applied_on` timestamp; V072 applied 2026-07-17 12:54:26, V0
 14:11:18. Every V0NN row's Production cell above is now ✅. (`beta_ssa (work)`, `beta_ssa (home)`,
 `dev_ssa`, and the Demo/BPO/Master columns were **not** re-probed in this pass and are unchanged —
 they still reflect whatever was last recorded for them.)
+
+**Production V074–V076 deployment (2026-07-31):** release `v0.76.00` deployed to production at 11:37;
+`update.sh` applied V074, V075, and V076 in order, then swapped the WAR and logged `DONE`. Verified
+directly against the production database afterward: `county_reference` row count = 254 (spot-checked
+`48223` → `Hopkins County`, representative ZIP `75437`); `schema_version` contains V074, V075, V076
+with 2026-07-31 timestamps; `schema_info` reports V076. Production cells for V074–V076 above reflect
+this. `beta_ssa (work)`, `beta_ssa (home)`, and `dev_ssa` are unchanged — still unapplied.
 
 ## Notes
 
