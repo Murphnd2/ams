@@ -67,12 +67,34 @@ card, which renders inert `Coming` by design.**
 Punch-list item 1 was safe because it *narrows* a card to match a gate that already exists in the
 servlet it points at. **No gate was widened anywhere in this run.**
 
+**Items 2 and 3 were fixed 2026-07-31** — T58 (`navbar25.jsp` gate gained `|| ichraAvailable`) and T57
+(`V082`, `is_admin_only` 1 → 0). Both shipped together; neither works alone.
+
+### Post-fix verification — does the advisor still cite anything for a role-2 caller?
+
+Checked 2026-07-31 because V082 deliberately left the `ichra_design` knowledge base `ADMIN_ONLY`, and
+item 12 promises answers *with citations*. **Verified: yes, and retrieval is genuinely not on the path.**
+
+| Question | Answer | Evidence |
+|---|---|---|
+| What does a matched skill send to the model? | The skill's `system_prompt` and the raw question — nothing else | `ChatAssistant.java:194` — `ClaudeApiService.ask(null, skill.getSystemPrompt(), question)` |
+| Are KB chunks injected on that path? | No. The two paths are mutually exclusive `if`/`else` | `ChatAssistant.java:139-147` |
+| Is KB eligibility filtered by the caller or the skill? | The **caller** — `getEligibleKBs(local.isPspAdmin())` | `ChatAssistant.java:207-208`; `KnowledgeSearchService.java:331-339` |
+| Where do citations come from? | **Nothing in code produces them structurally on the skill path.** They are model output, driven by boundary 6 ("CITE EVERY SUBSTANTIVE ANSWER") plus **14 literal `Source:` lines inline in the `system_prompt`** | `V080` lines 105-251 |
+| Does the canonical demo question match? | Yes — "Does my client's dental plan kill the QSEHRA?" hits `qsehra` + `dental` = 2, and the threshold is `>= 2` | `ChatbotSkillDAO.java:91` |
+
+**Conclusion: no fix needed.** The citation strings travel on the skill row, not in the KB, so an
+`ADMIN_ONLY` KB costs a non-admin caller nothing on the matched path. A question scoring 0–1 keywords
+still falls through to KB search and retrieves **no** ICHRA content for a non-admin — the fail-safe
+direction, and the reason the KB was correctly left alone.
+
 ## 5. Open questions
 
-- **Q1 (design, not defect).** Should an external agency user see the Design Advisor at all? The skill
-  is `is_admin_only = 1` deliberately (V080), and its content is SSA's internal compliance rule set
-  including "SSA has not finalized" language. Widening it to agency users is a disclosure decision, not
-  a gate fix. Not decided here.
+- **Q1 — ANSWERED YES, 2026-07-31.** Should an external agency user see the Design Advisor at all?
+  Item 12 specifies an agent-visible outcome, so an advisor only SSA staff can reach is not the
+  feature that was specified. Implemented as T58 + T57/`V082`. The disclosure concern that made this a
+  question — the content is SSA's internal rule set, including "SSA has not finalized" language — is
+  handled by the skill's own boundaries rather than by hiding it.
 - **Q2.** The hub's *Age-Band Net Cost* and *Affordability Threshold* cards both point at
   `Illustration?mode=AGE_BAND` — same URL, two cards. Role-independent and outside this walk's scope,
   but worth confirming it is intended.
