@@ -618,6 +618,13 @@
                     <%-- Proposals --%>
                     <div class="drawer-section-title">Proposals</div>
                     <div id="drProposals"></div>
+
+                    <%-- ICHRA analyses (build-plan item 13). Populated asynchronously by
+                         loadIchraAnalyses(); stays completely empty — no heading, no
+                         placeholder, no border — for an agent without ICHRA or an
+                         opportunity with no analyses logged, so the drawer looks exactly
+                         as it did before this section existed. --%>
+                    <div id="drIchraAnalyses"></div>
                 </div>
                 <div class="drawer-footer">
                     <a id="drFullDetail" href="#" class="btn btn-sm btn-primary w-100">
@@ -850,6 +857,10 @@ function openDrawer(oppId, cardEl) {
     }
     document.getElementById('drProposals').innerHTML = propHtml;
 
+    // ICHRA analyses — cleared synchronously here, filled in asynchronously (or left
+    // empty, which is the normal case) by loadIchraAnalyses.
+    loadIchraAnalyses(oppId);
+
     // Footer links
     document.getElementById('drFullDetail').href = 'ViewById?id=' + oppId;
     document.getElementById('drEmail').href = 'CreateEmail25?activityId=' + oppId;
@@ -858,6 +869,64 @@ function openDrawer(oppId, cardEl) {
     // Open
     document.getElementById('detailDrawer').classList.add('open');
     document.getElementById('drawerOverlay').classList.add('show');
+}
+
+/* ═══ ICHRA analyses (build-plan item 13) ═══
+   Fetches the illustrations and conversion analyses logged against this opportunity and
+   renders date / kind / agent. Three deliberate properties:
+
+   1. Empty response renders NOTHING — no heading, no "none yet", no empty state, no
+      border. An agent without ICHRA entitlement gets an empty array from the endpoint and
+      therefore sees the drawer exactly as it looked before this existed. That is the
+      whole reason the section is drawn client-side from a gated endpoint rather than
+      rendered server-side into the page.
+   2. DOM is built with createElement/textContent, never innerHTML — unlike the
+      surrounding drawer code, which concatenates markup. Every value here comes from a
+      server response, and the response is data, not markup.
+   3. A stale response is discarded. Clicking card A then card B before A's fetch lands
+      would otherwise paint A's analyses into B's drawer; the requestedOppId guard drops
+      any response that is no longer the open opportunity.
+   Any failure is swallowed to empty — a broken ICHRA feature must not degrade the shared
+   pipeline drawer. */
+function loadIchraAnalyses(oppId) {
+    var container = document.getElementById('drIchraAnalyses');
+    if (!container) return;
+    container.textContent = '';
+
+    var requestedOppId = oppId;
+
+    fetch('IchraOpportunityAnalyses?opportunityId=' + encodeURIComponent(oppId), {
+        headers: { 'Accept': 'application/json' }
+    })
+        .then(function(res) { return res.ok ? res.json() : []; })
+        .then(function(rows) {
+            // Drawer moved on, or closed, while this was in flight.
+            if (requestedOppId !== selectedOppId) return;
+            if (!Array.isArray(rows) || rows.length === 0) return;
+
+            var title = document.createElement('div');
+            title.className = 'drawer-section-title';
+            title.textContent = 'ICHRA Analyses';
+            container.appendChild(title);
+
+            rows.forEach(function(r) {
+                var row = document.createElement('div');
+                row.className = 'drawer-field';
+
+                var label = document.createElement('span');
+                label.className = 'drawer-field-label';
+                label.textContent = r.createdAt || '';
+                row.appendChild(label);
+
+                var value = document.createElement('span');
+                value.className = 'drawer-field-value';
+                value.textContent = r.agent ? (r.kind + ' · ' + r.agent) : (r.kind || '');
+                row.appendChild(value);
+
+                container.appendChild(row);
+            });
+        })
+        .catch(function() { /* leave the section empty — never disturb the drawer */ });
 }
 
 function closeDrawer() {
