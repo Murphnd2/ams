@@ -21,7 +21,6 @@ import net.superiorstate.ams.model.summit.temp.Enrollment2;
 
 import java.sql.Date;
 import java.time.LocalDate;
-import java.time.ZoneId;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -701,8 +700,9 @@ public class MonthlyBiller extends Biller {
         } catch (NoResultException e) {
             BillingMonth bm = new BillingMonth();
             bm.setFullDate(fullDate);
-            bm.setMonth(LocalDate.ofInstant(fullDate.toInstant(), ZoneId.systemDefault()).getMonthValue());
-            bm.setYear(LocalDate.ofInstant(fullDate.toInstant(), ZoneId.systemDefault()).getYear());
+            LocalDate ld = fullDate.toLocalDate();
+            bm.setMonth(ld.getMonthValue());
+            bm.setYear(ld.getYear());
             em.persist(bm);
             return bm;
         }

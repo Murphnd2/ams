@@ -30,6 +30,9 @@ public abstract class Biller {
     }
 
     protected int resolveMonthId() {
+        // Runtime type here is java.sql.Date despite the java.util.Date declaration (BillingHelper.getMonthFor()
+        // returns java.sql.Date). Calling .toInstant() on it throws UnsupportedOperationException at runtime
+        // even though it compiles cleanly against java.util.Date — see T40. Use .toLocalDate() instead.
         Date monthFor = BillingHelper.getMonthFor();
         try {
             BillingMonth bm = em.createQuery("SELECT bm FROM BillingMonth bm WHERE bm.fullDate = :fullDate", BillingMonth.class)
