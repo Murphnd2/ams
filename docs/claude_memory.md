@@ -10,7 +10,7 @@
 ## Current State
 - **Integration branch:** `refactor/modernize-architecture` — feature branches are cut from / merged back to it, so it trails the in-flight feature by only a few commits. `main` is ~345 commits stale and is **not** the working line.
 - **In-flight branch:** none — the agency-scope-resolver work merged to trunk 2026-07-15 (`e0a62d1`); branch deleted.
-- **Latest migration:** V073 (always re-check `ls docs/migrations/` — this line lags)
+- **Latest migration:** V075 (always re-check `ls docs/migrations/` — this line lags)
 - **Latest release:** v0.73.02 (reconciled 2026-07-30; release-note detail not verified in this pass — local `git tag` is stale by design since releases are cut in the GitHub web UI, see CLAUDE.md's Releases section — check the GitHub Releases page for what v0.73.02 actually shipped). Prior entry here (v0.71.08, 2026-07-15) is superseded.
 - **ICHRA/QSEHRA admin stream active.** Origin: SWBD (Forrest) quoting ICHRA through zizzl, which gated
   carriers and charged a ~$660/mo admin minimum — unbundle logic gives the admin to SSA. Target rail is
@@ -60,7 +60,7 @@
 - **Known risk:** the census/participant phase changes `SummitImportService` / `SummitImportWizard`,
   live production import code where T36's divergent status mapping lives. **Needs its own Phase A.**
 - `docs/analysis/summit_notice_automation_discovery.md` — Summit test protocol, **not yet run**.
-- **No SQL was produced.** Highest migration remains **V073**, pending re-verification against
+- **No SQL was produced.** Highest migration remains **V075**, pending re-verification against
   `ls docs/migrations/`.
 
 ## Key Patterns
@@ -69,8 +69,21 @@
   - **`25p`:** `@Entity` on a separate DB view for **participating** activities — those where the current user has an assigned task/dependency. Table name confirms: `a25_activity_list_participating`. Stored in `AmsDataLocal.activitiesWithDependencies`.
   - **`25u`:** No JPA. Mutable copy constructed from the base `25` entity; adds computed fields and view helpers (`isDelegated`, `getDateHtml()`, `Comparable`, `RecurringTaskList`). These are the in-memory working objects held in session/controllers/JSPs. Origin of "u" not preserved — best evidence: **u**nmapped (no JPA) or **u**tility (adds view computation).
   - New view adapters should use descriptive names rather than single-letter suffixes. (Resolves open question #22.)
-- **Ghost buttons** = `.ssa-action` (modal/form), `.ghost-action` (toolbar), `.nav-ghost` (navbar)
-- **Flex page layout** = `.audit-wrap` pattern: flex column, toolbar + scrollable body, `height: calc(100vh - 64px)`
+- **Ghost buttons and page layout — only one of these is global.** `.ssa-action` (modal footers, form
+  actions) is defined in `css-js.jsp` and is genuinely global. `.nav-ghost` is defined once inside
+  `navbar25.jsp`, so it comes free with the navbar import. **`.ghost-action` and `.audit-wrap` are
+  neither** — they are per-JSP inline `<style>` declarations, redeclared in every page that uses them,
+  and they drift: `.audit-wrap`'s height is `calc(100vh - 64px)` in `rateCacheAdmin25.jsp` but
+  `calc(100vh - 56px)` in `emailDraftTest25.jsp`. Copy from a sibling page; do not assume a global
+  exists. Canonical `.ghost-action`: `benefitAudit25.jsp`. Canonical `.audit-wrap`:
+  `rateCacheAdmin25.jsp`. (Verified 2026-07-31 — zero hits across all three CSS files.)
+- **`AgencyScopeResolver` — the public entry point is `resolve`, not `resolvePrimaryAgencyId`.**
+  `resolvePrimaryAgencyId` is **private** and cannot be called from a servlet. Use
+  `AgencyScopeResolver.resolve(em, request).primaryAgencyId()` — it reads `AmsDataLocal` off the
+  session and the five role flags itself. An explicit-inputs overload
+  `resolve(EntityManager, Person, boolean×5)` exists for callers already holding them.
+  `primaryAgencyId` can be **null** (a Person belonging to no agency), and for PSP staff it resolves
+  but does not imply authorization. (Verified 2026-07-31.)
 - **sanitizeHtml():** Strips `<script>`, `on*` handlers, `javascript:` protocols. Preserves `<style>`.
 - **Never use bare `return;`** in servlets — always forward/redirect
 - **PSP ID from session:** `local.getCurrentPerson().getPsp().getId()` (NOT `getCurrentPsp()`)
@@ -134,6 +147,18 @@ Static resources (`/images/`, `/css/`, `/js/`, `/fonts/`, etc.) are exempted bef
 - **Session 87:** Agent portal polish + Add Note redesign. Agent Setup detail: Done button now posts to `AgentCompleteToDo` (not `CloseToDo25` — that only queues for a PSP-home round-trip agents never make, so completions silently didn't persist); new `AgentReopenToDo` mirrors the complete servlet for undo; Completed collapsible section added; filter narrowed to `isMyTask()` only (shared `allowsNonOwner` tasks no longer leak in). AgentHome Kanban: CONTACTED column removed from `boardStages`, column width shrunk (min 210 / flex 220 / max 240) — now fits widescreen without horizontal scroll. CONTACTED removed as a selectable stage from `agentHome25.jsp` new-opp modal, `detailOpportunity25.jsp` inline editor, and `AgentHome.STAGE_ORDER` (CSS color class and JS label/color maps retained for legacy data). **Add Note redesign** (`detailAddNote25.jsp` full rewrite): tri-state agent-visibility pill in the header bar (`tabindex="-1"`, cycles Default → Visible → Hidden on click via hidden `<input name="agentVisible">`); Reason + Status selects moved to a new `.note-footer-bar` below the editor with `min-width: 170px` / `140px`; tab order now Quill → Reason → Status → Save (Quill's Tab binding targets `select[name="reasonList"]` first, falls back to submit).
 - **Session 88 (July 10):** White-Label Proposal → Application Flow (no migration). Public proposal/application/confirmation pages suppress the PSP band when a selling agency is present — agency name in header, charcoal neutral band, `© AgencyName` footer; compose-email pre-fill signature uses the sender's agency. `EmailTemplate.wrap()` (activity emails, quick-send) still uses PSP name — separate future task.
 - **Post-Session-88 (agency epic, not yet numbered in the archive):** V068 host-header agency landing pages (`login.routeLogin` host dispatch + `LandingSafe` Jsoup sanitizer) → V069 per-agency white-label email (`EmailIdentityResolver` 4-tier; removed the unconditional `mail.smtp.from` override so SMTP2GO VERP owns the return-path) → white-label wrapper login + RequestQuote host-awareness → V070 GA→sub-agency parent link (strict two-level guardrails, rate-assignment constraint) → V071 per-agency quote tokens → agency manager-reassignment guard + PSP-staff gate on manual setup → **`feat/agency-scope-resolver`**: `AgencyScopeResolver` consolidation (retired 4 duplicated resolvers) + IDOR closure via `canSeeDetail()`. **These sessions still need writing into `session_history_archive.md`.**
+- **2026-07-31 — rate cache correctness + HealthSherpa doc reconciliation.** Two defects found in
+  Phase B-1b code, both caught pre-deployment. (1) HealthSherpa's `POST /api/v1/quotes` defaults to
+  `per_page: 20` and `meta` carries no total, so every cached aggregate was computed on 20 of 65
+  plans — no Gold at all, 5 of 27 silver, and **LCSP is the ICHRA affordability threshold**.
+  (2) Catastrophic plans are restricted to under-30, so the single age-21 call's plan set is invalid
+  for ages 30+; the age curve governs premiums but says nothing about which plans exist. Both fixed
+  in `eba17ad`; `healthsherpa.md` reconciled in `5d08677`. Also established: **no ZIP→FIPS endpoint
+  exists on the ICHRA Partner API** (the docs point to a reference *page*, not an endpoint), so AMS
+  must carry its own county reference data; and **D-78/D-79 have never been applied to any
+  environment**, so `AppConfig.getHealthSherpaApiKey()` has always returned null and no AMS
+  installation has ever authenticated to HealthSherpa. `getHealthSherpaBaseUrl()` defaults to
+  **production** when unset — open decision whether to default to staging or refuse to call.
 
 ## Reference Docs
 | Topic | Location |
