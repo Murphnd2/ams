@@ -2,7 +2,7 @@
 
 **Type:** Integration partner (infrastructure / EDE rails) · **Status:** Evaluation (not yet a project)
 **Surfaced:** 2026-07-28, via the SWBD ICHRA-admin thread (zizzl / Sandoval — see `swbd_premiumpath.md`).
-**Last updated:** 2026-07-28 (contract + `api_enrollable` session)
+**Last updated:** 2026-07-31 (pagination truncation, response shape, and FIPS-lookup findings)
 
 ## Summary
 
@@ -12,9 +12,10 @@ quoting, enrollment, and compliance.
 
 > **Note:** the product SSA is integrating is the **off-exchange ICHRA Partner API**
 > (`docs.ichra.healthsherpa.com`), **not** EDE and **not** HSOne. See the 2026-07-29 product
-> correction section **and** the 2026-07-30 verified-request-shape section (both below) before relying
-> on any endpoint detail in this document — most request/response field names above predate both and
-> describe HSOne, not this product.
+> correction, the 2026-07-30 verified-request-shape section, and the 2026-07-31 section (which
+> supersedes the 2026-07-28 response field map in full) before relying on any endpoint or field detail
+> in this document — request/response field names above predate all three and describe HSOne, not
+> this product.
 
 It powers 40+ ICHRA platforms behind the scenes and is integrated by
 admin platforms (e.g. Alegeus/WealthCare) as the shop-and-enroll layer under their ICHRA administration.
@@ -115,6 +116,10 @@ age 40, plan year 2026, effective 2026-09-01).
 Field-name traps: `fips_code` (not `fip_code`), `uses_tobacco` (not `smoker`).
 
 ### Confirmed response field map (live, 2026-07-28)
+
+> ⚠️ **SUPERSEDED 2026-07-31 — this map is HSOne's, not this product's.** `plan_id` is actually
+> `hios_id`; `gross_premium` is top level, not under `pricing`; `api_enrollable` does not exist.
+> See the 2026-07-31 section at the end of this document.
 
 - **Top level:** `plan_id`, `variant_id`, `external_plan_id`, `coverage_family`, `coverage_type`, `name`,
   `display_name`, **`api_enrollable`**, `context`, `issuer`, `network`, `pricing`, `documents`,
@@ -771,6 +776,9 @@ and lowest bronze (computed once at age 21) hold at every other age.
 - The curve is **plan-year scoped** — CMS may revise it for a new plan year.
 - **State-specific curves exist.** Texas uses the federal default, but this does not generalize to
   every state without a state dimension.
+- **The plan *set* is not age-invariant, though the curve and the rankings are.** Catastrophic plans
+  are restricted to under-30, so a quote at age 21 returns plans unavailable at 40. Deriving every
+  age from one age-21 call requires filtering, not just scaling. See the 2026-07-31 section.
 
 See `net.superiorstate.ams.data.util.AgeCurve` (Phase B-1b) for the implementation — its own Javadoc
 carries the same caveats and flags the interior (non-empirically-confirmed) factors as unverified.
@@ -802,3 +810,148 @@ price list with phone calls behind it"*) does not apply to this product — netw
 - `net.superiorstate.ams.data.util.AgeCurve` (Phase B-1b) — implements the age-curve finding above.
 - `docs/analysis/project_backlog.md` T39 — HealthSherpaService needs multi-applicant support (A2, A3,
   and folding the rate-cache canary into the primary call).
+
+---
+
+# 2026-07-31 — PAGINATION TRUNCATION, RESPONSE SHAPE, AND THE FIPS LOOKUP QUESTION
+
+> **Supersedes the 2026-07-28 response field map in full**, and adds three findings not previously
+> visible: an undisclosed pagination cap, the absence of any ZIP→FIPS endpoint, and the fact that no
+> AMS installation has ever authenticated to this API. All verified against live staging 2026-07-31.
+
+## ⭐ The pagination cap — every cached aggregate was computed on a truncated set
+
+`POST /api/v1/quotes` **defaults to `per_page: 20`**, and `meta` carries **only `result_count`** — no
+total, no page count, at any `per_page` value. **A truncated response is therefore indistinguishable
+from a small market.**
+
+Hopkins County TX (75482 / 48223), plan year 2026, off-exchange, age 40:
+
+| Metal | True (`per_page: 100`) | Received at default |
+|---|---|---|
+| Silver | 27 | 5 |
+| Gold | 19 | **0** |
+| Expanded Bronze | 15 | 11 |
+| Bronze | 4 | 4 |
+| **Total** | **65** | **20** |
+
+Carrier split at 65 plans: BCBS 24 / CHRISTUS 18 / UHC 23 — matching the 2026-07-30 baseline exactly.
+
+**How it was caught:** two calls at different ages both returned exactly 20. Age 21 included 2
+catastrophic plans; age 40 included none. A genuine 20-plan market would have returned 18 at age 40.
+It returned 20, backfilling with two more Expanded Bronze and two more UnitedHealthcare — proving
+more plans existed than were being returned.
+
+`RateCacheWarmService` derived market low/high, LCSP, benchmark silver, lowest bronze, carrier count
+and plan count from that 20-plan subset. **LCSP computed off 5 of 27 silver plans is the ICHRA
+affordability threshold.** Fixed in commit `eba17ad`: the service now paginates at `per_page: 100`
+until a short page, and fails the whole quote on any page error rather than returning partial results.
+
+**Standing consequence for any future integration:** completeness cannot be verified from a single
+response. It can only be established by paginating until a short page returns.
+
+## Request parameters confirmed present
+
+Beyond the required fields recorded 2026-07-30 (`zip_code`, `fip_code`, `applicants[]`):
+
+- **`per_page`** / **`current_page`** — pagination. Default 20.
+- **`sort`** — e.g. `premium_asc`. Not load-bearing for aggregates (min/max are order-independent),
+  but makes ordering deterministic across runs. Adopted in `eba17ad`.
+- **`fields`** — restricts which plan fields are returned; `name`, `year`, `hios_id` and
+  `gross_premium` are always included regardless. Not adopted — see project backlog **T41**.
+- **`include_non_enrollable_offex`** — documented as causing non-enrollable off-exchange plans to be
+  returned. **Actual effect unclear:** all 23 UnitedHealthcare plans — the known non-API-enrollable
+  carrier in this county — were returned *without* passing it. See backlog **T42**.
+
+## Verified response shape — the 2026-07-28 field map is HSOne's
+
+The 2026-07-29 and 2026-07-30 corrections fixed the *request* shape and never revisited the
+*response*. The 2026-07-28 map is wrong for this product in the same way and for the same reason.
+
+| 2026-07-28 section says | Actually returned |
+|---|---|
+| `plan_id` | **`hios_id`** |
+| `pricing.gross_premium` | **`gross_premium`** — top level, no `pricing` object exists |
+| `api_enrollable` | **`deeplink_enrollment`** and **`api_enrollment`** — two separate booleans |
+| `details.metal_level` | **`metal_level`** — top level |
+| `details.hsa_eligible` | **`hsa_eligible`** — top level |
+
+**The body is flat.** Confirmed at top level: `hios_id`, `name`, `metal_level`, `plan_type`,
+`hsa_eligible`, `state`, `year`, `csr_level`, `gross_premium`, `ehb_premium`, `subsidy_applied`,
+`premium`, `ichra_only`, `deeplink_enrollment`, `api_enrollment`. Nested: `issuer` (carrying `name`,
+`hios_id`, `state`), `networks[]`, `cost_sharing`, `benefits`, `urls`,
+`gross_premium_per_applicant`, `providers[]`, `drugs[]`.
+
+Envelope is `{ "plans": [...], "meta": { "result_count": N } }`.
+
+## ⭐ The plan set is NOT age-invariant — amends the age-curve finding
+
+The 2026-07-30 finding established that premiums follow the statutory curve and that plan
+**rankings** are age-invariant. Both hold. **It did not establish that the plan *population* is
+age-invariant, and it is not.**
+
+ACA catastrophic plans are restricted to enrollees under 30. In the reference county, age 21 returns
+2 catastrophic plans; age 40 returns none.
+
+`RateCacheWarmService` makes one call at age 21 and derives ages 21–64 from the curve — so rows for
+ages 30+ were computed over a set containing plans nobody that age can buy. Catastrophic plans are
+typically the cheapest thing in a market, so `market_low_premium` was the exposed figure.
+
+Fixed in `eba17ad`: aggregates are computed per age from a catastrophic-filtered list for ages 30+.
+**`market_low_premium` legitimately steps up between the age-29 and age-30 rows.** That
+discontinuity is correct, not a defect.
+
+LCSP and benchmark silver are silver-only by definition and were unaffected.
+
+## No ZIP → county FIPS endpoint exists on this product
+
+The Quoting API documentation carries a **FIPS Code Lookup** note pointing to a "FIPS County Codes"
+page for how to look a FIPS up from a ZIP. **That is a documentation page, not an endpoint.** The
+documented endpoint set is quoting, APTC estimation, enrollment deeplink, and webhooks — no
+reference or lookup endpoint appears anywhere.
+
+The earlier claim that `GET /v1/reference/counties?zip_code=` provides this crosswalk came from the
+**HSOne** OpenAPI contract and does not apply here. **The ZIP→FIPS route via this API is closed.**
+AMS must carry its own county reference data.
+
+## No AMS installation has ever authenticated to this API
+
+Every verification recorded in this document — 2026-07-28, 07-30 and 07-31 — was made with an
+out-of-band HTTP client and a manually supplied key. **None went through AMS.**
+
+Checked on local dev 2026-07-31: `HEALTHSHERPA_API_KEY` is absent from **both** the `constant` table
+and `ssa.properties`. **D-78 and D-79 have never been applied to any environment.**
+`AppConfig.getHealthSherpaApiKey()` has always returned null in the running application, so the path
+`AppConfig` → `AmsDataGlobal` startup population → `HealthSherpaService` is code-complete and
+entirely unexercised.
+
+**`AppConfig.getHealthSherpaBaseUrl()`'s hardcoded default is the production endpoint**
+(`https://api.ichra.healthsherpa.com`). Harmless today, because production returns 403 pending
+allow-listing. It stops being harmless the moment allow-listing lands: any installation holding a
+key but no configured base URL will silently target production. D-82 makes this concrete — the warm
+job is optional on demo, and a demo installation with warming enabled and no base URL would warm its
+cache against production, consuming production quota. **Open decision:** default to staging, or
+return null and have `HealthSherpaService` refuse to call. Not yet made.
+
+## Open — LCSP exchange scope
+
+`RateCacheWarmService` quotes with `off_ex: true`, so `lcsp_premium` and `benchmark_silver_premium`
+are computed from **off-exchange silver plans only.**
+
+For ICHRA affordability the applicable LCSP is the lowest-cost silver plan offered **on the
+Exchange**; the APTC benchmark is on-exchange by definition. The two sets differ here — 2026-07-28
+recorded 45 plans on-exchange against 65 off-exchange. If an off-exchange-only silver plan undercuts
+the true on-exchange LCSP, the cache understates LCSP, making an ICHRA offer appear affordable when
+it is not.
+
+**Unresolved.** The empirical half is two staging calls differing only in `off_ex`; it could not be
+run 2026-07-31 because no key is configured anywhere. The compliance half belongs with **O18** and
+**O25**.
+
+## Related to this section
+
+- `net.superiorstate.ams.data.service.HealthSherpaService` — pagination, commit `eba17ad`
+- `net.superiorstate.ams.data.service.RateCacheWarmService` — catastrophic age filter, same commit
+- `docs/analysis/project_backlog.md` — **T41** (`fields` parameter), **T42**
+  (`include_non_enrollable_offex` semantics)
+- `docs/deployment_backlog.md` — **D-78** / **D-79**, unapplied everywhere
