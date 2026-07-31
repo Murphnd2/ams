@@ -458,7 +458,7 @@ text-only path — it hardcodes Haiku 4.5 / 1024 tokens. Logged as **T52**, deli
 
 ---
 
-### 13 — Link illustrations and designs to an opportunity
+### 13 — ~~Link illustrations and designs to an opportunity~~ ✅ Done 2026-07-31, `a71b79d`
 
 | | |
 |---|---|
@@ -467,10 +467,17 @@ text-only path — it hardcodes Haiku 4.5 / 1024 tokens. Logged as **T52**, deli
 | **Attaches at** | `Opportunity extends Activity`, already carrying stage, prospect, agency and value |
 | **Gate** | Inherits |
 | **Phase A?** | **Required, lightly** — adding a column to a shipped table with rows in it |
-| **Schema** | **V0NN** — nullable FK. ⚠️ **`illustration_log` records agent and agency and nothing else** (verified against V075) |
-| **Depends on** | ⚠️ **Structural decision S3 (§4).** Blocked on the decision, not on code |
+| **Schema** | **V081** — nullable `opportunity_id` FK to `assignee(id)`, `ON DELETE SET NULL` (opportunities are deleted routinely; default RESTRICT would have made an ICHRA feature change how the existing sales pipeline behaves for users who never asked for ICHRA). ⚠️ **`illustration_log` records agent and agency and nothing else** (verified against V075) |
+| **Depends on** | ⚠️ **Structural decision S3 (§4) — now resolved.** |
 | **Size** | **~0.5 day** + migration |
 | **Reversal** | ⚠️ **Rule-3 exception — schema other features depend on.** Cheap now, not cheap after A5 reads it |
+
+Console read **not built**. The agent pipeline console's (`AgentHome`/`agentHome25.jsp`) single-opportunity
+detail is a client-side drawer built from a pre-serialized `OPPS` map, and its "Full Detail View" target
+(`ViewById` → `GoActivityDetail25` → `ViewActivity25`) is the shared activity-detail page used by every
+activity type, not an opportunity-specific view. Neither has a server-side extension point — reading
+`illustration_log` back into either is a separate build against `agentHome25.jsp`, deferred rather than
+attempted opportunistically here.
 
 ---
 
@@ -497,8 +504,8 @@ text-only path — it hardcodes Haiku 4.5 / 1024 tokens. Logged as **T52**, deli
 **Decisions the plan needs settled and that should not be made by assumption.** Each names what it is,
 what it blocks, what would settle it, and whether it can be deferred.
 
-**Status as of 2026-07-31: five of six resolved. Only S3 remains open, and it blocks only item 13.**
-✅ S1 (verified from code) · ✅ S2 · ⬜ **S3 — open** · ✅ S4 · ✅ S5 · ✅ S6.
+**Status as of 2026-07-31: all six resolved.**
+✅ S1 (verified from code) · ✅ S2 · ✅ S3 · ✅ S4 · ✅ S5 · ✅ S6.
 
 **Resolved entries stay, with the reasoning intact** (§7 rule 4). A reader needs to know a decision was
 checked rather than assumed — and where a decision overrode this document's own recommendation, as S2
@@ -611,7 +618,11 @@ current (snapshot) resolution above.
 
 ---
 
-### S3 — Should an illustration or design attach to an opportunity?
+### S3 — Should an illustration or design attach to an opportunity? — ✅ **RESOLVED 2026-07-31**
+
+**Decision: yes, nullable, opportunity-level only** — not prospect, not employer, and not anything
+person-shaped. Resolved on Kevin's confirmation that a pipeline console (`AgentHome`) exists and that
+illustrations and conversion analyses should stay functional against it.
 
 **What it is.** `illustration_log` records agent, agency and parent agency and has **no opportunity,
 prospect or proposal reference** (verified against V075). Today an illustration is telemetry. Attaching
@@ -621,13 +632,11 @@ it makes it evidence.
 keeps the sales stage outside the BAA question. But an *opportunity* reference is an internal FK, not
 personal data, and it is what A5's pipeline console reads.
 
-**Recommendation: yes, nullable, opportunity-level only** — not prospect, not employer, and not
-anything person-shaped. Cheap now; a schema change after A5 reads it is not.
+**Shipped as V081** — nullable `opportunity_id` FK to `assignee(id)`, `ON DELETE SET NULL`. Commit
+`a71b79d`, item 13.
 
-**Blocks:** item 13, and A5 later.
-**Settled by:** a decision, informed by whether A5 is genuinely wanted.
-**Deferrable:** yes, but the cost of deferring rises. ⚠️ **Rule-3 exception — schema other features
-depend on.**
+**Blocks:** item 13, and A5 later. **Settled by:** shipped code (V081). **Deferrable:** no longer
+relevant — it is answered.
 
 ---
 
