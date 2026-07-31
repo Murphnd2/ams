@@ -71,6 +71,26 @@ import java.util.concurrent.atomic.AtomicBoolean;
  *       against the first county processed for that year: {@code counties + 1}
  *       calls per plan year instead of {@code counties * 2}.</li>
  * </ol>
+ *
+ * <p><b>Off-exchange vs. on-exchange columns (T44, V078).</b>
+ * {@code market_low_premium}, {@code market_high_premium}, {@code lcsp_premium},
+ * {@code benchmark_silver_premium} and {@code lowest_bronze_premium} are all derived
+ * from the {@code off_ex: true} response — the illustration's displayed figures.
+ * {@code onex_lcsp_premium} and {@code onex_benchmark_silver_premium} are derived
+ * separately from a second, {@code off_ex: false} base call per county-year (also
+ * fetched once at {@code BASE_AGE} and scaled per age via {@link AgeCurve}, mirroring
+ * the off-exchange strategy — a live staging probe against Hopkins TX confirmed the
+ * federal age curve holds identically on both rails). <b>ICHRA affordability (build
+ * item 9) must key on the {@code onex_*} pair, not the off-exchange pair</b> — a live
+ * probe (Hopkins 48223, plan year 2026, 2026-07-31) found the off-exchange LCSP
+ * understates the true on-exchange LCSP by roughly 44% at age 40 ($489.38 vs.
+ * $705.37), which is the dangerous direction: it lowers the computed affordability
+ * threshold and can make an unaffordable offer look affordable (LA-12). <b>The
+ * on-exchange response is NOT age-filtered</b> — it returns catastrophic-metal plans
+ * at every age, including ages where catastrophic coverage isn't actually available —
+ * so the on-exchange plan set is used for two silver premiums only and must never be
+ * treated as a purchasable plan list or used to derive a plan count, carrier count, or
+ * any other market figure.
  */
 public class RateCacheWarmService {
 
@@ -283,6 +303,30 @@ public class RateCacheWarmService {
             canaryCheck(planYear, county, basePlans);
         }
 
+        // T44: on-exchange base call, once per county-year, mirroring the off-exchange base
+        // call above — a live staging probe (Hopkins 48223, 2026-07-31) confirmed the federal
+        // age curve holds identically on both rails (1.2780 at 21->40 on both), so the
+        // on-exchange side is fetched once at BASE_AGE and scaled per age exactly like the
+        // off-exchange side, not re-fetched per age. Only silver plans from this response are
+        // used, so the on-exchange API's known catastrophic-at-every-age quirk (see class
+        // Javadoc) never enters the computation. Failure is non-fatal: the two onex columns
+        // stay null for every age row in this county-year, and off-exchange warming proceeds
+        // unaffected.
+        List<BigDecimal> onexSilverPremiumsSorted = null;
+        HealthSherpaService.HealthSherpaQuoteResponse onexBaseResponse = HealthSherpaService.quoteSingleApplicant(
+                county.zip, county.fips, county.state, planYear, BASE_AGE, false, false);
+        if (onexBaseResponse.isSuccess()) {
+            onexSilverPremiumsSorted = sortedSilverPremiums(onexBaseResponse.getPlans());
+        } else {
+            log.warn("[RATE-CACHE] Plan year {} county {} on-exchange base (age {}) call failed: {} — " +
+                            "onex_lcsp_premium/onex_benchmark_silver_premium left null this county-year",
+                    planYear, county, BASE_AGE, onexBaseResponse.getErrorMessage());
+        }
+        BigDecimal onexLcspAt21 = (onexSilverPremiumsSorted != null && !onexSilverPremiumsSorted.isEmpty())
+                ? onexSilverPremiumsSorted.get(0) : null;
+        BigDecimal onexBenchmarkAt21 = (onexSilverPremiumsSorted != null && onexSilverPremiumsSorted.size() >= 2)
+                ? onexSilverPremiumsSorted.get(1) : null;
+
         List<RatingAreaRateCache> rows = new ArrayList<>();
         LocalDateTime fetchedAt = LocalDateTime.now();
         String sourceEnv = currentSourceEnv();
@@ -340,6 +384,8 @@ public class RateCacheWarmService {
             row.setLcspPremium(scaleOrNull(lcsp, planYear, age));
             row.setBenchmarkSilverPremium(scaleOrNull(benchmarkSilver, planYear, age));
             row.setLowestBronzePremium(scaleOrNull(lowestBronze, planYear, age));
+            row.setOnexLcspPremium(scaleOrNull(onexLcspAt21, planYear, age));
+            row.setOnexBenchmarkSilverPremium(scaleOrNull(onexBenchmarkAt21, planYear, age));
             row.setCarrierCount(carrierCount);
             row.setPlanCount(planCount);
             row.setFetchedAt(fetchedAt);
@@ -371,6 +417,27 @@ public class RateCacheWarmService {
             return BigDecimal.valueOf(plan.getPremium());
         }
         return null;
+    }
+
+    /**
+     * Ascending-sorted premiums of Silver-metal plans only, used for the on-exchange
+     * LCSP/benchmark derivation (T44). Silver classification is unaffected by whether the
+     * response also contains catastrophic plans at every age — a known on-exchange API
+     * quirk, see class Javadoc — since Catastrophic is a distinct metal tier from Silver;
+     * no catastrophic filter is applied or needed here.
+     */
+    private List<BigDecimal> sortedSilverPremiums(List<HealthSherpaService.PlanSummary> plans) {
+        List<BigDecimal> silverPremiums = new ArrayList<>();
+        for (HealthSherpaService.PlanSummary plan : plans) {
+            if (METAL_SILVER.equals(plan.getMetalLevel())) {
+                BigDecimal premium = basePremiumOf(plan);
+                if (premium != null) {
+                    silverPremiums.add(premium);
+                }
+            }
+        }
+        java.util.Collections.sort(silverPremiums);
+        return silverPremiums;
     }
 
     /**

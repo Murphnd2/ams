@@ -47,6 +47,14 @@ public class RatingAreaRateCache {
     @Column(name = "lowest_bronze_premium")
     private BigDecimal lowestBronzePremium;
 
+    /** V078: on-exchange counterpart to {@link #lcspPremium} — ICHRA affordability (T44) keys on this, not the off-exchange figure. */
+    @Column(name = "onex_lcsp_premium")
+    private BigDecimal onexLcspPremium;
+
+    /** V078: on-exchange counterpart to {@link #benchmarkSilverPremium}. */
+    @Column(name = "onex_benchmark_silver_premium")
+    private BigDecimal onexBenchmarkSilverPremium;
+
     @Column(name = "carrier_count")
     private Integer carrierCount;
 
@@ -147,6 +155,22 @@ public class RatingAreaRateCache {
 
     public void setLowestBronzePremium(BigDecimal lowestBronzePremium) {
         this.lowestBronzePremium = lowestBronzePremium;
+    }
+
+    public BigDecimal getOnexLcspPremium() {
+        return onexLcspPremium;
+    }
+
+    public void setOnexLcspPremium(BigDecimal onexLcspPremium) {
+        this.onexLcspPremium = onexLcspPremium;
+    }
+
+    public BigDecimal getOnexBenchmarkSilverPremium() {
+        return onexBenchmarkSilverPremium;
+    }
+
+    public void setOnexBenchmarkSilverPremium(BigDecimal onexBenchmarkSilverPremium) {
+        this.onexBenchmarkSilverPremium = onexBenchmarkSilverPremium;
     }
 
     public Integer getCarrierCount() {

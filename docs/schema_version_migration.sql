@@ -97,4 +97,5 @@ INSERT IGNORE INTO schema_version (version, description, script_name) VALUES
 ('V074', 'Rating-area rate cache for A1 ICHRA illustration', 'V074__rating_area_rate_cache.sql'),
 ('V075', 'Illustration log for A1 ICHRA rating illustration (no PII)', 'V075__illustration_log.sql'),
 ('V076', 'County reference data (FIPS, state, name, representative ZIP) -- Texas seed', 'V076__county_reference.sql'),
-('V077', 'Per-agency enable flag for ICHRA capability access (agency.ichra_enabled, default OFF)', 'V077__agency_ichra_enabled.sql');
+('V077', 'Per-agency enable flag for ICHRA capability access (agency.ichra_enabled, default OFF)', 'V077__agency_ichra_enabled.sql'),
+('V078', 'On-exchange LCSP and benchmark-silver columns for T44 (rating_area_rate_cache.onex_lcsp_premium/onex_benchmark_silver_premium, default NULL)', 'V078__rate_cache_onex_lcsp.sql');

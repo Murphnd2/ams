@@ -328,7 +328,7 @@
                                     </td>
                                 </tr>
                                 <tr>
-                                    <td>Benchmark silver</td>
+                                    <td>Second-lowest silver <span class="text-muted fw-normal">(off-exchange)</span></td>
                                     <td>
                                         <c:choose>
                                             <c:when test="${not empty age21Row.benchmarkSilverPremium}"><fmt:formatNumber value="${age21Row.benchmarkSilverPremium}" type="currency"/></c:when>
