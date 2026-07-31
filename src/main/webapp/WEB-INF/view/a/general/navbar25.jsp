@@ -404,7 +404,10 @@
   <c:import url="/WEB-INF/view/bpo/bpoSettingsMod25.jsp"/>
 </c:if>
 
-<%-- Chatbot — admins always; standard users only when respective toggle is on --%>
-<c:if test="${applicationScope.global.chatbotEnabled && (sessionScope.isPspAdmin || (sessionScope.isPspUser && applicationScope.global.chatbotAllUsers) || sessionScope.isBpoAdmin || (sessionScope.isBpoUser && applicationScope.global.chatbotAllBpoUsers))}">
+<%-- Chatbot — admins always; standard users only when respective toggle is on; plus any
+     caller for whom the ICHRA capability is already available (T58), reusing the same
+     ${ichraAvailable} this page resolved above for the ICHRA nav entry. Strictly a
+     widening: every session that saw the widget before still does. --%>
+<c:if test="${applicationScope.global.chatbotEnabled && ((sessionScope.isPspAdmin || (sessionScope.isPspUser && applicationScope.global.chatbotAllUsers) || sessionScope.isBpoAdmin || (sessionScope.isBpoUser && applicationScope.global.chatbotAllBpoUsers)) || ichraAvailable)}">
   <c:import url="/WEB-INF/view/a/general/chatAssistant25.jsp"/>
 </c:if>
