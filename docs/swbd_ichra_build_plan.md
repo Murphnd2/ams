@@ -361,7 +361,7 @@ HealthSherpa constants configured. **Not a numbered sequence item.**
 
 ---
 
-### 10 — ICHRA task sequence and setup checklist
+### 10 — ~~ICHRA task sequence and setup checklist~~ ✅ Content done 2026-07-31, `TBD` (uncommitted — hash goes in the close-out)
 
 | | |
 |---|---|
@@ -370,7 +370,7 @@ HealthSherpa constants configured. **Not a numbered sequence item.**
 | **Attaches at** | The existing task-sequence machinery, via item 4's `ServiceItem` |
 | **Gate** | LOS-scoped |
 | **Phase A?** | **Not required** structurally — but the *content* is compliance work, not code |
-| **Schema** | Task-sequence content rows — net-new, no migration-mechanism decision pending. Attaches via the `ServiceItem` Kevin creates through the admin UI (item 4) |
+| **Schema** | **None — and no migration.** Verified 2026-07-31 that **no migration in the repo (V025–V080) has ever created a task sequence** — zero inserts into or mentions of `task`/`tasksequence`/`tasksequencetable`. Sequences come from the Sequence Builder admin UI, and rule 5 names them as Kevin's reference data. Content delivered as `docs/business/ichra_setup_checklist.md`, ready to type |
 | **Depends on** | The ICHRA reference data existing — Kevin creates it via the admin UI (item 4), not a scheduled build item |
 | **Size** | **2–3 days**, mostly content |
 | **Reversal** | Editing a checklist on a case already in flight is disruptive but not destructive |
@@ -381,6 +381,23 @@ easiest** — the checklist's due-date logic must not assume otherwise. **LA-08*
 analysis **has not been done and does not transfer from QSEHRA.** Until it is, **no ICHRA sale should
 be quoted on a short runway**, and the checklist should say so rather than compute a date it cannot
 justify.
+
+⭐ **The LA-08 problem turned out to be structural, not a matter of discipline.** Verified 2026-07-31:
+**there is no due-date or offset field anywhere in the checklist mechanism** — not on `Task`, not on
+`TaskSequenceTable` (which carries only `sort_order`), not on `TaskSequence`, and not on the per-case
+`ToDo` (which has `date_completed` only). The ICHRA notice step therefore **cannot** carry a computed,
+defaulted or offset date, because no field can hold one. No placeholder is possible, so none can leak.
+Timing says "not determined by SSA" in the description text, which is where it belongs.
+
+⚠️ **A trap found in SSA's own documents while sourcing this.** `ichra_administration_scope.md`
+Phase 2 asserts *"Required 90 days before the plan year. For a newly established ICHRA the notice is
+due by the date coverage begins."* **LA-08 names that exact assertion as uncited and says it must not
+be relied on** — it is O17's claim, restated in the scope doc as though settled. The checklist
+deliberately does **not** carry either figure.
+
+**Delivered:** `docs/business/ichra_setup_checklist.md` — 19 tasks across five groups, every
+description length-checked against `Task.description`'s `varchar(200)`, every admin-UI field filled
+in, six named compliance gaps recorded rather than invented.
 
 **Detail:** `plus_tier_build_plan.md` Part 7, "The ICHRA setup checklist now has real content" ·
 `ichra_administration_scope.md` Phases 2–5 · `legal_assumptions.md` LA-07, LA-08.
