@@ -1,0 +1,683 @@
+# SWBD / ICHRA — Build Plan
+
+**Status:** Active — the execution sequence for ICHRA/QSEHRA work
+**Created:** 2026-07-31
+**Owner:** Kevin
+**Baseline:** branch `refactor/modernize-architecture`, HEAD `26e5c42`, migration **V076**
+**Strategy:** `docs/ichra_strategy.md` — read that first
+**Design detail:** `docs/analysis/plus_tier_build_plan.md` (D1–D37, O1–O40) · `docs/analysis/legal_assumptions.md` (LA-01–LA-12)
+
+---
+
+## How to use this document
+
+**This sequences work. It does not specify it, and it does not re-argue strategy.**
+
+- **The strategy lives in `docs/ichra_strategy.md`.** Why ICHRA, what the wedge is, what would falsify
+  it, the graded evidence base. Not repeated here.
+- **The design detail lives in `docs/analysis/plus_tier_build_plan.md`.** Field lists, per-phase scope,
+  the D-series and O-series. **Later Parts govern earlier ones; Part 8 is current.** Not repeated here.
+- **The compliance assumptions live in `docs/analysis/legal_assumptions.md`.** Every LA reference below
+  points there rather than restating the reasoning.
+- **This document answers one question:** *what is the next work item, and why that one.*
+- **Its readers are two:** a developer picking up the next item, and the Claude session writing the
+  prompt for it.
+
+**A fourth document that restates the other three drifts from all of them.** Every section here ends by
+naming where the detail lives. If a section starts explaining *why* rather than *when*, it has gone
+wrong.
+
+**Dates are load-bearing.** Anything undated reads as timeless and is wrong within a month. **Verified
+and assumed are marked separately, every time** — that distinction is the doc set's characteristic
+failure mode.
+
+§1 and §3 are the sections that change what a session does. If you read nothing else, read those.
+
+---
+
+## 1. The demo target
+
+**Everything in §3 is sequenced against this section. It is the most important judgment in the
+document.**
+
+### The demo
+
+> **Sandoval Process Solutions, Hopkins County, three lives — from market to signed setup, on
+> `premiumpath.net`, in about ten minutes.**
+
+Not a capability tour. **One real case Forrest already has**, run end to end in front of him. Sandoval
+is his own live ICHRA case — 3 employees, Hopkins TX, 9/1/26 effective — and it is the case zizzl
+quoted at a **~$660/mo minimum** with his carriers gated off (documented call, 2026-07-28). Running
+his own losing case and winning it is a different event from a feature walkthrough.
+
+### The walkthrough — what he sees and clicks
+
+| # | What Forrest does | What he sees | Status |
+|---|---|---|---|
+| 1 | Logs into `premiumpath.net` with the agent login he already holds (`fhuggins@swbdmg.com`, issued 2026-07-15) | SWBD branding, his own agency scope | ✅ **Built** — white-label portal, V068–V071 |
+| 2 | Clicks **ICHRA** in the top nav | A product area, not a calculator buried in a dropdown | Item 3 |
+| 3 | Picks Hopkins County, enters 3 lives | *"65 plans, three carriers. The practical floor is $412 at 21, $588 at 40, $1,236 at 64. Rates as of this morning."* | ✅ **Built** — RANGE illustration |
+| 4 | Enters the three actual ages | A per-band net-cost table at a $400 contribution, and the group monthly total | Item 5 |
+| 5 | Moves the contribution slider | **The flip point per employee.** *"At $350 Maria keeps her subsidy and comes out ahead. At $450 she loses it and is worse off. Here is the exact number, for each of your three."* | Items 8 + 9 |
+| 6 | Clicks **Use this in a proposal** | The existing ProposalBuilder, prospect pre-filled, the illustration already attached as a proposal section | Items 6 + 7 |
+| 7 | Sends it; opens the public link | An SWBD-branded proposal. **No SSA chrome. Sell price only — his markup applied and invisible** | ✅ **Built** — white-label + V066/V067 markup |
+| 8 | Clicks **Apply**, submits | An application, then a **Setup activity carrying an ICHRA task sequence** — 90-day notice, ERISA safe-harbor notice, affordability determination, substantiation, PCORI | Items 4 + 10 |
+
+**Steps 1, 3 and 7 are already in production.** Steps 6 and 8 run on rails that are already built and
+already dynamic — `ApplyForProposal` and `CreateSetup25` are confirmed **fully per-LOS driven**
+(`plus_tier_build_plan.md` Part 4), so the customer-facing sales-to-setup path carries a new LOS with no
+work. **The demo is mostly assembly, not construction.** That is why this target is reachable and a
+larger one is not.
+
+### Why it ends at setup, not at a number
+
+**A competitor can show a quote engine.** zizzl did, and Forrest called anyway. Take Command, Thatch,
+SureCo, Venteur and PeopleKeep all quote.
+
+**Nobody shows him quote → proposal → application → setup, on his own brand, with his own margin,
+administered underneath.** That is the whole pitch of `ichra_strategy.md` §1 — agent utility is the
+wedge, administration revenue is what it earns — and it only lands if the last click produces a *case*
+rather than a *PDF*. The pipeline is the differentiator (`ichra_platform_capability_map.md`: Layers 1
+and 5 are the defensible ones), and carrying through to setup costs items 4, 7 and 10 rather than a new
+subsystem.
+
+**Stopping at analysis would leave the differentiator on the table for the price of three small items.**
+
+### What is deliberately absent — and say so out loud
+
+Naming the boundary is part of the demo. An honest "not yet, here is when" beats a demo that implies
+capability it does not have.
+
+| Absent | Why |
+|---|---|
+| **Enrollment** | Every gate is external and none has moved since 2026-07-29 (O12 rep, O13 BAA, O14 deeplink model). Not a build decision |
+| **Coverage verification / the ledger** | B3, and LA-01-terminal. Correctly behind the wedge |
+| **Provider check ("will I lose my doctor")** | The highest-emotion output in the plan, and blocked on an unowned gap — the API takes **NPIs**, the name-search endpoint is HSOne's. See §5 |
+| **Subsidy segmentation** | Needs `POST /api/v1/aptc_estimates`, documented but never called. A live-credential item, not a demo blocker |
+| **Book / renewal radar** | Gated on O24, which A4a is designed to earn. Deliberately not asked for yet |
+| **Anything employee-facing** | The whole build-now scope sits on the agent side of `legal_assumptions.md`'s scope line. Crossing it is a decision, not an increment (LA-09) |
+| **The card, PremiumPath mechanics** | A DataPath Summit configuration in flight. Out of scope by decision — `ichra_strategy.md` §8 |
+
+### ⚠️ The one hard external dependency
+
+**Today every cached rate row is stamped `source_env = STAGING`, and the illustration page says so in
+a red banner reading *"Do not present this to a client"*** (verified 2026-07-31 in
+`illustration25.jsp:148-152`).
+
+That banner is correct and must not be softened. It means **production allow-listing is a gate on the
+demo itself**, not on some later phase. Two acceptable outcomes:
+
+1. **Allow-listing lands**, the cache re-warms against production, the banner goes away. Preferred.
+2. **It does not**, and Kevin opens by naming it: *"these are real rates from the staging endpoint —
+   same numbers, same source of truth, and here is the note that says so."* Staging returns **real**
+   rate data, not synthetic (verified twice; `$582.78` to the penny against the zizzl baseline). Forrest
+   is a partner, not a client, and the honesty is itself a credibility asset.
+
+**What is not acceptable is removing the banner to make the demo look better.**
+
+**Detail:** `docs/ichra_strategy.md` §3 (the ranked capability list this target selects from) ·
+`docs/business/swbd_premiumpath.md` (the relationship and the Sandoval case).
+
+---
+
+## 2. Current state
+
+**As of 2026-07-31, verified against the repo at HEAD `26e5c42`.** Short by design — the narrative
+version is `docs/ichra_strategy.md` §4 and §5.
+
+**Shipped and deployed:** V074 `rating_area_rate_cache`, V075 `illustration_log`, V076
+`county_reference` (254 Texas counties — row count verified). `HealthSherpaService` (paginating,
+fail-closed), `RateCacheWarmService` (24h interval, catastrophic filter for 30+, age-45 canary),
+`AgeCurve`, `IllustrationServlet` + `illustration25.jsp` (RANGE mode, ages 21/40/64, provenance
+banner), `RateCacheAdmin` + `rateCacheAdmin25.jsp`, `RateCacheDAO`, `CountyReferenceDAO`.
+
+**Live configuration:** five constants seeded on production; **HealthSherpa staging authenticated for
+the first time 2026-07-31 14:04**. Cache warmed for **Bexar 48029, Dallas 48113, Harris 48201, Hopkins
+48223** — 44 age rows each, `source_env = STAGING`. **Production access still 403s** pending
+allow-listing.
+
+**Known defects:** T44 (LCSP from off-exchange silver only, while ICHRA affordability keys on the
+on-exchange LCSP — the dangerous direction is understating it), T47 (29 counties with sub-1.0 ZIP
+containment), T48 (`source_env` excluded from delete scope and unique key).
+
+### ⚠️ Corrections to the state as previously recorded
+
+Each verified against the repo 2026-07-31. **Several documents are stale on these; correct them when
+next touching those files, not now.**
+
+| Claim | Actual | Where the stale text is |
+|---|---|---|
+| *"`ProposalSection` has no LOS scoping — `ApplicationSection` has it, `ProposalSection` does not"* | ❌ **Wrong.** `proposalsectionlos` **and** `proposalsectionenhancement` were created by **V037** and are mapped on `ProposalSection.losList`. `proposal_section.scope` VARCHAR(10) DEFAULT 'ALL' exists too | `plus_tier.md` "Existing-model additions"; `plus_tier_build_plan.md` B1 (**schedules V081 to build what already exists**) |
+| *"`source_env` … `IllustrationServlet` neither filters nor displays it"* | ⚠️ **Half fixed** by `26e5c42`. The servlet reads `sourceEnv` off the loaded rows and the JSP renders a hard warning banner. **The delete-scope and unique-key half of T48 stands** | `ichra_strategy.md` §5.2; `project_backlog.md` T48 |
+| *"`AppConfig.getHealthSherpaBaseUrl()`'s hardcoded default is the production endpoint"* | ❌ **Superseded** by T43 (`42caf4e`). No default; absent or blank means not configured and the service refuses to call | `healthsherpa.md` 2026-07-31 section |
+| *Tarrant is a T47 case* | ❌ **Distinct problem.** Tarrant 48439's representative ZIP is **75261 — DFW Airport**, a ZCTA with almost no residential population. T47 is about *containment*; this is a **containment-1.0 ZIP that is simply unusable**. A separate gap in V076's selection rule | New — logged here, not yet in `project_backlog.md` |
+| *"the `/Illustration` nav link is visible to every agent"* | ✅ **True, and worse.** `navbar25.jsp:196` is unguarded inside the Sales dropdown — but `IllustrationServlet.isAuthorized()` **also** admits `isAgent`, `isAgencyAdmin`, `isPspAdmin`, `isPspUser` and `isPspSales`. **Hiding the link does not close the URL** | — |
+| Release **v0.76.02** | ⚠️ **Unconfirmed in-repo.** The only release recorded anywhere in `docs/` is **v0.76.00** (`migration_tracker.md:130`, 2026-07-31 11:37). Four commits sit after that record. Local tags are stale by design — confirm against the GitHub Releases page | `ichra_strategy.md:6` still cites HEAD `935c31e` / v0.76.00 |
+
+**Detail:** `docs/ichra_strategy.md` §4–§5 · `docs/analysis/migration_tracker.md` ·
+`docs/deployment_backlog.md` D-78/D-79/D-82/D-83/D-84.
+
+---
+
+## 3. The build sequence
+
+**The core of this document.** Ordered by **fastest path to §1**, not by conceptual tidiness.
+
+**How to read a row.** *Phase A?* means: does this touch existing files, and therefore need a
+read-only investigation pass before an implementation prompt is written? *Reversal* is what undoing it
+costs — the field that decides whether rule 3 ("build it anyway unless it's hard to reverse") applies.
+
+**Migration numbers are placeholders from a V076 baseline. Allocate in commit order, not plan order.**
+
+---
+
+### 1 — Close the rule-2 violation on `/Illustration`
+
+| | |
+|---|---|
+| **What** | Move `navbar25.jsp:196` inside the empty `<c:if test="${sessionScope.isPspAdmin}">` block that already sits at lines 197–198, **and** narrow `IllustrationServlet.isAuthorized()` from five session roles to `isPspAdmin` only. |
+| **Agent-visible outcome** | **Negative, deliberately.** Agents and agency admins lose a link they should never have had. Nobody outside SSA has used it — the cache was empty until 2026-07-31 |
+| **Attaches at** | `navbar25.jsp` Sales dropdown; the servlet's own guard |
+| **Gate** | PSP-admin-only. This item *is* the gate |
+| **Phase A?** | **Not required.** Two files, both read in full 2026-07-31. `RateCacheAdmin.isAuthorized()` is the exact pattern to copy |
+| **Schema** | None |
+| **Depends on** | Nothing |
+| **Size** | **~1 hour** |
+| **Reversal** | Two lines |
+
+**Why first.** It is a live violation of rule 2 in production, it is the cheapest item on the list, and
+every subsequent item adds surface behind the same gate. Fixing it after building three more pages
+means fixing it in four places. **The empty `isPspAdmin` block already sitting at line 197 is the
+intended home** — this was an oversight, not a decision.
+
+---
+
+### 2 — The ICHRA availability resolver and the per-agency entitlement flag
+
+| | |
+|---|---|
+| **What** | One resolver answering *is ICHRA available in this context* — PSP admin always; a designated agency via a new `agency.ichra_enabled` flag; nobody else. Callers never learn how the answer was reached and **never see a reference-row ID** |
+| **Agent-visible outcome** | None. Infrastructure |
+| **Attaches at** | `data/resolver/` — joins `AgencyScopeResolver` and `OriginatingAgencyResolver`, an established package with an established shape |
+| **Gate** | This item *is* the gating mechanism for items 3–13 |
+| **Phase A?** | **Not required** — a new class plus one column. `AgencyScopeResolver` is the structural template |
+| **Schema** | **V0NN** — `agency.ichra_enabled TINYINT(1) NOT NULL DEFAULT 0`. **Copy V067 exactly**: default OFF for every existing and future row, no backfill |
+| **Depends on** | Item 1 |
+| **Size** | **~0.5 day** + migration |
+| **Reversal** | Config — set the flag to 0. The column stays harmlessly |
+
+**Rule 4 lives here.** LOS, `ServiceItem`, `PlanType`, `ServiceModule` and `RateTable` are all
+PSP-scoped (`LOS.psp_id` verified) and differ per installation, so **no ID may be hardcoded anywhere**.
+The resolver looks rows up by PSP plus a stable natural key and **returns "unavailable" cleanly when
+they do not exist** — which is what makes item 4 a configuration step rather than a precondition.
+
+---
+
+### 3 — The ICHRA front door
+
+| | |
+|---|---|
+| **What** | A top-level nav entry and a hub page — the illustration, the rate-cache admin link, and space for items 5/9/11 to land — instead of one `<li>` in the Sales dropdown |
+| **Agent-visible outcome** | For an entitled agency: ICHRA reads as a product area. For everyone else: unchanged, because item 2 hides it |
+| **Attaches at** | `navbar25.jsp` top level. **Precedent verified:** `SuperDashboard` (line 260) is a top-level `nav-ghost` gated on an installation condition plus a role — exactly this shape |
+| **Gate** | Item 2's resolver |
+| **Phase A?** | **Required, lightly.** `navbar25.jsp` is a heavily-shared file. Append; never weave |
+| **Schema** | None |
+| **Depends on** | Item 2. ⚠️ **And structural decision S4** (§4) |
+| **Size** | **~0.5 day** |
+| **Reversal** | Delete the nav block; the hub page becomes unreachable and inert |
+
+---
+
+### 4 — Gate 0 probe, then the ICHRA reference rows
+
+| | |
+|---|---|
+| **What** | Run the read-only Gate 0 probe per environment, then create the `ICHRA` / `QSEHRA` `LOS`, `ServiceItem`, `PlanType`, and a **priced** `ServiceModule` → `RateTable` path with an `agencyrates` assignment for SWBD |
+| **Agent-visible outcome** | An entitled agency can select ICHRA as a line of service on a proposal. **This is what makes items 6–10 possible at all** |
+| **Attaches at** | Existing reference tables. Purely additive per D1 |
+| **Gate** | Rows are PSP-scoped; item 2's resolver picks them up when they appear |
+| **Phase A?** | **Not required** for the probe (read-only, script already written). ⚠️ **Required** for the delivery mechanism — **D18 is still deferred** |
+| **Schema** | Depends on **D18**: migration `INSERT` with explicit IDs, or `D-NN` deployment items per environment. **The probe result decides which** |
+| **Depends on** | Item 2 |
+| **Size** | Probe **~1 hour**. Rows: **hours** on Branch A, **2–4 days** on Branch A-minus/B |
+| **Reversal** | Deleting reference rows an agency has quoted against is **not clean**. ⚠️ **This is a rule-3 exception — reference data other features depend on** |
+
+⚠️ **Plan for Branch A-minus, not Branch A.** Even a favourable probe leaves the `ServiceItem`,
+`PlanType` and task-sequence gaps intact, because hand-entering an `LOS` row would not have created
+them. **No QSEHRA `PlanType` exists at all** and needs net-new code; ICHRA/EBHRA exist only in dead
+code. `plus_tier_build_plan.md` Part 4 §3 is explicit that A-minus is the realistic best case.
+
+⚠️ **Also settle T9 here** — `GenerateProp25` hardcodes LOS ids 5–10 and ServiceItem ids 11–19 and
+never reads `Proposal.getLosList()`, so the **internal Manual Setup path would silently drop an ICHRA
+selection**. Fix it, or forbid Manual Setup for ICHRA. An inline decision, not a project. The
+customer-facing path is unaffected — `ApplyForProposal` and `CreateSetup25` are confirmed fully
+dynamic.
+
+**Detail:** `plus_tier_build_plan.md` Part 1 (the probe SQL and the branch decision rule), D18.
+
+---
+
+### 5 — AGE_BAND illustration mode
+
+| | |
+|---|---|
+| **What** | A second illustration mode taking age-band counts and rendering per-band net cost against a chosen contribution, plus a group monthly total. `mode` is already written as the literal `"RANGE"` so the column is correct from the first row |
+| **Agent-visible outcome** | **The first output that looks like a design rather than a range.** *"Your four under-30s, seven forties, three over-55 — here is each band's cost and your monthly total at $400."* |
+| **Attaches at** | `IllustrationServlet` + `illustration25.jsp` — a mode branch, not a new surface |
+| **Gate** | Inherits items 2–3 |
+| **Phase A?** | **Not required** — both files are new, ICHRA-only, and were read in full |
+| **Schema** | **None.** ⭐ **Every age 21–64 is already cached**; the servlet reads three of them |
+| **Depends on** | Items 2, 3 |
+| **Size** | **~1 day** |
+| **Reversal** | Delete the branch |
+
+**Zero new API calls, zero new schema, zero external gates** — the cache already holds 44 age rows per
+county. **The best value-to-effort ratio remaining on the list** now that the five constants are seeded.
+
+---
+
+### 6 — Illustration → LOS-scoped proposal section
+
+| | |
+|---|---|
+| **What** | A proposal section rendering the illustration snapshot, scoped to the ICHRA LOS so it appears on ICHRA proposals and nowhere else |
+| **Agent-visible outcome** | ⭐ **The illustration stops being a calculator and becomes part of a sellable document.** Demo step 6→7 |
+| **Attaches at** | **`proposalsectionlos`** — ✅ **verified to exist**, created by **V037**, mapped on `ProposalSection.losList`. Plus `proposal_section.scope` |
+| **Gate** | LOS-scoped, so item 4's rows are what confine it |
+| **Phase A?** | **Required.** `ProposalSection.sectionType` is a free `VARCHAR(20)` with JSP `<c:choose>` dispatch and **no default branch — an unmatched type renders silently.** `ViewProposal` is live customer-facing code |
+| **Schema** | ⭐ **None for the join table.** A section row, and possibly a `plus_quote`-style snapshot table (**V0NN**) so an illustration is reproducible months after rates move |
+| **Depends on** | Items 4, 5 |
+| **Size** | **1–2 days** |
+| **Reversal** | Delete the section row. The JSP branch goes unmatched and renders nothing |
+
+⭐ **This is the single biggest correction to the received plan.** `plus_tier_build_plan.md` B1
+schedules **V081 — `proposalsectionlos` + LOS scoping** as net-new work and `plus_tier.md` states
+plainly that `ProposalSection` has no LOS scoping. **Both are wrong: V037 shipped it.** The proposal
+attach is a JSP branch and a section row, not a schema project — which is why it sits at item 6 rather
+than late in Track B.
+
+⚖️ **Carrier names stay off this section** (LA-04 — the design declines to rely on the permissive
+reading), and it inherits the **completeness disclosure** (LA-05: the display is genuinely partial,
+off-exchange only, and the disclosure is a statement of fact rather than a hedge).
+
+---
+
+### 7 — "Use this in a proposal" hand-off
+
+| | |
+|---|---|
+| **What** | A button on the illustration result deep-linking into `ProposalBuilder` with prospect and illustration context attached |
+| **Agent-visible outcome** | The pipeline becomes one motion instead of two screens and a re-key |
+| **Attaches at** | `ProposalBuilder` query parameters. **Precedent:** `CreateOpportunity.doPost` already deep-links `ProposalBuilder?prospectId=…&sourceActivityId=…` (v0.71.08) |
+| **Gate** | Inherits |
+| **Phase A?** | **Required, lightly** — `ProposalBuilder` is live sales code. Follow the v0.71.08 pattern rather than inventing one |
+| **Schema** | None, **unless S3 (§4) resolves toward persisting the link** |
+| **Depends on** | Item 6 |
+| **Size** | **~0.5 day** |
+| **Reversal** | Remove the button |
+
+---
+
+### 8 — T44: on-exchange LCSP
+
+| | |
+|---|---|
+| **What** | Derive `lcsp_premium` and `benchmark_silver_premium` from **on-exchange** silver plans. `RateCacheWarmService` quotes `off_ex: true`, so both are currently off-exchange-only |
+| **Agent-visible outcome** | **None directly** — and that is the point. This fixes the input before anything is built on it |
+| **Attaches at** | `RateCacheWarmService` + `rating_area_rate_cache` |
+| **Gate** | Inherits |
+| **Phase A?** | **Not required** — both files are new and ICHRA-only. The empirical half is **two staging calls differing only in `off_ex`**, and staging is authenticated as of 2026-07-31 |
+| **Schema** | **V0NN** — likely separate on-exchange columns rather than overwriting, so the off-exchange market figures the illustration displays stay available |
+| **Depends on** | Staging credential only. ⭐ **Independent of items 3–7 — workable in parallel from today** |
+| **Reversal** | Code change plus a cache re-warm. ⚠️ **But every affordability figure already issued on a wrong LCSP is irreversible in the sense that matters** — the offer was made and the plan year ran |
+| **Size** | **1–2 days** |
+
+⚖️ **Non-negotiable ordering: this precedes item 9.** LA-12 is explicit — *"fix T44 before any
+affordability output is shown to anyone at all, including the agent."* **The dangerous direction is
+understating the LCSP**, which lowers the affordability threshold and makes an unaffordable offer look
+affordable. The employee then loses subsidy eligibility they were entitled to, and the determination
+that said it was fine came from SSA.
+
+**Detail:** `project_backlog.md` T44 · `legal_assumptions.md` LA-12.
+
+---
+
+### 9 — Affordability threshold per employee
+
+| | |
+|---|---|
+| **What** | Per employee, the contribution level at which the offer flips from unaffordable (PTC preserved) to affordable (PTC lost). A curve per person |
+| **Agent-visible outcome** | ⭐ **The demo's emotional peak, and the most misunderstood mechanic in ICHRA design.** *"Here is the exact flip point — for each of your fourteen"* |
+| **Attaches at** | The illustration hub (item 3). Consumes item 5's age bands |
+| **Gate** | Inherits. ⚖️ **Employer- and agent-facing only** — employee-facing affordability is on the defer side of the scope line (LA-12) |
+| **Phase A?** | **Not required** — new surfaces only |
+| **Schema** | Possibly none for a stateless computation. **V0NN** if a design census persists (see S2) |
+| **Depends on** | Items 5, 8. **Item 8 is a hard correctness gate, not a preference** |
+| **Size** | **~2 days** |
+| **Reversal** | Display edit to withdraw. ⚠️ Not reversible for determinations already acted on |
+
+---
+
+### 10 — ICHRA task sequence and setup checklist
+
+| | |
+|---|---|
+| **What** | The `RequiredTaskList` / `TaskSequenceTable` / `Task` content an ICHRA Setup inherits: ⚖️ 90-day notice, ⚖️ ERISA safe-harbor notice, affordability determination, initial substantiation, ⚖️ 1095-B, ⚖️ PCORI, §105(h) |
+| **Agent-visible outcome** | **A sold ICHRA case produces a real ICHRA checklist.** Today it would inherit the generic HRA checklist with **zero ICHRA compliance steps** — verified in `phase_a_ichra_enrollment_portal.md` Q4. Demo step 8 |
+| **Attaches at** | The existing task-sequence machinery, via item 4's `ServiceItem` |
+| **Gate** | LOS-scoped |
+| **Phase A?** | **Not required** structurally — but the *content* is compliance work, not code |
+| **Schema** | Reference rows, delivered per **D18** |
+| **Depends on** | Item 4 |
+| **Size** | **2–3 days**, mostly content |
+| **Reversal** | Editing a checklist on a case already in flight is disruptive but not destructive |
+
+⚠️ **Two LA entries constrain the content directly.** **LA-07**: the QSEHRA notice runway is ~45 days
+for a non-January effective date, and **January 1 is structurally the hardest first-year date, not the
+easiest** — the checklist's due-date logic must not assume otherwise. **LA-08**: the ICHRA notice
+analysis **has not been done and does not transfer from QSEHRA.** Until it is, **no ICHRA sale should
+be quoted on a short runway**, and the checklist should say so rather than compute a date it cannot
+justify.
+
+**Detail:** `plus_tier_build_plan.md` Part 7, "The ICHRA setup checklist now has real content" ·
+`ichra_administration_scope.md` Phases 2–5 · `legal_assumptions.md` LA-07, LA-08.
+
+---
+
+### 11 — A4a: sample group-to-ICHRA conversion analysis
+
+| | |
+|---|---|
+| **What** | Three to five renewing groups entered by hand. Current group premium in; ICHRA comparison and per-employee net position out |
+| **Agent-visible outcome** | ⭐ *"Your renewal is $9,840/month, up 14%. ICHRA at $430/head is $6,020, and eleven of your fourteen come out ahead."* A case-winning conversation, not a feature |
+| **Attaches at** | The illustration hub. A thin increment over item 9 — current group cost is the only new input |
+| **Gate** | Inherits. ⚖️ **D24, non-negotiable: output goes to the agent, never to the employer** |
+| **Phase A?** | **Not required** |
+| **Schema** | Likely none. Hand-entered, not imported — **`agency_book_group` is A4b and is not in this sequence** |
+| **Depends on** | Item 9. **External: three to five renewing groups from Forrest — an easy yes, and it has not been asked** |
+| **Size** | **~2 days** |
+| **Reversal** | Delete the page |
+
+**A4a exists to earn A4b.** *"Send me your book"* (O24) is a large request to make of a partner nothing
+has been proven to. *"Send me three groups renewing next quarter"* is an easy yes and self-selects for
+cases where the analysis matters.
+
+---
+
+### 12 — A6: design advisor
+
+| | |
+|---|---|
+| **What** | A `ChatbotSkill` row plus KB content answering agents' ICHRA/QSEHRA design questions from rules already written |
+| **Agent-visible outcome** | *"Does my client's dental plan kill the QSEHRA?"* — answered with citations, in seconds |
+| **Attaches at** | The V046 `chatbot_skill` mechanism. **Precedent:** V065 seeded `EMAIL_DRAFT_ASSISTANT` the same way |
+| **Gate** | Skill visibility, plus item 2 for any UI entry point |
+| **Phase A?** | **Not required** |
+| **Schema** | **V0NN** — a skill row plus KB content. No new tables |
+| **Depends on** | ⭐ **Nothing. Fully independent — workable at any point** |
+| **Size** | **~0.5 day** |
+| **Reversal** | Delete the row |
+
+⚖️ **Hard boundary: education with citations. Never plan selection, never anything requiring
+licensure** — those route to the licensed agent. Non-PHI, so the standard Anthropic key is correct;
+Bedrock routing is not required here. `legal_assumptions.md` considered and **declined** to give this
+an LA number, because the boundary is a settled rule rather than an assumption.
+
+---
+
+### 13 — Link illustrations and designs to an opportunity
+
+| | |
+|---|---|
+| **What** | An optional opportunity (or prospect) reference on `illustration_log` and on whatever item 9 persists |
+| **Agent-visible outcome** | *"Three illustrations were run against this prospect, here they are"* — and it is what makes A5's pipeline console possible later |
+| **Attaches at** | `Opportunity extends Activity`, already carrying stage, prospect, agency and value |
+| **Gate** | Inherits |
+| **Phase A?** | **Required, lightly** — adding a column to a shipped table with rows in it |
+| **Schema** | **V0NN** — nullable FK. ⚠️ **`illustration_log` records agent and agency and nothing else** (verified against V075) |
+| **Depends on** | ⚠️ **Structural decision S3 (§4).** Blocked on the decision, not on code |
+| **Size** | **~0.5 day** + migration |
+| **Reversal** | ⚠️ **Rule-3 exception — schema other features depend on.** Cheap now, not cheap after A5 reads it |
+
+---
+
+### Independence and parallelism
+
+- **Item 8 (T44)** depends only on the staging credential. **Start it now, in parallel with items 1–3.**
+- **Item 12 (A6)** depends on nothing at all. Drop it in whenever a half-day appears.
+- **Items 1–3** are strictly sequential and total about a day and a half.
+- **Item 4's probe** is read-only and can run at any workstation, independent of everything.
+- **Items 5 and 6/7 can be reordered** if the LOS rows (item 4) land slowly — item 5 does not need them.
+- **Item 11** is externally gated on an email that has not been sent. **Send it before item 9 starts.**
+
+---
+
+## 4. Structural decisions to make
+
+**Decisions the plan needs settled and that should not be made by assumption.** Each names what it is,
+what it blocks, what would settle it, and whether it can be deferred.
+
+### S1 — Proposal-to-application cardinality — ✅ **RESOLVED, verified 2026-07-31**
+
+**Believed one-to-one; it is one-to-one, and enforced at the primary key.**
+
+```java
+// model/sales/application/Application.java
+@Entity
+public class Application {
+    @Id @OneToOne @JoinColumn(name="proposal_id")
+    private Proposal proposal;          // the PK *is* the proposal FK
+    @OneToOne(mappedBy = "application")
+    private Setup setup;                // and Application ↔ Setup is 1:1 too
+}
+```
+
+`Proposal` carries a single-valued `@OneToOne(mappedBy="proposal") private Application application`.
+
+**The chain is Proposal → Application → Setup, strictly 1:1:1.** More than one application per proposal
+is not merely unusual — it is structurally impossible without a schema change.
+
+**Blocks:** S2, decisively. **Deferrable:** no longer relevant — it is answered.
+
+⚠️ **Two further constraints found in the same read, both load-bearing for item 6:**
+`Proposal.prospect` is `nullable = false` **and** `Proposal.rate` is `nullable = false`. **An ICHRA
+proposal cannot exist without a Prospect and a priced `Rate` row** — which means item 4's priced
+`ServiceModule` → `RateTable` path is a hard prerequisite for the proposal attach, not a nicety.
+
+---
+
+### S2 — One proposal with several contribution scenarios, or several proposals?
+
+**What it is.** Affordability analysis naturally generates alternatives — $350 vs $450 vs a two-class
+structure. Where those live decides whether the existing pipeline carries ICHRA unchanged.
+
+**S1 largely decides it.** Several proposals means several applications means several setups, for one
+employer making one decision. That is wrong on its face and it pollutes the sales pipeline with
+opportunities that were never real.
+
+**Recommendation: scenarios live *below* the proposal.** A design object holds N scenarios; exactly one
+is marked selected; the proposal section renders the selected one and the snapshot preserves the rest
+for reproducibility. **The proposal stays 1:1 with the decision, and the pipeline is unchanged** —
+which is rule 1.
+
+**Blocks:** items 6 and 9 — specifically what item 6's snapshot table stores.
+**Settled by:** a decision. The evidence is in.
+**Deferrable:** ⚠️ **No.** Item 6 writes a schema against it.
+
+---
+
+### S3 — Should an illustration or design attach to an opportunity?
+
+**What it is.** `illustration_log` records agent, agency and parent agency and has **no opportunity,
+prospect or proposal reference** (verified against V075). Today an illustration is telemetry. Attaching
+it makes it evidence.
+
+**The tension.** LA-11 keeps the design census minimal because minimalism is load-bearing — it is what
+keeps the sales stage outside the BAA question. But an *opportunity* reference is an internal FK, not
+personal data, and it is what A5's pipeline console reads.
+
+**Recommendation: yes, nullable, opportunity-level only** — not prospect, not employer, and not
+anything person-shaped. Cheap now; a schema change after A5 reads it is not.
+
+**Blocks:** item 13, and A5 later.
+**Settled by:** a decision, informed by whether A5 is genuinely wanted.
+**Deferrable:** yes, but the cost of deferring rises. ⚠️ **Rule-3 exception — schema other features
+depend on.**
+
+---
+
+### S4 — Where does the ICHRA front door live?
+
+**What it is.** Rule 2 says PSP-admin-by-default. The existing precedent is `SuperDashboard`
+(`navbar25.jsp:260`) — a top-level `nav-ghost` gated on an installation condition **plus** a role.
+
+**The options.** A top-level nav item (visible, reads as a product area, matches the precedent); a
+section inside the existing Admin dropdown (safest, but reads as a tool rather than a product); or
+staying in Sales (rejected — that is item 1's violation).
+
+**Recommendation: top-level, on the `SuperDashboard` pattern**, gated by item 2's resolver. **The
+demo's step 2 is Forrest clicking something that says ICHRA.** A dropdown entry does not carry the
+message that this is a product area, and the whole thesis is that ICHRA is a product rather than a
+calculator.
+
+**Blocks:** item 3.
+**Settled by:** a decision.
+**Deferrable:** no — item 3 is the third item in the sequence.
+
+---
+
+### S5 — How does an ICHRA proposal section get scoped before the LOS rows exist? *(new)*
+
+**What it is.** `proposal_section.scope` defaults to `'ALL'`, so a section with no LOS links renders on
+**every** proposal for that PSP. Item 6's section must be LOS-scoped — which means item 4's rows must
+land first, or the section leaks onto unrelated proposals.
+
+**Recommendation: build item 6 against a scoped section from the start**, and accept item 4 as a hard
+prerequisite rather than shipping a `scope='ALL'` section "temporarily." A temporary `'ALL'` section is
+visible to every agency on every proposal — a direct rule-2 breach, and exactly the kind of thing that
+survives the temporary phase.
+
+**Blocks:** item 6.
+**Settled by:** a decision. **Deferrable:** no.
+
+---
+
+### S6 — Does the demo run on staging data, or wait for allow-listing? *(new)*
+
+**What it is.** §1's hard dependency. The banner is honest and must stay; the question is whether the
+demo is scheduled around allow-listing or delivered with the caveat spoken aloud.
+
+**Recommendation: schedule the demo independently and chase allow-listing hard in parallel.** Staging
+returns real rates, verified twice to the penny. **Waiting on a vendor whose last six messages went
+unanswered is not a plan.**
+
+**Blocks:** demo scheduling only — no build item.
+**Settled by:** either HealthSherpa replying, or Kevin deciding. **Deferrable:** until a date is set
+with Forrest.
+
+---
+
+## 5. Deferred, and why
+
+**Not in the sequence, by decision.** ⛔ = blocked on an external gate. ⏸ = would work, but does not
+advance §1.
+
+| Item | Why | What brings it in |
+|---|---|---|
+| **Enrollment lifecycle** (B5/B7) | ⛔ O12 (rep — the tightest bottleneck), O13 (BAA), O14 (deeplink model), O15, O16. **None has moved since 2026-07-29** | A rep assigned. Nothing is testable until then |
+| **Verification ledger** (B3) | ⏸ Sells administration, which the thesis says utility must earn first. ⚖️ And LA-01-terminal — building it is safe, *releasing a dollar* against it is the point of no return | A sold ICHRA case |
+| **Card transaction ingest** (B6) | ⛔ O10 (live carrier authorization test) and O9 (which MCCs are loaded — 6300, or 6300 + 5960). **If O10 fails this phase does not happen** | The authorization test passing |
+| **The "+" catalog as a priced tier** (B1 proper) | ⏸ Item 4 delivers the *reference rows* the demo needs. The priced "+" bundle with its D14 pricing section sells administration | A sold case, and D18 decided |
+| **Notice automation** (B4a/B4b) | ⏸ ⭐ **The strongest deferral on this list, and the least comfortable.** It fixes a problem that exists **today for existing clients**, both its feeds already exist and are already scheduled, and it gates on nothing. It is deferred only because it is invisible to Forrest | A gap between demo milestones. **Take it the moment one appears** |
+| **SFTP / Summit Data Exchange** (P1) | ⛔ The MOVEit folder needs a MOVEit administrator and **no lead-time estimate exists anywhere**. AMS has no SFTP client — net-new infrastructure | The folder existing. **Ask now; it is pure lead time** |
+| **A4b book radar** | ⛔ O24, which A4a (item 11) is designed to earn | A4a landing well |
+| **A5 pipeline console** | ⏸ Reads item 13's opportunity link. Genuinely valuable, and not on the path to §1 | S3 resolved, plus item 13 |
+| **Provider check (A2)** | ⛔ **⚠️ Owned by nobody.** O23 resolved favourably — the API takes a `providers[]` array and returns `covered` — but **it takes NPIs**, and the name-search endpoint (`GET /v1/reference/providers?query=`) is **HSOne's**, not this product's. Between *"agent types a doctor's name"* and *"API wants an NPI"* sits net-new work **nobody has sized**. The NPPES registry is public, so it is solvable | An owner and an estimate. ⚠️ **Until then A2's sizing in every document is wrong** |
+| **Subsidy segmentation** | ⛔ `POST /api/v1/aptc_estimates` is documented and **never called**; the income request field is unverified on this product | One staging call to verify the shape |
+| **Employee-facing anything** | ⛔ Crosses `legal_assumptions.md`'s scope line. LA-04/05/06 all trigger, and LA-09's central fact — the audience is a licensed agent — stops being true | A deliberate decision, with LA-09 in front of the person making it |
+| **T47 / the Tarrant class of defect** | ⏸ Only four counties are warmed and all four returned data. **Becomes urgent the moment the county list grows** | The county-list decision (D-83) |
+
+---
+
+## 6. External gates and their status
+
+**Everything with human lead time.** ⚠️ **Six items were sent to HealthSherpa on 2026-07-29 with no
+recorded reply; a second round went out 2026-07-31. Four asks that gate later phases have never been
+sent at all.**
+
+| Item | Owner | Asked | Reply | Gates |
+|---|---|---|---|---|
+| **Production allow-listing** — production returns 403 | HealthSherpa | 2026-07-30, chased 2026-07-31 | ❌ none | ⚠️ **The demo itself** (§1, S6) |
+| **Onboarding representative** (O12) — routes credentials *and* the webhook form | HealthSherpa | 2026-07-29, chased 2026-07-31 | ❌ none | Everything on the enrollment rail. **The tightest bottleneck** |
+| **BAA** — Geozoning, Inc. DBA HealthSherpa (O13) | HealthSherpa + counsel | 2026-07-28 flagged, 2026-07-29 sent | ❌ none | Any production PHI flow. **Nothing in §3** |
+| **BCBS TX policy status: when in 2026?** (O16) | HealthSherpa | 2026-07-29 | ❌ none | *"Largely determines a 2026 versus 2027 launch"* |
+| **CHRISTUS policy status — planned at all?** | HealthSherpa | 2026-07-29 | ❌ none | Verification coverage in the launch market |
+| **Deeplink: self-service or agent-completed?** (O14) | HealthSherpa | 2026-07-29 | ❌ none | Whether B5 is an employee portal or an agent workstation. **An architectural fork** |
+| **Webhook auth methods** (O15) | HealthSherpa | 2026-07-29 | ❌ none | Whether `ApiTokenFilter` suffices |
+| **MOVEit folder creation** | DataPath | ❌ **not asked** | — | P1. ⚠️ *"Requires a MOVEit administrator: a lead-time item."* **No estimate exists anywhere.** Pure lead time — ask today |
+| **Encryption key exchange** (TPA/DP keys) | DataPath | ❌ **not asked** | — | P1 |
+| **Counsel package** — LA-10 leads, then Group 2 (LA-01/02/03) | Counsel | ❌ **not sent** | — | ⚠️ **Nothing in §3.** LA-10 leads because it attaches to the **existing book today**, not to ICHRA later |
+| **O22 book profile** + producing-agent count | SWBD | ❌ **not sent** | — | The county list (D-83), and how to size the opportunity |
+| **"Send me three groups renewing next quarter"** | SWBD | ❌ **not sent** | — | **Item 11.** An easy yes. ⭐ **Send it before item 9 starts** |
+| **O24 — the full group book** | SWBD | deliberately deferred | — | A4b. Earned by item 11, not asked cold |
+
+⭐ **The two SWBD emails are the cheapest de-risking available anywhere in this plan** and neither has
+been sent as of 2026-07-31. **Nobody has asked Forrest what he would want a quoting tool to do** — and
+the entire agent-utility thesis descends from one sentence in one call (`ichra_strategy.md` §2).
+
+**Chasing all of these costs an afternoon** and is the difference between waiting three weeks in August
+and waiting three weeks in October.
+
+**Detail:** `docs/ichra_strategy.md` §10 · `docs/business/healthsherpa.md` "Open items — 2026-07-29" ·
+`docs/analysis/legal_assumptions.md` "What to price when counsel is engaged".
+
+---
+
+## 7. How this plan is maintained
+
+**This document is expected to be edited every session.** A build plan that is not edited is not being
+used.
+
+**Rules:**
+
+1. **Items move to done in place** — struck through, with a **date and a commit hash**. They are not
+   deleted. A completed item is the record of what the sequence actually was, and the hash is how a
+   later session finds the code.
+2. **New items are appended and numbered onward.** ⚠️ **Never renumber.** Session close-outs, commit
+   messages and prompts refer to item numbers, and renumbering silently invalidates all of them.
+3. **Reordering is fine; renumbering is not.** If item 11 should now run before item 8, say so in §3's
+   "Independence and parallelism" block. The numbers are identity, not order.
+4. **Structural decisions (§4) move to RESOLVED with a date and the evidence** — the way S1 did. **A
+   resolved decision is not deleted**, because the next reader needs to know it was checked rather than
+   assumed.
+5. **Deferred items (§5) move into §3 with a number when their gate clears** — and the §5 row records
+   the date it moved and why.
+6. **§6 rows get a reply date the day a reply lands.** ⚠️ A gate with no recorded reply is
+   indistinguishable from a gate nobody chased, which is exactly the failure `ichra_strategy.md` §10
+   exists to name.
+7. **Session close-out records progress against item numbers**, not against prose. *"Item 5 done,
+   `abc1234`; item 6 blocked on S2"* is the useful form.
+
+**When this plan disagrees with the repo, the repo wins.** Migration numbers move, branches come and
+go, and §2's corrections table exists because six separate documents were confidently wrong about
+things a five-minute code read settles.
+
+**Detail:** `CLAUDE.md` "Keeping state docs current" — this plan is a state-carrying document and
+**should not be synced to project knowledge.**
+
+---
+
+## Related
+
+- **Strategy — read first:** `docs/ichra_strategy.md`
+- **Design detail, D1–D37, O1–O40:** `docs/analysis/plus_tier_build_plan.md` (Part 8 governs) ·
+  `docs/business/plus_tier.md`
+- **Compliance:** `docs/analysis/legal_assumptions.md` (LA-01–LA-12, assumptions) ·
+  `docs/analysis/domain_and_compliance_rules.md` (settled rules)
+- **The API:** `docs/business/healthsherpa.md` — read backwards, 2026-07-31 section first
+- **The relationship:** `docs/business/swbd_premiumpath.md`
+- **Service scope:** `docs/business/ichra_administration_scope.md` ·
+  `docs/business/ichra_platform_capability_map.md`
+- **State:** `docs/analysis/migration_tracker.md` · `docs/deployment_backlog.md` ·
+  `docs/analysis/project_backlog.md`
