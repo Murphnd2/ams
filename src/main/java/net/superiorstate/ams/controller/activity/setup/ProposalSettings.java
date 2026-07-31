@@ -8,6 +8,7 @@ import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.AmsDataLocal;
 import net.superiorstate.ams.model.general.PSP;
 import net.superiorstate.ams.model.sales.agency.Agency;
+import net.superiorstate.ams.model.sales.agency.ProposalIchraSnapshot;
 import net.superiorstate.ams.model.sales.offering.Enhancement;
 import net.superiorstate.ams.model.sales.offering.LOS;
 import net.superiorstate.ams.model.sales.offering.ProposalSection;
@@ -305,6 +306,74 @@ public class ProposalSettings extends HttpServlet {
                     }
                 }
 
+                case "createIchraSection" -> {
+                    // Build-plan item 6. Modeled on createAgencySection above.
+                    // ⚠️ Not extending initializeDefaults — that only fires when a PSP
+                    // has zero sections at all, and every real PSP already has the four
+                    // defaults, so it would never run for this.
+                    // LOS-scoped from the moment it exists (S5): a scope='ALL' section
+                    // is never created, not even transiently — if no LOS resolves, the
+                    // action refuses outright rather than creating an unscoped section
+                    // to be fixed up later. Singleton per PSP (unlike CUSTOM, which
+                    // allows many): a second ICHRA_ILLUSTRATION section would render
+                    // twice on any proposal carrying a snapshot.
+                    String losIdParam = request.getParameter("losId");
+                    LOS ichraLos = null;
+                    if (losIdParam != null && !losIdParam.isBlank()) {
+                        try {
+                            long losId = Long.parseLong(losIdParam.trim());
+                            LOS candidate = em.find(LOS.class, losId);
+                            if (candidate != null && candidate.getPsp() != null && candidate.getPsp().getId().equals(psp.getId())) {
+                                ichraLos = candidate;
+                            }
+                        } catch (NumberFormatException ignored) {}
+                    }
+
+                    if (ichraLos == null) {
+                        request.getSession().setAttribute("flashMessage",
+                                "Could not create the ICHRA Illustration section — select a line of service to scope it to.");
+                    } else {
+                        List<ProposalSection> existingIchra = em.createQuery(
+                                        "SELECT s FROM ProposalSection s WHERE s.psp.id = :pspId AND s.sectionType = :type",
+                                        ProposalSection.class)
+                                .setParameter("pspId", psp.getId())
+                                .setParameter("type", ProposalIchraSnapshot.SECTION_TYPE)
+                                .getResultList();
+
+                        if (!existingIchra.isEmpty()) {
+                            request.getSession().setAttribute("flashMessage", "An ICHRA Illustration section already exists for this PSP.");
+                        } else {
+                            List<ProposalSection> sections = loadSections(em, psp);
+                            int maxOrder = sections.stream()
+                                    .filter(s -> !"CLOSING".equals(s.getSectionType()))
+                                    .mapToInt(ProposalSection::getSortOrder)
+                                    .max().orElse(0);
+
+                            em.getTransaction().begin();
+                            ProposalSection ichraSection = new ProposalSection();
+                            ichraSection.setPsp(psp);
+                            ichraSection.setSectionType(ProposalIchraSnapshot.SECTION_TYPE);
+                            ichraSection.setTitle("ICHRA Illustration");
+                            ichraSection.setSortOrder(maxOrder + 1);
+                            ichraSection.setActive(true);
+                            ichraSection.setScope("SCOPED");
+                            ichraSection.getLosList().add(ichraLos);
+                            em.persist(ichraSection);
+
+                            // Ensure CLOSING is after this new section
+                            for (ProposalSection s : sections) {
+                                if ("CLOSING".equals(s.getSectionType()) && s.getSortOrder() <= ichraSection.getSortOrder()) {
+                                    s.setSortOrder(ichraSection.getSortOrder() + 1);
+                                    em.merge(s);
+                                }
+                            }
+                            em.getTransaction().commit();
+                            redirectSectionId = String.valueOf(ichraSection.getId());
+                            request.getSession().setAttribute("flashMessage", "ICHRA Illustration section created, scoped to " + ichraLos.getDescription() + ".");
+                        }
+                    }
+                }
+
                 case "deleteAgencySection" -> {
                     long sectionId = Long.parseLong(request.getParameter("sectionId"));
                     ProposalSection section = em.find(ProposalSection.class, sectionId);
@@ -323,7 +392,8 @@ public class ProposalSettings extends HttpServlet {
                     String scope = request.getParameter("scope");
                     ProposalSection section = em.find(ProposalSection.class, sectionId);
 
-                    if (section != null && "CUSTOM".equals(section.getSectionType())
+                    if (section != null
+                            && ("CUSTOM".equals(section.getSectionType()) || ProposalIchraSnapshot.SECTION_TYPE.equals(section.getSectionType()))
                             && section.getPsp().getId().equals(psp.getId())) {
 
                         // Initialize collections if needed

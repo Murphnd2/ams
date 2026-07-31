@@ -183,6 +183,13 @@
             <%@ include file="proposalPricing.jsp" %>
           </div>
         </c:when>
+        <c:when test="${section.getSectionType() == 'ICHRA_ILLUSTRATION'}">
+          <c:if test="${not empty ichraSnapshot}">
+          <div class="proposal-section ichra-section">
+            <%@ include file="proposalIchra.jsp" %>
+          </div>
+          </c:if>
+        </c:when>
         <c:when test="${section.getSectionType() == 'CLOSING'}">
           <div class="proposal-section closing-section">
             ${sectionHtml[section.getId()]}

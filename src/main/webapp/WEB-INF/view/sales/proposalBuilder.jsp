@@ -55,6 +55,27 @@
         <input type="hidden" name="action" value="createProposal">
         <input type="hidden" name="sourceActivityId" value="${param.sourceActivityId}">
 
+        <%-- Build-plan item 6: echo the ICHRA illustration hand-off's inputs (item 7's
+             "Use This in a Proposal" button) through to doPost so createProposal can
+             attach a snapshot. Absent for every existing entry point — additive only. --%>
+        <input type="hidden" name="countyFips" value="${param.countyFips}">
+        <input type="hidden" name="mode" value="${param.mode}">
+        <input type="hidden" name="planYear" value="${param.planYear}">
+        <input type="hidden" name="headcount" value="${param.headcount}">
+        <input type="hidden" name="contribution" value="${param.contribution}">
+        <input type="hidden" name="age1" value="${param.age1}">
+        <input type="hidden" name="count1" value="${param.count1}">
+        <input type="hidden" name="age2" value="${param.age2}">
+        <input type="hidden" name="count2" value="${param.count2}">
+        <input type="hidden" name="age3" value="${param.age3}">
+        <input type="hidden" name="count3" value="${param.count3}">
+        <input type="hidden" name="age4" value="${param.age4}">
+        <input type="hidden" name="count4" value="${param.count4}">
+        <input type="hidden" name="age5" value="${param.age5}">
+        <input type="hidden" name="count5" value="${param.count5}">
+        <input type="hidden" name="age6" value="${param.age6}">
+        <input type="hidden" name="count6" value="${param.count6}">
+
         <%-- STEP 1: Select Prospect --%>
         <div class="card mb-3">
             <div class="card-header bg-white py-3">

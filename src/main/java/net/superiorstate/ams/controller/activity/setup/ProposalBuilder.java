@@ -6,19 +6,26 @@ import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.AmsDataLocal;
+import net.superiorstate.ams.data.dao.CountyReferenceDAO;
+import net.superiorstate.ams.data.dao.ProposalIchraSnapshotDAO;
+import net.superiorstate.ams.data.dao.RateCacheDAO;
 import net.superiorstate.ams.data.dao.SalesDAO;
 import net.superiorstate.ams.data.resolver.AgencyScope;
 import net.superiorstate.ams.data.resolver.AgencyScopeResolver;
 import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.model.activity.Activity;
 import net.superiorstate.ams.model.general.Person;
+import net.superiorstate.ams.model.market.CountyReference;
+import net.superiorstate.ams.model.market.RatingAreaRateCache;
 import net.superiorstate.ams.model.sales.agency.*;
 import net.superiorstate.ams.model.sales.offering.LOS;
 import net.superiorstate.ams.model.sales.offering.ServiceModule;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -371,6 +378,18 @@ public class ProposalBuilder extends HttpServlet {
         em.persist(proposal);
         em.getTransaction().commit();
 
+        // Build-plan item 6: ICHRA illustration snapshot. Only when the hand-off's
+        // inputs (countyFips + mode) are present — item 7's "Use This in a Proposal"
+        // button is the only sender; AgentHome, detailOpportunity25.jsp,
+        // CreateOpportunity and direct entry all omit them, so this is a byte-identical
+        // no-op for every existing caller and every existing LOS. Best-effort: any
+        // failure here must never break proposal creation itself.
+        try {
+            attachIchraSnapshotIfPresent(request, em, proposal, createdBy);
+        } catch (Exception e) {
+            System.out.println("ICHRA snapshot attach failed for proposal #" + proposal.getId() + ": " + e.getMessage());
+        }
+
         // Add selected LOSs
         String[] losIds = request.getParameterValues("losIds");
         if (losIds != null) {
@@ -388,6 +407,178 @@ public class ProposalBuilder extends HttpServlet {
 
         System.out.println("Proposal created: #" + proposal.getId() + " GUID=" + guid);
         return proposal;
+    }
+
+    /**
+     * Build-plan item 6. Writes a {@link ProposalIchraSnapshot} when the request
+     * carries the illustration hand-off's inputs. Fails closed at every step: a
+     * missing county, an unparseable plan year, a missing or non-PRODUCTION cache
+     * row means no snapshot is written at all — never a partial one, and never one
+     * built from the off-exchange-derived figures the market illustration itself
+     * uses for display (this snapshot reads the exact same {@code lowestBronzePremium}
+     * field {@code IllustrationServlet} does, for the exact same reason: it is
+     * recording what the agent saw, not computing affordability).
+     */
+    private void attachIchraSnapshotIfPresent(HttpServletRequest request, EntityManager em, Proposal proposal, Person createdBy) {
+        String countyFips = request.getParameter("countyFips");
+        String mode = request.getParameter("mode");
+        if (countyFips == null || countyFips.isBlank() || mode == null || mode.isBlank()) {
+            return;
+        }
+
+        Integer planYear = parseIntOrNull(request.getParameter("planYear"));
+        if (planYear == null) return;
+
+        CountyReference county = CountyReferenceDAO.findByFips(em, countyFips);
+        if (county == null) return;
+
+        if (ProposalIchraSnapshot.MODE_AGE_BAND.equals(mode)) {
+            attachAgeBandSnapshot(request, em, proposal, createdBy, county, planYear, countyFips);
+        } else if (ProposalIchraSnapshot.MODE_RANGE.equals(mode)) {
+            attachRangeSnapshot(request, em, proposal, createdBy, county, planYear, countyFips);
+        }
+        // Any other mode value: not recognized, no snapshot written.
+    }
+
+    /** RANGE snapshot — group premium range at ages 21/64 times headcount, mirroring IllustrationServlet.handleRangeMode's own arithmetic. */
+    private void attachRangeSnapshot(HttpServletRequest request, EntityManager em, Proposal proposal, Person createdBy,
+                                      CountyReference county, int planYear, String countyFips) {
+        Integer headcount = parseIntOrNull(request.getParameter("headcount"));
+        if (headcount == null || headcount < 1) return;
+
+        List<RatingAreaRateCache> rows = RateCacheDAO.getRatesForCounty(em, planYear, countyFips);
+        Map<Integer, RatingAreaRateCache> byAge = new HashMap<>();
+        String sourceEnv = null;
+        LocalDateTime fetchedAt = null;
+        for (RatingAreaRateCache row : rows) {
+            if (row.isUsesTobacco()) continue;
+            byAge.putIfAbsent(row.getAge(), row);
+            if (row.getSourceEnv() != null) sourceEnv = row.getSourceEnv();
+            if (row.getFetchedAt() != null && (fetchedAt == null || row.getFetchedAt().isAfter(fetchedAt))) {
+                fetchedAt = row.getFetchedAt();
+            }
+        }
+
+        // Fail closed — no PRODUCTION-sourced data backing this range, no snapshot.
+        if (!RatingAreaRateCache.SOURCE_ENV_PRODUCTION.equals(sourceEnv)) return;
+
+        RatingAreaRateCache age21Row = byAge.get(21);
+        RatingAreaRateCache age64Row = byAge.get(64);
+        if (age21Row == null || age64Row == null
+                || age21Row.getLowestBronzePremium() == null || age64Row.getLowestBronzePremium() == null) {
+            return;
+        }
+
+        BigDecimal groupMonthlyLow = age21Row.getLowestBronzePremium().multiply(BigDecimal.valueOf(headcount));
+        BigDecimal groupMonthlyHigh = age64Row.getLowestBronzePremium().multiply(BigDecimal.valueOf(headcount));
+
+        ProposalIchraSnapshot snapshot = new ProposalIchraSnapshot();
+        snapshot.setProposal(proposal);
+        snapshot.setMode(ProposalIchraSnapshot.MODE_RANGE);
+        snapshot.setCountyFips(countyFips);
+        snapshot.setState(county.getState());
+        snapshot.setCountyName(county.getCountyName());
+        snapshot.setPlanYear(planYear);
+        snapshot.setHeadcount(headcount);
+        snapshot.setGroupMonthlyLow(groupMonthlyLow);
+        snapshot.setGroupMonthlyHigh(groupMonthlyHigh);
+        snapshot.setSourceEnv(sourceEnv);
+        snapshot.setRatesFetchedAt(fetchedAt);
+        snapshot.setSnapshotAt(LocalDateTime.now());
+        snapshot.setCreatedBy(createdBy);
+
+        ProposalIchraSnapshotDAO.save(em, snapshot, null);
+    }
+
+    /** AGE_BAND snapshot — per-row net cost and group total, mirroring IllustrationServlet.handleAgeBandMode's own arithmetic. */
+    private void attachAgeBandSnapshot(HttpServletRequest request, EntityManager em, Proposal proposal, Person createdBy,
+                                        CountyReference county, int planYear, String countyFips) {
+        BigDecimal contribution = parseDecimalOrNull(request.getParameter("contribution"));
+        if (contribution == null || contribution.signum() < 0) return;
+
+        List<int[]> ageCountPairs = new ArrayList<>(); // {age, count}
+        for (int i = 1; i <= 6; i++) {
+            String ageRaw = request.getParameter("age" + i);
+            if (ageRaw == null || ageRaw.isBlank()) continue; // blank age = ignored row, same as the illustration
+            Integer age = parseIntOrNull(ageRaw);
+            if (age == null || age < 21 || age > 64) continue;
+            Integer count = parseIntOrNull(request.getParameter("count" + i));
+            if (count == null || count < 1) count = 1;
+            ageCountPairs.add(new int[]{age, count});
+        }
+        if (ageCountPairs.isEmpty()) return;
+
+        List<ProposalIchraSnapshotBand> bands = new ArrayList<>();
+        BigDecimal groupNetTotal = BigDecimal.ZERO;
+        int totalLives = 0;
+        String sourceEnv = null;
+        LocalDateTime fetchedAt = null;
+        int sortOrder = 1;
+
+        for (int[] pair : ageCountPairs) {
+            int age = pair[0], count = pair[1];
+            RatingAreaRateCache row = RateCacheDAO.getRate(em, planYear, countyFips, age, false);
+            // Fail closed — missing cache row, or not PRODUCTION-sourced: no snapshot.
+            if (row == null || row.getLowestBronzePremium() == null) return;
+            if (!RatingAreaRateCache.SOURCE_ENV_PRODUCTION.equals(row.getSourceEnv())) return;
+
+            BigDecimal floorPremium = row.getLowestBronzePremium();
+            BigDecimal netPerEmployee = floorPremium.subtract(contribution).max(BigDecimal.ZERO);
+            BigDecimal bandNet = netPerEmployee.multiply(BigDecimal.valueOf(count));
+
+            ProposalIchraSnapshotBand band = new ProposalIchraSnapshotBand();
+            band.setAge(age);
+            band.setLives(count);
+            band.setFloorPremium(floorPremium);
+            band.setNetPerEmployee(netPerEmployee);
+            band.setBandNet(bandNet);
+            band.setSortOrder(sortOrder++);
+            bands.add(band);
+
+            groupNetTotal = groupNetTotal.add(bandNet);
+            totalLives += count;
+            sourceEnv = row.getSourceEnv();
+            if (row.getFetchedAt() != null && (fetchedAt == null || row.getFetchedAt().isAfter(fetchedAt))) {
+                fetchedAt = row.getFetchedAt();
+            }
+        }
+
+        BigDecimal employerOutlay = contribution.multiply(BigDecimal.valueOf(totalLives));
+
+        ProposalIchraSnapshot snapshot = new ProposalIchraSnapshot();
+        snapshot.setProposal(proposal);
+        snapshot.setMode(ProposalIchraSnapshot.MODE_AGE_BAND);
+        snapshot.setCountyFips(countyFips);
+        snapshot.setState(county.getState());
+        snapshot.setCountyName(county.getCountyName());
+        snapshot.setPlanYear(planYear);
+        snapshot.setContribution(contribution);
+        snapshot.setGroupNetTotal(groupNetTotal);
+        snapshot.setEmployerOutlay(employerOutlay);
+        snapshot.setSourceEnv(sourceEnv);
+        snapshot.setRatesFetchedAt(fetchedAt);
+        snapshot.setSnapshotAt(LocalDateTime.now());
+        snapshot.setCreatedBy(createdBy);
+
+        ProposalIchraSnapshotDAO.save(em, snapshot, bands);
+    }
+
+    private Integer parseIntOrNull(String raw) {
+        if (raw == null || raw.isBlank()) return null;
+        try {
+            return Integer.parseInt(raw.trim());
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    private BigDecimal parseDecimalOrNull(String raw) {
+        if (raw == null || raw.isBlank()) return null;
+        try {
+            return new BigDecimal(raw.trim());
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 
     private EntityManager getEntityManager(HttpServletRequest request) {

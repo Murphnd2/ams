@@ -190,14 +190,31 @@
 
 <div class="ps-row">
 
+        <%-- Build-plan item 6: singleton check — the create action is a no-op once one
+             exists, and this flag also hides the trigger so the admin isn't invited to
+             try. --%>
+        <c:set var="hasIchraSection" value="false"/>
+        <c:forEach var="s" items="${sections}">
+            <c:if test="${s.getSectionType() == 'ICHRA_ILLUSTRATION'}">
+                <c:set var="hasIchraSection" value="true"/>
+            </c:if>
+        </c:forEach>
+
         <%-- Left Panel: Section List --%>
         <div class="ps-left">
             <div class="card">
                 <div class="hdr-bar d-flex justify-content-between align-items-center">
                     <span><i class="bi bi-list-ul me-1"></i>Proposal Sections</span>
-                    <button class="btn btn-sm btn-outline-light" data-bs-toggle="modal" data-bs-target="#addCustomModal" title="Add Custom Page">
-                        <i class="bi bi-plus-lg"></i>
-                    </button>
+                    <div class="d-flex gap-1">
+                        <c:if test="${!hasIchraSection && not empty allLos}">
+                            <button class="btn btn-sm btn-outline-light" data-bs-toggle="modal" data-bs-target="#addIchraModal" title="Add ICHRA Illustration Section">
+                                <i class="bi bi-heart-pulse"></i>
+                            </button>
+                        </c:if>
+                        <button class="btn btn-sm btn-outline-light" data-bs-toggle="modal" data-bs-target="#addCustomModal" title="Add Custom Page">
+                            <i class="bi bi-plus-lg"></i>
+                        </button>
+                    </div>
                 </div>
                 <div class="card-body p-2" id="sectionList">
                     <c:forEach var="section" items="${sections}" varStatus="loop">
@@ -408,8 +425,8 @@
                             </c:choose>
                         </div><%-- /ps-editor-body --%>
 
-                        <%-- ── Bottom card: Display Scope (CUSTOM) or Agency Overrides (TITLE/CLOSING) ── --%>
-                        <c:if test="${section.getSectionType() == 'CUSTOM'}">
+                        <%-- ── Bottom card: Display Scope (CUSTOM, ICHRA_ILLUSTRATION) or Agency Overrides (TITLE/CLOSING) ── --%>
+                        <c:if test="${section.getSectionType() == 'CUSTOM' || section.getSectionType() == 'ICHRA_ILLUSTRATION'}">
                           <div class="ps-bottom-card">
                             <div class="card" style="border-top: 1px solid #dee2e6; border-radius: 0;">
                               <div class="card-header py-2" style="background-color: var(--ssa); color: white; flex-shrink: 0;">
@@ -595,6 +612,38 @@
                     Paste or type HTML directly in the editor.
                 </div>
             </div>
+        </div>
+    </div>
+</div>
+
+<%-- Add ICHRA Illustration Section Modal (build-plan item 6) --%>
+<div class="modal fade" id="addIchraModal" tabindex="-1">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <form method="post" action="ProposalSettings">
+                <input type="hidden" name="action" value="createIchraSection"/>
+                <div class="modal-header py-2" style="background-color: var(--ssa); color: white;">
+                    <h6 class="modal-title fw-semibold"><i class="bi bi-heart-pulse me-2"></i>Add ICHRA Illustration Section</h6>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <label class="form-label fw-semibold">Line of Service <span class="text-danger">*</span></label>
+                    <p class="text-muted" style="font-size: 0.85rem;">
+                        This section only appears on proposals that include the selected service — it is scoped from creation and cannot be created unscoped.
+                    </p>
+                    <select name="losId" class="form-select" required>
+                        <option value="" disabled selected>Select a line of service...</option>
+                        <c:forEach var="los" items="${allLos}">
+                            <option value="${los.getId()}">${los.getDescription()}</option>
+                        </c:forEach>
+                    </select>
+                </div>
+                <div class="modal-footer justify-content-center border-0">
+                    <button type="submit" class="ssa-action save"><i class="bi bi-plus-circle me-1"></i>Create</button>
+                    <span class="ssa-action-sep">|</span>
+                    <button type="button" class="ssa-action cancel" data-bs-dismiss="modal"><i class="bi bi-x-lg me-1"></i>Cancel</button>
+                </div>
+            </form>
         </div>
     </div>
 </div>

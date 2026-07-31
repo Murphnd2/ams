@@ -8,11 +8,15 @@ import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.dao.AppConstantDAO;
+import net.superiorstate.ams.data.dao.ProposalIchraSnapshotDAO;
 import net.superiorstate.ams.data.dao.SalesDAO;
 import net.superiorstate.ams.data.dao.StorageDAO;
 import net.superiorstate.ams.data.resolver.OriginatingAgencyResolver;
+import net.superiorstate.ams.model.market.RatingAreaRateCache;
 import net.superiorstate.ams.model.sales.agency.Agency;
 import net.superiorstate.ams.model.sales.agency.Proposal;
+import net.superiorstate.ams.model.sales.agency.ProposalIchraSnapshot;
+import net.superiorstate.ams.model.sales.agency.ProposalIchraSnapshotBand;
 import net.superiorstate.ams.model.sales.agency.ProposalPriceLine;
 import net.superiorstate.ams.model.sales.offering.Enhancement;
 import net.superiorstate.ams.model.sales.offering.Feature;
@@ -76,6 +80,22 @@ public class ViewProposal extends HttpServlet {
 
             // Load pricing (sell price only — base/markup breakdown is internal-only, see proposalDetail.jsp)
             List<ProposalPriceLine> pricing = SalesDAO.getPricingWithAdjustments(em, proposal);
+
+            // Build-plan item 6: ICHRA illustration snapshot — two flat queries, never
+            // a nested JOIN FETCH (EclipseLink silently drops a 2-level nested fetch in
+            // this codebase; see AgentHome's Opportunity->prospect->proposalList bug,
+            // fixed v0.71.08). Fails closed on provenance: a snapshot not sourced from
+            // PRODUCTION never sets these attributes, so this public, unauthenticated
+            // page renders neither staging figures nor a staging warning for it — it
+            // simply does not appear.
+            ProposalIchraSnapshot ichraSnapshot = ProposalIchraSnapshotDAO.findByProposalId(em, proposal.getId());
+            if (ichraSnapshot != null && RatingAreaRateCache.SOURCE_ENV_PRODUCTION.equals(ichraSnapshot.getSourceEnv())) {
+                request.setAttribute("ichraSnapshot", ichraSnapshot);
+                if (ProposalIchraSnapshot.MODE_AGE_BAND.equals(ichraSnapshot.getMode())) {
+                    List<ProposalIchraSnapshotBand> ichraBands = ProposalIchraSnapshotDAO.findBandsBySnapshotId(em, ichraSnapshot.getId());
+                    request.setAttribute("ichraBands", ichraBands);
+                }
+            }
 
             // Collect direct-FK module IDs for all proposed LOSs and all Enhancements with pricing
             Set<Long> featureModuleIds = new LinkedHashSet<>();
