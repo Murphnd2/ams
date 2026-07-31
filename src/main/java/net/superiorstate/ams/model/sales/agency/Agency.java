@@ -76,6 +76,10 @@ public class Agency implements Comparable<Agency> {
     @Column(name="quote_token")
     private String quoteToken;
 
+    /** V077: per-agency capability flag for IchraAccessResolver. Default OFF; PSP admin bypasses it. */
+    @Column(name="ichra_enabled", nullable = false)
+    private boolean ichraEnabled;
+
    public Agency(){}
 
     public Long getId() {
@@ -220,6 +224,14 @@ public class Agency implements Comparable<Agency> {
 
     public void setQuoteToken(String quoteToken) {
         this.quoteToken = quoteToken;
+    }
+
+    public boolean isIchraEnabled() {
+        return ichraEnabled;
+    }
+
+    public void setIchraEnabled(boolean ichraEnabled) {
+        this.ichraEnabled = ichraEnabled;
     }
 
     public void addRate(Rate rate){

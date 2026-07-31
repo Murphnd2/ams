@@ -13,6 +13,7 @@ import net.superiorstate.ams.data.dao.CountyReferenceDAO;
 import net.superiorstate.ams.data.dao.RateCacheDAO;
 import net.superiorstate.ams.data.resolver.AgencyScope;
 import net.superiorstate.ams.data.resolver.AgencyScopeResolver;
+import net.superiorstate.ams.data.resolver.IchraAccessResolver;
 import net.superiorstate.ams.model.general.Person;
 import net.superiorstate.ams.model.market.CountyReference;
 import net.superiorstate.ams.model.market.IllustrationLog;
@@ -27,16 +28,25 @@ import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
 /**
- * Agent-facing ICHRA rating illustration, RANGE mode only (B-Phase-2a). AGE_BAND mode
- * (income input, affordability threshold) is deferred to B-Phase-2b — {@code mode} is
- * always written as the literal {@code "RANGE"} so the column is correct from the
- * first row.
+ * Agent-facing ICHRA rating illustration. Two modes, selected by the {@code mode}
+ * request parameter (default {@code RANGE} so every existing entry point behaves
+ * exactly as before this class gained a second mode):
+ * <ul>
+ *     <li>{@code RANGE} (B-Phase-2a) — a bronze-floor range across three representative
+ *     ages (21/40/64) times a flat headcount.</li>
+ *     <li>{@code AGE_BAND} (B-Phase-2b, build-plan item 5) — repeating (age, count) rows
+ *     plus an employer monthly contribution, rendering per-age-band net cost after
+ *     contribution and a group monthly total. Affordability determination (item 8) and
+ *     any subsidy/PTC figure are explicitly out of scope for this mode; see
+ *     {@code illustration25.jsp} for the compliance boundaries this page observes.</li>
+ * </ul>
  * <p>
  * GET only — an illustration is a query, not a state change, and GET makes results
  * linkable and renderable same-request (unlike {@code RateCacheAdmin}'s POST/redirect
@@ -52,6 +62,12 @@ public class IllustrationServlet extends HttpServlet {
     private static final int RESULT_SUMMARY_MAX_LENGTH = 255;
     private static final DateTimeFormatter DISPLAY_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
 
+    private static final String MODE_RANGE = "RANGE";
+    private static final String MODE_AGE_BAND = "AGE_BAND";
+    private static final int AGE_BAND_ROWS = 6;
+    private static final int MIN_AGE = 21;
+    private static final int MAX_AGE = 64;
+
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         if (!isAuthorized(request)) {
@@ -64,6 +80,9 @@ public class IllustrationServlet extends HttpServlet {
         try {
             request.setAttribute("pageTitle", "ICHRA Illustration");
             request.setAttribute("pageIcon", "bi-calculator");
+
+            String mode = MODE_AGE_BAND.equals(request.getParameter("mode")) ? MODE_AGE_BAND : MODE_RANGE;
+            request.setAttribute("mode", mode);
 
             String planYearsConstant = AppConstantDAO.getConstantValue(em, "RATE_CACHE_PLAN_YEARS");
             List<Integer> configuredPlanYears = parsePlanYears(planYearsConstant);
@@ -103,92 +122,208 @@ public class IllustrationServlet extends HttpServlet {
                 request.getRequestDispatcher("/WEB-INF/view/market/illustration25.jsp").forward(request, response);
                 return;
             }
-
-            String headcountParam = request.getParameter("headcount");
-            request.setAttribute("submittedHeadcount", headcountParam);
-            Integer headcount = parseHeadcount(headcountParam);
-            if (headcount == null) {
-                request.setAttribute("inputError", "Enter a valid number of eligible employees (1-" + MAX_HEADCOUNT + ").");
-                request.getRequestDispatcher("/WEB-INF/view/market/illustration25.jsp").forward(request, response);
-                return;
-            }
-
             request.setAttribute("selectedCounty", selectedCounty);
 
-            List<RatingAreaRateCache> allRows = RateCacheDAO.getRatesForCounty(em, planYear, countyFips);
-            List<RatingAreaRateCache> nonTobaccoRows = allRows.stream()
-                    .filter(r -> !r.isUsesTobacco())
-                    .collect(Collectors.toList());
-
-            boolean hasRates = !nonTobaccoRows.isEmpty();
-            request.setAttribute("hasRates", hasRates);
-
-            String resultSummary;
-            if (hasRates) {
-                Map<Integer, RatingAreaRateCache> byAge = nonTobaccoRows.stream()
-                        .collect(Collectors.toMap(RatingAreaRateCache::getAge, r -> r, (a, b) -> a));
-
-                RatingAreaRateCache age21Row = byAge.get(REPRESENTATIVE_AGES[0]);
-                RatingAreaRateCache age40Row = byAge.get(REPRESENTATIVE_AGES[1]);
-                RatingAreaRateCache age64Row = byAge.get(REPRESENTATIVE_AGES[2]);
-                request.setAttribute("age21Row", age21Row);
-                request.setAttribute("age40Row", age40Row);
-                request.setAttribute("age64Row", age64Row);
-
-                BigDecimal groupMonthlyLow = groupPremium(age21Row, headcount);
-                BigDecimal groupMonthlyHigh = groupPremium(age64Row, headcount);
-                request.setAttribute("groupMonthlyLow", groupMonthlyLow);
-                request.setAttribute("groupMonthlyHigh", groupMonthlyHigh);
-
-                // Count row is deterministic (age 40, the reference age used elsewhere in this
-                // servlet) because carrierCount/planCount are age-specific — catastrophic plans
-                // are under-30 only, so age 21 can report a different plan count than age 40.
-                RatingAreaRateCache countRow = age40Row != null ? age40Row : nonTobaccoRows.get(0);
-                int countRowAge = countRow.getAge();
-                request.setAttribute("carrierCount", countRow.getCarrierCount());
-                request.setAttribute("planCount", countRow.getPlanCount());
-                request.setAttribute("countRowAge", countRowAge);
-
-                LocalDateTime newestFetchedAt = nonTobaccoRows.stream()
-                        .map(RatingAreaRateCache::getFetchedAt)
-                        .filter(Objects::nonNull)
-                        .max(LocalDateTime::compareTo)
-                        .orElse(null);
-                request.setAttribute("fetchedAt", newestFetchedAt);
-                request.setAttribute("fetchedAtDisplay",
-                        newestFetchedAt != null ? newestFetchedAt.format(DISPLAY_FORMAT) : null);
-
-                // Provenance of the displayed numbers is whatever was stamped when the rows were
-                // cached — read from the loaded rows themselves, not RateCacheWarmService's
-                // current config, which can change after these rows were fetched.
-                List<String> distinctSourceEnvs = nonTobaccoRows.stream()
-                        .map(RatingAreaRateCache::getSourceEnv)
-                        .filter(Objects::nonNull)
-                        .distinct()
-                        .collect(Collectors.toList());
-                String sourceEnv = distinctSourceEnvs.isEmpty() ? null : distinctSourceEnvs.get(0);
-                request.setAttribute("sourceEnv", sourceEnv);
-
-                resultSummary = buildResultSummary(headcount, selectedCounty, planYear, groupMonthlyLow, groupMonthlyHigh);
+            if (MODE_AGE_BAND.equals(mode)) {
+                handleAgeBandMode(em, request, response, planYear, countyFips, selectedCounty);
             } else {
-                resultSummary = "RANGE: " + headcount + " lives, " + selectedCounty.getCountyName() + " "
-                        + selectedCounty.getState() + ", PY" + planYear + ", no rate data";
+                handleRangeMode(em, request, response, planYear, countyFips, selectedCounty);
             }
-
-            logIllustration(em, request, selectedCounty, planYear, headcount, hasRates, resultSummary);
-
-            request.getRequestDispatcher("/WEB-INF/view/market/illustration25.jsp").forward(request, response);
         } finally {
             if (em.isOpen()) em.close();
         }
     }
 
+    /** RANGE mode — unchanged from B-Phase-2a other than being extracted into its own method and passing its mode literal into the shared log call. */
+    private void handleRangeMode(EntityManager em, HttpServletRequest request, HttpServletResponse response,
+                                  int planYear, String countyFips, CountyReference selectedCounty)
+            throws ServletException, IOException {
+        String headcountParam = request.getParameter("headcount");
+        request.setAttribute("submittedHeadcount", headcountParam);
+        Integer headcount = parseHeadcount(headcountParam);
+        if (headcount == null) {
+            request.setAttribute("inputError", "Enter a valid number of eligible employees (1-" + MAX_HEADCOUNT + ").");
+            request.getRequestDispatcher("/WEB-INF/view/market/illustration25.jsp").forward(request, response);
+            return;
+        }
+
+        List<RatingAreaRateCache> allRows = RateCacheDAO.getRatesForCounty(em, planYear, countyFips);
+        List<RatingAreaRateCache> nonTobaccoRows = allRows.stream()
+                .filter(r -> !r.isUsesTobacco())
+                .collect(Collectors.toList());
+
+        boolean hasRates = !nonTobaccoRows.isEmpty();
+        request.setAttribute("hasRates", hasRates);
+
+        String resultSummary;
+        if (hasRates) {
+            Map<Integer, RatingAreaRateCache> byAge = nonTobaccoRows.stream()
+                    .collect(Collectors.toMap(RatingAreaRateCache::getAge, r -> r, (a, b) -> a));
+
+            RatingAreaRateCache age21Row = byAge.get(REPRESENTATIVE_AGES[0]);
+            RatingAreaRateCache age40Row = byAge.get(REPRESENTATIVE_AGES[1]);
+            RatingAreaRateCache age64Row = byAge.get(REPRESENTATIVE_AGES[2]);
+            request.setAttribute("age21Row", age21Row);
+            request.setAttribute("age40Row", age40Row);
+            request.setAttribute("age64Row", age64Row);
+
+            BigDecimal groupMonthlyLow = groupPremium(age21Row, headcount);
+            BigDecimal groupMonthlyHigh = groupPremium(age64Row, headcount);
+            request.setAttribute("groupMonthlyLow", groupMonthlyLow);
+            request.setAttribute("groupMonthlyHigh", groupMonthlyHigh);
+
+            // Count row is deterministic (age 40, the reference age used elsewhere in this
+            // servlet) because carrierCount/planCount are age-specific — catastrophic plans
+            // are under-30 only, so age 21 can report a different plan count than age 40.
+            RatingAreaRateCache countRow = age40Row != null ? age40Row : nonTobaccoRows.get(0);
+            int countRowAge = countRow.getAge();
+            request.setAttribute("carrierCount", countRow.getCarrierCount());
+            request.setAttribute("planCount", countRow.getPlanCount());
+            request.setAttribute("countRowAge", countRowAge);
+
+            setProvenanceAttributes(request, nonTobaccoRows);
+
+            resultSummary = buildResultSummary(headcount, selectedCounty, planYear, groupMonthlyLow, groupMonthlyHigh);
+        } else {
+            resultSummary = "RANGE: " + headcount + " lives, " + selectedCounty.getCountyName() + " "
+                    + selectedCounty.getState() + ", PY" + planYear + ", no rate data";
+        }
+
+        logIllustration(em, request, selectedCounty, planYear, headcount, hasRates, resultSummary, MODE_RANGE);
+
+        request.getRequestDispatcher("/WEB-INF/view/market/illustration25.jsp").forward(request, response);
+    }
+
+    /**
+     * AGE_BAND mode (build-plan item 5) — repeating (age, count) rows plus an employer
+     * monthly contribution. Mirrors RANGE mode's shape: parse and validate inputs,
+     * read the cache (never compute a premium — every age 21-64 is already cached),
+     * compute, log, forward. A missing cached age is a cache-completeness problem
+     * reported on screen, never interpolated.
+     */
+    private void handleAgeBandMode(EntityManager em, HttpServletRequest request, HttpServletResponse response,
+                                    int planYear, String countyFips, CountyReference selectedCounty)
+            throws ServletException, IOException {
+        String[] submittedAges = new String[AGE_BAND_ROWS];
+        String[] submittedCounts = new String[AGE_BAND_ROWS];
+        for (int i = 0; i < AGE_BAND_ROWS; i++) {
+            submittedAges[i] = request.getParameter("age" + (i + 1));
+            submittedCounts[i] = request.getParameter("count" + (i + 1));
+        }
+        request.setAttribute("submittedAges", submittedAges);
+        request.setAttribute("submittedCounts", submittedCounts);
+
+        String contributionParam = request.getParameter("contribution");
+        request.setAttribute("submittedContribution", contributionParam);
+
+        List<AgeBandRow> rows = new ArrayList<>();
+        for (int i = 0; i < AGE_BAND_ROWS; i++) {
+            String ageRaw = submittedAges[i];
+            if (ageRaw == null || ageRaw.isBlank()) {
+                continue; // blank age = ignored row
+            }
+            Integer age = parseAge(ageRaw);
+            if (age == null) {
+                request.setAttribute("inputError", "Row " + (i + 1) + ": age must be a whole number from " + MIN_AGE + " to " + MAX_AGE + ".");
+                request.getRequestDispatcher("/WEB-INF/view/market/illustration25.jsp").forward(request, response);
+                return;
+            }
+            Integer count = parseBandCount(submittedCounts[i]);
+            if (count == null) {
+                request.setAttribute("inputError", "Row " + (i + 1) + ": count must be a positive whole number.");
+                request.getRequestDispatcher("/WEB-INF/view/market/illustration25.jsp").forward(request, response);
+                return;
+            }
+            rows.add(new AgeBandRow(age, count));
+        }
+
+        if (rows.isEmpty()) {
+            request.setAttribute("inputError", "Enter at least one age.");
+            request.getRequestDispatcher("/WEB-INF/view/market/illustration25.jsp").forward(request, response);
+            return;
+        }
+
+        BigDecimal contribution = parseContribution(contributionParam);
+        if (contribution == null) {
+            request.setAttribute("inputError", "Enter a valid employer monthly contribution (0 or more).");
+            request.getRequestDispatcher("/WEB-INF/view/market/illustration25.jsp").forward(request, response);
+            return;
+        }
+
+        int totalLives = 0;
+        for (AgeBandRow row : rows) {
+            totalLives += row.getCount();
+        }
+
+        List<Integer> distinctAges = new ArrayList<>();
+        for (AgeBandRow row : rows) {
+            if (!distinctAges.contains(row.getAge())) {
+                distinctAges.add(row.getAge());
+            }
+        }
+
+        // Every age 21-64 is already cached — read the row, never compute the curve here.
+        // A missing row (or a cached row with no bronze premium) is a cache-completeness
+        // problem, not something this servlet interpolates around.
+        Map<Integer, RatingAreaRateCache> cacheByAge = new LinkedHashMap<>();
+        List<Integer> missingAges = new ArrayList<>();
+        for (Integer age : distinctAges) {
+            RatingAreaRateCache cacheRow = RateCacheDAO.getRate(em, planYear, countyFips, age, false);
+            if (cacheRow == null || cacheRow.getLowestBronzePremium() == null) {
+                missingAges.add(age);
+            } else {
+                cacheByAge.put(age, cacheRow);
+            }
+        }
+
+        boolean hasRates = missingAges.isEmpty();
+        request.setAttribute("hasRates", hasRates);
+
+        String resultSummary;
+        if (hasRates) {
+            List<AgeBandResultRow> resultRows = new ArrayList<>();
+            BigDecimal groupNetTotal = BigDecimal.ZERO;
+            for (AgeBandRow row : rows) {
+                RatingAreaRateCache cacheRow = cacheByAge.get(row.getAge());
+                BigDecimal floorPremium = cacheRow.getLowestBronzePremium();
+                // Clamp at zero — a contribution exceeding the floor premium means the
+                // employee's cost is zero, not negative.
+                BigDecimal netPerEmployee = floorPremium.subtract(contribution).max(BigDecimal.ZERO);
+                BigDecimal bandNet = netPerEmployee.multiply(BigDecimal.valueOf(row.getCount()));
+                resultRows.add(new AgeBandResultRow(row.getAge(), row.getCount(), floorPremium, netPerEmployee, bandNet));
+                groupNetTotal = groupNetTotal.add(bandNet);
+            }
+            request.setAttribute("ageBandResultRows", resultRows);
+            request.setAttribute("groupNetTotal", groupNetTotal);
+
+            BigDecimal employerOutlay = contribution.multiply(BigDecimal.valueOf(totalLives));
+            request.setAttribute("employerOutlay", employerOutlay);
+            request.setAttribute("submittedTotalLives", totalLives);
+
+            setProvenanceAttributes(request, new ArrayList<>(cacheByAge.values()));
+
+            resultSummary = "AGE_BAND: " + totalLives + " lives, " + selectedCounty.getCountyName() + " "
+                    + selectedCounty.getState() + ", PY" + planYear + ", group net floor " + money(groupNetTotal);
+        } else {
+            request.setAttribute("missingAges", missingAges);
+            resultSummary = "AGE_BAND: " + totalLives + " lives, " + selectedCounty.getCountyName() + " "
+                    + selectedCounty.getState() + ", PY" + planYear + ", missing cache data";
+        }
+
+        logIllustration(em, request, selectedCounty, planYear, totalLives, hasRates,
+                truncate(resultSummary, RESULT_SUMMARY_MAX_LENGTH), MODE_AGE_BAND);
+
+        request.getRequestDispatcher("/WEB-INF/view/market/illustration25.jsp").forward(request, response);
+    }
+
     private boolean isAuthorized(HttpServletRequest request) {
-        return Boolean.TRUE.equals(request.getSession().getAttribute("isAgent"))
-                || Boolean.TRUE.equals(request.getSession().getAttribute("isAgencyAdmin"))
-                || Boolean.TRUE.equals(request.getSession().getAttribute("isPspAdmin"))
-                || Boolean.TRUE.equals(request.getSession().getAttribute("isPspUser"))
-                || Boolean.TRUE.equals(request.getSession().getAttribute("isPspSales"));
+        EntityManagerFactory emf = (EntityManagerFactory) getServletContext().getAttribute("emf");
+        EntityManager em = emf.createEntityManager();
+        try {
+            return IchraAccessResolver.isAvailable(em, request);
+        } finally {
+            if (em.isOpen()) em.close();
+        }
     }
 
     /** Tolerant parse matching RateCacheAdmin's own RATE_CACHE_PLAN_YEARS handling — display only. */
@@ -235,12 +370,71 @@ public class IllustrationServlet extends HttpServlet {
         }
     }
 
+    /** @return the parsed age, or null if non-numeric or outside MIN_AGE-MAX_AGE. Caller handles blank (ignored row) before this is called. */
+    private Integer parseAge(String raw) {
+        try {
+            int value = Integer.parseInt(raw.trim());
+            if (value < MIN_AGE || value > MAX_AGE) return null;
+            return value;
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    /** @return the parsed band count, defaulting to 1 when blank; null if non-numeric or not a positive integer up to MAX_HEADCOUNT. */
+    private Integer parseBandCount(String raw) {
+        if (raw == null || raw.isBlank()) return 1;
+        try {
+            int value = Integer.parseInt(raw.trim());
+            return (value > 0 && value <= MAX_HEADCOUNT) ? value : null;
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    /** @return the parsed employer monthly contribution, or null if missing, non-numeric, or negative. */
+    private BigDecimal parseContribution(String raw) {
+        if (raw == null || raw.isBlank()) return null;
+        try {
+            BigDecimal value = new BigDecimal(raw.trim());
+            return value.signum() >= 0 ? value : null;
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
     /** Lowest-bronze premium at the given age times headcount, or null if the underlying value is null. */
     private BigDecimal groupPremium(RatingAreaRateCache ageRow, int headcount) {
         if (ageRow == null || ageRow.getLowestBronzePremium() == null) {
             return null;
         }
         return ageRow.getLowestBronzePremium().multiply(BigDecimal.valueOf(headcount));
+    }
+
+    /**
+     * Sets fetchedAt/fetchedAtDisplay/sourceEnv request attributes from the rows actually
+     * loaded for this run — shared by both modes so the staging-provenance banner in
+     * illustration25.jsp behaves identically regardless of mode. Provenance is read from
+     * the loaded rows themselves (whatever was stamped when they were cached), not from
+     * RateCacheWarmService's current config, which can change after the rows were fetched.
+     */
+    private void setProvenanceAttributes(HttpServletRequest request, List<RatingAreaRateCache> rows) {
+        LocalDateTime newestFetchedAt = rows.stream()
+                .map(RatingAreaRateCache::getFetchedAt)
+                .filter(Objects::nonNull)
+                .max(LocalDateTime::compareTo)
+                .orElse(null);
+        request.setAttribute("fetchedAt", newestFetchedAt);
+        request.setAttribute("fetchedAtDisplay",
+                newestFetchedAt != null ? newestFetchedAt.format(DISPLAY_FORMAT) : null);
+
+        List<String> distinctSourceEnvs = rows.stream()
+                .map(RatingAreaRateCache::getSourceEnv)
+                .filter(Objects::nonNull)
+                .distinct()
+                .collect(Collectors.toList());
+        String sourceEnv = distinctSourceEnvs.isEmpty() ? null : distinctSourceEnvs.get(0);
+        request.setAttribute("sourceEnv", sourceEnv);
     }
 
     private String buildResultSummary(int headcount, CountyReference county, int planYear,
@@ -275,9 +469,15 @@ public class IllustrationServlet extends HttpServlet {
      * Writes the illustration_log row. A logging failure must never break the page — the
      * illustration is the product, the log is telemetry — so every exception is caught,
      * logged, and swallowed.
+     * <p>
+     * {@code illustration_log} carries no PII (V075): {@code headcount} is the same
+     * aggregate-total field RANGE mode already populates (AGE_BAND passes the sum of its
+     * row counts through it, not any individual row), and {@code resultSummary} names only
+     * the county, plan year and an aggregate dollar total — never the individual ages,
+     * per-row counts, or the contribution amount submitted for an AGE_BAND run.
      */
     private void logIllustration(EntityManager em, HttpServletRequest request, CountyReference county,
-                                  int planYear, int headcount, boolean cacheHit, String resultSummary) {
+                                  int planYear, int headcount, boolean cacheHit, String resultSummary, String mode) {
         try {
             IllustrationLog logRow = new IllustrationLog();
             logRow.setCreatedAt(LocalDateTime.now());
@@ -305,7 +505,7 @@ public class IllustrationServlet extends HttpServlet {
             logRow.setState(county.getState());
             logRow.setPlanYear(planYear);
             logRow.setEligibleHeadcount(headcount);
-            logRow.setMode("RANGE");
+            logRow.setMode(mode);
             logRow.setCacheHit(cacheHit);
             logRow.setResultSummary(resultSummary);
 
@@ -322,5 +522,42 @@ public class IllustrationServlet extends HttpServlet {
         } catch (Exception e) {
             log.error("[ILLUSTRATION] Failed to write illustration_log row", e);
         }
+    }
+
+    /** One validated (age, count) input row for AGE_BAND mode. Not JSP-visible. */
+    private static final class AgeBandRow {
+        private final int age;
+        private final int count;
+
+        AgeBandRow(int age, int count) {
+            this.age = age;
+            this.count = count;
+        }
+
+        int getAge() { return age; }
+        int getCount() { return count; }
+    }
+
+    /** One computed AGE_BAND result row, rendered by illustration25.jsp via c:forEach. */
+    public static final class AgeBandResultRow {
+        private final int age;
+        private final int count;
+        private final BigDecimal floorPremium;
+        private final BigDecimal netPerEmployee;
+        private final BigDecimal bandNet;
+
+        AgeBandResultRow(int age, int count, BigDecimal floorPremium, BigDecimal netPerEmployee, BigDecimal bandNet) {
+            this.age = age;
+            this.count = count;
+            this.floorPremium = floorPremium;
+            this.netPerEmployee = netPerEmployee;
+            this.bandNet = bandNet;
+        }
+
+        public int getAge() { return age; }
+        public int getCount() { return count; }
+        public BigDecimal getFloorPremium() { return floorPremium; }
+        public BigDecimal getNetPerEmployee() { return netPerEmployee; }
+        public BigDecimal getBandNet() { return bandNet; }
     }
 }

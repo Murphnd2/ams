@@ -16,7 +16,7 @@ Tracks database schema versions across environments.
 | BPO | bpo.superiorstate.biz | beta_ssa | BPO instance (V038, initialized, release V0.37.0) |
 | Master | master.superiorstate.biz | beta_ssa | Snapshot v9 (V057, stopped) |
 
-## Current Highest Version: V076
+## Current Highest Version: V077
 
 ⚠️ **Maintenance note (added 2026-07-30):** production status in the table below must be back-filled
 *after a deployment actually succeeds*, not only when the migration is written. The V072/V073 rows
@@ -118,6 +118,7 @@ _N/A = environment decommissioned / not maintained (applies to Demo PSP, BPO, Ma
 | V074 | Rating-area rate cache for A1 ICHRA illustration (rating_area_rate_cache table) | ⬜ | ⬜ | ⬜ | ✅ | N/A | N/A | N/A |
 | V075 | Illustration log for A1 ICHRA rating illustration, no PII (illustration_log table) | ⬜ | ⬜ | ⬜ | ✅ | N/A | N/A | N/A |
 | V076 | County reference data (FIPS, state, name, representative ZIP) -- Texas seed (county_reference table) | ⬜ | ⬜ | ⬜ | ✅ | N/A | N/A | N/A |
+| V077 | Per-agency enable flag for ICHRA capability access (agency.ichra_enabled, default OFF) | ⬜ | ⬜ | ⬜ | ⬜ | N/A | N/A | N/A |
 
 **Production column reconciled 2026-07-30** against a live, read-only `schema_version` probe run
 directly against the production database — that probe is the source of truth for the corrections
@@ -185,3 +186,4 @@ this. `beta_ssa (work)`, `beta_ssa (home)`, and `dev_ssa` are unchanged — stil
 - V074 creates rating_area_rate_cache (plan_year, county_fips, state, age, uses_tobacco, market_low/high_premium, lcsp_premium, benchmark_silver_premium, lowest_bronze_premium, carrier_count, plan_count, fetched_at, source_env) — per-county-per-age premium cache for the A1 ICHRA rating illustration, warmed by a scheduled background job (one HealthSherpa API call per county per plan year via the statutory age-rating curve, not per age). uses_tobacco is present but unused pending open item O19. Schema only — no data migration. Requires updated WAR with RatingAreaRateCache entity, RateCacheDAO, AgeCurve, RateCacheWarmService, and RateCacheAdmin (added in this increment; the illustration servlet/page itself is a separate, not-yet-approved phase).
 - V075 creates illustration_log (created_at, agent_person_id FK→assignee, agency_id/parent_agency_id FK→agency, zip_code, county_fips, state, plan_year, eligible_headcount, mode, cache_hit, result_summary) — audit/analytics log for A1 illustration runs. Holds no PII; result_summary is a short computed descriptor, never a name or employer identifier. parent_agency_id is deliberately denormalized (no GA hierarchy-walk helper exists in the codebase). Schema only — no data migration.
 - V076 creates county_reference (county_fips CHAR(5) PK, state, county_name, representative_zip) — national county identity data for the B-2 agent-facing ICHRA illustration, seeded for Texas only (254 rows) via `docs/scripts/generate_county_reference.py` against Census Gazetteer + 2020 ZCTA-relationship source files. Not PSP-scoped — identical on every installation, matching the V074/V075 precedent. Supersedes the `zip:fips:state` triple format of `RATE_CACHE_COUNTIES` (D-83) by letting `RateCacheWarmService` resolve a bare county_fips through `CountyReferenceDAO`; the triple form remains fully supported. Schema only — no Java seed mirror (see CLAUDE.md's DatabaseInitializer note). Requires updated WAR with CountyReference entity and CountyReferenceDAO.
+- V077 adds `ichra_enabled TINYINT(1) NOT NULL DEFAULT 0` to `agency` — OFF for every existing and future agency, no backfill, mirroring the V067 `markup_enabled` precedent. Backs the new `IchraAccessResolver.isAvailable(EntityManager, HttpServletRequest)` (session PSP-admin → available; otherwise resolve the caller's primary agency via `AgencyScopeResolver` and read this flag → available if set; anything else, or any exception, fails closed to not-available). Gates both the `/Illustration` servlet guard and the new `/IchraHome` hub servlet guard with the same resolver call, and the top-level ICHRA nav entry in `navbar25.jsp`. No agency is entitled by this migration — Kevin flips it per agency at deployment time. Requires updated WAR with Agency.ichraEnabled field, IchraAccessResolver, IchraHome servlet + ichraHome25.jsp hub, and the navbar/IllustrationServlet gate changes.

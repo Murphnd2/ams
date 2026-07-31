@@ -59,6 +59,14 @@
 <div class="illustration-wrap">
     <div class="toolbar">
         <h1 class="t-title m-0"><i class="bi bi-calculator me-1"></i>ICHRA Illustration</h1>
+        <c:if test="${not empty configuredPlanYears}">
+            <div class="ms-auto d-flex gap-1">
+                <a class="btn btn-sm ${mode == 'RANGE' ? 'btn-primary' : 'btn-outline-secondary'}"
+                   href="Illustration?mode=RANGE&countyFips=${submittedCountyFips}&planYear=${selectedPlanYear}">Range</a>
+                <a class="btn btn-sm ${mode == 'AGE_BAND' ? 'btn-primary' : 'btn-outline-secondary'}"
+                   href="Illustration?mode=AGE_BAND&countyFips=${submittedCountyFips}&planYear=${selectedPlanYear}">Age Band</a>
+            </div>
+        </c:if>
     </div>
 
     <div class="illustration-body">
@@ -80,6 +88,7 @@
 
                 <div class="status-card">
                     <form method="get" action="Illustration" class="row gy-2 gx-3 align-items-end">
+                        <input type="hidden" name="mode" value="${mode}">
                         <div class="col-auto">
                             <label class="form-label mb-1" for="countyFips">County</label>
                             <select class="form-select form-select-sm" id="countyFips" name="countyFips" ${empty availableCounties ? 'disabled' : ''}>
@@ -108,11 +117,41 @@
                             </c:otherwise>
                         </c:choose>
 
-                        <div class="col-auto">
-                            <label class="form-label mb-1" for="headcount">Eligible Employees</label>
-                            <input type="number" class="form-control form-control-sm" id="headcount" name="headcount"
-                                   min="1" max="10000" value="${submittedHeadcount}" style="width:140px;">
-                        </div>
+                        <c:choose>
+                            <c:when test="${mode == 'AGE_BAND'}">
+                                <div class="col-12">
+                                    <label class="form-label mb-1 d-block">Ages and Headcounts <span class="text-muted fw-normal">(blank age = skip row)</span></label>
+                                    <div class="d-flex flex-wrap gap-2">
+                                        <c:forEach begin="1" end="6" var="i">
+                                            <div class="d-flex align-items-end gap-1">
+                                                <div>
+                                                    <label class="form-label mb-1" style="font-size:0.7rem;" for="age${i}">Age</label>
+                                                    <input type="number" class="form-control form-control-sm" id="age${i}" name="age${i}"
+                                                           min="21" max="64" value="${submittedAges[i-1]}" style="width:75px;">
+                                                </div>
+                                                <div>
+                                                    <label class="form-label mb-1" style="font-size:0.7rem;" for="count${i}">Count</label>
+                                                    <input type="number" class="form-control form-control-sm" id="count${i}" name="count${i}"
+                                                           min="1" placeholder="1" value="${submittedCounts[i-1]}" style="width:65px;">
+                                                </div>
+                                            </div>
+                                        </c:forEach>
+                                    </div>
+                                </div>
+                                <div class="col-auto">
+                                    <label class="form-label mb-1" for="contribution">Employer Monthly Contribution</label>
+                                    <input type="number" step="0.01" class="form-control form-control-sm" id="contribution" name="contribution"
+                                           min="0" value="${submittedContribution}" style="width:160px;">
+                                </div>
+                            </c:when>
+                            <c:otherwise>
+                                <div class="col-auto">
+                                    <label class="form-label mb-1" for="headcount">Eligible Employees</label>
+                                    <input type="number" class="form-control form-control-sm" id="headcount" name="headcount"
+                                           min="1" max="10000" value="${submittedHeadcount}" style="width:140px;">
+                                </div>
+                            </c:otherwise>
+                        </c:choose>
 
                         <div class="col-auto">
                             <button type="submit" class="ssa-action save" ${empty availableCounties ? 'disabled' : ''}>
@@ -135,7 +174,99 @@
                     </div>
                 </c:if>
 
-                <c:if test="${not empty selectedCounty}">
+                <c:if test="${not empty selectedCounty and mode == 'AGE_BAND'}">
+                    <c:choose>
+                        <c:when test="${not hasRates}">
+                            <div class="empty-state">
+                                <i class="bi bi-exclamation-circle"></i>
+                                <div style="font-size:0.85rem; margin-top:0.5rem;">
+                                    No cached rate data for age(s)
+                                    <c:forEach var="a" items="${missingAges}" varStatus="as">${a}<c:if test="${!as.last}">, </c:if></c:forEach>
+                                    in this county — cache-completeness gap, not computed.
+                                </div>
+                            </div>
+                        </c:when>
+                        <c:otherwise>
+
+                            <c:if test="${not empty sourceEnv and sourceEnv != 'PRODUCTION'}">
+                                <div class="disclaimer" style="background:#f8d7da; border-color:#f5c2c7; color:#842029;">
+                                    <i class="bi bi-exclamation-triangle-fill me-1"></i>
+                                    <strong>Test-environment rates.</strong> These figures came from the
+                                    <c:out value="${sourceEnv}"/> environment, not production market data. Do not present this to a client.
+                                </div>
+                            </c:if>
+
+                            <div class="disclaimer">
+                                <i class="bi bi-info-circle me-1"></i>
+                                This is an illustration based on cached market rates, not a quote and not a compliance determination.
+                                Actual premiums depend on individual enrollee details, and ICHRA affordability must be determined separately.
+                            </div>
+
+                            <div class="disclaimer">
+                                <i class="bi bi-info-circle me-1"></i>
+                                <strong>Off-exchange plans only.</strong> These figures cover the off-exchange individual market.
+                                On-exchange plans are not included in the plan counts or the premium figures shown.
+                            </div>
+
+                            <table class="results-table">
+                                <thead>
+                                <tr>
+                                    <th>Age</th>
+                                    <th>Count</th>
+                                    <th>Lowest Bronze <span class="text-muted fw-normal">(per employee)</span></th>
+                                    <th>Net / Employee <span class="text-muted fw-normal">(after contribution)</span></th>
+                                    <th>Band Net Total</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                <c:forEach var="row" items="${ageBandResultRows}">
+                                    <tr>
+                                        <td>${row.age}</td>
+                                        <td>${row.count}</td>
+                                        <td><fmt:formatNumber value="${row.floorPremium}" type="currency"/></td>
+                                        <td><fmt:formatNumber value="${row.netPerEmployee}" type="currency"/></td>
+                                        <td><fmt:formatNumber value="${row.bandNet}" type="currency"/></td>
+                                    </tr>
+                                </c:forEach>
+                                </tbody>
+                            </table>
+
+                            <div class="status-card mt-3">
+                                <strong>Group Monthly Net Cost</strong>
+                                <div style="font-size:1.05rem; font-weight:700; color:#0d5681; margin-top:0.35rem;">
+                                    <fmt:formatNumber value="${groupNetTotal}" type="currency"/>
+                                </div>
+                                <div class="footnote">For ${submittedTotalLives} eligible employees, after employer contribution. Sum of the Band Net Total column.</div>
+                            </div>
+
+                            <div class="status-card mt-3">
+                                <strong>Employer Total Monthly Outlay</strong>
+                                <div style="font-size:1.05rem; font-weight:700; color:#0d5681; margin-top:0.35rem;">
+                                    <fmt:formatNumber value="${employerOutlay}" type="currency"/>
+                                </div>
+                                <div class="footnote">Contribution &times; total eligible employees. Shown separately from net cost above.</div>
+                            </div>
+
+                            <div class="meta-line">
+                                <c:out value="${selectedCounty.countyName}"/>, <c:out value="${selectedCounty.state}"/> &middot;
+                                Plan Year ${selectedPlanYear} &middot;
+                                <c:choose>
+                                    <c:when test="${not empty fetchedAtDisplay}">
+                                        Rates as of <c:out value="${fetchedAtDisplay}"/>
+                                    </c:when>
+                                    <c:otherwise>Cache freshness unavailable</c:otherwise>
+                                </c:choose>
+                                <c:choose>
+                                    <c:when test="${sourceEnv == 'PRODUCTION'}"> &middot; Source: production</c:when>
+                                    <c:when test="${empty sourceEnv}"> &middot; Source: not recorded</c:when>
+                                </c:choose>
+                            </div>
+
+                        </c:otherwise>
+                    </c:choose>
+                </c:if>
+
+                <c:if test="${not empty selectedCounty and mode != 'AGE_BAND'}">
                     <c:choose>
                         <c:when test="${not hasRates}">
                             <div class="empty-state">
@@ -157,6 +288,12 @@
                                 <i class="bi bi-info-circle me-1"></i>
                                 This is an illustration based on cached market rates, not a quote and not a compliance determination.
                                 Actual premiums depend on individual enrollee details, and ICHRA affordability must be determined separately.
+                            </div>
+
+                            <div class="disclaimer">
+                                <i class="bi bi-info-circle me-1"></i>
+                                <strong>Off-exchange plans only.</strong> These figures cover the off-exchange individual market.
+                                On-exchange plans are not included in the plan counts or the premium figures shown.
                             </div>
 
                             <table class="results-table">
