@@ -80,12 +80,16 @@
                 <div class="hub-desc">Indicative market premium range by county and headcount.</div>
             </a>
 
-            <a class="hub-card" href="RateCacheAdmin">
-                <span class="hub-badge live">Live</span>
-                <div class="hub-icon"><i class="bi bi-graph-up"></i></div>
-                <div class="hub-title">Rate Cache Admin</div>
-                <div class="hub-desc">Cache status and manual refresh for the rating-area rate cache.</div>
-            </a>
+            <%-- PSP-admin only, matching RateCacheAdmin.isAuthorized — that servlet redirects any
+                 other role to "/", so rendering this card for an agency user is a dead click. --%>
+            <c:if test="${sessionScope.isPspAdmin}">
+                <a class="hub-card" href="RateCacheAdmin">
+                    <span class="hub-badge live">Live</span>
+                    <div class="hub-icon"><i class="bi bi-graph-up"></i></div>
+                    <div class="hub-title">Rate Cache Admin</div>
+                    <div class="hub-desc">Cache status and manual refresh for the rating-area rate cache.</div>
+                </a>
+            </c:if>
 
             <a class="hub-card" href="Illustration?mode=AGE_BAND">
                 <span class="hub-badge live">Live</span>
