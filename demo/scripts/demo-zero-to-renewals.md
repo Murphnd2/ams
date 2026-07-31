@@ -70,12 +70,12 @@ Conference attendees, existing Summit customers evaluating AMS migration
 > are all here — ready to work with."
 
 ### File Paths (for upload_file tool):
-- `C:\Users\kevinmurphy\IdeaProjects\ams\demo\summit-import\J1_Employers.csv`
-- `C:\Users\kevinmurphy\IdeaProjects\ams\demo\summit-import\J2_Employees.csv`
-- `C:\Users\kevinmurphy\IdeaProjects\ams\demo\summit-import\J3_EmployeeStatus.csv`
-- `C:\Users\kevinmurphy\IdeaProjects\ams\demo\summit-import\J4_Benefits_CDH.csv`
-- `C:\Users\kevinmurphy\IdeaProjects\ams\demo\summit-import\J5_BenefitPlanYears.csv`
-- `C:\Users\kevinmurphy\IdeaProjects\ams\demo\summit-import\J7_Benefits_COBRA.csv`
+- `C:\Users\kevinmurphy.SUPERIORSTATE\IdeaProjects\ams\demo\summit-import\J1_Employers.csv`
+- `C:\Users\kevinmurphy.SUPERIORSTATE\IdeaProjects\ams\demo\summit-import\J2_Employees.csv`
+- `C:\Users\kevinmurphy.SUPERIORSTATE\IdeaProjects\ams\demo\summit-import\J3_EmployeeStatus.csv`
+- `C:\Users\kevinmurphy.SUPERIORSTATE\IdeaProjects\ams\demo\summit-import\J4_Benefits_CDH.csv`
+- `C:\Users\kevinmurphy.SUPERIORSTATE\IdeaProjects\ams\demo\summit-import\J5_BenefitPlanYears.csv`
+- `C:\Users\kevinmurphy.SUPERIORSTATE\IdeaProjects\ams\demo\summit-import\J7_Benefits_COBRA.csv`
 
 ---
 
