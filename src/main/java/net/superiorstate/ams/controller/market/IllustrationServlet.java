@@ -15,6 +15,7 @@ import net.superiorstate.ams.data.resolver.AgencyScope;
 import net.superiorstate.ams.data.resolver.AgencyScopeResolver;
 import net.superiorstate.ams.data.resolver.IchraAccessResolver;
 import net.superiorstate.ams.data.util.AffordabilityCalculator;
+import net.superiorstate.ams.data.util.OpportunityAuthz;
 import net.superiorstate.ams.model.general.Person;
 import net.superiorstate.ams.model.market.CountyReference;
 import net.superiorstate.ams.model.market.IllustrationLog;
@@ -89,6 +90,12 @@ public class IllustrationServlet extends HttpServlet {
 
             String mode = MODE_AGE_BAND.equals(request.getParameter("mode")) ? MODE_AGE_BAND : MODE_RANGE;
             request.setAttribute("mode", mode);
+
+            // Build-plan item 13 — optional opportunity attribution. Resolved once here so
+            // every forward path below (including the early returns) carries it, and read
+            // back out of the request by logIllustration. Null whenever absent or not
+            // permitted; never an error and never a message on screen.
+            request.setAttribute("opportunityId", resolveOpportunityId(em, request));
 
             String planYearsConstant = AppConstantDAO.getConstantValue(em, "RATE_CACHE_PLAN_YEARS");
             List<Integer> configuredPlanYears = parsePlanYears(planYearsConstant);
@@ -409,6 +416,39 @@ public class IllustrationServlet extends HttpServlet {
         }
     }
 
+    /**
+     * Build-plan item 13 — resolves the optional {@code opportunityId} request parameter
+     * to an opportunity the caller may actually see, or null.
+     * <p>
+     * Scope validation is {@link OpportunityAuthz#canAccessOpportunity(EntityManager,
+     * HttpServletRequest, long)} — the same predicate {@code UpdateOpportunityStage} and
+     * {@code GoActivityDetail25} already use, which loads the row and delegates the
+     * agency question to {@code AgencyScopeResolver.canSeeDetail}. No scoping logic is
+     * written here; a second implementation of that rule is exactly what
+     * {@code OpportunityAuthz} exists to prevent.
+     * <p>
+     * Fails quietly by design: absent, blank, unparseable, non-existent, or out of scope
+     * all return null. An illustration is not an authorization surface — it works with or
+     * without an opportunity, so a bad id must never error, redirect, or put a message on
+     * screen. Returning null for out-of-scope also means an id belonging to another
+     * agency cannot be written onto this agency's log row.
+     */
+    private Long resolveOpportunityId(EntityManager em, HttpServletRequest request) {
+        String raw = request.getParameter("opportunityId");
+        if (raw == null || raw.isBlank()) {
+            return null;
+        }
+        try {
+            long oppId = Long.parseLong(raw.trim());
+            return OpportunityAuthz.canAccessOpportunity(em, request, oppId) ? oppId : null;
+        } catch (NumberFormatException e) {
+            return null;
+        } catch (Exception e) {
+            log.debug("[ILLUSTRATION] Opportunity attribution skipped; could not resolve id", e);
+            return null;
+        }
+    }
+
     /** Tolerant parse matching RateCacheAdmin's own RATE_CACHE_PLAN_YEARS handling — display only. */
     private List<Integer> parsePlanYears(String raw) {
         List<Integer> years = new ArrayList<>();
@@ -608,6 +648,11 @@ public class IllustrationServlet extends HttpServlet {
             logRow.setMode(mode);
             logRow.setCacheHit(cacheHit);
             logRow.setResultSummary(resultSummary);
+
+            // V081 — already resolved and scope-checked in doGet; null unless the caller
+            // arrived from an opportunity they may see.
+            Object oppIdAttr = request.getAttribute("opportunityId");
+            logRow.setOpportunityId(oppIdAttr instanceof Long ? (Long) oppIdAttr : null);
 
             em.getTransaction().begin();
             try {

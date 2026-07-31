@@ -14,6 +14,7 @@ import net.superiorstate.ams.data.dao.RateCacheDAO;
 import net.superiorstate.ams.data.resolver.AgencyScope;
 import net.superiorstate.ams.data.resolver.AgencyScopeResolver;
 import net.superiorstate.ams.data.resolver.IchraAccessResolver;
+import net.superiorstate.ams.data.util.OpportunityAuthz;
 import net.superiorstate.ams.model.general.Person;
 import net.superiorstate.ams.model.market.CountyReference;
 import net.superiorstate.ams.model.market.IllustrationLog;
@@ -99,6 +100,7 @@ public class GroupConversionServlet extends HttpServlet {
         EntityManager em = emf.createEntityManager();
         try {
             setPageAttributes(request);
+            request.setAttribute("opportunityId", resolveOpportunityId(em, request));
             List<Integer> configuredPlanYears = loadPlanYears(em, request);
             if (configuredPlanYears.isEmpty()) {
                 request.getRequestDispatcher(VIEW).forward(request, response);
@@ -125,6 +127,11 @@ public class GroupConversionServlet extends HttpServlet {
         EntityManager em = emf.createEntityManager();
         try {
             setPageAttributes(request);
+
+            // Build-plan item 13 — optional opportunity attribution. Resolved once here so
+            // every forward path below (including the validation early returns) carries it,
+            // and read back out of the request by logIllustration.
+            request.setAttribute("opportunityId", resolveOpportunityId(em, request));
 
             List<Integer> configuredPlanYears = loadPlanYears(em, request);
             if (configuredPlanYears.isEmpty()) {
@@ -383,6 +390,39 @@ public class GroupConversionServlet extends HttpServlet {
         }
     }
 
+    /**
+     * Build-plan item 13 — resolves the optional {@code opportunityId} request parameter
+     * to an opportunity the caller may actually see, or null. Identical in contract to
+     * {@code IllustrationServlet}'s own resolver.
+     * <p>
+     * Scope validation is {@link OpportunityAuthz#canAccessOpportunity(EntityManager,
+     * HttpServletRequest, long)} — the same predicate {@code UpdateOpportunityStage} and
+     * {@code GoActivityDetail25} already use, which loads the row and delegates the
+     * agency question to {@code AgencyScopeResolver.canSeeDetail}. No scoping logic is
+     * written here.
+     * <p>
+     * Fails quietly by design: absent, blank, unparseable, non-existent, or out of scope
+     * all return null. A conversion analysis works with or without an opportunity, so a
+     * bad id must never error, redirect, or put a message on screen. Returning null for
+     * out of scope also means an id belonging to another agency cannot be written onto
+     * this agency's log row.
+     */
+    private Long resolveOpportunityId(EntityManager em, HttpServletRequest request) {
+        String raw = request.getParameter("opportunityId");
+        if (raw == null || raw.isBlank()) {
+            return null;
+        }
+        try {
+            long oppId = Long.parseLong(raw.trim());
+            return OpportunityAuthz.canAccessOpportunity(em, request, oppId) ? oppId : null;
+        } catch (NumberFormatException e) {
+            return null;
+        } catch (Exception e) {
+            log.debug("[ICHRA-CONVERSION] Opportunity attribution skipped; could not resolve id", e);
+            return null;
+        }
+    }
+
     private void setPageAttributes(HttpServletRequest request) {
         request.setAttribute("pageTitle", "Group-to-ICHRA Conversion");
         request.setAttribute("pageIcon", "bi-arrow-left-right");
@@ -562,6 +602,11 @@ public class GroupConversionServlet extends HttpServlet {
             logRow.setMode(MODE_CONVERSION);
             logRow.setCacheHit(cacheHit);
             logRow.setResultSummary(resultSummary);
+
+            // V081 — already resolved and scope-checked in doPost; null unless the caller
+            // arrived from an opportunity they may see.
+            Object oppIdAttr = request.getAttribute("opportunityId");
+            logRow.setOpportunityId(oppIdAttr instanceof Long ? (Long) oppIdAttr : null);
 
             em.getTransaction().begin();
             try {

@@ -100,4 +100,5 @@ INSERT IGNORE INTO schema_version (version, description, script_name) VALUES
 ('V077', 'Per-agency enable flag for ICHRA capability access (agency.ichra_enabled, default OFF)', 'V077__agency_ichra_enabled.sql'),
 ('V078', 'On-exchange LCSP and benchmark-silver columns for T44 (rating_area_rate_cache.onex_lcsp_premium/onex_benchmark_silver_premium, default NULL)', 'V078__rate_cache_onex_lcsp.sql'),
 ('V079', 'ICHRA illustration snapshot on a proposal (proposal_ichra_snapshot + proposal_ichra_snapshot_band)', 'V079__proposal_ichra_snapshot.sql'),
-('V080', 'ICHRA/QSEHRA Design Advisor: ICHRA_DESIGN_ADVISOR chatbot_skill row + ichra_design knowledge base and chunks', 'V080__ichra_design_advisor_skill.sql');
+('V080', 'ICHRA/QSEHRA Design Advisor: ICHRA_DESIGN_ADVISOR chatbot_skill row + ichra_design knowledge base and chunks', 'V080__ichra_design_advisor_skill.sql'),
+('V081', 'Optional opportunity attribution on illustration_log (illustration_log.opportunity_id, nullable, FK to assignee(id))', 'V081__illustration_log_opportunity.sql');

@@ -62,9 +62,9 @@
         <c:if test="${not empty configuredPlanYears}">
             <div class="ms-auto d-flex gap-1">
                 <a class="btn btn-sm ${mode == 'RANGE' ? 'btn-primary' : 'btn-outline-secondary'}"
-                   href="Illustration?mode=RANGE&countyFips=${submittedCountyFips}&planYear=${selectedPlanYear}">Range</a>
+                   href="Illustration?mode=RANGE&countyFips=${submittedCountyFips}&planYear=${selectedPlanYear}${not empty opportunityId ? '&opportunityId='.concat(opportunityId) : ''}">Range</a>
                 <a class="btn btn-sm ${mode == 'AGE_BAND' ? 'btn-primary' : 'btn-outline-secondary'}"
-                   href="Illustration?mode=AGE_BAND&countyFips=${submittedCountyFips}&planYear=${selectedPlanYear}">Age Band</a>
+                   href="Illustration?mode=AGE_BAND&countyFips=${submittedCountyFips}&planYear=${selectedPlanYear}${not empty opportunityId ? '&opportunityId='.concat(opportunityId) : ''}">Age Band</a>
             </div>
         </c:if>
     </div>
@@ -89,6 +89,12 @@
                 <div class="status-card">
                     <form method="get" action="Illustration" class="row gy-2 gx-3 align-items-end">
                         <input type="hidden" name="mode" value="${mode}">
+                        <%-- Item 13: carry the opportunity attribution across this form's own
+                             re-submissions. Already resolved and scope-checked server-side;
+                             absent entirely when there is none. Not a picker — no UI. --%>
+                        <c:if test="${not empty opportunityId}">
+                            <input type="hidden" name="opportunityId" value="${opportunityId}">
+                        </c:if>
                         <div class="col-auto">
                             <label class="form-label mb-1" for="countyFips">County</label>
                             <select class="form-select form-select-sm" id="countyFips" name="countyFips" ${empty availableCounties ? 'disabled' : ''}>

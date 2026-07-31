@@ -98,6 +98,12 @@
 
                 <div class="status-card">
                     <form method="post" action="GroupConversion" class="row gy-2 gx-3 align-items-end">
+                        <%-- Item 13: carry the opportunity attribution across this form's own
+                             re-submissions. Already resolved and scope-checked server-side;
+                             absent entirely when there is none. Not a picker — no UI. --%>
+                        <c:if test="${not empty opportunityId}">
+                            <input type="hidden" name="opportunityId" value="${opportunityId}">
+                        </c:if>
                         <div class="col-auto">
                             <label class="form-label mb-1" for="countyFips">County</label>
                             <select class="form-select form-select-sm" id="countyFips" name="countyFips" ${empty availableCounties ? 'disabled' : ''}>

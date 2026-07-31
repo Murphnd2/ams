@@ -57,6 +57,16 @@ public class IllustrationLog {
     @Column(name = "result_summary")
     private String resultSummary;
 
+    /**
+     * V081 — optional opportunity this run was made for. Null is the normal case: an
+     * illustration works with or without one. References assignee(id), not an
+     * "opportunity" table (Opportunity extends Activity extends Assignee, SINGLE_TABLE).
+     * Held as a plain id rather than a {@code @ManyToOne} so a log write never drags an
+     * Opportunity graph into the persistence context, matching agentPersonId/agencyId.
+     */
+    @Column(name = "opportunity_id")
+    private Long opportunityId;
+
     public IllustrationLog() {}
 
     public Long getId() {
@@ -161,5 +171,13 @@ public class IllustrationLog {
 
     public void setResultSummary(String resultSummary) {
         this.resultSummary = resultSummary;
+    }
+
+    public Long getOpportunityId() {
+        return opportunityId;
+    }
+
+    public void setOpportunityId(Long opportunityId) {
+        this.opportunityId = opportunityId;
     }
 }
