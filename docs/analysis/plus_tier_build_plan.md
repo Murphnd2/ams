@@ -1885,6 +1885,11 @@ invoicing 🟠 O28.
 
 ## Session close-out — SQL audit
 
+*(Corrected 2026-07-30 — the migration figures below are stale. A live `schema_version` probe
+confirmed 2026-07-30 that every migration V001–V073 is applied to production; V074
+`rating_area_rate_cache` and V075 `illustration_log` were authored the same day and are correctly
+unapplied on every environment. Current release is v0.73.02. Dated record preserved as written below.)*
+
 **No SQL was produced.** Parts 1–7 are planning only.
 
 - **Migration scripts produced or updated:** none.
