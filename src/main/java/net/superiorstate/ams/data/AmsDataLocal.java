@@ -841,7 +841,11 @@ public class AmsDataLocal implements AutoCloseable {
                 q.setParameter("id",rn.getId());
                 Activity25 ap = (Activity25) q.getSingleResult();
                 au = new Activity25u(ap);
-                getActivitiesAllOpen().add(au);
+                // Copy-then-set, not a direct mutation - getActivitiesAllOpen() can hold a
+                // .toList() result (immutable), so calling .add() on it directly can throw.
+                List<Activity25u> listToModify = new ArrayList<>(getActivitiesAllOpen());
+                listToModify.add(au);
+                setActivitiesAllOpen(listToModify);
                 getCurrentActivity().setReFilterOnExit(true);
             }
             case "ADD_SETUP" -> {

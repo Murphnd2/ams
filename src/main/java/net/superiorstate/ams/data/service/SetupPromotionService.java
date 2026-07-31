@@ -23,6 +23,7 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Post-create hook run whenever a Setup activity is born from an Application.
@@ -220,10 +221,13 @@ public final class SetupPromotionService {
             AmsDataLocal local = (AmsDataLocal) request.getSession().getAttribute("local");
             if (global == null || global.getActivitiesAllOpen() == null) return;
 
+            // Collectors.toList(), not .toList() - this list is pushed into the global/local
+            // caches below and later mutated in place (e.g. AmsDataLocal's ADD_RENEWAL branch).
+            // .toList() returns an immutable list and poisons the cache.
             List<Activity25u> updated = global.getActivitiesAllOpen().stream()
                     .filter(au -> au.getActivity() == null
                             || !oppId.equals(au.getActivity().getId()))
-                    .toList();
+                    .collect(Collectors.toList());
             global.setActivitiesAllOpen(updated);
             if (local != null) {
                 local.setActivitiesAllOpen(updated);
