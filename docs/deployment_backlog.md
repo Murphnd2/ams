@@ -1284,3 +1284,25 @@ ON DUPLICATE KEY UPDATE value = VALUES(value);
 **A year with no `AgeCurve` entry is skipped with a logged error, never guessed or silently substituted with a different year's curve.** `RateCacheWarmService` reads this constant fresh at the start of every run (not once at startup), so a change takes effect on the next scheduled tick without a restart. If the constant is absent, empty, or wholly unparseable, the run is skipped entirely and logged as an error rather than falling back to any default year.
 
 **Applies to:** Production ⬜, Demo PSP ⬜, BPO ⬜, Master image ⬜ — same environments as D-82/D-83.
+
+---
+
+### D-85: `catalina.out` on production never rotates
+
+**Priority:** LOW — no current operational impact; it grows slowly relative to available disk
+**Status:** Not started
+
+`/var/log/tomcat10/catalina.out` on production is 97,150,379 bytes and holds entries from 2025-09-10 onward — it has never been rotated. Every other log in that directory rotates daily and compresses: `catalina.YYYY-MM-DD.log.gz`, `localhost.*.log.gz`, `localhost_access_log.*.txt.gz`, `ams-*.log.gz`.
+
+**The tell is ownership.** `catalina.out` is owned by `syslog:adm`; every other file in the directory is owned by `tomcat:adm`. That means `catalina.out` is being written through a systemd/syslog redirect rather than by Tomcat's own juli handler — which is why juli's rotation doesn't cover it, and why no logrotate rule appears to exist for it either.
+
+**Impact:**
+- Unbounded growth on the production filesystem
+- Slow to search exactly when it matters — during an incident
+- Conversely, it's the only log with the full eleven-month history, which is what made the 2026-07-31 production log review (T40 above) possible at all — any rotation policy should preserve a long retention window, not just cap the file size
+
+**Likely fix** (not yet applied — needs verification first): a logrotate rule for `catalina.out` using `copytruncate`, since the process writing it holds the file open and a plain rename-based rotation would just keep writing to the unlinked inode.
+
+**This was only checked on production.** Master, Demo, and BPO run the same Tomcat setup and should be checked before any fix is applied — this item covers all four installations, not production alone.
+
+**Applies to:** Production ⬜, Demo PSP ⬜, BPO ⬜, Master image ⬜ — unconfirmed on the latter three; production is the only one inspected so far.
