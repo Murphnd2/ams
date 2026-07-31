@@ -41,10 +41,14 @@ spouse's group plan can invalidate an ICHRA design that would have worked as a Q
 ## Phase 2 — Documents and notice
 
 - ICHRA plan document, SPD, adoption agreement / corporate resolution.
-- ⚖️ **90-day employee notice.** Required 90 days before the plan year. For a *newly established*
+- ⚖️ **90-day employee notice.** ⚠️ **This assertion is uncited and must not be relied on — see LA-08
+  in `docs/analysis/legal_assumptions.md`, status "Open — no basis."** Kept here as the record of what
+  was once written, not as guidance. Required 90 days before the plan year. For a *newly established*
   ICHRA the notice is due by the date coverage begins — **the exception a short-runway group relies
   on. Confirm with counsel before committing to an effective date.** Getting this wrong is a
-  plan-qualification issue.
+  plan-qualification issue. **SSA has NOT determined ICHRA notice timing. It does not transfer from
+  QSEHRA, and no date, offset or range above should be treated as SSA's position — the date is set by
+  SSA per case.**
 - ⚖️ **ERISA safe-harbor notice and posture.** Individual policies stay outside ERISA only if:
   enrollment is voluntary; the employer does not select or endorse any particular issuer or plan; no
   employer consideration changes hands; and employees are told the individual coverage is not an
