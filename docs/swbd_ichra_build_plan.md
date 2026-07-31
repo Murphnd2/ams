@@ -458,7 +458,7 @@ text-only path — it hardcodes Haiku 4.5 / 1024 tokens. Logged as **T52**, deli
 
 ---
 
-### 13 — ~~Link illustrations and designs to an opportunity~~ ✅ Done 2026-07-31, `a71b79d`
+### 13 — ~~Link illustrations and designs to an opportunity~~ ✅ Done 2026-07-31, `a71b79d` + `619461f`
 
 | | |
 |---|---|
@@ -467,17 +467,27 @@ text-only path — it hardcodes Haiku 4.5 / 1024 tokens. Logged as **T52**, deli
 | **Attaches at** | `Opportunity extends Activity`, already carrying stage, prospect, agency and value |
 | **Gate** | Inherits |
 | **Phase A?** | **Required, lightly** — adding a column to a shipped table with rows in it |
-| **Schema** | **V081** — nullable `opportunity_id` FK to `assignee(id)`, `ON DELETE SET NULL` (opportunities are deleted routinely; default RESTRICT would have made an ICHRA feature change how the existing sales pipeline behaves for users who never asked for ICHRA). ⚠️ **`illustration_log` records agent and agency and nothing else** (verified against V075) |
+| **Schema** | **V081** — nullable `opportunity_id` FK to `assignee(id)`, `ON DELETE SET NULL` (precautionary: no delete path for an Opportunity exists in AMS today, verified by grep 2026-07-31, so nothing would fail under RESTRICT right now — but SET NULL is free, semantically correct for a nullable attribution column, and right if a delete path or manual cleanup appears later; corrected in `cf15ff8`). ⚠️ **`illustration_log` records agent and agency and nothing else** (verified against V075) |
 | **Depends on** | ⚠️ **Structural decision S3 (§4) — now resolved.** |
 | **Size** | **~0.5 day** + migration |
 | **Reversal** | ⚠️ **Rule-3 exception — schema other features depend on.** Cheap now, not cheap after A5 reads it |
 
-Console read **not built**. The agent pipeline console's (`AgentHome`/`agentHome25.jsp`) single-opportunity
-detail is a client-side drawer built from a pre-serialized `OPPS` map, and its "Full Detail View" target
-(`ViewById` → `GoActivityDetail25` → `ViewActivity25`) is the shared activity-detail page used by every
-activity type, not an opportunity-specific view. Neither has a server-side extension point — reading
-`illustration_log` back into either is a separate build against `agentHome25.jsp`, deferred rather than
-attempted opportunistically here.
+**Console read shipped 2026-07-31, `619461f`.** The agent pipeline drawer (`agentHome25.jsp`) now lists
+the illustrations and conversion analyses logged against the opportunity — **date, kind and agent only**,
+no `result_summary`, no premium, no county, no headcount, no figure of any kind. The numbers stay on the
+tool that produced them, behind its own gate and its agent-only framing (D24).
+
+Built as `IllustrationLogDAO.findByOpportunityId` (one query, newest first, capped at 25) plus
+`/IchraOpportunityAnalyses`, a JSON feed the drawer fetches client-side. **Client-side by necessity, not
+preference:** the drawer's single-opportunity detail is built from a pre-serialized `OPPS` map with no
+server-side extension point, and its "Full Detail View" target (`ViewById` → `GoActivityDetail25` →
+`ViewActivity25`) is the shared activity-detail page used by every activity type. Fetching from a gated
+endpoint turned that constraint into the rule-2 guarantee: **an empty array renders nothing at all** — no
+heading, no placeholder, no border — so an agent without ICHRA entitlement sees the drawer exactly as it
+looked before the feature existed. Three checks run on every path through the endpoint and no path
+returns data without all three: `IchraAccessResolver.isAvailable`, then parse, then
+`OpportunityAuthz.canAccessOpportunity`; every failure answers with the same empty array, so "no such
+opportunity", "not yours" and "ICHRA is off for you" are indistinguishable.
 
 ---
 
