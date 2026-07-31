@@ -14,6 +14,7 @@ import net.superiorstate.ams.data.dao.RateCacheDAO;
 import net.superiorstate.ams.data.resolver.AgencyScope;
 import net.superiorstate.ams.data.resolver.AgencyScopeResolver;
 import net.superiorstate.ams.data.resolver.IchraAccessResolver;
+import net.superiorstate.ams.data.util.AffordabilityCalculator;
 import net.superiorstate.ams.model.general.Person;
 import net.superiorstate.ams.model.market.CountyReference;
 import net.superiorstate.ams.model.market.IllustrationLog;
@@ -43,9 +44,14 @@ import java.util.stream.Collectors;
  *     ages (21/40/64) times a flat headcount.</li>
  *     <li>{@code AGE_BAND} (B-Phase-2b, build-plan item 5) — repeating (age, count) rows
  *     plus an employer monthly contribution, rendering per-age-band net cost after
- *     contribution and a group monthly total. Affordability determination (item 8) and
- *     any subsidy/PTC figure are explicitly out of scope for this mode; see
- *     {@code illustration25.jsp} for the compliance boundaries this page observes.</li>
+ *     contribution and a group monthly total. Optionally, with an
+ *     {@code affordabilityBasis} selected, also renders the affordability threshold
+ *     per row (build-plan item 9) — an employer/agent-facing ANALYSIS, never a
+ *     determination and never advice to any employee (LA-12); see
+ *     {@link net.superiorstate.ams.data.util.AffordabilityCalculator} and
+ *     {@code illustration25.jsp} for the compliance boundaries this page observes. No
+ *     subsidy or PTC dollar figure is ever computed or shown — only PTC eligibility as
+ *     kept or lost.</li>
  * </ul>
  * <p>
  * GET only — an illustration is a query, not a state change, and GET makes results
@@ -206,15 +212,25 @@ public class IllustrationServlet extends HttpServlet {
             throws ServletException, IOException {
         String[] submittedAges = new String[AGE_BAND_ROWS];
         String[] submittedCounts = new String[AGE_BAND_ROWS];
+        String[] submittedIncomes = new String[AGE_BAND_ROWS];
         for (int i = 0; i < AGE_BAND_ROWS; i++) {
             submittedAges[i] = request.getParameter("age" + (i + 1));
             submittedCounts[i] = request.getParameter("count" + (i + 1));
+            submittedIncomes[i] = request.getParameter("income" + (i + 1));
         }
         request.setAttribute("submittedAges", submittedAges);
         request.setAttribute("submittedCounts", submittedCounts);
+        request.setAttribute("submittedIncomes", submittedIncomes);
 
         String contributionParam = request.getParameter("contribution");
         request.setAttribute("submittedContribution", contributionParam);
+
+        // Affordability (build item 9) is opt-in — a basis must be explicitly selected.
+        // No selection means the affordability section stays hidden entirely; the
+        // net-cost table below is unaffected either way.
+        String affordabilityBasis = request.getParameter("affordabilityBasis");
+        request.setAttribute("affordabilityBasis", affordabilityBasis);
+        boolean incomeBasis = "INCOME".equals(affordabilityBasis);
 
         List<AgeBandRow> rows = new ArrayList<>();
         for (int i = 0; i < AGE_BAND_ROWS; i++) {
@@ -234,7 +250,16 @@ public class IllustrationServlet extends HttpServlet {
                 request.getRequestDispatcher("/WEB-INF/view/market/illustration25.jsp").forward(request, response);
                 return;
             }
-            rows.add(new AgeBandRow(age, count));
+            BigDecimal income = null;
+            if (incomeBasis) {
+                income = parsePositiveDecimal(submittedIncomes[i]);
+                if (income == null) {
+                    request.setAttribute("inputError", "Row " + (i + 1) + ": enter a valid annual household income (greater than 0) for the entered-income basis.");
+                    request.getRequestDispatcher("/WEB-INF/view/market/illustration25.jsp").forward(request, response);
+                    return;
+                }
+            }
+            rows.add(new AgeBandRow(age, count, income));
         }
 
         if (rows.isEmpty()) {
@@ -302,6 +327,8 @@ public class IllustrationServlet extends HttpServlet {
 
             setProvenanceAttributes(request, new ArrayList<>(cacheByAge.values()));
 
+            computeAffordability(em, request, planYear, affordabilityBasis, contribution, rows, cacheByAge);
+
             resultSummary = "AGE_BAND: " + totalLives + " lives, " + selectedCounty.getCountyName() + " "
                     + selectedCounty.getState() + ", PY" + planYear + ", group net floor " + money(groupNetTotal);
         } else {
@@ -314,6 +341,62 @@ public class IllustrationServlet extends HttpServlet {
                 truncate(resultSummary, RESULT_SUMMARY_MAX_LENGTH), MODE_AGE_BAND);
 
         request.getRequestDispatcher("/WEB-INF/view/market/illustration25.jsp").forward(request, response);
+    }
+
+    /**
+     * Affordability threshold (build-plan item 9) — opt-in via {@code affordabilityBasis}
+     * ({@code "FPL"} or {@code "INCOME"}; anything else leaves the section hidden). An
+     * employer/agent-facing ANALYSIS, never a determination and never advice to any
+     * employee (LA-12). Fails closed on missing configuration: no
+     * {@code ICHRA_AFFORDABILITY_PCT_<planYear>} constant means no affordability output
+     * at all for that plan year — never a default, never a prior year's value carried
+     * forward. Reads {@link RatingAreaRateCache#getOnexLcspPremium()} exclusively —
+     * never {@link RatingAreaRateCache#getLcspPremium()}, the off-exchange figure T44
+     * found understates the true on-exchange LCSP by roughly 44% in the reference
+     * county, the dangerous direction (a too-low LCSP makes an unaffordable offer look
+     * affordable).
+     */
+    private void computeAffordability(EntityManager em, HttpServletRequest request, int planYear,
+                                       String basis, BigDecimal contribution,
+                                       List<AgeBandRow> rows, Map<Integer, RatingAreaRateCache> cacheByAge) {
+        if (!"FPL".equals(basis) && !"INCOME".equals(basis)) {
+            return;
+        }
+
+        BigDecimal applicablePct = parsePositiveDecimal(AppConstantDAO.getConstantValue(em, "ICHRA_AFFORDABILITY_PCT_" + planYear));
+        if (applicablePct == null) {
+            request.setAttribute("affordabilityUnavailableReason", "Affordability is not configured for plan year " + planYear + ".");
+            return;
+        }
+
+        BigDecimal fplAnnual = null;
+        if ("FPL".equals(basis)) {
+            fplAnnual = parsePositiveDecimal(AppConstantDAO.getConstantValue(em, "FPL_ANNUAL_" + planYear));
+            if (fplAnnual == null) {
+                request.setAttribute("affordabilityUnavailableReason", "FPL safe harbor is not configured for plan year " + planYear + ".");
+                return;
+            }
+        }
+
+        List<AffordabilityResultRow> affordabilityRows = new ArrayList<>();
+        for (AgeBandRow row : rows) {
+            RatingAreaRateCache cacheRow = cacheByAge.get(row.getAge());
+            BigDecimal onexLcsp = cacheRow != null ? cacheRow.getOnexLcspPremium() : null;
+            if (onexLcsp == null) {
+                affordabilityRows.add(AffordabilityResultRow.unavailable(row.getAge(), row.getCount(),
+                        "On-exchange rates not cached for this county; re-warm required."));
+                continue;
+            }
+
+            // referenceIncome is never null here: the FPL basis already validated
+            // fplAnnual above (or returned), and the INCOME basis already validated
+            // every row's income during row parsing in handleAgeBandMode.
+            BigDecimal referenceIncome = "FPL".equals(basis) ? fplAnnual : row.getIncome();
+            BigDecimal flip = AffordabilityCalculator.flipContribution(onexLcsp, applicablePct, referenceIncome);
+            boolean affordable = AffordabilityCalculator.isAffordable(contribution, flip);
+            affordabilityRows.add(AffordabilityResultRow.available(row.getAge(), row.getCount(), onexLcsp, flip, affordable));
+        }
+        request.setAttribute("affordabilityRows", affordabilityRows);
     }
 
     private boolean isAuthorized(HttpServletRequest request) {
@@ -398,6 +481,23 @@ public class IllustrationServlet extends HttpServlet {
         try {
             BigDecimal value = new BigDecimal(raw.trim());
             return value.signum() >= 0 ? value : null;
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    /**
+     * @return the parsed positive decimal, or null if missing, non-numeric, or not
+     * strictly positive. Used for both entered household income and the two
+     * affordability configuration constants — all three must be a genuine positive
+     * number, never zero or negative, and a missing/invalid value must fail closed
+     * rather than default.
+     */
+    private BigDecimal parsePositiveDecimal(String raw) {
+        if (raw == null || raw.isBlank()) return null;
+        try {
+            BigDecimal value = new BigDecimal(raw.trim());
+            return value.signum() > 0 ? value : null;
         } catch (NumberFormatException e) {
             return null;
         }
@@ -524,18 +624,26 @@ public class IllustrationServlet extends HttpServlet {
         }
     }
 
-    /** One validated (age, count) input row for AGE_BAND mode. Not JSP-visible. */
+    /**
+     * One validated (age, count, income) input row for AGE_BAND mode. Not JSP-visible.
+     * {@code income} is the row's entered annual household income — null unless the
+     * entered-income affordability basis is selected, in which case it is required
+     * and validated before this row is constructed.
+     */
     private static final class AgeBandRow {
         private final int age;
         private final int count;
+        private final BigDecimal income;
 
-        AgeBandRow(int age, int count) {
+        AgeBandRow(int age, int count, BigDecimal income) {
             this.age = age;
             this.count = count;
+            this.income = income;
         }
 
         int getAge() { return age; }
         int getCount() { return count; }
+        BigDecimal getIncome() { return income; }
     }
 
     /** One computed AGE_BAND result row, rendered by illustration25.jsp via c:forEach. */
@@ -559,5 +667,49 @@ public class IllustrationServlet extends HttpServlet {
         public BigDecimal getFloorPremium() { return floorPremium; }
         public BigDecimal getNetPerEmployee() { return netPerEmployee; }
         public BigDecimal getBandNet() { return bandNet; }
+    }
+
+    /**
+     * One computed affordability result row (build-plan item 9), rendered by
+     * illustration25.jsp via c:forEach. {@code available} is false when
+     * {@code onex_lcsp_premium} is null for this row's age — every other field is then
+     * null except {@code unavailableReason}, which explains why on screen.
+     */
+    public static final class AffordabilityResultRow {
+        private final int age;
+        private final int count;
+        private final boolean available;
+        private final BigDecimal onexLcspPremium;
+        private final BigDecimal flipContribution;
+        private final Boolean affordable;
+        private final String unavailableReason;
+
+        private AffordabilityResultRow(int age, int count, boolean available, BigDecimal onexLcspPremium,
+                                        BigDecimal flipContribution, Boolean affordable, String unavailableReason) {
+            this.age = age;
+            this.count = count;
+            this.available = available;
+            this.onexLcspPremium = onexLcspPremium;
+            this.flipContribution = flipContribution;
+            this.affordable = affordable;
+            this.unavailableReason = unavailableReason;
+        }
+
+        static AffordabilityResultRow available(int age, int count, BigDecimal onexLcspPremium,
+                                                 BigDecimal flipContribution, boolean affordable) {
+            return new AffordabilityResultRow(age, count, true, onexLcspPremium, flipContribution, affordable, null);
+        }
+
+        static AffordabilityResultRow unavailable(int age, int count, String reason) {
+            return new AffordabilityResultRow(age, count, false, null, null, null, reason);
+        }
+
+        public int getAge() { return age; }
+        public int getCount() { return count; }
+        public boolean isAvailable() { return available; }
+        public BigDecimal getOnexLcspPremium() { return onexLcspPremium; }
+        public BigDecimal getFlipContribution() { return flipContribution; }
+        public Boolean getAffordable() { return affordable; }
+        public String getUnavailableReason() { return unavailableReason; }
     }
 }

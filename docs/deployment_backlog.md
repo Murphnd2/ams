@@ -1349,3 +1349,43 @@ ON DUPLICATE KEY UPDATE value = VALUES(value);
 **This was only checked on production.** Master, Demo, and BPO run the same Tomcat setup and should be checked before any fix is applied — this item covers all four installations, not production alone.
 
 **Applies to:** Production ⬜, Demo PSP ⬜, BPO ⬜, Master image ⬜ — unconfirmed on the latter three; production is the only one inspected so far.
+
+---
+
+### D-86: Seed `ICHRA_AFFORDABILITY_PCT_{year}` constant
+
+**Priority:** HIGH — without this, the item-9 affordability feature produces no output at all for that plan year (fails closed by design; this is not a bug to route around)
+**Status:** Not started
+
+Insert a `constant` row named `ICHRA_AFFORDABILITY_PCT_{year}` (e.g. `ICHRA_AFFORDABILITY_PCT_2026`) holding the IRS-indexed applicable percentage for ICHRA/employer-coverage affordability for that plan year, as a decimal:
+
+```sql
+INSERT INTO constant (name, value) VALUES ('ICHRA_AFFORDABILITY_PCT_{year}', '<verify-against-IRS-revenue-procedure-before-entry>')
+ON DUPLICATE KEY UPDATE value = VALUES(value);
+```
+
+⚠️ **No value is suggested here on purpose.** The applicable percentage is indexed annually by IRS revenue procedure and must be looked up and verified against the current revenue procedure for the target plan year before this row is entered — never carried forward from a prior year, never guessed. Entering a wrong or stale value here does not fail loudly; it silently changes every affordability threshold the feature computes. Verify, then enter, then spot-check one worked example against a known IRS reference figure before relying on the feature.
+
+**Why this exists.** `IllustrationServlet`'s affordability computation (build item 9) reads this constant per plan year and fails closed — absent, empty, or unparseable means no affordability output is rendered at all for that plan year, not a default and not a prior year's value. The AGE_BAND illustration's net-cost table works with or without this constant; only the affordability section depends on it.
+
+**Applies to:** Production ⬜, Demo PSP ⬜, BPO ⬜, Master image ⬜ — same environments as D-83/D-84, per plan year in use.
+
+---
+
+### D-87: Seed `FPL_ANNUAL_{year}` constant
+
+**Priority:** MEDIUM — gates only the FPL safe-harbor basis; entered-income affordability analysis still works without it
+**Status:** Not started
+
+Insert a `constant` row named `FPL_ANNUAL_{year}` (e.g. `FPL_ANNUAL_2026`) holding the federal poverty line, annual, mainland 48 states, for a household of one, for that plan year:
+
+```sql
+INSERT INTO constant (name, value) VALUES ('FPL_ANNUAL_{year}', '<verify-against-HHS-poverty-guidelines-before-entry>')
+ON DUPLICATE KEY UPDATE value = VALUES(value);
+```
+
+⚠️ **No value is suggested here on purpose.** The federal poverty line is published annually by HHS and must be looked up and verified against the current poverty guidelines for the target plan year before this row is entered — never carried forward from a prior year, never guessed.
+
+**Why this exists.** The affordability feature's FPL safe-harbor basis (build item 9) needs no per-employee income data — it uses this single figure for the whole group instead. If this constant is absent, empty, or unparseable, the FPL safe-harbor basis is simply unavailable and the page says so; the entered-income basis is unaffected and keeps working.
+
+**Applies to:** Production ⬜, Demo PSP ⬜, BPO ⬜, Master image ⬜ — same environments as D-86, per plan year in use.

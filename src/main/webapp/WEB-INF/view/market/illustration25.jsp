@@ -134,6 +134,11 @@
                                                     <input type="number" class="form-control form-control-sm" id="count${i}" name="count${i}"
                                                            min="1" placeholder="1" value="${submittedCounts[i-1]}" style="width:65px;">
                                                 </div>
+                                                <div>
+                                                    <label class="form-label mb-1" style="font-size:0.7rem;" for="income${i}">Income</label>
+                                                    <input type="number" step="1" class="form-control form-control-sm" id="income${i}" name="income${i}"
+                                                           min="1" placeholder="Annual" value="${submittedIncomes[i-1]}" style="width:100px;">
+                                                </div>
                                             </div>
                                         </c:forEach>
                                     </div>
@@ -142,6 +147,14 @@
                                     <label class="form-label mb-1" for="contribution">Employer Monthly Contribution</label>
                                     <input type="number" step="0.01" class="form-control form-control-sm" id="contribution" name="contribution"
                                            min="0" value="${submittedContribution}" style="width:160px;">
+                                </div>
+                                <div class="col-auto">
+                                    <label class="form-label mb-1" for="affordabilityBasis">Affordability Basis</label>
+                                    <select class="form-select form-select-sm" id="affordabilityBasis" name="affordabilityBasis" style="width:180px;">
+                                        <option value="" ${empty affordabilityBasis ? 'selected' : ''}>None</option>
+                                        <option value="FPL" ${affordabilityBasis == 'FPL' ? 'selected' : ''}>FPL Safe Harbor</option>
+                                        <option value="INCOME" ${affordabilityBasis == 'INCOME' ? 'selected' : ''}>Entered Income</option>
+                                    </select>
                                 </div>
                             </c:when>
                             <c:otherwise>
@@ -246,6 +259,66 @@
                                 </div>
                                 <div class="footnote">Contribution &times; total eligible employees. Shown separately from net cost above.</div>
                             </div>
+
+                            <c:if test="${not empty affordabilityBasis}">
+                                <div class="status-card mt-3">
+                                    <strong><i class="bi bi-shield-check me-1"></i>Affordability Threshold</strong>
+                                    <span class="text-muted">
+                                        &mdash; <c:choose><c:when test="${affordabilityBasis == 'FPL'}">FPL safe harbor</c:when><c:otherwise>entered income</c:otherwise></c:choose> basis
+                                    </span>
+
+                                    <c:choose>
+                                        <c:when test="${not empty affordabilityUnavailableReason}">
+                                            <div class="alert alert-warning py-2 mt-2" style="font-size:0.85rem;">
+                                                <i class="bi bi-exclamation-triangle me-1"></i><c:out value="${affordabilityUnavailableReason}"/>
+                                            </div>
+                                        </c:when>
+                                        <c:otherwise>
+                                            <p class="text-muted mt-2 mb-2" style="font-size:0.78rem;">
+                                                This is an analysis for the employer, not a determination, and not advice to any employee.
+                                                <c:if test="${affordabilityBasis == 'INCOME'}"> Entered-income results rest on an assumed income the employer cannot verify.</c:if>
+                                                <c:if test="${affordabilityBasis == 'FPL'}"> FPL safe-harbor results depend on the employer electing that safe harbor.</c:if>
+                                                Threshold figures are derived from cached rates and can differ from a live quote by a cent or two &mdash; treat as an estimate, not an exact figure.
+                                            </p>
+
+                                            <table class="results-table">
+                                                <thead>
+                                                <tr>
+                                                    <th>Age</th>
+                                                    <th>Count</th>
+                                                    <th>On-Exchange LCSP</th>
+                                                    <th>Flip Contribution</th>
+                                                    <th>At Entered Contribution</th>
+                                                </tr>
+                                                </thead>
+                                                <tbody>
+                                                <c:forEach var="row" items="${affordabilityRows}">
+                                                    <tr>
+                                                        <td>${row.age}</td>
+                                                        <td>${row.count}</td>
+                                                        <c:choose>
+                                                            <c:when test="${row.available}">
+                                                                <td><fmt:formatNumber value="${row.onexLcspPremium}" type="currency"/></td>
+                                                                <td><fmt:formatNumber value="${row.flipContribution}" type="currency"/></td>
+                                                                <td>
+                                                                    <c:choose>
+                                                                        <c:when test="${row.affordable}">Affordable &mdash; employee loses PTC eligibility</c:when>
+                                                                        <c:otherwise>Unaffordable &mdash; employee keeps PTC eligibility</c:otherwise>
+                                                                    </c:choose>
+                                                                </td>
+                                                            </c:when>
+                                                            <c:otherwise>
+                                                                <td colspan="3" class="text-muted"><c:out value="${row.unavailableReason}"/></td>
+                                                            </c:otherwise>
+                                                        </c:choose>
+                                                    </tr>
+                                                </c:forEach>
+                                                </tbody>
+                                            </table>
+                                        </c:otherwise>
+                                    </c:choose>
+                                </div>
+                            </c:if>
 
                             <div class="meta-line">
                                 <c:out value="${selectedCounty.countyName}"/>, <c:out value="${selectedCounty.state}"/> &middot;
