@@ -108,12 +108,26 @@
                 <div class="hub-desc">Employer cost and per-employee net position against an existing group plan.</div>
             </a>
 
-            <div class="hub-card" onclick="toggleChatbox()" style="cursor:pointer;">
-                <div class="hub-icon"><i class="bi bi-signpost-split"></i></div>
-                <div class="hub-title">Design Advisor</div>
-                <div class="hub-desc">Answers ICHRA and QSEHRA design questions from the written rules, with citations — eligibility classes, notice timing, QSEHRA plan-interaction limits, substantiation.</div>
-                <div class="hub-desc" style="margin-top:0.4rem;">Education only. It does not select plans, set contributions, or give legal or tax advice — those stay with the licensed agent.</div>
-            </div>
+            <c:set var="designAdvisorAvailable" value="${applicationScope.global.chatbotEnabled && (sessionScope.isPspAdmin || (sessionScope.isPspUser && applicationScope.global.chatbotAllUsers) || sessionScope.isBpoAdmin || (sessionScope.isBpoUser && applicationScope.global.chatbotAllBpoUsers))}"/>
+            <c:choose>
+                <c:when test="${designAdvisorAvailable}">
+                    <div class="hub-card" onclick="toggleChatbox()" style="cursor:pointer;">
+                        <div class="hub-icon"><i class="bi bi-signpost-split"></i></div>
+                        <div class="hub-title">Design Advisor</div>
+                        <div class="hub-desc">Answers ICHRA and QSEHRA design questions from the written rules, with citations — eligibility classes, notice timing, QSEHRA plan-interaction limits, substantiation.</div>
+                        <div class="hub-desc" style="margin-top:0.4rem;">Education only. It does not select plans, set contributions, or give legal or tax advice — those stay with the licensed agent.</div>
+                    </div>
+                </c:when>
+                <c:otherwise>
+                    <div class="hub-card disabled">
+                        <span class="hub-badge coming">Coming</span>
+                        <div class="hub-icon"><i class="bi bi-signpost-split"></i></div>
+                        <div class="hub-title">Design Advisor</div>
+                        <div class="hub-desc">Answers ICHRA and QSEHRA design questions from the written rules, with citations — eligibility classes, notice timing, QSEHRA plan-interaction limits, substantiation.</div>
+                        <div class="hub-desc" style="margin-top:0.4rem;">Education only. It does not select plans, set contributions, or give legal or tax advice — those stay with the licensed agent.</div>
+                    </div>
+                </c:otherwise>
+            </c:choose>
 
         </div>
     </div>
