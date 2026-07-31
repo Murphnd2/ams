@@ -112,7 +112,14 @@
                 <div class="hub-desc">Employer cost and per-employee net position against an existing group plan.</div>
             </a>
 
-            <c:set var="designAdvisorAvailable" value="${applicationScope.global.chatbotEnabled && (sessionScope.isPspAdmin || (sessionScope.isPspUser && applicationScope.global.chatbotAllUsers) || sessionScope.isBpoAdmin || (sessionScope.isBpoUser && applicationScope.global.chatbotAllBpoUsers))}"/>
+            <%-- Must match navbar25.jsp's chatbot include exactly, or the card is live with no
+                 widget behind it (or inert with one). That gate is
+                   chatbotEnabled && (<PSP/BPO role set> || ichraAvailable)
+                 and on THIS page the ichraAvailable disjunct is constant true: IchraHome.doGet
+                 refuses to forward here at all unless IchraAccessResolver.isAvailable passes.
+                 So the whole condition reduces to chatbotEnabled. ${ichraAvailable} itself is
+                 page-scoped to navbar25.jsp and is deliberately not read across that boundary. --%>
+            <c:set var="designAdvisorAvailable" value="${applicationScope.global.chatbotEnabled}"/>
             <c:choose>
                 <c:when test="${designAdvisorAvailable}">
                     <div class="hub-card" onclick="toggleChatbox()" style="cursor:pointer;">
