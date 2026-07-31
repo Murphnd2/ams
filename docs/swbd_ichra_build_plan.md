@@ -361,7 +361,7 @@ HealthSherpa constants configured. **Not a numbered sequence item.**
 
 ---
 
-### 10 — ~~ICHRA task sequence and setup checklist~~ ✅ Content done 2026-07-31, `TBD` (uncommitted — hash goes in the close-out)
+### 10 — ~~ICHRA task sequence and setup checklist~~ ✅ Content done 2026-07-31, `4775252`
 
 | | |
 |---|---|
