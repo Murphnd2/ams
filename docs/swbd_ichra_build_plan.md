@@ -407,7 +407,7 @@ cases where the analysis matters.
 
 ---
 
-### 12 — ~~A6: design advisor~~ ✅ Done 2026-07-31, `TBD` (uncommitted — hash goes in the close-out)
+### 12 — ~~A6: design advisor~~ ✅ Done 2026-07-31, `e25ee4e`
 
 | | |
 |---|---|
