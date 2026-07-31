@@ -7,6 +7,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -109,6 +110,8 @@ public abstract class RateCacheDAO {
 
     /** Lightweight read-only summary row for the admin page — not a JPA entity. */
     public static class CountySummary {
+        private static final DateTimeFormatter DISPLAY_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+
         private final String countyFips;
         private final int rowCount;
         private final LocalDateTime oldestFetchedAt;
@@ -129,5 +132,15 @@ public abstract class RateCacheDAO {
         public LocalDateTime getOldestFetchedAt() { return oldestFetchedAt; }
         public LocalDateTime getNewestFetchedAt() { return newestFetchedAt; }
         public String getSourceEnv() { return sourceEnv; }
+
+        /** Display string for JSP rendering — never format a java.time value in a JSP taglib. */
+        public String getOldestFetchedAtDisplay() {
+            return oldestFetchedAt == null ? "—" : oldestFetchedAt.format(DISPLAY_FORMAT);
+        }
+
+        /** Display string for JSP rendering — never format a java.time value in a JSP taglib. */
+        public String getNewestFetchedAtDisplay() {
+            return newestFetchedAt == null ? "—" : newestFetchedAt.format(DISPLAY_FORMAT);
+        }
     }
 }

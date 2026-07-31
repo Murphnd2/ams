@@ -143,7 +143,7 @@
                 <dd>
                     <c:choose>
                         <c:when test="${not empty lastRunAt}">
-                            <fmt:formatDate value="${lastRunAt}" pattern="yyyy-MM-dd HH:mm"/> —
+                            <c:out value="${lastRunAtDisplay}"/> —
                             <c:out value="${lastRunSummary}"/>
                         </c:when>
                         <c:otherwise><span class="text-muted">Never run this instance-lifetime.</span></c:otherwise>
@@ -183,16 +183,8 @@
                                         <tr>
                                             <td><c:out value="${cs.countyFips}"/></td>
                                             <td>${cs.rowCount}</td>
-                                            <td>
-                                                <c:if test="${not empty cs.oldestFetchedAt}">
-                                                    <fmt:formatDate value="${cs.oldestFetchedAt}" pattern="yyyy-MM-dd HH:mm"/>
-                                                </c:if>
-                                            </td>
-                                            <td>
-                                                <c:if test="${not empty cs.newestFetchedAt}">
-                                                    <fmt:formatDate value="${cs.newestFetchedAt}" pattern="yyyy-MM-dd HH:mm"/>
-                                                </c:if>
-                                            </td>
+                                            <td><c:out value="${cs.oldestFetchedAtDisplay}"/></td>
+                                            <td><c:out value="${cs.newestFetchedAtDisplay}"/></td>
                                             <td><c:out value="${cs.sourceEnv}"/></td>
                                         </tr>
                                     </c:forEach>

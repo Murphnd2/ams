@@ -145,6 +145,14 @@
                         </c:when>
                         <c:otherwise>
 
+                            <c:if test="${not empty sourceEnv and sourceEnv != 'PRODUCTION'}">
+                                <div class="disclaimer" style="background:#f8d7da; border-color:#f5c2c7; color:#842029;">
+                                    <i class="bi bi-exclamation-triangle-fill me-1"></i>
+                                    <strong>Test-environment rates.</strong> These figures came from the
+                                    <c:out value="${sourceEnv}"/> environment, not production market data. Do not present this to a client.
+                                </div>
+                            </c:if>
+
                             <div class="disclaimer">
                                 <i class="bi bi-info-circle me-1"></i>
                                 This is an illustration based on cached market rates, not a quote and not a compliance determination.
@@ -254,13 +262,17 @@
                             <div class="meta-line">
                                 <c:out value="${selectedCounty.countyName}"/>, <c:out value="${selectedCounty.state}"/> &middot;
                                 Plan Year ${selectedPlanYear} &middot;
-                                <c:if test="${not empty carrierCount}">${carrierCount} carriers &middot; </c:if>
-                                <c:if test="${not empty planCount}">${planCount} plans &middot; </c:if>
+                                <c:if test="${not empty carrierCount}">${carrierCount} carriers (age ${countRowAge}) &middot; </c:if>
+                                <c:if test="${not empty planCount}">${planCount} plans (age ${countRowAge}) &middot; </c:if>
                                 <c:choose>
-                                    <c:when test="${not empty fetchedAt}">
-                                        Rates as of <fmt:formatDate value="${fetchedAt}" pattern="yyyy-MM-dd HH:mm"/>
+                                    <c:when test="${not empty fetchedAtDisplay}">
+                                        Rates as of <c:out value="${fetchedAtDisplay}"/>
                                     </c:when>
                                     <c:otherwise>Cache freshness unavailable</c:otherwise>
+                                </c:choose>
+                                <c:choose>
+                                    <c:when test="${sourceEnv == 'PRODUCTION'}"> &middot; Source: production</c:when>
+                                    <c:when test="${empty sourceEnv}"> &middot; Source: not recorded</c:when>
                                 </c:choose>
                             </div>
 

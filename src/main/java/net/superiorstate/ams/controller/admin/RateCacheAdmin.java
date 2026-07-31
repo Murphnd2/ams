@@ -13,6 +13,8 @@ import net.superiorstate.ams.data.dao.RateCacheDAO;
 import net.superiorstate.ams.data.service.RateCacheWarmService;
 
 import java.io.IOException;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -24,6 +26,13 @@ import java.util.Map;
  */
 @WebServlet(name = "RateCacheAdmin", value = "/RateCacheAdmin")
 public class RateCacheAdmin extends HttpServlet {
+
+    private static final DateTimeFormatter DISPLAY_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+
+    /** Display string for JSP rendering — never format a java.time value in a JSP taglib. */
+    private static String formatDisplay(LocalDateTime value) {
+        return value == null ? "—" : value.format(DISPLAY_FORMAT);
+    }
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
@@ -58,7 +67,9 @@ public class RateCacheAdmin extends HttpServlet {
             request.setAttribute("configuredPlanYears", planYears);
             request.setAttribute("runInProgress", warmService != null && warmService.isRunInProgress());
             request.setAttribute("lastRunSummary", warmService != null ? warmService.getLastRunSummary() : null);
-            request.setAttribute("lastRunAt", warmService != null ? warmService.getLastRunAt() : null);
+            LocalDateTime lastRunAt = warmService != null ? warmService.getLastRunAt() : null;
+            request.setAttribute("lastRunAt", lastRunAt);
+            request.setAttribute("lastRunAtDisplay", formatDisplay(lastRunAt));
             request.setAttribute("countySummariesByYear", countySummariesByYear);
             request.setAttribute("pageTitle", "Rate Cache");
             request.setAttribute("pageIcon", "bi-graph-up");

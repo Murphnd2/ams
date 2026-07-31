@@ -25,6 +25,7 @@ import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -49,6 +50,7 @@ public class IllustrationServlet extends HttpServlet {
     private static final int[] REPRESENTATIVE_AGES = {21, 40, 64};
     private static final int MAX_HEADCOUNT = 10000;
     private static final int RESULT_SUMMARY_MAX_LENGTH = 255;
+    private static final DateTimeFormatter DISPLAY_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
@@ -138,9 +140,14 @@ public class IllustrationServlet extends HttpServlet {
                 request.setAttribute("groupMonthlyLow", groupMonthlyLow);
                 request.setAttribute("groupMonthlyHigh", groupMonthlyHigh);
 
-                RatingAreaRateCache anyRow = nonTobaccoRows.get(0);
-                request.setAttribute("carrierCount", anyRow.getCarrierCount());
-                request.setAttribute("planCount", anyRow.getPlanCount());
+                // Count row is deterministic (age 40, the reference age used elsewhere in this
+                // servlet) because carrierCount/planCount are age-specific — catastrophic plans
+                // are under-30 only, so age 21 can report a different plan count than age 40.
+                RatingAreaRateCache countRow = age40Row != null ? age40Row : nonTobaccoRows.get(0);
+                int countRowAge = countRow.getAge();
+                request.setAttribute("carrierCount", countRow.getCarrierCount());
+                request.setAttribute("planCount", countRow.getPlanCount());
+                request.setAttribute("countRowAge", countRowAge);
 
                 LocalDateTime newestFetchedAt = nonTobaccoRows.stream()
                         .map(RatingAreaRateCache::getFetchedAt)
@@ -148,6 +155,19 @@ public class IllustrationServlet extends HttpServlet {
                         .max(LocalDateTime::compareTo)
                         .orElse(null);
                 request.setAttribute("fetchedAt", newestFetchedAt);
+                request.setAttribute("fetchedAtDisplay",
+                        newestFetchedAt != null ? newestFetchedAt.format(DISPLAY_FORMAT) : null);
+
+                // Provenance of the displayed numbers is whatever was stamped when the rows were
+                // cached — read from the loaded rows themselves, not RateCacheWarmService's
+                // current config, which can change after these rows were fetched.
+                List<String> distinctSourceEnvs = nonTobaccoRows.stream()
+                        .map(RatingAreaRateCache::getSourceEnv)
+                        .filter(Objects::nonNull)
+                        .distinct()
+                        .collect(Collectors.toList());
+                String sourceEnv = distinctSourceEnvs.isEmpty() ? null : distinctSourceEnvs.get(0);
+                request.setAttribute("sourceEnv", sourceEnv);
 
                 resultSummary = buildResultSummary(headcount, selectedCounty, planYear, groupMonthlyLow, groupMonthlyHigh);
             } else {
