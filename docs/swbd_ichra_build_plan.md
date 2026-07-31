@@ -98,22 +98,30 @@ capability it does not have.
 | **Anything employee-facing** | The whole build-now scope sits on the agent side of `legal_assumptions.md`'s scope line. Crossing it is a decision, not an increment (LA-09) |
 | **The card, PremiumPath mechanics** | A DataPath Summit configuration in flight. Out of scope by decision — `ichra_strategy.md` §8 |
 
-### ⚠️ The one hard external dependency
+### ⭐ The demo has no external gate — settled 2026-07-31 (S6)
 
 **Today every cached rate row is stamped `source_env = STAGING`, and the illustration page says so in
 a red banner reading *"Do not present this to a client"*** (verified 2026-07-31 in
 `illustration25.jsp:148-152`).
 
-That banner is correct and must not be softened. It means **production allow-listing is a gate on the
-demo itself**, not on some later phase. Two acceptable outcomes:
+**That banner is correct, it stays, and it does not block this demo. Forrest is a partner, not a
+client.** He is being shown the machine, not sold a number, and the banner is doing exactly its job
+when he reads it — a system that refuses to launder staging data as production data is evidence of the
+discipline SSA is selling.
 
-1. **Allow-listing lands**, the cache re-warms against production, the banner goes away. Preferred.
-2. **It does not**, and Kevin opens by naming it: *"these are real rates from the staging endpoint —
-   same numbers, same source of truth, and here is the note that says so."* Staging returns **real**
-   rate data, not synthetic (verified twice; `$582.78` to the penny against the zizzl baseline). Forrest
-   is a partner, not a client, and the honesty is itself a credibility asset.
+**What allow-listing actually gates is the client-facing demo** — the moment one of Forrest's agents
+puts a number in front of a real prospect. That is downstream of every item in §3.
 
-**What is not acceptable is removing the banner to make the demo look better.**
+Staging returns **real** rate data, not synthetic: verified twice, `$582.78` to the penny against the
+zizzl CSA baseline. Same source of truth, same market.
+
+⚠️ **Two things follow, and both matter for sequencing.**
+
+1. ⭐ **Items 1–10 have no external dependency of any kind.** No credential beyond the staging key
+   already in hand, no BAA, no counsel, no vendor reply. **Nothing on the path to §1 is waiting on
+   anybody.** The only externally-gated item in the sequence is 11, and its gate is one email.
+2. **What is not acceptable is removing the banner to make the demo look better**, or re-warming
+   against production without allow-listing to make it go away.
 
 **Detail:** `docs/ichra_strategy.md` §3 (the ranked capability list this target selects from) ·
 `docs/business/swbd_premiumpath.md` (the relationship and the Sandoval case).
@@ -223,7 +231,7 @@ they do not exist** — which is what makes item 4 a configuration step rather t
 | **Gate** | Item 2's resolver |
 | **Phase A?** | **Required, lightly.** `navbar25.jsp` is a heavily-shared file. Append; never weave |
 | **Schema** | None |
-| **Depends on** | Item 2. ⚠️ **And structural decision S4** (§4) |
+| **Depends on** | Item 2. ✅ **S4 settled 2026-07-31 — top-level nav, `SuperDashboard` pattern** |
 | **Size** | **~0.5 day** |
 | **Reversal** | Delete the nav block; the hub page becomes unreachable and inert |
 
@@ -281,15 +289,28 @@ county. **The best value-to-effort ratio remaining on the list** now that the fi
 
 | | |
 |---|---|
-| **What** | A proposal section rendering the illustration snapshot, scoped to the ICHRA LOS so it appears on ICHRA proposals and nowhere else |
+| **What** | A proposal section rendering **one ICHRA design, stored as parameters and recomputed at render** (S2), scoped to the ICHRA LOS so it appears on ICHRA proposals and nowhere else |
 | **Agent-visible outcome** | ⭐ **The illustration stops being a calculator and becomes part of a sellable document.** Demo step 6→7 |
 | **Attaches at** | **`proposalsectionlos`** — ✅ **verified to exist**, created by **V037**, mapped on `ProposalSection.losList`. Plus `proposal_section.scope` |
-| **Gate** | LOS-scoped, so item 4's rows are what confine it |
+| **Gate** | ⚠️ **LOS-scoped from the first commit. `scope='ALL'` is never acceptable** (S5) |
 | **Phase A?** | **Required.** `ProposalSection.sectionType` is a free `VARCHAR(20)` with JSP `<c:choose>` dispatch and **no default branch — an unmatched type renders silently.** `ViewProposal` is live customer-facing code |
-| **Schema** | ⭐ **None for the join table.** A section row, and possibly a `plus_quote`-style snapshot table (**V0NN**) so an illustration is reproducible months after rates move |
-| **Depends on** | Items 4, 5 |
+| **Schema** | ⭐ **None for the join table, and none for a snapshot.** S2 settles this: **no `plus_quote`, no scenario table.** A design is county FIPS, plan year, age bands and contribution — parameters on the proposal, read at render |
+| **Depends on** | ⚠️ **Item 4 is a hard gate, not a preference** (S5). Plus item 5 |
 | **Size** | **1–2 days** |
 | **Reversal** | Delete the section row. The JSP branch goes unmatched and renders nothing |
+
+⚠️ **Recompute-at-render has one consequence that must be designed in, not discovered.** A proposal
+sent in July and opened in September renders **September's rates**. The numbers move under the reader.
+
+**The mitigation already exists and must be carried onto the section:** the illustration page renders
+`fetchedAt` as *"Rates as of 2026-07-31 14:04"* (`IllustrationServlet:158`). **A recomputed render is
+honest precisely because it is self-dating** — it says what it is, on the page, every time. Carry the
+`fetchedAt` stamp and the LA-05 completeness disclosure onto the proposal section, and the moving
+numbers are a disclosed property of an indicative market illustration rather than a defect.
+
+**What is *not* indicative and does *not* move is the price.** The PEPM comes from the `RateTable` path
+via item 4 and is fixed by the proposal in the normal way. **Market illustration recomputes; the
+quoted fee does not.** Keeping those two visually distinct on the section is a design requirement.
 
 ⭐ **This is the single biggest correction to the received plan.** `plus_tier_build_plan.md` B1
 schedules **V081 — `proposalsectionlos` + LOS scoping** as net-new work and `plus_tier.md` states
@@ -352,7 +373,7 @@ that said it was fine came from SSA.
 | **Attaches at** | The illustration hub (item 3). Consumes item 5's age bands |
 | **Gate** | Inherits. ⚖️ **Employer- and agent-facing only** — employee-facing affordability is on the defer side of the scope line (LA-12) |
 | **Phase A?** | **Not required** — new surfaces only |
-| **Schema** | Possibly none for a stateless computation. **V0NN** if a design census persists (see S2) |
+| **Schema** | ⭐ **None.** S2 applies here too — the affordability output is a function of the same design parameters and the cache, computed on demand. No design-census table on this path |
 | **Depends on** | Items 5, 8. **Item 8 is a hard correctness gate, not a preference** |
 | **Size** | **~2 days** |
 | **Reversal** | Display edit to withdraw. ⚠️ Not reversible for determinations already acted on |
@@ -448,8 +469,13 @@ an LA number, because the boundary is a settled rule rather than an assumption.
 - **Item 12 (A6)** depends on nothing at all. Drop it in whenever a half-day appears.
 - **Items 1–3** are strictly sequential and total about a day and a half.
 - **Item 4's probe** is read-only and can run at any workstation, independent of everything.
-- **Items 5 and 6/7 can be reordered** if the LOS rows (item 4) land slowly — item 5 does not need them.
+- ⚠️ **Item 5 may overtake item 4; items 6 and 7 may not.** The illustration mode needs no reference
+  rows. The proposal section needs an ICHRA LOS to scope to, and **S5 forecloses the obvious shortcut**
+  — a `scope='ALL'` section renders on every proposal for the PSP, which is a direct rule-2 breach, and
+  "temporary" surfaces of that kind survive. **If item 4 stalls on Branch B, item 6 stalls with it.**
 - **Item 11** is externally gated on an email that has not been sent. **Send it before item 9 starts.**
+- ⭐ **Nothing in items 1–10 waits on an external party** (S6). The only sequencing risk on the demo
+  path is item 4's branch outcome.
 
 ---
 
@@ -457,6 +483,13 @@ an LA number, because the boundary is a settled rule rather than an assumption.
 
 **Decisions the plan needs settled and that should not be made by assumption.** Each names what it is,
 what it blocks, what would settle it, and whether it can be deferred.
+
+**Status as of 2026-07-31: five of six resolved. Only S3 remains open, and it blocks only item 13.**
+✅ S1 (verified from code) · ✅ S2 · ⬜ **S3 — open** · ✅ S4 · ✅ S5 · ✅ S6.
+
+**Resolved entries stay, with the reasoning intact** (§7 rule 4). A reader needs to know a decision was
+checked rather than assumed — and where a decision overrode this document's own recommendation, as S2
+did, the superseded recommendation is part of the record.
 
 ### S1 — Proposal-to-application cardinality — ✅ **RESOLVED, verified 2026-07-31**
 
@@ -487,23 +520,47 @@ proposal cannot exist without a Prospect and a priced `Rate` row** — which mea
 
 ---
 
-### S2 — One proposal with several contribution scenarios, or several proposals?
+### S2 — Scenarios: one proposal or several? — ✅ **RESOLVED 2026-07-31**
 
-**What it is.** Affordability analysis naturally generates alternatives — $350 vs $450 vs a two-class
-structure. Where those live decides whether the existing pipeline carries ICHRA unchanged.
+**Decision: one design per proposal, stored as parameters, recomputed at render. Not a scenario
+system.**
 
-**S1 largely decides it.** Several proposals means several applications means several setups, for one
-employer making one decision. That is wrong on its face and it pollutes the sales pipeline with
-opportunities that were never real.
+**What it was.** Affordability analysis naturally generates alternatives — $350 vs $450 vs a two-class
+structure — and where those live decides whether the existing pipeline carries ICHRA unchanged.
 
-**Recommendation: scenarios live *below* the proposal.** A design object holds N scenarios; exactly one
-is marked selected; the proposal section renders the selected one and the snapshot preserves the rest
-for reproducibility. **The proposal stays 1:1 with the decision, and the pipeline is unchanged** —
-which is rule 1.
+**Several proposals was never viable.** S1 forecloses it: several proposals means several applications
+means several setups, for one employer making one decision, polluting the pipeline with opportunities
+that were never real.
 
-**Blocks:** items 6 and 9 — specifically what item 6's snapshot table stores.
-**Settled by:** a decision. The evidence is in.
-**Deferrable:** ⚠️ **No.** Item 6 writes a schema against it.
+**The decision went further than the recommendation on the table.** This document proposed a scenario
+*set* below the proposal — N scenarios, one marked selected, the rest preserved. **That was rejected in
+favour of something simpler: no scenario objects at all.** A design is a small set of parameters —
+county FIPS, plan year, age bands, contribution amount — held against the proposal and re-evaluated
+against the cache every time the section renders. Alternatives are explored **in the illustration
+tool**, before a proposal exists; the proposal carries the one the agent chose.
+
+**Why this is the better answer.** A scenario set is a stateful object that must be created, selected,
+versioned, garbage-collected and reasoned about — and its only job is to remember arithmetic that is
+cheap to redo. **Parameters plus a live cache is strictly less machinery for the same output**, and it
+keeps the proposal 1:1 with the decision, which is rule 1.
+
+**What this supersedes** — recorded here, not edited into those files:
+
+- ⚠️ **`plus_quote` is not needed for this path.** `plus_tier.md`'s new-tables list describes it as
+  *"Snapshot of quote inputs … Rates move; the illustration must be reproducible months later"*, and
+  `plus_tier_build_plan.md` B1 schedules it as **V082**. **The reproducibility requirement is
+  deliberately not being met** — see the trade below. `plus_quote` may still earn its place later for
+  an audit reason; it does not earn one here.
+- **D14's two render variants** (range vs age-band) become a **parameter-driven** branch rather than a
+  flag on a stored snapshot. The decision's substance survives; its mechanism changes.
+
+**The trade, stated plainly.** ⚠️ **A proposal sent in July and opened in September shows September's
+numbers.** That is a real property, accepted deliberately, and it is survivable only because the
+illustration is **indicative market data** rather than a quote — and because the render is
+**self-dating** via the existing `fetchedAt` stamp. **The quoted fee does not move**; it comes from the
+`RateTable` and is fixed by the proposal in the normal way. See item 6's design requirement.
+
+**Blocked:** items 6 and 9 — both now unblocked and simpler.
 
 ---
 
@@ -527,54 +584,73 @@ depend on.**
 
 ---
 
-### S4 — Where does the ICHRA front door live?
+### S4 — Where does the ICHRA front door live? — ✅ **RESOLVED 2026-07-31**
 
-**What it is.** Rule 2 says PSP-admin-by-default. The existing precedent is `SuperDashboard`
-(`navbar25.jsp:260`) — a top-level `nav-ghost` gated on an installation condition **plus** a role.
+**Decision: top-level nav, on the `SuperDashboard` precedent.**
 
-**The options.** A top-level nav item (visible, reads as a product area, matches the precedent); a
-section inside the existing Admin dropdown (safest, but reads as a tool rather than a product); or
-staying in Sales (rejected — that is item 1's violation).
+**What it was.** Rule 2 says PSP-admin-by-default. The precedent is `SuperDashboard`
+(`navbar25.jsp:260`) — a top-level `nav-ghost` gated on an installation condition **plus** a role. The
+alternatives were a section inside the Admin dropdown (safest, but reads as a tool rather than a
+product) or staying in Sales (rejected — that is item 1's violation).
 
-**Recommendation: top-level, on the `SuperDashboard` pattern**, gated by item 2's resolver. **The
-demo's step 2 is Forrest clicking something that says ICHRA.** A dropdown entry does not carry the
-message that this is a product area, and the whole thesis is that ICHRA is a product rather than a
-calculator.
+**Why.** **The demo's step 2 is Forrest clicking something that says ICHRA.** A dropdown entry does not
+carry the message that this is a product area, and the whole thesis is that ICHRA is a product rather
+than a calculator. Gated by item 2's resolver, so rule 2 holds regardless of nav prominence — **the
+visibility question and the placement question are independent, and conflating them is what put the
+link in the Sales dropdown in the first place.**
 
-**Blocks:** item 3.
-**Settled by:** a decision.
-**Deferrable:** no — item 3 is the third item in the sequence.
-
----
-
-### S5 — How does an ICHRA proposal section get scoped before the LOS rows exist? *(new)*
-
-**What it is.** `proposal_section.scope` defaults to `'ALL'`, so a section with no LOS links renders on
-**every** proposal for that PSP. Item 6's section must be LOS-scoped — which means item 4's rows must
-land first, or the section leaks onto unrelated proposals.
-
-**Recommendation: build item 6 against a scoped section from the start**, and accept item 4 as a hard
-prerequisite rather than shipping a `scope='ALL'` section "temporarily." A temporary `'ALL'` section is
-visible to every agency on every proposal — a direct rule-2 breach, and exactly the kind of thing that
-survives the temporary phase.
-
-**Blocks:** item 6.
-**Settled by:** a decision. **Deferrable:** no.
+**Blocked:** item 3 — now unblocked.
 
 ---
 
-### S6 — Does the demo run on staging data, or wait for allow-listing? *(new)*
+### S5 — Section scoping before the LOS rows exist — ✅ **RESOLVED 2026-07-31**
 
-**What it is.** §1's hard dependency. The banner is honest and must stay; the question is whether the
-demo is scheduled around allow-listing or delivered with the caveat spoken aloud.
+**Decision: ICHRA proposal sections are LOS-scoped from the first commit. `scope='ALL'` is never
+acceptable — which makes item 4 a hard gate on item 6.**
 
-**Recommendation: schedule the demo independently and chase allow-listing hard in parallel.** Staging
-returns real rates, verified twice to the penny. **Waiting on a vendor whose last six messages went
-unanswered is not a plan.**
+**What it was.** `proposal_section.scope` defaults to `'ALL'`, so a section with no LOS links renders
+on **every** proposal for that PSP. The tempting shortcut was to ship the section unscoped while item
+4's reference rows were still being sorted out.
 
-**Blocks:** demo scheduling only — no build item.
-**Settled by:** either HealthSherpa replying, or Kevin deciding. **Deferrable:** until a date is set
-with Forrest.
+**Why the shortcut is closed.** An unscoped ICHRA section is visible to **every agency on every
+proposal** — a direct rule-2 breach on the most client-visible surface AMS has. And "temporary"
+surfaces of that shape survive: nothing about a working page generates pressure to go back and scope
+it.
+
+⚠️ **The scheduling consequence is real and should not be softened.** Item 6 cannot start ahead of item
+4, so **a Branch B outcome on the Gate 0 probe delays the proposal attach by the full cost of building
+the catalog** — days, not hours. That is the price of the rule, it is being paid deliberately, and it
+is the strongest argument for running the probe early (item 4's probe is read-only and depends on
+nothing).
+
+**Blocked:** item 6 — gated, not blocked, on item 4.
+
+---
+
+### S6 — Staging data, or wait for allow-listing? — ✅ **RESOLVED 2026-07-31**
+
+**Decision: schedule the demo independently. Forrest is a partner, not a client — allow-listing gates
+the client-facing demo, not his.**
+
+**What it was.** Every cached row is `source_env = STAGING` and the illustration carries a *"Do not
+present this to a client"* banner. The question was whether the Forrest demo waits on production
+allow-listing.
+
+**Why it does not.** **The banner draws a line between partner and client, and Forrest is on the
+partner side of it.** He is being shown the machine. A system that visibly refuses to launder staging
+data as production data is evidence *for* SSA, not against it — and the rates are real either way,
+verified twice to the penny against the zizzl baseline.
+
+**What allow-listing does gate** is the first time one of Forrest's agents puts a number in front of a
+real prospect. That is downstream of every item in §3, and it remains a **HIGH** chase (§6) — but it is
+no longer on the critical path to the demo.
+
+⭐ **The consequence is the most useful thing this decision produces: items 1–10 now have no external
+dependency at all.** Not a credential beyond the staging key already in hand, not a BAA, not counsel,
+not a vendor reply. **The only thing standing between here and §1 is build time** — and the one
+externally-gated item in the sequence, 11, is gated on an email nobody has sent.
+
+**Blocked:** demo scheduling — now unblocked. No build item.
 
 ---
 
@@ -608,7 +684,7 @@ sent at all.**
 
 | Item | Owner | Asked | Reply | Gates |
 |---|---|---|---|---|
-| **Production allow-listing** — production returns 403 | HealthSherpa | 2026-07-30, chased 2026-07-31 | ❌ none | ⚠️ **The demo itself** (§1, S6) |
+| **Production allow-listing** — production returns 403 | HealthSherpa | 2026-07-30, chased 2026-07-31 | ❌ none | **The first client-facing number**, not the Forrest demo (S6). Still HIGH — it is the gate between a working demo and a working product |
 | **Onboarding representative** (O12) — routes credentials *and* the webhook form | HealthSherpa | 2026-07-29, chased 2026-07-31 | ❌ none | Everything on the enrollment rail. **The tightest bottleneck** |
 | **BAA** — Geozoning, Inc. DBA HealthSherpa (O13) | HealthSherpa + counsel | 2026-07-28 flagged, 2026-07-29 sent | ❌ none | Any production PHI flow. **Nothing in §3** |
 | **BCBS TX policy status: when in 2026?** (O16) | HealthSherpa | 2026-07-29 | ❌ none | *"Largely determines a 2026 versus 2027 launch"* |
