@@ -335,6 +335,41 @@
                                 </c:choose>
                             </div>
 
+                            <%-- Build-plan item 7 hand-off. URL contract is provisional — item 6 decides
+                                 whether ProposalBuilder re-derives the illustration from these inputs or
+                                 reads a snapshot row; if a snapshot is needed, this becomes one param
+                                 (a snapshot id) instead of the set below. Carries INPUTS only (county,
+                                 plan year, mode, ages/counts, contribution) — never computed outputs,
+                                 never affordability/income (those are scenario inputs on an assumed
+                                 income and have no business in a proposal URL), never a prospect id (no
+                                 drop-in prospect picker exists on this page — ProposalBuilder prompts for
+                                 the prospect as it always does). --%>
+                            <c:url value="ProposalBuilder" var="proposalHandoffUrl">
+                                <c:param name="mode" value="AGE_BAND"/>
+                                <c:param name="countyFips" value="${submittedCountyFips}"/>
+                                <c:param name="planYear" value="${selectedPlanYear}"/>
+                                <c:param name="contribution" value="${submittedContribution}"/>
+                                <c:forEach begin="1" end="6" var="i">
+                                    <c:if test="${not empty submittedAges[i-1]}">
+                                        <c:param name="age${i}" value="${submittedAges[i-1]}"/>
+                                        <c:param name="count${i}" value="${submittedCounts[i-1]}"/>
+                                    </c:if>
+                                </c:forEach>
+                            </c:url>
+                            <c:choose>
+                                <c:when test="${sourceEnv == 'PRODUCTION'}">
+                                    <a href="${proposalHandoffUrl}" class="ssa-action save">
+                                        <i class="bi bi-file-earmark-plus me-1"></i>Use This in a Proposal
+                                    </a>
+                                </c:when>
+                                <c:otherwise>
+                                    <button type="button" class="ssa-action save" disabled>
+                                        <i class="bi bi-file-earmark-plus me-1"></i>Use This in a Proposal
+                                    </button>
+                                    <div class="quiet-note">Available once production rates are configured.</div>
+                                </c:otherwise>
+                            </c:choose>
+
                         </c:otherwise>
                     </c:choose>
                 </c:if>
@@ -485,6 +520,33 @@
                                     <c:when test="${empty sourceEnv}"> &middot; Source: not recorded</c:when>
                                 </c:choose>
                             </div>
+
+                            <%-- Build-plan item 7 hand-off. URL contract is provisional — item 6 decides
+                                 whether ProposalBuilder re-derives the illustration from these inputs or
+                                 reads a snapshot row; if a snapshot is needed, this becomes one param
+                                 (a snapshot id) instead of the set below. Carries INPUTS only (county,
+                                 plan year, mode, headcount) — never computed outputs, never a prospect id
+                                 (no drop-in prospect picker exists on this page — ProposalBuilder prompts
+                                 for the prospect as it always does). --%>
+                            <c:url value="ProposalBuilder" var="proposalHandoffUrl">
+                                <c:param name="mode" value="RANGE"/>
+                                <c:param name="countyFips" value="${submittedCountyFips}"/>
+                                <c:param name="planYear" value="${selectedPlanYear}"/>
+                                <c:param name="headcount" value="${submittedHeadcount}"/>
+                            </c:url>
+                            <c:choose>
+                                <c:when test="${sourceEnv == 'PRODUCTION'}">
+                                    <a href="${proposalHandoffUrl}" class="ssa-action save">
+                                        <i class="bi bi-file-earmark-plus me-1"></i>Use This in a Proposal
+                                    </a>
+                                </c:when>
+                                <c:otherwise>
+                                    <button type="button" class="ssa-action save" disabled>
+                                        <i class="bi bi-file-earmark-plus me-1"></i>Use This in a Proposal
+                                    </button>
+                                    <div class="quiet-note">Available once production rates are configured.</div>
+                                </c:otherwise>
+                            </c:choose>
 
                         </c:otherwise>
                     </c:choose>
