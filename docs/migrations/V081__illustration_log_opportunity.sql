@@ -21,17 +21,17 @@
 -- V039's fk_qi_activity and V059's fk_ndt_run_activity both get it right and are the
 -- precedent followed here.
 --
--- FOREIGN KEY constraint declared WITH ON DELETE SET NULL -- V075's three existing
--- nullable FK columns (agent_person_id, agency_id, parent_agency_id) are not comparable
--- precedents here: agencies and people are heavyweight records that are not casually
--- deleted, but opportunities are lightweight pipeline records deleted routinely --
--- duplicates, mis-entries, test data. Default RESTRICT would mean an agent who creates
--- an opportunity, runs an illustration against it, and then deletes the opportunity hits
--- a foreign-key error -- an ICHRA feature changing how the existing sales pipeline
--- behaves for users who never asked for ICHRA, which build rule 1 forbids outright.
--- SET NULL is also the semantically correct choice on its own terms: the column is
--- nullable with null as the normal case, so losing attribution when the deal record is
--- gone is the right outcome, and the telemetry row survives.
+-- FOREIGN KEY constraint declared WITH ON DELETE SET NULL -- precautionary, not a fix
+-- for anything currently broken. To be accurate about the present state: no delete path
+-- for an Opportunity, Activity or Assignee row exists anywhere in AMS today (verified by
+-- grep over src/main/java, 2026-07-31 -- every em.remove call site targets some other
+-- entity), so under default RESTRICT nothing would actually fail right now. SET NULL is
+-- chosen anyway because it costs nothing, because it is the semantically correct
+-- behaviour for a nullable attribution column -- losing the attribution when the deal
+-- record is gone is the right outcome, and the telemetry row survives -- and because a
+-- delete path or a manual cleanup could appear later, at which point RESTRICT would make
+-- an ICHRA feature change how the existing sales pipeline behaves for users who never
+-- asked for ICHRA. Cheaper to get right in the first migration than to alter afterwards.
 --
 -- No index is declared. InnoDB creates one implicitly for the foreign key, and V075's
 -- own nullable FK columns (agent_person_id, parent_agency_id) carry no explicit index.
