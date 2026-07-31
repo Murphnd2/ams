@@ -41,6 +41,16 @@ public class HealthSherpaService {
     private static final long[] BACKOFF_MILLIS = {1000L, 4000L};
     private static final long MAX_RETRY_AFTER_SECONDS = 60L;
 
+    /** Page size requested from HealthSherpa. The API defaults to 20 and does not
+     *  disclose a total in the response, so a single unpaginated call silently
+     *  truncates. See MAX_PAGES. */
+    private static final int PER_PAGE = 100;
+
+    /** Safety cap on pagination. 20 pages x 100 = 2000 plans, far beyond any
+     *  real county market. Hitting this means something is wrong, not that a
+     *  market is unusually large — it is treated as a failure, not a stop. */
+    private static final int MAX_PAGES = 20;
+
     private static final Gson gson = new Gson();
     private static final HttpClient httpClient = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(CONNECT_TIMEOUT_SECONDS))
@@ -73,8 +83,53 @@ public class HealthSherpaService {
         }
 
         String url = AppConfig.getHealthSherpaBaseUrl() + "/api/v1/quotes";
-        String json = buildRequestJson(zipCode, fipCode, state, planYear, age, smoker, offExchange);
 
+        List<PlanSummary> allPlans = new ArrayList<>();
+        for (int currentPage = 1; currentPage <= MAX_PAGES; currentPage++) {
+            String json = buildRequestJson(zipCode, fipCode, state, planYear, age, smoker, offExchange, currentPage);
+            SendResult sendResult = sendWithRetry(url, apiKey, json);
+            if (sendResult.errorMessage != null) {
+                log.error("HealthSherpa API failed on page {} for fip {} age {}: {}",
+                        currentPage, fipCode, age, sendResult.errorMessage);
+                return HealthSherpaQuoteResponse.failure(sendResult.errorMessage);
+            }
+
+            HealthSherpaQuoteResponse pageResponse = parseResponse(sendResult.response.body());
+            if (!pageResponse.isSuccess()) {
+                return pageResponse;
+            }
+
+            List<PlanSummary> pagePlans = pageResponse.getPlans();
+            allPlans.addAll(pagePlans);
+
+            if (pagePlans.size() < PER_PAGE) {
+                log.info("HealthSherpa quote complete: fip={} age={} pages={} totalPlans={}",
+                        fipCode, age, currentPage, allPlans.size());
+                return HealthSherpaQuoteResponse.success(allPlans.size(), allPlans);
+            }
+        }
+
+        log.error("HealthSherpa API pagination exceeded MAX_PAGES ({}) for fip {} age {} without a short page — treating as failure",
+                MAX_PAGES, fipCode, age);
+        return HealthSherpaQuoteResponse.failure("HealthSherpa API returned too many pages (possible pagination fault).");
+    }
+
+    /** Result of one HTTP attempt sequence for a single page. Exactly one of the
+     *  two fields is non-null. */
+    private static class SendResult {
+        final HttpResponse<String> response;
+        final String errorMessage;
+
+        SendResult(HttpResponse<String> response, String errorMessage) {
+            this.response = response;
+            this.errorMessage = errorMessage;
+        }
+    }
+
+    /** Sends one request with the existing retry/backoff policy. Returns the 200
+     *  response, or an error message if all attempts were exhausted or the failure
+     *  was non-retryable. */
+    private static SendResult sendWithRetry(String url, String apiKey, String json) {
         for (int attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(url))
@@ -90,46 +145,47 @@ public class HealthSherpaService {
             } catch (IOException e) {
                 if (attempt == MAX_ATTEMPTS) {
                     log.error("Error calling HealthSherpa API on attempt {}/{}: {}", attempt, MAX_ATTEMPTS, e.getMessage());
-                    return HealthSherpaQuoteResponse.failure("Connection to HealthSherpa failed.");
+                    return new SendResult(null, "Connection to HealthSherpa failed.");
                 }
                 long waitMillis = BACKOFF_MILLIS[attempt - 1];
                 log.warn("HealthSherpa API IOException on attempt {}/{} ({}) — retrying in {}ms",
                         attempt, MAX_ATTEMPTS, e.getMessage(), waitMillis);
                 if (!sleep(waitMillis)) {
-                    return HealthSherpaQuoteResponse.failure("HealthSherpa request was interrupted.");
+                    return new SendResult(null, "HealthSherpa request was interrupted.");
                 }
                 continue;
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 log.error("HealthSherpa API call interrupted on attempt {}/{}", attempt, MAX_ATTEMPTS);
-                return HealthSherpaQuoteResponse.failure("HealthSherpa request was interrupted.");
+                return new SendResult(null, "HealthSherpa request was interrupted.");
             }
 
             int status = response.statusCode();
             if (status == 200) {
-                return parseResponse(response.body());
+                return new SendResult(response, null);
             }
 
             boolean retryable = status == 429 || (status >= 500 && status <= 599);
             if (!retryable || attempt == MAX_ATTEMPTS) {
                 log.error("HealthSherpa API returned status {} on attempt {}/{}", status, attempt, MAX_ATTEMPTS);
-                return HealthSherpaQuoteResponse.failure("HealthSherpa API returned status " + status);
+                return new SendResult(null, "HealthSherpa API returned status " + status);
             }
 
             long waitMillis = resolveBackoffMillis(attempt, response);
             log.warn("HealthSherpa API returned status {} on attempt {}/{} — retrying in {}ms",
                     status, attempt, MAX_ATTEMPTS, waitMillis);
             if (!sleep(waitMillis)) {
-                return HealthSherpaQuoteResponse.failure("HealthSherpa request was interrupted.");
+                return new SendResult(null, "HealthSherpa request was interrupted.");
             }
         }
 
         // Unreachable in practice — every branch above returns before the loop exhausts MAX_ATTEMPTS.
-        return HealthSherpaQuoteResponse.failure("HealthSherpa API failed after " + MAX_ATTEMPTS + " attempts.");
+        return new SendResult(null, "HealthSherpa API failed after " + MAX_ATTEMPTS + " attempts.");
     }
 
     private static String buildRequestJson(String zipCode, String fipCode, String state,
-                                            int planYear, int age, boolean smoker, boolean offExchange) {
+                                            int planYear, int age, boolean smoker, boolean offExchange,
+                                            int currentPage) {
         JsonObject applicant = new JsonObject();
         applicant.addProperty("age", age);
         applicant.addProperty("relationship", "primary");
@@ -144,7 +200,9 @@ public class HealthSherpaService {
         body.addProperty("state", state);
         body.addProperty("plan_year", planYear);
         body.addProperty("off_ex", offExchange);
-        body.addProperty("per_page", 100);
+        body.addProperty("per_page", PER_PAGE);
+        body.addProperty("current_page", currentPage);
+        body.addProperty("sort", "premium_asc");
         body.add("applicants", applicants);
 
         return gson.toJson(body);

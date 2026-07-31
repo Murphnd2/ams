@@ -19,6 +19,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -73,6 +74,15 @@ public class RateCacheWarmService {
     private static final int CANARY_AGE = 45;
     private static final int BASE_AGE = 21;
     private static final BigDecimal CANARY_TOLERANCE = new BigDecimal("0.01");
+
+    /** ACA catastrophic plans are restricted to enrollees under 30, so they are
+     *  excluded from the plan population for ages 30 and up. This is a plan-set
+     *  restriction, not a premium adjustment — the statutory age curve governs
+     *  premiums for plans that are available, but says nothing about which plans
+     *  are available. Consequence: market_low_premium legitimately steps up
+     *  between the age-29 and age-30 rows. That discontinuity is correct. Do not
+     *  "fix" it. */
+    private static final int CATASTROPHIC_MAX_AGE = 29;
 
     private static final String METAL_SILVER = "Silver";
     private static final String METAL_BRONZE = "Bronze";
@@ -262,46 +272,52 @@ public class RateCacheWarmService {
             canaryCheck(planYear, county, basePlans);
         }
 
-        BigDecimal marketLow = null, marketHigh = null;
-        BigDecimal lcsp = null, benchmarkSilver = null, lowestBronze = null;
-        List<BigDecimal> silverPremiumsSorted = new ArrayList<>();
-        Set<String> issuers = new LinkedHashSet<>();
-
-        for (HealthSherpaService.PlanSummary plan : basePlans) {
-            BigDecimal premium = basePremiumOf(plan);
-            if (premium == null) continue;
-
-            if (marketLow == null || premium.compareTo(marketLow) < 0) marketLow = premium;
-            if (marketHigh == null || premium.compareTo(marketHigh) > 0) marketHigh = premium;
-
-            String metal = plan.getMetalLevel();
-            if (METAL_SILVER.equals(metal)) {
-                silverPremiumsSorted.add(premium);
-            } else if (METAL_BRONZE.equals(metal) || METAL_EXPANDED_BRONZE.equals(metal)) {
-                if (lowestBronze == null || premium.compareTo(lowestBronze) < 0) lowestBronze = premium;
-            }
-
-            if (plan.getIssuerName() != null) {
-                issuers.add(plan.getIssuerName());
-            }
-        }
-
-        java.util.Collections.sort(silverPremiumsSorted);
-        if (!silverPremiumsSorted.isEmpty()) {
-            lcsp = silverPremiumsSorted.get(0);
-        }
-        if (silverPremiumsSorted.size() >= 2) {
-            benchmarkSilver = silverPremiumsSorted.get(1);
-        }
-
-        int carrierCount = issuers.size();
-        int planCount = basePlans.size();
-
         List<RatingAreaRateCache> rows = new ArrayList<>();
         LocalDateTime fetchedAt = LocalDateTime.now();
         String sourceEnv = currentSourceEnv();
 
         for (int age = AgeCurve.MIN_AGE; age <= AgeCurve.MAX_AGE; age++) {
+            List<HealthSherpaService.PlanSummary> plansForAge = (age <= CATASTROPHIC_MAX_AGE)
+                    ? basePlans
+                    : basePlans.stream()
+                              .filter(p -> !"Catastrophic".equalsIgnoreCase(p.getMetalLevel()))
+                              .collect(Collectors.toList());
+
+            BigDecimal marketLow = null, marketHigh = null;
+            BigDecimal lcsp = null, benchmarkSilver = null, lowestBronze = null;
+            List<BigDecimal> silverPremiumsSorted = new ArrayList<>();
+            Set<String> issuers = new LinkedHashSet<>();
+
+            for (HealthSherpaService.PlanSummary plan : plansForAge) {
+                BigDecimal premium = basePremiumOf(plan);
+                if (premium == null) continue;
+
+                if (marketLow == null || premium.compareTo(marketLow) < 0) marketLow = premium;
+                if (marketHigh == null || premium.compareTo(marketHigh) > 0) marketHigh = premium;
+
+                String metal = plan.getMetalLevel();
+                if (METAL_SILVER.equals(metal)) {
+                    silverPremiumsSorted.add(premium);
+                } else if (METAL_BRONZE.equals(metal) || METAL_EXPANDED_BRONZE.equals(metal)) {
+                    if (lowestBronze == null || premium.compareTo(lowestBronze) < 0) lowestBronze = premium;
+                }
+
+                if (plan.getIssuerName() != null) {
+                    issuers.add(plan.getIssuerName());
+                }
+            }
+
+            java.util.Collections.sort(silverPremiumsSorted);
+            if (!silverPremiumsSorted.isEmpty()) {
+                lcsp = silverPremiumsSorted.get(0);
+            }
+            if (silverPremiumsSorted.size() >= 2) {
+                benchmarkSilver = silverPremiumsSorted.get(1);
+            }
+
+            int carrierCount = issuers.size();
+            int planCount = plansForAge.size();
+
             RatingAreaRateCache row = new RatingAreaRateCache();
             row.setPlanYear(planYear);
             row.setCountyFips(county.fips);
