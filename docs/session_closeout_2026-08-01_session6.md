@@ -825,3 +825,142 @@ and Hopkins results appearing means the defect is back.
 
 **Carried forward, still unclosed:** nobody has asked Forrest what he would want a quoting tool to do,
 and the two SWBD emails have still never been sent.
+
+---
+
+# Session 6, prompt H — the coverage mismatch
+
+## Part 1, answer 1 — what populates the county dropdown
+
+**The inference was right.** `IllustrationServlet.java:113-118`:
+
+```java
+List<RateCacheDAO.CountySummary> summaries = RateCacheDAO.getCountySummaries(em, planYear);
+List<String> cachedFips = summaries.stream().map(...::getCountyFips).collect(...);
+List<CountyReference> availableCounties = CountyReferenceDAO.findByFipsIn(em, cachedFips);
+```
+
+`RateCacheDAO.JPQL_COUNTY_SUMMARIES` is `SELECT r.countyFips, COUNT(r), … FROM RatingAreaRateCache r
+WHERE r.planYear = :planYear GROUP BY r.countyFips`. So the dropdown is **distinct counties present in
+`rating_area_rate_cache` for the selected plan year**, intersected with `county_reference` — *not*
+`county_reference`'s 254.
+
+**On the count: source proves the mechanism, not the number.** The dropdown holds however many counties
+have been warmed, which is a property of production data, not of the code. **Four** is the walk's
+observation and I could not verify it from source — V084/V085 are still unapplied locally, and the
+production cache is not readable from here. The mismatch does not depend on the exact figure.
+
+## Part 1, answer 2 — `?countyFips=` at runtime, and the `<Hopkins>` artefact
+
+**Two different questions, two different right answers, and until this run they shared one wrong message.**
+
+| URL | Before this run | After |
+|---|---|---|
+| `?countyFips=48223` (Hopkins, **in the cache**) | Works — dropdown pre-selects Hopkins, headcount error if blank. **No "select a valid county"** | Unchanged |
+| `?countyFips=48085` (Collin, **in the crosswalk, not the cache**) | ⚠️ *"Select a valid county from the list."* — **wrong; blames the agent** | *"We don't have rates for Collin County, TX yet."* |
+| `?countyFips=<Hopkins>` (a pasted placeholder) | *"Select a valid county from the list."* — **correct** | Unchanged |
+
+**The walk's result was a literal-paste artefact**, as the prompt suspected: `<Hopkins>` is not a FIPS,
+`availableCounties` cannot contain it, and the message was right for that input. **Prompt G's code-read
+of `?countyFips=48223` was correct** — R5/T88 stands.
+
+⚠️ **But the artefact was standing in front of a real defect.** The same message was also firing for
+`48085`, where it is false. A wrong diagnosis pointed at the right file.
+
+## The finding
+
+**The crosswalk knows 254 Texas counties. The illustration prices only the warmed ones.** So ZIP
+resolution could hand an agent a real county the tool has never been able to price, then reject it as
+invalid. Observed: `75009` rendered its chooser correctly — Collin and Denton, equal weight, nothing
+pre-selected — and **clicking either did nothing useful.**
+
+**ZIP intake did not create this gap. It exposed it.** Before ZIP the agent picked from four counties and
+never saw the boundary.
+
+## Shipped
+
+| Hash | What |
+|---|---|
+| `8285b83` | `describeUnavailableCounty` — the single seam; `IchraZipLookup` reports `priced` per candidate |
+| `0e2e014` | Chooser labels an unpriceable candidate, both renderers |
+| `707ede6` | §5's fourth state, click-script 4k–4n, T89, T76's attachment point |
+
+`./mvnw compile` clean before each commit.
+
+## ⭐ The pattern — three defects, three code-reads, three runtime disproofs
+
+**This is the session's most useful finding, and it is now a pattern rather than an incident.**
+
+| # | Declared from code | Disproved by the walk |
+|---|---|---|
+| **R1 / T84** | *"`countyFips` always wins"* — precise, defensible, protecting a real contract | A stale selection beat a typed ZIP → **wrong county's rates, indistinguishable from right ones** |
+| **R5 / T88** | *"`?countyFips=` pre-selects; no defect"* | Correct **for the case read** — and the untested neighbouring case (`48085`) was broken |
+| **T89** | *"the chooser is correct; nothing pre-selected"* — true, and it passed review twice | Both offered counties were unpickable |
+
+Every one was **correct about the code it examined** and wrong about the system. The common shape: the
+defect lived in the **interaction between two things** — a stale input and a fresh one, a crosswalk and a
+cache — and reading either alone showed nothing wrong.
+
+**`code-verified` is not a weaker `runtime-verified`. It is a different claim.** It says "this code does
+what I think it does". It does not say "the feature works". For anything spanning two data sources or two
+inputs, the second claim needs the walk, and no amount of the first substitutes.
+
+**Proposed line for `CLAUDE.md`'s "Keeping state docs current" ritual — proposed, not applied:**
+
+> **A feature spanning two data sources or two inputs is not verified until it has been walked.** Mark
+> such work `code-verified` and keep it out of a release note until a runtime walk clears it — three
+> defects in the ICHRA ZIP path (T84, T88, T89) were each declared resolved from code reading and each
+> disproved by the first walk that ran.
+
+## Decisions made
+
+1. **One unwarmed message for every entry path**, not a fourth message. It replaces the ZIP-specific
+   variant rather than joining it.
+2. **The label is descriptive, never evaluative.** *"— no rates cached yet"* is a fact about our data.
+   The unpriced entry keeps its link, its weight and its land-area position: **not demoted, not greyed
+   out, not disabled**. Steering counties is steering.
+3. **No warm stub, button or TODO** at T76's seam — a disabled control implying a capability that does
+   not exist is worse than its absence.
+4. **The dropdown's four counties were left alone**, as instructed. Whether it should list all 254 with
+   most marked unavailable is **T89's open half** and is downstream of T76: with warm-on-miss it is
+   reasonable, without it it is 250 dead options.
+5. **A missing `pricedCountyFips` shows the caveat rather than throwing** — both in the JSP's `empty`
+   guard and the endpoint's empty-set default. Cautious direction on both sides.
+
+## New assumptions, and reversal cost
+
+| Assumption | Reversal cost |
+|---|---|
+| An agent would rather see an unpriceable county labelled than hidden | **Free** — one `c:if` and one JS branch. Hiding it would be worse: the employer sits in that county whether we can price it or not |
+| Land-area ordering should not change to put priced counties first | **Free** to reverse, but doing so **would be steering** — the label carries the information without ranking |
+| `— no rates cached yet` reads as our gap, not the county's problem | **Free** — wording only |
+
+## Contradictions found
+
+1. **Prompt G's R5 conclusion was right and incomplete.** `?countyFips=48223` does pre-select; the
+   code-read was sound. It just answered a narrower question than the symptom implied, and the
+   neighbouring case was broken.
+2. **§5 listed three states; there were four.** "Not a county at all" had been folded into the unwarmed
+   case, which is exactly the collapse §5 warns against — committed by the section that warns about it.
+3. **Nothing in prompt H was overridden.** Its two suspicions — that the dropdown is cache-derived and
+   that `<Hopkins>` was a paste artefact — were both correct.
+
+## SQL close-out audit
+
+**This run was forbidden from producing SQL and produced none.** No `.sql` file created, modified or
+deleted; no migration; no schema change. **The rate cache and its warm job were not touched in any way.**
+`ls docs/migrations/` unchanged at **V085**. The four commits list two `.java`, one `.jsp` and two `.md`
+paths.
+
+## Next
+
+1. **Apply V084/V085, then run click-script 4a–4n.** **4l and 4m** are this run's regression tests;
+   **4f** is still R1's.
+2. **Rebuild the WAR** — the artefact built earlier today predates R1–R4 *and* this run.
+3. **T76** — the seam is ready. Note before building: warming from staging stamps `source_env = STAGING`,
+   so a warmed county **works but is not demoable**, and it helps only inside Texas.
+4. **T89's open half** — the dropdown's scope, after T76.
+5. Unchanged: click-script 10/10b, the three SWBD emails, T83.
+
+**Carried forward, still unclosed:** nobody has asked Forrest what he would want a quoting tool to do,
+and the two SWBD emails have still never been sent.
