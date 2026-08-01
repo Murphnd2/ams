@@ -114,3 +114,115 @@ HIGH backlog item for Kevin, which is where it belongs.
 
 *This close-out is the last commit of session 6, by construction — the fix session 5 proposed after four
 consecutive sessions whose close-out could not name its own successors.*
+
+⚠️ **It was not.** Prompt B followed in the same session. The section below is appended; nothing above
+it was rewritten. **That makes five consecutive sessions where the recorded final hash was not the real
+one** — and this time the cause was not forgetting, it was that a close-out cannot know whether more
+work is coming. That is a convention problem for `CLAUDE.md`, not a defect to fix here: either the
+close-out stops claiming finality, or it stops being written until the session is declared over.
+
+---
+
+# Session 6, prompt B — make demo step 5 real
+
+**Run:** the affordability constants and the contribution slider — the two unbuilt gaps from prompt A
+that sit on the same demo beat, `swbd_ichra_build_plan.md` §1 step 5.
+
+## Shipped
+
+| Hash | What |
+|---|---|
+| `e90515a` | **T65 / G2, code side.** `DatabaseInitializer.addIchraAffordabilityConstants` seeds `ICHRA_AFFORDABILITY_PCT_2026 = 0.0996` and `FPL_ANNUAL_2026 = 15960`, idempotently. New **LA-14** in the assumptions register. |
+| `53a8131` | **G9.** The contribution slider, with the live per-employee flip point. Also: the two "not configured" messages now name the missing constant. |
+| `ab90d49` | Flow map G2/G9 rows, click-script step 10b, backlog T65 → partly done, build plan records both. |
+
+`./mvnw compile` clean before each commit.
+
+## Decisions made
+
+1. **`0.0996`, not `9.96`.** AMS has no other percentage-valued constant, so there was no local
+   convention to copy — I said so rather than inventing one. The authority is
+   `AffordabilityCalculator.flipContribution`, which multiplies the value straight into monthly income
+   and documents its parameter as "a decimal (e.g. 0.0883 for 8.83%)". **`9.96` would not throw.** It
+   would drive every flip contribution negative, clamp to zero, and report every offer affordable at any
+   contribution — LA-12's dangerous direction, silently.
+2. **The 2026 FPL table ($15,960), not the 2025 one ($15,650).** The only reader is the `"FPL"` branch
+   feeding the employer-side safe harbor, so the safe-harbor figure is the right one. The $15,650 figure
+   belongs to the PTC computation under 26 CFR §1.36B-1(h), and **AMS computes no PTC dollar figure
+   anywhere**. Recorded as LA-14 because the ambiguity is in the constant's *name*, not in the sources.
+3. **The slider does not recompute the flip point.** flip = onexLCSP − pct × (income ÷ 12) does not
+   depend on the contribution, so the server's figure is already final. This was the single most
+   consequential design call in the run: it keeps the regulated computation in `AffordabilityCalculator`
+   with no JavaScript twin to drift from it, and it means **the two constants are never needed
+   client-side.**
+4. **The proposal hand-off href follows the slider.** Not asked for, and necessary: without it, dragging
+   to $350 and clicking "Use This in a Proposal" would have snapshotted the submitted $400 silently. The
+   slider would have introduced a correctness trap that did not previously exist.
+5. **The verdict strings are byte-identical to the server's.** The slider flips between two
+   already-approved phrasings and introduces no new language about any employee (boundary 1). Rewriting
+   shipped compliance-reviewed wording was not this run's call.
+6. **The plan-year-in-the-name design was recorded, not refactored** — as instructed. A 2027
+   illustration will silently find nothing and report itself unconfigured, which is the fail-closed
+   direction.
+
+## New assumptions, and what reversing them costs
+
+| Assumption | Reversal cost |
+|---|---|
+| **LA-14** — `FPL_ANNUAL_2026` holds the employer safe-harbor figure | ⭐ **Trivial.** A one-row `UPDATE`, or two lines in `DatabaseInitializer`. **Nothing derived from it is persisted** — no affordability figure reaches `illustration_log` or `proposal_ichra_snapshot`, which is structurally incapable of carrying one. There is no back-catalogue to restate. |
+| 9.96% is the correct 2026 applicable percentage | Same — one row. Cited to Rev. Proc. 2025-25; this is among the better-sourced entries in the register. |
+| A slider max of ~110% of the highest premium on the page gives enough range | Delete one line. Cosmetic. |
+| Step size of $5 is fine for the demo's $350-vs-$450 story | One attribute. |
+
+## Open questions
+
+- **Are the two rows on production?** Still unanswered, and the seed shipped this run **does not settle
+  it** — `addPspConstants` runs from `initializeDataBase` only, the one-time key-gated fresh-install
+  path. Click-script step 10 remains the only thing that answers it.
+- **Plan year 2027** needs a new constant pair *and* a new reader. Recorded in LA-14's confirm-before,
+  not scheduled.
+- **Does the slider behave on a real page?** Verified by compile and by JSTL tag-balance check only.
+  `mvnw compile` does not compile JSPs, and this session could not log in — so the slider is
+  `code-verified`, never `runtime-verified`. Click-script step 10b is what settles it.
+
+## Contradictions found
+
+1. **The prompt said "the initial computation stays a POST" and attributed a POST-only decision to this
+   servlet. That is wrong, and I did not follow it.** `IllustrationServlet` is **GET-only by design** —
+   *"an illustration is a query, not a state change, and GET makes results linkable"*
+   (`IllustrationServlet.java:57-60`), and its form is `method="get"`. The POST-only decision belongs to
+   `GroupConversionServlet`, which is a different servlet with a different reason (*"an employer's
+   current premium and payroll deductions have no business in a URL"*). Converting `/Illustration` to
+   POST would have destroyed the linkability that the mode toggle, the hub cards and prompt A's own T59
+   fix all depend on. The slider is client-side, so the distinction cost nothing — but the instruction
+   was followed in spirit (no request per tick) and not in letter.
+2. **The build plan's step-5 "slider" correction from prompt A is withdrawn.** Prompt A recorded it as a
+   document error. It was not: the document described the intended feature and the code was behind it.
+   Corrected in place.
+3. **Prompt A's own G2 row said "operator config only".** Prompt B's fence directed a `DatabaseInitializer`
+   seed, which is neither a contradiction nor a full fix — the seed is correct and does not reach an
+   existing installation. Both statements are now in the G2 row.
+
+## SQL close-out audit
+
+**No `.sql` file was created, modified or deleted. No schema changed. No migration was authored.** In
+particular **no `INSERT INTO constant` exists in any migration** — the two constants went through
+`DatabaseInitializer`, which is the prescribed route. `ls docs/migrations/` is unchanged at **V083**.
+`git show --stat` for the three commits lists one `.java`, one `.jsp` and four `.md` paths.
+
+## Next
+
+1. **Click-script steps 10 and 10b**, on production, as a role-2 agent. Step 10 settles T65; step 10b is
+   the first runtime verification the slider has ever had.
+2. **Add the two `constant` rows to production by hand** if step 10 shows them missing —
+   `ICHRA_AFFORDABILITY_PCT_2026` = `0.0996`, `FPL_ANNUAL_2026` = `15960`. Not a migration.
+3. **T69** — decide whether to fix the build plan's "prospect pre-filled" sentence or build the pre-fill.
+4. Unchanged from prompt A: **T66** (`opportunityId` has no producer), **T64** (stale-cache hypothesis
+   untested), the ICHRA reference rows and item-10 checklist, and the write-up debt.
+
+**Carried forward, still unclosed:**
+
+- ⚠️ **Nobody has asked Forrest what he would want a quoting tool to do.** This run built the interaction
+  §1 step 5 describes — a document SSA wrote about a demo SSA designed. Still not evidence about him.
+- ⚠️ **The two SWBD emails have still never been sent** — O22 book profile, and *"send me three groups
+  renewing next quarter"*.
