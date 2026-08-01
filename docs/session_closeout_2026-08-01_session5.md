@@ -362,3 +362,232 @@ by this run, and it remains untested.
 agent who was entitled had not been logged in before the flag was set, so `ichraNavVisible` had never
 been cached for that session. This is consistent with T60's known effect (an already-logged-in agent
 stays stale until re-login) but does not test it either; a same-session before/after check was not run.
+
+---
+
+## Addendum 2 — 2026-08-01, final state of session 5
+
+**Appended after everything above; no existing text in this document has been edited or deleted.**
+
+### The commits that landed after this document was written
+
+This close-out was committed at `f34414b`. Three commits followed it, read from
+`git log --oneline a42a9ae..HEAD`:
+
+| Commit | What |
+|---|---|
+| `0852c2f` | **T61 — the agency ICHRA checkbox.** An admin UI write path for `agency.ichra_enabled`, mirroring V067's `markup_enabled` exactly: a checkbox in `agencyManager25.jsp`'s edit-agency modal and one `setIchraEnabled` call beside `setMarkupEnabled` in `AgencyAction`'s `editAgency` case. No migration — V077's column already existed and `Agency` already mapped it. Also logged **T63**. |
+| `7ee9f58` | **The stale-cache confirm-before addendum** (Addendum 1 above) and **T64**. |
+| *(this commit)* | This addendum and the revised Next section below. |
+
+**The session's full commit list is therefore `a5c0d8d` through HEAD — five commits**, not the two
+recorded in "Shipped" above. That section remains correct for what it covered and is left untouched.
+
+**Releases: four this session**, not the three the Shipped section could see — `v0.82.00` (WAR +
+V079–V082), `v0.82.01` (WAR carrying `a5c0d8d`), `v0.83.00` (WAR + V083), `v0.83.01` (WAR carrying
+`0852c2f`). ⚠️ **These cannot be verified against `migration_tracker.md`, because that file records
+migration versions and per-environment apply state — it carries no release-version column at all.** A
+grep for `v0.82`/`v0.83` in it returns nothing. What the tracker *does* still show, unchanged since
+this document first flagged it: **V079, V081 and V083 all read `⬜` for Production** despite having
+shipped via `update.sh`. The staleness recorded in "Contradictions found" is still there and was not
+corrected by any commit this session.
+
+### T61 shipped and verified live
+
+The checkbox works on a **running** production instance. A second agency was entitled through it on
+`v0.83.01` with no restart and no redeploy, and a freshly-logged-in agent of that agency saw ICHRA.
+T61 is closed in practice, not merely in code. Full result and its careful limits are in Addendum 1 —
+in particular, this is **not** a disproof of the stale-cache assumption, and **T64** now carries the
+general question forward.
+
+### Session 4's open item is closed — the first end-to-end verification
+
+Session 4's close-out named one thing static analysis could not settle: *nobody had asked the design
+advisor the dental/QSEHRA question from a role-2 agent login and confirmed the reply names a source.*
+
+**That check has now run.** A role-2 agent asked the canonical question — *"Does my client's dental
+plan kill the QSEHRA?"* — and received a **substantively correct answer citing
+`domain_and_compliance_rules.md` section 5.**
+
+⚠️ **This is the first ICHRA capability verified end to end for a non-PSP user**, and it mattered more
+than a routine smoke test. This document's own "New assumptions" section records why: *citations on the
+matched-skill path are model output, not structurally produced* — nothing in code extracts or validates
+a citation, so citation presence and quality are a **prompt property with no code guarantee**. A test
+was the only instrument that could observe it. Everything before this was code reading.
+
+### T62's root cause — corrected from this document's original guess
+
+The original close-out logged T62 as citation wording that "reads like the `system_prompt`'s
+instruction leaking into the output." **That guess was wrong in mechanism**, and the corrected version
+is already in T62's backlog row: `V080__ichra_design_advisor_skill.sql` contains **four literal
+`Cite <doc>.md section <n>` strings inside its `A:` few-shot exemplar answers** — including
+`Cite domain_and_compliance_rules.md section 5`, the exact string the live reply produced. The model
+imitated its examples faithfully. This is not instruction leakage; it is a prompt that demonstrates the
+imperative form and then gets it back. The distinction matters for the fix: rewording boundary 6 alone
+would not have changed the output.
+
+### Backlog logged after this document was written
+
+- **T63** — SECURITY: `agencyManager25.jsp` has no server-side render gate. `PspAgencyHome.doGet`
+  performs no role check and the JSP carries no `isPspAdmin` wrapper, so the page is nav-gated only.
+  **View-only exposure; the write path is 403-gated**, so it is a disclosure gap, not privilege
+  escalation. Pre-existing since V067 and independent of ICHRA. 📋 Planned, MED. Ships alone.
+- **T64** — Raw SQL updates to JPA-mapped config tables may be invisible until a restart. The general
+  form of this document's central assumption, carried forward because Addendum 1's test made it moot
+  for ICHRA without answering it. 📋 Planned, MED.
+
+### ⚠️ The stale-HEAD pattern is now four sessions running, and it is a process problem
+
+This document's own opening section named the pattern across sessions 3 and 4. **Session 5 then did
+exactly the same thing**, and this addendum exists because of it:
+
+| Session | Close-out recorded | Actual final commit |
+|---|---|---|
+| 3 | `682bc8f` | `8e4fea4` |
+| 4 | `bbc6519` | `a42a9ae` |
+| 5 | `f34414b` | this commit |
+
+**The mechanism is not carelessness and naming it as such would miss the fix.** A close-out is a git
+object like any other; it can only reference commits that already exist when it is written. **Any
+close-out written before the session's last push is stale by construction** — the document cannot
+name its own successors, and each of the three sessions above then did real work afterward that the
+record did not carry. Session 5 is the sharpest case: `0852c2f` shipped a user-facing feature and
+`7ee9f58` recorded a test result that changed the standing of the document's central assumption, both
+after the close-out claimed to describe the session.
+
+**Two ways out, neither implemented here** — this is a convention change and belongs to whoever owns
+the ritual in `CLAUDE.md`, not to a close-out:
+
+1. **Make the close-out the genuinely last commit of a session.** Requires that doc-hygiene commits
+   (`claude_memory.md` refreshes, build-plan corrections) land *before* it rather than after, which is
+   the opposite of the current habit.
+2. **Split the document from its final state** — write the body when the work is done, then append a
+   short "final state" section as the actual last commit, which is what this addendum is. This is
+   cheaper and it survives sessions that continue after a close-out looked final, which all three of
+   the above did.
+
+Option 2 is what happened here by accident. Making it deliberate would cost one line in the
+"Keeping state docs current" ritual.
+
+---
+
+## Next — superseded, revised 2026-08-01
+
+⚠️ **The original "Next" section above is superseded and is left in place unedited.** Its lead
+recommendation was the EclipseLink stale-cache confirm test. **That test has run** — see Addendum 1 —
+so the recommendation is spent. Its second item (correcting the tracker's V079/V081/V083 Production
+cells) is **still outstanding and still correct**; nothing this session fixed it.
+
+### There is no next build item
+
+⚠️ **All thirteen items in `docs/swbd_ichra_build_plan.md` §3 are struck through and done** — verified
+this run by reading the §3 headings directly, not from the plan's prose:
+
+> 1 `0b4711b` · 2 `0b4711b` · 3 `0b4711b` · 4 *(deleted — not a build item)* · 5 `0b4711b` ·
+> 6 `b0e524b` · 7 `e5b2009` · 8 `ba023bd` · 9 `4556ecd` · 10 `4775252` *(content done)* ·
+> 11 `7db188d` · 12 `e25ee4e` · 13 `a71b79d` + `619461f`
+
+The build sequence is complete. What remains before §1's demo is **configuration and conversation, not
+code.**
+
+### Notes to Kevin — reference data and checklist content
+
+⚠️ **These are Kevin's under build rule 5. They are recorded here as notes, deliberately not as
+numbered work items and not as dependencies of anything.** No session should schedule, size or
+sequence around them.
+
+- **The ICHRA reference rows.** Item 4 was deleted from the sequence on 2026-07-31 as explicitly not a
+  build item: *"Kevin creates the ICHRA/QSEHRA `LOS`, `ServiceItem`, `PlanType` and priced
+  `ServiceModule` → `RateTable` rows through the admin UI when he is ready to test."* Worth noting the
+  path has to be **priced end to end** — a `ServiceModule` → `RateTable` with an `agencyrates`
+  assignment to SWBD — or the proposal steps of the demo have nothing to render.
+- **The setup checklist content.** Item 10 is marked *"✅ Content done"* — deliberately different
+  wording from the other twelve — with its deliverable ready at `docs/business/ichra_setup_checklist.md`
+  and its own row recording that **no migration in the repo has ever created a task sequence**;
+  sequences come from the Sequence Builder admin UI. It depends on the reference rows above existing
+  first, so the order between the two notes is forced even though neither is a scheduled item.
+
+### Two SWBD emails have still never been sent
+
+Verified this run against `docs/ichra_strategy.md` §10's ask table (lines 311–312), where both still
+read **❌ Not sent**:
+
+- **O22** — book profile: counties, group-size distribution, carriers, renewal-date distribution, and
+  **producing-agent count**. Open since the partnership reframe. `ichra_strategy.md:153` records that
+  the county-list decision (D-83) is gated on it *"or on a deliberate guess."*
+- **"Send me three groups renewing next quarter."** This one **gates item 11 having real content** —
+  A4a's sample conversion analysis is built and shipped, but it analyses nothing until real groups
+  arrive. `swbd_ichra_build_plan.md:422` notes it is an easy yes and self-selects for good cases.
+
+Both strategy documents call these **the cheapest de-risking available anywhere in the plan** —
+`ichra_strategy.md:265` sizes the whole long-lead ask batch at *"nothing — an afternoon."* Four
+sessions of build work have now shipped past them.
+
+### ⚠️ Nobody has asked Forrest what he would want a quoting tool to do
+
+Still true, and worth restating at the point where the build sequence has just gone to zero.
+`ichra_strategy.md:65-67` states it plainly: **the entire agent-utility thesis descends from one
+sentence in one call** (2026-07-28). The two zizzl failure modes independently corroborate that
+*quoting* is where the pain is, which is why the thesis is not baseless — but the specific shape of
+thirteen shipped items rests on an inference nobody has checked with the person it describes.
+
+### Open backlog worth a gap
+
+Read from `docs/analysis/project_backlog.md` this run:
+
+- **T56** — test-environment banner, disclaimers and `meta-line` block triplicated across
+  `illustration25.jsp`'s two mode branches and `groupConversion25.jsp`. LOW, 💡 Backlog. Ships alone.
+- **T62** — Design Advisor citations render as an imperative instruction. LOW, 💡 Backlog. Root cause
+  verified (see above); fix is a `system_prompt` rewording in a **new** migration, since V080 is
+  applied on production.
+- **T63** — SECURITY: `agencyManager25.jsp` has no server-side render gate. MED, 📋 Planned.
+- **T64** — raw SQL against JPA-mapped config tables may be invisible until restart. MED, 📋 Planned.
+
+---
+
+## Next session — function and flow review
+
+**Kevin has set the next session's question, and it is not *what do we build next*.** With §3 complete,
+the useful question is:
+
+> **Where does each ICHRA tool live, who can reach it, and when in a real sales motion is it the right
+> one to open?**
+
+**This run records the agenda only and deliberately performs none of it.**
+
+### What the review should cover
+
+**1. Every ICHRA surface, one row each** — URL, gate, and the role that actually reaches it. The set,
+read from `@WebServlet` mappings and `ichraHome25.jsp` this run:
+
+| Surface | URL | Gate |
+|---|---|---|
+| ICHRA hub | `/IchraHome` | `IchraAccessResolver.isAvailable`, else redirect `/` |
+| Rating-area illustration | `/Illustration` | `isAvailable`, else 403 |
+| Age-band net cost | `/Illustration?mode=AGE_BAND` | same servlet, same single gate |
+| Affordability threshold | `/Illustration?mode=AGE_BAND` | same URL as above — **see T59** |
+| Group-to-ICHRA conversion | `/GroupConversion` | `isAvailable` on both `doGet` and `doPost`, else 403 |
+| Design advisor | the chat widget, `navbar25.jsp`'s include | `chatbotEnabled && (roles ‖ ichraAvailable)` |
+| Rate cache admin | `/RateCacheAdmin` | `isPspAdmin` only — **not** ICHRA entitlement |
+| Opportunity analyses | `/IchraOpportunityAnalyses` | `isAvailable`, then per-record `OpportunityAuthz` |
+
+Note two shapes that will matter to the review: the affordability "surface" has no URL of its own, and
+rate cache admin is gated on a **different axis** from everything else on the hub.
+
+**2. The flow question — the actual gap.** ⚠️ **These surfaces were built and gated independently and
+have never been walked as a single path.** Which tool does an agent open *first*? What does each one's
+output feed? Where does a user hand off from one to the next — and, more usefully, **where does that
+hand-off not exist**? Item 7 built one explicit hand-off ("Use this in a proposal"); whether there are
+others, or gaps where a user has to retype something they already entered, is unexamined.
+
+**3. Against the demo.** `swbd_ichra_build_plan.md` §1's eight-step walkthrough is the yardstick, not a
+feature inventory. For each step: is there a real surface, or is it still assembly? And specifically —
+**where does the path break for a role-2 agent**, which is the only role the demo audience holds.
+
+**4. ⚠️ `docs/analysis/ichra_demo_path_role_walk.md` needs re-walking, not re-reading.** It already
+exists and covers much of this ground — but it was written **statically**, from code reading, and **it
+was wrong once already**: its row for the ICHRA nav entry reads
+`| 2 | ICHRA nav entry | navbar25.jsp:209-215 | ...isAvailableForNav... | **pass** |` while that exact
+entry was **failing in production** for the intended audience. That is the failure mode this whole
+session was spent recovering from. **Re-walk it against observed behaviour on a live instance**, with a
+real role-2 login, and treat any row not confirmed by observation as unverified.
