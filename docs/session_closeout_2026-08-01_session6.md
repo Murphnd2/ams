@@ -1299,3 +1299,162 @@ list one `.java`, one `.jsp` and two `.md` paths.
 
 **Carried forward, still unclosed:** nobody has asked Forrest what he would want a quoting tool to do,
 and the two SWBD emails have still never been sent.
+
+---
+
+# Session 6, prompt K — one analysis surface
+
+## How `mode` is derived, and how the old URLs still resolve
+
+**That is the contract most at risk, so it goes first.** `mode` was **not** removed, renamed or
+deprecated. `IllustrationServlet`:
+
+```java
+if (MODE_AGE_BAND.equals(modeParam))      mode = MODE_AGE_BAND;   // honoured verbatim
+else if (MODE_RANGE.equals(modeParam))    mode = MODE_RANGE;      // honoured verbatim
+else                                      mode = hasAnyAgeBand(request) ? AGE_BAND : RANGE;
+```
+
+**An explicit parameter always wins and is never second-guessed.** Derivation happens only when no
+`mode` is present at all — which is exactly the new form, because the hidden `mode` field was removed
+from it. That removal is what makes adding the first age band a *transition* rather than a resubmit
+locked to the tier the page opened in.
+
+| URL | Before | After |
+|---|---|---|
+| `?mode=RANGE&countyFips=…&headcount=3` | range | **identical** |
+| `?mode=AGE_BAND&countyFips=…` | age-band form, one starter row | **identical** — `mode=AGE_BAND` still seeds row 1, so the hub card works even with JavaScript off, where "+ Add age band" cannot help |
+| `?mode=AGE_BAND&affordabilityBasis=FPL` (T59's card) | age-band + affordability preselected | **identical** |
+| proposal hand-off (`mode=AGE_BAND`, `age1..6`) | — | **identical**, and the hand-off loop is untouched at `end="6"` |
+| form submit (no `mode`) | n/a | derived from whether any `ageN` is non-blank |
+
+`hasAnyAgeBand` is bounded by the same `AGE_BAND_ROWS` the parse loop uses, so the two cannot disagree
+about how many rows exist.
+
+## What changed, and why it is one thing rather than three
+
+Kevin: *"steps 1, 2 and 3 are really 3 versions of the same thing — the only difference is level of
+detail available."* **The code already agreed** — all three hub cards were `/Illustration` with a
+different `mode`. The toggle presented two tools where there was one, and the form now grows instead of
+switching.
+
+⭐ **This dissolved T59.** *"Affordability has no URL of its own"* was logged as a defect. It was never
+one: affordability is a **section that appears when a basis is chosen**, not a step with an address. The
+defect existed only inside the three-step framing, and **the framing was the error**. The
+`&affordabilityBasis=FPL` deep-link shipped in `e849dac` remains correct and useful — it just was not
+the resolution of a defect. Re-closed on that reasoning.
+
+**W13-R is fixed by construction.** The toggle dropped the ZIP, and after prompt J dropped the county
+too. There is now no toggle to lose state across — a structural fix rather than another parameter
+appended to a link.
+
+## Shipped
+
+| Hash | What |
+|---|---|
+| `2445edb` | The progressive form + **W15** |
+| `8ef8c65` | **M2** full-width slider track, **M4** edge-to-edge cards |
+| `d0d0d64` | §4 decision block, T59 dissolved, click-script K1–K9 + M8–M10, T97/T98 |
+
+`./mvnw compile` clean before each commit.
+
+## Anchors
+
+All single-occurrence, verified before editing. The one ambiguity from prompt J
+(`<c:forEach begin="1" end="6" var="i">`, twice) did not recur — the form's loop is now
+`end="${ageBandMaxRows}"` and the hand-off's is still literal `end="6"`, so they are textually distinct.
+
+| Change | Anchor | Line |
+|---|---|---|
+| Toggle removal | `<div class="ms-auto d-flex gap-1">` | 184 |
+| Hidden mode field | `<input type="hidden" name="mode"` | 239 |
+| Form branch merge | `<c:when test="${mode == 'AGE_BAND'}">` | 303 |
+| Headcount | `id="headcount" name="headcount"` | 410 |
+| Count placeholder | `placeholder="1"` | 347 |
+| Income placeholder | `placeholder="Annual"` | 352 |
+| Slider row (M2) | `.contrib-slider-wrap { position` | 98 |
+| Mode derivation | `MODE_AGE_BAND.equals(request.getParameter` | 94 |
+
+## W15 — every placeholder after this run
+
+| Field | Hint | Could it be mistaken for a value? |
+|---|---|---|
+| ZIP | `#####` | No — not a ZIP |
+| Income | `$/yr` | No — a unit, not an amount |
+| **Count** | **none — a real default of `1`** | **No, and this is the important one** |
+| Eligible Employees, Contribution, Age | none | — |
+
+**Count needed more than a placeholder.** It showed a grey `1` that read as an entry (*"placeholder was
+showing a 1, I thought it was an entry"*, twice), **and** a blank field silently computed as 1 — the
+walk's URL carried `count1=` empty while the result assumed one life. **Entered and assumed were
+indistinguishable.** It now carries a real, black, submitted `1`, so the value in the box is the value
+that counts. The servlet's blank-defaults-to-1 parse is untouched and still covers a hand-edited URL.
+
+## Decisions made
+
+1. **Contribution and basis appear with the first band.** They mean nothing without a band to apply them
+   to, and showing dead inputs at tier 1 is the same confusion in a new place. Hidden, never removed.
+2. **Eligible Employees hides when a band exists** rather than sitting alongside it. Two competing
+   headcounts on one form is exactly the ambiguity W15 is about.
+3. **The add affordance is accented, not muted.** If an agent cannot see that more detail is available,
+   the tiering is invisible and this run achieved nothing — the same failure as the slider nobody
+   noticed. The note beside it says what it *does*, not what to *use*: no steering toward a fidelity.
+4. **A hidden template row** backs the zero-band case, since the add button previously cloned the last
+   row and there is now no last row. Different class, unnamed inputs — it can neither be counted nor
+   submitted.
+5. **`mode=AGE_BAND` still seeds a starter row.** Without it the hub's card would land on a form with no
+   band and no way to add one when JavaScript is off.
+
+## New assumptions, and reversal cost
+
+| Assumption | Reversal cost |
+|---|---|
+| Deriving `mode` from the presence of age bands matches intent | **Free** — restore the hidden field. ⚠️ The risk is a stale bookmark with `ageN` but no `mode` now resolving to AGE_BAND where it once gave a range. No such URL is emitted anywhere; K6 checks the explicit case |
+| Zero bands is the right default opening state | **Free** — one EL condition. If agents expect a row, `mode=AGE_BAND` already gives one |
+| A real `1` in Count beats a placeholder | **Free**, and the asymmetry favours it: a wrong-but-visible default is correctable, a right-but-invisible one is not |
+| Hiding Eligible Employees at tier 2 is clearer than disabling it | **Free** — one line in `syncTier()` |
+
+## Fenced behaviours: verified and not
+
+**Verified (structure and greps only):** every query parameter name unchanged (`age${i}`, `count${i}`,
+`income${i}`, `headcount`, `contribution`, `affordabilityBasis`, `countyFips`, `zip`, `planYear`); the
+proposal hand-off loop still `end="6"`; all three banners present in both branches; JSTL and `<div>`
+balance (73/73) after every edit; one `<form>`; `./mvnw compile` clean; all placeholders reviewed.
+
+**Not verified — all behavioural, and this is the largest structural change the form has taken:**
+`?countyFips=` pre-select · the three ZIP states · county-ZIP precedence · results clearing · ZIP
+logging · ZIP surviving the chooser click · unavailable-county wording · disabled proposal link · the
+collapsed summary and Edit · repeater renumbering · income visibility · both popovers · **the slider,
+its ticks and verdict flipping** · `illustration_log` writing · mobile.
+
+⚠️ **Three of those now sit inside markup this run restructured** — the repeater, the tier fields and the
+collapsed summary all read the same DOM the new `syncTier()` manipulates. **The fence is not verified
+until K1–K9, L1–L10 and M1–M10 run.**
+
+## Judged too risky, logged instead
+
+- **T97 — the chat bubble covering the affordability verdict column on mobile.** The most consequential
+  cell on the page, obscured. **The fix belongs to the shared widget**, so it cannot be done from inside
+  the ICHRA fence — and it must not be worked around locally, because page-specific padding on one
+  surface would drift the moment the widget moves.
+- **T98 — Agent Pipeline on mobile.** Outside ICHRA entirely; recorded, not investigated.
+- **T96 — the six-row cap** stays, unchanged and untouched, for the reason logged in prompt J:
+  `proposalBuilder.jsp` echoes exactly six pairs and sits outside the fence.
+- **The hub cards** were not touched. Prompt L.
+
+## SQL close-out audit
+
+**This run was forbidden from producing SQL and produced none.** No `.sql` file created, modified or
+deleted; no migration; no schema change. `ls docs/migrations/` unchanged at **V085**. The four commits
+list one `.java`, one `.jsp` and two `.md` paths.
+
+## Next
+
+1. **Walk K1–K9 first**, then L and M. **K4** (the tier transition, with ZIP and county surviving) and
+   **K5/K6** (old `mode=` URLs landing unchanged) are the two that matter — they are the contract.
+2. **Prompt L** — consolidate the hub's cards now that the surface behind them is one thing.
+3. **Rebuild the WAR.** The artefact from earlier today predates prompts G through K.
+4. Unchanged: **T76** (seam ready), T89, T96, the three SWBD emails, T83.
+
+**Carried forward, still unclosed:** nobody has asked Forrest what he would want a quoting tool to do,
+and the two SWBD emails have still never been sent.
