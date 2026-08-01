@@ -10,8 +10,8 @@
 ## Current State
 - **Integration branch:** `refactor/modernize-architecture` — feature branches are cut from / merged back to it, so it trails the in-flight feature by only a few commits. `main` is ~345 commits stale and is **not** the working line.
 - **In-flight branch:** none — the agency-scope-resolver work merged to trunk 2026-07-15 (`e0a62d1`); branch deleted.
-- **Latest migration:** V081 (`illustration_log.opportunity_id`) — always re-check `ls docs/migrations/`; this line lags
-- **Latest release:** **v0.78.01**, pointing at `4556ecd` (ICHRA item 9). **Verified 2026-07-31 by `git fetch --tags`**, which is the method CLAUDE.md prescribes — an un-fetched local `git tag` showed nothing past `v0.71.06` and is stale by design. Supersedes the prior unverified `v0.73.02` entry here. ⚠️ **V079, V080 and V081 are all unreleased and unapplied everywhere** — the next release is `v0.81.00` carrying all three plus a WAR.
+- **Latest migration:** V082 (`chatbot_skill.is_admin_only` 1→0 for `ICHRA_DESIGN_ADVISOR`) — always re-check `ls docs/migrations/`; this line lags
+- **Latest release:** **v0.78.01**, pointing at `4556ecd` (ICHRA item 9). **Verified 2026-07-31 by `git fetch --tags`**, which is the method CLAUDE.md prescribes — an un-fetched local `git tag` showed nothing past `v0.71.06` and is stale by design. Supersedes the prior unverified `v0.73.02` entry here. ⚠️ **V079 through V082 are all unreleased and unapplied everywhere** — the next release is **not** `v0.81.00` as previously recorded here; it must carry all four plus a WAR. A WAR was rebuilt from `37b9e2f` (server profile, `./mvnw -P server clean package`) 2026-07-31 and confirmed to bundle the correct JNDI `persistence-server.xml`, but **not yet attached to a GitHub Release**.
 - **ICHRA/QSEHRA admin stream active — and now BUILT.** Origin: SWBD (Forrest) quoting ICHRA through zizzl, which gated
   carriers and charged a ~$660/mo admin minimum — unbundle logic gives the admin to SSA. Target rail is
   the **HealthSherpa ICHRA Partner API** (`docs.ichra.healthsherpa.com`) — **not** HSOne, and **not**
@@ -23,11 +23,11 @@
   (metro TX covered), **not** for BCBS TX (2026) or CHRISTUS (unlisted) — so rural TX has no automated
   coverage verification today. See `docs/business/healthsherpa.md` for the full evaluation, carrier
   matrix, and open questions.
-- **Session count:** 88 numbered sessions logged in `session_history_archive.md`, plus dated (unnumbered) entries — **July 15, 2026** (Agent Pipeline sidebar proposals + create-proposal hand-off, v0.71.08) and **July 31, 2026 × 3** (the ICHRA sequence; sessions 2 and 3 have their own close-out documents in `docs/`). ⚠️ **Two write-up debts outstanding:** the agency/white-label epic (V068–V071, `AgencyScopeResolver`) and the three 2026-07-31 ICHRA sessions are all still missing from `session_history_archive.md`.
+- **Session count:** 88 numbered sessions logged in `session_history_archive.md`, plus dated (unnumbered) entries — **July 15, 2026** (Agent Pipeline sidebar proposals + create-proposal hand-off, v0.71.08) and **July 31, 2026 × 4** (the ICHRA sequence; sessions 2, 3 and 4 have their own close-out documents in `docs/`). ⚠️ **Two write-up debts outstanding:** the agency/white-label epic (V068–V071, `AgencyScopeResolver`) and the four 2026-07-31 ICHRA sessions are all still missing from `session_history_archive.md`.
 - **Build tool:** Maven wrapper `./mvnw compile` (no system `mvn` on PATH)
 - Per-environment apply status is tracked authoritatively in `docs/analysis/migration_tracker.md`.
 - Master snapshot v9 taken 2026-03-20 (V057)
-- ⭐ **Active epic (2026-07-31): ICHRA.** The 13-item sequence in `docs/swbd_ichra_build_plan.md` §3 is **complete** and all six structural decisions (S1–S6) are resolved. Shipped: gated front door + `IchraAccessResolver` + AGE_BAND mode (`0b4711b`) → on-exchange LCSP (`ba023bd`) → affordability threshold (`4556ecd`) → proposal hand-off + LOS-scoped section, V079 (`e5b2009`/`b0e524b`) → design advisor, V080 (`e25ee4e`) → setup checklist content (`4775252`) → group-to-ICHRA conversion (`7db188d`) → opportunity attribution, V081 (`a71b79d`) + the drawer console read (`619461f`). **What remains is Kevin's, not a build queue:** release `v0.81.00`, the ICHRA/QSEHRA LOS reference rows, the item-10 checklist through the Sequence Builder, D-86/D-87, production allow-listing, and the two unsent SWBD emails. Close-outs: `docs/session_closeout_2026-07-31_session{2,3}.md`.
+- ⭐ **Active epic (2026-07-31): ICHRA.** The 13-item sequence in `docs/swbd_ichra_build_plan.md` §3 is **complete** and all six structural decisions (S1–S6) are resolved. Shipped: gated front door + `IchraAccessResolver` + AGE_BAND mode (`0b4711b`) → on-exchange LCSP (`ba023bd`) → affordability threshold (`4556ecd`) → proposal hand-off + LOS-scoped section, V079 (`e5b2009`/`b0e524b`) → design advisor, V080 (`e25ee4e`) → setup checklist content (`4775252`) → group-to-ICHRA conversion (`7db188d`) → opportunity attribution, V081 (`a71b79d`) + the drawer console read (`619461f`). **Session 4 (same day) closed the design advisor's remaining gap** — it shipped in V080 as PSP-admin-only with no UI entry point at all; session 4 gave it one (hub card, T55/T55a), opened the chatbot entry point to ICHRA-entitled agency users (T58, `navbar25.jsp`), opened the skill itself to non-admin callers (T57, **V082**), verified the citation path survives that (matched skills consult no KB — citations are inline `Source:` lines in the `system_prompt`, so leaving the `ichra_design` KB `ADMIN_ONLY` costs nothing), and fixed T52 (matched skills now honour their configured `model`/`max_tokens`, so the advisor runs Sonnet/2048 as V080 intended rather than the hardcoded Haiku/1024 default). **What remains is Kevin's, not a build queue:** the next release (now needs V079–**V082**, not just through V081), the ICHRA/QSEHRA LOS reference rows, the item-10 checklist through the Sequence Builder, D-86/D-87, production allow-listing, the two unsent SWBD emails, and **the one runtime check nobody has run** — ask the design advisor the dental/QSEHRA question from a role-2 agent login post-deploy and confirm the reply cites a source. Close-outs: `docs/session_closeout_2026-07-31_session{2,3,4}.md`.
 - **Prior epic (post-Session-88, complete):** Agency / white-label / multi-agency hierarchy + access-scope hardening. Shipped in order: **V068** host-header agency landing pages → **V069** per-agency white-label email sending (`EmailIdentityResolver`, 4-tier sender identity) → white-label proposal/application wrapper + RequestQuote host-awareness → **V070** GA→sub-agency parent link (strict two-level hierarchy) → **V071** per-agency public quote tokens for RequestQuote attribution → agency manager-reassignment guards + PSP-staff gate on manual setup. **Landed (merged to trunk 2026-07-15, `e0a62d1`):** introduced `AgencyScopeResolver` (retired 4 duplicated agency resolvers), decoupled scope sets from the `primaryAgencyId` singleton, closed residual IDOR gaps via `canSeeDetail()` (Phases 1–2b), and routed `ViewProposal` agency/agent resolution through `OriginatingAgencyResolver`.
 - ICHRA+/QSEHRA+ tier — requirements settled and data model designed 2026-07-29; not built. Canonical doc: `docs/business/plus_tier.md`. Decision highlights: single bundled PEPM (no per-proposal add-on election, because verification method varies per participant); no per-employee pricing; billing unchanged (headcount → Wave, both enrolled and eligible counts); participant verification ledger isolated from the billing pipeline (whose only correction mechanism is whole-month wipe-and-recreate); participant correlation via HMAC-SHA256 of normalized SSN with the key in `ssa.properties`, storing hash + last four only; PremiumPath Card MCC-restricted to 6300/5960 at issuance.
 - Summit feeds confirmed — card transaction export (`MCC`, `MerchantName`, `UserID`; `UserID` is the participant's ID even on dependent cards; `MerchantName` truncates at 16 chars) and mailing/coverage-event export (`EventTypeID`, `EventName`, `Mailed`; no participant ID, joined on SSN hash). Both schedulable and employer-filterable. Summit export columns can't be modified; a custom export was priced and declined.
@@ -183,6 +183,36 @@ Static resources (`/images/`, `/css/`, `/js/`, `/fonts/`, etc.) are exempted bef
   in its own header as fixing a live foreign-key failure. The verification grep found no delete path
   exists at all. The decision was right for other reasons and stands; the claim was written into the
   migration header *and* the build plan before anyone checked. Corrected in `cf15ff8` / `682bc8f`.
+- **2026-07-31 (session 4) — the design advisor's remaining gap, closed.** Full detail in
+  `docs/session_closeout_2026-07-31_session4.md`. V080 (session 2) shipped `ICHRA_DESIGN_ADVISOR`
+  `is_admin_only=1` with **no UI entry point at all** — deliberately, since none existed yet. Session 4
+  built one: `834daac` (T55, hub card copy/target corrected) → `0f631c2` (T55a, card gated on chatbot
+  availability) → `668c4d5` (demo-path role walk — established that an external agency user holds
+  neither `isPspAdmin`/`isPspUser` nor `isBpoAdmin`/`isBpoUser`, so **no** agency role could ever have
+  reached the chat widget; caught and fixed a real defect along the way, the hub's Rate Cache Admin card
+  rendering "Live" for every role while its servlet 403s anyone but PSP admin) → `9b95979` (T58, widened
+  `navbar25.jsp:408`'s chatbot gate with `|| ichraAvailable`, reusing the page's own already-resolved
+  value — no second resolver call) → `a0b3cf2` (T57, **V082** — `chatbot_skill.is_admin_only` 1→0 for
+  `ICHRA_DESIGN_ADVISOR`, keyed on `skill_name` per rule 4) → `14b5819` (verified the `ichra_design` KB
+  staying `ADMIN_ONLY` costs nothing: `ChatAssistant.executeSkill` sends only `skill.getSystemPrompt()`
+  plus the question, no KB retrieval on the matched-skill path at all — citations are 14 literal
+  `Source:` lines written inline into V080's `system_prompt`) → `4ea160d` (T52, `executeSkill`'s
+  text-only branch now honours a skill's configured `model`/`max_tokens` when both are set, defensively
+  — a skill configuring neither is byte-identical to before; only `ICHRA_DESIGN_ADVISOR` changes
+  behaviour, `EMAIL_DRAFT_ASSISTANT` cannot keyword-match at all since V065 never set
+  `trigger_keywords`). ⚠️ **Three things worth not re-deriving.** (1) **`navbar25.jsp`'s widened
+  condition deliberately kept `chatbotEnabled` as a common factor** rather than the literal
+  `(existing) || (ICHRA expression)` form, because the literal form would render the widget on an
+  installation with no Anthropic API key — a live-looking button where every question fails. (2) **T53
+  is now single-guarded**, not doubly — `is_admin_only` no longer blocks a non-admin's fallback KB
+  search from the ICHRA skill's own guardrail gap; the KB's own non-admin-ineligibility is now the only
+  thing preventing it, so flipping `ichra_design` to non-admin visibility later would reopen T53 for
+  real. (3) **V082's blast radius is real, not hypothetical:** `is_admin_only` is a property of the
+  skill, not of ICHRA entitlement, so PSP users (`CHATBOT_ALL_USERS`) and BPO users
+  (`CHATBOT_ALL_BPO_USERS`) can now also match `ICHRA_DESIGN_ADVISOR` wherever those toggles are on —
+  zero in practice only where both are off. **Untested:** whether the advisor's answer actually names a
+  source document for a real role-2 login post-deploy — static analysis established the code path but
+  nobody has asked it the question for real.
 
 ## Reference Docs
 | Topic | Location |
