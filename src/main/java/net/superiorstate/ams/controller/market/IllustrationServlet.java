@@ -372,7 +372,23 @@ public class IllustrationServlet extends HttpServlet {
         }
 
         if (rows.isEmpty()) {
-            request.setAttribute("inputError", "Enter at least one age.");
+            // T103: a hub card (or any link) that asks for AGE_BAND explicitly but supplies
+            // no ageN parameter at all is a landing, not a failed attempt to compute — the
+            // starter row the JSP renders for modeExplicit is the whole answer, and an error
+            // greeting the agent before they have done anything is wrong. A request that
+            // carries age1 (even blank) is still trying to compute and still errors, as does
+            // a derived mode (modeExplicit false) with nothing usable — unchanged both ways.
+            boolean anyAgeParamPresent = false;
+            for (String ageRaw : submittedAges) {
+                if (ageRaw != null) {
+                    anyAgeParamPresent = true;
+                    break;
+                }
+            }
+            boolean modeExplicit = Boolean.TRUE.equals(request.getAttribute("modeExplicit"));
+            if (!(modeExplicit && !anyAgeParamPresent)) {
+                request.setAttribute("inputError", "Enter at least one age.");
+            }
             request.getRequestDispatcher("/WEB-INF/view/market/illustration25.jsp").forward(request, response);
             return;
         }
