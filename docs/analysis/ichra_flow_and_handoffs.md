@@ -126,15 +126,51 @@ documents**, which are agent-first, against them. Deciding documents: `plus_tier
 (29 Jul, Rev 6, **Part 8 governs**), `plus_tier.md` (29 Jul), `ichra_administration_scope.md` (28 Jul),
 `ichra_platform_capability_map.md` (29 Jul), `swbd_premiumpath.md` (30 Jul), `healthsherpa.md` (31 Jul).
 
-### §4.1 — The motion, in order
+### §4.1 — The motion
+
+> ⚠️ **Two sources, different standing.** The stage table below was derived from **dated business
+> documents**. Everything marked **[K 8/1]** comes from **Kevin's direct account of how agents work**,
+> given conversationally on 2026-08-01 — a *better* source about agent behaviour than any internal
+> document, and a *weaker* one about what the code does. Nothing marked [K 8/1] is a document citation.
+
+#### The shape, per Kevin — this supersedes the eight-stage ordering below **[K 8/1]**
+
+> *"An agent aware of a prospect goes into AMS and generates a proposal for an ICHRA/QSEHRA solution."*
+
+One intake, three levels of input fidelity, one proposal out:
+
+| Tier | Input | Typical case | Today |
+|---|---|---|---|
+| **1** | ZIP + headcount | New prospect, nothing in hand | ⚠️ county dropdown, not ZIP (**T74**) |
+| **2** | ZIP(s) + age-banded headcounts | Prospect who has shared something | ✅ AGE_BAND — single county only |
+| **3** | Actual census | Existing client | ⚠️ 6 hand-typed rows; `/GroupConversion` is **tier 3 only** (**C4**), since it needs a current group premium that exists only on an established client |
+
+**The proposal is the centre of the product, not a document at the end of it [K 8/1].** It carries
+employer-facing evaluation tools — current group rates where they exist, expected or known increase —
+and SSA is visible in it. Two uses, needing different things:
+
+- **Employer-driven** — sent cold, worked alone. *"There are just some employers who want to mess
+  around on their own and this would be perfect for."* Must stand up with no agent present.
+- **Agent-driven** — he is in the room on a phone or laptop working examples, discussing scenarios
+  outside the proposal. The proposal that follows carries an application link and is **close to a sold
+  case**. This is why **T78 (mobile) is a tier-3 requirement, not a nice-to-have.**
+
+**Triggers — context, not structure [K 8/1].** An existing book turns on a **renewal increase**; a flat
+renewal is left alone. A **prospect** can be approached any time, because ICHRA can beat even a flat
+renewal. A group with **no coverage, or resolved to drop it**, is the cleanest case — and the one where
+the doctor objection barely lands.
+
+#### The stage table — **superseded as an ordering**, retained for what it maps
+
+Stage 1 and stages 6–8 survive intact; stages 2–5 are re-read through the tiers above.
 
 | # | Stage | Who acts | Surface | Produces → consumed by |
 |---|---|---|---|---|
 | 1 | **Entity / eligibility screen** — sole props, partners, >2% S-corp shareholders cannot participate; any other group health plan disqualifies a QSEHRA | Agent | ⛔ **none** | eligibility result, which *"filters the LOS menu"* (`plus_tier.md` §Quote) → stage 2 |
-| 2 | **Subsidy segmentation** — split the census into PTC-eligible (→ QSEHRA-lite) and not (→ ICHRA). *"Answers which product to sell before anyone commits"* | Agent | ⛔ **none** | the product decision → stage 3 |
+| 2 | ~~**Subsidy segmentation**~~ — **cannot happen here (C1) [K 8/1]**. PTC eligibility turns on **household income**, and the agent has ages, not wages, until well after first contact. Real, but late-stage | Agent | ⛔ none | — |
 | 3 | **Market illustration** — county → premium range | Agent | ✅ `/Illustration` | range → stage 4 |
 | 4 | **Design** — age-band net cost, affordability threshold per employee, **class optimization** | Agent | ✅ AGE_BAND + affordability · ⛔ **no class optimization** | a priced design **and a design fee** (A3) → stage 6 |
-| 5 | **"Will I lose my doctor?"** — provider check (A2) | Agent or employee | ⛔ **none** — O23 **resolved favorably** (Part 8, 30 Jul), so this is unblocked, not gated | the objection that kills cases, answered |
+| 5 | **"Will I lose my doctor?"** — ~~per-employee NPI provider check~~ → **carrier network breadth, group vs individual, with known discrepancies named (C5) [K 8/1]** | Agent | ⛔ **none** — O23 **resolved favorably** (Part 8, 30 Jul), so unblocked, not gated | the objection that kills cases, answered |
 | 6 | **Proposal → application → setup** | Agent, then employer | ✅ hand-off → `ProposalBuilder`; ⛔ ICHRA task sequence not yet entered | signed setup |
 | 7 | **Renewal defense** — import the group book, radar surfaces renewals 90–120 days out, auto-runs the conversion | SSA scheduler, output to agent (**D24**) | ⚠️ `/GroupConversion` is A4a's *analysis*; **A4b's radar and `agency_book_group` do not exist** | a queue of pre-analysed opportunities |
 | 8 | **Pipeline console** (A5) | Agent / GA | ⚠️ partial — drawer + `/IchraOpportunityAnalyses`, fed by nothing (**G4**) | network visibility |
@@ -163,20 +199,43 @@ FIPS"* but the page offers only a county dropdown; `healthsherpa.md` (31 Jul) cl
 (*"AMS must carry its own county reference data"*) while `county_reference.representative_zip` already
 carries it locally, unwired.
 
-**Re-ranked by sale-motion impact — the order changed completely.** §2 ranked by demo step, which put
-config and polish on top. By motion:
+~~**Re-ranked by sale-motion impact.**~~ ⚠️ **Wrong at the top; superseded below.** It read: 1. N1+N2
+intake front end · 2. N5 provider check · 3. G4 attribution. **C1 removes N2 from first place** —
+subsidy segmentation needs household income, which the agent does not have at first contact. Kept for
+provenance.
 
-1. **N1 + N2 — the intake front end.** Stage 1 and 2 of an eight-stage motion, and *every* built tool
-   assumes their output already exists. An agent cannot know whether they are running an ICHRA or a
-   QSEHRA case, and entity type can void the design before any number matters.
-2. **N5 — the provider check.** Unblocked by Part 8 on 30 Jul and still unbuilt. The capability map
-   calls it the objection that kills cases; the plan calls it *"the highest-emotion demo."*
-3. **G4 — illustration → opportunity attribution.** Promoted out of "pipeline tie-in, not a numbered
-   step": it is the input A5 was designed to read, and A5 is the pitch line *"here's your whole
-   network's pipeline."*
+#### Corrected ranking, 2026-08-01 (prompt D), six corrections applied **[K 8/1]**
 
-**G2 drops off this ranking without becoming less urgent** — it blocks the *demo*, not the motion, and
-it is an operational task, not a build.
+1. **T74 — ZIP intake.** Tier 1 *is* the motion's front door, and today it asks for a county. **This is
+   the next build; see §5.** Part 1 found it larger than prompt C claimed — the crosswalk does not exist.
+2. **T81 — the interactive employer proposal.** The proposal is the centre of the product, not its
+   output. A **phase, not an item**; ships as a **sandbox first** (Part 5 decision) — render everything,
+   store nothing.
+3. **T80 — cost certainty.** *"The through-line of the whole pitch, and it is unbuilt."* Raised
+   independently at two separate points in the walkthrough. ⚠️ **Mechanism comparison, not a forecast.**
+
+**Moved down.** **T71** (subsidy segmentation) falls from first to **late-stage** — it needs wages
+(**C1**). **T70** (entity screen) stays real and first-in-sequence, but is a small gate, not a phase.
+**T75** (class optimization) defers — 50+ groups are not the prospect set — **but partly returns for a
+different reason (C3): geographic rating area is a permitted ICHRA class**, so a 14-person group across
+two rating areas structurally needs two classes. Both halves hold; they are not in tension. **T73**
+shrinks to network breadth (**C5**) and gets cheaper — aggregate, cacheable, identical for every
+employee in a county, **touching no employee data**, so it clears build rule 3 outright.
+
+**Dissolved (C6):** the leave-behind gap. The proposal *is* the leave-behind; nothing separate to build.
+
+**G2 still drops off this ranking without becoming less urgent** — it blocks the *demo*, not the motion.
+
+#### Part 1 — four claims tested against source, 2026-08-01
+
+Asserted conversationally from names and memory; each was checked against the schema and the code.
+
+| # | Claim | Verdict |
+|---|---|---|
+| 1 | `county_reference` is county → **one** ZIP, so it cannot serve reverse lookup | ✅ **correct.** V076: PK `county_fips`, `representative_zip CHAR(5) NOT NULL` — one row per county, 254 for TX. A reverse lookup would match only those 254 ZIPs. ⚠️ **But §4.2's own earlier line calling it *"exactly that data, unwired to the UI"* was wrong**, and so was T74's original *"small: a ZIP box that resolves through `CountyReferenceDAO`"* |
+| 2 | Some ZIP → county crosswalk exists | ❌ **none, anywhere.** `CountyReferenceDAO` exposes `findByFips`, `listByState`, `findByFipsIn` — all county-keyed. No resource file, no seeded table, and no API route (`healthsherpa.md` 31 Jul: *"the ZIP→FIPS route via this API is closed"*). **A build item, not a wiring item** |
+| 3 | The rate cache is keyed by rating area | ❌ **keyed by county FIPS.** `uq_rarc_year_county_age_tobacco (plan_year, county_fips, age, uses_tobacco)` — and **there is no `rating_area` column at all**, despite the table being named `rating_area_rate_cache`. So **"dedupe by rating area before pricing" cannot be done against this cache**; dedupe is by county FIPS — correct, but coarser (two counties sharing a rating area still hold separate identical rows) |
+| 4 | The ICHRA JSPs are fixed-width desktop markup | ❌ **overstated.** All three carry `<meta name="viewport" content="width=device-width, initial-scale=1">` and load Bootstrap 5.3.3. The real problems are narrower: **five-column result tables with no `overflow-x` wrapper and no `.table-responsive` anywhere in the ICHRA path**, ~10 fixed-px input widths (65–190px), and a `height: calc(100vh - 64px)` shell that fights mobile browser chrome. **Viable, not designed for it** — which sizes T78 down |
 
 ### §4.3 — The agent's job, and where the tools do not fit it
 
@@ -194,3 +253,52 @@ Two tools sit on steps the agent does not perform in the motion as decided:
   it is on the hub because the hub is surface-organised rather than motion-organised.
 
 **And one tool answers a question the agent was never recorded asking.** See the close-out's Part 4.
+
+---
+
+## §5 — Next build: ZIP intake
+
+⚠️ **There is no ZIP → county crosswalk in this repo, this schema, or the HealthSherpa API.** Part 1
+verified all three. `county_reference` is county → *one* representative ZIP (V076, PK `county_fips`),
+which cannot be reversed. **This build must create the crosswalk. Size it as a data build with a UI on
+top, not as wiring a dropdown to a text box.**
+
+**The data.** A `zip → county_fips` table, many-to-many (a ZIP may span counties). Source is the same
+Census 2020 ZCTA-to-county relationship file V076 already used, via
+`docs/scripts/generate_county_reference.ps1` — Texas is ~2,600 ZCTAs against 254 counties. National
+reference data, not PSP-scoped, matching V074–V076's precedent. **A migration is required and is out of
+this run's scope** — this section specifies it, it does not author it.
+
+**What the agent types.** A 5-digit ZIP, replacing the county dropdown as the primary input. The
+dropdown stays as a fallback and for the counties a ZIP cannot reach.
+
+**Resolution.** ZIP → one or more `county_fips` → the rate cache, which Part 1 confirmed is keyed
+`(plan_year, county_fips, age, uses_tobacco)` — **not by rating area, and there is no rating-area column
+at all.** So the whole path is county-FIPS-keyed end to end.
+
+- **One county** → resolve silently, show the resolved county name so the agent can see what it chose.
+- **Crossing ZIP** → **the agent picks. It must never silently resolve.** Present the candidate counties
+  and stop. This is the single rule most likely to be shortcut, and a wrong county is a wrong premium
+  presented as fact.
+- **Unknown ZIP** → say so and offer the county dropdown. Never guess a neighbour.
+
+**Cache miss** (**T76**) — a resolved county with no warmed rates should **warm on demand** rather than
+report "no data". Matters beyond SWBD: every TPA warms from its own book. ⚠️ Blocked in practice — no
+AMS installation has ever authenticated to the HealthSherpa API (`healthsherpa.md`, 31 Jul). **Ship the
+miss path as an honest message first; the warm trigger lands when a key does.**
+
+**Multiple locations** (**T77**) — a design holds a **set** of ZIPs, not one. Dedupe **by resolved
+`county_fips`** before pricing, since that is the cache key. ⚠️ Rating-area dedupe is *not* available
+and must not be claimed: two counties in one rating area price identically but hold separate rows.
+
+**Files.** `IllustrationServlet` (parse + resolve), a new ICHRA-only `ZipCountyDAO`, the new entity,
+`illustration25.jsp` (ZIP box, disambiguation, resolved-county display). `GroupConversionServlet` and
+its JSP take the same treatment **only after** the illustration path is proven.
+
+**Constraints.** Gated by `IchraAccessResolver.isAvailable`, no new ungated path · no hardcoded LOS /
+ServiceItem / PlanType / ServiceModule / RateTable literal · **nothing persisted about any person** —
+a ZIP typed by an agent is an input, not a record · no behaviour change for any non-ICHRA line of
+service · the `source_env = STAGING` banner untouched and still above the results.
+
+**Out of scope.** Multi-state ZIP data (Texas first, same as V076) · the entity screen (**T70**) ·
+estimated-census state (**T79**) · mobile (**T78**) · anything that writes a row.

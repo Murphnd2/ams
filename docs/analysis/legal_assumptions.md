@@ -897,6 +897,91 @@ step 10 is run (T65).
 
 ---
 
+### LA-15 — A subsidy-preserving contribution ceiling is a different object from an affordability threshold
+
+**Assumption.** Reporting *"at $450 this employee's coverage becomes affordable and they lose PTC
+eligibility"* is analysis. Presenting *"stay under $412 to keep them eligible"* is **a recommended
+contribution**, and recommending a contribution is closer to advice than reporting a threshold — even
+though the arithmetic is identical and the second number is just the first one restated.
+
+**Basis — reasoning, not authority, and the reasoning is about framing rather than computation.**
+Surfaced 2026-08-01 from Kevin's account of how a prospect case actually runs: an agent may pick a
+contribution *because* he infers many of the employees are subsidy-eligible, and in that framing the
+affordability threshold **inverts into a budget ceiling.** The same `AffordabilityCalculator.flipContribution`
+output serves both. What changes is the verb: today the page *warns* about crossing a line; the ceiling
+framing *tells the employer where to land*. That crosses toward the no-steering boundary the doc set
+draws everywhere else — no curation, no "recommended", no default selection (`ichra_administration_scope.md`
+ERISA safe-harbor posture, LA-04, and D24's agent-only rule). **No authority was read for this entry.**
+
+⚠️ **It also inherits LA-12's dangerous direction.** A ceiling presented as a target is acted on more
+directly than a threshold presented as a warning — so if the underlying LCSP is understated (**T44**,
+still unresolved), a ceiling is wrong in a way that immediately shapes an employer's offer.
+
+**Design choice — and this run deliberately makes none.** Current wording is unchanged and stays a
+threshold report. The tension is recorded so that whoever builds the prospect-case framing sees it
+before writing the label, rather than discovering it in review. **Nothing in the code moves on this
+entry today.**
+
+**Risk if wrong.** In the permissive direction: SSA effectively recommends a contribution level to an
+employer, which is a design recommendation with tax consequences for employees, made by an entity
+holding no licensure. In the restrictive direction: SSA withholds the single most useful number in an
+ICHRA design from the person who needs it, and a competitor supplies it.
+
+**Reversal cost.** ⭐ **Display edit, both directions, and nothing is persisted** — no affordability
+figure is written to `illustration_log`, and `proposal_ichra_snapshot` (V079) is structurally incapable
+of carrying one. There is no back-catalogue to restate. The asymmetry is reputational rather than
+technical: a ceiling once presented to an employer as a target has been acted on.
+
+**Confirm before.** Any label, tooltip, headline or proposal section that presents a contribution figure
+as a **target, ceiling, recommendation, or "optimal"** rather than as a threshold being crossed. The
+trigger is the framing, not the feature.
+
+**Status.** Assumed — 2026-08-01. Source: Kevin's walkthrough, not a document. No code changed.
+
+---
+
+### LA-16 — Employer-entered data arriving through an unauthenticated proposal link
+
+**Assumption.** An employer improving a census, correcting an age, or entering their current group
+premium through a **public proposal link** is *data collected from a real person arriving by a side
+door* — and it is subject to the same obligations as data collected through the front door, despite the
+link's convenience framing.
+
+**Basis.** No authority read. The reasoning is structural: `/proposal/*` is public and unauthenticated
+(the constraint LA-12 already leans on to keep affordability off that surface), so anything the page
+accepts is accepted from an unauthenticated party with no identity assertion and no agreement to any
+terms. The existing public surfaces — `/q/*`, `/proposal/`, `/apply/` — either collect nothing or sit
+behind an application the person deliberately started. A proposal that quietly gains input fields is a
+different thing from a proposal that is read, and T30/T31's lessons about public form surfaces (rate
+limiting, abuse) attach the moment it does.
+
+**Design choice — deferred in practice, and that is the point of registering it now.** The
+2026-08-01 decision is that **T81's interactive employer proposal ships as a sandbox: the employer
+corrects estimates, enters current rates and an expected increase, figures update live, and nothing is
+written.** No row, no PII, no authentication needed, because nothing is collected. That is build rule
+3's worked example — render everything, store nothing — and it defers this entire question. **This entry
+exists because T81's obvious next phase, returning those corrections to the agent, walks straight into
+it**, and the value of that phase is exactly what makes it tempting to add without deciding.
+
+**Risk if wrong.** Collecting employee ages and employer financials from an unauthenticated party
+without notice, retention rules, or a lawful basis — and, if the census is ever improved to real
+identities rather than age bands, doing so on a surface that has none of the protections the
+authenticated census path (**D7**, **D21**) was designed around. D21 exists specifically to keep the
+sales stage outside the BAA question; a public write path is how that boundary gets crossed by accident.
+
+**Reversal cost.** ⭐ **While the sandbox holds: zero — there is nothing to reverse, because nothing is
+stored.** Once a write path exists it inverts sharply: collected data must be located, retained per some
+rule nobody has written, and deleted on request, and any of it already forwarded to an agent cannot be
+recalled. **The cheap moment to decide is before the first row is written, which is now.**
+
+**Confirm before.** Any field on a public proposal page whose value is **sent to the server** — as
+opposed to consumed by client-side script and discarded. That is the exact line the sandbox decision
+draws, and it is the only line that needs watching.
+
+**Status.** Assumed — 2026-08-01. Deferred by the sandbox decision; registered against T81's next phase.
+
+---
+
 ## Candidates considered and not adopted
 
 Recorded so the next reader knows they were seen and declined, rather than missed. **None of these
