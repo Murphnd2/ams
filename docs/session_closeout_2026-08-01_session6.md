@@ -1,5 +1,403 @@
 # Session close-out — 2026-08-01, session 6
 
+**Branch:** `refactor/modernize-architecture` · **Session span:** `941dc14` (session 5's close) →
+`cabbe88` · **52 commits across 12 prompts (A–K2).**
+
+> **This document was restructured at session close.** Sections 1–11 are the close-out and are written
+> for someone opening a new session who reads nothing else. **Everything below §11 is the original
+> per-prompt log, preserved verbatim as appendices** — no detail was deleted, only moved.
+>
+> ⚠️ **Sections 1–11 were written against `git log`, not against the appendices.** Several of this
+> session's most expensive errors came from documents describing code instead of code describing itself.
+> Where an appendix and the log disagree, the log won and the disagreement is noted in §7.
+
+---
+
+## ⚠️ 1 — Deployment state. Read this before anything else.
+
+### **Production is behind HEAD, and the gap contains a defect that silently doubles a headcount.**
+
+**`v0.85.06` is built and pushed. It is NOT DEPLOYED.** Production runs **`v0.85.05`**, which carries the
+**K3-a/b/c/d** defects — including **K3-b, the duplicated age band**: one band entered renders two, and
+the headcount becomes the sum of both, **with nothing on screen explaining it**. An agent demoing on
+production today can produce a wrong group total and not know.
+
+⚠️ **This is the single most important fact in this document.**
+
+### The version ladder — and what I could and could not verify
+
+⚠️ **I could not verify the version numbers from the repository.** `git tag -l "v0.8*"` returns nothing
+and no `v0.85` string appears anywhere under `docs/`. Per `CLAUDE.md` that is **expected, not
+suspicious** — releases are typed by hand in the GitHub web UI and local tags are stale by design. **The
+version numbers below are Kevin's record**, which is authoritative because he cuts the releases. The
+**commit ranges** are mine, read from `git log`, and are what a next session should map against.
+
+| Release | Commit range (reconstructed from content) | Contains | On production? |
+|---|---|---|---|
+| `v0.85.00`–`v0.85.04` | `a79de12` … ≈`525b9b5` | Prompts A–I: the flow map, affordability constants + slider, ZIP crosswalk (V084/V085), ZIP intake, the R1 precedence fix, the coverage-mismatch fix, and the runtime-walk repairs W1–W11 | superseded |
+| **`v0.85.05`** | ≈`fe35261` … `7179773` | Prompts J and K: the layout pass (collapse, repeater, mobile, popovers) and the one-analysis-surface change | ⚠️ **YES — this is what is live, and it carries K3-a/b/c/d** |
+| **`v0.85.06`** | `f651633` … `cabbe88` | **Prompt K2 — the tier repair.** Fixes the duplicated band, makes Illustrate always compute, makes contribution optional, clears stale results on edit | ❌ **BUILT AND PUSHED, NOT DEPLOYED** |
+
+**Migrations:** **V084 and V085 are the session's only two**, and **neither has been applied anywhere —
+not production, not local.** They are the ZIP crosswalk's schema and Texas data. **Nothing reads
+`zip_county` except the ZIP intake feature**, so applying them changes no existing behaviour — but
+**without them, ZIP resolution fails for every ZIP**, and `ZipCountyResolver` fails closed, so every
+lookup reports *"We don't have that ZIP in our county lookup."* The feature looks uniformly broken
+rather than erroring.
+
+⚠️ **Therefore: V084 and V085 must be applied in the same release as the WAR that carries ZIP intake.**
+If `v0.85.05` is live and those migrations were not applied with it, ZIP intake is currently dead on
+production and reporting a coverage gap for every ZIP typed.
+
+**One WAR was built by me this session** — `./mvnw -P server clean package` at **`18e0f77`** (end of
+prompt F), verified to carry `persistence-server.xml`. **It predates prompts G, H, I, J, K and K2** and
+should not be deployed. Any later build is Kevin's.
+
+---
+
+## 2 — Shipped, by prompt
+
+Confirmed against `git log --oneline 941dc14..HEAD`. **The prompt list is A, B, C, D, E, F, G, H, I, J,
+K, K2 — twelve, matching.** (There is no separate prompt-A close-out commit; `78e375f` is it.)
+
+**A — map the ICHRA flow, ship the cheap fixes**
+- `a79de12` Correct migration tracker V079/V081/V083 production state
+- `e849dac` G1/T59: affordability view given its own entry point
+- `724cc3e` G3: sequence the ICHRA hub instead of listing it
+- `56e7f07` G5: carry total lives from AGE_BAND back to RANGE
+- `3291469` Map the ICHRA flow end to end · `78e375f` close-out
+
+**B — make demo step 5 real**
+- `e90515a` T65: seed the ICHRA affordability constants, record LA-14
+- `53a8131` G9: contribution slider with the live per-employee flip point
+- `ab90d49` Record prompt B · `9f91bca` close-out
+
+**C — the sale motion**
+- `e95c4b3` Read the business docs against the flow map · `c2d9577` close-out
+
+**D — the agent-interaction walkthrough**
+- `0bdfe74` Tiers, six corrections, the ZIP spec · `ecaec2a` close-out
+
+**E — T74 part 1, the crosswalk data layer**
+- `4f242af` V084: `zip_county` table
+- `2689d67` V085: Texas crosswalk, 2,894 rows + generator
+- `3f7d92e` Register V084/V085 · `d7cbc4f` entity, DAO, resolver
+- `e6dee49` Record part 1 · `596936c` close-out
+
+**F — T74 part 2, ZIP intake on the illustration**
+- `5b70586` Resolve `?zip=` in the servlet · `a41a481` ZIP box, chooser, no-match copy
+- `54505d2` Record part 2 · `18e0f77` close-out
+
+**G — ZIP intake repair (first runtime walk findings)**
+- `de0efe0` R1/R2 server side: ZIP precedence fix + JSON lookup endpoint
+- `6543db7` R2/R3/R4 client side: blur lookup, stop the false no-rates message
+- `2b2ca7a` Record R1–R5 · `499dc53` close-out
+
+**H — the coverage mismatch**
+- `8285b83` Stop blaming the agent for a county we never warmed
+- `0e2e014` Label chooser candidates that cannot be priced
+- `707ede6` Record T89, mark T76's seam · `363427d` close-out
+
+**I — the illustration surface after runtime review**
+- `7bc5794` W1–W6, W11: seven fixes from the walk
+- `ced1679` **W10: make the contribution slider read as a control**
+- `80ef35a` Record W1–W11 · `525b9b5` close-out
+
+**J — the illustration on a phone**
+- `fe35261` W13: carry ZIP across the mode toggle
+- `609e56d` W7+W8: repeater, income only on the INCOME basis
+- `7e78f6a` W14: collapse the input block after a result
+- `682dcef` T78: the three named mobile defects
+- `b12f875` W9: info popovers
+- `031355b` Click-script rewrite + mobile pass · `d8ec5ea` close-out
+
+**K — one analysis surface**
+- `2445edb` Progressive by input fidelity (+ W15)
+- `8ef8c65` M2/M4: full-width slider track, edge-to-edge cards
+- `d0d0d64` Record the decision, dissolve T59 · `7179773` close-out
+
+**K2 — tier repair**
+- `f651633` **K3-b: stop force-rendering a blank first age band**
+- `77af9d4` K3-a/K3-c: contribution optional, Illustrate always computes
+- `d016fde` K3-d: stale result must not survive an edit
+- `130c791` Record the tier repair · `cabbe88` close-out
+
+---
+
+## ⚠️ 3 — Verification state. The most important section for the next session.
+
+⚠️ **A walk verifies a build, not a feature.** Everything below is stamped with the commit it was
+observed at, because `illustration25.jsp` was edited **eight times** this session and a behaviour
+verified at prompt G may have been broken at prompt K.
+
+### Runtime-verified on production — observed by a role-2 agent
+
+**Observed at ≈`525b9b5` (after prompt H, before J/K/K2):** the ICHRA gate · `?zip=` resolution in all
+three states (single / chooser / no-match) · both coverage-mismatch paths · the `?countyFips=` contract ·
+mode carry in both directions · the affordability table · **the slider, with verdicts flipping at $420
+and $573** · the design advisor citing a source · `illustration_log` writing.
+
+**Observed after prompt K (≈`7179773`):** **K1** (no toggle, one form) and **K2** (a blank age row
+derives range output).
+
+⚠️ **Every one of those was observed on a build that predates prompts J, K and K2** — except K1/K2. The
+same file has changed five times since most of them. **They are historical evidence, not current state.**
+
+### Code-verified only — never walked
+
+**All of prompt K2** (`f651633`, `77af9d4`, `d016fde`) — the duplicated-band fix, contribution-optional,
+stale-result clearing. **All of prompt J** (`fe35261`…`b12f875`) — the collapse, the repeater, income
+visibility, popovers, mobile CSS. **Most of prompt K** beyond K1/K2. **Prompt I's W10 slider redesign**
+(`ced1679`). **Prompt E's entire data layer** — `ZipCounty`, `ZipCountyDAO`, `ZipCountyResolver` have
+**never executed**, because V084/V085 are unapplied everywhere.
+
+### Never tested — in neither bucket
+
+- **V084 and V085 have never been run against any database.** The `zip_county` table does not exist
+  anywhere.
+- **`IchraZipLookup`** (`de0efe0`) — the JSON endpoint has never returned a row, for the same reason.
+- **The affordability constants seeded in `e90515a`** — `DatabaseInitializer` only runs on a fresh
+  install, so that code path has never executed on any existing installation.
+
+### Click-script state — 72 steps in `ichra_flow_and_handoffs.md` §3
+
+| Block | Steps | Status |
+|---|---|---|
+| Main `1`–`12` (incl. `4a`–`4r`, `10a′`–`10c`) | 34 | **Mostly run** at ≈`525b9b5`. `4o`–`4r` and `10a′`–`10c` were added *by* prompts I/J and are **outstanding** |
+| `K1`–`K9` (one surface) | 9 | **K1, K2 run and passed. K3 failed — that is what prompt K2 fixed. K4–K9 outstanding** |
+| `T1`–`T10` (tier repair) | 10 | **All outstanding.** T6 (count the rows) and T9 (Illustrate twice) are the regression tests for K2 |
+| `L1`–`L10` (layout, L9 struck) | 9 | **All outstanding** |
+| `M1`–`M10` (mobile) | 10 | **Partly run** — M2, M3, M4 were *found* by a mobile walk; M1, M5–M10 outstanding |
+
+**Resume point for the next session: T1–T10, then K4–K9, then L, then the rest of M.**
+
+---
+
+## 4 — Decisions made
+
+1. **Three fidelity tiers replace the three-step framing.** ZIP + headcount → ZIP + age-banded
+   headcounts → actual census. Kevin: *"steps 1, 2 and 3 are really 3 versions of the same thing — the
+   only difference is level of detail available."* Pre-sale this is done **once**, at whatever detail is
+   available. Recorded in `ichra_flow_and_handoffs.md` §4.1.
+2. **One analysis surface replaces the mode toggle** (`2445edb`). The Range/Age Band toggle is gone; the
+   form grows as inputs are supplied. ⚠️ **`mode=RANGE` and `mode=AGE_BAND` remain fully supported URL
+   parameters**, honoured verbatim when present and derived only when absent — the hub cards and every
+   existing link still resolve unchanged.
+3. **T59 closed as never-a-defect.** *"Affordability has no URL of its own"* was logged as a gap. It was
+   not: affordability is a **section that appears when a basis is chosen**, not a step with an address.
+   The defect existed only inside the three-step framing, and **the framing was the error**.
+4. **N12/T81 — the interactive employer proposal — ships as a sandbox first.** The employer corrects
+   estimates, enters current rates and an expected increase, figures update live, **and nothing is
+   written**: no row, no PII, no authentication. Returning those corrections to the agent is a
+   **separate, later decision**. This is build rule 3's worked example — render everything, store
+   nothing, ship the useful part while the collection question stays open.
+5. **The ZIP crosswalk is ZCTA-derived and Texas-only, and both cost something.** HUD's crosswalk is the
+   better source (real USPS delivery data, a residential address ratio) and was tried first — its file
+   paths return HTTP 202 with a zero-byte body and its API returns 401 without a registered token.
+   **Cost of ZCTA:** ZCTAs omit PO-box-only and single-building ZIPs, so **a valid USPS ZIP can
+   legitimately miss** — which is why the copy says *"we don't have that ZIP"* and never *"invalid ZIP"*.
+   **Cost of Texas-only:** every out-of-state ZIP misses. Both are known gaps, not surprises; another
+   state is the same generator with `-State XX` and a new `V0NN`.
+6. **Contribution is optional** (`77af9d4`). Bands with no contribution produce a per-band premium table.
+   Net columns are **absent, not blank** — an empty currency cell reads as zero.
+7. **Illustrate always computes.** One click, one result. No input's visibility may depend on whether the
+   form has been submitted.
+
+---
+
+## 5 — New assumptions
+
+| # | Assumption | Reversal cost |
+|---|---|---|
+| **LA-14** | `FPL_ANNUAL_2026` holds the **employer safe-harbor** poverty line ($15,960, 2026 table), not the PTC one ($15,650, 2025 table) | ⭐ **Trivial** — one `UPDATE` or two lines in `DatabaseInitializer`. **Nothing derived from it is persisted**; `proposal_ichra_snapshot` is structurally incapable of carrying an affordability figure, so there is no back-catalogue to restate |
+| **LA-15** | A **subsidy-preserving ceiling is a different object from an affordability threshold**. Reporting *"at $450 they lose PTC eligibility"* is analysis; presenting *"stay under $412"* is a recommended contribution | ⭐ **Display edit, both directions, nothing persisted.** The asymmetry is reputational: a ceiling presented as a target has been acted on. ⚠️ **Recorded and deliberately unresolved — no wording was changed** |
+| **LA-16** | Employer-entered data arriving through an **unauthenticated proposal link** is data collected from a real person by a side door | ⭐ **Zero while the sandbox holds — nothing to reverse, because nothing is stored.** Inverts sharply the moment a write path exists. **The cheap moment to decide is before the first row** |
+
+**Technical assumptions registered this session:** the percentage constant is a **decimal fraction**
+(`0.0996`, not `9.96`) — AMS has no other percentage-valued constant, so `AffordabilityCalculator`'s own
+contract is the sole authority, and `9.96` would silently report every offer affordable at any
+contribution · **land-area ratio is not a population ratio** and orders the crossing-ZIP chooser without
+ever selecting · the **six-band cap** is set by `proposalBuilder.jsp`, outside the ICHRA fence (**T96**).
+
+---
+
+## 6 — Open questions, and who settles them
+
+| Question | Who | Note |
+|---|---|---|
+| ⚠️ **What would Forrest want a quoting tool to do?** | **Forrest** | **Nobody has asked.** The entire agent-utility thesis descends from one 2026-07-28 call about zizzl's pricing and carrier gating. Everything built this session is inference from it |
+| Does HealthSherpa provide **enrollment support during the window** — does anyone hold the employee's hand, and who? | **Forrest + HealthSherpa** | **T83.** Gated by **O12/O13/O14, none of which has moved since 2026-07-29.** Bears on what an agent can promise and whether he can answer *"did everyone get enrolled?"* afterward. **Do not design around either answer** |
+| **The staging-rate allow-listing gate** | **HealthSherpa** | External, unmoved. ⚠️ Consequence for **T76**: warming from staging stamps `source_env = STAGING`, so warm-on-miss makes a county *work* but **not demoable** — the red banner still fires and the proposal hand-off stays disabled |
+| Are the two affordability `constant` rows on production? | **Kevin** | **T65.** The `DatabaseInitializer` seed does **not** reach an initialized database. Click-script step 10 settles it |
+| Should the county dropdown list all 254 counties with most marked unavailable? | **Kevin** | **T89**, downstream of T76. With warm-on-miss it is reasonable; without it, 250 dead options |
+| Raise the six-band cap? | **Kevin** | **T96** — needs `proposalBuilder.jsp` in scope, or rows 7+ vanish from proposal snapshots silently |
+
+---
+
+## 7 — Contradictions found
+
+**Flagged, not resolved** — each sits in a document outside this session's fence.
+
+1. **`swbd_ichra_build_plan.md` §1 step 6 promises a "prospect pre-filled" ProposalBuilder.** The
+   hand-off deliberately carries no prospect id, and A1's scope says *"No prospect PII, no employer
+   record required"* (**T69**). Fix the sentence, not the code.
+2. **§1 step 5 promised a contribution slider that did not exist.** Now it does (`53a8131`, `ced1679`) —
+   **the document was right and the code was behind it**, the reverse of the usual direction.
+3. **The build plan still carries the provider check as gated on O23.** `plus_tier_build_plan.md`
+   **Part 8 resolved O23 favorably on 2026-07-30** — A2 has been unblocked for days and is still unbuilt
+   (**T73**).
+4. **`ichra_platform_capability_map.md` Layer 1 names four sales tools; three exist.** Class optimization
+   has no surface (**T75**).
+5. **`plus_tier.md`'s quote stage specifies entity type and group-plan status as inputs** and an
+   eligibility result as output. The illustration collects neither (**T70**).
+6. **`ichra_administration_scope.md` says intake includes a subsidy-segmentation routing step.** No
+   surface, and **it cannot run at intake anyway** — PTC eligibility needs household income the agent
+   does not have at first contact (**T71**, downgraded on Kevin's correction).
+7. **Appendix vs `git log`:** the prompt-A appendix says *"`git show --stat` for all five commits lists
+   only `.md` and `.jsp` paths — no `.java`"*. Correct for prompt A. ⚠️ **No appendix contradicted the
+   log on a shipped hash** — the appendices' hashes all resolve.
+
+---
+
+## ⚠️ 8 — The two process findings. The session's most transferable output.
+
+### 8a — `code-verified` is not a weaker `runtime-verified`. It is a different claim.
+
+**Three defects were declared resolved from code reading and disproved by a runtime walk:**
+
+| | Declared from code | Disproved |
+|---|---|---|
+| **R1** | *"`countyFips` always wins"* — precise, and it protected a real URL contract | A stale county selection beat a freshly typed ZIP → **wrong county's rates, indistinguishable from right ones, in front of a client** |
+| **R5** | *"`?countyFips=` pre-selects; no defect"* | **Correct for the case examined** — and the untested neighbouring case (`48085`, a real county with no cached rates) was broken |
+| **T89** | *"the chooser is correct; nothing pre-selected"* — true, and it passed review twice | **Both counties it offered were unpickable** |
+
+**Every one was correct about the code it examined and wrong about the system**, because each defect
+lived in the **interaction between two things**: a stale input and a fresh one; a crosswalk and a cache;
+a URL contract and a dropdown. Reading either side alone showed nothing wrong.
+
+**Then one walk produced twelve findings after three consecutive code-verified runs reported clean.**
+⭐ **And the most important finding was not a defect at all:** the contribution slider — build-plan step
+5, the one thing this page has that a competitor's quote engine does not — **worked perfectly, and the
+person who watched it get built looked straight past it.** *"I didn't get the impression that the page
+was anything other than a static result."* No amount of code reading finds that. **There is no wrong
+line to read.**
+
+**Proposed line for `CLAUDE.md`'s "Keeping state docs current" ritual — proposed, not applied:**
+
+> **A feature spanning two data sources or two inputs is not verified until it has been walked.** Mark
+> such work `code-verified` and keep it out of a release note until a runtime walk clears it — three
+> defects in the ICHRA ZIP path (T84, T88, T89) were each declared resolved from code reading and each
+> disproved by the first walk that ran.
+
+### 8b — Five prompt-level imprecisions produced defects this session.
+
+| # | The instruction | What it produced |
+|---|---|---|
+| 1 | *"the servlet consults `?zip=` only when `countyFips` is blank, so the existing parameter always wins"* | **R1.** Written to protect the URL contract, which it did — and "always wins" also meant a stale dropdown beat a typed ZIP |
+| 2 | *"`census.gov` is not reachable"* | It was. Would have sent me to a GitHub mirror whose licence and vintage I'd have had to establish second-hand, instead of the primary source |
+| 3 | `?countyFips=<Hopkins>` | Pasted literally into a URL. Produced the right error for the wrong reason and **misdiagnosed a real defect standing behind it** |
+| 4 | *"removing it fixes both"* (W4) | Would have destroyed **the only signal for a ZIP resolving to one county with no rates** — a case the dropdown structurally cannot show |
+| 5 | *"progressive means which inputs are shown"* | **K3-a.** Permitted input visibility to key off **submission state**, so Illustrate revealed fields instead of computing |
+
+**Each was precise, defensible, and wrong at an edge the sentence did not contemplate.** These are not
+careless instructions — they are instructions **written from the code's shape rather than the
+interaction's shape**, which is the same failure mode as 8a wearing different clothes.
+
+---
+
+## 9 — Outstanding, and not code
+
+| Item | Owner | State |
+|---|---|---|
+| **Staging banner / allow-listing** | HealthSherpa | External, unmoved. Until it clears, production rates cannot be demoed and the proposal hand-off stays disabled |
+| **ICHRA reference rows** — LOS, `ServiceItem`, `PlanType`, a priced `ServiceModule` → `RateTable` + `agencyrates` assignment | **Kevin**, admin UI | Not started. Without it a sold ICHRA case inherits the generic HRA checklist with **zero ICHRA compliance steps** |
+| **ICHRA task sequence** | **Kevin**, Sequence Builder | **Content is ready** — `docs/business/ichra_setup_checklist.md`, 19 items, entry instructions included |
+| ⚠️ **The three SWBD asks** | **Kevin → Forrest** | **Still never sent.** (1) **O22** book profile — gates which markets to warm and whether A4 is worth building. (2) **Three groups renewing next quarter** — ⚠️ **`/GroupConversion` was built, corrected twice, and has never been fed, because the ask was never made.** (3) **The flowchart Forrest himself offered to draw** — it would replace the entire inferred sale motion with his account of it |
+
+---
+
+## 10 — Next
+
+**Recommended first step: deploy `v0.85.06`, with V084 and V085 applied in the same release.** Production
+currently carries a defect that silently doubles a headcount, and the ZIP feature it also carries cannot
+work at all until those two migrations run. Everything else on this list is worth less than closing that
+gap.
+
+**Then, in order:**
+
+1. **Walk T1–T10.** **T6** (count the rows after add, remove, submit, expand) and **T9** (press
+   Illustrate twice, get the same result) are the direct regression tests for the two defects that
+   mattered most.
+2. **Then K4–K9, L1–L10, and the rest of M** — 72 steps exist and roughly a third have been run.
+3. ⚠️ **Prompt L was scoped and not run.** `ichraHome25.jsp` **still presents three steps for a surface
+   that no longer has them** — three cards pointing at one progressive form, two of them at the same
+   URL. The hub is now the last place the dissolved three-step framing survives, and it is the first
+   thing an agent sees.
+4. **Send the three SWBD asks.** Two of them gate top-ranked builds.
+5. **T76** — warm-on-miss; the seam is built and waiting at
+   `IllustrationServlet.describeUnavailableCounty`.
+
+---
+
+## 11 — SQL close-out audit, whole session
+
+**Two migrations, both new, both additive. Confirmed from the repository, not from the appendices.**
+
+`git log --name-only 941dc14..HEAD | grep '\.sql$'` returns exactly three paths, and no others:
+
+| File | Statements | Status |
+|---|---|---|
+| `docs/migrations/V084__zip_county_crosswalk.sql` | `CREATE TABLE zip_county` · `CREATE OR REPLACE VIEW schema_info` · `INSERT IGNORE INTO schema_version` | New |
+| `docs/migrations/V085__zip_county_crosswalk_tx.sql` | one `INSERT IGNORE INTO zip_county` with **2,894** value rows · `CREATE OR REPLACE VIEW schema_info` · `INSERT IGNORE INTO schema_version` | New, **89 KB** |
+| `docs/schema_version_migration.sql` | Two registration rows appended | Registration only |
+
+- **Orphaned `.sql` files: none.** Both migrations are versioned, sequential and registered.
+- **No existing table altered.** `county_reference` and `rating_area_rate_cache` were read, never written.
+- **No `INSERT INTO constant` in any migration**, this session or otherwise — the affordability constants
+  went through `DatabaseInitializer` (`e90515a`), which is the prescribed route.
+- **Idempotent:** `INSERT IGNORE` throughout; re-running either is a no-op.
+- **Current highest version: V085** — confirmed on disk (`ls docs/migrations/`) *and* in
+  `migration_tracker.md` line 19. The two agree.
+- ⚠️ **Pending deployment: both, everywhere.** V084 and V085 are `⬜` in **every** column of the tracker
+  including `beta_ssa (work)` — neither has been run against any database. **That is their true state,
+  not a stale cell.**
+- **Schema described but not scripted:** national expansion of the crosswalk beyond Texas — deliberately,
+  as a future `V0NN` produced by `docs/scripts/generate_zip_county.ps1 -State XX`.
+- **Nine of the twelve prompts were forbidden from producing SQL and produced none.** Only prompt E was
+  permitted to, and only V084/V085 resulted.
+
+---
+
+## ⚠️ On this document being the last commit
+
+**This close-out is the final commit of session 6.** It is committed after every other commit in the
+range `941dc14..HEAD`.
+
+⚠️ **Two consequences worth stating rather than leaving to be inferred:**
+
+1. **This commit is not in `v0.85.06`.** That build was cut before it. The deployable content of
+   `v0.85.06` ends at **`cabbe88`**; this commit adds documentation only and changes no code, no JSP and
+   no SQL, so **`v0.85.06` does not need re-cutting because of it**.
+2. **If anything follows this commit, this file is stale from that point on** — the same construction
+   error session 5's close-out made, and the reason it is being said out loud. Session 5 recorded a final
+   hash that was not the real final one, **five sessions running**. If a later commit lands on this
+   branch today, treat §1's ladder and §2's hashes as a snapshot taken at this commit, and re-read
+   `git log`.
+
+**The fix that actually works is the one applied here:** write the close-out against `git log` at the
+end, and say plainly what it can and cannot know.
+
+---
+---
+
+# Appendices — the per-prompt log, preserved in full
+
+Everything below is the original chronological record, one section per prompt, exactly as written at the
+time. **Where an appendix disagrees with §1–§11, §1–§11 is current** — it was written against `git log`
+at session close.
+
+## Appendix A — prompt A: map the ICHRA flow, ship the cheap fixes
+
 **Branch:** `refactor/modernize-architecture` · **Run:** ICHRA tool flow — map it, then close the
 hand-off gaps · **Yardstick:** `docs/swbd_ichra_build_plan.md` §1's eight-step walkthrough, for a role-2
 agent.
@@ -123,7 +521,7 @@ close-out stops claiming finality, or it stops being written until the session i
 
 ---
 
-# Session 6, prompt B — make demo step 5 real
+## Appendix — prompt B — make demo step 5 real
 
 **Run:** the affordability constants and the contribution slider — the two unbuilt gaps from prompt A
 that sit on the same demo beat, `swbd_ichra_build_plan.md` §1 step 5.
@@ -229,7 +627,7 @@ particular **no `INSERT INTO constant` exists in any migration** — the two con
 
 ---
 
-# Session 6, prompt C — the sale motion
+## Appendix — prompt C — the sale motion
 
 **Run:** read `docs/business/` and `plus_tier_build_plan.md` against the flow map. *"It's how it fits
 into the sale process that is of question."* No code, no schema.
@@ -337,7 +735,7 @@ no code. `git show --stat e95c4b3` lists two `.md` paths. Migrations unchanged a
 
 ---
 
-# Session 6, prompt D — the agent-interaction walkthrough
+## Appendix — prompt D — the agent-interaction walkthrough
 
 **Source:** Kevin's step-by-step account of a real agent-and-client interaction, given conversationally
 on **2026-08-01**. Marked **[K 8/1]** throughout the documents — a *better* source about agent behaviour
@@ -440,7 +838,7 @@ and stated in the spec: the next prompt writes it, under the normal migration di
 
 ---
 
-# Session 6, prompt E — T74 part 1: the ZIP → county crosswalk
+## Appendix — prompt E — T74 part 1: the ZIP → county crosswalk
 
 Data layer only. **No `.jsp` touched, no servlet touched.** Built from §5, which governs.
 
@@ -575,7 +973,7 @@ and the two SWBD emails have still never been sent.
 
 ---
 
-# Session 6, prompt F — T74 part 2: ZIP intake on the illustration
+## Appendix — prompt F — T74 part 2: ZIP intake on the illustration
 
 ## What I anchored on
 
@@ -671,7 +1069,7 @@ and the two SWBD emails have still never been sent.
 
 ---
 
-# Session 6, prompt G — ZIP intake repair
+## Appendix — prompt G — ZIP intake repair
 
 Runtime walk on production, 2026-08-01, role-2 agent. The good path works; the ZIP path was broken in
 five ways.
@@ -828,7 +1226,7 @@ and the two SWBD emails have still never been sent.
 
 ---
 
-# Session 6, prompt H — the coverage mismatch
+## Appendix — prompt H — the coverage mismatch
 
 ## Part 1, answer 1 — what populates the county dropdown
 
@@ -967,7 +1365,7 @@ and the two SWBD emails have still never been sent.
 
 ---
 
-# Session 6, prompt I — the illustration surface after runtime review
+## Appendix — prompt I — the illustration surface after runtime review
 
 ## ⭐ W10 first — the finding that was not a defect
 
@@ -1141,7 +1539,7 @@ and the two SWBD emails have still never been sent.
 
 ---
 
-# Session 6, prompt J — the illustration on a phone, across a desk
+## Appendix — prompt J — the illustration on a phone, across a desk
 
 ## ⭐ What the repeater did to the query parameters: nothing
 
@@ -1302,7 +1700,7 @@ and the two SWBD emails have still never been sent.
 
 ---
 
-# Session 6, prompt K — one analysis surface
+## Appendix — prompt K — one analysis surface
 
 ## How `mode` is derived, and how the old URLs still resolve
 
@@ -1461,7 +1859,7 @@ and the two SWBD emails have still never been sent.
 
 ---
 
-# Session 6, prompt K2 — tier repair
+## Appendix — prompt K2 — tier repair
 
 ## ⭐ K3-b's actual cause: one clause, and a signal I computed and then ignored
 
