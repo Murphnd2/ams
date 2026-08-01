@@ -102,4 +102,5 @@ INSERT IGNORE INTO schema_version (version, description, script_name) VALUES
 ('V079', 'ICHRA illustration snapshot on a proposal (proposal_ichra_snapshot + proposal_ichra_snapshot_band)', 'V079__proposal_ichra_snapshot.sql'),
 ('V080', 'ICHRA/QSEHRA Design Advisor: ICHRA_DESIGN_ADVISOR chatbot_skill row + ichra_design knowledge base and chunks', 'V080__ichra_design_advisor_skill.sql'),
 ('V081', 'Optional opportunity attribution on illustration_log (illustration_log.opportunity_id, nullable, FK to assignee(id))', 'V081__illustration_log_opportunity.sql'),
-('V082', 'Make ICHRA_DESIGN_ADVISOR available to non-admin callers (chatbot_skill.is_admin_only 1 -> 0)', 'V082__ichra_design_advisor_non_admin.sql');
+('V082', 'Make ICHRA_DESIGN_ADVISOR available to non-admin callers (chatbot_skill.is_admin_only 1 -> 0)', 'V082__ichra_design_advisor_non_admin.sql'),
+('V083', 'Fix retired model on ICHRA_DESIGN_ADVISOR (chatbot_skill.model -> claude-sonnet-5, max_tokens -> 3072)', 'V083__ichra_design_advisor_model.sql');

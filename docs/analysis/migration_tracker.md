@@ -2,7 +2,7 @@
 
 Tracks database schema versions across environments.
 
-**Last Updated:** July 30, 2026
+**Last Updated:** August 1, 2026
 
 ## Environments
 
@@ -16,7 +16,7 @@ Tracks database schema versions across environments.
 | BPO | bpo.superiorstate.biz | beta_ssa | BPO instance (V038, initialized, release V0.37.0) |
 | Master | master.superiorstate.biz | beta_ssa | Snapshot v9 (V057, stopped) |
 
-## Current Highest Version: V082
+## Current Highest Version: V083
 
 ⚠️ **Maintenance note (added 2026-07-30):** production status in the table below must be back-filled
 *after a deployment actually succeeds*, not only when the migration is written. The V072/V073 rows
@@ -121,9 +121,10 @@ _N/A = environment decommissioned / not maintained (applies to Demo PSP, BPO, Ma
 | V077 | Per-agency enable flag for ICHRA capability access (agency.ichra_enabled, default OFF) | ⬜ | ⬜ | ⬜ | ✅ | N/A | N/A | N/A |
 | V078 | On-exchange LCSP and benchmark-silver columns for T44 (rating_area_rate_cache.onex_lcsp_premium/onex_benchmark_silver_premium, default NULL) | ⬜ | ⬜ | ⬜ | ✅ | N/A | N/A | N/A |
 | V079 | ICHRA illustration snapshot on a proposal (proposal_ichra_snapshot + proposal_ichra_snapshot_band) | ⬜ | ⬜ | ⬜ | ⬜ | N/A | N/A | N/A |
-| V080 | ICHRA/QSEHRA Design Advisor: ICHRA_DESIGN_ADVISOR chatbot_skill row + ichra_design knowledge base and chunks | ⬜ | ⬜ | ⬜ | ⬜ | N/A | N/A | N/A |
+| V080 | ICHRA/QSEHRA Design Advisor: ICHRA_DESIGN_ADVISOR chatbot_skill row + ichra_design knowledge base and chunks | ⬜ | ⬜ | ⬜ | ✅ | N/A | N/A | N/A |
 | V081 | Optional opportunity attribution on illustration_log (illustration_log.opportunity_id, nullable, FK to assignee(id)) | ⬜ | ⬜ | ⬜ | ⬜ | N/A | N/A | N/A |
-| V082 | Make ICHRA_DESIGN_ADVISOR available to non-admin callers (chatbot_skill.is_admin_only 1 → 0) | ⬜ | ⬜ | ⬜ | ⬜ | N/A | N/A | N/A |
+| V082 | Make ICHRA_DESIGN_ADVISOR available to non-admin callers (chatbot_skill.is_admin_only 1 → 0) | ⬜ | ⬜ | ⬜ | ✅ | N/A | N/A | N/A |
+| V083 | Fix retired model on ICHRA_DESIGN_ADVISOR (chatbot_skill.model -> claude-sonnet-5, max_tokens -> 3072) | ⬜ | ⬜ | ⬜ | ⬜ | N/A | N/A | N/A |
 
 **Production column reconciled 2026-07-30** against a live, read-only `schema_version` probe run
 directly against the production database — that probe is the source of truth for the corrections
@@ -159,6 +160,21 @@ LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu mysql --socket=/var/run/mysqld/mysqld.
 ```
 
 V079 is **not yet applied to any environment** — committed in `b0e524b`, awaiting release `v0.79.00`.
+
+**Production V080/V082 status — corrected 2026-08-01, evidence from a live incident, not from a
+deployment log entry.** Both rows were carried as unapplied ("Current Highest Version: V082" section
+above listed Production ⬜ for both) since this tracker was last hand-updated, which was stale. The
+correction is forced by direct production evidence, not inferred: `catalina.out` on 2026-08-01 10:06
+recorded `ChatAssistant` executing skill `ICHRA_DESIGN_ADVISOR` (text-only) for a non-admin caller,
+which then hit a 404 from the Claude API because the row's configured `model` value
+(`claude-sonnet-4-20250514`) was retired — see V083 below, filed to fix that model string. For that
+log line to exist at all: (1) the `ICHRA_DESIGN_ADVISOR` row itself must exist and be matched by name,
+which requires **V080**; and (2) it must have been reachable and selected for a **non-admin** agent,
+which requires `is_admin_only = 0`, i.e. **V082**. Both are therefore applied on Production regardless
+of what this file previously recorded. Production cells for V080 and V082 above are corrected to ✅.
+This session could not connect to the production database to confirm via `schema_version` directly —
+the correction rests on the behavioral proof above, the same evidentiary standard used for the
+V077/V078 correction one section up. V081 has no comparable evidence either way and is left ⬜.
 
 ## Notes
 
