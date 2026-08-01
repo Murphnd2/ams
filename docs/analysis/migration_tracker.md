@@ -159,7 +159,11 @@ LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu mysql --socket=/var/run/mysqld/mysqld.
       FROM rating_area_rate_cache WHERE onex_lcsp_premium IS NOT NULL;"
 ```
 
-V079 is **not yet applied to any environment** — committed in `b0e524b`, awaiting release `v0.79.00`.
+~~V079 is **not yet applied to any environment** — committed in `b0e524b`, awaiting release
+`v0.79.00`.~~ **Superseded 2026-08-01** — V079 shipped to Production via `update.sh` during release
+`v0.82.00`, not `v0.79.00`. See the "Production V079–V083 reconciled" section below, which is the
+current statement. Struck rather than deleted because this sentence is why the V079 Production cell
+read ⬜ for a day after the deploy: it was written at authoring time and never revisited.
 
 **Production V080/V082 status — corrected 2026-08-01, evidence from a live incident, not from a
 deployment log entry.** Both rows were carried as unapplied ("Current Highest Version: V082" section
