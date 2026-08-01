@@ -396,16 +396,31 @@
 
                                     <div id="ageBandRows">
                                         <c:forEach begin="1" end="${ageBandMaxRows}" var="i">
-                                            <%-- A row renders when it carries data. Row 1 also
-                                                 renders when the caller asked for AGE_BAND
-                                                 explicitly — the hub's age-band card must still
-                                                 land on a usable row, including with JavaScript
-                                                 off, where "+ Add age band" cannot help.
+                                            <%-- ⚠️ K3-b — THE DUPLICATED BAND, and it was this line.
+                                                 It read `i == 1 and mode == 'AGE_BAND'`, which
+                                                 force-rendered a blank row 1 whenever the mode was
+                                                 AGE_BAND — and since prompt K made mode DERIVED
+                                                 from "any age band present", that fired on every
+                                                 submit that had a band anywhere. Leave row 1 blank,
+                                                 put 40 in row 2, submit: the server rendered the
+                                                 forced blank row 1 AND the real row 2. Two bands on
+                                                 screen where the agent entered one, and a headcount
+                                                 nothing on screen explained.
 
-                                                 Otherwise the form opens with ZERO bands: tier 1
-                                                 is headcount, and adding the first band is the
-                                                 transition to tier 2. --%>
-                                            <c:if test="${not empty submittedAges[i-1] or (i == 1 and mode == 'AGE_BAND')}">
+                                                 The servlet has published `modeExplicit` since
+                                                 prompt K for exactly this; the JSP simply never
+                                                 used it. A row now renders when it carries data —
+                                                 full stop — plus row 1 when the caller asked for
+                                                 AGE_BAND *in the URL*, which is the hub card and
+                                                 the JavaScript-off path, and is never true of a
+                                                 form submit.
+
+                                                 Consequence, and it is the correct one: a blank row
+                                                 does not survive a submit. A blank band is not a
+                                                 band, and renumber() closes the gap on the next
+                                                 add. K-a falls out of the same change — tier 1 now
+                                                 opens with zero rows, matching the label above. --%>
+                                            <c:if test="${not empty submittedAges[i-1] or (i == 1 and modeExplicit and mode == 'AGE_BAND')}">
                                                 <div class="age-band-row d-flex align-items-end gap-2 mb-2" data-row>
                                                     <div>
                                                         <label class="form-label mb-1" style="font-size:0.7rem;" for="age${i}">Age</label>
