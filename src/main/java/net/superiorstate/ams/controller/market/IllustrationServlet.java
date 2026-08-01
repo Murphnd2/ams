@@ -370,9 +370,15 @@ public class IllustrationServlet extends HttpServlet {
             return;
         }
 
+        // Name the missing constant, not just the concept. "Affordability is not
+        // configured" tells the agent to give up; naming the row tells Kevin what to add,
+        // and these two rows reach an existing installation only by hand — the
+        // DatabaseInitializer seed runs on fresh installs only.
         BigDecimal applicablePct = parsePositiveDecimal(AppConstantDAO.getConstantValue(em, "ICHRA_AFFORDABILITY_PCT_" + planYear));
         if (applicablePct == null) {
-            request.setAttribute("affordabilityUnavailableReason", "Affordability is not configured for plan year " + planYear + ".");
+            request.setAttribute("affordabilityUnavailableReason",
+                    "Affordability is not configured for plan year " + planYear
+                            + " — the constant ICHRA_AFFORDABILITY_PCT_" + planYear + " is missing or invalid.");
             return;
         }
 
@@ -380,7 +386,9 @@ public class IllustrationServlet extends HttpServlet {
         if ("FPL".equals(basis)) {
             fplAnnual = parsePositiveDecimal(AppConstantDAO.getConstantValue(em, "FPL_ANNUAL_" + planYear));
             if (fplAnnual == null) {
-                request.setAttribute("affordabilityUnavailableReason", "FPL safe harbor is not configured for plan year " + planYear + ".");
+                request.setAttribute("affordabilityUnavailableReason",
+                        "FPL safe harbor is not configured for plan year " + planYear
+                                + " — the constant FPL_ANNUAL_" + planYear + " is missing or invalid.");
                 return;
             }
         }

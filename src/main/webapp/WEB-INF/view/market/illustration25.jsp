@@ -238,6 +238,55 @@
                                 On-exchange plans are not included in the plan counts or the premium figures shown.
                             </div>
 
+                            <%-- G9 / build-plan §1 step 5. The slider recomputes CLIENT-SIDE from
+                                 figures already on the page — no POST per tick, no AJAX, no new
+                                 endpoint, no second servlet. /Illustration is GET-only by design
+                                 (IllustrationServlet:58-60), and that stays true: the slider does
+                                 arithmetic on rendered data and never talks to the server.
+
+                                 It never recomputes the flip point. flip = onexLCSP − pct × (income
+                                 ÷ 12) does not depend on the contribution, so the server's figure is
+                                 already final and is simply read back out of the row. That is
+                                 deliberate: the regulated computation stays in
+                                 AffordabilityCalculator, in one place, and there is no second
+                                 implementation in JavaScript that could drift from it. The two
+                                 constants are consequently NOT needed client-side.
+
+                                 Nothing here is persisted. Dragging the slider writes no row, no
+                                 log line, no column — the illustration_log row for this run was
+                                 already written server-side, and it carries no contribution figure
+                                 at all (IllustrationServlet:608-618). --%>
+                            <div class="status-card mt-3" id="contribSliderCard">
+                                <strong><i class="bi bi-sliders me-1"></i>Employer Monthly Contribution</strong>
+                                <span class="text-muted" style="font-size:0.8rem;">&mdash; drag to see the effect; nothing is saved</span>
+                                <div class="d-flex align-items-center gap-3 mt-2">
+                                    <%-- data-submitted carries the figure the server actually
+                                         computed with. It is read from here rather than from the
+                                         input's own value, because a range input snaps its value to
+                                         the step and would misreport what was submitted. --%>
+                                    <input type="range" class="form-range flex-grow-1" id="contribSlider"
+                                           min="0" step="5" value="${submittedContribution}"
+                                           data-submitted="${submittedContribution}"
+                                           aria-label="Employer monthly contribution">
+                                    <div style="font-size:1.05rem; font-weight:700; color:#0d5681; min-width:7rem; text-align:right;"
+                                         id="contribReadout"></div>
+                                </div>
+                                <div class="footnote" id="contribRevertNote" style="display:none;">
+                                    Showing <span id="contribShown"></span>; the figures were calculated at
+                                    <span id="contribSubmitted"></span>.
+                                    <a href="#" id="contribReset">Reset</a>
+                                </div>
+                                <c:if test="${empty affordabilityBasis}">
+                                    <%-- Without a basis there is no flip point to show, so say why
+                                         rather than leaving the agent to discover the selector. Not
+                                         a recommendation to turn it on and not a default. --%>
+                                    <div class="footnote">
+                                        Net cost only. Choose an <strong>Affordability Basis</strong> above and re-run to see
+                                        the contribution at which each employee crosses the affordability threshold.
+                                    </div>
+                                </c:if>
+                            </div>
+
                             <table class="results-table">
                                 <thead>
                                 <tr>
@@ -250,12 +299,12 @@
                                 </thead>
                                 <tbody>
                                 <c:forEach var="row" items="${ageBandResultRows}">
-                                    <tr>
+                                    <tr class="net-row" data-count="${row.count}" data-floor="${row.floorPremium}">
                                         <td>${row.age}</td>
                                         <td>${row.count}</td>
                                         <td><fmt:formatNumber value="${row.floorPremium}" type="currency"/></td>
-                                        <td><fmt:formatNumber value="${row.netPerEmployee}" type="currency"/></td>
-                                        <td><fmt:formatNumber value="${row.bandNet}" type="currency"/></td>
+                                        <td class="net-per-emp"><fmt:formatNumber value="${row.netPerEmployee}" type="currency"/></td>
+                                        <td class="net-band"><fmt:formatNumber value="${row.bandNet}" type="currency"/></td>
                                     </tr>
                                 </c:forEach>
                                 </tbody>
@@ -263,7 +312,7 @@
 
                             <div class="status-card mt-3">
                                 <strong>Group Monthly Net Cost</strong>
-                                <div style="font-size:1.05rem; font-weight:700; color:#0d5681; margin-top:0.35rem;">
+                                <div style="font-size:1.05rem; font-weight:700; color:#0d5681; margin-top:0.35rem;" id="groupNetTotalOut">
                                     <fmt:formatNumber value="${groupNetTotal}" type="currency"/>
                                 </div>
                                 <div class="footnote">For ${submittedTotalLives} eligible employees, after employer contribution. Sum of the Band Net Total column.</div>
@@ -271,7 +320,7 @@
 
                             <div class="status-card mt-3">
                                 <strong>Employer Total Monthly Outlay</strong>
-                                <div style="font-size:1.05rem; font-weight:700; color:#0d5681; margin-top:0.35rem;">
+                                <div style="font-size:1.05rem; font-weight:700; color:#0d5681; margin-top:0.35rem;" id="employerOutlayOut">
                                     <fmt:formatNumber value="${employerOutlay}" type="currency"/>
                                 </div>
                                 <div class="footnote">Contribution &times; total eligible employees. Shown separately from net cost above.</div>
@@ -310,14 +359,17 @@
                                                 </thead>
                                                 <tbody>
                                                 <c:forEach var="row" items="${affordabilityRows}">
-                                                    <tr>
+                                                    <%-- data-flip is the server's own figure, read back
+                                                         unchanged. The slider compares against it; it
+                                                         never recomputes it. --%>
+                                                    <tr class="afford-row" data-flip="${row.available ? row.flipContribution : ''}">
                                                         <td>${row.age}</td>
                                                         <td>${row.count}</td>
                                                         <c:choose>
                                                             <c:when test="${row.available}">
                                                                 <td><fmt:formatNumber value="${row.onexLcspPremium}" type="currency"/></td>
                                                                 <td><fmt:formatNumber value="${row.flipContribution}" type="currency"/></td>
-                                                                <td>
+                                                                <td class="afford-verdict">
                                                                     <c:choose>
                                                                         <c:when test="${row.affordable}">Affordable &mdash; employee loses PTC eligibility</c:when>
                                                                         <c:otherwise>Unaffordable &mdash; employee keeps PTC eligibility</c:otherwise>
@@ -375,7 +427,7 @@
                             </c:url>
                             <c:choose>
                                 <c:when test="${sourceEnv == 'PRODUCTION'}">
-                                    <a href="${proposalHandoffUrl}" class="ssa-action save">
+                                    <a href="${proposalHandoffUrl}" class="ssa-action save" id="ichraProposalLink">
                                         <i class="bi bi-file-earmark-plus me-1"></i>Use This in a Proposal
                                     </a>
                                 </c:when>
@@ -386,6 +438,138 @@
                                     <div class="quiet-note">Available once production rates are configured.</div>
                                 </c:otherwise>
                             </c:choose>
+
+                            <%-- G9 slider behaviour. Pure display arithmetic over data already in the
+                                 DOM; no fetch, no form submit, no storage of any kind. Deliberately
+                                 NOT here: any marking of a contribution as recommended, optimal or
+                                 best, any default the slider snaps to, and any ranking — the control
+                                 reports the flip point as a fact and leaves the choice with the
+                                 agent. Deleting this script block restores the previous page
+                                 exactly; every figure it touches is already rendered correctly by
+                                 the server for the submitted contribution. --%>
+                            <script>
+                            (function () {
+                                var slider = document.getElementById('contribSlider');
+                                if (!slider) return;
+
+                                var submitted = parseFloat(slider.getAttribute('data-submitted'));
+                                if (isNaN(submitted)) submitted = 0;
+                                // Set on first drag. The "you have moved it" note keys off this
+                                // rather than off a value comparison, so a submitted figure that
+                                // is not on a step boundary cannot make the note appear on load.
+                                var userMoved = false;
+
+                                var money = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
+                                var netRows = Array.prototype.slice.call(document.querySelectorAll('tr.net-row'));
+                                var affordRows = Array.prototype.slice.call(document.querySelectorAll('tr.afford-row'));
+
+                                // Headroom to the highest premium on the page, so the agent can always
+                                // drag past the point where net cost reaches zero. Rounded up to a
+                                // sane step; never below a floor, so a cheap county still gets range.
+                                var highestFloor = 0;
+                                netRows.forEach(function (tr) {
+                                    var f = parseFloat(tr.getAttribute('data-floor'));
+                                    if (!isNaN(f) && f > highestFloor) highestFloor = f;
+                                });
+                                var max = Math.max(1000, Math.ceil((highestFloor * 1.1) / 50) * 50);
+                                if (submitted > max) max = Math.ceil(submitted / 50) * 50;
+                                slider.max = max;
+                                slider.value = submitted;
+
+                                var readout = document.getElementById('contribReadout');
+                                var revertNote = document.getElementById('contribRevertNote');
+                                var shownEl = document.getElementById('contribShown');
+                                var submittedEl = document.getElementById('contribSubmitted');
+                                var formInput = document.getElementById('contribution');
+                                var proposalLink = document.getElementById('ichraProposalLink');
+                                var groupOut = document.getElementById('groupNetTotalOut');
+                                var outlayOut = document.getElementById('employerOutlayOut');
+
+                                function setContributionParam(href, value) {
+                                    // Rewrites only the contribution parameter so the proposal
+                                    // snapshot cannot disagree with the figure on screen. Without
+                                    // this, dragging to 350 and clicking through would snapshot the
+                                    // originally submitted 400 -- silently.
+                                    if (!href) return href;
+                                    var parts = href.split('?');
+                                    if (parts.length < 2) return href;
+                                    var pairs = parts[1].split('&').filter(function (p) {
+                                        return p.indexOf('contribution=') !== 0;
+                                    });
+                                    pairs.push('contribution=' + encodeURIComponent(value));
+                                    return parts[0] + '?' + pairs.join('&');
+                                }
+
+                                var baseHref = proposalLink ? proposalLink.getAttribute('href') : null;
+
+                                function render() {
+                                    var c = parseFloat(slider.value);
+                                    if (isNaN(c) || c < 0) c = 0;
+
+                                    readout.textContent = money.format(c);
+
+                                    var groupNet = 0;
+                                    var lives = 0;
+                                    netRows.forEach(function (tr) {
+                                        var floor = parseFloat(tr.getAttribute('data-floor'));
+                                        var count = parseInt(tr.getAttribute('data-count'), 10);
+                                        if (isNaN(floor) || isNaN(count)) return;
+                                        var net = Math.max(0, floor - c);
+                                        var band = net * count;
+                                        groupNet += band;
+                                        lives += count;
+                                        tr.querySelector('.net-per-emp').textContent = money.format(net);
+                                        tr.querySelector('.net-band').textContent = money.format(band);
+                                    });
+
+                                    if (groupOut) groupOut.textContent = money.format(groupNet);
+                                    if (outlayOut) outlayOut.textContent = money.format(c * lives);
+
+                                    // The flip point does not move with the contribution -- it is the
+                                    // server's figure. Only which side of it we are on changes, and
+                                    // the two strings are the ones already on the page.
+                                    affordRows.forEach(function (tr) {
+                                        var cell = tr.querySelector('.afford-verdict');
+                                        if (!cell) return;
+                                        var flip = parseFloat(tr.getAttribute('data-flip'));
+                                        if (isNaN(flip)) return;
+                                        // Dash built from its code point so this block stays pure
+                                        // ASCII and cannot be mangled by an encoding step between
+                                        // here and the browser. The resulting wording is identical
+                                        // to what the server renders above: the slider flips
+                                        // between two already-approved strings and introduces no
+                                        // new phrasing about any employee (boundary 1).
+                                        var DASH = String.fromCharCode(0x2014);
+                                        cell.textContent = (c >= flip)
+                                            ? 'Affordable ' + DASH + ' employee loses PTC eligibility'
+                                            : 'Unaffordable ' + DASH + ' employee keeps PTC eligibility';
+                                    });
+
+                                    if (formInput) formInput.value = c;
+                                    if (proposalLink && baseHref) {
+                                        proposalLink.setAttribute('href', setContributionParam(baseHref, c));
+                                    }
+
+                                    revertNote.style.display = userMoved ? '' : 'none';
+                                    if (userMoved) {
+                                        shownEl.textContent = money.format(c);
+                                        submittedEl.textContent = money.format(submitted);
+                                    }
+                                }
+
+                                slider.addEventListener('input', function () {
+                                    userMoved = true;
+                                    render();
+                                });
+                                document.getElementById('contribReset').addEventListener('click', function (e) {
+                                    e.preventDefault();
+                                    slider.value = submitted;
+                                    userMoved = false;
+                                    render();
+                                });
+                                render();
+                            })();
+                            </script>
 
                         </c:otherwise>
                     </c:choose>
