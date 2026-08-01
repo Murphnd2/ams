@@ -101,6 +101,10 @@ entry was failing in production for the intended audience. Nothing below is asse
 | **4h** | With a result or panel on screen, edit the ZIP | the panel and the county selection **clear immediately**, before any lookup returns | the old panel lingers (R4) |
 | **4i** | Hopkins selected, **blank headcount**, press Illustrate | the headcount error **only** | *"No rate data for this county yet"* also appears — that is R3, and it is the unwarmed-county message firing for a validation failure on a county that demonstrably has rates |
 | **4j** | Disable JavaScript, then repeat 4a / 4b / 4d | identical outcomes — resolution, chooser and no-match all still work | any of them stops working; the script is an enhancement, and the servlet resolves `?zip=` regardless |
+| **4k** | ⭐ On the `75009` chooser, look at the two entries | **Collin and Denton each carry *"— no rates cached yet"*** unless they have been warmed. Both keep the same link, weight and order | neither is labelled — then the next step will reject a county the page just offered |
+| **4l** | Click an entry labelled *"no rates cached yet"* | ⚠️ **"We don't have rates for Collin County, TX yet."** | *"Select a valid county from the list"* — that blames the agent for our coverage gap, and is the defect this run fixed |
+| **4m** | Open `Illustration?countyFips=48085&planYear=2026` directly (Collin — in the crosswalk, not in the cache) | the same *"We don't have rates for Collin County, TX yet."* | the generic invalid-county message; every entry path must give the same answer |
+| **4n** | Open `Illustration?countyFips=NOTAFIPS&planYear=2026` | *"Select a valid county from the list."* — correct here, because it genuinely is not a county | it claims we have no rates for it, which would be false |
 | 5 | Hopkins County, 3 lives, **Illustrate** | figures + "Source: production" | any red *Test-environment rates* banner — do not demo |
 | 6 | Click **Age Band** in the toolbar | county stays; **Eligible Employees carried nothing** | *expected* — G5's forward direction is not built |
 | 7 | Enter the three Sandoval ages, count 1 each, contribution 400, **Illustrate** | per-band table + group net | any age reported as missing cache data |
@@ -369,12 +373,36 @@ field resolves on **blur**, not only on Enter — Enter submits, so typing a ZIP
 used to be answered with *"Enter a valid number of eligible employees."* **Server-side precedence is
 enforced independently**, because JavaScript may be off and `?zip=` can arrive in a URL.
 
-⚠️ **Three states, kept separate. Do not collapse them:**
+⚠️ **Four states, kept separate. Do not collapse them:**
 
 1. **ZIP not in the crosswalk** → *"We don't have ZIP N in our county lookup."* Coverage gap.
-2. **ZIP resolves, county unwarmed** → `inputError` naming the resolved county. Outcome unchanged from
-   before this run; **T76**'s to fix.
-3. **No ZIP and no county** → the bare form, exactly as before.
+2. **County real but unwarmed** → *"We don't have rates for X, TX yet."* **T76**'s to fix.
+3. **Not a county at all** (typo, truncated FIPS, pasted placeholder) → *"Select a valid county from the
+   list."* Correct for that input, unchanged.
+4. **No ZIP and no county** → the bare form, exactly as before.
+
+### ⚠️ The coverage mismatch — the crosswalk knows 254 counties, the illustration prices four
+
+V085 gave the crosswalk **all 254 Texas counties**. The county dropdown is built from
+`rating_area_rate_cache` — **the counties that have been warmed**, four on production
+(`IllustrationServlet.java:113-118` → `RateCacheDAO.getCountySummaries`, grouped by `county_fips` for
+the plan year, intersected with `county_reference`). So ZIP resolution could hand an agent a real county
+the tool has never been able to price, and the page answered *"Select a valid county from the list"* —
+**blaming the agent for a gap that is ours.**
+
+**ZIP intake did not create this. It exposed it.** Before ZIP, the agent picked from four counties and
+never saw the boundary.
+
+Fixed 2026-08-01 (`8285b83`, `0e2e014`): `describeUnavailableCounty` distinguishes states 2 and 3, and
+the chooser labels an unpriceable candidate **before** the click — *"— no rates cached yet"*, descriptive
+only, with the entry keeping its link, weight and land-area position.
+
+⭐ **T76 attaches at `IllustrationServlet.describeUnavailableCounty`, the unwarmed branch** — the one
+place that knows "a real county, no rates". No stub, button or TODO was left there: a disabled control
+implying a capability that does not exist is worse than its absence.
+
+**Left undecided, deliberately (T89):** whether the dropdown should list all 254 with most marked
+unavailable. That is downstream of warm-on-miss and is a real question, not an oversight.
 
 The resolver never throws, never reads the rate cache, and never warms anything (**T76**).
 
