@@ -90,7 +90,12 @@ entry was failing in production for the intended audience. Nothing below is asse
 | 1 | Log into `premiumpath.net` | the top nav | no **ICHRA** entry (`isAvailableForNav` cached false — log out, back in, re-check) |
 | 2 | Click **ICHRA** | the hub renders | redirected to `/` — live `isAvailable` disagrees with the cached nav hint |
 | 3 | Count the cards | 5 cards, each numbered 1–5 | a **Rate Cache Admin** card appears — a role leak; it must be invisible to a non-PSP-admin |
-| 4 | Click card **1 · Rating-Area Illustration** | county dropdown | empty, or "Rate cache is not configured" — `RATE_CACHE_PLAN_YEARS` or the warm job |
+| 4 | Click card **1 · Rating-Area Illustration** | a **ZIP** box *and* the county dropdown, both present | the county dropdown is gone — it must stay; it is the way through when a ZIP does not resolve |
+| **4a** | Type a **single-county ZIP** (`75482`, Hopkins) and **Illustrate** | goes straight to results for Hopkins, exactly as picking the county would | a chooser appears for a ZIP that touches one county, or nothing happens |
+| **4b** | Type a **crossing ZIP** (`75009` — Collin **and** Denton) and **Illustrate** | *"ZIP 75009 is in more than one county"* + a list of both. ⚠️ **Nothing pre-selected, no county marked likely or recommended** | one is auto-selected, pre-checked, or highlighted as the probable answer — **that is the failure this whole design exists to prevent**; a wrong county returns wrong rates that look exactly like right ones |
+| **4c** | Click one county in that list | ordinary results, and the **URL now carries `countyFips=`** so it is linkable and shareable | it stays on a `zip=` URL, or the result is not linkable |
+| **4d** | Type a ZIP that is **not in the crosswalk** (an out-of-state one, e.g. `90210`) and **Illustrate** | ⚠️ *"We don't have ZIP 90210 in our county lookup"* — naming **our** coverage gap and pointing at the county selector | it says **"invalid ZIP"** or anything implying the agent mistyped. The ZIP is real; the data is ours and it is incomplete. **An agent who thinks he mistyped retypes it three times** |
+| **4e** | Confirm the old path still works: open `Illustration?countyFips=48223&planYear=2026` directly | results, unaffected by any of the above | anything differs from before this change — `?countyFips=` is the contract the mode toggle, the hub cards and T59's fix all ride on |
 | 5 | Hopkins County, 3 lives, **Illustrate** | figures + "Source: production" | any red *Test-environment rates* banner — do not demo |
 | 6 | Click **Age Band** in the toolbar | county stays; **Eligible Employees carried nothing** | *expected* — G5's forward direction is not built |
 | 7 | Enter the three Sandoval ages, count 1 each, contribution 400, **Illustrate** | per-band table + group net | any age reported as missing cache data |
@@ -259,9 +264,11 @@ Two tools sit on steps the agent does not perform in the motion as decided:
 
 ## §5 — Next build: ZIP intake
 
-> ✅ **Part 1 of this build shipped 2026-08-01** — V084 (table), V085 (2,894 Texas rows), `ZipCounty`,
-> `ZipCountyDAO`, `ZipCountyResolver`. **The data layer exists and nothing calls it yet, by design.**
-> The remaining work is the servlet and JSP — see "Still to build" at the end of this section.
+> ✅ **T74 is complete for `/Illustration` as of 2026-08-01.** Part 1 shipped the data layer — V084
+> (table), V085 (2,894 Texas rows), `ZipCounty`, `ZipCountyDAO`, `ZipCountyResolver`. Part 2 shipped the
+> UI — `IllustrationServlet` (`5b70586`) and `illustration25.jsp` (`a41a481`). **`/GroupConversion` is
+> deliberately still on the county dropdown**, per this section's own "only after the illustration path
+> is proven". Runtime verification: §3 click-script steps 4a–4d.
 
 ~~⚠️ **There is no ZIP → county crosswalk in this repo, this schema, or the HealthSherpa API.**~~ There
 was not; **there is now.** `county_reference` remains county → *one* representative ZIP (V076, PK
@@ -323,16 +330,28 @@ and must not be claimed: two counties in one rating area price identically but h
 | `docs/migrations/V084__zip_county_crosswalk.sql`, `V085__zip_county_crosswalk_tx.sql` | ✅ shipped `4f242af`, `2689d67` |
 | `docs/scripts/generate_zip_county.ps1` — deterministic regeneration, national expansion is `-State XX` | ✅ shipped `2689d67` |
 | `model/market/ZipCounty.java`, `data/dao/ZipCountyDAO.java`, `data/resolver/ZipCountyResolver.java` | ✅ shipped `d7cbc4f` |
-| `IllustrationServlet` (parse + resolve), `illustration25.jsp` (ZIP box, disambiguation, resolved-county display) | ⬜ **still to build** |
+| `IllustrationServlet` (parse + resolve) | ✅ shipped `5b70586` |
+| `illustration25.jsp` (ZIP box, chooser, no-match message) | ✅ shipped `a41a481` |
 | `GroupConversionServlet` + its JSP | ⬜ **only after** the illustration path is proven |
 
-**Still to build — the contract the UI codes against.** `ZipCountyResolver.resolve(em, zip)` returns a
-`Resolution` with three first-class outcomes and **no fourth**:
+**The contract, and how the UI honours it.** `ZipCountyResolver.resolve(em, zip)` returns a `Resolution`
+with three first-class outcomes and **no fourth**:
 
-- `isUnique()` → `getUnique()` gives the one county. Proceed; show its name so the agent sees the choice.
-- `isAmbiguous()` → `getCandidates()`, ordered most-land-first. **Ask. Never take element zero** —
-  `getUnique()` deliberately returns **null** here rather than a plausible guess.
-- `isEmpty()` → *"we don't have that ZIP, choose a county."* Not an error, not a validation failure.
+| Outcome | What shipped |
+|---|---|
+| `isUnique()` | `countyFips` is assigned and the request **falls through to the ordinary county path**. Nothing downstream knows a ZIP was involved, so the two paths cannot diverge |
+| `isAmbiguous()` | Candidates go to the JSP, which renders a **plain list of equal-weight links** to ordinary `?countyFips=` URLs. **Nothing pre-selected, nothing badged likely** — `getUnique()` returns null here by design, and the land-area ordering is stability only, never a recommendation |
+| `isEmpty()` | A distinct `zipNoMatch` attribute — **not** `inputError`. Copy names our gap, not the agent's typo |
+
+⚠️ **`?zip=` is consulted only when `countyFips` is absent**, so the existing contract always wins. The
+JSP change is **purely additive — 75 insertions, 0 deletions.**
+
+⚠️ **Three states, kept separate. Do not collapse them:**
+
+1. **ZIP not in the crosswalk** → *"We don't have ZIP N in our county lookup."* Coverage gap.
+2. **ZIP resolves, county unwarmed** → `inputError` naming the resolved county. Outcome unchanged from
+   before this run; **T76**'s to fix.
+3. **No ZIP and no county** → the bare form, exactly as before.
 
 The resolver never throws, never reads the rate cache, and never warms anything (**T76**).
 
