@@ -712,6 +712,11 @@
                                  log line, no column — the illustration_log row for this run was
                                  already written server-side, and it carries no contribution figure
                                  at all (IllustrationServlet:608-618). --%>
+                            <%-- K3-c: the slider moves a contribution. With none supplied there is
+                                 nothing for it to move, so the whole card is absent rather than
+                                 rendered at zero — a slider parked at $0 invites the reading that
+                                 the employer contributes nothing, which is a claim, not a blank. --%>
+                            <c:if test="${contributionSupplied}">
                             <div class="status-card contrib-card mt-3" id="contribSliderCard">
                                 <strong><i class="bi bi-sliders me-1"></i>Employer Monthly Contribution</strong>
                                 <span class="text-muted" style="font-size:0.8rem;">&mdash; drag to see the effect; nothing is saved</span>
@@ -759,6 +764,7 @@
                                     </div>
                                 </c:if>
                             </div>
+                            </c:if><%-- /contributionSupplied — slider card (K3-c) --%>
 
                             <div class="table-responsive">
                             <table class="results-table">
@@ -767,8 +773,14 @@
                                     <th>Age</th>
                                     <th>Count</th>
                                     <th>Lowest Bronze <span class="text-muted fw-normal">(per employee)</span></th>
-                                    <th>Net / Employee <span class="text-muted fw-normal">(after contribution)</span></th>
-                                    <th>Band Net Total</th>
+                                    <%-- K3-c: net cost exists only against a contribution. Without
+                                         one the table is a per-band premium table and these two
+                                         columns are absent rather than blank — an empty currency
+                                         cell reads as zero. --%>
+                                    <c:if test="${contributionSupplied}">
+                                        <th>Net / Employee <span class="text-muted fw-normal">(after contribution)</span></th>
+                                        <th>Band Net Total</th>
+                                    </c:if>
                                 </tr>
                                 </thead>
                                 <tbody>
@@ -777,29 +789,42 @@
                                         <td>${row.age}</td>
                                         <td>${row.count}</td>
                                         <td><fmt:formatNumber value="${row.floorPremium}" type="currency"/></td>
-                                        <td class="net-per-emp"><fmt:formatNumber value="${row.netPerEmployee}" type="currency"/></td>
-                                        <td class="net-band"><fmt:formatNumber value="${row.bandNet}" type="currency"/></td>
+                                        <c:if test="${contributionSupplied}">
+                                            <td class="net-per-emp"><fmt:formatNumber value="${row.netPerEmployee}" type="currency"/></td>
+                                            <td class="net-band"><fmt:formatNumber value="${row.bandNet}" type="currency"/></td>
+                                        </c:if>
                                     </tr>
                                 </c:forEach>
                                 </tbody>
                             </table>
                             </div>
 
-                            <div class="status-card mt-3">
-                                <strong>Group Monthly Net Cost</strong>
-                                <div style="font-size:1.05rem; font-weight:700; color:#0d5681; margin-top:0.35rem;" id="groupNetTotalOut">
-                                    <fmt:formatNumber value="${groupNetTotal}" type="currency"/>
+                            <c:if test="${contributionSupplied}">
+                                <div class="status-card mt-3">
+                                    <strong>Group Monthly Net Cost</strong>
+                                    <div style="font-size:1.05rem; font-weight:700; color:#0d5681; margin-top:0.35rem;" id="groupNetTotalOut">
+                                        <fmt:formatNumber value="${groupNetTotal}" type="currency"/>
+                                    </div>
+                                    <div class="footnote">For ${submittedTotalLives} eligible employees, after employer contribution. Sum of the Band Net Total column.</div>
                                 </div>
-                                <div class="footnote">For ${submittedTotalLives} eligible employees, after employer contribution. Sum of the Band Net Total column.</div>
-                            </div>
 
-                            <div class="status-card mt-3">
-                                <strong>Employer Total Monthly Outlay</strong>
-                                <div style="font-size:1.05rem; font-weight:700; color:#0d5681; margin-top:0.35rem;" id="employerOutlayOut">
-                                    <fmt:formatNumber value="${employerOutlay}" type="currency"/>
+                                <div class="status-card mt-3">
+                                    <strong>Employer Total Monthly Outlay</strong>
+                                    <div style="font-size:1.05rem; font-weight:700; color:#0d5681; margin-top:0.35rem;" id="employerOutlayOut">
+                                        <fmt:formatNumber value="${employerOutlay}" type="currency"/>
+                                    </div>
+                                    <div class="footnote">Contribution &times; total eligible employees. Shown separately from net cost above.</div>
                                 </div>
-                                <div class="footnote">Contribution &times; total eligible employees. Shown separately from net cost above.</div>
-                            </div>
+                            </c:if>
+                            <%-- Tier 2 with no contribution: say what the table IS, so the absent
+                                 columns read as a boundary rather than a missing figure. --%>
+                            <c:if test="${not contributionSupplied}">
+                                <div class="footnote">
+                                    Premium at the bronze floor, per employee, for ${submittedTotalLives} eligible employees.
+                                    Enter an <strong>Employer Monthly Contribution</strong> above to see net cost and the
+                                    contribution slider.
+                                </div>
+                            </c:if>
 
                             <c:if test="${not empty affordabilityBasis}">
                                 <div class="status-card mt-3">
@@ -846,7 +871,13 @@
                                                                 <td><fmt:formatNumber value="${row.onexLcspPremium}" type="currency"/></td>
                                                                 <td><fmt:formatNumber value="${row.flipContribution}" type="currency"/></td>
                                                                 <td class="afford-verdict">
+                                                                    <%-- K3-c: a verdict needs a contribution to
+                                                                         compare against. Without one the
+                                                                         threshold still stands on its own and is
+                                                                         shown; this cell says what is missing
+                                                                         rather than picking a side. --%>
                                                                     <c:choose>
+                                                                        <c:when test="${empty row.affordable}"><span class="text-muted">Enter a contribution to see the verdict</span></c:when>
                                                                         <c:when test="${row.affordable}">Affordable &mdash; employee loses PTC eligibility</c:when>
                                                                         <c:otherwise>Unaffordable &mdash; employee keeps PTC eligibility</c:otherwise>
                                                                     </c:choose>

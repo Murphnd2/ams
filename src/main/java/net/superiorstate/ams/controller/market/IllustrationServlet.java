@@ -377,12 +377,28 @@ public class IllustrationServlet extends HttpServlet {
             return;
         }
 
-        BigDecimal contribution = parseContribution(contributionParam);
-        if (contribution == null) {
-            request.setAttribute("inputError", "Enter a valid employer monthly contribution (0 or more).");
-            request.getRequestDispatcher("/WEB-INF/view/market/illustration25.jsp").forward(request, response);
-            return;
+        // ── K3-c: the contribution is OPTIONAL ────────────────────────────────────
+        //
+        // "What does each employee pay at the bronze floor, by age" is a legitimate
+        // question an agent asks BEFORE he has a contribution in mind, and requiring one
+        // made Illustrate refuse to compute for a perfectly well-formed request. That
+        // refusal is also what produced K3-a: the submit errored, mode had already flipped
+        // to AGE_BAND, so the contribution and basis fields appeared — and the button
+        // looked like it had revealed inputs instead of computing.
+        //
+        // Blank is now "not supplied" and yields a per-band premium table. A value that is
+        // present but malformed is still an error — that is a typo, not an absence.
+        boolean contributionSupplied = contributionParam != null && !contributionParam.isBlank();
+        BigDecimal contribution = null;
+        if (contributionSupplied) {
+            contribution = parseContribution(contributionParam);
+            if (contribution == null) {
+                request.setAttribute("inputError", "Enter a valid employer monthly contribution (0 or more).");
+                request.getRequestDispatcher("/WEB-INF/view/market/illustration25.jsp").forward(request, response);
+                return;
+            }
         }
+        request.setAttribute("contributionSupplied", contributionSupplied);
 
         int totalLives = 0;
         for (AgeBandRow row : rows) {
@@ -420,26 +436,39 @@ public class IllustrationServlet extends HttpServlet {
             for (AgeBandRow row : rows) {
                 RatingAreaRateCache cacheRow = cacheByAge.get(row.getAge());
                 BigDecimal floorPremium = cacheRow.getLowestBronzePremium();
-                // Clamp at zero — a contribution exceeding the floor premium means the
-                // employee's cost is zero, not negative.
-                BigDecimal netPerEmployee = floorPremium.subtract(contribution).max(BigDecimal.ZERO);
-                BigDecimal bandNet = netPerEmployee.multiply(BigDecimal.valueOf(row.getCount()));
+                // Net cost is only meaningful against a contribution. Without one the row
+                // carries the floor premium alone — the net columns are not rendered, so
+                // they are left null rather than defaulted to the premium, which would
+                // read as "the employee pays all of it" and is a different claim.
+                // ⚠️ The clamp-at-zero arithmetic below is untouched; it simply does not
+                // run when there is nothing to subtract.
+                BigDecimal netPerEmployee = null;
+                BigDecimal bandNet = null;
+                if (contributionSupplied) {
+                    netPerEmployee = floorPremium.subtract(contribution).max(BigDecimal.ZERO);
+                    bandNet = netPerEmployee.multiply(BigDecimal.valueOf(row.getCount()));
+                    groupNetTotal = groupNetTotal.add(bandNet);
+                }
                 resultRows.add(new AgeBandResultRow(row.getAge(), row.getCount(), floorPremium, netPerEmployee, bandNet));
-                groupNetTotal = groupNetTotal.add(bandNet);
             }
             request.setAttribute("ageBandResultRows", resultRows);
-            request.setAttribute("groupNetTotal", groupNetTotal);
-
-            BigDecimal employerOutlay = contribution.multiply(BigDecimal.valueOf(totalLives));
-            request.setAttribute("employerOutlay", employerOutlay);
             request.setAttribute("submittedTotalLives", totalLives);
+
+            if (contributionSupplied) {
+                request.setAttribute("groupNetTotal", groupNetTotal);
+                request.setAttribute("employerOutlay", contribution.multiply(BigDecimal.valueOf(totalLives)));
+            }
 
             setProvenanceAttributes(request, new ArrayList<>(cacheByAge.values()));
 
+            // Flip points do not depend on the contribution — only the verdict does — so a
+            // basis chosen without one still yields the thresholds, with the verdict column
+            // left empty rather than guessed.
             computeAffordability(em, request, planYear, affordabilityBasis, contribution, rows, cacheByAge);
 
             resultSummary = "AGE_BAND: " + totalLives + " lives, " + selectedCounty.getCountyName() + " "
-                    + selectedCounty.getState() + ", PY" + planYear + ", group net floor " + money(groupNetTotal);
+                    + selectedCounty.getState() + ", PY" + planYear
+                    + (contributionSupplied ? ", group net floor " + money(groupNetTotal) : ", premium by band");
         } else {
             request.setAttribute("missingAges", missingAges);
             resultSummary = "AGE_BAND: " + totalLives + " lives, " + selectedCounty.getCountyName() + " "
@@ -510,7 +539,14 @@ public class IllustrationServlet extends HttpServlet {
             // every row's income during row parsing in handleAgeBandMode.
             BigDecimal referenceIncome = "FPL".equals(basis) ? fplAnnual : row.getIncome();
             BigDecimal flip = AffordabilityCalculator.flipContribution(onexLcsp, applicablePct, referenceIncome);
-            boolean affordable = AffordabilityCalculator.isAffordable(contribution, flip);
+            // K3-c: the threshold stands on its own — it is where the verdict WOULD change,
+            // and that is a fact about the plan year and the employee's age, not about any
+            // contribution. The verdict is the part that needs one, so without a
+            // contribution it stays null and the column renders empty rather than guessing
+            // a side. isAffordable is unchanged and simply is not called.
+            Boolean affordable = (contribution == null)
+                    ? null
+                    : AffordabilityCalculator.isAffordable(contribution, flip);
             affordabilityRows.add(AffordabilityResultRow.available(row.getAge(), row.getCount(), onexLcsp, flip, affordable));
         }
         request.setAttribute("affordabilityRows", affordabilityRows);
@@ -946,8 +982,9 @@ public class IllustrationServlet extends HttpServlet {
             this.unavailableReason = unavailableReason;
         }
 
+        /** {@code affordable} is nullable: a threshold without a contribution has no verdict (K3-c). */
         static AffordabilityResultRow available(int age, int count, BigDecimal onexLcspPremium,
-                                                 BigDecimal flipContribution, boolean affordable) {
+                                                 BigDecimal flipContribution, Boolean affordable) {
             return new AffordabilityResultRow(age, count, true, onexLcspPremium, flipContribution, affordable, null);
         }
 
