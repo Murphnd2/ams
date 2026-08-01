@@ -51,6 +51,25 @@
         .footnote { font-size: 0.75rem; color: #6c757d; margin-top: 0.35rem; }
         .quiet-note { font-size: 0.78rem; color: #6c757d; margin-top: 0.5rem; }
         .meta-line { font-size: 0.8rem; color: #495057; margin-top: 0.75rem; }
+
+        /* W11: the disabled "Use This in a Proposal" control still answered hover, which
+           is the universal signal for "this works" — an agent clicks it, nothing happens,
+           and they conclude the page is broken rather than the feature gated. Kill every
+           hover affordance and say "not available" with the cursor instead. */
+        .ssa-action:disabled,
+        .ssa-action[disabled] {
+            cursor: not-allowed;
+            opacity: 0.55;
+        }
+        .ssa-action:disabled:hover,
+        .ssa-action[disabled]:hover {
+            cursor: not-allowed;
+            opacity: 0.55;
+            box-shadow: none !important;
+            transform: none !important;
+            filter: none !important;
+            text-decoration: none !important;
+        }
     </style>
 </head>
 <body>
@@ -123,10 +142,15 @@
                              reversible by deleting the ZIP block. --%>
                         <div class="col-auto">
                             <label class="form-label mb-1" for="zip">ZIP</label>
+                            <%-- W3: the placeholder was "75482", a real Hopkins ZIP, which read
+                                 as a value already entered. Five hashes cannot be mistaken for
+                                 one. W4: the resolved-county confirmation that used to sit here
+                                 is gone — it repeated what the dropdown two inches to the right
+                                 already said, and adding a line inside an `align-items: end` row
+                                 knocked the row out of alignment every time a ZIP resolved. --%>
                             <input type="text" class="form-control form-control-sm" id="zip" name="zip"
-                                   inputmode="numeric" pattern="[0-9]{5}" maxlength="5" placeholder="75482"
+                                   inputmode="numeric" pattern="[0-9]{5}" maxlength="5" placeholder="#####"
                                    value="${submittedZip}" style="width:100px;">
-                            <div class="quiet-note" id="zipResolvedNote" style="display:none; margin-top:0.2rem;"></div>
                         </div>
 
                         <div class="col-auto">
@@ -247,6 +271,15 @@
                                 <c:param name="mode" value="${mode}"/>
                                 <c:param name="countyFips" value="${cand.countyFips}"/>
                                 <c:param name="planYear" value="${selectedPlanYear}"/>
+                                <%-- W5: carry the ZIP the agent typed. Losing it made the field
+                                     go blank the moment they picked a county, so the page forgot
+                                     the thing they had just entered. Safe under the R1
+                                     precedence rule: zip and countyFips arrive together,
+                                     containsCounty() finds they agree, and the explicit county
+                                     is kept. --%>
+                                <c:if test="${not empty submittedZip}">
+                                    <c:param name="zip" value="${submittedZip}"/>
+                                </c:if>
                                 <c:if test="${not empty opportunityId}">
                                     <c:param name="opportunityId" value="${opportunityId}"/>
                                 </c:if>
@@ -284,6 +317,19 @@
 
                      Kept distinct from the unwarmed-county case, which the servlet reports
                      separately through inputError and which is T76's to fix. --%>
+                <%-- W4's other half. Deleting the under-field confirmation removed the only
+                     signal for a ZIP that resolves to exactly ONE county the illustration
+                     cannot price — the dropdown cannot show that county, because the dropdown
+                     is built from the counties that have rates. So the message moves here,
+                     out of the form row (fixing the alignment shift) and using the SAME
+                     wording the servlet produces after a click, shown before it instead. --%>
+                <div class="status-card" id="zipUnpricedPanel" style="display:none;">
+                    <strong><i class="bi bi-info-circle me-1"></i>We don't have rates for <span id="zipUnpricedCounty"></span> yet</strong>
+                    <div class="footnote" style="margin-top:0.4rem;">
+                        The county list holds only the counties we have rates for, so it will not contain this one.
+                    </div>
+                </div>
+
                 <%-- Same always-render-hidden treatment as the chooser above, for the same
                      reason: the blur lookup must not carry a second copy of this wording. --%>
                 <div class="status-card" id="zipNoMatchPanel" ${zipNoMatch ? '' : 'style="display:none;"'}>
@@ -302,6 +348,17 @@
                         <div style="font-size:0.85rem; margin-top:0.5rem;">No counties have cached rate data yet. Rates are loaded by the nightly rate-cache warm job.</div>
                     </div>
                 </c:if>
+
+                <%-- W1: everything below is the RESULT of the last computation, and it is
+                     wrapped so the ZIP field can hide all of it at once.
+
+                     Observed on production: a full Hopkins rate table rendering BELOW a
+                     Collin/Denton chooser, with only the small footer line naming Hopkins.
+                     R1's twin — R1 *computed* from a contradicted county, this *displayed*
+                     one. A stale result under a fresh chooser is a wrong number on screen,
+                     and the fact that it was correct for a county the agent has moved on
+                     from is exactly what makes it dangerous. --%>
+                <div id="illustrationResults">
 
                 <%-- R3: `empty inputError` guards the whole result panel. A validation
                      failure returns from the mode handler BEFORE hasRates is set, so
@@ -862,6 +919,8 @@
                     </c:choose>
                 </c:if>
 
+                </div><%-- /#illustrationResults (W1) --%>
+
             </c:otherwise>
         </c:choose>
 
@@ -896,7 +955,9 @@
     var chooserList   = document.getElementById('zipChooserList');
     var noMatch       = document.getElementById('zipNoMatchPanel');
     var noMatchZip    = document.getElementById('zipNoMatchZip');
-    var resolvedNote  = document.getElementById('zipResolvedNote');
+    var unpriced      = document.getElementById('zipUnpricedPanel');
+    var unpricedName  = document.getElementById('zipUnpricedCounty');
+    var results       = document.getElementById('illustrationResults');
     var form          = zipInput.form;
 
     // What the server already rendered for. Re-looking-up the same value on every
@@ -906,17 +967,19 @@
     function hidePanels() {
         if (chooser) chooser.style.display = 'none';
         if (noMatch) noMatch.style.display = 'none';
-        if (resolvedNote) {
-            resolvedNote.style.display = 'none';
-            resolvedNote.textContent = '';
-        }
+        if (unpriced) unpriced.style.display = 'none';
     }
 
-    // R1 + R4. Any edit to the ZIP invalidates both the county selection and whatever
-    // panel is on screen, immediately -- not when the lookup returns.
+    // R1 + R4 + W1. Any edit to the ZIP invalidates the county selection, whatever panel
+    // is on screen, AND the results below -- immediately, not when the lookup returns.
+    //
+    // W1 is the one that bit: a full Hopkins table was left rendering underneath a
+    // Collin/Denton chooser, with only the footer line naming the county it belonged to.
+    // Results are the answer to a question the agent has just changed, so they go with it.
     function invalidate() {
         hidePanels();
         if (countySelect) countySelect.value = '';
+        if (results) results.style.display = 'none';
     }
 
     function currentParam(name, fallback) {
@@ -935,12 +998,13 @@
                 break;
             }
         }
-        if (resolvedNote) {
-            // Mirrors the server's own wording for each case rather than inventing one.
-            resolvedNote.textContent = found
-                ? (county.name + ', ' + county.state)
-                : ('That ZIP is in ' + county.name + ', ' + county.state + ', which has no cached rates yet.');
-            resolvedNote.style.display = '';
+        // W4: on success, say nothing. The dropdown two inches to the right now shows the
+        // county, and repeating it under the field was redundant and broke the row's
+        // alignment. Only the case the dropdown CANNOT express gets a message -- a county
+        // with no cached rates is not in the dropdown at all.
+        if (!found && unpriced && unpricedName) {
+            unpricedName.textContent = county.name + ', ' + county.state;
+            unpriced.style.display = '';
         }
     }
 
@@ -955,9 +1019,11 @@
         // came off an HTTP response, and a response is data, not markup.
         chooserList.textContent = '';
         counties.forEach(function (county) {
+            // W5: carry the ZIP through, matching the server-rendered chooser's links.
             var href = 'Illustration?mode=' + encodeURIComponent(mode)
                      + '&countyFips=' + encodeURIComponent(county.fips)
-                     + (planYear ? '&planYear=' + encodeURIComponent(planYear) : '');
+                     + (planYear ? '&planYear=' + encodeURIComponent(planYear) : '')
+                     + '&zip=' + encodeURIComponent(zip);
 
             var a = document.createElement('a');
             a.setAttribute('href', href);

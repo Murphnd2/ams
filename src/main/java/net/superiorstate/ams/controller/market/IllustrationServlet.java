@@ -511,8 +511,14 @@ public class IllustrationServlet extends HttpServlet {
         try {
             CountyReference known = CountyReferenceDAO.findByFips(em, countyFips);
             if (known != null) {
+                // W6 — the trailing advice used to read "Select another county from the
+                // list." That is wrong advice whenever a ZIP resolves to counties that are
+                // all uncached: there is no other county in the list that is right for this
+                // employer, and telling an agent to pick one invites exactly the wrong
+                // action — running a neighbouring county's rates for a client. State the
+                // constraint instead of prescribing a move.
                 return "We don't have rates for " + known.getCountyName() + ", " + known.getState()
-                        + " yet. Select another county from the list.";
+                        + " yet. The county list holds only the counties we have rates for, so it will not contain this one.";
             }
         } catch (Exception e) {
             log.debug("[ILLUSTRATION] Could not classify unavailable county {}", countyFips, e);
@@ -772,7 +778,20 @@ public class IllustrationServlet extends HttpServlet {
             }
             logRow.setParentAgencyId(parentAgencyId);
 
-            logRow.setZipCode(county.getRepresentativeZip());
+            // W2 — record a ZIP only when the agent actually supplied one.
+            //
+            // This previously wrote county.getRepresentativeZip() unconditionally, so a
+            // run where the agent typed nothing and picked Hopkins from the dropdown
+            // logged zip_code = '75437' — Hopkins's representative ZIP from
+            // county_reference (V076). The column read like user input and was not:
+            // anyone auditing the log would conclude an agent typed a ZIP they never
+            // typed. county_fips already records the county, so the derived value added
+            // no information and actively misled.
+            //
+            // Strictly a reduction in what is stored, which is the only direction this
+            // column may ever move. No migration: the column is unchanged and nullable.
+            Object submittedZipAttr = request.getAttribute("submittedZip");
+            logRow.setZipCode(submittedZipAttr instanceof String ? (String) submittedZipAttr : null);
             logRow.setCountyFips(county.getCountyFips());
             logRow.setState(county.getState());
             logRow.setPlanYear(planYear);
