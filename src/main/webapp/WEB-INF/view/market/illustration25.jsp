@@ -61,6 +61,75 @@
             cursor: not-allowed;
             opacity: 0.55;
         }
+        /* ── W10: make the slider read as a control ──────────────────────────────
+           The agent who watched this get built looked straight past it: "I didn't get
+           the impression that the page was anything other than a static result." The
+           cause is visible in the markup — it used `.status-card`, byte-identical to
+           the read-only result panels above and below it. It looked like output.
+
+           So it stops looking like output: its own tint and accent edge, a filled
+           track, a handle big enough to read as a grab target, and ticks marking each
+           band's flip contribution.
+
+           ⚠️ Every colour here is neutral or the existing SSA blue. Nothing marks a
+           region as good, better or recommended — no green below a threshold, no red
+           above, no highlighted "optimal" band. The ticks are computed thresholds
+           stated as facts, and the no-steering boundary is the reason they look
+           identical to each other. */
+        .contrib-card {
+            background: #f7fbfd;
+            border: 1px solid #bcd9e8;
+            border-left: 3px solid var(--ssa, #0d5681);
+        }
+        .contrib-slider-wrap { position: relative; padding-bottom: 1.1rem; }
+        .contrib-slider-wrap input[type=range] {
+            -webkit-appearance: none; appearance: none;
+            width: 100%; height: 1.4rem; background: transparent; cursor: grab; margin: 0;
+        }
+        .contrib-slider-wrap input[type=range]:active { cursor: grabbing; }
+        /* Filled portion behind the handle: position indicator, not a preference. */
+        .contrib-slider-wrap input[type=range]::-webkit-slider-runnable-track {
+            height: 8px; border-radius: 4px; border: 1px solid #b7c7d1;
+            background: linear-gradient(to right,
+                var(--ssa, #0d5681) 0%, var(--ssa, #0d5681) var(--fill, 0%),
+                #e7edf1 var(--fill, 0%), #e7edf1 100%);
+        }
+        .contrib-slider-wrap input[type=range]::-moz-range-track {
+            height: 8px; border-radius: 4px; border: 1px solid #b7c7d1; background: #e7edf1;
+        }
+        .contrib-slider-wrap input[type=range]::-moz-range-progress {
+            height: 8px; border-radius: 4px; background: var(--ssa, #0d5681);
+        }
+        /* 22px handle — a deliberate touch target, and the one thing that makes it read
+           as draggable at a glance. Sized for a finger; the rest of T78 is not this run. */
+        .contrib-slider-wrap input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none; appearance: none;
+            width: 22px; height: 22px; margin-top: -8px;
+            border-radius: 50%; background: #fff;
+            border: 3px solid var(--ssa, #0d5681);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.28);
+        }
+        .contrib-slider-wrap input[type=range]::-moz-range-thumb {
+            width: 22px; height: 22px; border-radius: 50%; background: #fff;
+            border: 3px solid var(--ssa, #0d5681); box-shadow: 0 1px 3px rgba(0,0,0,0.28);
+        }
+        .contrib-slider-wrap input[type=range]:focus { outline: none; }
+        .contrib-slider-wrap input[type=range]:focus::-webkit-slider-thumb,
+        .contrib-slider-wrap input[type=range]:hover::-webkit-slider-thumb {
+            box-shadow: 0 0 0 5px rgba(13,86,129,0.18), 0 1px 3px rgba(0,0,0,0.28);
+        }
+        .contrib-slider-wrap input[type=range]:focus::-moz-range-thumb,
+        .contrib-slider-wrap input[type=range]:hover::-moz-range-thumb {
+            box-shadow: 0 0 0 5px rgba(13,86,129,0.18), 0 1px 3px rgba(0,0,0,0.28);
+        }
+        /* Flip-point ticks. Grey, identical, unlabelled as good or bad. */
+        .contrib-ticks { position: absolute; left: 0; right: 0; top: 1.35rem; height: 1rem; }
+        .contrib-tick { position: absolute; transform: translateX(-50%); text-align: center; }
+        .contrib-tick i {
+            display: block; width: 1px; height: 6px; background: #8a99a4; margin: 0 auto;
+        }
+        .contrib-tick span { font-size: 0.62rem; color: #6c757d; white-space: nowrap; }
+
         .ssa-action:disabled:hover,
         .ssa-action[disabled]:hover {
             cursor: not-allowed;
@@ -419,7 +488,7 @@
                                  log line, no column — the illustration_log row for this run was
                                  already written server-side, and it carries no contribution figure
                                  at all (IllustrationServlet:608-618). --%>
-                            <div class="status-card mt-3" id="contribSliderCard">
+                            <div class="status-card contrib-card mt-3" id="contribSliderCard">
                                 <strong><i class="bi bi-sliders me-1"></i>Employer Monthly Contribution</strong>
                                 <span class="text-muted" style="font-size:0.8rem;">&mdash; drag to see the effect; nothing is saved</span>
                                 <div class="d-flex align-items-center gap-3 mt-2">
@@ -427,12 +496,24 @@
                                          computed with. It is read from here rather than from the
                                          input's own value, because a range input snaps its value to
                                          the step and would misreport what was submitted. --%>
-                                    <input type="range" class="form-range flex-grow-1" id="contribSlider"
-                                           min="0" step="5" value="${submittedContribution}"
-                                           data-submitted="${submittedContribution}"
-                                           aria-label="Employer monthly contribution">
+                                    <div class="contrib-slider-wrap flex-grow-1">
+                                        <input type="range" id="contribSlider"
+                                               min="0" step="5" value="${submittedContribution}"
+                                               data-submitted="${submittedContribution}"
+                                               aria-label="Employer monthly contribution">
+                                        <%-- Ticks are a visual echo of the affordability table's
+                                             Flip Contribution column, which screen readers already
+                                             read properly — so they are hidden from the a11y tree
+                                             rather than duplicated into it. --%>
+                                        <div class="contrib-ticks" id="contribTicks" aria-hidden="true"></div>
+                                    </div>
                                     <div style="font-size:1.05rem; font-weight:700; color:#0d5681; min-width:7rem; text-align:right;"
                                          id="contribReadout"></div>
+                                </div>
+                                <%-- Rendered only when there are flip points to mark. Factual:
+                                     it says where a verdict changes, not where to aim. --%>
+                                <div class="footnote" id="contribTickLegend" style="display:none;">
+                                    Marks on the track show where each age band's affordability verdict changes.
                                 </div>
                                 <div class="footnote" id="contribRevertNote" style="display:none;">
                                     Showing <span id="contribShown"></span>; the figures were calculated at
@@ -639,6 +720,57 @@
                                 slider.max = max;
                                 slider.value = submitted;
 
+                                // W10 — flip-point ticks on the track. The money moment becomes
+                                // visible BEFORE anything is dragged, which is the whole point:
+                                // an agent who never notices the control never drags it.
+                                //
+                                // Values come from the affordability rows the server already
+                                // computed — this reads data-flip, it never recomputes a
+                                // threshold. Ages are deduplicated per distinct flip so two bands
+                                // sharing one point produce one tick.
+                                //
+                                // ⚠️ Every tick is identical: same colour, same size, no ordering,
+                                // no region shaded good or bad, no "recommended" anything. A flip
+                                // point is a fact about where a verdict changes. Making one look
+                                // preferable to another would be steering.
+                                var ticksBox = document.getElementById('contribTicks');
+                                var tickLegend = document.getElementById('contribTickLegend');
+
+                                function renderTicks(max) {
+                                    if (!ticksBox || max <= 0) return;
+                                    var byFlip = {};
+                                    affordRows.forEach(function (tr) {
+                                        var flip = parseFloat(tr.getAttribute('data-flip'));
+                                        if (isNaN(flip) || flip < 0 || flip > max) return;
+                                        var ageCell = tr.querySelector('td');
+                                        var age = ageCell ? ageCell.textContent.trim() : '';
+                                        var key = flip.toFixed(2);
+                                        if (!byFlip[key]) byFlip[key] = { flip: flip, ages: [] };
+                                        if (age && byFlip[key].ages.indexOf(age) === -1) byFlip[key].ages.push(age);
+                                    });
+
+                                    var keys = Object.keys(byFlip);
+                                    if (!keys.length) return;
+
+                                    ticksBox.textContent = '';
+                                    keys.forEach(function (key) {
+                                        var entry = byFlip[key];
+                                        var mark = document.createElement('div');
+                                        mark.className = 'contrib-tick';
+                                        mark.style.left = ((entry.flip / max) * 100) + '%';
+
+                                        var bar = document.createElement('i');
+                                        mark.appendChild(bar);
+
+                                        var label = document.createElement('span');
+                                        label.textContent = 'age ' + entry.ages.join('/');
+                                        mark.appendChild(label);
+
+                                        ticksBox.appendChild(mark);
+                                    });
+                                    if (tickLegend) tickLegend.style.display = '';
+                                }
+
                                 var readout = document.getElementById('contribReadout');
                                 var revertNote = document.getElementById('contribRevertNote');
                                 var shownEl = document.getElementById('contribShown');
@@ -670,6 +802,10 @@
                                     if (isNaN(c) || c < 0) c = 0;
 
                                     readout.textContent = money.format(c);
+
+                                    // Track fill follows the handle. A position indicator, not a
+                                    // judgement about the region it covers.
+                                    slider.style.setProperty('--fill', (max > 0 ? (c / max) * 100 : 0) + '%');
 
                                     var groupNet = 0;
                                     var lives = 0;
@@ -719,6 +855,8 @@
                                         submittedEl.textContent = money.format(submitted);
                                     }
                                 }
+
+                                renderTicks(max);
 
                                 slider.addEventListener('input', function () {
                                     userMoved = true;
