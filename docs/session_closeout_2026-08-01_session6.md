@@ -437,3 +437,134 @@ and stated in the spec: the next prompt writes it, under the normal migration di
   Forrest offered to draw is still not drawn.
 - ⚠️ **The two SWBD emails have still never been sent** — O22 book profile, and *"send me three groups
   renewing next quarter"*.
+
+---
+
+# Session 6, prompt E — T74 part 1: the ZIP → county crosswalk
+
+Data layer only. **No `.jsp` touched, no servlet touched.** Built from §5, which governs.
+
+## Provenance — the fact this whole item rests on
+
+| | |
+|---|---|
+| **Source URL** | `https://www2.census.gov/geo/docs/maps-data/data/rel2020/zcta520/tab20_zcta520_county20_natl.txt` |
+| **Fetched** | 2026-08-01 — HTTP 200, 6,821,287 bytes, 47,864 lines |
+| **Upstream primary source** | US Census Bureau, **2020 Census ZCTA-to-county relationship file** (2020 vintage) |
+| **Licence** | Work of the US Government — **public domain, 17 U.S.C. 105.** No redistribution restriction |
+| **Why this one** | It is the *primary* source, not a mirror, and it is **the same file V076 already uses** — so `zip_county` and `county_reference` are cut from one vintage and cannot disagree about which counties exist. Verified: **exact 254-of-254 set match, zero either way** |
+
+**⭐ No crosswalk row was authored from model knowledge. Not one ZIP, not one FIPS code.** Every row is a
+scripted transform of the file above, via `docs/scripts/generate_zip_county.ps1`, which is deterministic
+— same source in, same file out. That was the run's hard stop and it was not approached.
+
+**HUD was preferred and was tried first.** The prompt is right that a HUD-derived crosswalk is better:
+built from real USPS delivery data, and it carries a **residential (address-count)** ratio rather than a
+land-area one. It could not be obtained — `huduser.gov` file paths return **HTTP 202 with a zero-byte
+body**, and `hudapi/public/usps` returns **401** without a registered access token, which I did not
+create. Recorded in the V085 header and in the generator so the next person does not repeat the attempt
+blind. Swapping to HUD later replaces V085's rows; V084's table is unchanged by it.
+
+**⚠️ The prompt said `census.gov` was unreachable. It is reachable** — HTTP 200 on the first request.
+That changed the run for the better: the primary source rather than a GitHub mirror whose licence and
+vintage I would have had to establish second-hand.
+
+## Counts — verified before commit, not assumed
+
+| Measure | Value |
+|---|---|
+| Crosswalk rows (TX) | **2,894** — independently recounted from the source; generator and `awk` agree |
+| Distinct ZCTAs | **1,992** |
+| Distinct counties | **254** — all of Texas, exact match with `county_reference` |
+| **ZCTAs spanning >1 county** | **686 — 34.4%** |
+| `land_area_ratio` NULL | 0 · max exactly `1.000000`, none above |
+| Width check | every `zip` and `county_fips` exactly 5 characters — regex over the generated file, not assumed |
+| **V085 file size** | **89 KB** — no release-upload concern |
+
+**34% is the number to carry forward.** A third of Texas ZIPs resolve to more than one county, so
+disambiguation is the *common* path. Anything that auto-selects is wrong one time in three.
+
+## Shipped
+
+| Hash | What |
+|---|---|
+| `4f242af` | **V084** — `zip_county` table |
+| `2689d67` | **V085** — 2,894 Texas rows + `generate_zip_county.ps1` |
+| `3f7d92e` | Tracker + `schema_version_migration.sql` registration; highest version → **V085** |
+| `d7cbc4f` | `ZipCounty`, `ZipCountyDAO`, `ZipCountyResolver` |
+| `e6dee49` | §5 and T74/T77 updated |
+
+`./mvnw compile` clean. **Nothing calls the resolver yet — intended, per the run's own framing.**
+
+## Decisions made
+
+1. **`zip CHAR(5)`, never an integer.** An integer column silently destroys every leading-zero ZIP.
+   Texas starts at 7 so it would not have bitten today — it would have bitten on the first expansion
+   migration, in production, quietly.
+2. **No FK to `county_reference`**, because that table is **Texas-only** (V076, 254 rows — verified, not
+   assumed). An FK would reject valid crosswalk rows for any state whose counties are not yet seeded.
+3. **The ratio column is `land_area_ratio`, not `res_ratio`.** HUD's ratio counts addresses; this counts
+   dirt. For a ZIP with a town on one side of a county line and ranchland on the other they disagree —
+   so it orders choices and never makes one.
+4. **`getUnique()` returns null on an ambiguous resolution** rather than the first candidate. A caller
+   wanting "the" county for a ZIP that has three must confront that.
+5. **No secondary index.** The composite PK is already the index for the only lookup performed.
+6. **Texas only**, per §5 — not the prompt's "seed nationally if manageable". §5 governs; see below.
+
+## New assumptions, and reversal cost
+
+| Assumption | Reversal cost |
+|---|---|
+| A ZCTA-derived crosswalk is good enough to ship while HUD is unobtainable | **Low** — replace V085's rows via a new data migration. V084's table and all three Java classes are unchanged by the swap. The cost is borne meanwhile by users whose ZIP misses |
+| Land-area ordering is an acceptable proxy for "show the likely county first" | **Free** — one `ORDER BY`, and nothing derives a displayed figure from it |
+| Dropping crosswalk rows whose county is absent from `county_reference` is right | **Free** — one `if`. Today it can only fire on data inconsistency, since the two sets match exactly |
+
+## Contradictions found
+
+1. **The prompt vs reality on network access.** It stated `census.gov` was not reachable. It is. I used
+   the primary source instead of a mirror — **better provenance than the prompt's own fallback plan.**
+2. **The prompt vs §5 on scope.** The prompt says *"seed nationally if the file is manageable"*; §5 says
+   *"Out of scope: multi-state ZIP data (Texas first, same as V076)."* **§5 governs, so Texas.** It also
+   matches the business — SWBD is a Texas GA and Presidio is Texas-only.
+3. **The prompt vs §5 on source.** §5 names the Census ZCTA file; the prompt prefers HUD for a real
+   correctness reason (ZCTA ≠ ZIP) that §5 never addressed. I tried HUD first — the prompt's concern was
+   sound — and fell back to §5's named source when HUD proved unobtainable, recording the limitation
+   loudly in three places. **Not a conflict resolved against §5; §5 was silent on the point.**
+4. **My own §5 text vs the source.** §5 estimated *"~2,600 ZCTAs"* for Texas. The real figure is
+   **1,992**. Corrected in place.
+5. **T77 as written was unbuildable.** It said to dedupe multi-location designs *by rating area*.
+   `rating_area_rate_cache` **has no `rating_area` column** — dedupe is by `county_fips`. Corrected.
+
+## SQL close-out audit — in full, because this run produced SQL
+
+**Two versioned migrations, both new, both additive. No other SQL exists anywhere in this run.**
+
+| File | Statements |
+|---|---|
+| `docs/migrations/V084__zip_county_crosswalk.sql` | `CREATE TABLE zip_county` · `CREATE OR REPLACE VIEW schema_info` · `INSERT IGNORE INTO schema_version` |
+| `docs/migrations/V085__zip_county_crosswalk_tx.sql` | one `INSERT IGNORE INTO zip_county` carrying 2,894 value rows · `CREATE OR REPLACE VIEW schema_info` · `INSERT IGNORE INTO schema_version` |
+
+- **Orphaned `.sql` files: none.** Both are versioned, sequential and registered.
+- **No existing table altered.** `county_reference` and `rating_area_rate_cache` were read, never written.
+- **No `INSERT INTO constant`** in either file, or anywhere in this run.
+- **Idempotent:** `INSERT IGNORE` throughout; re-running either is a no-op.
+- **Registered** in `docs/analysis/migration_tracker.md` and `docs/schema_version_migration.sql`.
+- **Current highest version: V085** (was V083).
+- **Pending deployment: both.** ⬜ in **every** column including local — neither has been run against any
+  database. That is their true state, not a stale cell. Applying them changes no behaviour, because
+  nothing reads `zip_county` yet.
+- **Described but not scripted:** national expansion beyond Texas — deliberately, as a future `V0NN`
+  data migration produced by `generate_zip_county.ps1 -State XX`.
+
+## Next
+
+1. **T74 part 2** — `IllustrationServlet` + `illustration25.jsp`. The resolver contract is in §5. The
+   rule most likely to be shortcut: **never take element zero on an ambiguous ZIP**, and 34% of Texas
+   ZIPs are ambiguous.
+2. **Apply V084/V085 locally** and re-check the counts against a live `SELECT` before any UI trusts them.
+3. **T76** warm-on-miss remains blocked on the same thing — no installation has ever authenticated to
+   the HealthSherpa API.
+4. Unchanged: click-script steps 10/10b, the three SWBD emails, T83's enrollment-support question.
+
+**Carried forward, still unclosed:** nobody has asked Forrest what he would want a quoting tool to do,
+and the two SWBD emails have still never been sent.
