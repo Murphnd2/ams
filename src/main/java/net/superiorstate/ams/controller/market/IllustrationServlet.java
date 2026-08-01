@@ -91,8 +91,34 @@ public class IllustrationServlet extends HttpServlet {
             request.setAttribute("pageTitle", "ICHRA Illustration");
             request.setAttribute("pageIcon", "bi-calculator");
 
-            String mode = MODE_AGE_BAND.equals(request.getParameter("mode")) ? MODE_AGE_BAND : MODE_RANGE;
+            // ── One analysis surface, progressive by input fidelity ───────────────
+            //
+            // Steps 1/2/3 on the hub were never steps. All three are this servlet with a
+            // different `mode`, and the difference between them is how much detail the
+            // agent happens to have: ZIP + headcount, ZIP + age bands, or a census. That
+            // is the fidelity-tier model in §4.1, and it is progressive, not sequential —
+            // pre-sale this is done ONCE, at whatever detail is available.
+            //
+            // ⚠️ `mode` REMAINS A SUPPORTED URL PARAMETER and is honoured verbatim when
+            // present. The hub cards, T59's affordability card, the proposal hand-off and
+            // every link verified this session send it, and all of them must keep landing
+            // exactly where they landed before. It is only DERIVED when absent — which is
+            // what the form now does, so adding the first age band moves an agent from
+            // tier 1 to tier 2 with no mode switch and no lost state.
+            String modeParam = request.getParameter("mode");
+            String mode;
+            if (MODE_AGE_BAND.equals(modeParam)) {
+                mode = MODE_AGE_BAND;
+            } else if (MODE_RANGE.equals(modeParam)) {
+                mode = MODE_RANGE;
+            } else {
+                mode = hasAnyAgeBand(request) ? MODE_AGE_BAND : MODE_RANGE;
+            }
             request.setAttribute("mode", mode);
+            // Whether the caller asked for a mode explicitly. The JSP uses this to decide
+            // whether to open with a starter age row (the hub's age-band card must still
+            // land on a usable row, including with JavaScript off).
+            request.setAttribute("modeExplicit", MODE_AGE_BAND.equals(modeParam) || MODE_RANGE.equals(modeParam));
 
             // W7 — the repeater's cap, published rather than duplicated in the JSP so the
             // markup and the parse loop cannot drift apart.
@@ -552,6 +578,25 @@ public class IllustrationServlet extends HttpServlet {
             priced.add(county.getCountyFips());
         }
         return priced;
+    }
+
+    /**
+     * @return true if the request carries at least one non-blank {@code ageN} parameter.
+     * <p>
+     * This is the whole of the tier-1 → tier-2 transition: an agent who has entered an age
+     * band is asking for per-band output, and one who has not is asking for a range. Read
+     * only when no explicit {@code mode} was supplied, so it can never override a URL.
+     * Bounded by {@link #AGE_BAND_ROWS} — the same limit the parse loop uses, so the two
+     * cannot disagree about how many rows exist.
+     */
+    private boolean hasAnyAgeBand(HttpServletRequest request) {
+        for (int i = 1; i <= AGE_BAND_ROWS; i++) {
+            String age = request.getParameter("age" + i);
+            if (age != null && !age.isBlank()) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private boolean isAuthorized(HttpServletRequest request) {

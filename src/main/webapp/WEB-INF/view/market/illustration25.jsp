@@ -169,25 +169,26 @@
 <div class="illustration-wrap">
     <div class="toolbar">
         <h1 class="t-title m-0"><i class="bi bi-calculator me-1"></i>ICHRA Illustration</h1>
-        <c:if test="${not empty configuredPlanYears}">
-            <%-- G5: the toggle carried county and plan year but dropped the headcount, so an
-                 agent switching modes retyped a number they had entered one screen earlier.
-                 Going AGE_BAND -> RANGE the carry is exact: submittedTotalLives is the sum of
-                 the census row counts, which is precisely what RANGE means by headcount. It is
-                 set only on a successful AGE_BAND compute, so it is empty on a bare form or a
-                 validation bounce and the parameter is then simply omitted.
+        <%-- ⚠️ The Range / Age Band toggle stood here and is gone.
 
-                 The reverse carry (RANGE -> AGE_BAND) is deliberately NOT done: a flat total
-                 has no age to sit against, and seeding count1 with it would be right only for
-                 a group whose members share one age -- wrong for the Sandoval demo case
-                 (3 lives, 3 different ages) and wrong quietly, which is worse than blank. --%>
-            <div class="ms-auto d-flex gap-1">
-                <a class="btn btn-sm ${mode == 'RANGE' ? 'btn-primary' : 'btn-outline-secondary'}"
-                   href="Illustration?mode=RANGE&countyFips=${submittedCountyFips}&planYear=${selectedPlanYear}${not empty submittedTotalLives ? '&headcount='.concat(submittedTotalLives) : ''}${not empty submittedZip ? '&zip='.concat(submittedZip) : ''}${not empty opportunityId ? '&opportunityId='.concat(opportunityId) : ''}">Range</a>
-                <a class="btn btn-sm ${mode == 'AGE_BAND' ? 'btn-primary' : 'btn-outline-secondary'}"
-                   href="Illustration?mode=AGE_BAND&countyFips=${submittedCountyFips}&planYear=${selectedPlanYear}${not empty submittedZip ? '&zip='.concat(submittedZip) : ''}${not empty opportunityId ? '&opportunityId='.concat(opportunityId) : ''}">Age Band</a>
-            </div>
-        </c:if>
+             It presented two modes as a choice between tools. They were never two tools:
+             both are this page, and the only difference is whether the agent has age bands
+             to enter. Kevin, 2026-08-01: "steps 1, 2 and 3 are really 3 versions of the
+             same thing — the only difference is level of detail available." Pre-sale this
+             is done ONCE, at whatever detail is to hand, so the form now grows instead of
+             switching.
+
+             It also carried a live bug the moment it existed (W13-R): it dropped the ZIP,
+             and after prompt J's edits it dropped the county too. With no toggle there is
+             no toggle to lose state across — the fix is structural rather than another
+             parameter added to a link.
+
+             G5's carry logic died with it. That is the point: there is nothing to carry
+             between, because there is nowhere else to be.
+
+             ⚠️ `mode=RANGE` and `mode=AGE_BAND` remain fully supported URL parameters and
+             are honoured verbatim — the hub cards and every existing link still land
+             exactly where they did. See IllustrationServlet's mode block. --%>
     </div>
 
     <div class="illustration-body">
@@ -236,7 +237,12 @@
 
                 <div class="status-card" id="inputCard" ${hasResult ? 'style="display:none;"' : ''}>
                     <form method="get" action="Illustration" class="row gy-2 gx-3 align-items-end">
-                        <input type="hidden" name="mode" value="${mode}">
+                        <%-- ⚠️ The hidden `mode` field is deliberately GONE. Sending it would
+                             pin the form to whichever tier it opened in, so adding the first
+                             age band would submit and come back as a range. The servlet
+                             derives mode from whether any ageN is non-blank when no explicit
+                             mode is present — which is exactly this form — and honours the
+                             parameter verbatim when a link supplies one. --%>
                         <%-- Item 13: carry the opportunity attribution across this form's own
                              re-submissions. Already resolved and scope-checked server-side;
                              absent entirely when there is none. Not a picker — no UI. --%>
@@ -299,8 +305,30 @@
                             </c:otherwise>
                         </c:choose>
 
-                        <c:choose>
-                            <c:when test="${mode == 'AGE_BAND'}">
+                        <%-- ── One progressive form ─────────────────────────────────────
+                             Everything below is rendered together. What the agent supplies
+                             decides the output; nothing here is a mode.
+
+                               headcount only          -> premium range
+                               + age bands             -> per-employee net cost by band
+                               + contribution          -> slider, group net, employer outlay
+                               + affordability basis   -> flip points and verdicts
+
+                             ⚠️ Still a GET form with a submit. "Progressive" means which
+                             inputs show and which output sections render — NOT live
+                             recomputation. The slider remains the only live control. --%>
+
+                        <%-- Eligible Employees is the tier-1 input, and it stops being the
+                             input the moment an age band exists — the bands carry their own
+                             counts and their sum is the headcount. Hidden rather than
+                             removed so nothing is lost switching back, and the servlet
+                             ignores it in AGE_BAND regardless. --%>
+                        <div class="col-auto" id="headcountField" ${mode == 'AGE_BAND' ? 'style="display:none;"' : ''}>
+                            <label class="form-label mb-1" for="headcount">Eligible Employees</label>
+                            <input type="number" class="form-control form-control-sm" id="headcount" name="headcount"
+                                   min="1" max="10000" value="${submittedHeadcount}" style="max-width:150px;">
+                        </div>
+
                                 <%-- W7 — the age-band repeater. Was five fixed triplets edge to edge:
                                      "somewhat hard to read and blended together left to right", and
                                      fifteen inputs for a case that usually needs three.
@@ -328,13 +356,44 @@
                                      wages — the common tier-1/tier-2 case. Driven off the basis
                                      rather than a bare toggle, so the relationship is visible. --%>
                                 <div class="col-12">
-                                    <label class="form-label mb-1 d-block">Ages and Headcounts</label>
+                                    <label class="form-label mb-1 d-block">Ages and Headcounts
+                                        <span class="text-muted fw-normal" style="font-size:0.78rem;">&mdash; optional; adding one replaces Eligible Employees</span>
+                                    </label>
+                                    <%-- The form can now open with ZERO bands, so "+ Add age band"
+                                         has nothing to clone from. This is that source. It carries
+                                         `age-band-template`, NOT `age-band-row`, so neither the
+                                         repeater's row list nor the collapsed-summary counter sees
+                                         it; the class is swapped on clone. Its inputs are unnamed
+                                         so it can never submit anything. --%>
+                                    <div class="age-band-template d-flex align-items-end gap-2 mb-2" id="ageBandTemplate" style="display:none;" aria-hidden="true">
+                                        <div>
+                                            <label class="form-label mb-1" style="font-size:0.7rem;">Age</label>
+                                            <input type="number" class="form-control form-control-sm age-band-age" min="21" max="64">
+                                        </div>
+                                        <div>
+                                            <label class="form-label mb-1" style="font-size:0.7rem;">Count</label>
+                                            <input type="number" class="form-control form-control-sm age-band-count" min="1" value="1">
+                                        </div>
+                                        <div class="age-band-income" style="display:none;">
+                                            <label class="form-label mb-1" style="font-size:0.7rem;">Income</label>
+                                            <input type="number" step="1" class="form-control form-control-sm" min="1" placeholder="$/yr">
+                                        </div>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary age-band-remove"
+                                                aria-label="Remove this age band">&times;</button>
+                                    </div>
+
                                     <div id="ageBandRows">
                                         <c:forEach begin="1" end="${ageBandMaxRows}" var="i">
-                                            <%-- Render a row if it carries data, plus always the
-                                                 first, so an empty form opens with one row and a
-                                                 returning one opens with what was submitted. --%>
-                                            <c:if test="${i == 1 or not empty submittedAges[i-1]}">
+                                            <%-- A row renders when it carries data. Row 1 also
+                                                 renders when the caller asked for AGE_BAND
+                                                 explicitly — the hub's age-band card must still
+                                                 land on a usable row, including with JavaScript
+                                                 off, where "+ Add age band" cannot help.
+
+                                                 Otherwise the form opens with ZERO bands: tier 1
+                                                 is headcount, and adding the first band is the
+                                                 transition to tier 2. --%>
+                                            <c:if test="${not empty submittedAges[i-1] or (i == 1 and mode == 'AGE_BAND')}">
                                                 <div class="age-band-row d-flex align-items-end gap-2 mb-2" data-row>
                                                     <div>
                                                         <label class="form-label mb-1" style="font-size:0.7rem;" for="age${i}">Age</label>
@@ -343,13 +402,34 @@
                                                     </div>
                                                     <div>
                                                         <label class="form-label mb-1" style="font-size:0.7rem;" for="count${i}">Count</label>
+                                                        <%-- ⚠️ W15 — Count is the worst case of the
+                                                             placeholder rule and needs more than a
+                                                             placeholder. It showed a grey "1", which
+                                                             reads as an entered value ("placeholder
+                                                             was showing a 1, I thought it was an
+                                                             entry"), and a blank field silently
+                                                             computed as 1 anyway — the walk's URL
+                                                             carried `count1=` empty while the result
+                                                             assumed one life. Entered and assumed
+                                                             were indistinguishable.
+
+                                                             So it carries a REAL default of 1. The
+                                                             value in the box is now the value that
+                                                             counts, and an agent never has to wonder
+                                                             whether a figure counted 1 employee or 8.
+                                                             The servlet's blank-defaults-to-1 parse
+                                                             is untouched and still covers a
+                                                             hand-edited URL. --%>
                                                         <input type="number" class="form-control form-control-sm age-band-count" id="count${i}" name="count${i}"
-                                                               min="1" placeholder="1" value="${submittedCounts[i-1]}">
+                                                               min="1" value="${empty submittedCounts[i-1] ? 1 : submittedCounts[i-1]}">
                                                     </div>
                                                     <div class="age-band-income" ${affordabilityBasis == 'INCOME' ? '' : 'style="display:none;"'}>
                                                         <label class="form-label mb-1" style="font-size:0.7rem;" for="income${i}">Income</label>
+                                                        <%-- W15: "Annual" was a label wearing a
+                                                             placeholder's clothes. The label already
+                                                             says Income; this says the shape. --%>
                                                         <input type="number" step="1" class="form-control form-control-sm" id="income${i}" name="income${i}"
-                                                               min="1" placeholder="Annual" value="${submittedIncomes[i-1]}">
+                                                               min="1" placeholder="$/yr" value="${submittedIncomes[i-1]}">
                                                     </div>
                                                     <button type="button" class="btn btn-sm btn-outline-secondary age-band-remove"
                                                             aria-label="Remove this age band">&times;</button>
@@ -357,8 +437,17 @@
                                             </c:if>
                                         </c:forEach>
                                     </div>
-                                    <button type="button" class="btn btn-sm btn-outline-secondary" id="ageBandAdd"
-                                            data-max="${ageBandMaxRows}">+ Add age band</button>
+                                    <%-- ⚠️ This is the tier-1 → tier-2 affordance and it must be
+                                         obvious with ZERO bands present. If an agent cannot see
+                                         that more detail is available, the tiering is invisible
+                                         and this whole run achieved nothing — the same failure
+                                         as the slider nobody noticed (W10). Hence the accent
+                                         outline rather than the muted secondary it started as.
+
+                                         It is not a recommendation to use more detail: the note
+                                         beside it states what it does, not what to do. --%>
+                                    <button type="button" class="btn btn-sm btn-outline-primary fw-semibold" id="ageBandAdd"
+                                            data-max="${ageBandMaxRows}"><i class="bi bi-plus-lg me-1"></i>Add age band</button>
                                     <span class="quiet-note ms-2" id="ageBandMaxNote" style="display:none;">
                                         Maximum ${ageBandMaxRows} age bands.
                                     </span>
@@ -376,7 +465,10 @@
                                      Triggered by click/focus rather than hover: a hover-only
                                      tooltip does not exist on a phone, which is the device this
                                      surface is actually used on. --%>
-                                <div class="col-auto">
+                                <%-- Tier 3 and 4. Both only mean anything once there is a band to
+                                     apply them to, so they appear with the first one and hide with
+                                     the last. Hidden, never removed — values survive. --%>
+                                <div class="col-auto age-band-dependent" id="contributionField" ${mode == 'AGE_BAND' ? '' : 'style="display:none;"'}>
                                     <label class="form-label mb-1" for="contribution">Employer Monthly Contribution
                                         <button type="button" class="btn btn-link p-0 ms-1 align-baseline ichra-info"
                                                 style="font-size:0.75rem; text-decoration:none;"
@@ -388,7 +480,7 @@
                                     <input type="number" step="0.01" class="form-control form-control-sm" id="contribution" name="contribution"
                                            min="0" value="${submittedContribution}" style="max-width:170px;">
                                 </div>
-                                <div class="col-auto">
+                                <div class="col-auto age-band-dependent" id="basisField" ${mode == 'AGE_BAND' ? '' : 'style="display:none;"'}>
                                     <label class="form-label mb-1" for="affordabilityBasis">Affordability Basis
                                         <button type="button" class="btn btn-link p-0 ms-1 align-baseline ichra-info"
                                                 style="font-size:0.75rem; text-decoration:none;"
@@ -403,15 +495,6 @@
                                         <option value="INCOME" ${affordabilityBasis == 'INCOME' ? 'selected' : ''}>Entered Income</option>
                                     </select>
                                 </div>
-                            </c:when>
-                            <c:otherwise>
-                                <div class="col-auto">
-                                    <label class="form-label mb-1" for="headcount">Eligible Employees</label>
-                                    <input type="number" class="form-control form-control-sm" id="headcount" name="headcount"
-                                           min="1" max="10000" value="${submittedHeadcount}" style="max-width:150px;">
-                                </div>
-                            </c:otherwise>
-                        </c:choose>
 
                         <div class="col-auto">
                             <button type="submit" class="ssa-action save" ${empty availableCounties ? 'disabled' : ''}>
@@ -1391,6 +1474,25 @@
                 });
         });
         syncControls();
+        syncTier();
+    }
+
+    /* The tier transition, and the only thing that expresses it in the UI.
+
+       Zero bands: Eligible Employees is the input, and contribution/basis mean nothing
+       because there is no band to apply them to. One or more: the bands carry the counts,
+       their sum is the headcount, and the later tiers open up.
+
+       Everything is hidden, never removed, so nothing is lost going either way -- and the
+       servlet ignores headcount in AGE_BAND regardless, so a hidden field submitting is
+       harmless. */
+    function syncTier() {
+        var hasBands = rowList().length > 0;
+        var headcountField = document.getElementById('headcountField');
+        if (headcountField) headcountField.style.display = hasBands ? 'none' : '';
+        document.querySelectorAll('.age-band-dependent').forEach(function (el) {
+            el.style.display = hasBands ? '' : 'none';
+        });
     }
 
     function syncControls() {
@@ -1420,8 +1522,27 @@
     addBtn.addEventListener('click', function () {
         var list = rowList();
         if (list.length >= maxRows) return;
-        var clone = list[list.length - 1].cloneNode(true);
-        clone.querySelectorAll('input').forEach(function (input) { input.value = ''; });
+
+        // With zero bands there is no row to clone from, so fall back to the hidden
+        // template. Its class is swapped on the way in, which is what makes it count.
+        var clone;
+        if (list.length) {
+            clone = list[list.length - 1].cloneNode(true);
+            clone.querySelectorAll('input').forEach(function (input) { input.value = ''; });
+        } else {
+            var template = document.getElementById('ageBandTemplate');
+            if (!template) return;
+            clone = template.cloneNode(true);
+            clone.removeAttribute('id');
+            clone.removeAttribute('aria-hidden');
+            clone.style.display = '';
+            clone.className = 'age-band-row d-flex align-items-end gap-2 mb-2';
+        }
+        // Count carries a real default rather than a placeholder (W15) — entered and
+        // assumed must never be indistinguishable.
+        var count = clone.querySelector('.age-band-count');
+        if (count) count.value = '1';
+
         rows.appendChild(clone);
         renumber();
         syncIncome();
@@ -1442,6 +1563,7 @@
 
     syncControls();
     syncIncome();
+    syncTier();
 })();
 
 /* W14 — the collapsed input summary.
