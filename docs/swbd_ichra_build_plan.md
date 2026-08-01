@@ -808,6 +808,32 @@ used.
 go, and §2's corrections table exists because six separate documents were confidently wrong about
 things a five-minute code read settles.
 
+### 2026-08-01, session 6 — flow shipped after §3 completed (rule 1)
+
+§3's thirteen items were all struck through before this session; these are **flow fixes between**
+finished items, found by walking the eight surfaces as one path for the first time. The map is
+`docs/analysis/ichra_flow_and_handoffs.md`.
+
+| Shipped | Hash | What |
+|---|---|---|
+| **G1 / T59** | `e849dac` | Affordability (**§1 step 5**) had no entry point — two hub cards, one URL. Second card now points at `Illustration?mode=AGE_BAND&affordabilityBasis=FPL`. The URL always existed; nothing linked to it. |
+| **G3** | `724cc3e` | Hub cards ordered and numbered to §1's walkthrough. Group conversion labelled "Separate analysis", not step 4 — no census carries into it. |
+| **G5** | `56e7f07` | Total lives now carries AGE_BAND → RANGE. The reverse is deliberately not built: a flat total has no age to sit against, and seeding `count1` with it is wrong for the Sandoval case (3 lives, 3 ages) and wrong silently. |
+
+⚠️ **Two corrections to this document, both in §1's walkthrough:**
+
+1. **Step 5 says "moves the contribution slider."** There is no slider — contribution is a number input
+   and every change is a full form re-submit (`illustration25.jsp:152-156`). Whoever runs the demo
+   should not be expecting a drag.
+2. **Step 6 says "prospect pre-filled."** The hand-off carries no prospect id, deliberately and with the
+   reasoning stated in source (`illustration25.jsp:344-352`). The prospect step is a real click. Filed
+   as **T69** — the cheap resolution is to fix this sentence, not the code.
+
+**And one thing §3 completing does not cover: affordability needs two `constant` rows
+(`ICHRA_AFFORDABILITY_PCT_<year>`, `FPL_ANNUAL_<year>`) that nothing in the repo seeds** (**T65**,
+HIGH). Every code path for step 5 is built and every one of them fails closed to "not configured"
+without those rows. That is config, and it is Kevin's.
+
 **Detail:** `CLAUDE.md` "Keeping state docs current" — this plan is a state-carrying document and
 **should not be synced to project knowledge.**
 
