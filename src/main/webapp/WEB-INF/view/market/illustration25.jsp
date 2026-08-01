@@ -60,9 +60,20 @@
     <div class="toolbar">
         <h1 class="t-title m-0"><i class="bi bi-calculator me-1"></i>ICHRA Illustration</h1>
         <c:if test="${not empty configuredPlanYears}">
+            <%-- G5: the toggle carried county and plan year but dropped the headcount, so an
+                 agent switching modes retyped a number they had entered one screen earlier.
+                 Going AGE_BAND -> RANGE the carry is exact: submittedTotalLives is the sum of
+                 the census row counts, which is precisely what RANGE means by headcount. It is
+                 set only on a successful AGE_BAND compute, so it is empty on a bare form or a
+                 validation bounce and the parameter is then simply omitted.
+
+                 The reverse carry (RANGE -> AGE_BAND) is deliberately NOT done: a flat total
+                 has no age to sit against, and seeding count1 with it would be right only for
+                 a group whose members share one age -- wrong for the Sandoval demo case
+                 (3 lives, 3 different ages) and wrong quietly, which is worse than blank. --%>
             <div class="ms-auto d-flex gap-1">
                 <a class="btn btn-sm ${mode == 'RANGE' ? 'btn-primary' : 'btn-outline-secondary'}"
-                   href="Illustration?mode=RANGE&countyFips=${submittedCountyFips}&planYear=${selectedPlanYear}${not empty opportunityId ? '&opportunityId='.concat(opportunityId) : ''}">Range</a>
+                   href="Illustration?mode=RANGE&countyFips=${submittedCountyFips}&planYear=${selectedPlanYear}${not empty submittedTotalLives ? '&headcount='.concat(submittedTotalLives) : ''}${not empty opportunityId ? '&opportunityId='.concat(opportunityId) : ''}">Range</a>
                 <a class="btn btn-sm ${mode == 'AGE_BAND' ? 'btn-primary' : 'btn-outline-secondary'}"
                    href="Illustration?mode=AGE_BAND&countyFips=${submittedCountyFips}&planYear=${selectedPlanYear}${not empty opportunityId ? '&opportunityId='.concat(opportunityId) : ''}">Age Band</a>
             </div>
