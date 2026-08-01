@@ -175,5 +175,31 @@ public final class ZipCountyResolver {
         public Candidate getUnique() {
             return isUnique() ? candidates.get(0) : null;
         }
+
+        /**
+         * Does this ZIP touch the given county?
+         * <p>
+         * Exists so a caller can ask whether an already-selected county is
+         * <i>consistent</i> with a typed ZIP, without reimplementing the loop and
+         * without having to choose between them. That question is the whole of
+         * <b>R1</b>: a stale county selection silently overriding a freshly typed ZIP
+         * produced results for the wrong county, indistinguishable from right ones.
+         *
+         * @return false for null/blank input, and false on an empty resolution — a ZIP
+         * that resolves to nothing agrees with no county, which is the fail-closed
+         * direction.
+         */
+        public boolean containsCounty(String countyFips) {
+            if (countyFips == null || countyFips.isBlank()) {
+                return false;
+            }
+            String target = countyFips.trim();
+            for (Candidate candidate : candidates) {
+                if (target.equals(candidate.getCountyFips())) {
+                    return true;
+                }
+            }
+            return false;
+        }
     }
 }

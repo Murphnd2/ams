@@ -122,37 +122,59 @@ public class IllustrationServlet extends HttpServlet {
 
             String countyFips = request.getParameter("countyFips");
 
-            // T74 — ZIP intake. Consulted ONLY when no county is present, so
-            // `countyFips` always wins: every existing link (the mode toggle, the hub
-            // cards, T59's affordability card, any URL an agent has bookmarked) is
-            // bit-for-bit unaffected by this block. A ZIP is a lookup that produces a
-            // county, not a second mode.
-            if (countyFips == null || countyFips.isBlank()) {
-                String zipParam = request.getParameter("zip");
-                if (zipParam != null && !zipParam.isBlank()) {
-                    request.setAttribute("submittedZip", zipParam.trim());
-                    ZipCountyResolver.Resolution resolution = ZipCountyResolver.resolve(em, zipParam);
+            // ── T74 ZIP intake — precedence (R1) ──────────────────────────────────
+            //
+            // ⚠️ THIS REPLACES A RULE THAT SHIPPED WRONG. The original read "consulted
+            // only when no county is present, so countyFips always wins", written to
+            // protect the ?countyFips= URL contract. It does protect it — and "always
+            // wins" also meant a STALE DROPDOWN SELECTION beat a freshly typed ZIP.
+            // Observed on production 2026-08-01: Hopkins left selected from a previous
+            // run, agent typed 75009 (Collin/Denton), and got Hopkins rates with no
+            // warning. Wrong county, wrong rates, indistinguishable from right ones,
+            // in front of a client. It is the exact failure the chooser exists to
+            // prevent, arriving through a different door.
+            //
+            // The rule now: a present ZIP is always resolved, and a county that the
+            // ZIP contradicts is never computed from. Not with a warning — not at all.
+            //
+            //   zip blank                          -> county wins (contract preserved)
+            //   zip agrees with selected county    -> proceed on that county
+            //   zip disagrees, resolves to one     -> the ZIP replaces the selection
+            //   zip disagrees, resolves to several -> chooser; nothing computed
+            //   zip resolves to nothing            -> no-match; NO fallback to county
+            //
+            String zipParam = request.getParameter("zip");
+            if (zipParam != null && !zipParam.isBlank()) {
+                request.setAttribute("submittedZip", zipParam.trim());
+                ZipCountyResolver.Resolution resolution = ZipCountyResolver.resolve(em, zipParam);
 
-                    if (resolution.isUnique()) {
-                        // Proceed exactly as ?countyFips= would. Nothing below this point
-                        // knows or cares that a ZIP was involved.
-                        countyFips = resolution.getUnique().getCountyFips();
-                        request.setAttribute("resolvedCounty", resolution.getUnique());
-                    } else if (resolution.isAmbiguous()) {
-                        // The common path — 34% of Texas ZIPs. The agent picks; nothing
-                        // here selects, orders-by-preference or marks a likely answer.
-                        request.setAttribute("zipCandidates", resolution.getCandidates());
-                        request.getRequestDispatcher("/WEB-INF/view/market/illustration25.jsp").forward(request, response);
-                        return;
-                    } else {
-                        // Coverage gap, not a bad ZIP. The crosswalk is ZCTA-derived and
-                        // Texas-only, so a real USPS ZIP can legitimately be absent.
-                        // Deliberately NOT an inputError — this is not the agent's mistake
-                        // and must not be worded as one.
-                        request.setAttribute("zipNoMatch", true);
-                        request.getRequestDispatcher("/WEB-INF/view/market/illustration25.jsp").forward(request, response);
-                        return;
-                    }
+                if (resolution.containsCounty(countyFips)) {
+                    // They agree. Keep the explicit selection — this is how the chooser's
+                    // own links land, carrying both zip and countyFips.
+                    request.setAttribute("resolvedCountyFips", countyFips);
+                } else if (resolution.isUnique()) {
+                    // Either no county was selected, or the selected one is contradicted.
+                    // Both resolve the same way: the ZIP the agent just typed governs.
+                    countyFips = resolution.getUnique().getCountyFips();
+                    request.setAttribute("resolvedCounty", resolution.getUnique());
+                } else if (resolution.isAmbiguous()) {
+                    // The common path — 34% of Texas ZIPs. The agent picks; nothing here
+                    // selects, ranks by preference, or marks a likely answer. Note that
+                    // submittedCountyFips is deliberately left unset by returning here, so
+                    // a contradicted stale county does not stay selected in the dropdown
+                    // underneath the chooser.
+                    request.setAttribute("zipCandidates", resolution.getCandidates());
+                    request.getRequestDispatcher("/WEB-INF/view/market/illustration25.jsp").forward(request, response);
+                    return;
+                } else {
+                    // Coverage gap, not a bad ZIP — the crosswalk is ZCTA-derived and
+                    // Texas-only, so a real USPS ZIP can legitimately be absent.
+                    // Deliberately NOT an inputError; this is not the agent's mistake.
+                    // ⚠️ And deliberately NOT a fallback to whatever county happened to
+                    // be selected: an unresolvable ZIP agrees with nothing.
+                    request.setAttribute("zipNoMatch", true);
+                    request.getRequestDispatcher("/WEB-INF/view/market/illustration25.jsp").forward(request, response);
+                    return;
                 }
             }
 
