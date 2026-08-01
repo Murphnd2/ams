@@ -964,3 +964,177 @@ paths.
 
 **Carried forward, still unclosed:** nobody has asked Forrest what he would want a quoting tool to do,
 and the two SWBD emails have still never been sent.
+
+---
+
+# Session 6, prompt I — the illustration surface after runtime review
+
+## ⭐ W10 first — the finding that was not a defect
+
+> *"the slider was actually hard for me to even see it as a tool, I looked right past it to the data. I
+> didn't get the impression that the page was anything other than a static result."*
+
+**The slider works perfectly.** Every verdict flips at the right figure; the walk confirmed $420 and
+$573. **And the person who watched it get built looked past it.** That control is build-plan §1 step 5 —
+*"at $419 Maria keeps her subsidy, at $420 she doesn't"* — and it is the one thing this page has that a
+competitor's quote engine does not. A control nobody notices is a control nobody drags, and a demo where
+nobody drags it is a demo of a calculator.
+
+**The cause was visible in the markup once the symptom named it:** the slider used `.status-card` —
+byte-identical to the read-only result panels above and below it. **It looked like output because it was
+dressed as output.**
+
+**What I built**
+
+| | Why |
+|---|---|
+| Own tint + left accent edge | Stops it being one of the result cards. The single highest-value change, because it fixes the actual cause |
+| Filled track behind the handle | Reads as a control rather than a rule |
+| 22px handle, grab cursor, focus/hover ring | Reads as draggable at a glance; also the touch target |
+| ⭐ **Flip-point ticks on the track**, labelled *"age N"* | **Makes the money moment visible before anything is dragged** — the difference between a control an agent notices and one they do not |
+
+**What I rejected:** moving it. It already sits directly above the table it changes; moving it below
+would bury it further. The *"drag to see the effect; nothing is saved"* label and the *"Showing $X; the
+figures were calculated at $Y. Reset"* line are both kept unchanged, as instructed.
+
+**Why it cannot read as a recommendation.** This is the most tempting place in the product to cross the
+no-steering line, so the constraint drove the design rather than being checked afterwards:
+
+- **Every tick is identical** — same colour, same width, same label form. Nothing distinguishes one flip
+  point from another, because nothing about them differs except the number.
+- **No region is shaded.** No green below a threshold, no red above, no highlighted band. That was the
+  obvious "helpful" move and it is exactly the one that would have said *aim here*.
+- **The track fill is a position indicator**, in the existing SSA blue — it shows where the handle is,
+  not that the covered region is good.
+- **The legend states a fact:** *"Marks on the track show where each age band's affordability verdict
+  changes."* Not where to aim.
+- **No auto-animation, no auto-play, no "try me" tooltip.** The page must not appear to do arithmetic by
+  itself in front of a client.
+- Ticks read `data-flip` from rows the server already computed — **no threshold is recalculated
+  client-side** — and are `aria-hidden`, since the affordability table already exposes the same figures
+  properly.
+
+⚠️ **Known imprecision, stated rather than hidden:** ticks are positioned as a percentage of track width,
+so near the extremes they sit a few pixels off the handle (thumb width is not accounted for). A visual
+cue; the exact figures are in the table.
+
+## ⭐ The session's real lesson
+
+**This was the first session in which a full runtime walk was performed.** It followed **three
+consecutive runs that reported clean from code reading** — prompts E, F and H each said `code-verified`
+in their own compliance statements, and each was correct about the code it examined.
+
+**The walk produced twelve findings.** And the most important one **was not a defect at all**: the
+slider does exactly what it was built to do, and that turned out not to matter, because nobody saw it.
+
+No amount of code reading finds that. There is no wrong line to read.
+
+## W2 — what the source actually showed
+
+**The inference was right, and I verified it before changing anything.**
+`IllustrationServlet.java:775` read:
+
+```java
+logRow.setZipCode(county.getRepresentativeZip());
+```
+
+Unconditional. So a run where the agent typed nothing and picked Hopkins from the dropdown logged
+`zip_code = '75437'` — **Hopkins's representative ZIP from `county_reference` (V076)**, not anything a
+person entered. The column read like user input and was not: anyone auditing the log would conclude an
+agent typed a ZIP they never typed.
+
+**Now:** the ZIP is recorded only when the agent actually supplied one, NULL otherwise. `county_fips`
+already carries the county, so the derived value added no information and actively misled. **Strictly a
+reduction in what is stored** — the only direction this column may ever move. No migration; the column
+is unchanged and nullable.
+
+## Shipped
+
+| Hash | What |
+|---|---|
+| `7bc5794` | W1, W2, W3, W4, W5, W6, W11 |
+| `ced1679` | **W10**, committed separately as instructed |
+| `80ef35a` | Click-script 4o–4r and 10a′/10a″/10c; T90–T94 |
+
+`./mvnw compile` clean before each commit.
+
+## Decisions made
+
+1. **W4 removed the confirmation but not the information.** Deleting the under-field note fixed the
+   redundancy and the alignment shift — but it was also the only signal for a ZIP resolving to **one**
+   county with no rates, which the dropdown *cannot* show, because the dropdown is built from counties
+   that have rates. That case moved to its own panel outside the form row, reusing the servlet's exact
+   wording rather than inventing a second phrasing.
+2. **W6 states a constraint instead of prescribing a move.** *"Select another county from the list"* is
+   wrong advice when every county a ZIP resolved to is uncached — following it means running a
+   neighbouring county's rates for a client.
+3. **W11 fixed in CSS, not markup.** The disabled button appears in both mode branches; a page-scoped
+   rule covers both without editing either, and reverts by deleting the rule.
+4. **W1 wrapped rather than enumerated.** One `#illustrationResults` wrapper hidden in the existing
+   `invalidate()`, instead of hunting individual panels — fewer places for the next result panel to be
+   forgotten.
+
+## New assumptions, and reversal cost
+
+| Assumption | Reversal cost |
+|---|---|
+| Ticks make the slider noticeable without reading as guidance | **Free** — delete `renderTicks` and the `.contrib-tick` rules. ⚠️ The asymmetry matters: if they *do* read as guidance, that is a compliance problem, not a cosmetic one, so this is the one to check first at 10a″ |
+| Hiding results on ZIP change is never unwanted | **Free.** The alternative — leaving them — is W1, which is worse |
+| `#####` reads as a format hint, not a value | **Free** — one attribute |
+| Silence on a successful ZIP resolve is clearer than confirming it | **Free.** The dropdown is the confirmation; if agents miss it, restore a note *outside* the form row |
+
+## Regression fence — how I checked it still holds
+
+The walk's passing behaviours were the fence, and none of this run touches their logic:
+
+- **Affordability, flip-point and AGE_BAND calculation** — untouched. The ticks *read* `data-flip`;
+  nothing recomputes a threshold, and `AffordabilityCalculator` was not opened.
+- **Slider verdict flipping** — the `render()` maths is byte-identical; only the track fill line was
+  added.
+- **ZIP resolution in all three states, both coverage-mismatch paths, `?countyFips=`** — the precedence
+  block and `describeUnavailableCounty` were not touched except W6's trailing sentence.
+- **Mode carry both directions** — the toolbar links were not touched.
+- **The three banners and the `90210` copy** — verified present and unchanged by grep after each commit
+  (staging ×2, off-exchange ×2, no-match ×1).
+- **Structure** — JSTL tag balance and `<div>` balance checked after every edit (20/20 `c:if`, 65/65
+  divs at the end), plus `./mvnw compile`.
+
+⚠️ **This is code-verification again**, which is exactly the claim this session learned to distrust. The
+fence is only genuinely intact once the walk re-runs — steps 4o–4r and 10a′–10c are new and untested.
+
+## Contradictions found
+
+1. **W4 as specified would have lost information.** *"Removing it fixes both"* is true of the redundancy
+   and the alignment, and it would also have removed the only signal for the single-unpriced-county case.
+   Removed as instructed; the information relocated.
+2. **Nothing else in prompt I was overridden.** W2's inference held, and the eight findings were all
+   reproducible from source.
+
+## SQL close-out audit
+
+**This run was forbidden from producing SQL and produced none.** No `.sql` file created, modified or
+deleted; no migration; no schema change. ⚠️ **W2 changes what is written to an existing column and
+required no migration** — the column was already nullable, and the change only ever writes less. `ls
+docs/migrations/` unchanged at **V085**. The four commits list one `.java`, one `.jsp` and two `.md`.
+
+## Judged not worth changing
+
+- **The Design Advisor's missing LIVE badge** — `ichraHome25.jsp`, out of fence, ships alone.
+- **The two identical `<button ... disabled>` blocks** — left as-is; CSS covers both, and editing
+  duplicate markup twice invites drift.
+- **The unpriced panel's footnote duplicating the servlet's W6 sentence.** They are two renderings of one
+  state (before the click and after), so the duplication is deliberate — but it *is* a drift risk, and if
+  a third copy ever appears the wording should move to one place.
+- **Tick pixel precision near the track extremes** — a visual cue, with exact figures in the table.
+
+## Next
+
+1. **Re-walk the click-script**, now 4a–4r and 10a′–10c. **10a′ is the one that matters** — look at the
+   page for five seconds and see whether the slider announces itself. If it still does not, the fix
+   failed regardless of how good the ticks look.
+2. **Rebuild the WAR.** The artefact built earlier today predates R1–R4, H and all of this.
+3. **T76** — seam ready at `describeUnavailableCounty`.
+4. Unchanged: T89's dropdown-scope question (after T76), the three SWBD emails, T83.
+
+**Carried forward, still unclosed:** nobody has asked Forrest what he would want a quoting tool to do,
+and the two SWBD emails have still never been sent.
