@@ -334,3 +334,106 @@ no code. `git show --stat e95c4b3` lists two `.md` paths. Migrations unchanged a
    absent from both `constant` and `ssa.properties` on local dev, D-78/D-79 unapplied everywhere).
    ⚠️ Worth confirming production is not in that state before the demo — click-script step 4 covers it.
 5. **O38** — confirm division-scoped ICHRA classes in the Summit UI before designing anything for T75.
+
+---
+
+# Session 6, prompt D — the agent-interaction walkthrough
+
+**Source:** Kevin's step-by-step account of a real agent-and-client interaction, given conversationally
+on **2026-08-01**. Marked **[K 8/1]** throughout the documents — a *better* source about agent behaviour
+than any internal document, a *weaker* one about what the code does. **No code shipped.**
+
+## Part 1 — four claims tested, two wrong, one of them mine
+
+**Leading with this because it is the most useful thing in the run.**
+
+| # | Claim | Verdict |
+|---|---|---|
+| 1 | `county_reference` is county → **one** ZIP and cannot be reversed | ✅ **The conversational claim was right.** V076: PK `county_fips`, one `representative_zip` per county, 254 TX rows. |
+| — | …but **prompt C's version was wrong, and it was mine.** §4.2 called it *"exactly that data, unwired to the UI"* and T74 said the fix was *"small: a ZIP box that resolves through `CountyReferenceDAO`"* | ❌ **Both false.** Reversing it matches 254 ZIPs out of ~2,600 Texas ZCTAs. I sized a data build as wiring — corrected in place in both files |
+| 2 | Some ZIP → county crosswalk exists | ❌ **None.** Not in `CountyReferenceDAO` (`findByFips` / `listByState` / `findByFipsIn`, all county-keyed), not a resource file, not a seeded table, not the API (`healthsherpa.md` 31 Jul: the route is closed) |
+| 3 | The rate cache is keyed by rating area | ❌ **County FIPS.** `uq_rarc_year_county_age_tobacco (plan_year, county_fips, age, uses_tobacco)` — **no `rating_area` column exists**, despite the table being called `rating_area_rate_cache`. **"Dedupe by rating area before pricing" cannot be done against this cache** |
+| 4 | The ICHRA JSPs are fixed-width desktop markup | ❌ **Overstated.** Viewport meta on all three, Bootstrap 5.3.3 loaded. Real defects are narrow: **no `overflow-x` wrapper or `.table-responsive` anywhere in the ICHRA path** (the five-column AGE_BAND and affordability tables are what overflow), ~10 fixed-px inputs, and the `calc(100vh - 64px)` shell. **T78 sizes down to three CSS fixes** |
+
+**Two of these changed the run's output.** #2 turned the top-ranked build from wiring into a data build
+with a migration — which is exactly the kind of thing that must not be discovered mid-build. #3 means
+T77 must dedupe by county FIPS and **must not claim rating-area dedupe** in code or UI copy.
+
+## Shipped
+
+| Hash | What |
+|---|---|
+| `0bdfe74` | §4.1 rewritten as three fidelity tiers; six corrections applied to §4 and the §4.2 ranking; **§5 ZIP intake spec**; T74/T73/T71/T75 corrected; **T76–T83** added; **LA-15**, **LA-16**. |
+
+## Decisions made
+
+1. **T81 ships as a sandbox first** (recorded 2026-08-01). The employer corrects estimates, enters
+   current group rates and an expected increase, figures update live — **and nothing is written.** No
+   row, no PII, no authentication. Their corrections returning to the agent is better and is a
+   **separate, later decision**. Rationale: build rule 3's worked example — render everything, store
+   nothing, ship the useful part while the collection question stays open. Precedent already in the
+   tree: prompt B's contribution slider (`53a8131`).
+2. **§4.1's eight-stage ordering is superseded, not deleted.** Stage 1 and stages 6–8 survive; 2–5 are
+   re-read through the tiers. The document-derived rows keep their provenance.
+3. **T82 logged at Kevin's own confidence — *"probably"* — not as settled**, because it proposes
+   changing shipped, working code rather than filling a gap.
+4. **LA-15 records a tension and resolves nothing.** No wording changed anywhere in the illustration.
+
+## New assumptions, and reversal cost
+
+| Assumption | Reversal cost |
+|---|---|
+| **LA-15** — a subsidy-preserving *ceiling* is a different object from an affordability *threshold* | ⭐ Display edit both ways; nothing derived is persisted (`proposal_ichra_snapshot` is structurally incapable of carrying an affordability figure). Asymmetry is reputational: a ceiling presented as a target has been acted on |
+| **LA-16** — employer-entered data on an unauthenticated proposal link | ⭐ **Zero while the sandbox holds — nothing to reverse, because nothing is stored.** Inverts sharply the moment a write path exists. **The cheap moment to decide is before the first row, which is now** |
+| ZIP data ships Texas-first, matching V076 | A later migration of the same shape. Free |
+| County-FIPS dedupe is the right granularity for T77 | Coarser than rating-area dedupe and cannot be improved without a rating-area column — a schema change, not a config one |
+
+## Open questions
+
+- **T83** — does HealthSherpa provide enrollment support during the enrollment window, and who holds
+  the employee's hand? Kevin: *"not sure about this at all."* Gated by **O12 / O13 / O14**, none moved
+  since 7/29. **Ask Forrest and ask HealthSherpa. Do not design around either answer** — an assumed
+  answer here silently sets the scope of the whole enrollment phase.
+- **T82** — what *should* the RANGE headline anchor on, if not the bronze floor? Settle the metric
+  before touching the label.
+- **T76** — how is on-miss warming bounded against a mistyped ZIP triggering an unbounded warm?
+
+## Contradictions found
+
+1. **My own prompt-C text vs the schema.** §4.2 and T74 both described `county_reference` as already
+   carrying the ZIP crosswalk. It does not. Corrected in both files rather than quietly overwritten —
+   the wrong sizing is the interesting part.
+2. **Table name vs table.** `rating_area_rate_cache` has no rating-area column. Not a defect — the name
+   describes the domain concept, the key describes the data — but it invited exactly the wrong
+   assumption about dedupe, twice.
+3. **§4.2's own ranking vs C1.** Prompt C put subsidy segmentation first, from documents that describe
+   it as stage 2. Kevin's account says the agent has ages, not wages, at first contact. **The documents
+   are not wrong about the capability; they are wrong about when it can run.**
+
+## SQL close-out audit
+
+**This run was forbidden from producing SQL and produced none.** No `.sql` file created, modified or
+deleted; no schema change; no migration. **No `.java` or `.jsp` touched either.** `git show --stat
+0bdfe74` lists three `.md` paths. Migrations unchanged at **V083**.
+
+⚠️ **§5 specifies a migration it does not author** — the `zip → county_fips` table. That is deliberate
+and stated in the spec: the next prompt writes it, under the normal migration discipline.
+
+## Next
+
+1. **Build T74 from §5.** It is the next build, and its first line is the one that changes the estimate:
+   the crosswalk does not exist.
+2. **Send the SWBD emails** — now three: O22 book profile, three renewing groups (the input
+   `/GroupConversion` has waited for since it shipped), and the flowchart Forrest offered to draw. Add
+   **T83**'s enrollment-support question to the same message.
+3. **Click-script steps 10 / 10b** — still the only runtime verification of prompts A and B.
+4. **O38** Summit UI check before anything in T75(b) or T77.
+
+**Carried forward, still unclosed:**
+
+- ⚠️ **Nobody has asked Forrest what he would want a quoting tool to do.** ⭐ **This run narrows the gap
+  without closing it** — it is Kevin's account of how agents work, which is the closest thing to ground
+  truth the project has, and it corrected six things. But Kevin is not Forrest, and the flowchart
+  Forrest offered to draw is still not drawn.
+- ⚠️ **The two SWBD emails have still never been sent** — O22 book profile, and *"send me three groups
+  renewing next quarter"*.
