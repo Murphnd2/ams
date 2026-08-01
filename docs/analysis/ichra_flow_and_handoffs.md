@@ -139,6 +139,24 @@ toolbar" is superseded by K1–K4 below. `mode=` URLs still work and K5/K6 check
 | **K8** | Look at every input's greyed hint text | ZIP `#####`, Income `$/yr`, **Count shows a real black `1`** | ⚠️ any hint could be read as an entered value (**W15**) — count especially: entered and assumed must never look alike |
 | **K9** | Clear a count, **Illustrate**, read the URL | the box was pre-filled `1`, so this is a deliberate blank; result treats it as 1 | you cannot tell from the screen whether a band counted 1 or 8 |
 
+#### Tier repair — added 2026-08-01 after prompt K2
+
+⚠️ **The four tiers are checked separately below, because the walk found the boundary between tiers 2
+and 3 was where it broke.** Tier 2 previously refused to compute at all.
+
+| # | Do | Look at | Fails if |
+|---|---|---|---|
+| **T1** | County + headcount, **no bands** → Illustrate | premium range | anything else |
+| **T2** | ⭐ Add **one** band, age 40, count 1, **no contribution** → Illustrate | **it computes.** Per-band premium table: Age, Count, Lowest Bronze. **No** Net/Employee column, **no** Band Net Total, **no** group net, **no** outlay, **no** slider card. A footnote says what the table is | ⚠️ **it does not compute** — that is K3-a, the button revealing inputs instead of answering. Or an error demands a contribution (**K3-c**). Or empty currency cells appear where the net columns were — absent, not blank |
+| **T3** | Add a contribution → Illustrate | net columns, group net, outlay and the slider all appear | any of them missing, or the slider parked at $0 |
+| **T4** | Add an affordability basis → Illustrate | flip points **and** verdicts | verdicts missing when a contribution is present |
+| **T5** | ⭐ Basis **with no contribution** → Illustrate | LCSP and **Flip Contribution still render**; the verdict cell reads *"Enter a contribution to see the verdict"* | the affordability section vanishes, or a verdict is asserted with nothing to compare against |
+| **T6** | ⭐⭐ **Count the rows.** Add a band, add a second, remove the first, submit, expand the collapsed summary and count again | **the number of rows on screen equals the number you created, at every step**, and the headcount is their summed counts | ⚠️ **a blank row appears alongside a filled one — that is K3-b, and the headcount is silently wrong.** The specific trap: leave row 1 blank, put 40 in row 2, submit |
+| **T7** | Open `/Illustration` with no parameters | **zero age rows**, the label, and **+ Add age band** | an empty row is present — it contradicts the label above it (**K-a**) |
+| **T8** | Open `?mode=AGE_BAND` | **one** starter row | zero rows — the hub card and the JavaScript-off path both need it |
+| **T9** | ⭐ Press **Illustrate** twice with the same inputs | **identical result both times.** The button never reveals, never toggles, never needs a second press | the form changes shape on the first click. **No input's visibility may depend on whether the form has been submitted** |
+| **T10** | After a result, click **Edit** and change any field | the results panel **disappears** | the old table stays under a form that now describes a different question (**K3-d**) |
+
 ### Layout pass — added 2026-08-01 after prompt J
 
 ⚠️ **Prompt J is the largest visual change this file has taken, and its own verification was
