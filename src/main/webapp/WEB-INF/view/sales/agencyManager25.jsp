@@ -722,6 +722,15 @@
                     Enable agent markup
                   </label>
                 </div>
+                <%-- V077 (T61): per-agency ICHRA entitlement, read by IchraAccessResolver --%>
+                <div class="mb-2 form-check">
+                  <input type="checkbox" class="form-check-input" id="ichraEnabledCheck" name="ichraEnabled"
+                         ${selectedAgency.isIchraEnabled() ? 'checked' : ''}>
+                  <label class="form-check-label" for="ichraEnabledCheck" style="font-size: 0.85rem;">
+                    Enable ICHRA
+                  </label>
+                  <div class="form-text" style="font-size: 0.72rem;">Gives this agency's agents access to the ICHRA tools — illustrations, affordability, conversion analysis and the design advisor.</div>
+                </div>
                 <%-- V068: branded landing host (leave blank to disable the agency front door) --%>
                 <div class="mb-2">
                   <label class="form-label fw-semibold mb-0" style="font-size: 0.85rem;">Landing Host</label>

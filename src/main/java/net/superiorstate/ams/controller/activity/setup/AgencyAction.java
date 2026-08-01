@@ -163,6 +163,7 @@ public class AgencyAction extends HttpServlet {
                     String taxId = request.getParameter("taxId");
                     agency.setTaxId(taxId != null ? taxId.trim() : null);
                     agency.setMarkupEnabled("on".equals(request.getParameter("markupEnabled")));
+                    agency.setIchraEnabled("on".equals(request.getParameter("ichraEnabled")));
                     agency.setLandingHost(landingHost.isEmpty() ? null : landingHost);
                     agency.setEmailDomain(emailDomain.isEmpty() ? null : emailDomain);
                     agency.setEmailVerified(emailVerified);
