@@ -106,6 +106,23 @@
                         <c:if test="${not empty opportunityId}">
                             <input type="hidden" name="opportunityId" value="${opportunityId}">
                         </c:if>
+                        <%-- T74 ZIP intake. The agent has the employer's ZIP, not its county
+                             FIPS. The servlet consults this ONLY when countyFips is absent,
+                             so the county selector below still wins and every existing
+                             ?countyFips= link is unaffected.
+
+                             The county selector deliberately STAYS. The crosswalk is
+                             ZCTA-derived and Texas-only, so some valid ZIPs do not resolve
+                             and the agent needs a way through; it is also what every
+                             existing link uses; and keeping it makes this whole change
+                             reversible by deleting the ZIP block. --%>
+                        <div class="col-auto">
+                            <label class="form-label mb-1" for="zip">ZIP</label>
+                            <input type="text" class="form-control form-control-sm" id="zip" name="zip"
+                                   inputmode="numeric" pattern="[0-9]{5}" maxlength="5" placeholder="75482"
+                                   value="${submittedZip}" style="width:100px;">
+                        </div>
+
                         <div class="col-auto">
                             <label class="form-label mb-1" for="countyFips">County</label>
                             <select class="form-select form-select-sm" id="countyFips" name="countyFips" ${empty availableCounties ? 'disabled' : ''}>
@@ -196,6 +213,64 @@
                         </div>
                     </c:if>
                 </div>
+
+                <%-- T74: crossing ZIP. 34% of Texas ZIPs touch more than one county, so this
+                     is a normal step, not an error — hence a status-card and neutral wording
+                     rather than an alert.
+
+                     Nothing is pre-selected and nothing is marked likely. The list arrives
+                     ordered by land-area share purely so it is stable and the bigger slice
+                     is not buried, and that ordering must NOT read as a recommendation —
+                     the no-steering boundary applies to counties exactly as it does to
+                     plans. Every entry is rendered identically.
+
+                     Each choice is a link to the ordinary ?countyFips= URL, so the result
+                     the agent lands on is linkable and shareable like any other. --%>
+                <c:if test="${not empty zipCandidates}">
+                    <div class="status-card">
+                        <strong><i class="bi bi-signpost-2 me-1"></i>ZIP <c:out value="${submittedZip}"/> is in more than one county</strong>
+                        <div class="footnote" style="margin-bottom:0.6rem;">
+                            Rates differ by county, so pick the one this employer is in.
+                        </div>
+                        <ul style="list-style:none; padding-left:0; margin-bottom:0;">
+                            <c:forEach var="cand" items="${zipCandidates}">
+                                <c:url value="Illustration" var="candUrl">
+                                    <c:param name="mode" value="${mode}"/>
+                                    <c:param name="countyFips" value="${cand.countyFips}"/>
+                                    <c:param name="planYear" value="${selectedPlanYear}"/>
+                                    <c:if test="${not empty opportunityId}">
+                                        <c:param name="opportunityId" value="${opportunityId}"/>
+                                    </c:if>
+                                </c:url>
+                                <li style="padding:0.25rem 0;">
+                                    <a href="${candUrl}"><c:out value="${cand.countyName}"/>, <c:out value="${cand.state}"/></a>
+                                </li>
+                            </c:forEach>
+                        </ul>
+                    </div>
+                </c:if>
+
+                <%-- T74: the ZIP is not in the crosswalk.
+
+                     ⚠️ Wording is load-bearing. This is almost certainly a real ZIP — our
+                     data is ZCTA-derived (so PO-box-only ZIPs are absent entirely) and
+                     Texas-only. The gap is ours. An agent who thinks he mistyped will
+                     retype it three times; an agent told the data is missing uses the
+                     county selector and moves on. Never "invalid ZIP".
+
+                     Kept distinct from the unwarmed-county case, which the servlet reports
+                     separately through inputError and which is T76's to fix. --%>
+                <c:if test="${zipNoMatch}">
+                    <div class="status-card">
+                        <strong><i class="bi bi-info-circle me-1"></i>We don't have ZIP <c:out value="${submittedZip}"/> in our county lookup</strong>
+                        <div class="footnote" style="margin-top:0.4rem;">
+                            ZIP coverage is incomplete — the lookup is built from Census tabulation areas,
+                            which omit some valid ZIPs, and currently covers Texas only. This is a gap in
+                            our data, not a problem with the ZIP.
+                            <strong>Select the county above instead</strong> — everything else works the same.
+                        </div>
+                    </div>
+                </c:if>
 
                 <c:if test="${empty availableCounties}">
                     <div class="empty-state">
