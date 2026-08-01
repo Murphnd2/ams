@@ -151,6 +151,18 @@
             .contrib-tick span { display: none; }
             .contrib-slider-wrap { padding-bottom: 0.6rem; }
         }
+        /* M2: full-width track on a phone, value underneath. The slider is the demo
+           control and it should get the whole width of the device it is demoed on. */
+        @media (max-width: 767.98px) {
+            .contrib-controls { flex-direction: column; align-items: stretch !important; gap: 0.4rem !important; }
+            .contrib-controls > div[id="contribReadout"] { text-align: left !important; min-width: 0 !important; }
+        }
+        /* M4: the input and result cards sat inset while the hub's cards ran edge to edge.
+           Reclaim the horizontal space on a phone — it is the axis in shortest supply. */
+        @media (max-width: 767.98px) {
+            .illustration-body { padding-left: 0.5rem; padding-right: 0.5rem; }
+            .status-card { padding-left: 0.7rem; padding-right: 0.7rem; }
+        }
 
         .ssa-action:disabled:hover,
         .ssa-action[disabled]:hover {
@@ -688,7 +700,12 @@
                             <div class="status-card contrib-card mt-3" id="contribSliderCard">
                                 <strong><i class="bi bi-sliders me-1"></i>Employer Monthly Contribution</strong>
                                 <span class="text-muted" style="font-size:0.8rem;">&mdash; drag to see the effect; nothing is saved</span>
-                                <div class="d-flex align-items-center gap-3 mt-2">
+                                <%-- M2: on a phone the track rendered at roughly 60% width with the
+                                     value pinned far right, so the ticks compressed into a small
+                                     span and the usable drag was shorter than the finger travel
+                                     available. Below 768px the value drops beneath a full-width
+                                     track; above it the inline layout is unchanged. --%>
+                                <div class="contrib-controls d-flex align-items-center gap-3 mt-2">
                                     <%-- data-submitted carries the figure the server actually
                                          computed with. It is read from here rather than from the
                                          input's own value, because a range input snaps its value to
