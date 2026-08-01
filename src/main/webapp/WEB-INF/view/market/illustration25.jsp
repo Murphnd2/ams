@@ -376,8 +376,18 @@
                                          `age-band-template`, NOT `age-band-row`, so neither the
                                          repeater's row list nor the collapsed-summary counter sees
                                          it; the class is swapped on clone. Its inputs are unnamed
-                                         so it can never submit anything. --%>
-                                    <div class="age-band-template d-flex align-items-end gap-2 mb-2" id="ageBandTemplate" style="display:none;" aria-hidden="true">
+                                         so it can never submit anything.
+
+                                         ⚠️ S7-A — no `d-flex` here. Bootstrap's `.d-flex` is
+                                         `!important` and beat this element's inline
+                                         `display:none`, so the "hidden" template rendered
+                                         visible on every load: a permanent blank row with no
+                                         name attribute on its inputs (view-source only ever
+                                         showed `age1` inside this comment). `clone.className`
+                                         fully replaces this list on use (search this file for
+                                         it), so `d-flex` was never doing anything for a live
+                                         row either -- it is safe to leave out. --%>
+                                    <div class="age-band-template align-items-end gap-2 mb-2" id="ageBandTemplate" style="display:none;" aria-hidden="true">
                                         <div>
                                             <label class="form-label mb-1" style="font-size:0.7rem;">Age</label>
                                             <input type="number" class="form-control form-control-sm age-band-age" min="21" max="64">
