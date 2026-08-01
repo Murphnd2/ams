@@ -122,6 +122,38 @@ entry was failing in production for the intended audience. Nothing below is asse
 | 11 | Open the chat widget, ask *"Does my client's dental plan kill the QSEHRA?"* | a cited answer, no 404 | no widget at all → the navbar gate; a 404 → a retired model string |
 | 12 | Run **Illustrate** once more, then check `illustration_log` | a new row, `opportunity_id` **NULL** | *expected* — G4; NULL is the only value the UI can produce |
 
+### Layout pass — added 2026-08-01 after prompt J
+
+⚠️ **Prompt J is the largest visual change this file has taken, and its own verification was
+code-only.** This session established what that is worth: three defects were declared resolved from
+code reading and disproved by the first walk. **Every fenced behaviour below needs re-checking**, not
+only the new steps.
+
+| # | Do | Look at | Fails if |
+|---|---|---|---|
+| **L1** | Run an illustration in AGE_BAND | after the result, the input form has **collapsed to one summary line** — county · bands · lives · contribution | the fifteen fields are still there pushing the slider down (**W14**) |
+| **L2** | ⭐ Without scrolling, look at the screen | **the staging banner is visible, and so is the slider** | either is below the fold. The banner is compliance text and the slider is the demo — the whole point of L1 is that these two are reachable without scrolling |
+| **L3** | Click **Edit** on the summary | the form reopens **with every value exactly as submitted**; nothing re-runs, nothing clears | any field is blank, or the page re-submits |
+| **L4** | Open AGE_BAND fresh | **one** age row, plus **+ Add age band** | five fixed triplets across the screen (**W7**) |
+| **L5** | Add three bands, fill them, remove the middle one, then **Illustrate** | the right bands compute. ⭐ **Check the URL: `age1,count1,age2,count2` — contiguous from 1, no gap** | the URL shows `age1,age3` or renamed parameters. **This is the contract most at risk this run** — the mode toggle, hub cards and proposal hand-off all ride on those names |
+| **L6** | Press **+ Add age band** repeatedly | it stops at **six** and says so | it allows a seventh. Rows 7+ are silently dropped from the proposal snapshot, because `proposalBuilder.jsp` echoes exactly six pairs |
+| **L7** | Set basis **None**, then **FPL Safe Harbor** | **no Income fields** in either | income fields shown — they are only consumed by the INCOME basis (**W8**) |
+| **L8** | Set basis **Entered Income** | Income appears on every row; switch away and back — **values survive** | fields vanish permanently or lose what was typed |
+| **L9** | Toggle **Range ↔ Age Band** with a ZIP entered | the **ZIP is still in the field** (**W13**) | it blanks — county and headcount carry but ZIP does not |
+| **L10** | Tap the **ⓘ** beside Employer Monthly Contribution, then beside Affordability Basis | each opens **on tap**, and says what the input *is* and what it *changes* | it needs a hover (does not exist on a phone), or ⚠️ **either text suggests a value, a typical figure or a starting point** — that is steering an input |
+
+#### Mobile pass — run on a phone, not a narrowed desktop window
+
+| # | Do | Look at | Fails if |
+|---|---|---|---|
+| **M1** | Load a completed AGE_BAND result | ⭐ **the staging banner is visible without scrolling** | it is pushed off — compliance text below the fold on the device the page is actually used on |
+| **M2** | Scroll to the net-cost table | it **scrolls sideways** within its own box; the page body does not | the table runs off the side and the last columns cannot be reached (**T78**) |
+| **M3** | Do the same for the affordability table | same — it is the widest of the three, five columns | as above |
+| **M4** | Drag the slider **with a thumb** | it grabs and moves; the handle is comfortably tappable | the handle is too small to catch, or the page scrolls instead of the slider moving |
+| **M5** | Look at the slider track | the **flip marks are still there**; their "age N" labels may be dropped | the marks are gone — they are what makes the money moment visible before anything is dragged. Labels degrade; marks do not |
+| **M6** | Tap both **ⓘ** buttons | both open and are readable | either needs hover, or opens off-screen |
+| **M7** | Scroll the whole page top to bottom | it scrolls **once**, normally | it scrolls inside a box inside a box, or the bottom is unreachable — the `100vh` shell (**T78**) |
+
 ### `ichra_demo_path_role_walk.md` — corrections applied
 
 Four rows were stale and are corrected in that file this run; every row is now explicitly marked
