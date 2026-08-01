@@ -185,7 +185,34 @@
                     </div>
                 </c:if>
 
-                <div class="status-card">
+                <%-- W14 — collapse the inputs once they have done their job.
+
+                     Observed: "top section is still taking up a lot of space displaying
+                     the entry data." Fifteen age fields plus three banners pushed the
+                     slider and every figure below the fold — and this page is read on a
+                     phone, on a desk, with an employer watching. A correct answer nobody
+                     scrolls to is a correct answer nobody reads. Same species as W10.
+
+                     ⚠️ The three banners are NOT part of this. They are compliance text:
+                     not moved, not restyled, not consolidated, not shortened, not hidden,
+                     and the staging banner still renders above the results without
+                     scrolling. Recovering the form's height is the entire win here.
+
+                     Collapse is presentation only. The form stays in the DOM with every
+                     value intact, so expanding re-shows it exactly as it was — no
+                     re-submit, no reload, nothing cleared. With JavaScript off the summary
+                     never renders and the form is simply always open, which is today's
+                     behaviour. --%>
+                <c:set var="hasResult" value="${not empty selectedCounty and empty inputError}"/>
+                <div class="status-card" id="inputSummary" ${hasResult ? '' : 'style="display:none;"'}>
+                    <div class="d-flex align-items-center flex-wrap gap-2">
+                        <span><i class="bi bi-sliders2 me-1"></i><strong>Inputs</strong></span>
+                        <span class="text-muted" id="inputSummaryText"></span>
+                        <button type="button" class="btn btn-sm btn-outline-secondary ms-auto" id="inputSummaryEdit">Edit</button>
+                    </div>
+                </div>
+
+                <div class="status-card" id="inputCard" ${hasResult ? 'style="display:none;"' : ''}>
                     <form method="get" action="Illustration" class="row gy-2 gx-3 align-items-end">
                         <input type="hidden" name="mode" value="${mode}">
                         <%-- Item 13: carry the opportunity attribution across this form's own
@@ -1360,6 +1387,68 @@
 
     syncControls();
     syncIncome();
+})();
+
+/* W14 — the collapsed input summary.
+
+   Presentation only: the form is hidden, never emptied or detached, so Edit re-shows
+   exactly what was submitted. Nothing re-submits and nothing is cleared.
+
+   The summary is built from the live form controls rather than from server attributes,
+   so it cannot disagree with what the form actually holds -- including after the ZIP
+   field or the repeater has changed something client-side. */
+(function () {
+    var card = document.getElementById('inputCard');
+    var summary = document.getElementById('inputSummary');
+    var summaryText = document.getElementById('inputSummaryText');
+    var editBtn = document.getElementById('inputSummaryEdit');
+    if (!card || !summary || !summaryText || !editBtn) return;
+
+    function describe() {
+        var parts = [];
+
+        var county = document.getElementById('countyFips');
+        if (county && county.selectedIndex > 0) {
+            parts.push(county.options[county.selectedIndex].text.trim());
+        }
+
+        var headcount = document.getElementById('headcount');
+        if (headcount && headcount.value) {
+            parts.push(headcount.value + ' employees');
+        }
+
+        var bands = card.querySelectorAll('.age-band-row');
+        if (bands.length) {
+            var lives = 0, filled = 0;
+            bands.forEach(function (row) {
+                var age = row.querySelector('.age-band-age');
+                if (!age || !age.value) return;
+                filled++;
+                var count = row.querySelector('.age-band-count');
+                lives += parseInt(count && count.value ? count.value : '1', 10) || 0;
+            });
+            if (filled) {
+                parts.push(filled + (filled === 1 ? ' age band' : ' age bands'));
+                parts.push(lives + (lives === 1 ? ' life' : ' lives'));
+            }
+        }
+
+        var contribution = document.getElementById('contribution');
+        if (contribution && contribution.value) {
+            parts.push('$' + contribution.value + '/mo contribution');
+        }
+
+        summaryText.textContent = parts.join('  ' + String.fromCharCode(0x00B7) + '  ');
+    }
+
+    editBtn.addEventListener('click', function () {
+        summary.style.display = 'none';
+        card.style.display = '';
+        var zip = document.getElementById('zip');
+        if (zip) zip.focus();
+    });
+
+    describe();
 })();
 </script>
 </body>
