@@ -11,10 +11,24 @@
     <title>ICHRA Illustration</title>
     <c:import url="/WEB-INF/view/css-js.jsp"/>
     <style>
+        /* T78: `height: calc(100vh - 64px)` fought mobile browser chrome — 100vh on a
+           phone counts the address bar that then retracts, so the inner scroll region was
+           always slightly wrong and the page scrolled inside a box inside a box.
+           min-height on the desktop breakpoint keeps the toolbar-plus-scroll-body layout
+           the design relies on; on narrow screens the page simply scrolls normally, which
+           is what a phone expects. */
         .illustration-wrap {
             display: flex; flex-direction: column;
-            height: calc(100vh - 64px);
         }
+        @media (min-width: 768px) {
+            .illustration-wrap { height: calc(100vh - 64px); }
+        }
+        /* Wide result tables must be reachable on a narrow screen. Nothing in the ICHRA
+           path had an overflow wrapper, so a five-column table simply ran off the side. */
+        .table-responsive { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        /* T78: the form's fixed pixel widths. Kept as a comfortable minimum rather than a
+           fixed size, so a phone can shrink them and a desktop still gets the same look. */
+        .illustration-wrap .form-control, .illustration-wrap .form-select { min-width: 0; }
         .toolbar {
             padding: 0.65rem 1rem;
             background: #fff; border-bottom: 1px solid #dee2e6;
@@ -129,6 +143,14 @@
             display: block; width: 1px; height: 6px; background: #8a99a4; margin: 0 auto;
         }
         .contrib-tick span { font-size: 0.62rem; color: #6c757d; white-space: nowrap; }
+        /* T78: on a narrow track the "age N" labels collide into an unreadable smear.
+           Degrade the TICKS, never the handle — the marks stay (they are what makes the
+           flip points visible before anything is dragged), the labels drop, and the
+           affordability table below still carries every exact figure. */
+        @media (max-width: 575.98px) {
+            .contrib-tick span { display: none; }
+            .contrib-slider-wrap { padding-bottom: 0.6rem; }
+        }
 
         .ssa-action:disabled:hover,
         .ssa-action[disabled]:hover {
@@ -246,7 +268,7 @@
                                  knocked the row out of alignment every time a ZIP resolved. --%>
                             <input type="text" class="form-control form-control-sm" id="zip" name="zip"
                                    inputmode="numeric" pattern="[0-9]{5}" maxlength="5" placeholder="#####"
-                                   value="${submittedZip}" style="width:100px;">
+                                   value="${submittedZip}" style="max-width:110px;">
                         </div>
 
                         <div class="col-auto">
@@ -344,11 +366,11 @@
                                 <div class="col-auto">
                                     <label class="form-label mb-1" for="contribution">Employer Monthly Contribution</label>
                                     <input type="number" step="0.01" class="form-control form-control-sm" id="contribution" name="contribution"
-                                           min="0" value="${submittedContribution}" style="width:160px;">
+                                           min="0" value="${submittedContribution}" style="max-width:170px;">
                                 </div>
                                 <div class="col-auto">
                                     <label class="form-label mb-1" for="affordabilityBasis">Affordability Basis</label>
-                                    <select class="form-select form-select-sm" id="affordabilityBasis" name="affordabilityBasis" style="width:180px;">
+                                    <select class="form-select form-select-sm" id="affordabilityBasis" name="affordabilityBasis" style="max-width:190px;">
                                         <option value="" ${empty affordabilityBasis ? 'selected' : ''}>None</option>
                                         <option value="FPL" ${affordabilityBasis == 'FPL' ? 'selected' : ''}>FPL Safe Harbor</option>
                                         <option value="INCOME" ${affordabilityBasis == 'INCOME' ? 'selected' : ''}>Entered Income</option>
@@ -359,7 +381,7 @@
                                 <div class="col-auto">
                                     <label class="form-label mb-1" for="headcount">Eligible Employees</label>
                                     <input type="number" class="form-control form-control-sm" id="headcount" name="headcount"
-                                           min="1" max="10000" value="${submittedHeadcount}" style="width:140px;">
+                                           min="1" max="10000" value="${submittedHeadcount}" style="max-width:150px;">
                                 </div>
                             </c:otherwise>
                         </c:choose>
@@ -596,6 +618,7 @@
                                 </c:if>
                             </div>
 
+                            <div class="table-responsive">
                             <table class="results-table">
                                 <thead>
                                 <tr>
@@ -618,6 +641,7 @@
                                 </c:forEach>
                                 </tbody>
                             </table>
+                            </div>
 
                             <div class="status-card mt-3">
                                 <strong>Group Monthly Net Cost</strong>
@@ -656,6 +680,7 @@
                                                 Threshold figures are derived from cached rates and can differ from a live quote by a cent or two &mdash; treat as an estimate, not an exact figure.
                                             </p>
 
+                                            <div class="table-responsive">
                                             <table class="results-table">
                                                 <thead>
                                                 <tr>
@@ -693,6 +718,7 @@
                                                 </c:forEach>
                                                 </tbody>
                                             </table>
+                                            </div>
                                         </c:otherwise>
                                     </c:choose>
                                 </div>
@@ -974,6 +1000,7 @@
                                 On-exchange plans are not included in the plan counts or the premium figures shown.
                             </div>
 
+                            <div class="table-responsive">
                             <table class="results-table">
                                 <thead>
                                 <tr>
@@ -1049,6 +1076,7 @@
                                 </tr>
                                 </tbody>
                             </table>
+                            </div>
                             <div class="footnote">
                                 <i class="bi bi-exclamation-triangle me-1"></i>
                                 Market low at Age 21 may reflect a catastrophic plan, available only to enrollees under 30 — not available at ages 30 and up.
