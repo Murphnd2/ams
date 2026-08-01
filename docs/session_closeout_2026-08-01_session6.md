@@ -568,3 +568,99 @@ disambiguation is the *common* path. Anything that auto-selects is wrong one tim
 
 **Carried forward, still unclosed:** nobody has asked Forrest what he would want a quoting tool to do,
 and the two SWBD emails have still never been sent.
+
+---
+
+# Session 6, prompt F — T74 part 2: ZIP intake on the illustration
+
+## What I anchored on
+
+Both files are shipped, and both were edited **earlier in this same session** — the servlet by prompt B
+(the affordability messages), the JSP by prompts A, B and D (the G5 toggle carry, the slider, the
+verdict cells). So anchors were printed and uniqueness checked before any edit.
+
+| File | Anchor | Line | Occurrences |
+|---|---|---|---|
+| `IllustrationServlet.java` | `String countyFips = request.getParameter("countyFips");` + its blank-check and `submittedCountyFips` set | **122–127** | **1** |
+| `IllustrationServlet.java` | `"Select a valid county from the list."` (the unwarmed-county branch) | **169** | **1** |
+| `illustration25.jsp` | the County `<div class="col-auto">` wrapping `<select id="countyFips" name="countyFips">` | **109–119** | **1** |
+
+No anchor was ambiguous, so nothing was stopped or approximated.
+
+## Shipped
+
+| Hash | What |
+|---|---|
+| `5b70586` | `IllustrationServlet` — `?zip=` resolution, three outcomes |
+| `a41a481` | `illustration25.jsp` — ZIP box, crossing-ZIP chooser, no-match message |
+| `54505d2` | §5 updated, click-script steps 4a–4e, T74 closed for `/Illustration` |
+
+`./mvnw compile` clean before each commit.
+
+## Decisions made
+
+1. **`?zip=` is consulted only when `countyFips` is absent.** The existing contract always wins, so the
+   mode toggle, hub cards, T59's affordability card and any bookmarked URL are untouched.
+2. **A unique ZIP falls through to the ordinary county path** rather than getting its own branch —
+   the two paths share one code path and therefore cannot diverge.
+3. **The chooser is a status card, not an alert.** 34% of Texas ZIPs land there; it is a normal step.
+   Plain equal-weight links, nothing pre-selected, nothing badged likely.
+4. **The unwarmed-county message differs on the ZIP path only.** Telling an agent who typed a ZIP to
+   "select a valid county from the list" describes neither what they did nor what went wrong, and would
+   collapse two states §5 requires kept apart. **The outcome is unchanged** — still an error, still no
+   rates, still T76's. The county path keeps its original string byte-for-byte.
+5. **Mobile deliberately not attempted** — the chooser is a plain list. That is T78.
+
+## The exact no-match copy
+
+> **We don't have ZIP 90210 in our county lookup**
+> ZIP coverage is incomplete — the lookup is built from Census tabulation areas, which omit some valid
+> ZIPs, and currently covers Texas only. This is a gap in our data, not a problem with the ZIP.
+> **Select the county above instead** — everything else works the same.
+
+The word "invalid" appears nowhere. An agent who believes he mistyped will retype it three times.
+
+## New assumptions, and reversal cost
+
+| Assumption | Reversal cost |
+|---|---|
+| An agent seeing a two-county chooser will read it as a normal step rather than a failure | **Free** — wording and styling only. Settled by click-script 4b |
+| Naming the resolved county on the unwarmed-county error helps more than the generic string | **Free** — one `if`. The county path is unaffected either way |
+| Land-area ordering reads as stability, not as a recommendation | **Free**, and the riskier direction is watched: if it ever reads as steering, drop the ordering entirely and sort by county name |
+
+## Contradictions found
+
+1. **The prompt says `?county=`; the actual parameter is `?countyFips=`.** Shorthand, not a conflict —
+   I used the real name, which is what every existing link carries.
+2. **Nothing in §5 was contradicted.** §5 governed on the point that mattered most — it says the county
+   dropdown *"stays as a fallback"*, and this run kept it. §5 also scopes `/GroupConversion` to *"only
+   after the illustration path is proven"*, so it was left alone despite the temptation to do both.
+3. **A compile error worth recording:** assigning `countyFips` inside the ZIP branch made it no longer
+   effectively final, breaking the county-matching lambda below. Fixed with a final copy. Caught by
+   `./mvnw compile`, which is why it runs before each commit rather than at the end.
+
+## SQL close-out audit
+
+**This run was forbidden from producing SQL and produced none.** No `.sql` file created, modified or
+deleted. No schema change, no migration. **V084/V085 are the schema for this feature and were finished
+in prompt E** — nothing here revisits them. `ls docs/migrations/` unchanged at **V085**. `git show
+--stat` across the three commits lists one `.java`, one `.jsp` and two `.md` paths.
+
+## ⚠️ Not runtime-verified
+
+**V084 and V085 have not been applied to any database, including local**, so `zip_county` does not exist
+where this code runs. Per build rule 5 I coded against the model rather than the rows, and every example
+ZIP in the click-script was verified against the **shipped V085 file** instead: `75482` → Hopkins alone
+(ratio 1.000000), `75009` → Collin 0.93 / Denton 0.07, `90210` absent. **This is `code-verified` only.**
+Click-script steps 4a–4e are what make it real.
+
+## Next
+
+1. **Apply V084/V085**, then run click-script **4a–4e**. Step **4b** is the one that matters — if a
+   county is ever auto-selected on a crossing ZIP, the feature is worse than the dropdown it replaced.
+2. **`/GroupConversion` ZIP intake** — the same treatment, once the illustration path is proven.
+3. **T76** warm-on-miss still blocked: no installation has authenticated to the HealthSherpa API.
+4. Unchanged: click-script 10/10b, the three SWBD emails, T83's enrollment-support question.
+
+**Carried forward, still unclosed:** nobody has asked Forrest what he would want a quoting tool to do,
+and the two SWBD emails have still never been sent.
