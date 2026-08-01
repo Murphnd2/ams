@@ -822,17 +822,29 @@ finished items, found by walking the eight surfaces as one path for the first ti
 
 ⚠️ **Two corrections to this document, both in §1's walkthrough:**
 
-1. **Step 5 says "moves the contribution slider."** There is no slider — contribution is a number input
-   and every change is a full form re-submit (`illustration25.jsp:152-156`). Whoever runs the demo
-   should not be expecting a drag.
+1. ~~**Step 5 says "moves the contribution slider."** There is no slider — contribution is a number input
+   and every change is a full form re-submit (`illustration25.jsp:152-156`).~~ **Resolved the same day,
+   prompt B — the document was right and the code was behind it.** See the G9 row below.
 2. **Step 6 says "prospect pre-filled."** The hand-off carries no prospect id, deliberately and with the
    reasoning stated in source (`illustration25.jsp:344-352`). The prospect step is a real click. Filed
-   as **T69** — the cheap resolution is to fix this sentence, not the code.
+   as **T69** — the cheap resolution is to fix this sentence, not the code. **Still open.**
 
 **And one thing §3 completing does not cover: affordability needs two `constant` rows
 (`ICHRA_AFFORDABILITY_PCT_<year>`, `FPL_ANNUAL_<year>`) that nothing in the repo seeds** (**T65**,
 HIGH). Every code path for step 5 is built and every one of them fails closed to "not configured"
 without those rows. That is config, and it is Kevin's.
+
+### 2026-08-01, session 6 prompt B — step 5 made real
+
+| Shipped | Hash | What |
+|---|---|---|
+| **T65 / G2** (code side) | `e90515a` | Both constants seeded in `DatabaseInitializer`, idempotently: `ICHRA_AFFORDABILITY_PCT_2026 = 0.0996`, `FPL_ANNUAL_2026 = 15960`. **New `LA-14`** records which of the two published FPL figures this is and why. ⚠️ **Does not reach production** — that seed runs on fresh installs only; the production rows remain a manual deployment item. |
+| **G9** | `53a8131` | The contribution slider §1 step 5 has always described. Recomputes net cost, group total, employer outlay and each affordability verdict **client-side and live**; never recomputes the flip point (it does not move with the contribution); rewrites the proposal hand-off href as it moves so a snapshot cannot disagree with the screen. |
+
+**§1 step 5's own words now work end to end in code** — *"at $350 Maria keeps her subsidy and comes out
+ahead, at $450 she loses it"* is a drag, and the per-employee threshold updates under it. **What is not
+yet true is that it works on production**, because of T65's config half. The distinction is the whole
+point of the click-script in `docs/analysis/ichra_flow_and_handoffs.md` §3.
 
 **Detail:** `CLAUDE.md` "Keeping state docs current" — this plan is a state-carrying document and
 **should not be synced to project knowledge.**
