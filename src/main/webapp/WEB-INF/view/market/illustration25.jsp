@@ -815,7 +815,7 @@
                                     <div style="font-size:1.05rem; font-weight:700; color:#0d5681; margin-top:0.35rem;" id="groupNetTotalOut">
                                         <fmt:formatNumber value="${groupNetTotal}" type="currency"/>
                                     </div>
-                                    <div class="footnote">For ${submittedTotalLives} eligible employees, after employer contribution. Sum of the Band Net Total column.</div>
+                                    <div class="footnote">For ${submittedTotalLives} eligible ${submittedTotalLives == 1 ? 'employee' : 'employees'}, after employer contribution. Sum of the Band Net Total column.</div>
                                 </div>
 
                                 <div class="status-card mt-3">
@@ -830,7 +830,7 @@
                                  columns read as a boundary rather than a missing figure. --%>
                             <c:if test="${not contributionSupplied}">
                                 <div class="footnote">
-                                    Premium at the bronze floor, per employee, for ${submittedTotalLives} eligible employees.
+                                    Premium at the bronze floor, per employee, for ${submittedTotalLives} eligible ${submittedTotalLives == 1 ? 'employee' : 'employees'}.
                                     Enter an <strong>Employer Monthly Contribution</strong> above to see net cost and the
                                     contribution slider.
                                 </div>
@@ -1282,7 +1282,7 @@
                                         <c:otherwise>&mdash;</c:otherwise>
                                     </c:choose>
                                 </div>
-                                <div class="footnote">For ${submittedHeadcount} eligible employees. This spread reflects age mix across the group, not plan choice.</div>
+                                <div class="footnote">For ${submittedHeadcount} eligible ${submittedHeadcount == 1 ? 'employee' : 'employees'}. This spread reflects age mix across the group, not plan choice.</div>
                             </div>
 
                             <div class="meta-line">
