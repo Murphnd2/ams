@@ -7,6 +7,7 @@ import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import net.superiorstate.ams.data.dao.RateCacheDAO;
 import net.superiorstate.ams.data.resolver.IchraAccessResolver;
 import net.superiorstate.ams.data.resolver.ZipCountyResolver;
 import org.apache.logging.log4j.LogManager;
@@ -14,6 +15,8 @@ import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * JSON ZIP → county lookup for the illustration page's ZIP field (T74 / R2).
@@ -69,7 +72,7 @@ public class IchraZipLookup extends HttpServlet {
 
             String zip = request.getParameter("zip");
             ZipCountyResolver.Resolution resolution = ZipCountyResolver.resolve(em, zip);
-            writeResolution(response, resolution);
+            writeResolution(response, resolution, pricedCountyFips(em, request.getParameter("planYear")));
         } catch (Exception e) {
             log.error("[ZIP-LOOKUP] Failed to resolve; returning empty", e);
             writeEmpty(response, request.getParameter("zip"));
@@ -84,7 +87,8 @@ public class IchraZipLookup extends HttpServlet {
      * is preserved rather than re-sorted. It is a stability convenience, <b>not a
      * ranking</b>, and the page must not render it as one.
      */
-    private void writeResolution(HttpServletResponse response, ZipCountyResolver.Resolution resolution) throws IOException {
+    private void writeResolution(HttpServletResponse response, ZipCountyResolver.Resolution resolution,
+                                  Set<String> priced) throws IOException {
         StringBuilder json = new StringBuilder(128);
         json.append("{\"zip\":\"").append(escapeJson(resolution.getZip())).append("\",\"counties\":[");
 
@@ -95,7 +99,8 @@ public class IchraZipLookup extends HttpServlet {
             json.append("{\"fips\":\"").append(escapeJson(candidate.getCountyFips()))
                     .append("\",\"name\":\"").append(escapeJson(candidate.getCountyName()))
                     .append("\",\"state\":\"").append(escapeJson(candidate.getState()))
-                    .append("\"}");
+                    .append("\",\"priced\":").append(priced != null && priced.contains(candidate.getCountyFips()))
+                    .append('}');
         }
 
         json.append("]}");
@@ -103,6 +108,38 @@ public class IchraZipLookup extends HttpServlet {
         PrintWriter out = response.getWriter();
         out.print(json);
         out.flush();
+    }
+
+    /**
+     * County FIPS codes with cached rates for the requested plan year — the same set the
+     * illustration's county dropdown is built from.
+     * <p>
+     * Exists because the crosswalk knows 254 Texas counties (V085) while the illustration
+     * can price only the handful that have been warmed, so a chooser that did not say
+     * which is which would hand an agent a county and then reject it. The flag lets the
+     * page label that honestly <b>before</b> the click.
+     * <p>
+     * ⚠️ <b>A label, never an ordering.</b> Candidates keep the resolver's land-area order;
+     * an unpriced county is not demoted and nothing is pre-selected.
+     * <p>
+     * A missing or unparseable {@code planYear} yields an empty set, so every county
+     * reports {@code priced:false} and the page simply shows the caveat on all of them —
+     * the cautious direction, and never an exception.
+     */
+    private Set<String> pricedCountyFips(EntityManager em, String planYearParam) {
+        Set<String> priced = new HashSet<>();
+        if (planYearParam == null || planYearParam.isBlank()) {
+            return priced;
+        }
+        try {
+            int planYear = Integer.parseInt(planYearParam.trim());
+            for (RateCacheDAO.CountySummary summary : RateCacheDAO.getCountySummaries(em, planYear)) {
+                priced.add(summary.getCountyFips());
+            }
+        } catch (Exception e) {
+            log.debug("[ZIP-LOOKUP] Could not resolve priced counties for plan year {}", planYearParam, e);
+        }
+        return priced;
     }
 
     private void writeEmpty(HttpServletResponse response, String zip) throws IOException {

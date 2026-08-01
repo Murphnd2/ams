@@ -31,10 +31,12 @@ import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -164,6 +166,9 @@ public class IllustrationServlet extends HttpServlet {
                     // a contradicted stale county does not stay selected in the dropdown
                     // underneath the chooser.
                     request.setAttribute("zipCandidates", resolution.getCandidates());
+                    // Which candidates the illustration can actually price. A label, not an
+                    // ordering — see pricedCountyFips.
+                    request.setAttribute("pricedCountyFips", pricedCountyFips(availableCounties));
                     request.getRequestDispatcher("/WEB-INF/view/market/illustration25.jsp").forward(request, response);
                     return;
                 } else {
@@ -192,22 +197,7 @@ public class IllustrationServlet extends HttpServlet {
                     .findFirst()
                     .orElse(null);
             if (selectedCounty == null) {
-                // `availableCounties` is counties that HAVE cached rates, so landing here
-                // means the county is real but unwarmed. Outcome is unchanged from before
-                // this run — still an error, still no rates, still T76's job to fix.
-                // Only the wording differs, and only on the ZIP path: telling an agent who
-                // typed a ZIP to "select a valid county from the list" describes neither
-                // what they did nor what went wrong, and would collapse the unwarmed-county
-                // case into the coverage-gap case that the block above reports separately.
-                Object resolved = request.getAttribute("resolvedCounty");
-                if (resolved instanceof ZipCountyResolver.Candidate) {
-                    ZipCountyResolver.Candidate candidate = (ZipCountyResolver.Candidate) resolved;
-                    request.setAttribute("inputError",
-                            "That ZIP is in " + candidate.getCountyName() + ", " + candidate.getState()
-                                    + ", which has no cached rates yet. Pick another county below.");
-                } else {
-                    request.setAttribute("inputError", "Select a valid county from the list.");
-                }
+                request.setAttribute("inputError", describeUnavailableCounty(em, resolvedFips));
                 request.getRequestDispatcher("/WEB-INF/view/market/illustration25.jsp").forward(request, response);
                 return;
             }
@@ -488,6 +478,64 @@ public class IllustrationServlet extends HttpServlet {
             affordabilityRows.add(AffordabilityResultRow.available(row.getAge(), row.getCount(), onexLcsp, flip, affordable));
         }
         request.setAttribute("affordabilityRows", affordabilityRows);
+    }
+
+    /**
+     * ⭐ <b>The single place a county the illustration cannot price is reported</b> — every
+     * entry path lands here: the ZIP resolver, a chooser link, a hand-typed URL, and the
+     * dropdown. One branch, one message per state, one method.
+     * <p>
+     * <b>It distinguishes two states that used to share a message, wrongly.</b> The county
+     * dropdown is built from {@code rating_area_rate_cache} — the counties that have
+     * <i>cached rates</i>, four of them on production — while the ZIP crosswalk knows all
+     * 254 Texas counties (V085). So ZIP resolution can hand an agent a real county the
+     * illustration has never been able to price, and the page answered
+     * <i>"Select a valid county from the list"</i> — <b>blaming the agent for a coverage
+     * gap that is ours.</b> Same category of error as the ZIP no-match copy, in a place
+     * nobody had looked. ZIP intake did not create this gap; it exposed it.
+     * <ul>
+     *   <li><b>A real county with no cached rates</b> — say so, and name it.</li>
+     *   <li><b>Not a county at all</b> (a typo, a truncated FIPS, a pasted placeholder) —
+     *   the original message, which is correct for that input and unchanged.</li>
+     * </ul>
+     * <p>
+     * ⭐ <b>This is where T76 (warm-on-miss) attaches.</b> The unwarmed branch below is the
+     * one place that knows "a real county, no rates" — a warm trigger goes there and
+     * nowhere else. <b>Deliberately no stub, no button and no TODO here:</b> a disabled
+     * control implying a capability that does not exist is worse than its absence.
+     * <p>
+     * Fails toward the generic message: if {@code county_reference} cannot be read, the
+     * agent gets the safe wording rather than an exception.
+     */
+    private String describeUnavailableCounty(EntityManager em, String countyFips) {
+        try {
+            CountyReference known = CountyReferenceDAO.findByFips(em, countyFips);
+            if (known != null) {
+                return "We don't have rates for " + known.getCountyName() + ", " + known.getState()
+                        + " yet. Select another county from the list.";
+            }
+        } catch (Exception e) {
+            log.debug("[ILLUSTRATION] Could not classify unavailable county {}", countyFips, e);
+        }
+        return "Select a valid county from the list.";
+    }
+
+    /**
+     * County FIPS codes that actually have cached rates for this plan year — the set the
+     * dropdown is built from. Handed to the JSP so the crossing-ZIP chooser can mark which
+     * of its candidates can be priced.
+     * <p>
+     * ⚠️ <b>Descriptive only.</b> This drives a factual label, never an ordering and never
+     * a recommendation: the candidates keep the resolver's land-area order, a county with
+     * no rates is <b>not</b> demoted, and nothing is pre-selected. The no-steering boundary
+     * applies to counties exactly as it does to plans.
+     */
+    private Set<String> pricedCountyFips(List<CountyReference> availableCounties) {
+        Set<String> priced = new HashSet<>();
+        for (CountyReference county : availableCounties) {
+            priced.add(county.getCountyFips());
+        }
+        return priced;
     }
 
     private boolean isAuthorized(HttpServletRequest request) {
