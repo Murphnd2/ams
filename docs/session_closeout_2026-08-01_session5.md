@@ -325,3 +325,40 @@ session) · `docs/analysis/project_backlog.md` (T60/T61/T62 new, highest item T6
 `docs/business/ichra_setup_checklist.md` (item 10's deliverable, awaiting entry into the Sequence
 Builder) · `docs/session_closeout_2026-07-31_session4.md` (the prior session, recorded through
 `bbc6519`, actual final commit `a42a9ae`)
+
+---
+
+## Addendum — 2026-08-01, the confirm-before test ran
+
+**This section is appended after the document above; nothing above it has been edited.**
+
+**The test.** After deploying `v0.83.01` (`0852c2f`, the T61 checkbox), a second agency was entitled for
+ICHRA through the new UI on the **running** production instance — no restart, no redeploy. An agent of
+that agency then logged in **fresh** and ICHRA was present: nav entry and chat widget both rendered.
+
+**The result, stated precisely — this is not a disproof.** The UI writes through JPA
+(`em.find` → setter → transaction commit), which is exactly the path that keeps EclipseLink's shared
+cache correct. So a clean result here is **fully consistent with** the stale-cache assumption above
+being true — it does not test the raw-SQL path at all, because the new UI exists precisely so nobody
+has to use that path anymore. Do not read this as "the cache hypothesis was wrong." It was never tested
+by this run, and it remains untested.
+
+**What this actually establishes, narrower than a clean resolution:**
+
+- **The UI entitlement path works without a restart.** T61 is closed in practice, not merely in code —
+  a real agency was entitled on a live instance and a real agent saw the result without any deploy step
+  intervening.
+- **The stale-cache hypothesis is moot for ICHRA entitlement specifically**, because the only code path
+  that could ever hit the trap — a raw SQL `UPDATE` against `agency.ichra_enabled` — is no longer the
+  supported way to set the flag. Nobody needs to use it, so whether it was ever actually broken stops
+  mattering for this feature.
+- **The general question is untouched and still open:** whether a raw SQL `UPDATE` against *any*
+  JPA-mapped AMS config table goes unseen by a running instance until a restart. This session's test
+  cannot speak to it either way — it tested the JPA path, not the SQL path, on purpose, since that is
+  the whole point of having built the UI. Logged as its own backlog item (T64) below, since it applies
+  far beyond ICHRA and to every operational runbook in this codebase that says "run this UPDATE."
+
+**T60 was also observed, not just reasoned about.** The confirm test required a **fresh login** — the
+agent who was entitled had not been logged in before the flag was set, so `ichraNavVisible` had never
+been cached for that session. This is consistent with T60's known effect (an already-logged-in agent
+stays stale until re-login) but does not test it either; a same-session before/after check was not run.
