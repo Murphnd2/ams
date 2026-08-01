@@ -38,16 +38,24 @@ version numbers below are Kevin's record**, which is authoritative because he cu
 | **`v0.85.05`** | ≈`fe35261` … `7179773` | Prompts J and K: the layout pass (collapse, repeater, mobile, popovers) and the one-analysis-surface change | ⚠️ **YES — this is what is live, and it carries K3-a/b/c/d** |
 | **`v0.85.06`** | `f651633` … `cabbe88` | **Prompt K2 — the tier repair.** Fixes the duplicated band, makes Illustrate always compute, makes contribution optional, clears stale results on edit | ❌ **BUILT AND PUSHED, NOT DEPLOYED** |
 
-**Migrations:** **V084 and V085 are the session's only two**, and **neither has been applied anywhere —
-not production, not local.** They are the ZIP crosswalk's schema and Texas data. **Nothing reads
-`zip_county` except the ZIP intake feature**, so applying them changes no existing behaviour — but
-**without them, ZIP resolution fails for every ZIP**, and `ZipCountyResolver` fails closed, so every
-lookup reports *"We don't have that ZIP in our county lookup."* The feature looks uniformly broken
-rather than erroring.
+**Migrations:** ~~**V084 and V085 are the session's only two**, and **neither has been applied anywhere —
+not production, not local.**~~ **Corrected 2026-08-01, same session, end of day — this was wrong and the
+error is worth naming.** It was written from inside the Claude Code container, which has no database
+connection at all: "never run against any database" was true of the container and false of the system,
+the same shape as R1/R5/the coverage mismatch — correct about what was examined, wrong about the whole.
+(See the added line in §8a.)
 
-⚠️ **Therefore: V084 and V085 must be applied in the same release as the WAR that carries ZIP intake.**
-If `v0.85.05` is live and those migrations were not applied with it, ZIP intake is currently dead on
-production and reporting a coverage gap for every ZIP typed.
+**V084 and V085 shipped in release `v0.85.00` and are applied on Production**, applied by `update.sh`
+alongside that release. Confirmed behaviourally by this session's own role-2 agent runtime walk: ZIP
+`75482` resolved to **Hopkins County, TX** and populated the dropdown; ZIP `75009` rendered the
+two-county chooser (**Collin and Denton**, land-area ordered, both labelled "no rates cached yet"); ZIP
+`90210` correctly missed with the ZCTA/Texas-only coverage message. **None of that is possible against
+an empty `zip_county` table.** `migration_tracker.md`'s Production column is corrected to ✅ for both
+rows in the same commit as this correction.
+
+⚠️ **Consequence for `v0.85.06`: it needs `ROOT.war` only — no migrations attached.** The schema and
+data for ZIP intake are already on Production from `v0.85.00`; `v0.85.06` carries only the K3 tier-repair
+code fix (K3-a/b/c/d), which is a WAR change with nothing behind it in the database.
 
 **One WAR was built by me this session** — `./mvnw -P server clean package` at **`18e0f77`** (end of
 prompt F), verified to carry `persistence-server.xml`. **It predates prompts G, H, I, J, K and K2** and
@@ -140,6 +148,13 @@ and $573** · the design advisor citing a source · `illustration_log` writing.
 **Observed after prompt K (≈`7179773`):** **K1** (no toggle, one form) and **K2** (a blank age row
 derives range output).
 
+⭐ **Added 2026-08-01, same session — V084 and V085 belong in this bucket, not "never tested."** The
+`?zip=` three-state resolution observed above is direct behavioural proof they are applied: ZIP `75482`
+resolved to Hopkins County TX and populated the dropdown; ZIP `75009` rendered the two-county chooser
+(Collin/Denton); ZIP `90210` correctly missed. None of that is reachable against an empty `zip_county`
+table. **`ZipCountyResolver` and `ZipCountyDAO` (prompt E) are confirmed to have executed** by the same
+evidence — the resolution logic they contain is what produced those three outcomes.
+
 ⚠️ **Every one of those was observed on a build that predates prompts J, K and K2** — except K1/K2. The
 same file has changed five times since most of them. **They are historical evidence, not current state.**
 
@@ -148,14 +163,13 @@ same file has changed five times since most of them. **They are historical evide
 **All of prompt K2** (`f651633`, `77af9d4`, `d016fde`) — the duplicated-band fix, contribution-optional,
 stale-result clearing. **All of prompt J** (`fe35261`…`b12f875`) — the collapse, the repeater, income
 visibility, popovers, mobile CSS. **Most of prompt K** beyond K1/K2. **Prompt I's W10 slider redesign**
-(`ced1679`). **Prompt E's entire data layer** — `ZipCounty`, `ZipCountyDAO`, `ZipCountyResolver` have
-**never executed**, because V084/V085 are unapplied everywhere.
+(`ced1679`). **`IchraZipLookup`** (`de0efe0`) — the blur-triggered JSON endpoint specifically; the
+resolution logic it shares with the form-submit path is confirmed working (see above), but no observation
+recorded this session confirms the AJAX blur trigger itself fired rather than a form submit landing on
+the same resolver.
 
 ### Never tested — in neither bucket
 
-- **V084 and V085 have never been run against any database.** The `zip_county` table does not exist
-  anywhere.
-- **`IchraZipLookup`** (`de0efe0`) — the JSON endpoint has never returned a row, for the same reason.
 - **The affordability constants seeded in `e90515a`** — `DatabaseInitializer` only runs on a fresh
   install, so that code path has never executed on any existing installation.
 
@@ -170,6 +184,14 @@ visibility, popovers, mobile CSS. **Most of prompt K** beyond K1/K2. **Prompt I'
 | `M1`–`M10` (mobile) | 10 | **Partly run** — M2, M3, M4 were *found* by a mobile walk; M1, M5–M10 outstanding |
 
 **Resume point for the next session: T1–T10, then K4–K9, then L, then the rest of M.**
+
+⚠️ **Flagged, not acted on: 72 steps is too long to walk in practice.** A role-2 agent has been asked to
+run this same script, piecemeal, across nine prompts this session, and even so it is barely a third
+covered. Before the next walk, this list is a candidate for pruning to a demo-critical subset — the
+steps that would actually break the SWBD demo if wrong, versus steps that are thorough for their own
+sake. **Not done this run**, since the instruction for this correction was to flag it, not prune it, and
+pruning a verification script without walking it first risks cutting exactly the step that would have
+caught the next defect.
 
 ---
 
@@ -270,10 +292,13 @@ ever selecting · the **six-band cap** is set by `proposalBuilder.jsp`, outside 
 | **R1** | *"`countyFips` always wins"* — precise, and it protected a real URL contract | A stale county selection beat a freshly typed ZIP → **wrong county's rates, indistinguishable from right ones, in front of a client** |
 | **R5** | *"`?countyFips=` pre-selects; no defect"* | **Correct for the case examined** — and the untested neighbouring case (`48085`, a real county with no cached rates) was broken |
 | **T89** | *"the chooser is correct; nothing pre-selected"* — true, and it passed review twice | **Both counties it offered were unpickable** |
+| **This close-out, first draft** | *"V084/V085 have never been run against any database, including local"* | ⭐ **False, and the fourth instance of the same shape.** Written from inside the Claude Code container, which has no database connection at all — true of the container, false of the system Kevin actually runs. Corrected the same day, same session, before it could mislead a next session into re-running migrations that were already live |
 
 **Every one was correct about the code it examined and wrong about the system**, because each defect
 lived in the **interaction between two things**: a stale input and a fresh one; a crosswalk and a cache;
-a URL contract and a dropdown. Reading either side alone showed nothing wrong.
+a URL contract and a dropdown; **the environment doing the examining and the environment being
+described.** Reading either side alone showed nothing wrong. ⭐ **The container's database state is not
+the system's database state. "Not present here" is not "not present."**
 
 **Then one walk produced twelve findings after three consecutive code-verified runs reported clean.**
 ⭐ **And the most important finding was not a defect at all:** the contribution slider — build-plan step
@@ -358,9 +383,10 @@ gap.
 - **Idempotent:** `INSERT IGNORE` throughout; re-running either is a no-op.
 - **Current highest version: V085** — confirmed on disk (`ls docs/migrations/`) *and* in
   `migration_tracker.md` line 19. The two agree.
-- ⚠️ **Pending deployment: both, everywhere.** V084 and V085 are `⬜` in **every** column of the tracker
-  including `beta_ssa (work)` — neither has been run against any database. **That is their true state,
-  not a stale cell.**
+- ~~**Pending deployment: both, everywhere.**~~ **Corrected 2026-08-01, same session.** Both are
+  **applied on Production**, shipped with release `v0.85.00`, confirmed by this session's own runtime
+  walk (§1, §3, §8a). Still `⬜` for `beta_ssa (work)`, `beta_ssa (home)` and `dev_ssa` — those genuinely
+  have not been probed and remain honestly unknown, not corrected here.
 - **Schema described but not scripted:** national expansion of the crosswalk beyond Texas — deliberately,
   as a future `V0NN` produced by `docs/scripts/generate_zip_county.ps1 -State XX`.
 - **Nine of the twelve prompts were forbidden from producing SQL and produced none.** Only prompt E was
@@ -370,22 +396,30 @@ gap.
 
 ## ⚠️ On this document being the last commit
 
-**This close-out is the final commit of session 6.** It is committed after every other commit in the
-range `941dc14..HEAD`.
+**`b6da9e4` was intended to be the final commit of session 6. It was superseded within the same day, by
+this correction**, because §1/§3/§8a/§11 as written at `b6da9e4` misstated V084/V085 as unapplied
+everywhere when they were live on Production. **This correction commit is the true final commit of
+session 6.**
 
-⚠️ **Two consequences worth stating rather than leaving to be inferred:**
+⚠️ **Its own hash is deliberately not hardcoded here, and that is not an oversight — it is the same
+lesson this correction exists to teach.** A commit's hash is computed from its content, so a commit
+cannot state its own hash without becoming a different commit the moment it does. Any hash written into
+this sentence would be exactly the kind of claim this document has now gotten wrong twice in one day:
+a document describing state that only `git log` can actually confirm. **Run `git log --oneline -1` on
+`refactor/modernize-architecture` for the true final hash — do not trust a number written here.**
 
-1. **This commit is not in `v0.85.06`.** That build was cut before it. The deployable content of
-   `v0.85.06` ends at **`cabbe88`**; this commit adds documentation only and changes no code, no JSP and
-   no SQL, so **`v0.85.06` does not need re-cutting because of it**.
-2. **If anything follows this commit, this file is stale from that point on** — the same construction
-   error session 5's close-out made, and the reason it is being said out loud. Session 5 recorded a final
-   hash that was not the real final one, **five sessions running**. If a later commit lands on this
-   branch today, treat §1's ladder and §2's hashes as a snapshot taken at this commit, and re-read
-   `git log`.
+⚠️ **Consequences worth stating rather than left to be inferred:**
 
-**The fix that actually works is the one applied here:** write the close-out against `git log` at the
-end, and say plainly what it can and cannot know.
+1. **Neither `b6da9e4` nor this correction is in `v0.85.06`.** That build was cut at `cabbe88`; both are
+   documentation-only and change no code, no JSP and no SQL, so `v0.85.06` needs no re-cut for either.
+2. **If anything follows this commit, this file is stale from that point** — the same construction error
+   session 5's close-out made, now recurring for a **sixth** session running, in a document that was
+   itself corrected mid-day for the identical reason. Treat every hash and every deployment claim above
+   as a snapshot, and re-read `git log` before trusting it.
+
+**The fix that actually works is the one this file keeps needing and keeps re-learning:** write against
+`git log`, at the end, after checking the environment you're reading it from is the one you're describing
+— and say plainly what it can and cannot know.
 
 ---
 ---

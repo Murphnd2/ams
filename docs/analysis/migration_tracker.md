@@ -125,8 +125,8 @@ _N/A = environment decommissioned / not maintained (applies to Demo PSP, BPO, Ma
 | V081 | Optional opportunity attribution on illustration_log (illustration_log.opportunity_id, nullable, FK to assignee(id)) | ⬜ | ⬜ | ⬜ | ✅ | N/A | N/A | N/A |
 | V082 | Make ICHRA_DESIGN_ADVISOR available to non-admin callers (chatbot_skill.is_admin_only 1 → 0) | ⬜ | ⬜ | ⬜ | ✅ | N/A | N/A | N/A |
 | V083 | Fix retired model on ICHRA_DESIGN_ADVISOR (chatbot_skill.model -> claude-sonnet-5, max_tokens -> 3072) | ⬜ | ⬜ | ⬜ | ✅ | N/A | N/A | N/A |
-| V084 | ZIP to county crosswalk table for T74 ZIP intake (zip_county; CHAR(5) zip, composite PK, no FK to county_reference) | ⬜ | ⬜ | ⬜ | ⬜ | N/A | N/A | N/A |
-| V085 | Texas ZIP to county crosswalk data — 2,894 rows from the Census 2020 ZCTA-county relationship file | ⬜ | ⬜ | ⬜ | ⬜ | N/A | N/A | N/A |
+| V084 | ZIP to county crosswalk table for T74 ZIP intake (zip_county; CHAR(5) zip, composite PK, no FK to county_reference) | ⬜ | ⬜ | ⬜ | ✅ | N/A | N/A | N/A |
+| V085 | Texas ZIP to county crosswalk data — 2,894 rows from the Census 2020 ZCTA-county relationship file | ⬜ | ⬜ | ⬜ | ✅ | N/A | N/A | N/A |
 
 **Production column reconciled 2026-07-30** against a live, read-only `schema_version` probe run
 directly against the production database — that probe is the source of truth for the corrections
@@ -200,13 +200,20 @@ follow-up task.** Noticing the gap and deferring it is the same outcome as not n
 
 `beta_ssa (work)`, `beta_ssa (home)` and `dev_ssa` remain ⬜ for V079–V083 and were not re-probed.
 
-**V084/V085 authored 2026-08-01 — unapplied everywhere, and that is their true state, not a stale
-cell.** Both are ⬜ in every column because neither has been run against any database, including local.
-They are the data layer for T74 ZIP intake; nothing reads `zip_county` yet (the servlet and JSP are a
-separate run), so applying them changes no behaviour and can happen on any release. **V085 is 89 KB** —
-comfortably attachable to a GitHub release by hand, unlike a national build of the same table would be.
-Per the maintenance note at the top of this file: **flip these two Production cells as part of landing
-the deploy, not afterwards.**
+~~**V084/V085 authored 2026-08-01 — unapplied everywhere, and that is their true state, not a stale
+cell.** Both are ⬜ in every column because neither has been run against any database, including local.~~
+**Superseded 2026-08-01, same day, end of session.** That statement was written from inside the Claude
+Code container, which has no database connection at all — "never run against any database" was true of
+the container and false of the system, the same shape of error as R1/R5/the coverage mismatch earlier
+this session: correct about what was examined, wrong about the whole. **Both migrations shipped in
+release `v0.85.00` and are applied on Production**, confirmed behaviourally by a role-2 agent's runtime
+walk the same session: ZIP `75482` resolved to Hopkins County TX and populated the dropdown; ZIP `75009`
+rendered the two-county chooser (Collin/Denton, land-area ordered); ZIP `90210` correctly missed with the
+Texas-only coverage message. None of that is possible against an empty `zip_county` table. Production
+cells corrected to ✅ above. `beta_ssa (work)`, `beta_ssa (home)` and `dev_ssa` remain ⬜ and
+were not probed — this correction rests on production behavioural evidence only, per the same standard
+the V077/V078 and V080/V082 corrections above used. **V085 is 89 KB** — comfortably attachable to a
+GitHub release by hand, unlike a national build of the same table would be.
 
 ## Notes
 
