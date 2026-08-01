@@ -122,6 +122,23 @@ entry was failing in production for the intended audience. Nothing below is asse
 | 11 | Open the chat widget, ask *"Does my client's dental plan kill the QSEHRA?"* | a cited answer, no 404 | no widget at all → the navbar gate; a 404 → a retired model string |
 | 12 | Run **Illustrate** once more, then check `illustration_log` | a new row, `opportunity_id` **NULL** | *expected* — G4; NULL is the only value the UI can produce |
 
+### One-surface pass — added 2026-08-01 after prompt K
+
+⚠️ **The Range / Age Band toggle no longer exists.** Any earlier step that says "click Age Band in the
+toolbar" is superseded by K1–K4 below. `mode=` URLs still work and K5/K6 check that.
+
+| # | Do | Look at | Fails if |
+|---|---|---|---|
+| **K1** | Open `/Illustration` with no parameters | **Eligible Employees**, and an accented **+ Add age band**. **No** Range/Age Band toggle, **no** contribution or basis fields | the toggle is still there, or contribution/basis show with zero bands — they mean nothing without a band to apply them to |
+| **K2** | ⭐ Look at the form for five seconds without being told | **you can see that more detail is available** — "+ Add age band" reads as an offer | you cannot. The tiering is then invisible and the run achieved nothing — the same failure as the slider nobody noticed |
+| **K3** | County + headcount only → **Illustrate** | the range output, exactly as `mode=RANGE` always gave | anything differs from the old range result |
+| **K4** | ⭐ Click **+ Add age band**, fill it, **Illustrate** | **Eligible Employees disappears**, contribution and basis appear, per-band output renders. **ZIP and county survived** | the ZIP or county blanked (**W13-R**), or it came back as a range — mode derivation failed |
+| **K5** | Open `Illustration?mode=AGE_BAND&countyFips=48223&planYear=2026` | one starter age row, contribution and basis visible — the hub's card behaviour, unchanged | it opens as a range. **The hub cards ride on this** |
+| **K6** | Open `Illustration?mode=RANGE&countyFips=48223&headcount=3&planYear=2026` | the range result, unchanged | it derives AGE_BAND, or the explicit parameter is ignored |
+| **K7** | Add a band, then remove it, then **Illustrate** | back to range output, Eligible Employees visible again | contribution/basis linger, or it still computes per-band |
+| **K8** | Look at every input's greyed hint text | ZIP `#####`, Income `$/yr`, **Count shows a real black `1`** | ⚠️ any hint could be read as an entered value (**W15**) — count especially: entered and assumed must never look alike |
+| **K9** | Clear a count, **Illustrate**, read the URL | the box was pre-filled `1`, so this is a deliberate blank; result treats it as 1 | you cannot tell from the screen whether a band counted 1 or 8 |
+
 ### Layout pass — added 2026-08-01 after prompt J
 
 ⚠️ **Prompt J is the largest visual change this file has taken, and its own verification was
@@ -139,7 +156,7 @@ only the new steps.
 | **L6** | Press **+ Add age band** repeatedly | it stops at **six** and says so | it allows a seventh. Rows 7+ are silently dropped from the proposal snapshot, because `proposalBuilder.jsp` echoes exactly six pairs |
 | **L7** | Set basis **None**, then **FPL Safe Harbor** | **no Income fields** in either | income fields shown — they are only consumed by the INCOME basis (**W8**) |
 | **L8** | Set basis **Entered Income** | Income appears on every row; switch away and back — **values survive** | fields vanish permanently or lose what was typed |
-| **L9** | Toggle **Range ↔ Age Band** with a ZIP entered | the **ZIP is still in the field** (**W13**) | it blanks — county and headcount carry but ZIP does not |
+| ~~**L9**~~ | ~~Toggle Range ↔ Age Band with a ZIP entered~~ | **Superseded by K4/K7** — the toggle no longer exists, so there is nothing to lose state across. W13-R is fixed by construction | — |
 | **L10** | Tap the **ⓘ** beside Employer Monthly Contribution, then beside Affordability Basis | each opens **on tap**, and says what the input *is* and what it *changes* | it needs a hover (does not exist on a phone), or ⚠️ **either text suggests a value, a typical figure or a starting point** — that is steering an input |
 
 #### Mobile pass — run on a phone, not a narrowed desktop window
@@ -153,6 +170,9 @@ only the new steps.
 | **M5** | Look at the slider track | the **flip marks are still there**; their "age N" labels may be dropped | the marks are gone — they are what makes the money moment visible before anything is dragged. Labels degrade; marks do not |
 | **M6** | Tap both **ⓘ** buttons | both open and are readable | either needs hover, or opens off-screen |
 | **M7** | Scroll the whole page top to bottom | it scrolls **once**, normally | it scrolls inside a box inside a box, or the bottom is unreachable — the `100vh` shell (**T78**) |
+| **M8** | Look at the slider on a phone | the track is **full width**, with the value **beneath** it | the track is ~60% wide with the value pinned right, compressing the ticks and shortening the usable drag (**M2**) |
+| **M9** | Compare the card edges with the hub's | the input and result cards use the width the hub's cards do | they sit inset while the hub's run edge to edge (**M4**) |
+| **M10** | Scroll to the affordability table with the chat bubble on screen | ⚠️ *expected to still fail* — the bubble covers the last column, including the verdict | **logged, not fixed: the widget is outside the ICHRA fence (T97)** |
 
 ### `ichra_demo_path_role_walk.md` — corrections applied
 
@@ -185,6 +205,36 @@ documents**, which are agent-first, against them. Deciding documents: `plus_tier
 > documents**. Everything marked **[K 8/1]** comes from **Kevin's direct account of how agents work**,
 > given conversationally on 2026-08-01 — a *better* source about agent behaviour than any internal
 > document, and a *weaker* one about what the code does. Nothing marked [K 8/1] is a document citation.
+
+#### ⭐ Decision, 2026-08-01: one analysis surface, progressive by input fidelity **[K 8/1]**
+
+> *"Steps 1, 2 and 3 are really 3 versions of the same thing — the only difference is level of detail
+> available… pre-sale it will be done once in whatever the most detail they have available at the time.
+> The '3 step' thing is a bit confusing."*
+
+**The code already agreed.** All three hub cards were `/Illustration` with a different `mode`. This is
+the fidelity-tier model below surfacing on its own — the tiers were being presented as a sequence.
+
+**The structure is progressive, not sequential.** The agent enters what he has; the output grows:
+
+| Input supplied | Output |
+|---|---|
+| ZIP/county + headcount | Premium range |
+| + age bands | Per-employee net cost by band |
+| + contribution | Slider, group net, employer outlay |
+| + affordability basis | Flip points and verdicts |
+
+Shipped `2445edb`: the Range/Age Band toggle is gone, one form grows instead of switching, and `mode`
+survives as a URL parameter — **honoured verbatim when present, derived only when absent**. The hub's
+cards keep working unchanged; consolidating them is a separate run.
+
+⭐ **This dissolved T59.** *"Affordability has no URL of its own"* was logged as a defect. It was never
+one: **affordability is a section that appears when a basis is chosen, not a step with an address.** The
+defect existed only inside the three-step framing, and the framing was the error.
+
+⚠️ **The "final detailed report just before close" is a different artifact** — that is the proposal
+(**N12 / T81**), and this reframing makes the boundary between pre-sale analysis and the proposal
+*cleaner*: analysis is one surface at whatever fidelity is available, the proposal is the thing you send.
 
 #### The shape, per Kevin — this supersedes the eight-stage ordering below **[K 8/1]**
 
