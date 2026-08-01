@@ -1688,6 +1688,26 @@
         if (zip) zip.focus();
     });
 
+    /* K3-d — a stale result must not survive an edit.
+
+       W1 already did this for the ZIP field. It is the same defect for every other input:
+       open Edit, change the contribution or an age, and the table below still shows the
+       previous answer while the form now describes a different question. The numbers are
+       correct for inputs the agent has moved on from, which is exactly what made W1
+       dangerous.
+
+       Scoped to the form deliberately. The slider lives in the results card, OUTSIDE the
+       form, so dragging it does not trip this -- verified by position: the form closes
+       well before the slider is rendered. Clicking Edit alone does not trip it either;
+       only an actual change does. */
+    var results = document.getElementById('illustrationResults');
+    var form = card.querySelector('form');
+    if (results && form) {
+        var clearResults = function () { results.style.display = 'none'; };
+        form.addEventListener('input', clearResults);
+        form.addEventListener('change', clearResults);
+    }
+
     describe();
 })();
 
