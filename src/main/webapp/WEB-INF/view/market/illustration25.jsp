@@ -363,13 +363,40 @@
                                         Maximum ${ageBandMaxRows} age bands.
                                     </span>
                                 </div>
+                                <%-- W9 — the two inputs an agent has to explain out loud to an
+                                     employer while looking at them.
+
+                                     ⚠️ Factual only: what the input is and what it changes. NO
+                                     guidance on what to choose — not a typical value, not a
+                                     starting point, not a range, not a "most employers". The
+                                     no-steering boundary applies to inputs exactly as it does to
+                                     outputs, and a suggested contribution is a recommended
+                                     contribution however it is phrased.
+
+                                     Triggered by click/focus rather than hover: a hover-only
+                                     tooltip does not exist on a phone, which is the device this
+                                     surface is actually used on. --%>
                                 <div class="col-auto">
-                                    <label class="form-label mb-1" for="contribution">Employer Monthly Contribution</label>
+                                    <label class="form-label mb-1" for="contribution">Employer Monthly Contribution
+                                        <button type="button" class="btn btn-link p-0 ms-1 align-baseline ichra-info"
+                                                style="font-size:0.75rem; text-decoration:none;"
+                                                data-bs-toggle="popover" data-bs-trigger="focus" data-bs-placement="top"
+                                                data-bs-title="Employer Monthly Contribution"
+                                                data-bs-content="The amount the employer puts toward each employee's individual premium every month. It lowers what the employee pays and raises the employer's total outlay. It is also what the affordability threshold is measured against."
+                                                aria-label="About Employer Monthly Contribution"><i class="bi bi-info-circle"></i></button>
+                                    </label>
                                     <input type="number" step="0.01" class="form-control form-control-sm" id="contribution" name="contribution"
                                            min="0" value="${submittedContribution}" style="max-width:170px;">
                                 </div>
                                 <div class="col-auto">
-                                    <label class="form-label mb-1" for="affordabilityBasis">Affordability Basis</label>
+                                    <label class="form-label mb-1" for="affordabilityBasis">Affordability Basis
+                                        <button type="button" class="btn btn-link p-0 ms-1 align-baseline ichra-info"
+                                                style="font-size:0.75rem; text-decoration:none;"
+                                                data-bs-toggle="popover" data-bs-trigger="focus" data-bs-placement="top"
+                                                data-bs-title="Affordability Basis"
+                                                data-bs-content="Which income figure the affordability threshold is calculated from. FPL Safe Harbor uses the federal poverty guideline, so no employee income is needed. Entered Income uses an income you type for each age band. None hides the affordability section entirely."
+                                                aria-label="About Affordability Basis"><i class="bi bi-info-circle"></i></button>
+                                    </label>
                                     <select class="form-select form-select-sm" id="affordabilityBasis" name="affordabilityBasis" style="max-width:190px;">
                                         <option value="" ${empty affordabilityBasis ? 'selected' : ''}>None</option>
                                         <option value="FPL" ${affordabilityBasis == 'FPL' ? 'selected' : ''}>FPL Safe Harbor</option>
@@ -1477,6 +1504,16 @@
     });
 
     describe();
+})();
+
+/* W9 — initialise the two input popovers. Bootstrap 5.3.3 is already loaded by
+   css-js.jsp; popovers are opt-in and need this call. Guarded so a missing bundle
+   degrades to a plain button rather than a script error taking the slider with it. */
+(function () {
+    if (!window.bootstrap || !window.bootstrap.Popover) return;
+    document.querySelectorAll('.ichra-info').forEach(function (el) {
+        new window.bootstrap.Popover(el);
+    });
 })();
 </script>
 </body>
