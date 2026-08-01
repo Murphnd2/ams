@@ -880,6 +880,56 @@ public abstract class DatabaseInitializer {
             createConstant(em,"MASTER_REGISTRY_URL","https://superiorstate.net");
         if(getConstantByName(em,"USE_CUSTOM_LANDING")==null)
             createConstant(em,"USE_CUSTOM_LANDING","false");
+
+        addIchraAffordabilityConstants(em);
+    }
+
+    /**
+     * ICHRA affordability reference values for the plan years this build can illustrate
+     * (build-plan item 9). Read by {@code IllustrationServlet.computeAffordability} and
+     * passed straight into {@link net.superiorstate.ams.data.util.AffordabilityCalculator};
+     * absent, that method fails closed and the affordability section reports itself
+     * unconfigured rather than defaulting to anything.
+     * <p>
+     * Idempotent in the same shape as every other constant here — a name that already
+     * exists is left exactly as it is, never overwritten. That matters more for these two
+     * than for most: an installation may legitimately have been hand-corrected, and an
+     * overwriting seed would silently undo it on the next initialization.
+     * <p>
+     * <b>⚠️ This does not reach an existing installation.</b> {@code addPspConstants} runs
+     * only from {@code initializeDataBase}, which is the one-time, key-gated fresh-install
+     * path in {@code InitializeDataBase.doPost} — nothing re-runs it against a database
+     * that is already initialized. Production therefore still needs these two rows added
+     * by hand (deployment item, not a migration: {@code constant} rows are configuration).
+     * What this block buys is that every installation created from here forward has them,
+     * and that the correct values are recorded in code rather than in someone's notes.
+     * <p>
+     * <b>ICHRA_AFFORDABILITY_PCT_2026 = 0.0996.</b> The IRS applicable percentage for plan
+     * years beginning in 2026 is 9.96% (Rev. Proc. 2025-25, 2025-07-18), stored as a
+     * decimal fraction because {@code AffordabilityCalculator.flipContribution} multiplies
+     * it directly by monthly income and documents its parameter as "a decimal (e.g. 0.0883
+     * for 8.83%)". AMS has no other percentage-valued constant to copy a convention from —
+     * the calculator's contract is the whole authority here. Storing {@code 9.96} would not
+     * throw; it would make {@code flipContribution} negative for every employee, clamp to
+     * zero, and report every offer affordable at any contribution — wrong in the dangerous
+     * direction, and silently.
+     * <p>
+     * <b>FPL_ANNUAL_2026 = 15960.</b> The 2026 HHS poverty guideline for a one-person
+     * household, 48 contiguous states and DC. This value feeds the <i>employer-side FPL
+     * affordability safe harbor</i> — the only thing that reads it is the {@code "FPL"}
+     * basis branch, which passes it as the reference income for the offer's affordability
+     * — so the 2026 table is the correct one (an employer may use the guideline in effect
+     * within six months before the first day of the plan year). It is deliberately
+     * <b>not</b> the $15,650 figure from the 2025 table, which is what the premium-tax-credit
+     * computation would require under 26 CFR §1.36B-1(h); AMS computes no PTC figure of any
+     * kind and must not start here. See {@code legal_assumptions.md} LA-14, which exists
+     * because the constant's <i>name</i> does not record which of the two it is.
+     */
+    private static void addIchraAffordabilityConstants(EntityManager em){
+        if(getConstantByName(em,"ICHRA_AFFORDABILITY_PCT_2026")==null)
+            createConstant(em,"ICHRA_AFFORDABILITY_PCT_2026","0.0996");
+        if(getConstantByName(em,"FPL_ANNUAL_2026")==null)
+            createConstant(em,"FPL_ANNUAL_2026","15960");
     }
 
     private static void addBpoConstants(EntityManager em) {

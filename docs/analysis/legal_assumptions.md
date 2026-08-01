@@ -836,6 +836,67 @@ disclosure, not the feature.
 
 ---
 
+### LA-14 — `FPL_ANNUAL_2026` holds the employer safe-harbor poverty line, not the PTC one
+
+**Assumption.** The federal poverty guideline stored under `FPL_ANNUAL_2026` is the figure the
+**employer-side ICHRA affordability safe harbor** uses — the **2026** table, $15,960 for a one-person
+household in the 48 contiguous states and DC. It is **not** the figure the premium-tax-credit
+computation uses for 2026 coverage, which is the **2025** table, $15,650.
+
+**Basis — unusually strong for this register, and the weakness is elsewhere.** Two things are cited,
+not reasoned: the applicable percentage of **9.96%** for plan years beginning in 2026 (IRS Rev. Proc.
+2025-25, 2025-07-18 — up from 9.02% in 2025, the highest it has been), and the **2026 HHS poverty
+guidelines** effective January 2026. The safe harbor permits an employer to use the guideline in effect
+**within six months before the first day of the plan year**, which for the reference case (Sandoval,
+9/1/26 effective) makes the 2026 table available and correct. The divergent figure comes from
+26 CFR §1.36B-1(h), which fixes the poverty line for PTC purposes at the one in effect on the first day
+of the open enrollment period preceding the taxable year — the 2025 table for 2026 coverage.
+
+**So this entry is not about sourcing. It is about naming.** Both figures are published, both are
+correct for their own computation, and the constant's name — `FPL_ANNUAL_2026` — records the *year* and
+not the *computation*. A future reader adding a PTC feature would find a plausibly-named constant
+holding the wrong number for their purpose.
+
+**Design choice.** Seeded as the safe-harbor figure because the safe harbor is the only thing that reads
+it: `IllustrationServlet.computeAffordability`'s `"FPL"` branch passes it as the reference income into
+`AffordabilityCalculator.flipContribution`, which answers *"at what employer contribution does this
+offer become affordable"* — an employer-side question. **AMS computes no premium-tax-credit dollar
+figure anywhere, deliberately** (LA-12, and the item-9 boundary that PTC eligibility is shown only as
+kept-or-lost, never as an amount). The $15,650 figure has no reader in this codebase and was not seeded.
+
+⚠️ **A second naming assumption, recorded and deliberately not fixed.** Putting the plan year inside the
+constant's *name* means 2027 requires a new constant **and a new reader** — `IllustrationServlet` builds
+the lookup key by string concatenation on the selected plan year, so a 2027 illustration silently finds
+nothing and reports itself unconfigured. That is the fail-closed direction and it is not a defect this
+run is fixing; it is a design question for whoever owns the constants convention.
+
+**Risk if wrong.** If the two figures were transposed, every FPL-basis flip contribution would be
+computed from an income $310/yr too low — shifting each threshold by about **$2.57/month** in the
+direction that makes an offer look *less* affordable than it is. That is the **safe** direction (LA-12's
+dangerous direction is understatement of the threshold), and the magnitude is inside the "estimate, not
+an exact figure" caveat the page already carries. The real risk is the naming one: a later feature
+reading this constant for a PTC purpose and getting a silently wrong answer.
+
+**Reversal cost.** ⭐ **Trivial — a one-row `UPDATE`, or a two-line edit to
+`DatabaseInitializer.addIchraAffordabilityConstants`.** Nothing derived from these values is persisted:
+no affordability figure is written to `illustration_log`, to `proposal_ichra_snapshot` (which is
+structurally incapable of carrying one), or to any other row. Correcting the constant corrects every
+future computation immediately and there is no back-catalogue to restate. **This is among the cheapest
+entries in the register to be wrong about** — which is precisely why it should be checked before the
+values get copied somewhere that does persist.
+
+**Confirm before.** (1) Any feature that computes a **premium tax credit amount** — that reader needs
+the 2025 table and must not reuse this constant. (2) Adding plan year **2027**, which needs both a new
+constant pair and a check that the applicable percentage and guideline have been re-published. (3) Any
+employer whose plan year begins such that the six-month lookback makes a different guideline table the
+correct one.
+
+**Status.** Assumed — 2026-08-01. Seeded in `DatabaseInitializer` the same day. ⚠️ **The seed does not
+reach an already-initialized installation**, so production remains unverified until the click-script's
+step 10 is run (T65).
+
+---
+
 ## Candidates considered and not adopted
 
 Recorded so the next reader knows they were seen and declined, rather than missed. **None of these
