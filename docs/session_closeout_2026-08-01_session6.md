@@ -1458,3 +1458,151 @@ list one `.java`, one `.jsp` and two `.md` paths.
 
 **Carried forward, still unclosed:** nobody has asked Forrest what he would want a quoting tool to do,
 and the two SWBD emails have still never been sent.
+
+---
+
+# Session 6, prompt K2 — tier repair
+
+## ⭐ K3-b's actual cause: one clause, and a signal I computed and then ignored
+
+**One band entered, two rendered, and the headcount was the sum of both.** The row-render test read:
+
+```jsp
+not empty submittedAges[i-1] or (i == 1 and mode == 'AGE_BAND')
+```
+
+That second clause force-rendered a **blank row 1** whenever the mode was AGE_BAND. It was harmless for
+as long as `mode` could only arrive from a URL. **Prompt K made `mode` derived** — AGE_BAND whenever any
+age band is present — so the clause began firing on every submit that carried a band *anywhere*. Leave
+row 1 blank, put 40 in row 2, submit: the server rendered the forced blank row 1 **and** the real row 2.
+
+⚠️ **The signal needed to tell those two cases apart already existed and I did not use it.** Prompt K
+added `modeExplicit` to the servlet for precisely this distinction — "the URL asked for AGE_BAND" versus
+"we inferred it" — and then wired the JSP to `mode`. The fix is that one word.
+
+A row now renders when it carries data, full stop, plus row 1 when the URL asked for AGE_BAND — the hub
+card and the JavaScript-off path, never a form submit. **Consequence, and it is the correct one: a blank
+row does not survive a submit**, because a blank band is not a band; `renumber()` closes the gap on the
+next add. **K-a fell out of the same change** — tier 1 now opens with zero rows, which is what the label
+above it has claimed all along.
+
+## ⚠️ K3-a came from an imprecise instruction, not an implementation error
+
+Prompt K said *"progressive means which inputs are shown and which output sections render."* **That was
+too loose.** It permitted input visibility to key off submission state, and that is exactly what
+happened: contribution was mandatory, so a band with no contribution errored; `mode` had already flipped
+to AGE_BAND, so the contribution and basis fields appeared *on the error render*. The button looked like
+it had revealed inputs rather than computed. It had computed nothing and said so in a message that was
+easy to miss above two fields that had just appeared.
+
+**This is the fifth time this session that a prompt-level imprecision produced a defect**, and the
+pattern is now more informative than any individual instance:
+
+| # | The instruction | What it produced |
+|---|---|---|
+| 1 | *"`countyFips` always wins"* | R1 — a stale county silently overrode a typed ZIP. Wrong rates |
+| 2 | *"`census.gov` is not reachable"* | Would have sent me to a GitHub mirror instead of the primary source |
+| 3 | `?countyFips=<Hopkins>` | A literal-paste artefact that misdiagnosed a real neighbouring defect |
+| 4 | *"removing it fixes both"* (W4) | Would have deleted the only signal for a single unpriced county |
+| 5 | *"which inputs are shown"* | K3-a — the button revealed inputs instead of computing |
+
+**Every one was precise, defensible, and wrong at an edge the sentence did not contemplate.** These are
+not careless instructions; they are instructions written from the code's shape rather than from the
+interaction's shape, which is the same failure mode as `code-verified`.
+
+**The corrected rule, now recorded in the click-script as T9:** Illustrate always computes — one click,
+one result, never reveals, never toggles, never needs a second press. Output sections are progressive.
+An input may show or hide on another input's **current value**, evaluated immediately (income↔basis, the
+verified pattern). **No input's visibility may depend on whether the form has been submitted.**
+
+## Shipped
+
+| Hash | What |
+|---|---|
+| `f651633` | **K3-b** + **K-a** — stop force-rendering a blank first band |
+| `77af9d4` | **K3-a / K3-c** — contribution optional, so Illustrate always computes |
+| `d016fde` | **K3-d** — a stale result must not survive an edit |
+| `130c791` | Click-script T1–T10; T99, T100, T101 |
+
+`./mvnw compile` clean before each commit.
+
+## Anchors
+
+All single-occurrence, verified before editing.
+
+| Change | Anchor | Line |
+|---|---|---|
+| K3-b | `i == 1 and mode ==` | 408 |
+| K3-c parse | `Enter a valid employer monthly contribution` | 382 |
+| K3-c net calc | `netPerEmployee = floorPremium.subtract` | 425 |
+| K3-c verdict | `AffordabilityCalculator.isAffordable` | 513 |
+| K3-c slider card | `id="contribSliderCard"` | 715 |
+| K3-d | `editBtn.addEventListener` (W14 block) | — |
+
+## What tier 2 renders now
+
+**Bands with no contribution compute.** Age, Count, Lowest Bronze — and nothing that needs a
+contribution:
+
+- **No** Net/Employee or Band Net Total columns. **Absent, not blank** — an empty currency cell reads as
+  zero, which is a claim.
+- **No** group net, **no** employer outlay.
+- **No slider card.** Absent rather than parked at $0, which would assert the employer contributes
+  nothing.
+- A footnote states what the table *is*, so the missing columns read as a boundary rather than an
+  omission.
+- **Affordability, if a basis is chosen, still renders its thresholds.** Flip points do not depend on the
+  contribution — they are where the verdict *would* change, a fact about the plan year and the age. Only
+  the verdict needs one, so that cell says *"Enter a contribution to see the verdict"* rather than
+  picking a side. `isAffordable` is unchanged and simply not called.
+
+## Decisions made
+
+1. **Malformed contribution is still an error.** Blank is an absence; `"abc"` is a typo. Silently
+   treating a typo as "not supplied" would compute a different answer than the agent asked for.
+2. **Columns absent rather than blank**, throughout. This surface has now produced two defects
+   (`count1=` empty computing as 1; the derived ZIP in the log) whose shape was *a value that looked
+   like it came from somewhere it didn't*.
+3. **K3-d scoped to the form**, not the page. The slider lives in the results card, outside the form —
+   verified by position, form closes at 531, slider renders at 734 — so dragging it does not clear the
+   results it exists to update.
+4. **Clicking Edit does not clear results**; only an actual change does. Opening the form to look at
+   what you submitted is not a new question.
+
+## New assumptions, and reversal cost
+
+| Assumption | Reversal cost |
+|---|---|
+| A blank row should not survive a submit | **Free** — one EL clause. The alternative is K3-b |
+| Tier 2 is a real destination, not a way-station | **Free** to revert, but reverting reinstates a button that refuses to compute |
+| Flip points without a verdict are useful rather than confusing | **Free** — one `c:when`. ⚠️ The riskier reading is that a threshold with no verdict invites the agent to supply the verdict himself; T5 is where that would show |
+| Any form change invalidates the result | **Free.** ⚠️ Watch for it firing on a control it shouldn't — the slider is the one that would hurt, and it is outside the form |
+
+## Fenced behaviours: verified and not
+
+**Verified (structure only):** JSTL balance 25/25 `c:if`, 24/24 `c:choose`, `<div>` 74/74, 3 tables,
+both banners present in both branches, `./mvnw compile` clean, slider confirmed outside the form by
+line position, every query parameter name unchanged.
+
+**Not verified — all behavioural**, including every item on the fence. ⚠️ **Two of this run's three fixes
+alter code paths that other fenced behaviours run through**: the row-render condition is the same one the
+repeater and the collapsed summary read, and the contribution branch now gates the slider card that
+carries the flip ticks. **The fence is not verified until T1–T10, K1–K9, L1–L10 and M1–M10 run.**
+
+## SQL close-out audit
+
+**This run was forbidden from producing SQL and produced none.** No `.sql` file created, modified or
+deleted; no migration; no schema change. `ls docs/migrations/` unchanged at **V085**. The four commits
+list one `.java`, one `.jsp` and two `.md` paths.
+
+## Next
+
+1. **Walk T1–T10 first.** **T6** (count the rows) and **T9** (Illustrate twice, same result) are the two
+   that matter — they are the regression tests for the two defects that mattered.
+2. **Prompt L** — the hub cards, now that the surface behind them is one thing and computes at every
+   tier.
+3. **Rebuild the WAR.** The artefact from earlier today predates prompts G through K2.
+4. Unchanged: **T76** (seam ready), T89, T96, T97, T98, the three SWBD emails, T83.
+
+**Carried forward, still unclosed:** nobody has asked Forrest what he would want a quoting tool to do,
+and the two SWBD emails have still never been sent.
