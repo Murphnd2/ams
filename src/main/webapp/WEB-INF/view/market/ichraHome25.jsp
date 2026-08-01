@@ -60,8 +60,9 @@
         }
         .hub-badge.live { background: #d1e7dd; color: #0f5132; }
         .hub-badge.coming { background: #e9ecef; color: #6c757d; }
-        /* G3: the grid was unordered and nothing said which card to open first. The step
-           number is presentation only — no card's behaviour, gate or href depends on it. */
+        /* S7-C: category tag only ("Separate analysis", "Admin", "Any time") — no card's
+           behaviour, gate or href depends on it. The numbered-step usage (Step 1/2/3) is
+           gone with the three-card illustration it labelled. */
         .hub-card .hub-step {
             font-size: 0.65rem; font-weight: 700; color: #6c757d;
             letter-spacing: 0.06em; text-transform: uppercase;
@@ -82,53 +83,28 @@
 
     <div class="ichra-body">
 
-        <%-- G3: the cards render in the order of swbd_ichra_build_plan.md §1's walkthrough —
-             market range, then age bands, then the flip point — because before this they were
-             an unordered grid with no "start here", and for a PSP admin the rate-cache admin
-             card sat in position two. Ordering and numbering only; no gate, href or behaviour
-             changed, and nothing here depends on the numbers being correct. --%>
-        <div class="hub-lead">Start at step 1 and work down. Each step stands alone — nothing carries state between them.</div>
+        <%-- S7-C: the illustration used to be three cards (market range / age bands / flip
+             point) because the page behind them was three modes with a toggle. It is now one
+             progressive form — Range/Age Band toggle gone, the form grows from whatever the
+             agent supplies — so three cards pointed at what is now one destination, two of
+             them at the exact same servlet with only a query string differing. Collapsed to
+             one card, bare `/Illustration`, no parameters: the honest entry point for a
+             surface with no steps to number. The step badges and the "start at step 1"
+             framing are gone with them — nothing here implies an order any more. --%>
+        <div class="hub-lead">ICHRA tools. Each one stands on its own — nothing carries state between them.</div>
 
         <div class="hub-grid">
 
             <a class="hub-card" href="Illustration">
-                <span class="hub-step">Step 1</span>
                 <span class="hub-badge live">Live</span>
                 <div class="hub-icon"><i class="bi bi-calculator"></i></div>
-                <div class="hub-title">Rating-Area Illustration</div>
-                <div class="hub-desc">Indicative market premium range by county and headcount.</div>
+                <div class="hub-title">ICHRA Illustration</div>
+                <div class="hub-desc">Market premiums and affordability, as deep as the data on hand allows. A county and headcount give a market range; adding age bands gives per-employee cost; adding a contribution gives net cost and the flip-point slider; adding an affordability basis gives the threshold check.</div>
             </a>
 
-            <a class="hub-card" href="Illustration?mode=AGE_BAND">
-                <span class="hub-step">Step 2</span>
-                <span class="hub-badge live">Live</span>
-                <div class="hub-icon"><i class="bi bi-bar-chart-steps"></i></div>
-                <div class="hub-title">Age-Band Net Cost</div>
-                <div class="hub-desc">Per-employee net cost after contribution, by age band.</div>
-            </a>
-
-            <%-- T59: this card and the one above pointed at the same URL, so the affordability
-                 view — which is a sub-mode of AGE_BAND, not a mode of its own — had no entry
-                 point of any kind. It always had a URL: affordabilityBasis is a first-class
-                 request parameter (IllustrationServlet:238) and illustration25.jsp:160-162
-                 pre-selects the dropdown from it. Nothing linked to it.
-
-                 FPL, not INCOME: the FPL safe harbor needs only the FPL_ANNUAL_<year> constant,
-                 while the entered-income basis requires an income on EVERY census row and
-                 rejects the submit otherwise (IllustrationServlet:261-268). Landing a card
-                 named "Affordability Threshold" on a basis that errors on first submit is
-                 worse than landing on none. The agent can still switch bases on the page. --%>
-            <a class="hub-card" href="Illustration?mode=AGE_BAND&amp;affordabilityBasis=FPL">
-                <span class="hub-step">Step 3</span>
-                <span class="hub-badge live">Live</span>
-                <div class="hub-icon"><i class="bi bi-shield-check"></i></div>
-                <div class="hub-title">Affordability Threshold</div>
-                <div class="hub-desc">Employer- and agent-facing affordability check against the benchmark plan.</div>
-            </a>
-
-            <%-- Not a step in the walkthrough — a separate analysis for a group that already
-                 has a plan, entered from scratch. Labelled so, rather than numbered, because
-                 no census carries into it from steps 1-3. --%>
+            <%-- Not part of the illustration — a separate analysis for a group that already
+                 has a plan, entered from scratch. No census carries into it from the
+                 illustration above. --%>
             <a class="hub-card" href="GroupConversion">
                 <span class="hub-step">Separate analysis</span>
                 <span class="hub-badge live">Live</span>
@@ -166,10 +142,10 @@
                 </c:otherwise>
             </c:choose>
 
-            <%-- Last, and outside the numbered sequence: this is operator plumbing, not a step
-                 an agent walks. PSP-admin only, matching RateCacheAdmin.isAuthorized — that
-                 servlet redirects any other role to "/", so rendering this card for an agency
-                 user is a dead click. --%>
+            <%-- Operator plumbing, not a tool an agent reaches for. PSP-admin only, matching
+                 RateCacheAdmin.isAuthorized — that servlet redirects any other role to "/",
+                 so rendering this card for an agency user is a dead click. Gating unchanged
+                 by this run — same session attribute, same servlet-side check. --%>
             <c:if test="${sessionScope.isPspAdmin}">
                 <a class="hub-card" href="RateCacheAdmin">
                     <span class="hub-step">Admin</span>
