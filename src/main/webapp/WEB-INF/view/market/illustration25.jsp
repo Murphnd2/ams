@@ -161,9 +161,9 @@
                  (3 lives, 3 different ages) and wrong quietly, which is worse than blank. --%>
             <div class="ms-auto d-flex gap-1">
                 <a class="btn btn-sm ${mode == 'RANGE' ? 'btn-primary' : 'btn-outline-secondary'}"
-                   href="Illustration?mode=RANGE&countyFips=${submittedCountyFips}&planYear=${selectedPlanYear}${not empty submittedTotalLives ? '&headcount='.concat(submittedTotalLives) : ''}${not empty opportunityId ? '&opportunityId='.concat(opportunityId) : ''}">Range</a>
+                   href="Illustration?mode=RANGE&countyFips=${submittedCountyFips}&planYear=${selectedPlanYear}${not empty submittedTotalLives ? '&headcount='.concat(submittedTotalLives) : ''}${not empty submittedZip ? '&zip='.concat(submittedZip) : ''}${not empty opportunityId ? '&opportunityId='.concat(opportunityId) : ''}">Range</a>
                 <a class="btn btn-sm ${mode == 'AGE_BAND' ? 'btn-primary' : 'btn-outline-secondary'}"
-                   href="Illustration?mode=AGE_BAND&countyFips=${submittedCountyFips}&planYear=${selectedPlanYear}${not empty opportunityId ? '&opportunityId='.concat(opportunityId) : ''}">Age Band</a>
+                   href="Illustration?mode=AGE_BAND&countyFips=${submittedCountyFips}&planYear=${selectedPlanYear}${not empty submittedZip ? '&zip='.concat(submittedZip) : ''}${not empty opportunityId ? '&opportunityId='.concat(opportunityId) : ''}">Age Band</a>
             </div>
         </c:if>
     </div>
