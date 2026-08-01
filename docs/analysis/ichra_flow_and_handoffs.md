@@ -206,8 +206,9 @@ provenance.
 
 #### Corrected ranking, 2026-08-01 (prompt D), six corrections applied **[K 8/1]**
 
-1. **T74 — ZIP intake.** Tier 1 *is* the motion's front door, and today it asks for a county. **This is
-   the next build; see §5.** Part 1 found it larger than prompt C claimed — the crosswalk does not exist.
+1. **T74 — ZIP intake.** Tier 1 *is* the motion's front door, and today it asks for a county. **Data
+   layer shipped 2026-08-01** (V084/V085 + resolver); **the servlet and JSP remain.** See §5. Prompt C
+   sized this as wiring; it was a data build, and the crosswalk had to be created.
 2. **T81 — the interactive employer proposal.** The proposal is the centre of the product, not its
    output. A **phase, not an item**; ships as a **sandbox first** (Part 5 decision) — render everything,
    store nothing.
@@ -258,16 +259,39 @@ Two tools sit on steps the agent does not perform in the motion as decided:
 
 ## §5 — Next build: ZIP intake
 
-⚠️ **There is no ZIP → county crosswalk in this repo, this schema, or the HealthSherpa API.** Part 1
-verified all three. `county_reference` is county → *one* representative ZIP (V076, PK `county_fips`),
-which cannot be reversed. **This build must create the crosswalk. Size it as a data build with a UI on
-top, not as wiring a dropdown to a text box.**
+> ✅ **Part 1 of this build shipped 2026-08-01** — V084 (table), V085 (2,894 Texas rows), `ZipCounty`,
+> `ZipCountyDAO`, `ZipCountyResolver`. **The data layer exists and nothing calls it yet, by design.**
+> The remaining work is the servlet and JSP — see "Still to build" at the end of this section.
 
-**The data.** A `zip → county_fips` table, many-to-many (a ZIP may span counties). Source is the same
-Census 2020 ZCTA-to-county relationship file V076 already used, via
-`docs/scripts/generate_county_reference.ps1` — Texas is ~2,600 ZCTAs against 254 counties. National
-reference data, not PSP-scoped, matching V074–V076's precedent. **A migration is required and is out of
-this run's scope** — this section specifies it, it does not author it.
+~~⚠️ **There is no ZIP → county crosswalk in this repo, this schema, or the HealthSherpa API.**~~ There
+was not; **there is now.** `county_reference` remains county → *one* representative ZIP (V076, PK
+`county_fips`) and still cannot be reversed — the crosswalk is a separate table.
+
+**The data — as built.** `zip_county` (V084): `zip CHAR(5)`, `county_fips CHAR(5)`, `land_area_ratio
+DECIMAL(7,6) NULL`, composite PK `(zip, county_fips)`, **no FK** (`county_reference` is Texas-only, so
+an FK would reject valid rows on the first out-of-state expansion). V085 seeds **Texas only**, per this
+section's own scope line.
+
+| Fact | Value |
+|---|---|
+| Source | US Census Bureau **2020 ZCTA-to-county relationship file**, fetched from `www2.census.gov` 2026-08-01. Public domain (17 U.S.C. 105). Same file V076 uses |
+| Rows / ZCTAs / counties | **2,894 / 1,992 / 254** — an exact 254-of-254 set match with `county_reference`, zero either way |
+| **ZIPs spanning >1 county** | **686 — 34% of Texas ZCTAs.** ⚠️ Disambiguation is the **common path**, not an edge case |
+| File size | 89 KB — attachable to a GitHub release by hand |
+
+⚠️ **The count in this section's earlier draft — "~2,600 ZCTAs" — was my estimate and was wrong. It is
+1,992.**
+
+⚠️ **ZCTA is not ZIP, and this reaches users.** ZCTAs approximate USPS ZIPs and omit those with no
+residential delivery area — PO-box-only and single-building ZIPs especially. **A valid USPS ZIP an agent
+types may simply not be here.** That is a *miss*, and the UI must say *"we don't have that ZIP, choose a
+county"* — **never "invalid ZIP"**. HUD's crosswalk is the better source (real USPS delivery data, and a
+residential *address* ratio rather than a land-area one); it was tried first on 2026-08-01 and could not
+be obtained — `huduser.gov` file paths return HTTP 202 with a zero-byte body, and its API returns 401
+without a registered token. Swapping to HUD later replaces V085's rows and changes nothing else.
+
+⚠️ **`land_area_ratio` is a share of land, not of people.** It orders the candidates a crossing ZIP
+offers. **It must never auto-select, and no figure shown to a user may derive from it.**
 
 **What the agent types.** A 5-digit ZIP, replacing the county dropdown as the primary input. The
 dropdown stays as a fallback and for the counties a ZIP cannot reach.
@@ -291,9 +315,26 @@ miss path as an honest message first; the warm trigger lands when a key does.**
 `county_fips`** before pricing, since that is the cache key. ⚠️ Rating-area dedupe is *not* available
 and must not be claimed: two counties in one rating area price identically but hold separate rows.
 
-**Files.** `IllustrationServlet` (parse + resolve), a new ICHRA-only `ZipCountyDAO`, the new entity,
-`illustration25.jsp` (ZIP box, disambiguation, resolved-county display). `GroupConversionServlet` and
-its JSP take the same treatment **only after** the illustration path is proven.
+**Files.** ~~`IllustrationServlet` (parse + resolve), a new ICHRA-only `ZipCountyDAO`, the new entity,
+`illustration25.jsp`~~ — split across two runs:
+
+| | Status |
+|---|---|
+| `docs/migrations/V084__zip_county_crosswalk.sql`, `V085__zip_county_crosswalk_tx.sql` | ✅ shipped `4f242af`, `2689d67` |
+| `docs/scripts/generate_zip_county.ps1` — deterministic regeneration, national expansion is `-State XX` | ✅ shipped `2689d67` |
+| `model/market/ZipCounty.java`, `data/dao/ZipCountyDAO.java`, `data/resolver/ZipCountyResolver.java` | ✅ shipped `d7cbc4f` |
+| `IllustrationServlet` (parse + resolve), `illustration25.jsp` (ZIP box, disambiguation, resolved-county display) | ⬜ **still to build** |
+| `GroupConversionServlet` + its JSP | ⬜ **only after** the illustration path is proven |
+
+**Still to build — the contract the UI codes against.** `ZipCountyResolver.resolve(em, zip)` returns a
+`Resolution` with three first-class outcomes and **no fourth**:
+
+- `isUnique()` → `getUnique()` gives the one county. Proceed; show its name so the agent sees the choice.
+- `isAmbiguous()` → `getCandidates()`, ordered most-land-first. **Ask. Never take element zero** —
+  `getUnique()` deliberately returns **null** here rather than a plausible guess.
+- `isEmpty()` → *"we don't have that ZIP, choose a county."* Not an error, not a validation failure.
+
+The resolver never throws, never reads the rate cache, and never warms anything (**T76**).
 
 **Constraints.** Gated by `IchraAccessResolver.isAvailable`, no new ungated path · no hardcoded LOS /
 ServiceItem / PlanType / ServiceModule / RateTable literal · **nothing persisted about any person** —
