@@ -95,7 +95,12 @@ entry was failing in production for the intended audience. Nothing below is asse
 | **4b** | Type a **crossing ZIP** (`75009` — Collin **and** Denton) and **Illustrate** | *"ZIP 75009 is in more than one county"* + a list of both. ⚠️ **Nothing pre-selected, no county marked likely or recommended** | one is auto-selected, pre-checked, or highlighted as the probable answer — **that is the failure this whole design exists to prevent**; a wrong county returns wrong rates that look exactly like right ones |
 | **4c** | Click one county in that list | ordinary results, and the **URL now carries `countyFips=`** so it is linkable and shareable | it stays on a `zip=` URL, or the result is not linkable |
 | **4d** | Type a ZIP that is **not in the crosswalk** (an out-of-state one, e.g. `90210`) and **Illustrate** | ⚠️ *"We don't have ZIP 90210 in our county lookup"* — naming **our** coverage gap and pointing at the county selector | it says **"invalid ZIP"** or anything implying the agent mistyped. The ZIP is real; the data is ours and it is incomplete. **An agent who thinks he mistyped retypes it three times** |
-| **4e** | Confirm the old path still works: open `Illustration?countyFips=48223&planYear=2026` directly | results, unaffected by any of the above | anything differs from before this change — `?countyFips=` is the contract the mode toggle, the hub cards and T59's fix all ride on |
+| **4e** | Confirm the old path still works: open `Illustration?countyFips=48223&planYear=2026` directly | the dropdown **pre-selects Hopkins**, plus the headcount error | the dropdown shows the placeholder — that would be a regression in the contract the mode toggle, the hub cards and T59's fix all ride on. *(Settled from code 2026-08-01: it does pre-select. `submittedCountyFips` is set unconditionally and the option tag selects on it.)* |
+| **4f** | ⭐ **The R1 case.** With **Hopkins already selected** from step 4a, type **`75009`** and blur | the county selection **clears**, then the two-county chooser appears | ⚠️ **Hopkins results appear.** That is R1 — a stale selection beating a typed ZIP, wrong rates indistinguishable from right ones. This is the single most important check on the page |
+| **4g** | Type a ZIP and **Tab out** — do not press Enter | it resolves on blur: dropdown fills, or chooser, or no-match. **No page reload, no validation error** | nothing happens until Enter, or Enter produces *"Enter a valid number of eligible employees"* — that is R2 |
+| **4h** | With a result or panel on screen, edit the ZIP | the panel and the county selection **clear immediately**, before any lookup returns | the old panel lingers (R4) |
+| **4i** | Hopkins selected, **blank headcount**, press Illustrate | the headcount error **only** | *"No rate data for this county yet"* also appears — that is R3, and it is the unwarmed-county message firing for a validation failure on a county that demonstrably has rates |
+| **4j** | Disable JavaScript, then repeat 4a / 4b / 4d | identical outcomes — resolution, chooser and no-match all still work | any of them stops working; the script is an enhancement, and the servlet resolves `?zip=` regardless |
 | 5 | Hopkins County, 3 lives, **Illustrate** | figures + "Source: production" | any red *Test-environment rates* banner — do not demo |
 | 6 | Click **Age Band** in the toolbar | county stays; **Eligible Employees carried nothing** | *expected* — G5's forward direction is not built |
 | 7 | Enter the three Sandoval ages, count 1 each, contribution 400, **Illustrate** | per-band table + group net | any age reported as missing cache data |
@@ -343,8 +348,26 @@ with three first-class outcomes and **no fourth**:
 | `isAmbiguous()` | Candidates go to the JSP, which renders a **plain list of equal-weight links** to ordinary `?countyFips=` URLs. **Nothing pre-selected, nothing badged likely** — `getUnique()` returns null here by design, and the land-area ordering is stability only, never a recommendation |
 | `isEmpty()` | A distinct `zipNoMatch` attribute — **not** `inputError`. Copy names our gap, not the agent's typo |
 
-⚠️ **`?zip=` is consulted only when `countyFips` is absent**, so the existing contract always wins. The
-JSP change is **purely additive — 75 insertions, 0 deletions.**
+⚠️ ~~**`?zip=` is consulted only when `countyFips` is absent**, so the existing contract always wins.~~
+**That rule shipped and was wrong — it caused R1.** A production walk on 2026-08-01 found a stale
+Hopkins selection silently overriding a freshly typed `75009` (Collin/Denton), returning Hopkins rates
+with no warning. **Corrected `de0efe0`.** The rule now:
+
+| ZIP | County | Behaviour |
+|---|---|---|
+| blank | set | **County wins** — this is what preserves the `?countyFips=` contract |
+| set, **agrees** with the selection | set | Proceed on that county |
+| set, **contradicts** it, resolves to one | set | The ZIP replaces the selection |
+| set, **contradicts** it, resolves to several | set | Chooser. **Nothing computed** |
+| set, resolves to nothing | set | No-match. **No fallback to the stale county** |
+| set | blank | As built |
+
+**Never compute from a county the ZIP contradicts** — not with a warning, not with a note.
+
+**Resolution without submit (R2).** `/IchraZipLookup` (`de0efe0`) is a gated GET/JSON endpoint so the
+field resolves on **blur**, not only on Enter — Enter submits, so typing a ZIP with an empty headcount
+used to be answered with *"Enter a valid number of eligible employees."* **Server-side precedence is
+enforced independently**, because JavaScript may be off and `?zip=` can arrive in a URL.
 
 ⚠️ **Three states, kept separate. Do not collapse them:**
 
