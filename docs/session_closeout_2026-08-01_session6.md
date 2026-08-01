@@ -226,3 +226,111 @@ particular **no `INSERT INTO constant` exists in any migration** — the two con
   §1 step 5 describes — a document SSA wrote about a demo SSA designed. Still not evidence about him.
 - ⚠️ **The two SWBD emails have still never been sent** — O22 book profile, and *"send me three groups
   renewing next quarter"*.
+
+---
+
+# Session 6, prompt C — the sale motion
+
+**Run:** read `docs/business/` and `plus_tier_build_plan.md` against the flow map. *"It's how it fits
+into the sale process that is of question."* No code, no schema.
+
+## Contradictions found
+
+**Leading with the one the prompt asked for: a document answers something the build plan carries as
+open — and it has been answerable since 30 July.** `swbd_ichra_build_plan.md` §5 and Part 3 §A2 both
+carry the provider check ("will I lose my doctor?") as gated on **O23**, with the note *"if O23 fails,
+this phase does not happen."* **Part 8 of `plus_tier_build_plan.md`, dated 30 July, resolves O23
+favorably** — `healthsherpa.md`'s 2026-07-30 section confirms the quote request accepts a `providers`
+array of NPIs and each returned plan carries `covered` plus `covered_addresses`. A2 is unblocked, has
+been for two days, and the plan calls it *"the highest-emotion demo in the plan"* and the objection that
+kills cases. Filed **T73**. Flagged, not resolved — `swbd_ichra_build_plan.md` is outside this fence.
+
+**1. Document vs observed code — code wins.**
+
+| Document | Claim | Code |
+|---|---|---|
+| `plus_tier.md` §"Requirements by stage → Quote" | quote inputs include **entity type** and **group-plan status**; first output is an **eligibility result** that *"filters the LOS menu"* | `IllustrationServlet.java:122-283` collects county, plan year, ages, counts, contribution, basis. Neither input exists; no eligibility output exists anywhere (**T70**) |
+| `plus_tier_build_plan.md` Part 3 §A1; **D6** | *"ZIP → county + FIPS"*; ZIP a mandatory quote input | county dropdown only. No ZIP field in `illustration25.jsp` or `groupConversion25.jsp`; the sole `zip` reference is `IllustrationServlet.java:651`, derived *after* county selection (**T74**) |
+| `ichra_platform_capability_map.md` Layer 1 | four sales-and-modeling tools | three exist. **Class optimization** has no surface — no match anywhere under `controller/market` (**T75**) |
+| `ichra_administration_scope.md` (28 Jul) | *"intake includes a routing step"* — subsidy segmentation decides which product to sell | no surface; the tools begin after that decision (**T71**) |
+
+**2. Document vs `ichra_strategy.md` / `swbd_ichra_build_plan.md` — flagged, not resolved (outside fence).**
+The A2/O23 item above. Also: `swbd_ichra_build_plan.md` §1 step 6's *"prospect pre-filled"* against
+A1's *"No prospect PII, no employer record required"*, **D7** and **D21** — already **T69**, now backed
+by a decision rather than a source comment.
+
+**3. Document vs document — later governs, both named.** `healthsherpa.md`'s 2026-07-28 warning
+(*"the shopping UI is a price list with phone calls behind it"*) is disclaimed by **its own 2026-07-30
+section** as describing HSOne, not the ICHRA Partner API. Later date governs; that is also what
+unblocks A2. Separately, `plus_tier.md` **D13** claims card MCCs 6300 **and** 5960 while
+`swbd_premiumpath.md` records only 6300 loaded — D13 flags the risk itself; **excluded from this run's
+scope** as money mechanics.
+
+**4. Overridden in this prompt.** Nothing substantive. Its instruction *"do not assume nine open gaps —
+count what is actually there"* was correct: **five** are open (G2, G4, G6, G7, G8); G1, G3, G9 are
+built and G5 is built one way with the other a recorded decision. Its LA-15 numbering was also right,
+but **no LA-15 was written** — the one compliance-relevant tension found (**O25**, carrier names on
+displays) is already **LA-04**, which resolves it in the conservative direction the code already takes.
+
+## Part 4 — has Forrest actually said any of this?
+
+**Partly, and not about this.** The doc set is **not** one sentence restated at length — there is a real
+record of things Forrest said, mostly from the **2026-07-28** call: that zizzl gated his carriers
+(turned off Christus, refused to quote his own), that it charged a **~$660/mo minimum** on a 3-life
+group, the unbundle logic (*"if he's doing the carrier legwork anyway, better to administer
+elsewhere"*), and that **he** raised HealthSherpa and is *"focused on integration."* The build plan is
+careful about this, marking the small-case economics as *"**his own framing**, not one you are
+inventing."* Earlier calls (7/13, 7/14) record his ask for fees, pricing and a revenue share.
+
+**But every one of those is about administration economics and integration. Not one is about what a
+quoting tool should do.** No document records Forrest describing a quoting workflow, naming a step he
+performs, or saying what he would want on screen. The whole of Track A — six phases, and every ICHRA
+surface built in sessions 1–6 — is inference from *"he was quoting through zizzl and hated the gating
+and the price."*
+
+**And the two artifacts that would settle it were both requested and never chased.** `swbd_premiumpath.md`
+carries *"map the end-to-end workflow (**Forrest to provide a flowchart**)"* as an open item. **O22**
+(book profile, incl. producing-agent count) and **O24** (will he share his book) are both marked
+*"Settled by: Forrest"*, and O24 is described as *"**the partnership test as much as a technical
+gate.**"* None has been sent. So: **more than one sentence, but nothing about the thing that was
+built** — and the flowchart he offered to draw would have been the sale motion, from him, for free.
+
+## What §4 concluded
+
+**§2 had 5 open rows** → **3 Answered** (G4, G7, G8), **1 Confirmed-but-downgraded** (G6), **1
+Untouched** (G2), **0 Moot**. Two of the three answers say the fix prompt A proposed was the wrong one.
+
+**Re-ranked by sale-motion impact, and the order changed completely** — §2 ranked by demo step, which
+put config and polish on top:
+
+1. **T70 + T71 — the intake front end** (stages 1–2 of eight). Every built tool assumes their output.
+2. **T73 — the provider check.** Unblocked 30 July, unbuilt.
+3. **T66 / G4 — illustration → opportunity attribution.** It is A5's designed input, not a loose end.
+
+**G2 drops off the ranking without becoming less urgent** — it blocks the *demo*, not the motion.
+
+**The sharpest finding:** the built set covers **the middle of one stage of an eight-stage motion**, and
+two tools sit on steps the agent does not perform — `/GroupConversion` as a hand-keyed form (A4a's
+decided input is a scanned book, **D23**), and `/RateCacheAdmin` on the agent's hub. Worse for the
+first: A4a's own gate was *"a few renewing groups"* from Forrest, so **the tool was built and never
+fed.**
+
+## SQL close-out audit
+
+**This run was forbidden from producing SQL and produced none.** No `.sql` file created, modified or
+deleted; no schema change; no migration. **No `.java` or `.jsp` was touched either** — this run shipped
+no code. `git show --stat e95c4b3` lists two `.md` paths. Migrations unchanged at **V083**.
+
+## Next
+
+1. **Send the two SWBD emails.** They are now the top of this list rather than a footnote: O22 gates
+   which markets to warm and whether A4 is worth building; the three-renewing-groups ask is the input
+   `/GroupConversion` has been waiting for since it shipped. **Add a third:** ask Forrest for the
+   flowchart he already offered.
+2. **Click-script steps 10 / 10b** (from prompt B) — still the only runtime verification.
+3. **T70/T71** — the intake front end, if the next build prompt follows §4.2's ranking.
+4. **T73** — A2, blocked in practice on the same thing everything HealthSherpa-facing is: **no AMS
+   installation has ever authenticated to that API** (`healthsherpa.md`, 31 Jul; `HEALTHSHERPA_API_KEY`
+   absent from both `constant` and `ssa.properties` on local dev, D-78/D-79 unapplied everywhere).
+   ⚠️ Worth confirming production is not in that state before the demo — click-script step 4 covers it.
+5. **O38** — confirm division-scoped ICHRA classes in the Summit UI before designing anything for T75.
