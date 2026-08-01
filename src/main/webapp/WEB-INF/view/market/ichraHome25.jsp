@@ -60,6 +60,16 @@
         }
         .hub-badge.live { background: #d1e7dd; color: #0f5132; }
         .hub-badge.coming { background: #e9ecef; color: #6c757d; }
+        /* G3: the grid was unordered and nothing said which card to open first. The step
+           number is presentation only — no card's behaviour, gate or href depends on it. */
+        .hub-card .hub-step {
+            font-size: 0.65rem; font-weight: 700; color: #6c757d;
+            letter-spacing: 0.06em; text-transform: uppercase;
+            display: block; margin-bottom: 0.3rem;
+        }
+        .hub-lead {
+            font-size: 0.82rem; color: #495057; margin-bottom: 0.9rem;
+        }
     </style>
 </head>
 <body>
@@ -71,27 +81,26 @@
     </div>
 
     <div class="ichra-body">
+
+        <%-- G3: the cards render in the order of swbd_ichra_build_plan.md §1's walkthrough —
+             market range, then age bands, then the flip point — because before this they were
+             an unordered grid with no "start here", and for a PSP admin the rate-cache admin
+             card sat in position two. Ordering and numbering only; no gate, href or behaviour
+             changed, and nothing here depends on the numbers being correct. --%>
+        <div class="hub-lead">Start at step 1 and work down. Each step stands alone — nothing carries state between them.</div>
+
         <div class="hub-grid">
 
             <a class="hub-card" href="Illustration">
+                <span class="hub-step">Step 1</span>
                 <span class="hub-badge live">Live</span>
                 <div class="hub-icon"><i class="bi bi-calculator"></i></div>
                 <div class="hub-title">Rating-Area Illustration</div>
                 <div class="hub-desc">Indicative market premium range by county and headcount.</div>
             </a>
 
-            <%-- PSP-admin only, matching RateCacheAdmin.isAuthorized — that servlet redirects any
-                 other role to "/", so rendering this card for an agency user is a dead click. --%>
-            <c:if test="${sessionScope.isPspAdmin}">
-                <a class="hub-card" href="RateCacheAdmin">
-                    <span class="hub-badge live">Live</span>
-                    <div class="hub-icon"><i class="bi bi-graph-up"></i></div>
-                    <div class="hub-title">Rate Cache Admin</div>
-                    <div class="hub-desc">Cache status and manual refresh for the rating-area rate cache.</div>
-                </a>
-            </c:if>
-
             <a class="hub-card" href="Illustration?mode=AGE_BAND">
+                <span class="hub-step">Step 2</span>
                 <span class="hub-badge live">Live</span>
                 <div class="hub-icon"><i class="bi bi-bar-chart-steps"></i></div>
                 <div class="hub-title">Age-Band Net Cost</div>
@@ -110,13 +119,18 @@
                  named "Affordability Threshold" on a basis that errors on first submit is
                  worse than landing on none. The agent can still switch bases on the page. --%>
             <a class="hub-card" href="Illustration?mode=AGE_BAND&amp;affordabilityBasis=FPL">
+                <span class="hub-step">Step 3</span>
                 <span class="hub-badge live">Live</span>
                 <div class="hub-icon"><i class="bi bi-shield-check"></i></div>
                 <div class="hub-title">Affordability Threshold</div>
                 <div class="hub-desc">Employer- and agent-facing affordability check against the benchmark plan.</div>
             </a>
 
+            <%-- Not a step in the walkthrough — a separate analysis for a group that already
+                 has a plan, entered from scratch. Labelled so, rather than numbered, because
+                 no census carries into it from steps 1-3. --%>
             <a class="hub-card" href="GroupConversion">
+                <span class="hub-step">Separate analysis</span>
                 <span class="hub-badge live">Live</span>
                 <div class="hub-icon"><i class="bi bi-arrow-left-right"></i></div>
                 <div class="hub-title">Group-to-ICHRA Conversion</div>
@@ -134,6 +148,7 @@
             <c:choose>
                 <c:when test="${designAdvisorAvailable}">
                     <div class="hub-card" onclick="toggleChatbox()" style="cursor:pointer;">
+                        <span class="hub-step">Any time</span>
                         <div class="hub-icon"><i class="bi bi-signpost-split"></i></div>
                         <div class="hub-title">Design Advisor</div>
                         <div class="hub-desc">Answers ICHRA and QSEHRA design questions from the written rules, with citations — eligibility classes, notice timing, QSEHRA plan-interaction limits, substantiation.</div>
@@ -150,6 +165,20 @@
                     </div>
                 </c:otherwise>
             </c:choose>
+
+            <%-- Last, and outside the numbered sequence: this is operator plumbing, not a step
+                 an agent walks. PSP-admin only, matching RateCacheAdmin.isAuthorized — that
+                 servlet redirects any other role to "/", so rendering this card for an agency
+                 user is a dead click. --%>
+            <c:if test="${sessionScope.isPspAdmin}">
+                <a class="hub-card" href="RateCacheAdmin">
+                    <span class="hub-step">Admin</span>
+                    <span class="hub-badge live">Live</span>
+                    <div class="hub-icon"><i class="bi bi-graph-up"></i></div>
+                    <div class="hub-title">Rate Cache Admin</div>
+                    <div class="hub-desc">Cache status and manual refresh for the rating-area rate cache.</div>
+                </a>
+            </c:if>
 
         </div>
     </div>
