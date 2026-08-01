@@ -120,11 +120,11 @@ _N/A = environment decommissioned / not maintained (applies to Demo PSP, BPO, Ma
 | V076 | County reference data (FIPS, state, name, representative ZIP) -- Texas seed (county_reference table) | ⬜ | ⬜ | ⬜ | ✅ | N/A | N/A | N/A |
 | V077 | Per-agency enable flag for ICHRA capability access (agency.ichra_enabled, default OFF) | ⬜ | ⬜ | ⬜ | ✅ | N/A | N/A | N/A |
 | V078 | On-exchange LCSP and benchmark-silver columns for T44 (rating_area_rate_cache.onex_lcsp_premium/onex_benchmark_silver_premium, default NULL) | ⬜ | ⬜ | ⬜ | ✅ | N/A | N/A | N/A |
-| V079 | ICHRA illustration snapshot on a proposal (proposal_ichra_snapshot + proposal_ichra_snapshot_band) | ⬜ | ⬜ | ⬜ | ⬜ | N/A | N/A | N/A |
+| V079 | ICHRA illustration snapshot on a proposal (proposal_ichra_snapshot + proposal_ichra_snapshot_band) | ⬜ | ⬜ | ⬜ | ✅ | N/A | N/A | N/A |
 | V080 | ICHRA/QSEHRA Design Advisor: ICHRA_DESIGN_ADVISOR chatbot_skill row + ichra_design knowledge base and chunks | ⬜ | ⬜ | ⬜ | ✅ | N/A | N/A | N/A |
-| V081 | Optional opportunity attribution on illustration_log (illustration_log.opportunity_id, nullable, FK to assignee(id)) | ⬜ | ⬜ | ⬜ | ⬜ | N/A | N/A | N/A |
+| V081 | Optional opportunity attribution on illustration_log (illustration_log.opportunity_id, nullable, FK to assignee(id)) | ⬜ | ⬜ | ⬜ | ✅ | N/A | N/A | N/A |
 | V082 | Make ICHRA_DESIGN_ADVISOR available to non-admin callers (chatbot_skill.is_admin_only 1 → 0) | ⬜ | ⬜ | ⬜ | ✅ | N/A | N/A | N/A |
-| V083 | Fix retired model on ICHRA_DESIGN_ADVISOR (chatbot_skill.model -> claude-sonnet-5, max_tokens -> 3072) | ⬜ | ⬜ | ⬜ | ⬜ | N/A | N/A | N/A |
+| V083 | Fix retired model on ICHRA_DESIGN_ADVISOR (chatbot_skill.model -> claude-sonnet-5, max_tokens -> 3072) | ⬜ | ⬜ | ⬜ | ✅ | N/A | N/A | N/A |
 
 **Production column reconciled 2026-07-30** against a live, read-only `schema_version` probe run
 directly against the production database — that probe is the source of truth for the corrections
@@ -175,6 +175,24 @@ of what this file previously recorded. Production cells for V080 and V082 above 
 This session could not connect to the production database to confirm via `schema_version` directly —
 the correction rests on the behavioral proof above, the same evidentiary standard used for the
 V077/V078 correction one section up. V081 has no comparable evidence either way and is left ⬜.
+
+**Production V079–V083 reconciled 2026-08-01, at session close.** All five rows now read ✅ for
+Production. **V079, V081 and V083 were the stale ones** — V080 and V082 had already been corrected in
+`2b79452` from the 404-incident evidence. The remaining three are corrected from the deployment record
+rather than from behaviour: `update.sh` applied **V079–V082** during the `v0.82.00` release and **V083**
+during the `v0.83.00` release, both on 2026-08-01. V083 additionally carries direct confirmation — a
+read-only `SELECT` against `chatbot_skill` after that deploy returned `model = claude-sonnet-5`,
+`max_tokens = 3072`, `is_admin_only = 0`, and the Design Advisor then answered a live agent question
+that had been returning `404 not_found_error` before it.
+
+⚠️ **This correction is late, and the lateness is the point.** These cells were flagged as stale twice
+in `docs/session_closeout_2026-08-01_session5.md` — once in "Contradictions found" and again in the
+revised Next block — and shipped un-fixed both times, in a session that had *already* corrected two
+other rows in this same column. That is precisely the drift the 2026-07-30 maintenance note at the top
+of this file exists to prevent: **flipping the Production cell is part of landing the deploy, not a
+follow-up task.** Noticing the gap and deferring it is the same outcome as not noticing.
+
+`beta_ssa (work)`, `beta_ssa (home)` and `dev_ssa` remain ⬜ for V079–V083 and were not re-probed.
 
 ## Notes
 
