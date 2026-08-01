@@ -98,7 +98,18 @@
                 <div class="hub-desc">Per-employee net cost after contribution, by age band.</div>
             </a>
 
-            <a class="hub-card" href="Illustration?mode=AGE_BAND">
+            <%-- T59: this card and the one above pointed at the same URL, so the affordability
+                 view — which is a sub-mode of AGE_BAND, not a mode of its own — had no entry
+                 point of any kind. It always had a URL: affordabilityBasis is a first-class
+                 request parameter (IllustrationServlet:238) and illustration25.jsp:160-162
+                 pre-selects the dropdown from it. Nothing linked to it.
+
+                 FPL, not INCOME: the FPL safe harbor needs only the FPL_ANNUAL_<year> constant,
+                 while the entered-income basis requires an income on EVERY census row and
+                 rejects the submit otherwise (IllustrationServlet:261-268). Landing a card
+                 named "Affordability Threshold" on a basis that errors on first submit is
+                 worse than landing on none. The agent can still switch bases on the page. --%>
+            <a class="hub-card" href="Illustration?mode=AGE_BAND&amp;affordabilityBasis=FPL">
                 <span class="hub-badge live">Live</span>
                 <div class="hub-icon"><i class="bi bi-shield-check"></i></div>
                 <div class="hub-title">Affordability Threshold</div>
