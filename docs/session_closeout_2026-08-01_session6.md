@@ -569,6 +569,10 @@ disambiguation is the *common* path. Anything that auto-selects is wrong one tim
 **Carried forward, still unclosed:** nobody has asked Forrest what he would want a quoting tool to do,
 and the two SWBD emails have still never been sent.
 
+> ⚠️ **Superseded in part by prompt G.** The precedence rule this run shipped — *"the servlet only
+> consults `?zip=` when `countyFips` is null or blank, so the existing parameter always wins"* — was
+> **wrong**, and produced a silently-wrong-rates defect. See the prompt G section.
+
 ---
 
 # Session 6, prompt F — T74 part 2: ZIP intake on the illustration
@@ -661,6 +665,163 @@ Click-script steps 4a–4e are what make it real.
 2. **`/GroupConversion` ZIP intake** — the same treatment, once the illustration path is proven.
 3. **T76** warm-on-miss still blocked: no installation has authenticated to the HealthSherpa API.
 4. Unchanged: click-script 10/10b, the three SWBD emails, T83's enrollment-support question.
+
+**Carried forward, still unclosed:** nobody has asked Forrest what he would want a quoting tool to do,
+and the two SWBD emails have still never been sent.
+
+---
+
+# Session 6, prompt G — ZIP intake repair
+
+Runtime walk on production, 2026-08-01, role-2 agent. The good path works; the ZIP path was broken in
+five ways.
+
+## ⭐ R1 first — a shipped instruction produced silently wrong rates
+
+**An agent had Hopkins selected from a previous run, typed ZIP `75009` — Collin/Denton, not Hopkins —
+and got Hopkins results. No warning, no mismatch notice.** Wrong county, wrong rates, **indistinguishable
+from right ones**, in front of a client. It is the exact failure the crossing-ZIP chooser was built to
+prevent, arriving through a door nobody had modelled.
+
+**The cause was an instruction I wrote, not a coding slip.** Prompt F specified:
+
+> *"the servlet only consults `?zip=` when `countyFips` is null or blank, so the existing parameter
+> always wins."*
+
+That was written to protect the `?countyFips=` URL contract, and it does protect it. But **"always wins"
+also means a stale dropdown selection beats a freshly typed ZIP.** The sentence was precise, defensible,
+and wrong — and it was reviewed and shipped as written.
+
+**Three consecutive runs verified this feature and all three missed it.** Prompt E was code-verified,
+prompt F was code-verified, prompt F's own compliance statement said so plainly. **One runtime walk found
+it in about a minute.** That is the most useful thing in this session's record: `code-verified` is not a
+weaker form of `runtime-verified`, it is a different claim, and for a defect that lives in the
+*interaction between two inputs* it is close to worthless. The click-script existed precisely to catch
+this class of thing and had not been run.
+
+**The corrected rule** — a present ZIP is always resolved, and a county the ZIP contradicts is never
+computed from. Not with a warning. Not at all.
+
+| ZIP | County | Behaviour |
+|---|---|---|
+| blank | set | **County wins** — the `?countyFips=` contract, preserved |
+| set, **agrees** | set | Proceed on that county |
+| set, **contradicts**, resolves to one | set | The ZIP replaces the selection |
+| set, **contradicts**, resolves to several | set | Chooser. **Nothing computed** |
+| set, resolves to nothing | set | No-match. **No fallback to the stale county** |
+| set | blank | As built |
+
+## What I anchored on
+
+Both files had been edited three times this session. Every anchor was printed with line numbers and
+checked for single occurrence **before** any edit; none was ambiguous, so nothing was stopped.
+
+| File | Anchor | Line | Occurrences |
+|---|---|---|---|
+| `IllustrationServlet.java` | `String countyFips = request.getParameter("countyFips");` | **123** | 1 |
+| `illustration25.jsp` | `${not empty selectedCounty and mode == 'AGE_BAND'}` | **282** | 1 |
+| `illustration25.jsp` | `${not empty selectedCounty and mode != 'AGE_BAND'}` | **653** | 1 |
+| `illustration25.jsp` | `id="zip" name="zip"` | **121** | 1 |
+| `illustration25.jsp` | `${not empty zipCandidates}` | **229** | 1 |
+| `illustration25.jsp` | `c:if test="${zipNoMatch}"` | **263** | 1 |
+
+## R1–R5, and how each resolved
+
+| # | Finding | Status |
+|---|---|---|
+| **R1** → **T84** | Stale county silently overrode a typed ZIP | ✅ `de0efe0` — precedence rewritten; `Resolution.containsCounty()` added |
+| **R2** → **T85** | ZIP resolved only on Enter, and Enter submitted the form | ✅ `de0efe0` + `6543db7` — new `/IchraZipLookup` endpoint, resolve on blur |
+| **R3** → **T86** | *"No rate data for this county yet"* on a pure validation failure | ✅ `6543db7` — both result panels now require `empty inputError` |
+| **R4** → **T87** | A stale panel survived the next interaction | ✅ `6543db7` — editing the ZIP clears panels and selection immediately |
+| **R5** → **T88** | `?countyFips=` direct-URL behaviour unconfirmed | ✅ **Investigated, no defect, no code changed** |
+
+**R3's cause is worth stating precisely**, because it is the same class as R1: the mode handler sets
+`inputError` and **returns before `hasRates` is set**, so the JSP's `not hasRates` branch fired and
+printed the unwarmed-county message for a county that returns a full table one screenshot later. **That
+collapsed the two states prompt F required kept apart** — in the direction nobody was watching, since
+every prior check had been aimed at the ZIP side of that pair.
+
+**R5's answer, settled from code rather than by asking:** `?countyFips=` **does** pre-select the
+dropdown. `IllustrationServlet` sets `submittedCountyFips` unconditionally once a county is present,
+before any mode handler runs, and the JSP's option tag selects on it. The note *"requires county
+selection"* meant only that a headcount is also needed — expected, not a regression. Click-script step
+4e now asserts the pre-selection so a future regression is caught.
+
+## Shipped
+
+| Hash | What |
+|---|---|
+| `de0efe0` | Precedence fix, `containsCounty()`, new `IchraZipLookup` JSON endpoint |
+| `6543db7` | Blur lookup, R3 panel guards, R4 clearing, corrected ZIP-field comment |
+| `2b2ca7a` | §5 rule replaced, click-script 4f–4j, T84–T88 |
+
+`./mvnw compile` clean before each commit.
+
+## Decisions made
+
+1. **A contradicted county is never computed from** — not with a warning banner, which was the tempting
+   cheaper option. A warning on a page an agent is presenting from is a warning nobody reads.
+2. **The chooser and no-match panels are now rendered always and hidden**, so the blur path toggles the
+   *same* markup instead of carrying a second copy of the wording in JavaScript. **The copy has one
+   source and cannot drift.** It is unchanged, and "invalid" still appears nowhere a user can see it —
+   the one occurrence in the file is inside a JSP comment telling future edits not to use it.
+3. **The endpoint resolves and nothing else** — no rates, no cache read, no warming. T76 stays untouched.
+4. **Server-side precedence is enforced independently of the script.** JavaScript may be off, and `?zip=`
+   can arrive in a URL; the servlet does not trust the page.
+5. **R5 was settled by reading the code, not by asking Kevin** — as instructed, and it took less time
+   than writing the question would have.
+
+## New assumptions, and reversal cost
+
+| Assumption | Reversal cost |
+|---|---|
+| Clearing the county selection the moment the ZIP changes is right, even mid-typing | **Free** — two lines. The risk is an agent who edits a ZIP and loses a deliberate county pick; the alternative risk is R1, which is far worse |
+| A single-county ZIP should silently fill the dropdown rather than announce itself | **Free** — the resolved-county note is one element; make it louder if agents miss it |
+| Ordering candidates by land-area share reads as stability, not ranking | **Free** — drop the ordering and sort by name if it ever reads as steering |
+
+## Contradictions found
+
+1. **Prompt F's precedence instruction vs. correct behaviour** — the R1 defect. Mine, shipped, and
+   corrected here. The old rule is struck through in §5 rather than deleted, so it stays visible beside
+   what replaced it.
+2. **Prompt F's own comment in the JSP** still asserted the "county always wins" rule at the ZIP field.
+   Corrected — a stale comment restating the exact false premise that caused the bug is how it comes back.
+3. **Nothing in prompt G was overridden.** Its instruction to settle R5 from code rather than asking was
+   right, and its read of R3 as "the two states collapsing in the unwatched direction" was exactly what
+   the code showed.
+
+## SQL close-out audit
+
+**This run was forbidden from producing SQL and produced none.** No `.sql` file created, modified or
+deleted. No schema change, no migration. V084/V085 are unchanged and remain correct. `ls
+docs/migrations/` unchanged at **V085**. The three commits list two `.java` (plus one new `.java`), one
+`.jsp` and two `.md` paths — no `.sql`.
+
+## What happens with JavaScript disabled
+
+**Everything still works.** The ZIP field posts as `?zip=` on submit and `IllustrationServlet` resolves
+it server-side with the same precedence rule, producing the same three outcomes — unique, chooser,
+no-match — all server-rendered. The blur lookup is an enhancement that removes a submit, not a
+dependency. **R2's original symptom does return without the script** (a ZIP typed with an empty headcount
+submits and reports the headcount error), which is why the server-side rule had to be correct on its own
+rather than relying on the field to have pre-resolved. Click-script step 4j covers this.
+
+## ⚠️ Still not runtime-verified
+
+V084/V085 have **still** not been applied to any database, so `zip_county` does not exist where this code
+runs. Everything above is `code-verified` — **the same claim that missed R1 three times.** Click-script
+steps 4a–4j are what make it real, and **4f is the one that matters**: Hopkins selected, type `75009`,
+and Hopkins results appearing means the defect is back.
+
+## Next
+
+1. **Apply V084/V085, then run click-script 4a–4j.** Step **4f** first.
+2. **Rebuild the WAR** — the production artifact built earlier today predates all of R1–R4 and carries
+   the defect.
+3. **`/GroupConversion` ZIP intake** — unchanged in scope, and now with a precedence rule that is known
+   correct rather than assumed.
+4. **T76** warm-on-miss still blocked: no installation has authenticated to the HealthSherpa API.
+5. Unchanged: click-script 10/10b, the three SWBD emails, T83's enrollment-support question.
 
 **Carried forward, still unclosed:** nobody has asked Forrest what he would want a quoting tool to do,
 and the two SWBD emails have still never been sent.
