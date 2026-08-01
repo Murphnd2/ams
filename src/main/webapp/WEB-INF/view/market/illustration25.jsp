@@ -251,8 +251,24 @@
                                     <c:param name="opportunityId" value="${opportunityId}"/>
                                 </c:if>
                             </c:url>
+                            <%-- The crosswalk knows all 254 Texas counties; the illustration
+                                 prices only the warmed ones. A candidate we cannot price
+                                 still appears — the agent needs to know that is where the
+                                 employer sits — but it says so, before the click rather
+                                 than after.
+
+                                 ⚠️ Descriptive, not evaluative. "No rates cached yet" is a
+                                 fact about our data. It is NOT a reason to prefer the other
+                                 county, and an unpriced entry is not demoted, greyed into
+                                 uselessness, or disabled: same link, same weight, same
+                                 land-area order. Steering counties is steering. --%>
                             <li style="padding:0.25rem 0;">
                                 <a href="${candUrl}"><c:out value="${cand.countyName}"/>, <c:out value="${cand.state}"/></a>
+                                <%-- `empty` first so a missing set shows the caveat rather than
+                                     throwing — same cautious direction the endpoint takes. --%>
+                                <c:if test="${empty pricedCountyFips or not pricedCountyFips.contains(cand.countyFips)}">
+                                    <span class="text-muted" style="font-size:0.75rem;"> — no rates cached yet</span>
+                                </c:if>
                             </li>
                         </c:forEach>
                     </ul>
@@ -950,6 +966,19 @@
             var li = document.createElement('li');
             li.style.padding = '0.25rem 0';
             li.appendChild(a);
+
+            // Same caveat the server-rendered chooser carries, and for the same reason:
+            // the crosswalk knows every county, the illustration prices only the warmed
+            // ones. Descriptive only -- the entry keeps its link, its weight and its
+            // place in the order.
+            if (county.priced === false) {
+                var note = document.createElement('span');
+                note.className = 'text-muted';
+                note.style.fontSize = '0.75rem';
+                note.textContent = ' ' + String.fromCharCode(0x2014) + ' no rates cached yet';
+                li.appendChild(note);
+            }
+
             chooserList.appendChild(li);
         });
 
@@ -967,7 +996,11 @@
         // and calling it one is what makes an agent retype a ZIP three times.
         if (!/^[0-9]{5}$/.test(raw)) return;
 
-        fetch('IchraZipLookup?zip=' + encodeURIComponent(raw), {
+        // planYear is sent so the endpoint can report which candidates have cached rates.
+        // Omitted or unparseable, everything reports unpriced -- the cautious direction.
+        var lookupPlanYear = currentParam('planYear', '');
+        fetch('IchraZipLookup?zip=' + encodeURIComponent(raw)
+                + (lookupPlanYear ? '&planYear=' + encodeURIComponent(lookupPlanYear) : ''), {
             headers: { 'Accept': 'application/json' }
         })
             .then(function (res) { return res.ok ? res.json() : { counties: [] }; })
