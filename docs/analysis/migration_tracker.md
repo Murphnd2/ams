@@ -16,7 +16,7 @@ Tracks database schema versions across environments.
 | BPO | bpo.superiorstate.biz | beta_ssa | BPO instance (V038, initialized, release V0.37.0) |
 | Master | master.superiorstate.biz | beta_ssa | Snapshot v9 (V057, stopped) |
 
-## Current Highest Version: V083
+## Current Highest Version: V085
 
 ⚠️ **Maintenance note (added 2026-07-30):** production status in the table below must be back-filled
 *after a deployment actually succeeds*, not only when the migration is written. The V072/V073 rows
@@ -125,6 +125,8 @@ _N/A = environment decommissioned / not maintained (applies to Demo PSP, BPO, Ma
 | V081 | Optional opportunity attribution on illustration_log (illustration_log.opportunity_id, nullable, FK to assignee(id)) | ⬜ | ⬜ | ⬜ | ✅ | N/A | N/A | N/A |
 | V082 | Make ICHRA_DESIGN_ADVISOR available to non-admin callers (chatbot_skill.is_admin_only 1 → 0) | ⬜ | ⬜ | ⬜ | ✅ | N/A | N/A | N/A |
 | V083 | Fix retired model on ICHRA_DESIGN_ADVISOR (chatbot_skill.model -> claude-sonnet-5, max_tokens -> 3072) | ⬜ | ⬜ | ⬜ | ✅ | N/A | N/A | N/A |
+| V084 | ZIP to county crosswalk table for T74 ZIP intake (zip_county; CHAR(5) zip, composite PK, no FK to county_reference) | ⬜ | ⬜ | ⬜ | ⬜ | N/A | N/A | N/A |
+| V085 | Texas ZIP to county crosswalk data — 2,894 rows from the Census 2020 ZCTA-county relationship file | ⬜ | ⬜ | ⬜ | ⬜ | N/A | N/A | N/A |
 
 **Production column reconciled 2026-07-30** against a live, read-only `schema_version` probe run
 directly against the production database — that probe is the source of truth for the corrections
@@ -197,6 +199,14 @@ of this file exists to prevent: **flipping the Production cell is part of landin
 follow-up task.** Noticing the gap and deferring it is the same outcome as not noticing.
 
 `beta_ssa (work)`, `beta_ssa (home)` and `dev_ssa` remain ⬜ for V079–V083 and were not re-probed.
+
+**V084/V085 authored 2026-08-01 — unapplied everywhere, and that is their true state, not a stale
+cell.** Both are ⬜ in every column because neither has been run against any database, including local.
+They are the data layer for T74 ZIP intake; nothing reads `zip_county` yet (the servlet and JSP are a
+separate run), so applying them changes no behaviour and can happen on any release. **V085 is 89 KB** —
+comfortably attachable to a GitHub release by hand, unlike a national build of the same table would be.
+Per the maintenance note at the top of this file: **flip these two Production cells as part of landing
+the deploy, not afterwards.**
 
 ## Notes
 

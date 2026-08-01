@@ -103,4 +103,6 @@ INSERT IGNORE INTO schema_version (version, description, script_name) VALUES
 ('V080', 'ICHRA/QSEHRA Design Advisor: ICHRA_DESIGN_ADVISOR chatbot_skill row + ichra_design knowledge base and chunks', 'V080__ichra_design_advisor_skill.sql'),
 ('V081', 'Optional opportunity attribution on illustration_log (illustration_log.opportunity_id, nullable, FK to assignee(id))', 'V081__illustration_log_opportunity.sql'),
 ('V082', 'Make ICHRA_DESIGN_ADVISOR available to non-admin callers (chatbot_skill.is_admin_only 1 -> 0)', 'V082__ichra_design_advisor_non_admin.sql'),
-('V083', 'Fix retired model on ICHRA_DESIGN_ADVISOR (chatbot_skill.model -> claude-sonnet-5, max_tokens -> 3072)', 'V083__ichra_design_advisor_model.sql');
+('V083', 'Fix retired model on ICHRA_DESIGN_ADVISOR (chatbot_skill.model -> claude-sonnet-5, max_tokens -> 3072)', 'V083__ichra_design_advisor_model.sql'),
+('V084', 'ZIP to county crosswalk table for T74 ZIP intake (zip_county, composite PK, no FK)', 'V084__zip_county_crosswalk.sql'),
+('V085', 'Texas ZIP to county crosswalk data (2894 rows, Census 2020 ZCTA relationship file)', 'V085__zip_county_crosswalk_tx.sql');
