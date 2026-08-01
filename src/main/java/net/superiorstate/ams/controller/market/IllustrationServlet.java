@@ -94,6 +94,16 @@ public class IllustrationServlet extends HttpServlet {
             String mode = MODE_AGE_BAND.equals(request.getParameter("mode")) ? MODE_AGE_BAND : MODE_RANGE;
             request.setAttribute("mode", mode);
 
+            // W7 — the repeater's cap, published rather than duplicated in the JSP so the
+            // markup and the parse loop cannot drift apart.
+            //
+            // ⚠️ This limit is NOT free to raise. `proposalBuilder.jsp` echoes exactly six
+            // age/count pairs into the proposal POST, and raising AGE_BAND_ROWS without
+            // raising that too would silently drop rows 7+ from every proposal snapshot —
+            // a wrong figure on a client-facing document, produced by a change that looks
+            // purely additive here. Raise both together or neither.
+            request.setAttribute("ageBandMaxRows", AGE_BAND_ROWS);
+
             // Build-plan item 13 — optional opportunity attribution. Resolved once here so
             // every forward path below (including the early returns) carries it, and read
             // back out of the request by logIllustration. Null whenever absent or not

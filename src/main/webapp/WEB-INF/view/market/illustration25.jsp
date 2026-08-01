@@ -252,29 +252,67 @@
 
                         <c:choose>
                             <c:when test="${mode == 'AGE_BAND'}">
+                                <%-- W7 — the age-band repeater. Was five fixed triplets edge to edge:
+                                     "somewhat hard to read and blended together left to right", and
+                                     fifteen inputs for a case that usually needs three.
+
+                                     ⚠️ THE QUERY-PARAMETER CONTRACT IS UNCHANGED. Rows are still
+                                     age1..ageN / count1..countN / income1..incomeN, contiguous from
+                                     1. The rows are rendered rather than hardcoded and the script
+                                     renumbers after a removal, precisely so the names stay what
+                                     they were — this servlet is GET-only, its URLs carry state, and
+                                     the mode toggle, the hub cards, the proposal hand-off and every
+                                     verified link depend on those names.
+
+                                     ⚠️ The cap stays at ${ageBandMaxRows} and stays server-side. It is NOT an
+                                     arbitrary markup limit: proposalBuilder.jsp echoes exactly six
+                                     age/count pairs into the proposal POST, and that file is out of
+                                     this run's fence. Raising the limit here without raising it
+                                     there would silently drop rows 7+ from every proposal snapshot.
+                                     Logged rather than risked.
+
+                                     W8 — income is rendered only when the selected basis consumes
+                                     it. Verified in source: IllustrationServlet:306 parses income
+                                     only when the basis is INCOME, and :475 uses the configured
+                                     FPL_ANNUAL_<year> constant for FPL. So FPL and None never read
+                                     it, and FPL is the basis an agent uses when he has ages and no
+                                     wages — the common tier-1/tier-2 case. Driven off the basis
+                                     rather than a bare toggle, so the relationship is visible. --%>
                                 <div class="col-12">
-                                    <label class="form-label mb-1 d-block">Ages and Headcounts <span class="text-muted fw-normal">(blank age = skip row)</span></label>
-                                    <div class="d-flex flex-wrap gap-2">
-                                        <c:forEach begin="1" end="6" var="i">
-                                            <div class="d-flex align-items-end gap-1">
-                                                <div>
-                                                    <label class="form-label mb-1" style="font-size:0.7rem;" for="age${i}">Age</label>
-                                                    <input type="number" class="form-control form-control-sm" id="age${i}" name="age${i}"
-                                                           min="21" max="64" value="${submittedAges[i-1]}" style="width:75px;">
+                                    <label class="form-label mb-1 d-block">Ages and Headcounts</label>
+                                    <div id="ageBandRows">
+                                        <c:forEach begin="1" end="${ageBandMaxRows}" var="i">
+                                            <%-- Render a row if it carries data, plus always the
+                                                 first, so an empty form opens with one row and a
+                                                 returning one opens with what was submitted. --%>
+                                            <c:if test="${i == 1 or not empty submittedAges[i-1]}">
+                                                <div class="age-band-row d-flex align-items-end gap-2 mb-2" data-row>
+                                                    <div>
+                                                        <label class="form-label mb-1" style="font-size:0.7rem;" for="age${i}">Age</label>
+                                                        <input type="number" class="form-control form-control-sm age-band-age" id="age${i}" name="age${i}"
+                                                               min="21" max="64" value="${submittedAges[i-1]}">
+                                                    </div>
+                                                    <div>
+                                                        <label class="form-label mb-1" style="font-size:0.7rem;" for="count${i}">Count</label>
+                                                        <input type="number" class="form-control form-control-sm age-band-count" id="count${i}" name="count${i}"
+                                                               min="1" placeholder="1" value="${submittedCounts[i-1]}">
+                                                    </div>
+                                                    <div class="age-band-income" ${affordabilityBasis == 'INCOME' ? '' : 'style="display:none;"'}>
+                                                        <label class="form-label mb-1" style="font-size:0.7rem;" for="income${i}">Income</label>
+                                                        <input type="number" step="1" class="form-control form-control-sm" id="income${i}" name="income${i}"
+                                                               min="1" placeholder="Annual" value="${submittedIncomes[i-1]}">
+                                                    </div>
+                                                    <button type="button" class="btn btn-sm btn-outline-secondary age-band-remove"
+                                                            aria-label="Remove this age band">&times;</button>
                                                 </div>
-                                                <div>
-                                                    <label class="form-label mb-1" style="font-size:0.7rem;" for="count${i}">Count</label>
-                                                    <input type="number" class="form-control form-control-sm" id="count${i}" name="count${i}"
-                                                           min="1" placeholder="1" value="${submittedCounts[i-1]}" style="width:65px;">
-                                                </div>
-                                                <div>
-                                                    <label class="form-label mb-1" style="font-size:0.7rem;" for="income${i}">Income</label>
-                                                    <input type="number" step="1" class="form-control form-control-sm" id="income${i}" name="income${i}"
-                                                           min="1" placeholder="Annual" value="${submittedIncomes[i-1]}" style="width:100px;">
-                                                </div>
-                                            </div>
+                                            </c:if>
                                         </c:forEach>
                                     </div>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary" id="ageBandAdd"
+                                            data-max="${ageBandMaxRows}">+ Add age band</button>
+                                    <span class="quiet-note ms-2" id="ageBandMaxNote" style="display:none;">
+                                        Maximum ${ageBandMaxRows} age bands.
+                                    </span>
                                 </div>
                                 <div class="col-auto">
                                     <label class="form-label mb-1" for="contribution">Employer Monthly Contribution</label>
@@ -1233,6 +1271,95 @@
     zipInput.addEventListener('input', function () {
         if ((zipInput.value || '').trim() !== lastLookedUp) invalidate();
     });
+})();
+
+/* W7 + W8 — the age-band repeater, and income shown only when the basis consumes it.
+
+   The single hard rule: parameter names stay age1..ageN / count1..countN /
+   income1..incomeN, contiguous from 1. This servlet is GET-only and its URLs carry
+   state; renaming or gapping them would break the mode toggle, the hub cards, the
+   proposal hand-off and every link verified this session. Every add and remove ends
+   with renumber(), which is what makes that guarantee hold. */
+(function () {
+    var rows = document.getElementById('ageBandRows');
+    var addBtn = document.getElementById('ageBandAdd');
+    if (!rows || !addBtn) return;
+
+    var maxRows = parseInt(addBtn.getAttribute('data-max'), 10) || 6;
+    var maxNote = document.getElementById('ageBandMaxNote');
+    var basisSelect = document.getElementById('affordabilityBasis');
+
+    function rowList() {
+        return Array.prototype.slice.call(rows.querySelectorAll('.age-band-row'));
+    }
+
+    /* Rewrites id/name/for on every row so the set is always 1..N with no gaps.
+       Called after every structural change -- this is the parameter contract. */
+    function renumber() {
+        rowList().forEach(function (row, idx) {
+            var n = idx + 1;
+            [['age', '.age-band-age'], ['count', '.age-band-count'], ['income', '.age-band-income input']]
+                .forEach(function (pair) {
+                    var input = row.querySelector(pair[1]);
+                    if (!input) return;
+                    input.id = pair[0] + n;
+                    input.name = pair[0] + n;
+                    var label = row.querySelector('label[for^="' + pair[0] + '"]');
+                    if (label) label.setAttribute('for', pair[0] + n);
+                });
+        });
+        syncControls();
+    }
+
+    function syncControls() {
+        var list = rowList();
+        // The remove control is hidden on a lone row: removing the only row would leave
+        // a form that cannot be submitted, and disabling it silently is worse than not
+        // offering it.
+        list.forEach(function (row) {
+            var btn = row.querySelector('.age-band-remove');
+            if (btn) btn.style.display = (list.length > 1) ? '' : 'none';
+        });
+        var atMax = list.length >= maxRows;
+        addBtn.style.display = atMax ? 'none' : '';
+        if (maxNote) maxNote.style.display = atMax ? '' : 'none';
+    }
+
+    // W8: income follows the basis. Values are left in the DOM when hidden, so switching
+    // away and back does not lose what was typed -- and a hidden input still submits,
+    // which is harmless because the servlet only reads income on the INCOME basis.
+    function syncIncome() {
+        var show = basisSelect && basisSelect.value === 'INCOME';
+        rows.querySelectorAll('.age-band-income').forEach(function (cell) {
+            cell.style.display = show ? '' : 'none';
+        });
+    }
+
+    addBtn.addEventListener('click', function () {
+        var list = rowList();
+        if (list.length >= maxRows) return;
+        var clone = list[list.length - 1].cloneNode(true);
+        clone.querySelectorAll('input').forEach(function (input) { input.value = ''; });
+        rows.appendChild(clone);
+        renumber();
+        syncIncome();
+        var firstInput = clone.querySelector('.age-band-age');
+        if (firstInput) firstInput.focus();
+    });
+
+    rows.addEventListener('click', function (e) {
+        var btn = e.target.closest ? e.target.closest('.age-band-remove') : null;
+        if (!btn) return;
+        if (rowList().length <= 1) return;
+        var row = btn.closest('.age-band-row');
+        if (row) row.parentNode.removeChild(row);
+        renumber();
+    });
+
+    if (basisSelect) basisSelect.addEventListener('change', syncIncome);
+
+    syncControls();
+    syncIncome();
 })();
 </script>
 </body>
