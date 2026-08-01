@@ -1138,3 +1138,164 @@ docs/migrations/` unchanged at **V085**. The four commits list one `.java`, one 
 
 **Carried forward, still unclosed:** nobody has asked Forrest what he would want a quoting tool to do,
 and the two SWBD emails have still never been sent.
+
+---
+
+# Session 6, prompt J — the illustration on a phone, across a desk
+
+## ⭐ What the repeater did to the query parameters: nothing
+
+**That was the contract most at risk, so it is the first thing to state.** Rows are still
+`age1..ageN` / `count1..countN` / `income1..incomeN`, **contiguous from 1**. Nothing was renamed, no
+parameter changed shape, and no gap can appear.
+
+The mechanism is `renumber()`, called after **every** add and remove: it rewrites `id`, `name` and the
+label's `for` across all remaining rows so the set is always 1..N. Verified after the change — the JSP
+still emits `name="age${i}"`, `name="count${i}"`, `name="income${i}"` and the proposal hand-off loop is
+untouched at `end="6"`.
+
+This mattered because `/Illustration` is GET-only and its **URLs carry state**: the mode toggle, the hub
+cards, T59's affordability card, the proposal hand-off and every link verified this session ride on
+those names. A repeater that renamed to `age[]` or left `age1, age3` after a removal would have broken
+all of it silently.
+
+## ⚠️ What I did not do, and why
+
+**The six-row cap stays.** W7 asked for no arbitrary markup cap, with any limit server-side and
+generous. The limit *is* server-side — `IllustrationServlet.AGE_BAND_ROWS`, now **published to the JSP**
+rather than duplicated in it — but **it cannot be raised from the ICHRA side alone.**
+
+`proposalBuilder.jsp` echoes **exactly six** `age`/`count` hidden-field pairs into the proposal POST, and
+that file is outside this run's fence. Raising `AGE_BAND_ROWS` to a generous number without raising it
+there would **silently drop rows 7+ from every proposal snapshot** — a wrong figure on a client-facing
+document, produced by a change that looks purely additive at this end.
+
+Per the run's own instruction — *"if a change would put any fenced behaviour at risk, do not make it, log
+it instead"* — logged as **T96**, with the constraint now written at both ends so the next person meets
+it before the bug rather than after. Six bands covers Sandoval (three) and every case seen so far.
+
+## Shipped
+
+| Hash | What |
+|---|---|
+| `fe35261` | **W13** — ZIP carries across the mode toggle |
+| `609e56d` | **W7 + W8** — repeater; income only on the INCOME basis |
+| `7e78f6a` | **W14** — input block collapses after a result |
+| `682dcef` | **T78** — the three named mobile defects |
+| `b12f875` | **W9** — two tap-triggered popovers |
+| `031355b` | Click-script L1–L10 + mobile M1–M7; T95, T96 |
+
+`./mvnw compile` clean before each commit; separate commits per concern as instructed.
+
+## W8 — which bases consume income, from source
+
+| Basis | Reads per-row income? | Evidence |
+|---|---|---|
+| **None** | No — affordability is not computed at all | `IllustrationServlet:435` returns unless FPL or INCOME |
+| **FPL Safe Harbor** | **No** — uses the configured `FPL_ANNUAL_<year>` constant | `:452-453`, and `:475` `referenceIncome = "FPL".equals(basis) ? fplAnnual : row.getIncome()` |
+| **Entered Income** | **Yes**, and requires it on every row | `:306` `incomeBasis`, `:327` parses only then |
+
+So the source matched the prompt's expectation. **Visibility is driven off the basis selector**, not a
+bare toggle — an agent choosing FPL sees the income fields disappear, which teaches the relationship
+instead of hiding a field. Values stay in the DOM when hidden, so switching basis and back loses
+nothing, and a hidden input submitting is harmless because the servlet only reads income on INCOME.
+
+## The popover text, verbatim
+
+**Employer Monthly Contribution:**
+
+> The amount the employer puts toward each employee's individual premium every month. It lowers what the
+> employee pays and raises the employer's total outlay. It is also what the affordability threshold is
+> measured against.
+
+**Affordability Basis:**
+
+> Which income figure the affordability threshold is calculated from. FPL Safe Harbor uses the federal
+> poverty guideline, so no employee income is needed. Entered Income uses an income you type for each age
+> band. None hides the affordability section entirely.
+
+**Neither suggests a value.** No typical figure, no starting point, no range, no "most employers". The
+basis text names what each option *calculates from* — a fact about the mechanism, not a preference
+between them. Grepped for `typical|recommend|suggest|start|usually|most employers|should`: no hits.
+Trigger is click/focus, because a hover-only tooltip does not exist on a phone.
+
+## Decisions made
+
+1. **The collapse is presentation only.** The form is hidden, never emptied or detached, so Edit
+   re-shows exactly what was submitted. The summary is built from the **live form controls**, not server
+   attributes, so it cannot disagree with what the form holds after the ZIP field or repeater changed
+   something client-side.
+2. **The banners were left completely alone.** They are the obvious next place to find vertical space
+   and the instruction was explicit. Verified present in both mode branches after every commit.
+3. **Ticks degrade, the handle does not.** On a narrow track the "age N" labels drop and the marks stay —
+   the marks are what make the flip points visible before anything is dragged, and the exact figures are
+   in the table below either way.
+4. **`100vh` kept at the desktop breakpoint.** The toolbar-plus-scroll-body layout is deliberate on a
+   wide screen; only the mobile case reverts to normal page scrolling.
+5. **The remove control hides on a lone row** rather than being disabled — removing the only row would
+   leave an unsubmittable form, and a silently dead button is worse than no button.
+
+## Anchor ambiguity, and how it was resolved
+
+Two anchors were **not** single-occurrence, so neither was edited blind:
+
+- `<c:forEach begin="1" end="6" var="i">` — **twice** (the form repeater and the proposal hand-off).
+  Distinguished by surrounding context; **only the form one was touched**, and the hand-off loop is
+  verified still at `end="6"`.
+- `<table class="results-table">` — **three times**, and all three needed the identical wrapper, so
+  `replace_all` was correct rather than a shortcut. Closing tags were handled in two edits because their
+  indentation differs. Verified: 3 tables, 3 `.table-responsive` wrappers, `<div>` balance 70/70.
+
+## New assumptions, and reversal cost
+
+| Assumption | Reversal cost |
+|---|---|
+| Collapsing after a result is always wanted | **Free** — delete the summary card and the `hasResult` set. ⚠️ If an agent wants to tweak one field repeatedly, Edit is one extra click each time; L3 is where that shows up |
+| A one-row repeater is clearer than five visible rows | **Free.** The risk is an agent not noticing "+ Add age band" — L4 checks it |
+| Marks without labels still communicate on a phone | **Free** — one media query. The figures are in the table regardless |
+| Six bands is enough | **Free to raise, but only with `proposalBuilder.jsp`** — see T96 |
+
+## Fenced behaviours: what I could and could not verify
+
+**Could verify (code/structure only):** parameter names unchanged and hand-off loop intact (grep);
+banners present in both branches (grep, after every commit); JSTL and `<div>` balance after every edit;
+`./mvnw compile` clean; no fixed pixel widths remaining; three tables wrapped; no steering words in
+popover copy.
+
+**Could not verify — all of it behavioural:** `?countyFips=` pre-select · the three ZIP states ·
+county-ZIP precedence and the contradicted-county discard · results clearing on ZIP change · typed-vs-
+derived ZIP logging · ZIP surviving the chooser click · unavailable-county wording · disabled proposal
+link · mode carry · **the slider, its ticks and verdict flipping** · `illustration_log` writing.
+
+⚠️ **None of the logic behind those was touched** — this run changed layout, visibility and markup
+structure. But that is exactly the claim this session learned to distrust three times over, and it is a
+weaker claim here than usual: **this is the largest visual change the file has taken**, and the slider
+and its ticks now live inside a card that starts hidden. **The fence is not verified until L1–L10 and
+M1–M7 run.**
+
+## Contradictions found
+
+1. **W7's "no arbitrary cap" could not be fully honoured** — the real cap lives in a file outside the
+   fence. Logged as T96 rather than risked.
+2. **W4's earlier removal interacts with W14.** The unpriced-county panel added in prompt I sits outside
+   the form card, so it survives the collapse correctly — worth noting because had it stayed inside the
+   form, collapsing would have hidden a message the agent needs.
+3. **Nothing else in prompt J was overridden.** W8's source expectation held exactly.
+
+## SQL close-out audit
+
+**This run was forbidden from producing SQL and produced none.** No `.sql` file created, modified or
+deleted; no migration; no schema change. `ls docs/migrations/` unchanged at **V085**. The six commits
+list one `.java`, one `.jsp` and two `.md` paths.
+
+## Next
+
+1. **Walk L1–L10 and M1–M7**, and re-check the full fence. **L5 first** — the URL after removing a middle
+   band — because that is the contract this run put most at risk. **M1 second**: the staging banner
+   visible without scrolling on a phone.
+2. **Rebuild the WAR.** The artefact built earlier today predates prompts G, H, I and J.
+3. **T96** — decide whether to raise the band cap, which needs `proposalBuilder.jsp` in scope.
+4. Unchanged: **T76** (seam ready), T89's dropdown-scope question, the three SWBD emails, T83.
+
+**Carried forward, still unclosed:** nobody has asked Forrest what he would want a quoting tool to do,
+and the two SWBD emails have still never been sent.
