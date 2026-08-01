@@ -106,10 +106,15 @@
                         <c:if test="${not empty opportunityId}">
                             <input type="hidden" name="opportunityId" value="${opportunityId}">
                         </c:if>
-                        <%-- T74 ZIP intake. The agent has the employer's ZIP, not its county
-                             FIPS. The servlet consults this ONLY when countyFips is absent,
-                             so the county selector below still wins and every existing
-                             ?countyFips= link is unaffected.
+                        <%-- T74 ZIP intake. The agent has the employer's ZIP, not its county FIPS.
+
+                             ⚠️ The note that stood here was wrong and caused R1. It read "the
+                             servlet consults this ONLY when countyFips is absent, so the county
+                             selector below still wins" — which also meant a stale selection beat
+                             a freshly typed ZIP, and produced another county's rates with no
+                             warning. The rule now: a blank ZIP leaves the county contract
+                             untouched, and a present ZIP is always resolved, with a county it
+                             contradicts never computed from. See IllustrationServlet.
 
                              The county selector deliberately STAYS. The crosswalk is
                              ZCTA-derived and Texas-only, so some valid ZIPs do not resolve
@@ -121,6 +126,7 @@
                             <input type="text" class="form-control form-control-sm" id="zip" name="zip"
                                    inputmode="numeric" pattern="[0-9]{5}" maxlength="5" placeholder="75482"
                                    value="${submittedZip}" style="width:100px;">
+                            <div class="quiet-note" id="zipResolvedNote" style="display:none; margin-top:0.2rem;"></div>
                         </div>
 
                         <div class="col-auto">
@@ -226,29 +232,31 @@
 
                      Each choice is a link to the ordinary ?countyFips= URL, so the result
                      the agent lands on is linkable and shareable like any other. --%>
-                <c:if test="${not empty zipCandidates}">
-                    <div class="status-card">
-                        <strong><i class="bi bi-signpost-2 me-1"></i>ZIP <c:out value="${submittedZip}"/> is in more than one county</strong>
-                        <div class="footnote" style="margin-bottom:0.6rem;">
-                            Rates differ by county, so pick the one this employer is in.
-                        </div>
-                        <ul style="list-style:none; padding-left:0; margin-bottom:0;">
-                            <c:forEach var="cand" items="${zipCandidates}">
-                                <c:url value="Illustration" var="candUrl">
-                                    <c:param name="mode" value="${mode}"/>
-                                    <c:param name="countyFips" value="${cand.countyFips}"/>
-                                    <c:param name="planYear" value="${selectedPlanYear}"/>
-                                    <c:if test="${not empty opportunityId}">
-                                        <c:param name="opportunityId" value="${opportunityId}"/>
-                                    </c:if>
-                                </c:url>
-                                <li style="padding:0.25rem 0;">
-                                    <a href="${candUrl}"><c:out value="${cand.countyName}"/>, <c:out value="${cand.state}"/></a>
-                                </li>
-                            </c:forEach>
-                        </ul>
+                <%-- R2/R4: rendered always, hidden when unused, so the blur lookup reuses
+                     THIS markup and THIS wording rather than carrying a second copy in
+                     JavaScript. One source of truth for the copy; the script only toggles
+                     visibility and swaps the ZIP and the list items. --%>
+                <div class="status-card" id="zipChooserPanel" ${empty zipCandidates ? 'style="display:none;"' : ''}>
+                    <strong><i class="bi bi-signpost-2 me-1"></i>ZIP <span id="zipChooserZip"><c:out value="${submittedZip}"/></span> is in more than one county</strong>
+                    <div class="footnote" style="margin-bottom:0.6rem;">
+                        Rates differ by county, so pick the one this employer is in.
                     </div>
-                </c:if>
+                    <ul id="zipChooserList" style="list-style:none; padding-left:0; margin-bottom:0;">
+                        <c:forEach var="cand" items="${zipCandidates}">
+                            <c:url value="Illustration" var="candUrl">
+                                <c:param name="mode" value="${mode}"/>
+                                <c:param name="countyFips" value="${cand.countyFips}"/>
+                                <c:param name="planYear" value="${selectedPlanYear}"/>
+                                <c:if test="${not empty opportunityId}">
+                                    <c:param name="opportunityId" value="${opportunityId}"/>
+                                </c:if>
+                            </c:url>
+                            <li style="padding:0.25rem 0;">
+                                <a href="${candUrl}"><c:out value="${cand.countyName}"/>, <c:out value="${cand.state}"/></a>
+                            </li>
+                        </c:forEach>
+                    </ul>
+                </div>
 
                 <%-- T74: the ZIP is not in the crosswalk.
 
@@ -260,17 +268,17 @@
 
                      Kept distinct from the unwarmed-county case, which the servlet reports
                      separately through inputError and which is T76's to fix. --%>
-                <c:if test="${zipNoMatch}">
-                    <div class="status-card">
-                        <strong><i class="bi bi-info-circle me-1"></i>We don't have ZIP <c:out value="${submittedZip}"/> in our county lookup</strong>
-                        <div class="footnote" style="margin-top:0.4rem;">
-                            ZIP coverage is incomplete — the lookup is built from Census tabulation areas,
-                            which omit some valid ZIPs, and currently covers Texas only. This is a gap in
-                            our data, not a problem with the ZIP.
-                            <strong>Select the county above instead</strong> — everything else works the same.
-                        </div>
+                <%-- Same always-render-hidden treatment as the chooser above, for the same
+                     reason: the blur lookup must not carry a second copy of this wording. --%>
+                <div class="status-card" id="zipNoMatchPanel" ${zipNoMatch ? '' : 'style="display:none;"'}>
+                    <strong><i class="bi bi-info-circle me-1"></i>We don't have ZIP <span id="zipNoMatchZip"><c:out value="${submittedZip}"/></span> in our county lookup</strong>
+                    <div class="footnote" style="margin-top:0.4rem;">
+                        ZIP coverage is incomplete — the lookup is built from Census tabulation areas,
+                        which omit some valid ZIPs, and currently covers Texas only. This is a gap in
+                        our data, not a problem with the ZIP.
+                        <strong>Select the county above instead</strong> — everything else works the same.
                     </div>
-                </c:if>
+                </div>
 
                 <c:if test="${empty availableCounties}">
                     <div class="empty-state">
@@ -279,7 +287,14 @@
                     </div>
                 </c:if>
 
-                <c:if test="${not empty selectedCounty and mode == 'AGE_BAND'}">
+                <%-- R3: `empty inputError` guards the whole result panel. A validation
+                     failure returns from the mode handler BEFORE hasRates is set, so
+                     `not hasRates` was true and this branch printed "No cached rate
+                     data..." for a county that demonstrably has rates — collapsing the
+                     unwarmed-county state (T76's) into a plain validation error, which is
+                     precisely the pair prompt F required kept apart. On a validation
+                     error, render no result panel at all. --%>
+                <c:if test="${not empty selectedCounty and mode == 'AGE_BAND' and empty inputError}">
                     <c:choose>
                         <c:when test="${not hasRates}">
                             <div class="empty-state">
@@ -650,7 +665,10 @@
                     </c:choose>
                 </c:if>
 
-                <c:if test="${not empty selectedCounty and mode != 'AGE_BAND'}">
+                <%-- R3, RANGE side. Same reasoning as the AGE_BAND guard above: this is
+                     the branch actually observed printing "No rate data for this county
+                     yet." for Hopkins while the real failure was a blank headcount. --%>
+                <c:if test="${not empty selectedCounty and mode != 'AGE_BAND' and empty inputError}">
                     <c:choose>
                         <c:when test="${not hasRates}">
                             <div class="empty-state">
@@ -833,5 +851,152 @@
 
     </div>
 </div>
+<%-- R2/R4: resolve the ZIP on blur, without submitting anything.
+
+     Before this, the only trigger was Enter -- which submits the form, so typing a
+     ZIP with the headcount still empty answered with "Enter a valid number of
+     eligible employees". Resolving a ZIP had become entangled with computing an
+     illustration; this separates them.
+
+     Deliberately NOT here: any copy of its own. The chooser and no-match panels are
+     server-rendered above and merely hidden, and this script toggles them and swaps
+     their ZIP and list items -- so the wording has one source and cannot drift.
+
+     R1's other half: changing the ZIP clears the county selection immediately, before
+     any lookup returns. A stale selection must not survive a new ZIP. The server
+     enforces the same precedence independently, because this script may not run.
+
+     Progressive enhancement throughout -- with JavaScript off, the field still posts
+     as ?zip= and the servlet resolves it exactly as it does today. Nothing here is the
+     only path to anything. --%>
+<script>
+(function () {
+    var zipInput = document.getElementById('zip');
+    if (!zipInput) return;
+
+    var countySelect  = document.getElementById('countyFips');
+    var chooser       = document.getElementById('zipChooserPanel');
+    var chooserZip    = document.getElementById('zipChooserZip');
+    var chooserList   = document.getElementById('zipChooserList');
+    var noMatch       = document.getElementById('zipNoMatchPanel');
+    var noMatchZip    = document.getElementById('zipNoMatchZip');
+    var resolvedNote  = document.getElementById('zipResolvedNote');
+    var form          = zipInput.form;
+
+    // What the server already rendered for. Re-looking-up the same value on every
+    // blur would flicker the panels the server just drew.
+    var lastLookedUp = (zipInput.value || '').trim();
+
+    function hidePanels() {
+        if (chooser) chooser.style.display = 'none';
+        if (noMatch) noMatch.style.display = 'none';
+        if (resolvedNote) {
+            resolvedNote.style.display = 'none';
+            resolvedNote.textContent = '';
+        }
+    }
+
+    // R1 + R4. Any edit to the ZIP invalidates both the county selection and whatever
+    // panel is on screen, immediately -- not when the lookup returns.
+    function invalidate() {
+        hidePanels();
+        if (countySelect) countySelect.value = '';
+    }
+
+    function currentParam(name, fallback) {
+        if (!form) return fallback;
+        var el = form.elements[name];
+        return (el && el.value) ? el.value : fallback;
+    }
+
+    function selectCounty(county) {
+        if (!countySelect) return;
+        var found = false;
+        for (var i = 0; i < countySelect.options.length; i++) {
+            if (countySelect.options[i].value === county.fips) {
+                countySelect.selectedIndex = i;
+                found = true;
+                break;
+            }
+        }
+        if (resolvedNote) {
+            // Mirrors the server's own wording for each case rather than inventing one.
+            resolvedNote.textContent = found
+                ? (county.name + ', ' + county.state)
+                : ('That ZIP is in ' + county.name + ', ' + county.state + ', which has no cached rates yet.');
+            resolvedNote.style.display = '';
+        }
+    }
+
+    function renderChooser(zip, counties) {
+        if (!chooser || !chooserList) return;
+        if (chooserZip) chooserZip.textContent = zip;
+
+        var mode = currentParam('mode', 'RANGE');
+        var planYear = currentParam('planYear', '');
+
+        // Rebuilt with createElement/textContent, never innerHTML: every value here
+        // came off an HTTP response, and a response is data, not markup.
+        chooserList.textContent = '';
+        counties.forEach(function (county) {
+            var href = 'Illustration?mode=' + encodeURIComponent(mode)
+                     + '&countyFips=' + encodeURIComponent(county.fips)
+                     + (planYear ? '&planYear=' + encodeURIComponent(planYear) : '');
+
+            var a = document.createElement('a');
+            a.setAttribute('href', href);
+            a.textContent = county.name + ', ' + county.state;
+
+            var li = document.createElement('li');
+            li.style.padding = '0.25rem 0';
+            li.appendChild(a);
+            chooserList.appendChild(li);
+        });
+
+        chooser.style.display = '';
+    }
+
+    function lookup() {
+        var raw = (zipInput.value || '').trim();
+        if (raw === lastLookedUp) return;
+        lastLookedUp = raw;
+
+        invalidate();
+
+        // Not five digits yet: say nothing at all. Half-typed input is not an error,
+        // and calling it one is what makes an agent retype a ZIP three times.
+        if (!/^[0-9]{5}$/.test(raw)) return;
+
+        fetch('IchraZipLookup?zip=' + encodeURIComponent(raw), {
+            headers: { 'Accept': 'application/json' }
+        })
+            .then(function (res) { return res.ok ? res.json() : { counties: [] }; })
+            .then(function (data) {
+                // The field moved on while this was in flight -- drop the answer.
+                if ((zipInput.value || '').trim() !== raw) return;
+
+                var counties = (data && Array.isArray(data.counties)) ? data.counties : [];
+                if (counties.length === 0) {
+                    if (noMatchZip) noMatchZip.textContent = raw;
+                    if (noMatch) noMatch.style.display = '';
+                } else if (counties.length === 1) {
+                    selectCounty(counties[0]);
+                } else {
+                    // Nothing auto-selects. The agent picks, exactly as on the server path.
+                    renderChooser(raw, counties);
+                }
+            })
+            .catch(function () {
+                // Leave it to the submit path, which resolves server-side regardless.
+            });
+    }
+
+    zipInput.addEventListener('change', lookup);
+    zipInput.addEventListener('blur', lookup);
+    zipInput.addEventListener('input', function () {
+        if ((zipInput.value || '').trim() !== lastLookedUp) invalidate();
+    });
+})();
+</script>
 </body>
 </html>
