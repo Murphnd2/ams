@@ -8,6 +8,9 @@ import net.superiorstate.ams.model.sales.agency.Agency;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.util.List;
+import java.util.Set;
+
 /**
  * Single source of truth for "is the ICHRA capability available in this context?" —
  * one question, one boolean answer. Backs both the {@code IllustrationServlet} guard
@@ -15,10 +18,14 @@ import org.apache.logging.log4j.Logger;
  * agree by construction.
  * <p>
  * Resolution order: a session flagged PSP admin is always available; otherwise the
- * caller's primary agency (via {@link AgencyScopeResolver}) must have
- * {@code agency.ichra_enabled} set; anything else — no session, no agency, no flag, or
- * any exception encountered while resolving — is not available. This method fails
- * closed in every case; it never throws.
+ * caller's primary agency (via {@link AgencyScopeResolver}) is checked first for
+ * {@code agency.ichra_enabled} — the common-case fast path, one {@code find}; if that
+ * agency is not entitled (or there is no primary agency), every agency in the caller's
+ * full membership set ({@code AgencyScope.detailAgencyIds()}) is checked instead, since
+ * {@code primaryAgencyId} is an arbitrary tie-break among a person's agencies and not
+ * itself an authorization boundary. Anything else — no session, no agency anywhere in
+ * scope with the flag set, or any exception encountered while resolving — is not
+ * available. This method fails closed in every case; it never throws.
  * <p>
  * Callers receive only the boolean, never a reason. No {@code constant} row, LOS,
  * {@code ServiceItem}, {@code PlanType}, {@code ServiceModule}, or {@code RateTable}
@@ -51,12 +58,37 @@ public final class IchraAccessResolver {
 
             AgencyScope scope = AgencyScopeResolver.resolve(em, request);
             Long agencyId = scope.primaryAgencyId();
-            if (agencyId == null) {
+            Set<Long> membership = scope.detailAgencyIds();
+
+            if (agencyId != null) {
+                Agency agency = em.find(Agency.class, agencyId);
+                if (agency != null && agency.isIchraEnabled()) {
+                    log.info("[ICHRA] Access resolved: primaryAgencyId={}, membership={}, matched={}, available=true",
+                            agencyId, membership, agencyId);
+                    return true;
+                }
+            }
+
+            // Fast path missed (no primary agency, or the primary tie-break isn't the
+            // entitled one) — fall back to the caller's full membership set. Single query
+            // over the whole set rather than N em.find calls; an empty set short-circuits
+            // before the query so an empty "IN ()" is never issued.
+            if (membership.isEmpty()) {
+                log.info("[ICHRA] Access resolved: primaryAgencyId={}, membership={}, matched=none, available=false",
+                        agencyId == null ? "none" : agencyId, membership);
                 return false;
             }
 
-            Agency agency = em.find(Agency.class, agencyId);
-            return agency != null && agency.isIchraEnabled();
+            List<Long> matches = em.createQuery(
+                            "SELECT a.id FROM Agency a WHERE a.id IN :ids AND a.ichraEnabled = true", Long.class)
+                    .setParameter("ids", membership)
+                    .setMaxResults(1)
+                    .getResultList();
+
+            boolean available = !matches.isEmpty();
+            log.info("[ICHRA] Access resolved: primaryAgencyId={}, membership={}, matched={}, available={}",
+                    agencyId == null ? "none" : agencyId, membership, available ? matches.get(0) : "none", available);
+            return available;
         } catch (Exception e) {
             log.debug("[ICHRA] Access resolution failed; defaulting to not available", e);
             return false;
