@@ -431,7 +431,7 @@ cases where the analysis matters.
 | **What** | A `ChatbotSkill` row plus KB content answering agents' ICHRA/QSEHRA design questions from rules already written |
 | **Agent-visible outcome** | *"Does my client's dental plan kill the QSEHRA?"* — answered with citations, in seconds |
 | **Attaches at** | The V046 `chatbot_skill` mechanism. **Precedent:** V065 seeded `EMAIL_DRAFT_ASSISTANT` the same way |
-| **Gate** | `is_admin_only = 1` on the skill row — `ChatAssistant.doPost` strips admin-only skills for any non-`isPspAdmin`/`isBpoAdmin` caller. **No UI entry point was added**, so item 2's resolver is not called |
+| **Gate** | `is_admin_only = 0` since **V082** (2026-07-31) — reachable by any caller item 2's `IchraAccessResolver` already grants ICHRA access to; `navbar25.jsp`'s chat-assistant include was widened to match (**T58**). A UI entry point now exists: the hub's Design Advisor card |
 | **Phase A?** | **Not required** — folded into the build run instead |
 | **Schema** | **V080** — `ICHRA_DESIGN_ADVISOR` skill row + `ichra_design` KB registry row + 18 `knowledge_chunk` rows. No new tables, and **no Java or JSP change** |
 | **Depends on** | ⭐ **Nothing. Fully independent — workable at any point** |
@@ -453,8 +453,10 @@ so it is written as an explicit hard boundary with its own worked example rather
 **(1)** `ChatAssistant.executeSkill` injects **no** KB content — a matched skill's `system_prompt` is its
 entire context. The rules therefore live in *both* the prompt and the chunks by design (prompt = the
 matched path, chunks = the no-match fallback and the Knowledge Manager edit UI); the migration carries a
-`SYNC-GUARD` comment saying so. **(2)** The skill's `model`/`max_tokens` columns are **ignored** on the
-text-only path — it hardcodes Haiku 4.5 / 1024 tokens. Logged as **T52**, deliberately not fixed here.
+`SYNC-GUARD` comment saying so. **(2)** The skill's `model`/`max_tokens` columns were **ignored** on the
+text-only path — it hardcoded Haiku 4.5 / 1024 tokens. **Fixed 2026-07-31 (T52)**: `ChatAssistant
+.executeSkill` now honours a matched skill's configured `model`/`max_tokens` when both are set, so this
+skill runs on Sonnet / 2048 tokens as V080 configured.
 
 ---
 
