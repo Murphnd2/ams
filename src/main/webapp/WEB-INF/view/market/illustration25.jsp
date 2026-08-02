@@ -765,6 +765,20 @@
                                     <div style="font-size:1.05rem; font-weight:700; color:#0d5681; min-width:7rem; text-align:right;"
                                          id="contribReadout"></div>
                                 </div>
+                                <%-- T105: the slider sits above the results table (L2 requires the
+                                     staging banner and slider visible without scrolling, so it
+                                     cannot move below it), and dragging it rewrote numbers an agent
+                                     demoing it could not see without scrolling -- a control that
+                                     visibly moves and nothing else, exactly what the progressive
+                                     rework exists to defeat. These two figures are the effect of the
+                                     drag, shown where the drag is. render() below writes them from
+                                     the same groupNet / c*lives values in the same pass that rewrites
+                                     the table, not a second computation -- so they cannot disagree
+                                     with it for the same contribution. --%>
+                                <div class="contrib-live-figures d-flex flex-wrap gap-3 mt-2" style="font-size:0.82rem; color:#495057;">
+                                    <span>Group Monthly Net Cost <strong id="contribGroupNetOut" style="color:#0d5681;"></strong></span>
+                                    <span>Maximum Employer Monthly Commitment <strong id="contribMaxCommitOut" style="color:#0d5681;"></strong></span>
+                                </div>
                                 <%-- Rendered only when there are flip points to mark. Factual:
                                      it says where a verdict changes, not where to aim. --%>
                                 <div class="footnote" id="contribTickLegend" style="display:none;">
@@ -1077,6 +1091,12 @@
                                 var proposalLink = document.getElementById('ichraProposalLink');
                                 var groupOut = document.getElementById('groupNetTotalOut');
                                 var outlayOut = document.getElementById('employerOutlayOut');
+                                // T105: the slider card's own copies of the same two figures,
+                                // written in the same render() pass from the same groupNet / c*lives
+                                // values as groupOut/outlayOut below -- one computation, two places,
+                                // so they cannot drift apart.
+                                var contribGroupNetOut = document.getElementById('contribGroupNetOut');
+                                var contribMaxCommitOut = document.getElementById('contribMaxCommitOut');
 
                                 function setContributionParam(href, value) {
                                     // Rewrites only the contribution parameter so the proposal
@@ -1121,6 +1141,8 @@
 
                                     if (groupOut) groupOut.textContent = money.format(groupNet);
                                     if (outlayOut) outlayOut.textContent = money.format(c * lives);
+                                    if (contribGroupNetOut) contribGroupNetOut.textContent = money.format(groupNet);
+                                    if (contribMaxCommitOut) contribMaxCommitOut.textContent = money.format(c * lives);
 
                                     // The flip point does not move with the contribution -- it is the
                                     // server's figure. Only which side of it we are on changes, and
