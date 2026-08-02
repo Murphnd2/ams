@@ -2004,3 +2004,55 @@ work item and not a dependency on any build item.
 
 ⚠️ **Evidence grade.** The CMS table's existence and coverage are 📚 secondary-sourced from
 `healthsherpa_review_2026-08-02.md` §5.8 and have **not been verified against the file itself.**
+
+---
+---
+
+# Part 10 — ICHRA+ and QSEHRA+ are two lines of service
+
+**Date:** 2 August 2026 (S9-A)
+**Source:** Kevin's end-to-end walk of the sales motion, session 9. Not a document.
+
+## D39 — `ICHRA+` and `QSEHRA+` are two separate lines of service, not one LOS with a design attribute
+
+**Decision.** `ICHRA+` and `QSEHRA+` are **two separate `LOS` rows**. They are not one line of service
+carrying a design attribute, a product flag, or a variant column that selects between them.
+
+**The deciding reason is structural, not operational — the quotable attached-product bundle differs by
+statute.**
+
+- **A health FSA is a group health plan.** A **QSEHRA requires that the employer offer no group health
+  plan.** Therefore **QSEHRA + FSA disqualifies the QSEHRA.** The two cannot appear on the same quote,
+  ever, and not as a matter of preference.
+- **An ICHRA *is* a group health plan**, which is what makes the ICHRA itself **COBRA-continuable**.
+  A **QSEHRA is excepted from that definition** and has nothing to continue.
+
+**So: ICHRA can be quoted alongside COBRA and FSA. QSEHRA can be quoted alongside neither.** That is a
+difference in what may legally sit in the same proposal — which is exactly what an LOS row governs in
+this codebase, since `Proposal.losList` is what drives the priced bundle. **A design attribute on one
+shared LOS cannot express "these two attached products are unavailable," only "these two are
+unselected."** The distinction matters the first time someone tries to sell the disallowed combination.
+
+**Supersedes the weaker earlier reasoning** that the two might merge because administration cost is
+similar. **Administration cost may well be similar. That is not what decides it.** This also sharpens
+**D15** (Part 2) and the Part 1 asymmetry finding, which established that ICHRA+ and QSEHRA+ diverge on
+the *enrollment rail*; D39 establishes that they also diverge on the *quotable bundle*, which is a
+second and independent reason for two rows.
+
+**Consequence for the build sequence.** **The reference rows are two `LOS` rows, not one** — with their
+own `ServiceItem`, `PlanType` and priced `ServiceModule` → `RateTable` rows, and their own
+`agencyrates` assignment.
+
+⚠️ **This lands on a task that is Kevin's, not a build item.** `swbd_ichra_build_plan.md` §3 item 4 was
+**deleted as a numbered build item on 2026-07-31** — the reference rows are created through the admin
+UI when Kevin is ready, and nothing is sequenced around them. **That file is outside this run's scope
+fence and was not edited.** ⚠️ **Flagged for a later run: item 4's note in
+`docs/swbd_ichra_build_plan.md` still reads as a single undifferentiated row-creation task and should
+say two LOS rows.**
+
+⚠️ **Caveat, and it materially limits how often the COBRA half fires.** **Most of SWBD's book is under
+20 lives, where federal COBRA does not attach at all** — Texas state continuation applies instead. The
+COBRA attachment above is real, but **it quotes mainly at the larger end of the book**, not across it.
+Do not build the ICHRA+ bundle presentation as though COBRA were a standard attachment for this
+population. `state continuation on ICHRA loss` is already carried in the **O21** standing docket
+(Part 2), and this is the second decision to lean on it.
