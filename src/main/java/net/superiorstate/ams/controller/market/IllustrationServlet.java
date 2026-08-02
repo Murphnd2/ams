@@ -386,7 +386,17 @@ public class IllustrationServlet extends HttpServlet {
                 }
             }
             boolean modeExplicit = Boolean.TRUE.equals(request.getAttribute("modeExplicit"));
-            if (!(modeExplicit && !anyAgeParamPresent)) {
+            boolean isLanding = modeExplicit && !anyAgeParamPresent;
+            if (isLanding) {
+                // T103 second cut: suppressing the error is not enough — an empty `rows`
+                // reaching the JSP with no other signal reads, to it, exactly like a
+                // computed result that came back with nothing (hasRates never gets set
+                // because this method returns before reaching it, and the JSP's own R3 fix
+                // already treats an unset hasRates as "nothing cached" — see
+                // illustration25.jsp around the illustrationResults guard). This flag is
+                // the distinction the JSP has no other way to make: a landing, not a result.
+                request.setAttribute("illustrationLanding", Boolean.TRUE);
+            } else {
                 request.setAttribute("inputError", "Enter at least one age.");
             }
             request.getRequestDispatcher("/WEB-INF/view/market/illustration25.jsp").forward(request, response);

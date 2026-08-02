@@ -238,7 +238,12 @@
                      re-submit, no reload, nothing cleared. With JavaScript off the summary
                      never renders and the form is simply always open, which is today's
                      behaviour. --%>
-                <c:set var="hasResult" value="${not empty selectedCounty and empty inputError}"/>
+                <%-- S7-D / T103 second cut: `illustrationLanding` is the flag that tells a
+                     landing (no ageN supplied, nothing asked) apart from a result that came
+                     back empty (ages supplied, cache had nothing) — both reach here with an
+                     empty row set and no other distinguishing attribute. Set by the servlet
+                     only on that specific path; absent (falsy) everywhere else. --%>
+                <c:set var="hasResult" value="${not empty selectedCounty and empty inputError and not illustrationLanding}"/>
                 <div class="status-card" id="inputSummary" ${hasResult ? '' : 'style="display:none;"'}>
                     <div class="d-flex align-items-center flex-wrap gap-2">
                         <span><i class="bi bi-sliders2 me-1"></i><strong>Inputs</strong></span>
@@ -669,8 +674,14 @@
                      data..." for a county that demonstrably has rates — collapsing the
                      unwarmed-county state (T76's) into a plain validation error, which is
                      precisely the pair prompt F required kept apart. On a validation
-                     error, render no result panel at all. --%>
-                <c:if test="${not empty selectedCounty and mode == 'AGE_BAND' and empty inputError}">
+                     error, render no result panel at all.
+
+                     S7-D / T103 second cut: `illustrationLanding` guards it the same way,
+                     for the same reason — a landing also returns before hasRates is set,
+                     and without this it fell into the exact `not hasRates` branch R3 was
+                     written to keep separate, printing "No cached rate data" for a county
+                     nobody asked about anything yet. --%>
+                <c:if test="${not empty selectedCounty and mode == 'AGE_BAND' and empty inputError and not illustrationLanding}">
                     <c:choose>
                         <c:when test="${not hasRates}">
                             <div class="empty-state">
