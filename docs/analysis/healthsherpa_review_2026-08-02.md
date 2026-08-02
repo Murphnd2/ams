@@ -631,7 +631,7 @@ text, do not delete):
 >    the `(off-exchange)` label at `illustration25.jsp:1302` of its meaning. **Do not apply.**
 > 2. **`BigDecimal` from a numeric node — genuinely open, and this document mis-stated current
 >    behaviour.** A `double` intermediate does exist: JSON → `Double` (`HealthSherpaService:310-311`,
->    `:321-322`) → `BigDecimal.valueOf(double)` (`RateCacheWarmService:413`). `BigDecimal.valueOf`
+>    `:321-322`) → `BigDecimal.valueOf(double)` (`RateCacheWarmService:414`). `BigDecimal.valueOf`
 >    round-trips 2-dp currency exactly via `Double.toString`, so **no observed defect** — but the
 >    intermediate is real. Filed as **T113-adjacent**; low priority.
 > 3. **"Existing cached rows must be invalidated" — UNNECESSARY, and never was necessary.**
