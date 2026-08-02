@@ -1963,3 +1963,44 @@ employer — a much narrower problem than D10 was designed for. Worth revisiting
 ## O23 — resolved favorably
 
 See the 2026-07-30 section of `docs/business/healthsherpa.md`. **A2 stays in the plan.**
+
+---
+---
+
+# Part 9 — LCSP data source split
+
+**Date:** 2 August 2026 (S8-D)
+
+## D38 — LCSP data source split: CMS for compliance, HealthSherpa for illustration
+
+The CMS **ICHRA Employer LCSP Premium Look-up Table** is the source for any compliance-facing
+affordability figure, where it covers the geography. Published by CMS/CCIIO, free, no API key, by
+geography and age, covering FFE and SBE-FP states — Texas qualifies. It is **on-exchange by
+construction**, which is what makes it the defensible source: the class of defect T44/V078 existed to
+close is structurally impossible against it.
+
+HealthSherpa remains the **illustration** source — market low/high premium, plan count, carrier count,
+lowest bronze, age-band net cost. These are legitimately off-exchange market figures and do not move.
+
+**SBM states fall back to HealthSherpa on-exchange quoting.** CMS does not publish them. The two
+sources are complementary, not competing.
+
+`onex_lcsp_premium` and `onex_benchmark_silver_premium` (V078, T44) are **retained**. They stop being
+primary and become a **cross-check**: a material divergence between CMS and HealthSherpa for the same
+county and age is a signal worth logging. T44's work is not superseded and must not be removed.
+
+**Consequence worth stating.** The compliance-facing number stops depending on a vendor preview
+endpoint with no SLA, and the affordability half of the build stops being gated on D-78/D-79 or on
+production allow-listing.
+
+**Reversal cost: low.** Purely additive — a new reference table and a resolver, nothing removed. If
+the CMS file proves unusable, the current HealthSherpa-sourced path stands unchanged.
+
+⚠️ **Hard prerequisite — Kevin's, not a work item.** `cms.gov` returns 403 to automated fetching, so
+the PY2026 table must be downloaded through a browser. **No migration may be written against this
+table until its actual columns and granularity have been inspected** — `healthsherpa_review_2026-08-02.md`
+§5.8 is secondary-sourced and describes the file rather than shows it. This is a note, not a numbered
+work item and not a dependency on any build item.
+
+⚠️ **Evidence grade.** The CMS table's existence and coverage are 📚 secondary-sourced from
+`healthsherpa_review_2026-08-02.md` §5.8 and have **not been verified against the file itself.**
