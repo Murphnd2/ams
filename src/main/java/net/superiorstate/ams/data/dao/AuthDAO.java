@@ -43,7 +43,8 @@ public abstract class AuthDAO {
         return generatedHash.compareTo(user.getPasswordHash()) == 0;
     }
     public static boolean validUserName(EntityManager em, String username){
-        boolean isValid = getUserByUserName(em, username).getUserName() != null && getUserByUserName(em, username).getUserName() != "";
+        User user = getUserByUserName(em, username);
+        boolean isValid = user != null && user.getUserName() != null && user.getUserName() != "";
         return isValid;
     }
 
