@@ -113,6 +113,12 @@ spent deliberately rather than drifted across.
 | **LA-11** | Design census stays at minimum scope | Config change | Any field added to the design census | Assumed |
 | **LA-12** | Affordability is computed for the employer, not presented to the employee | Display edit — but **gated on T44 correctness** | Any employee-facing affordability figure | Assumed |
 | **LA-13** | This register is internal work product and is not disclosed to partner agencies through SSA-built tools | ⭐ **Low, one direction only** — restoring disclosure is a data edit; a disclosure already made cannot be withdrawn | Any disclosure of SSA's regulatory status or the review state of its positions to a partner | Assumed |
+| **LA-17** | An agent-composed, agent-sent, agency-branded proposal may carry market data to an employer without SSA becoming a producer | ⭐ **Low — display edit — and only because constraint 2 holds.** **Escalates to rebuild** if an agentless front door is ever built | A second state beyond Texas; any agentless front door; any SSA-initiated communication to a prospect | Assumed — **thin** |
+
+⚠️ **Index gap, not fixed here.** **LA-14, LA-15 and LA-16 exist in the register below but have never
+been added to this table.** Recorded rather than backfilled, because backfilling three entries someone
+else wrote is a judgment about their reversal-cost wording, not a transcription. Flagged for Kevin
+(S9-A, 2026-08-02).
 
 ---
 
@@ -573,6 +579,13 @@ prospect, LA-09's central fact — the audience is a licensed agent — stops be
 does not cover it. That increment should be treated as **crossing the scope line**, not as widening an
 existing feature.
 
+> **Narrowed by LA-17 (2026-08-02) — one case only, and not this one.** LA-17 carves out the
+> **agent-composed, agent-sent, agency-branded proposal**: market data reaches an employer, but a
+> licensed agent chose the recipient, chose the content, and pressed send. **The agentless front door
+> described immediately above is expressly *not* narrowed** — LA-17's constraint 2 is that V071's
+> public quote token must not become a prospect-facing entry point, and LA-17 collapses if it does.
+> Nothing in LA-09 is superseded or withdrawn.
+
 ⚠️ **Open sub-question, unresearched: does operating as the licensed agency's tool, under the agency's
 license, change the analysis?** If AMS is white-labelled to SWBD and an SWBD-licensed agent is the
 operator, one reading is that the licensed party is doing the displaying and SSA is supplying
@@ -979,6 +992,111 @@ opposed to consumed by client-side script and discarded. That is the exact line 
 draws, and it is the only line that needs watching.
 
 **Status.** Assumed — 2026-08-01. Deferred by the sandbox decision; registered against T81's next phase.
+
+---
+
+### LA-17 — An agent-composed, agent-sent, agency-branded proposal may carry market data to an employer
+
+**This entry narrows LA-09. It does not replace it.** LA-09 holds everywhere else, including — and
+especially — the agentless public front door it already names as crossing the scope line.
+
+**Assumption.** A proposal that is **composed by a licensed agent**, **sent by that agent**, and
+**branded to that agent's agency** may carry market data to an employer — premium ranges, plan and
+carrier counts, affordability output, a contribution slider — without SSA thereby engaging in producer
+activity.
+
+**Basis.** **The distinguishing fact is who initiated the delivery and who chose the content, not what
+the document contains.** The agent selects the recipient, composes the document, and presses send. SSA
+supplies document-production software to a licensed producer. On that reading, the market data in the
+document is the agent's statement to their own client, rendered by a tool, and SSA's role is the
+tool's.
+
+This is also **the observable operating model of existing broker platforms** — Zywave, Employee
+Navigator, Ease — which render carrier and rate data into employer-facing, broker-produced proposals
+and are not themselves licensed producers. ⚠️ **State this as an industry-pattern observation, not as
+legal authority.** That an entire software category operates this way without apparent enforcement is
+evidence about market practice and about what regulators have not pursued. It is not a holding, it is
+not a safe harbor, and nobody has checked whether those platforms hold licenses for reasons unrelated
+to this question.
+
+**Design choice — three constraints, all load-bearing.** The assumption is not that the document is
+harmless. It is that these three facts are true of it, and **the entry fails if any one of them stops
+being true.**
+
+1. **Every send is an agent action, logged with the agent's identity.** **SSA never initiates a
+   communication to a prospect**, and no SSA-initiated channel to a prospect exists. This is the fact
+   the whole entry rests on — if a proposal can leave the system without an agent having pressed send,
+   the "who initiated the delivery" basis is gone.
+2. **No agentless public front door.** V071's per-agency public quote token **must not become a
+   prospect-facing entry point.** This is the exact increment LA-09 names as crossing the scope line,
+   and **it remains uncrossed** — confirmed by Kevin, 2026-08-02. A prospect who arrives at market data
+   without an agent having sent it to them is not covered by this entry under any reading.
+3. **Two voices, structurally separate in the document.** **The agent's section carries market data.
+   SSA's supplemental section describes administration services only** — no plans, no carriers, no
+   selection guidance. Keep them **visually and structurally distinct**, so that the document itself
+   shows who said what. This is not cosmetic: the basis above turns on the market content being the
+   agent's statement, and a document that blends the two voices is evidence against the very fact it
+   depends on.
+
+#### The enforcement mechanism — proposal-scoped entitlement gating
+
+**Kevin's design rule, confirmed 2026-08-02.** ICHRA/QSEHRA-specific plus-tier proposal content
+appears **only when the proposal is tied to an agent of an agency carrying the ICHRA entitlement flag**
+(`agency.ichra_enabled`, V077). **An employer coming to SSA directly, with no entitled agency behind
+them, receives administration content only — no plus-tier items.**
+
+**Recorded here rather than as its own LA number, because it is not an independent assumption.** It
+reads no statute and it makes no claim about the law. It is *how constraints 1–3 above are actually
+enforced in code*: an entitled agency behind the proposal is the machine-checkable proxy for "a
+licensed agent composed and sent this." Under the register's own admission rule — a decision earns an
+LA number when it both rests on a reading of authority **and** would be expensive to reverse, *both,
+not either* — this fails the first test.
+
+⚠️ **The consequence is that the availability resolver becomes the enforcement point for a legal
+boundary, not only a visibility preference.** That materially raises the cost of getting it wrong.
+A resolver bug that over-reports entitlement does not merely show a section to the wrong audience; it
+renders market data into an employer-facing document in a case this entry does not cover. **The
+resolver should be treated as a compliance control and reviewed as one.**
+
+⚠️ **And it cannot reuse the resolver that exists.** `IchraAccessResolver.isAvailable` takes an
+`HttpServletRequest`, reads `HttpSession`, and short-circuits on the `isPspAdmin` session attribute
+(`IchraAccessResolver.java:43-96`). **The public proposal view has no session at all** — `ViewProposal`
+(`/proposal/*`) is exempted from `LoginFilter` and reads no session anywhere in its render path. A
+proposal-scoped answer needs a **separate, session-free overload** resolving from the `Proposal`
+instance. The chain exists and is already used on that page
+(`OriginatingAgencyResolver.resolve(Proposal)` → `Agency.isIchraEnabled()`), so this is a small
+addition rather than new plumbing — see the S9-A probe conclusion and the backlog item it produced.
+**The PSP-admin bypass must not be carried across**: on a public page there is no admin, and a bypass
+that cannot fire is a bypass waiting to be reintroduced by someone who does not know why it was absent.
+
+**Risk if wrong.** **Same class as LA-09** — state producer licensing, per state. **A characterisation
+problem rather than a code problem**: the exposure is that a regulator reads the arrangement
+differently than SSA does, and no architecture inside AMS answers that. Per-state by construction, for
+the same reason LA-09 is (ERISA §514(b)(2)(A) preserves state regulation of insurance).
+
+**Reversal cost.** ⭐ **LOW — a display edit — and only because of constraint 2.** The snapshot stops
+rendering in the section; the proposal is otherwise unchanged. **Record explicitly: if the agentless
+front door is ever built, this entry's reversal cost escalates to rebuild**, matching LA-09's own.
+At that point the reversal is not a display edit but the removal of shipped functionality somebody was
+sold on — which is precisely the escalation LA-09 already describes, arriving through this entry
+instead of directly.
+
+**Confirm before.** **A second state beyond Texas**; or **any agentless front door**; or **any
+SSA-initiated communication to a prospect**. Any one of the three, not all three.
+
+**Status.** Assumed — **thin** — 2026-08-02. **Thin, and specifically why:** this is structural
+reasoning plus an industry-pattern observation, and nothing else. **Nobody has read Tex. Ins. Code's
+solicitation definitions** — LA-09 already flags that several states define "solicit" broadly enough to
+capture presenting plan-specific pricing to a prospective purchaser, and that warning is not answered
+here, only narrowed around. **Texas is the entire book, so Texas is the one jurisdiction where the hour
+would pay.** It belongs with LA-09 in Group 4 of the counsel list, and the free research is the same
+research.
+
+⚠️ **This entry does not resolve O25.** O25 is carrier names on **SSA-drafted paper**, and LA-04
+disposes of the safe-harbor half of it while the design declines to rely on the answer. **Carrier names
+in a proposal remain separately open** — LA-17 says an agent may send market data, not that SSA may
+print a carrier name. Constraint 3 is what keeps the two questions apart: the agent's section and
+SSA's are different paper.
 
 ---
 
