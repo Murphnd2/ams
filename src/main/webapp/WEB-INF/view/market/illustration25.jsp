@@ -829,12 +829,25 @@
                                     <div class="footnote">For ${submittedTotalLives} eligible ${submittedTotalLives == 1 ? 'employee' : 'employees'}, after employer contribution. Sum of the Band Net Total column.</div>
                                 </div>
 
+                                <%-- T106: this is a ceiling, not a spend, and the label and caption
+                                     must say so. Walked on production: 55x2 at $735.59 and 28x3 at
+                                     $358.56, contribution $400 -- the age-28 row shows Net/Employee
+                                     $0.00 (premium below the allowance) while this card asserted
+                                     "$2,000.00" as an outlay, a spend the page's own numbers
+                                     contradict. An ICHRA reimburses actual premium up to the
+                                     allowance; unused allowance is forfeited, not paid. Option A
+                                     (decided): keep the figure -- it is the correct maximum
+                                     regardless of which plans employees choose, which is exactly
+                                     why it belongs on screen -- and fix the words instead. Option B
+                                     (compute the bronze-floor actual-spend figure) was rejected: it
+                                     assumes every employee buys the cheapest bronze plan and
+                                     understates real cost. A range (option C) is out of scope. --%>
                                 <div class="status-card mt-3">
-                                    <strong>Employer Total Monthly Outlay</strong>
+                                    <strong>Maximum Employer Monthly Commitment</strong>
                                     <div style="font-size:1.05rem; font-weight:700; color:#0d5681; margin-top:0.35rem;" id="employerOutlayOut">
                                         <fmt:formatNumber value="${employerOutlay}" type="currency"/>
                                     </div>
-                                    <div class="footnote">Contribution &times; total eligible employees. Shown separately from net cost above.</div>
+                                    <div class="footnote">The ceiling, not a spend. An ICHRA reimburses each employee's actual premium up to this allowance, and unused allowance is forfeited, not paid — actual employer cost will be lower for any employee whose premium falls below the contribution (see Net / Employee above).</div>
                                 </div>
                             </c:if>
                             <%-- Tier 2 with no contribution: say what the table IS, so the absent
