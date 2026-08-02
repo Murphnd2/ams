@@ -1,6 +1,9 @@
 # HealthSherpa / ICHRA+ — Research Review, 2026-08-02
 
 **Status:** ⚠️ **FOR REVIEW — nothing in this document has been applied to any other doc or to code.**
+**⚠️ CORRECTED 2026-08-02 (S8-B).** §1, §2.3's warning, and §8's code list are **superseded** — see
+the correction blocks inline. §1 describes a state fixed on 2026-07-31 by T44/V078 and is **not a live
+defect.** The rest of this document stands.
 **Method:** repo docs + live HealthSherpa documentation + three live staging API calls + secondary
 regulatory sources.
 **Scope:** the ICHRA Partner API (`api.ichra.healthsherpa.com`), not HSOne, not EDE.
@@ -15,6 +18,35 @@ regulatory sources.
 ---
 
 ## 1. The urgent item
+
+> ## ⚠️ SUPERSEDED — §1 IS NOT A LIVE DEFECT
+>
+> **Corrected 2026-08-02 by the S8-B reconciliation run. Everything below this block is historically
+> accurate and currently false.**
+>
+> The defect described was real, was found on **2026-07-31**, and was **fixed the same day** by
+> **T44 / migration V078** — one day before this review was written. This document re-derived a known
+> finding from live API calls without reading the code that had already acted on it, and re-opened
+> **T107**, a HIGH backlog item closed on 2026-08-01.
+>
+> **What is actually true at HEAD:**
+>
+> - V078 added **separate** columns `onex_lcsp_premium` and `onex_benchmark_silver_premium`, fed by a
+>   **second `off_ex: false` quote call** (`RateCacheWarmService:316-317`, `:325-328`, `:387-388`).
+> - `lcsp_premium` and `benchmark_silver_premium` remain off-exchange **by design**. V078:14-16 says
+>   so explicitly: they *"remain the off-exchange figures the illustration already displays, with
+>   their existing meaning, name and data intact."*
+> - **ICHRA affordability reads `onex_lcsp_premium` exclusively** — single call site, no fallback to
+>   the off-exchange column.
+> - The only off-exchange silver figure a user sees is the market-context row at
+>   `illustration25.jsp:1302`, explicitly labelled **(off-exchange)**.
+>
+> **What survives from §1 and is worth keeping:** the live measurement. Hopkins 48223, PY2026, age 40
+> — off-exchange LCSP **$489.38** vs on-exchange **$705.37**, a **$215.99/mo** gap, and the resulting
+> ~100–235% FPL misclassification band. That quantifies why T44 was necessary and belongs in
+> **LA-12**. V078's own header records the same probe.
+>
+> **Do not apply §1's remediation.** See the correction block in §8.
 
 **`rating_area_rate_cache.lcsp_premium` and `.benchmark_silver_premium` are wrong, in the direction
 that makes ICHRA offers look affordable when they are not.**
@@ -81,6 +113,15 @@ Open since 2026-07-28 (*"Confirm from a raw response dump before writing a Java 
 from a numeric node.
 
 ### 2.3 ⭐ The plan set is not age-invariant *the same way* on both exchanges ✅ — NEW
+
+> ⚠️ **Corrected 2026-08-02 (S8-B): the observation stands, the warning does not.**
+>
+> On-exchange returning Catastrophic plans at age 40 is **corroborated** and already documented at
+> `RateCacheWarmService:89-93`. But the regression this section warns about **cannot occur in the
+> shipped design**: the on-exchange response feeds one Silver-only selector (`:432`), so Catastrophic
+> cannot enter any on-exchange statistic, and the off-exchange path already filters Catastrophic for
+> ages 30+ (`:335-339`, `CATASTROPHIC_MAX_AGE = 29`). The warning presumes a fix that flips `off_ex`
+> on the existing market-wide call. **That fix was never built and must not be.**
 
 The 2026-07-31 finding — catastrophic plans restricted to under-30, so age 40 returns none — was
 measured **off-exchange**. On-exchange, **age 40 returned 2 Catastrophic plans.**
@@ -578,6 +619,25 @@ text, do not delete):
 
 ### Code — separate change, not a doc update
 
+> ## ⚠️ SUPERSEDED — do not apply items 1 and 3
+>
+> **Corrected 2026-08-02 (S8-B), verified against HEAD:**
+>
+> 1. **`off_ex: false` for LCSP/SLCSP — ALREADY DONE, and re-doing it as written is HARMFUL.** The
+>    on-exchange pair exists as separate columns. Flipping `off_ex` on the *existing* call
+>    (`RateCacheWarmService:285`) would convert `market_low_premium`, `market_high_premium`,
+>    `lowest_bronze_premium`, `carrier_count` and `plan_count` to on-exchange — a set
+>    `RateCacheWarmService:89-93` states must never produce a plan or carrier count — and would strip
+>    the `(off-exchange)` label at `illustration25.jsp:1302` of its meaning. **Do not apply.**
+> 2. **`BigDecimal` from a numeric node — genuinely open, and this document mis-stated current
+>    behaviour.** A `double` intermediate does exist: JSON → `Double` (`HealthSherpaService:310-311`,
+>    `:321-322`) → `BigDecimal.valueOf(double)` (`RateCacheWarmService:413`). `BigDecimal.valueOf`
+>    round-trips 2-dp currency exactly via `Double.toString`, so **no observed defect** — but the
+>    intermediate is real. Filed as **T113-adjacent**; low priority.
+> 3. **"Existing cached rows must be invalidated" — UNNECESSARY, and never was necessary.**
+>    `RateCacheDAO.replaceCountyRates` (`:90-100`) already deletes every row for
+>    `(planYear, countyFips)` and re-persists in one transaction. A re-warm *is* a full replace.
+
 - `RateCacheWarmService` — `off_ex: false` for LCSP/SLCSP; catastrophic filter on that path;
   re-warm all cached rows
 - `HealthSherpaService` — `BigDecimal` from numeric node
@@ -629,6 +689,13 @@ filing.** T-numbers to be assigned from the live backlog.
 ---
 
 ## 10. Corrections I made during this session
+
+> **Correction 4, added 2026-08-02 by the S8-B run.** *"The cached LCSP values are wrong by 31% and
+> nothing client-facing should use them."* **Wrong about HEAD.** The finding was correct empirically
+> and stale as a code claim — T44/V078 had already separated the columns and pointed affordability at
+> the on-exchange pair. The root error was procedural: this session ran live API calls and read vendor
+> documentation, but did not read the warm service, V078, or the backlog. **A finding is not a defect
+> until the code has been checked, and the backlog is part of session open, not a filing step.**
 
 Recorded because this file will be read as a source, and three of my own statements were wrong.
 
