@@ -143,6 +143,11 @@
             display: block; width: 1px; height: 6px; background: #8a99a4; margin: 0 auto;
         }
         .contrib-tick span { font-size: 0.62rem; color: #6c757d; white-space: nowrap; }
+        /* T108: a flip point beyond the track maximum. Pinned flush to the right end
+           rather than centred like a normal tick, so it never draws as a value plotted
+           on the track -- its label says "beyond track" and carries the real figure. */
+        .contrib-tick.edge { left: auto; right: 0; transform: none; text-align: right; }
+        .contrib-tick.edge i { margin: 0 0 0 auto; }
         /* T78: on a narrow track the "age N" labels collide into an unreadable smear.
            Degrade the TICKS, never the handle — the marks stay (they are what makes the
            flip points visible before anything is dragged), the labels drop, and the
@@ -1051,18 +1056,26 @@
                                 function renderTicks(max) {
                                     if (!ticksBox || max <= 0) return;
                                     var byFlip = {};
+                                    // T108: a flip point past `max` used to fail this same
+                                    // condition and just never enter byFlip -- no tick, no
+                                    // marker, nothing on screen said the band had a flip
+                                    // point the track could not reach. Bucketed separately
+                                    // now instead of dropped.
+                                    var beyond = {};
                                     affordRows.forEach(function (tr) {
                                         var flip = parseFloat(tr.getAttribute('data-flip'));
-                                        if (isNaN(flip) || flip < 0 || flip > max) return;
+                                        if (isNaN(flip) || flip < 0) return;
                                         var ageCell = tr.querySelector('td');
                                         var age = ageCell ? ageCell.textContent.trim() : '';
                                         var key = flip.toFixed(2);
-                                        if (!byFlip[key]) byFlip[key] = { flip: flip, ages: [] };
-                                        if (age && byFlip[key].ages.indexOf(age) === -1) byFlip[key].ages.push(age);
+                                        var bucket = (flip > max) ? beyond : byFlip;
+                                        if (!bucket[key]) bucket[key] = { flip: flip, ages: [] };
+                                        if (age && bucket[key].ages.indexOf(age) === -1) bucket[key].ages.push(age);
                                     });
 
                                     var keys = Object.keys(byFlip);
-                                    if (!keys.length) return;
+                                    var beyondKeys = Object.keys(beyond);
+                                    if (!keys.length && !beyondKeys.length) return;
 
                                     ticksBox.textContent = '';
                                     keys.forEach(function (key) {
@@ -1076,6 +1089,29 @@
 
                                         var label = document.createElement('span');
                                         label.textContent = 'age ' + entry.ages.join('/');
+                                        mark.appendChild(label);
+
+                                        ticksBox.appendChild(mark);
+                                    });
+                                    // Rendered as an edge marker, not a value plotted on the
+                                    // track: pinned flush right (.edge, CSS above) and
+                                    // labelled "beyond track" with its real figure. Chosen
+                                    // over widening `max` to cover it -- the track's primary
+                                    // job is showing where net cost reaches zero, near
+                                    // highestFloor, and a flip point (LCSP-based, not
+                                    // premium-based) can run well past that; stretching the
+                                    // whole track to fit it would coarsen every drag to
+                                    // accommodate one edge case.
+                                    beyondKeys.forEach(function (key) {
+                                        var entry = beyond[key];
+                                        var mark = document.createElement('div');
+                                        mark.className = 'contrib-tick edge';
+
+                                        var bar = document.createElement('i');
+                                        mark.appendChild(bar);
+
+                                        var label = document.createElement('span');
+                                        label.textContent = 'age ' + entry.ages.join('/') + ' beyond track (' + money.format(entry.flip) + ')';
                                         mark.appendChild(label);
 
                                         ticksBox.appendChild(mark);
