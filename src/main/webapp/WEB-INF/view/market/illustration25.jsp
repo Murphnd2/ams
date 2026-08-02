@@ -898,6 +898,7 @@
                                                 <c:if test="${affordabilityBasis == 'INCOME'}"> Entered-income results rest on an assumed income the employer cannot verify.</c:if>
                                                 <c:if test="${affordabilityBasis == 'FPL'}"> FPL safe-harbor results depend on the employer electing that safe harbor.</c:if>
                                                 Threshold figures are derived from cached rates and can differ from a live quote by a cent or two &mdash; treat as an estimate, not an exact figure.
+                                                The On-Exchange LCSP below is the on-exchange lowest-cost silver plan, which is what the affordability test requires &mdash; the market-range table above shows a different plan (second-lowest silver) on the off-exchange rail, and the two figures are not directly comparable.
                                             </p>
 
                                             <div class="table-responsive">
