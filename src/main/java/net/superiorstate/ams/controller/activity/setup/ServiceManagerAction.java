@@ -24,6 +24,18 @@ public class ServiceManagerAction extends HttpServlet {
 
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        // T123 hardening: Service Manager (serviceManager25.jsp) is nav-gated to PSP admins
+        // only, but this servlet itself had no server-side check — every action here mutates
+        // catalog data (LOS, Enhancement, ServiceItem, ServiceModule, ApplicationSection),
+        // so enforce it here directly rather than relying solely on the nav link being hidden.
+        // Placed before the action dispatch so it covers the whole switch, not one branch.
+        // Same shape as AgencyAction.doPost's V067 guard — deliberately identical, not improved.
+        boolean isPspAdmin = Boolean.TRUE.equals(request.getSession().getAttribute("isPspAdmin"));
+        if (!isPspAdmin) {
+            response.sendError(HttpServletResponse.SC_FORBIDDEN);
+            return;
+        }
+
         EntityManagerFactory emf = (EntityManagerFactory) getServletContext().getAttribute("emf");
         EntityManager em = emf.createEntityManager();
         AmsDataLocal local = (AmsDataLocal) request.getSession().getAttribute("local");

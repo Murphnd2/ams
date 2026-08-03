@@ -22,6 +22,17 @@ public class ServiceManagerHome extends HttpServlet {
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        // T123 hardening: the disclosure half. This page lists the PSP's full service catalog
+        // and was nav-gated only. Same guard, same shape as ServiceManagerAction.doPost and
+        // AgencyAction.doPost's V067 precedent. serviceManager25.jsp is reached only by this
+        // servlet's forward (it lives under /WEB-INF/ and cannot be requested directly), so
+        // guarding here is sufficient and the JSP itself is deliberately left untouched.
+        boolean isPspAdmin = Boolean.TRUE.equals(request.getSession().getAttribute("isPspAdmin"));
+        if (!isPspAdmin) {
+            response.sendError(HttpServletResponse.SC_FORBIDDEN);
+            return;
+        }
+
         EntityManagerFactory emf = (EntityManagerFactory) getServletContext().getAttribute("emf");
         EntityManager em = emf.createEntityManager();
         AmsDataLocal local = (AmsDataLocal) request.getSession().getAttribute("local");
