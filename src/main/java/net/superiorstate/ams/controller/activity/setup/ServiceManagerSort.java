@@ -20,6 +20,19 @@ public class ServiceManagerSort extends HttpServlet {
 
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        // T123 hardening: the Service Manager sibling S9-F could not reach. Reached by
+        // fetch('ServiceManagerSort', …) at serviceManager25.jsp:1601 rather than a form action,
+        // which is why a form-action grep missed it; it reorders LOS, Enhancement,
+        // ApplicationSection, Feature and ApplicationField rows and had no server-side check.
+        // Deliberately placed BEFORE setContentType/getWriter — sendError after the writer has
+        // been acquired can throw IllegalStateException.
+        // Same shape as AgencyAction.doPost's V067 guard — deliberately identical, not improved.
+        boolean isPspAdmin = Boolean.TRUE.equals(request.getSession().getAttribute("isPspAdmin"));
+        if (!isPspAdmin) {
+            response.sendError(HttpServletResponse.SC_FORBIDDEN);
+            return;
+        }
+
         EntityManagerFactory emf = (EntityManagerFactory) getServletContext().getAttribute("emf");
         EntityManager em = emf.createEntityManager();
 

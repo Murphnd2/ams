@@ -24,6 +24,19 @@ public class RateTableAction extends HttpServlet {
 
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        // T124 hardening: Rate Manager (rateManager25.jsp) is nav-gated to PSP admins only, but
+        // this servlet itself had no server-side check — and every action here mutates pricing
+        // (updatePrice, addRateTableRow, deleteRow) or rate-table assignment (assignAgencyToRate,
+        // removeAgencyFromRate), so an unguarded POST could change what a client is billed.
+        // Placed before the action dispatch so it covers the whole switch, and before EMF
+        // acquisition so a rejected request never opens an EntityManager.
+        // Same shape as AgencyAction.doPost's V067 guard — deliberately identical, not improved.
+        boolean isPspAdmin = Boolean.TRUE.equals(request.getSession().getAttribute("isPspAdmin"));
+        if (!isPspAdmin) {
+            response.sendError(HttpServletResponse.SC_FORBIDDEN);
+            return;
+        }
+
         EntityManagerFactory emf = (EntityManagerFactory) getServletContext().getAttribute("emf");
         EntityManager em = emf.createEntityManager();
         AmsDataLocal local = (AmsDataLocal) request.getSession().getAttribute("local");

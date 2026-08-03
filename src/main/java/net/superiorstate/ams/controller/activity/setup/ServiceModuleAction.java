@@ -15,6 +15,20 @@ public class ServiceModuleAction extends HttpServlet {
 
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        // T123 hardening: the second Service Manager sibling. ⚠️ This servlet has NO caller
+        // anywhere in the tree — no JSP, no JS, no server-side dispatch (verified S9-G) — yet it
+        // remains mapped at /ServiceModuleAction and mutates ServiceModule rows (reorder,
+        // toggleSuppress). An unguarded, mapped, mutating endpoint with no UI is arguably worse
+        // than one with a UI, because nothing would look wrong if it were exercised.
+        // Deliberately placed BEFORE setContentType — sendError after the writer has been
+        // acquired can throw IllegalStateException.
+        // Same shape as AgencyAction.doPost's V067 guard — deliberately identical, not improved.
+        boolean isPspAdmin = Boolean.TRUE.equals(request.getSession().getAttribute("isPspAdmin"));
+        if (!isPspAdmin) {
+            response.sendError(HttpServletResponse.SC_FORBIDDEN);
+            return;
+        }
+
         EntityManagerFactory emf = (EntityManagerFactory) getServletContext().getAttribute("emf");
         EntityManager em = emf.createEntityManager();
         response.setContentType("application/json");

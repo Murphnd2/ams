@@ -21,6 +21,17 @@ public class PspAdminHome extends HttpServlet {
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        // T124 hardening: the disclosure half of Rate Manager, and the render path that serves
+        // rateManager25.jsp — the only page that posts to RateTableAction. Same relationship
+        // ServiceManagerHome has to ServiceManagerAction. This page lists the PSP's full rate
+        // tables, price items and agency rate assignments, and was nav-gated only.
+        // Same guard, same shape as AgencyAction.doPost's V067 precedent.
+        boolean isPspAdmin = Boolean.TRUE.equals(request.getSession().getAttribute("isPspAdmin"));
+        if (!isPspAdmin) {
+            response.sendError(HttpServletResponse.SC_FORBIDDEN);
+            return;
+        }
+
         EntityManagerFactory emf = (EntityManagerFactory) getServletContext().getAttribute("emf");
         EntityManager em = emf.createEntityManager();
         AmsDataLocal local = (AmsDataLocal) request.getSession().getAttribute("local");
