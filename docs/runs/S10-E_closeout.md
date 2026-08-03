@@ -235,5 +235,18 @@ existing table (`proposal_ichra_intake`, V087) through an existing DAO method th
 Read from `git log -1` **after** the push:
 
 ```
-COMMIT_HASH_RECORDED_BELOW
+3b04198 2026-08-03 13:30:09 -0500 feat: ICHRA intake tokens for CUSTOM proposal sections (T128)
 ```
+
+`git show --stat` on `3b04198`:
+
+```
+ docs/analysis/project_backlog.md                   |   2 +-
+ docs/runs/S10-E_closeout.md                        | 239 +++++++++++++++++++++
+ .../controller/activity/setup/ViewProposal.java    |  26 ++-
+ 3 files changed, 264 insertions(+), 3 deletions(-)
+```
+
+⚠️ **Same disclosed deviation as S10-A/B/D, for the same structural reason.** This section is filled in by a
+second commit touching only `docs/runs/S10-E_closeout.md`, already inside the scope fence, rather than by
+amending `3b04198` after it was pushed.
