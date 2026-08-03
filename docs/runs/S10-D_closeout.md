@@ -230,8 +230,22 @@ Highest existing row was **T126** — see the correction below.
 Read from `git log -1` **after** the push:
 
 ```
-COMMIT_HASH_RECORDED_BELOW
+b732ee5 2026-08-03 13:21:05 -0500 docs: Phase A spec for the tier-1 proposal section (S10-D)
 ```
+
+`git show --stat` on `b732ee5`:
+
+```
+ docs/analysis/phase_a_tier1_proposal_section.md | 191 ++++++++++++++++++++
+ docs/analysis/project_backlog.md                |   6 +-
+ docs/runs/S10-D_closeout.md                     | 290 ++++++++++++++++++++++++
+ 3 files changed, 486 insertions(+), 1 deletion(-)
+```
+
+⚠️ **Same disclosed deviation as S10-A and S10-B, for the same structural reason.** A close-out cannot both
+record its own commit's hash and be inside that commit, so this section is filled in by a **second** commit
+touching only `docs/runs/S10-D_closeout.md` — a path already inside the scope fence. Amending `b732ee5` was
+rejected: it is already pushed, and project convention prefers a new commit over an amend.
 
 ---
 
