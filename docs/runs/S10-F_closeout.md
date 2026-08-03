@@ -239,8 +239,12 @@ limitation and not evidence about any environment's state.
 Read from `git log -1` **after** the push:
 
 ```
-COMMIT_HASH_RECORDED_BELOW
+b3915d4 2026-08-03 13:49:47 -0500 fix: gate plus-tier CUSTOM proposal sections behind ICHRA entitlement (T129)
 ```
+
+⚠️ **Same disclosed deviation as S10-A/B/D/E:** a close-out cannot contain its own commit's hash and also be
+inside that commit, so §11 and §13 are filled in by a **second** commit touching only
+`docs/runs/S10-F_closeout.md` — a path already inside the fence — rather than by amending a pushed commit.
 
 ---
 
@@ -279,4 +283,15 @@ and the close-out `add`/`commit`/`push`/`log`. No `git add -A`, no tag, no stash
 
 ## 13. `git show --stat`
 
-Recorded after the push, alongside the hash in §11.
+On `b3915d4`, after the push — **proving no file outside the fence was touched**:
+
+```
+ docs/analysis/project_backlog.md                   |   2 +-
+ docs/runs/S10-F_closeout.md                        | 282 +++++++++++++++++++++
+ .../controller/activity/setup/ViewProposal.java    |  53 ++++
+ 3 files changed, 336 insertions(+), 1 deletion(-)
+```
+
+Three files, all named in §3's permitted list. `ViewProposal.java` is **+53 / −0** — a pure addition, so
+nothing pre-existing in the render path was altered or removed. The single deletion in the changeset is the
+one rewritten table row in `project_backlog.md`.
