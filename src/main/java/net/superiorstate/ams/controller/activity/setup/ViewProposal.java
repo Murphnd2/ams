@@ -10,6 +10,7 @@ import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.dao.AppConstantDAO;
 import net.superiorstate.ams.data.dao.ProposalIchraIntakeDAO;
 import net.superiorstate.ams.data.dao.ProposalIchraSnapshotDAO;
+import net.superiorstate.ams.data.dao.RateCacheDAO;
 import net.superiorstate.ams.data.dao.SalesDAO;
 import net.superiorstate.ams.data.dao.StorageDAO;
 import net.superiorstate.ams.data.resolver.IchraAccessResolver;
@@ -31,9 +32,13 @@ import net.superiorstate.ams.model.general.PSP;
 import net.superiorstate.ams.model.general.Person;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.sql.Timestamp;
+import java.text.NumberFormat;
 import java.text.SimpleDateFormat;
 import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -347,7 +352,7 @@ public class ViewProposal extends HttpServlet {
 
                 if (!sections.isEmpty()) {
                     // Build token replacement map
-                    Map<String, String> tokens = buildTokenMap(em, proposal, psp, primaryColor, accentColor, request);
+                    Map<String, String> tokens = buildTokenMap(em, proposal, psp, primaryColor, accentColor, request, ichraEntitled);
 
                     // Build rendered HTML map for sections with content
                     Map<Long, String> sectionHtml = new LinkedHashMap<>();
@@ -498,7 +503,7 @@ public class ViewProposal extends HttpServlet {
     }
 
     /** Builds the merge token map from proposal data */
-    private Map<String, String> buildTokenMap(EntityManager em, Proposal proposal, PSP psp, String primaryColor, String accentColor, HttpServletRequest request) {
+    private Map<String, String> buildTokenMap(EntityManager em, Proposal proposal, PSP psp, String primaryColor, String accentColor, HttpServletRequest request, boolean ichraEntitled) {
         Map<String, String> tokens = new HashMap<>();
 
         // Prospect
@@ -568,7 +573,137 @@ public class ViewProposal extends HttpServlet {
         tokens.put("ICHRA_HEADCOUNT", ichraIntake != null && ichraIntake.getHeadcount() != null ? ichraIntake.getHeadcount().toString() : "");
         tokens.put("ICHRA_PLAN_YEAR", ichraIntake != null && ichraIntake.getPlanYear() != null ? ichraIntake.getPlanYear().toString() : "");
 
+        putIchraMarketTokens(em, tokens, ichraIntake, ichraEntitled, proposal);
+
         return tokens;
+    }
+
+    /**
+     * T130 — market-data tokens (plan/carrier counts, premium floors, as-of date) for a plus-tier
+     * {@code CUSTOM} section, resolved from the warm rate cache for the intake row's county and plan year.
+     * <p>
+     * <b>⚠️ Cache reads only. This method must never be able to reach the HealthSherpa API.</b> It goes
+     * through {@link RateCacheDAO#getRatesForCounty}, which is pure JPQL and references no HTTP client of
+     * any kind; {@code HealthSherpaService} is reachable only from {@code RateCacheWarmService} (the
+     * scheduled warm job) and {@code RateCacheAdmin}. A county with no warm cache yields empty tokens —
+     * <b>it does not lazily warm, and nothing here may be changed to</b>. This page is public and
+     * unauthenticated: an outbound call from it would put a credential on an anonymous request and add
+     * third-party latency to a document an employer is reading.
+     * <p>
+     * <b>Every rate value is accompanied by {@code ICHRA_RATES_AS_OF}, taken from the cache rows' own
+     * {@code fetchedAt}</b> — never today's date and never the proposal date. A cached premium on a PDF an
+     * employer keeps for months ages silently otherwise.
+     * <p>
+     * <b>Fails closed on four independent conditions</b>, any of which yields empty strings for every token
+     * in this group: not ICHRA-entitled (defence in depth — T129 should already have omitted the section,
+     * but its discriminator has proven sensitive to configuration); no intake row; no cached rows for that
+     * county/year; or any row not sourced from {@code PRODUCTION}. The last mirrors what this servlet
+     * already does for {@code ProposalIchraSnapshot} — staging figures must never render to an employer.
+     * <p>
+     * <b>Blank, never zero.</b> A cache miss renders gaps; {@code 0 plans} would be a false market claim.
+     * <p>
+     * <b>Compliance.</b> Counts and floors are precedented by the shipped illustration and are named
+     * explicitly in LA-17. No plan is named, no carrier is named, nothing is ordered, ranked, defaulted or
+     * recommended, and no per-employee affordability figure is produced — this method is structurally
+     * incapable of it, since it reads only aggregate counts and the {@code lowestBronzePremium} floor.
+     * Never throws: a proposal must not fail to render because a rate lookup failed.
+     */
+    private void putIchraMarketTokens(EntityManager em, Map<String, String> tokens,
+                                      ProposalIchraIntake intake, boolean ichraEntitled, Proposal proposal) {
+        String planCount = "", carrierCount = "";
+        String floor21 = "", floor40 = "", floor64 = "";
+        String ratesAsOf = "", ratesScope = "";
+
+        try {
+            if (ichraEntitled && intake != null
+                    && intake.getCountyFips() != null && intake.getPlanYear() != null) {
+
+                List<RatingAreaRateCache> rows =
+                        RateCacheDAO.getRatesForCounty(em, intake.getPlanYear(), intake.getCountyFips());
+
+                // Tobacco rows are a separate rating basis and are excluded, matching
+                // IllustrationServlet.handleRangeMode's own filter.
+                List<RatingAreaRateCache> nonTobacco = new ArrayList<>();
+                for (RatingAreaRateCache r : rows) {
+                    if (!r.isUsesTobacco()) nonTobacco.add(r);
+                }
+
+                // Provenance gate — EVERY row must be PRODUCTION-sourced, not merely the first.
+                boolean allProduction = !nonTobacco.isEmpty();
+                for (RatingAreaRateCache r : nonTobacco) {
+                    if (!RatingAreaRateCache.SOURCE_ENV_PRODUCTION.equals(r.getSourceEnv())) {
+                        allProduction = false;
+                        break;
+                    }
+                }
+
+                if (allProduction) {
+                    Map<Integer, RatingAreaRateCache> byAge = new HashMap<>();
+                    LocalDateTime newestFetchedAt = null;
+                    for (RatingAreaRateCache r : nonTobacco) {
+                        byAge.putIfAbsent(r.getAge(), r);
+                        if (r.getFetchedAt() != null
+                                && (newestFetchedAt == null || r.getFetchedAt().isAfter(newestFetchedAt))) {
+                            newestFetchedAt = r.getFetchedAt();
+                        }
+                    }
+
+                    floor21 = formatPremium(byAge.get(21));
+                    floor40 = formatPremium(byAge.get(40));
+                    floor64 = formatPremium(byAge.get(64));
+
+                    // Counts come from the AGE-40 row specifically, matching
+                    // IllustrationServlet.handleRangeMode's deterministic choice and for its stated
+                    // reason: carrier/plan counts are age-specific, because catastrophic plans are
+                    // under-30 only — so age 21 reports a different plan count than age 40.
+                    RatingAreaRateCache countRow = byAge.get(40) != null ? byAge.get(40) : nonTobacco.get(0);
+                    if (countRow.getPlanCount() != null) planCount = countRow.getPlanCount().toString();
+                    if (countRow.getCarrierCount() != null) carrierCount = countRow.getCarrierCount().toString();
+
+                    if (newestFetchedAt != null) {
+                        // Date only, and formatted to match this map's own DATE_CREATED convention
+                        // rather than the illustration's admin-facing "yyyy-MM-dd HH:mm" timestamp —
+                        // the audience here is an employer reading a document, not an operator
+                        // inspecting a cache.
+                        ratesAsOf = newestFetchedAt.format(DateTimeFormatter.ofPattern("MMMM d, yyyy"));
+
+                        // Disclosure line. Off-exchange-only makes any plan display definitionally
+                        // incomplete; this exists so the HTML can say so plainly instead of the
+                        // author having to remember to. Emitted ONLY alongside real figures — an
+                        // empty-token proposal must not carry a caveat about data it never showed.
+                        ratesScope = "Figures reflect off-exchange individual plans available in "
+                                + (intake.getCountyName() != null ? intake.getCountyName() : "the selected county")
+                                + " as of " + ratesAsOf + ". They are not a quote and not a complete"
+                                + " view of the market.";
+                    }
+                }
+            }
+        } catch (Exception e) {
+            // Empty strings already hold; a failed lookup must never break the render.
+            System.out.println("T130 ICHRA market-data token lookup failed for proposal #"
+                    + (proposal != null ? proposal.getId() : "null") + ": " + e.getMessage());
+        }
+
+        // Always present, per T128's mechanism: replaceTokens leaves an unmatched key as the literal
+        // "{{ICHRA_PLAN_COUNT}}" in the output, which on an employer's proposal is a visible defect.
+        tokens.put("ICHRA_PLAN_COUNT", planCount);
+        tokens.put("ICHRA_CARRIER_COUNT", carrierCount);
+        tokens.put("ICHRA_FLOOR_AGE_21", floor21);
+        tokens.put("ICHRA_FLOOR_AGE_40", floor40);
+        tokens.put("ICHRA_FLOOR_AGE_64", floor64);
+        tokens.put("ICHRA_RATES_AS_OF", ratesAsOf);
+        tokens.put("ICHRA_RATES_SCOPE", ratesScope);
+    }
+
+    /**
+     * The lowest available monthly premium on a cache row, as displayed currency, or "" when the row or
+     * the figure is absent. Reads {@code lowestBronzePremium} — the same field the illustration and
+     * {@code ProposalBuilder}'s snapshot both use as the floor.
+     */
+    private String formatPremium(RatingAreaRateCache row) {
+        if (row == null || row.getLowestBronzePremium() == null) return "";
+        BigDecimal premium = row.getLowestBronzePremium();
+        return NumberFormat.getCurrencyInstance(Locale.US).format(premium);
     }
 
     /** Replaces {{TOKEN_NAME}} placeholders in HTML content (case-insensitive) */
