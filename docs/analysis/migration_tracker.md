@@ -16,7 +16,7 @@ Tracks database schema versions across environments.
 | BPO | bpo.superiorstate.biz | beta_ssa | BPO instance (V038, initialized, release V0.37.0) |
 | Master | master.superiorstate.biz | beta_ssa | Snapshot v9 (V057, stopped) |
 
-## Current Highest Version: V087
+## Current Highest Version: V088
 
 ⚠️ **Maintenance note (added 2026-07-30):** production status in the table below must be back-filled
 *after a deployment actually succeeds*, not only when the migration is written. The V072/V073 rows
@@ -128,7 +128,8 @@ _N/A = environment decommissioned / not maintained (applies to Demo PSP, BPO, Ma
 | V084 | ZIP to county crosswalk table for T74 ZIP intake (zip_county; CHAR(5) zip, composite PK, no FK to county_reference) | ⬜ | ⬜ | ⬜ | ✅ | N/A | N/A | N/A |
 | V085 | Texas ZIP to county crosswalk data — 2,894 rows from the Census 2020 ZCTA-county relationship file | ⬜ | ⬜ | ⬜ | ✅ | N/A | N/A | N/A |
 | V086 | Plus-tier classification flag on line of service (`los.is_plus_tier`, NOT NULL DEFAULT 0, no backfill) — ⚠️ **nothing reads it yet** | ✅ | ⬜ | ⬜ | ⬜ | N/A | N/A | N/A |
-| V087 | Plus-tier ZIP/county/headcount intake captured in the Proposal Builder (`proposal_ichra_intake`, `proposal_id` UNIQUE FK ON DELETE CASCADE, `plan_year` derived server-side not agent-asserted — S10-B HS-1) — the T125 consumer of V086 | ⬜ | ⬜ | ⬜ | ⬜ | N/A | N/A | N/A |
+| V087 | Plus-tier ZIP/county/headcount intake captured in the Proposal Builder (`proposal_ichra_intake`, `proposal_id` UNIQUE FK ON DELETE CASCADE, `plan_year` derived server-side not agent-asserted — S10-B HS-1) — the T125 consumer of V086 | ⬜ | ⬜ | ⬜ | ✅ | N/A | N/A | N/A |
+| V088 | Employer monthly contribution per employee on `proposal_ichra_intake` (`monthly_contribution_per_employee` DECIMAL(10,2) NULL, no backfill) — T80 half 1, an intake token exactly like V087's four | ⬜ | ⬜ | ⬜ | ⬜ | N/A | N/A | N/A |
 
 **Production column reconciled 2026-07-30** against a live, read-only `schema_version` probe run
 directly against the production database — that probe is the source of truth for the corrections
@@ -216,6 +217,15 @@ cells corrected to ✅ above. `beta_ssa (work)`, `beta_ssa (home)` and `dev_ssa`
 were not probed — this correction rests on production behavioural evidence only, per the same standard
 the V077/V078 and V080/V082 corrections above used. **V085 is 89 KB** — comfortably attachable to a
 GitHub release by hand, unlike a national build of the same table would be.
+
+**Production V087 status — flipped 2026-08-03, S11-A.** Carried unapplied since the "Current Highest
+Version: V087" section was written at S10-B authoring time and never revisited — exactly the drift
+pattern the 2026-07-30 maintenance note at the top of this file exists to prevent. Corrected on
+direct evidence from `docs/session_closeout_2026-08-03_session10.md`: "`V087__proposal_ichra_intake.sql`
+... applied to production by Kevin on 2026-08-03, released in `v0.87.00`." Production cell for V087
+above is now ✅. `beta_ssa (work)`, `beta_ssa (home)`, and `dev_ssa` are unchanged — still unapplied,
+not re-probed. V088 (this session) is unapplied everywhere, including Production — Kevin applies it
+via `update.sh` per this run's close-out.
 
 ## Notes
 

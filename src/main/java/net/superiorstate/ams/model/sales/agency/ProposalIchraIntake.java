@@ -3,6 +3,7 @@ package net.superiorstate.ams.model.sales.agency;
 import jakarta.persistence.*;
 import net.superiorstate.ams.model.general.Person;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /**
@@ -51,6 +52,14 @@ public class ProposalIchraIntake {
 
     @Column(name = "headcount", nullable = false)
     private Integer headcount;
+
+    /**
+     * T80 half 1 (V088) — the employer's own stated monthly-per-employee contribution.
+     * Optional, unlike every other field on this entity: null means the agent did not
+     * enter one, and that must render as an omitted cost block, never an error.
+     */
+    @Column(name = "monthly_contribution_per_employee", columnDefinition = "decimal(10,2)", nullable = true)
+    private BigDecimal monthlyContributionPerEmployee;
 
     @Column(name = "plan_year", nullable = false)
     private Integer planYear;
@@ -118,6 +127,14 @@ public class ProposalIchraIntake {
 
     public void setHeadcount(Integer headcount) {
         this.headcount = headcount;
+    }
+
+    public BigDecimal getMonthlyContributionPerEmployee() {
+        return monthlyContributionPerEmployee;
+    }
+
+    public void setMonthlyContributionPerEmployee(BigDecimal monthlyContributionPerEmployee) {
+        this.monthlyContributionPerEmployee = monthlyContributionPerEmployee;
     }
 
     public Integer getPlanYear() {

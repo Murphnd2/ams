@@ -221,6 +221,11 @@
                         <input type="number" class="form-control form-control-sm" id="intakeHeadcount" name="intakeHeadcount"
                                min="1" max="10000" step="1" style="max-width:130px;">
                     </div>
+                    <div class="col-auto">
+                        <label class="form-label mb-1" for="intakeContribution">Monthly employer contribution per employee</label>
+                        <input type="number" class="form-control form-control-sm" id="intakeContribution" name="intakeContribution"
+                               min="0" step="0.01" style="max-width:150px;" placeholder="Optional">
+                    </div>
                 </div>
                 <%-- Never "invalid ZIP" -- the crosswalk is Texas-only and ZCTA-derived, so a
                      perfectly valid USPS ZIP can land here (ZipCountyResolver javadoc). --%>
@@ -590,11 +595,13 @@
         var countyNameEl = document.getElementById('intakeCountyName');
         var stateEl = document.getElementById('intakeState');
         var headcountEl = document.getElementById('intakeHeadcount');
+        var contributionEl = document.getElementById('intakeContribution');
         if (zipEl) zipEl.value = '';
         if (countyEl) { countyEl.innerHTML = '<option value="">-- Enter a ZIP first --</option>'; countyEl.disabled = true; }
         if (countyNameEl) countyNameEl.value = '';
         if (stateEl) stateEl.value = '';
         if (headcountEl) headcountEl.value = '';
+        if (contributionEl) contributionEl.value = '';
         ichraLastLookedUpZip = '';
         hideIntakeMessages();
     }

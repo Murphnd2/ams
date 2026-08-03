@@ -573,6 +573,29 @@ public class ViewProposal extends HttpServlet {
         tokens.put("ICHRA_HEADCOUNT", ichraIntake != null && ichraIntake.getHeadcount() != null ? ichraIntake.getHeadcount().toString() : "");
         tokens.put("ICHRA_PLAN_YEAR", ichraIntake != null && ichraIntake.getPlanYear() != null ? ichraIntake.getPlanYear().toString() : "");
 
+        // T80 half 1 (V088) — the employer's own stated monthly-per-employee contribution,
+        // an intake token exactly like the four above: not entitlement-gated, not
+        // provenance-gated, resolved from the agent's own input, never from market data.
+        // All-or-nothing as a group, matching the pattern above — a null contribution, or a
+        // null/zero headcount, means every one of these four resolves to "", never a literal
+        // brace and never $0.00.
+        BigDecimal monthlyContribution = ichraIntake != null ? ichraIntake.getMonthlyContributionPerEmployee() : null;
+        Integer contributionHeadcount = ichraIntake != null ? ichraIntake.getHeadcount() : null;
+        if (monthlyContribution != null && contributionHeadcount != null && contributionHeadcount != 0) {
+            BigDecimal annual = monthlyContribution.multiply(BigDecimal.valueOf(12));
+            BigDecimal totalMonthly = monthlyContribution.multiply(BigDecimal.valueOf(contributionHeadcount));
+            BigDecimal totalAnnual = totalMonthly.multiply(BigDecimal.valueOf(12));
+            tokens.put("ICHRA_CONTRIBUTION_MONTHLY", formatCurrency(monthlyContribution));
+            tokens.put("ICHRA_CONTRIBUTION_ANNUAL", formatCurrency(annual));
+            tokens.put("ICHRA_CONTRIBUTION_TOTAL_MONTHLY", formatCurrency(totalMonthly));
+            tokens.put("ICHRA_CONTRIBUTION_TOTAL_ANNUAL", formatCurrency(totalAnnual));
+        } else {
+            tokens.put("ICHRA_CONTRIBUTION_MONTHLY", "");
+            tokens.put("ICHRA_CONTRIBUTION_ANNUAL", "");
+            tokens.put("ICHRA_CONTRIBUTION_TOTAL_MONTHLY", "");
+            tokens.put("ICHRA_CONTRIBUTION_TOTAL_ANNUAL", "");
+        }
+
         putIchraMarketTokens(em, tokens, ichraIntake, ichraEntitled, proposal);
 
         return tokens;
@@ -704,6 +727,11 @@ public class ViewProposal extends HttpServlet {
         if (row == null || row.getLowestBronzePremium() == null) return "";
         BigDecimal premium = row.getLowestBronzePremium();
         return NumberFormat.getCurrencyInstance(Locale.US).format(premium);
+    }
+
+    /** Same formatter as {@link #formatPremium}, for a plain BigDecimal dollar figure. */
+    private String formatCurrency(BigDecimal amount) {
+        return NumberFormat.getCurrencyInstance(Locale.US).format(amount);
     }
 
     /** Replaces {{TOKEN_NAME}} placeholders in HTML content (case-insensitive) */

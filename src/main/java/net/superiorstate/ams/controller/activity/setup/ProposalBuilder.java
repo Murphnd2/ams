@@ -443,8 +443,10 @@ public class ProposalBuilder extends HttpServlet {
      * and at least one of the LOS actually attached to this proposal carries
      * {@code los.isPlusTier()} — re-derived from the database rather than trusted from the
      * form, because a caller can POST {@code intakeZip} against a non-plus-tier
-     * {@code losIds} selection. Fails closed at every step: a missing or invalid field, or
-     * an unconfigured plan year, means no row is written at all — never a partial one.
+     * {@code losIds} selection. Fails closed at every step: a missing or invalid required
+     * field, or an unconfigured plan year, means no row is written at all — never a partial
+     * one. The one exception is {@code intakeContribution} (T80 half 1, V088), which is
+     * optional and simply persists null when absent, invalid, or negative.
      */
     private void attachIchraIntakeIfPresent(HttpServletRequest request, EntityManager em, Proposal proposal, Person createdBy) {
         if (!IchraAccessResolver.isAvailable(em, request)) {
@@ -478,6 +480,16 @@ public class ProposalBuilder extends HttpServlet {
         Integer headcount = parseIntOrNull(request.getParameter("intakeHeadcount"));
         if (headcount == null || headcount < 1 || headcount > 10000) return;
 
+        // T80 half 1 — optional, unlike every field above: a missing or unparseable value
+        // means the agent didn't answer, and the row is still written without it. A typed
+        // negative is also treated as unanswered rather than failing the whole intake write,
+        // since this field alone is optional (the browser control already enforces min="0";
+        // this is defense against a direct POST).
+        BigDecimal monthlyContribution = parseDecimalOrNull(request.getParameter("intakeContribution"));
+        if (monthlyContribution != null && monthlyContribution.signum() < 0) {
+            monthlyContribution = null;
+        }
+
         // Derived, not agent-asserted (S10-B HS-1) — re-resolved here rather than trusting
         // whatever doGet rendered, since the constant could change between GET and POST.
         Integer planYear = resolveCurrentPlanYear(em);
@@ -490,6 +502,7 @@ public class ProposalBuilder extends HttpServlet {
         intake.setCountyName(countyNameRaw.trim());
         intake.setState(state);
         intake.setHeadcount(headcount);
+        intake.setMonthlyContributionPerEmployee(monthlyContribution);
         intake.setPlanYear(planYear);
         intake.setCollectedAt(LocalDateTime.now());
         intake.setCreatedBy(createdBy);
