@@ -12,8 +12,8 @@ anchor discovery into itself as Step 2).
 
 - **Hash at preflight (post-pull):** `27b0d03e3761d7790022e1b1b6138f5fb402e383`
 - **Hash at end (feature commit, pushed):** `a8471ba24ff8e0ab13df43b9e085bd6fd0fc2d66`
-- **Hash at end (this close-out commit):** recorded below, read from `git log` after push, per the run
-  prompt's explicit instruction never to carry a hash written before the push.
+- **Hash at end (this close-out commit):** `dcf6b0ce7f86109afc186948c9ef8c69f151784f`, read from `git log`
+  after push, per the run prompt's explicit instruction never to carry a hash written before the push.
 
 Preflight was clean on all four checks: branch was `refactor/modernize-architecture`, `git status --short`
 was empty, and `git pull --ff-only` reported "Already up to date." — no fast-forward was needed.
@@ -72,6 +72,8 @@ Nothing in Step 2 could not be determined — all six items resolved directly fr
   8 files changed: `V088__proposal_ichra_intake_contribution.sql` (new), `ProposalIchraIntake.java`,
   `ProposalBuilder.java`, `ViewProposal.java`, `proposalBuilder.jsp`, `migration_tracker.md`,
   `schema_version_migration.sql`, `project_backlog.md`. Pushed to `origin/refactor/modernize-architecture`.
+- `dcf6b0ce7f86109afc186948c9ef8c69f151784f` — `docs: S11-A close-out (T80 half 1, V088)` (this document,
+  as a second commit). Pushed.
 
 ## In flight
 
