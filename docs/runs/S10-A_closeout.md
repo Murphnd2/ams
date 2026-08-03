@@ -221,5 +221,23 @@ created or edited.
 Recorded from `git log -1` **after** the push, never carried from the prompt:
 
 ```
-COMMIT_HASH_RECORDED_BELOW
+4560f6d 2026-08-03 12:08:27 -0500 docs: Phase A spec for the Proposal Builder ICHRA interjection (S10-A)
 ```
+
+`git show --stat` on `4560f6d`:
+
+```
+ docs/analysis/phase_a_builder_interjection.md | 333 ++++++++++++++++++++++++++
+ docs/analysis/project_backlog.md              |   4 +-
+ docs/runs/S10-A_closeout.md                   | 225 +++++++++++++++++
+ 3 files changed, 561 insertions(+), 1 deletion(-)
+```
+
+⚠️ **Disclosed deviation, one commit's worth.** The close-out cannot contain its own commit hash and also be
+inside that commit — the two requirements ("record the hash read from `git log` after the push" and "never
+use a placeholder") cannot both hold in a single commit. This section was therefore filled in and pushed as
+a **second** commit touching only `docs/runs/S10-A_closeout.md`, a path already inside the scope fence.
+Amending `4560f6d` was rejected: project convention prefers a new commit over an amend, and amending after a
+push rewrites pushed history. Nothing else changed between the two commits. This is the same
+close-out-written-before-its-own-last-push failure that ran six sessions straight; naming it here rather than
+letting the document be quietly wrong is the point.
