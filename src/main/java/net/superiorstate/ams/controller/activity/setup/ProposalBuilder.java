@@ -6,13 +6,16 @@ import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.AmsDataLocal;
+import net.superiorstate.ams.data.dao.AppConstantDAO;
 import net.superiorstate.ams.data.dao.CountyReferenceDAO;
+import net.superiorstate.ams.data.dao.ProposalIchraIntakeDAO;
 import net.superiorstate.ams.data.dao.ProposalIchraSnapshotDAO;
 import net.superiorstate.ams.data.dao.RateCacheDAO;
 import net.superiorstate.ams.data.dao.SalesDAO;
 import net.superiorstate.ams.data.resolver.AgencyScope;
 import net.superiorstate.ams.data.resolver.AgencyScopeResolver;
 import net.superiorstate.ams.data.resolver.EntityLookup;
+import net.superiorstate.ams.data.resolver.IchraAccessResolver;
 import net.superiorstate.ams.model.activity.Activity;
 import net.superiorstate.ams.model.general.Person;
 import net.superiorstate.ams.model.market.CountyReference;
@@ -90,6 +93,20 @@ public class ProposalBuilder extends HttpServlet {
                     .getResultList();
             losList.removeIf(LOS::isSuppressed);
             request.setAttribute("losList", losList);
+
+            // ── T125: resolve ICHRA entitlement once — the plus-tier intake panel and its
+            // data-plus-tier LOS markers are both gated on this single flag (rule 2,
+            // invisible by default). Live, per-request, fails closed; never cached. ──
+            boolean ichraAvailable = IchraAccessResolver.isAvailable(em, request);
+            request.setAttribute("ichraAvailable", ichraAvailable);
+            if (ichraAvailable) {
+                // Plan year is DERIVED, never agent-asserted (S10-B HS-1) — the same source
+                // IllustrationServlet.resolvePlanYear() reads. Only resolved for an entitled
+                // session since it is only ever used by the intake panel. If unconfigured,
+                // the panel itself stays hidden below rather than collect data that
+                // attachIchraIntakeIfPresent will refuse to persist at submit time.
+                request.setAttribute("ichraPlanYear", resolveCurrentPlanYear(em));
+            }
 
             // ── Build rate → LOS availability map ──
             // Only include LOSs that have at least one fee line item (RateTable row) in the rate
@@ -405,8 +422,113 @@ public class ProposalBuilder extends HttpServlet {
             }
         }
 
+        // T125 — plus-tier intake (ZIP/county/headcount). Best-effort, exactly like the
+        // ICHRA illustration snapshot above: any failure here must never break proposal
+        // creation itself.
+        try {
+            attachIchraIntakeIfPresent(request, em, proposal, createdBy);
+        } catch (Exception e) {
+            System.out.println("ICHRA intake attach failed for proposal #" + proposal.getId() + ": " + e.getMessage());
+        }
+
         System.out.println("Proposal created: #" + proposal.getId() + " GUID=" + guid);
         return proposal;
+    }
+
+    /**
+     * T125 — Proposal Builder plus-tier interjection. Writes a {@link ProposalIchraIntake}
+     * only when both are true: this session is ICHRA-entitled (re-checked here, live and
+     * server-side, since the panel's visibility and the LOS cards' {@code data-plus-tier}
+     * markers are both client-controlled and must be treated as an assertion, not a fact),
+     * and at least one of the LOS actually attached to this proposal carries
+     * {@code los.isPlusTier()} — re-derived from the database rather than trusted from the
+     * form, because a caller can POST {@code intakeZip} against a non-plus-tier
+     * {@code losIds} selection. Fails closed at every step: a missing or invalid field, or
+     * an unconfigured plan year, means no row is written at all — never a partial one.
+     */
+    private void attachIchraIntakeIfPresent(HttpServletRequest request, EntityManager em, Proposal proposal, Person createdBy) {
+        if (!IchraAccessResolver.isAvailable(em, request)) {
+            return;
+        }
+
+        boolean anyPlusTier = false;
+        for (LOS los : proposal.getLosList()) {
+            if (los.isPlusTier()) {
+                anyPlusTier = true;
+                break;
+            }
+        }
+        if (!anyPlusTier) {
+            return;
+        }
+
+        String zip = normalizeFiveDigitCode(request.getParameter("intakeZip"));
+        if (zip == null) return;
+
+        String countyFips = normalizeFiveDigitCode(request.getParameter("intakeCountyFips"));
+        if (countyFips == null) return;
+
+        String stateRaw = request.getParameter("intakeState");
+        if (stateRaw == null || stateRaw.trim().length() != 2) return;
+        String state = stateRaw.trim().toUpperCase();
+
+        String countyNameRaw = request.getParameter("intakeCountyName");
+        if (countyNameRaw == null || countyNameRaw.isBlank()) return;
+
+        Integer headcount = parseIntOrNull(request.getParameter("intakeHeadcount"));
+        if (headcount == null || headcount < 1 || headcount > 10000) return;
+
+        // Derived, not agent-asserted (S10-B HS-1) — re-resolved here rather than trusting
+        // whatever doGet rendered, since the constant could change between GET and POST.
+        Integer planYear = resolveCurrentPlanYear(em);
+        if (planYear == null) return;
+
+        ProposalIchraIntake intake = new ProposalIchraIntake();
+        intake.setProposal(proposal);
+        intake.setZip(zip);
+        intake.setCountyFips(countyFips);
+        intake.setCountyName(countyNameRaw.trim());
+        intake.setState(state);
+        intake.setHeadcount(headcount);
+        intake.setPlanYear(planYear);
+        intake.setCollectedAt(LocalDateTime.now());
+        intake.setCreatedBy(createdBy);
+
+        ProposalIchraIntakeDAO.save(em, intake);
+    }
+
+    /**
+     * "Current" plan year, derived rather than agent-asserted (S10-B HS-1) — the same
+     * source {@code IllustrationServlet.resolvePlanYear} reads: the first entry of the
+     * {@code RATE_CACHE_PLAN_YEARS} constant, tolerant CSV, malformed entries skipped. No
+     * second mechanism, no hardcoded year. Null when the constant is missing, blank, or
+     * carries no parseable entry — callers treat that as "no year to write against" and
+     * fail closed rather than invent one.
+     */
+    private Integer resolveCurrentPlanYear(EntityManager em) {
+        String raw = AppConstantDAO.getConstantValue(em, "RATE_CACHE_PLAN_YEARS");
+        if (raw == null || raw.isBlank()) return null;
+        for (String entry : raw.split(",")) {
+            String trimmed = entry.trim();
+            if (trimmed.isEmpty()) continue;
+            try {
+                return Integer.parseInt(trimmed);
+            } catch (NumberFormatException ignored) {
+                // malformed entry skipped, same tolerance as IllustrationServlet.parsePlanYears
+            }
+        }
+        return null;
+    }
+
+    /** Exactly five digits after trimming, or null. Used for intakeZip/intakeCountyFips. */
+    private String normalizeFiveDigitCode(String raw) {
+        if (raw == null) return null;
+        String trimmed = raw.trim();
+        if (trimmed.length() != 5) return null;
+        for (int i = 0; i < trimmed.length(); i++) {
+            if (!Character.isDigit(trimmed.charAt(i))) return null;
+        }
+        return trimmed;
     }
 
     /**

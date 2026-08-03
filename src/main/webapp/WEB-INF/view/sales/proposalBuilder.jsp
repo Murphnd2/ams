@@ -21,6 +21,7 @@
         .rate-option:hover { background-color: #f8f9fa; }
         .rate-option.selected { background-color: #e8f1f8; border-color: var(--ssa) !important; }
         .los-none-msg { display: none; color: #6c757d; font-style: italic; }
+        .intake-msg { display: none; font-size: 0.85rem; }
         .pb-wrap { max-width: 960px; margin: 0 auto; padding: 0 1rem; }
         @media (max-width: 767.98px) { .pb-wrap { padding: 0 0.5rem; } }
         .ghost-back { background: none; border: none; color: white; font-size: 0.85rem;
@@ -160,7 +161,7 @@
                     All associated modules and enhancements will be included automatically.</p>
                 <div class="row g-2" id="losCardGrid" style="display: none;">
                     <c:forEach var="los" items="${losList}">
-                        <div class="col-md-4 col-sm-6 los-card-wrapper" data-los-id="${los.getId()}">
+                        <div class="col-md-4 col-sm-6 los-card-wrapper" data-los-id="${los.getId()}"<c:if test="${ichraAvailable}"> data-plus-tier="${los.isPlusTier()}"</c:if>>
                             <div class="card los-card p-3" onclick="toggleLos(this, ${los.getId()})">
                                 <div class="d-flex align-items-center">
                                     <i class="bi bi-square los-check me-2"></i>
@@ -180,6 +181,58 @@
                 <div id="losInputs"></div>
             </div>
         </div>
+
+        <%-- T125: plus-tier ICHRA intake interjection. Present in the DOM ONLY when this
+             session is ICHRA-entitled (rule 2, invisible by default) -- for every other
+             agent, or when the RATE_CACHE_PLAN_YEARS constant that plan_year is derived
+             from is unconfigured, this <c:if> block emits nothing at all, not a hidden
+             container. Shown by JS only when a selected LOS carries data-plus-tier="true"
+             (updateIntakePanel()). Field names are intake*-prefixed -- the form already
+             posts unprefixed headcount/countyFips/planYear/mode/contribution/age1..6/
+             count1..6 above for the illustration hand-off, and reusing one of those names
+             would silently collide (request.getParameter returns the first). --%>
+        <c:if test="${ichraAvailable and not empty ichraPlanYear}">
+        <div class="card mb-3" id="ichraIntakePanel" data-plan-year="${ichraPlanYear}" style="display:none;">
+            <div class="card-header bg-white py-3">
+                <div class="d-flex align-items-center">
+                    <i class="bi bi-clipboard2-pulse me-3" style="font-size:1.25rem; color:var(--ssa);"></i>
+                    <h5 class="mb-0 fw-semibold">Additional Info for This Line of Service</h5>
+                </div>
+            </div>
+            <div class="card-body">
+                <p class="text-muted small mb-3">This line of service needs the employer's ZIP and eligible employee count before the proposal is created.</p>
+                <div class="row g-3 align-items-end">
+                    <div class="col-auto">
+                        <label class="form-label mb-1" for="intakeZip">Employer ZIP</label>
+                        <input type="text" class="form-control form-control-sm" id="intakeZip" name="intakeZip"
+                               inputmode="numeric" pattern="[0-9]{5}" maxlength="5" placeholder="#####"
+                               style="max-width:110px;" autocomplete="off">
+                    </div>
+                    <div class="col-auto">
+                        <label class="form-label mb-1" for="intakeCountyFips">County</label>
+                        <select class="form-select form-select-sm" id="intakeCountyFips" name="intakeCountyFips" style="min-width:220px;" disabled>
+                            <option value="">-- Enter a ZIP first --</option>
+                        </select>
+                        <input type="hidden" id="intakeCountyName" name="intakeCountyName" value="">
+                        <input type="hidden" id="intakeState" name="intakeState" value="">
+                    </div>
+                    <div class="col-auto">
+                        <label class="form-label mb-1" for="intakeHeadcount">Eligible Employees</label>
+                        <input type="number" class="form-control form-control-sm" id="intakeHeadcount" name="intakeHeadcount"
+                               min="1" max="10000" step="1" style="max-width:130px;">
+                    </div>
+                </div>
+                <%-- Never "invalid ZIP" -- the crosswalk is Texas-only and ZCTA-derived, so a
+                     perfectly valid USPS ZIP can land here (ZipCountyResolver javadoc). --%>
+                <p class="intake-msg mt-2 mb-0" id="intakeNoMatchMsg">
+                    <i class="bi bi-info-circle me-1"></i>We don't have ZIP <span id="intakeNoMatchZip"></span> in our county lookup. Try a nearby ZIP, or confirm the county with the employer directly.
+                </p>
+                <p class="intake-msg mt-2 mb-0 text-muted" id="intakeUnpricedMsg">
+                    <i class="bi bi-info-circle me-1"></i>No rate data is cached yet for the selected county -- the proposal will still be created.
+                </p>
+            </div>
+        </div>
+        </c:if>
 
         <%-- Submit --%>
         <div class="row mb-5">
@@ -463,6 +516,7 @@
 
         document.getElementById('losNoneMsg').style.display = visibleCount === 0 ? '' : 'none';
         rebuildLosInputs();
+        updateIntakePanel();
         updateSteps();
     }
 
@@ -478,6 +532,7 @@
             el.querySelector('.los-check').className = 'bi bi-check-square-fill los-check me-2';
         }
         rebuildLosInputs();
+        updateIntakePanel();
         updateSteps();
     }
 
@@ -502,7 +557,185 @@
         document.getElementById('stepBadge2').className = 'step-badge ' + (rateOk ? 'step-complete' : (prospectOk ? 'step-active' : 'step-pending')) + ' me-3';
         document.getElementById('stepBadge3').className = 'step-badge ' + (losOk ? 'step-complete' : (rateOk ? 'step-active' : 'step-pending')) + ' me-3';
 
-        document.getElementById('btnCreate').disabled = !(prospectOk && rateOk && losOk);
+        // T125 -- when the plus-tier intake panel is visible, it gates Create Proposal too.
+        document.getElementById('btnCreate').disabled = !(prospectOk && rateOk && losOk && ichraIntakeComplete());
+    }
+
+    // ── T125: ICHRA plus-tier intake panel ──────────────────────────────────────────
+    // Every function below is a no-op when ichraIntakePanel is absent from the DOM (an
+    // unentitled session, or an unconfigured RATE_CACHE_PLAN_YEARS) -- each starts with a
+    // null-element guard so nothing here can throw on a page that never rendered the panel.
+    var ichraPlanYear = <c:choose><c:when test="${ichraAvailable and not empty ichraPlanYear}">${ichraPlanYear}</c:when><c:otherwise>null</c:otherwise></c:choose>;
+    var ichraLastLookedUpZip = '';
+
+    function anySelectedLosIsPlusTier() {
+        var found = false;
+        selectedLosIds.forEach(function(id) {
+            var wrapper = document.querySelector('.los-card-wrapper[data-los-id="' + id + '"]');
+            if (wrapper && wrapper.dataset.plusTier === 'true') found = true;
+        });
+        return found;
+    }
+
+    function hideIntakeMessages() {
+        var noMatch = document.getElementById('intakeNoMatchMsg');
+        var unpriced = document.getElementById('intakeUnpricedMsg');
+        if (noMatch) noMatch.style.display = 'none';
+        if (unpriced) unpriced.style.display = 'none';
+    }
+
+    function clearIntakeFields() {
+        var zipEl = document.getElementById('intakeZip');
+        var countyEl = document.getElementById('intakeCountyFips');
+        var countyNameEl = document.getElementById('intakeCountyName');
+        var stateEl = document.getElementById('intakeState');
+        var headcountEl = document.getElementById('intakeHeadcount');
+        if (zipEl) zipEl.value = '';
+        if (countyEl) { countyEl.innerHTML = '<option value="">-- Enter a ZIP first --</option>'; countyEl.disabled = true; }
+        if (countyNameEl) countyNameEl.value = '';
+        if (stateEl) stateEl.value = '';
+        if (headcountEl) headcountEl.value = '';
+        ichraLastLookedUpZip = '';
+        hideIntakeMessages();
+    }
+
+    // Gate link 4: the panel appears iff a selected LOS is plus-tier, and a stale value
+    // must not survive a deselect -- so hiding always clears every field.
+    function updateIntakePanel() {
+        var panel = document.getElementById('ichraIntakePanel');
+        if (!panel) return;
+
+        if (anySelectedLosIsPlusTier()) {
+            panel.style.display = '';
+        } else {
+            panel.style.display = 'none';
+            clearIntakeFields();
+        }
+    }
+
+    function ichraIntakeComplete() {
+        var panel = document.getElementById('ichraIntakePanel');
+        if (!panel || panel.style.display === 'none') return true; // panel not showing -- nothing required
+        var zip = (document.getElementById('intakeZip').value || '').trim();
+        var county = document.getElementById('intakeCountyFips').value;
+        var headcount = parseInt(document.getElementById('intakeHeadcount').value, 10);
+        return /^[0-9]{5}$/.test(zip) && county !== '' && headcount >= 1;
+    }
+
+    function ichraSelectCounty(county) {
+        var countyEl = document.getElementById('intakeCountyFips');
+        var nameEl = document.getElementById('intakeCountyName');
+        var stateEl = document.getElementById('intakeState');
+        if (!countyEl) return;
+
+        countyEl.innerHTML = '';
+        var placeholder = document.createElement('option');
+        placeholder.value = '';
+        placeholder.textContent = '-- Select a county --';
+        countyEl.appendChild(placeholder);
+
+        var opt = document.createElement('option');
+        opt.value = county.fips;
+        opt.textContent = county.name + ', ' + county.state + (county.priced === false ? ' (no rates cached yet)' : '');
+        opt.selected = true;
+        countyEl.appendChild(opt);
+        countyEl.disabled = false;
+
+        if (nameEl) nameEl.value = county.name;
+        if (stateEl) stateEl.value = county.state;
+    }
+
+    // Several counties: the agent chooses. NEVER auto-select counties[0] -- 34% of TX
+    // ZCTAs cross a county line (ZipCountyResolver javadoc); a silently wrong county
+    // returns clean rates with nothing downstream to disagree.
+    function ichraRenderChooser(counties) {
+        var countyEl = document.getElementById('intakeCountyFips');
+        var nameEl = document.getElementById('intakeCountyName');
+        var stateEl = document.getElementById('intakeState');
+        if (!countyEl) return;
+
+        countyEl.innerHTML = '';
+        var placeholder = document.createElement('option');
+        placeholder.value = '';
+        placeholder.textContent = '-- Select a county --';
+        countyEl.appendChild(placeholder);
+
+        counties.forEach(function(county) {
+            var opt = document.createElement('option');
+            opt.value = county.fips;
+            opt.textContent = county.name + ', ' + county.state + (county.priced === false ? ' (no rates cached yet)' : '');
+            opt.dataset.name = county.name;
+            opt.dataset.state = county.state;
+            countyEl.appendChild(opt);
+        });
+        countyEl.disabled = false;
+
+        // Nothing is pre-selected -- the agent must choose (see the NEVER-auto-select note
+        // above). The hidden name/state fields are filled by the change listener below once
+        // they do.
+        if (nameEl) nameEl.value = '';
+        if (stateEl) stateEl.value = '';
+    }
+
+    function ichraZipLookup() {
+        var zipEl = document.getElementById('intakeZip');
+        if (!zipEl) return;
+        var raw = (zipEl.value || '').trim();
+        if (raw === ichraLastLookedUpZip) return;
+        ichraLastLookedUpZip = raw;
+
+        hideIntakeMessages();
+        var countyEl = document.getElementById('intakeCountyFips');
+        var nameEl = document.getElementById('intakeCountyName');
+        var stateEl = document.getElementById('intakeState');
+        if (countyEl) { countyEl.innerHTML = '<option value="">-- Enter a ZIP first --</option>'; countyEl.disabled = true; }
+        if (nameEl) nameEl.value = '';
+        if (stateEl) stateEl.value = '';
+
+        // Half-typed input is not an error -- say nothing and wait for five digits.
+        if (!/^[0-9]{5}$/.test(raw)) { updateSteps(); return; }
+
+        var url = 'IchraZipLookup?zip=' + encodeURIComponent(raw)
+                + (ichraPlanYear ? '&planYear=' + encodeURIComponent(ichraPlanYear) : '');
+        fetch(url, { headers: { 'Accept': 'application/json' } })
+            .then(function(res) { return res.ok ? res.json() : { counties: [] }; })
+            .then(function(data) {
+                if ((zipEl.value || '').trim() !== raw) return; // field moved on -- drop the answer
+                var counties = (data && Array.isArray(data.counties)) ? data.counties : [];
+                if (counties.length === 0) {
+                    var noMatchZipEl = document.getElementById('intakeNoMatchZip');
+                    var noMatchMsg = document.getElementById('intakeNoMatchMsg');
+                    if (noMatchZipEl) noMatchZipEl.textContent = raw;
+                    if (noMatchMsg) noMatchMsg.style.display = '';
+                    if (countyEl) { countyEl.innerHTML = '<option value="">-- No county found for this ZIP --</option>'; countyEl.disabled = false; }
+                } else if (counties.length === 1) {
+                    ichraSelectCounty(counties[0]);
+                    if (counties[0].priced === false) {
+                        var unpricedMsg = document.getElementById('intakeUnpricedMsg');
+                        if (unpricedMsg) unpricedMsg.style.display = '';
+                    }
+                } else {
+                    ichraRenderChooser(counties);
+                }
+                updateSteps();
+            })
+            .catch(function() {
+                // Leave it to the submit path; nothing here blocks the form.
+            });
+    }
+
+    // Fires when the agent manually picks from the multi-county chooser -- fills the
+    // hidden name/state fields from the chosen <option>'s data-* attributes (the single-
+    // match auto-select path in ichraSelectCounty fills them directly and never needs this).
+    function ichraCountySelected() {
+        var countyEl = document.getElementById('intakeCountyFips');
+        var nameEl = document.getElementById('intakeCountyName');
+        var stateEl = document.getElementById('intakeState');
+        if (!countyEl) return;
+        var opt = countyEl.options[countyEl.selectedIndex];
+        if (nameEl) nameEl.value = (opt && opt.dataset.name) ? opt.dataset.name : '';
+        if (stateEl) stateEl.value = (opt && opt.dataset.state) ? opt.dataset.state : '';
+        updateSteps();
     }
 
     // On load: filter rates by pre-selected prospect (if any), then auto-select rate
@@ -521,6 +754,19 @@
         var autoRate = document.querySelector('.rate-option');
         if (autoRate) selectRate(autoRate, ${autoSelectedRateId});
         </c:if>
+        var ichraZipEl = document.getElementById('intakeZip');
+        if (ichraZipEl) {
+            ichraZipEl.addEventListener('change', ichraZipLookup);
+            ichraZipEl.addEventListener('blur', ichraZipLookup);
+        }
+        var ichraCountyEl = document.getElementById('intakeCountyFips');
+        if (ichraCountyEl) {
+            ichraCountyEl.addEventListener('change', ichraCountySelected);
+        }
+        var ichraHeadcountEl = document.getElementById('intakeHeadcount');
+        if (ichraHeadcountEl) {
+            ichraHeadcountEl.addEventListener('input', updateSteps);
+        }
         updateSteps();
     });
 </script>
