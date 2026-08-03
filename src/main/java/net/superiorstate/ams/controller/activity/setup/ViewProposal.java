@@ -292,9 +292,17 @@ public class ViewProposal extends HttpServlet {
                 //
                 // No-op for every proposal carrying no ICHRA-typed section, which today is all of
                 // them: the stream rebuilds an equal list and nothing downstream sees a difference.
+                //
+                // T129 — the second filter closes the hole the first one leaves. Gating by section
+                // TYPE cannot reach plus-tier content configured as a CUSTOM section, and CUSTOM
+                // must NOT be added to ICHRA_GATED_SECTION_TYPES: non-ICHRA CUSTOM sections are in
+                // live use across other lines of service, and gating the type would strip them from
+                // those proposals — a customer-facing regression on content unrelated to ICHRA.
+                // So the discriminator is the section's plus-tier LOS association, not its type.
                 if (!ichraEntitled) {
                     sections = sections.stream()
                             .filter(s -> !ICHRA_GATED_SECTION_TYPES.contains(s.getSectionType()))
+                            .filter(s -> !isPlusTierScoped(s))
                             .collect(java.util.stream.Collectors.toList());
                 }
 
@@ -364,6 +372,51 @@ public class ViewProposal extends HttpServlet {
 
         RequestDispatcher dispatcher = request.getRequestDispatcher("/WEB-INF/view/sales/viewProposal.jsp");
         dispatcher.forward(request, response);
+    }
+
+    /**
+     * T129 — is this section reached through an LOS carrying {@code los.is_plus_tier} (V086)?
+     * <p>
+     * The discriminator for the entitlement gate's plus-tier half. <b>Deliberately keyed on the LOS
+     * association rather than on {@code section_type}</b>: plus-tier content is configured as a
+     * {@code CUSTOM} section, and {@code CUSTOM} cannot be added to {@link #ICHRA_GATED_SECTION_TYPES}
+     * because non-ICHRA {@code CUSTOM} sections are in live use on other lines of service and would
+     * be stripped from those proposals along with it.
+     * <p>
+     * <b>Reads no id literal.</b> Plus-tier is whatever {@code los.is_plus_tier} says, per PSP, which
+     * is the whole point of V086 having been a column on {@code los} rather than a {@code constant}
+     * row naming LOS ids.
+     * <p>
+     * <b>Costs no query.</b> {@code losList} is force-initialised for every section before scope
+     * filtering runs (see {@code doGet}), and {@code plusTier} is a basic mapped column on the
+     * already-loaded {@link LOS}, so this walks objects that are in the persistence context already.
+     * <p>
+     * <b>Fails closed.</b> A section with no LOS association is a determinate <i>not</i> plus-tier and
+     * returns {@code false} — that is what keeps every existing non-ICHRA {@code CUSTOM} section
+     * rendering byte-identically. But genuine <i>uncertainty</i> — a lazy-load failure, a detached
+     * collection, any exception at all — returns {@code true}, so the caller omits the section. Never
+     * render on uncertainty: this gate exists because the content behind it is about to become
+     * incomplete market data, and incomplete market data must not reach an unentitled audience.
+     * Never throws, so the proposal cannot fail to render because this check failed.
+     */
+    private boolean isPlusTierScoped(ProposalSection section) {
+        try {
+            List<LOS> sectionLos = section.getLosList();
+            if (sectionLos == null || sectionLos.isEmpty()) {
+                return false;
+            }
+            for (LOS los : sectionLos) {
+                if (los != null && los.isPlusTier()) {
+                    return true;
+                }
+            }
+            return false;
+        } catch (Exception e) {
+            System.out.println("T129 plus-tier scope check failed for section #"
+                    + (section != null ? section.getId() : "null")
+                    + " — treating as plus-tier and omitting it: " + e.getMessage());
+            return true;
+        }
     }
 
     /**
