@@ -8,6 +8,7 @@ import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
 import net.superiorstate.ams.data.dao.AppConstantDAO;
+import net.superiorstate.ams.data.dao.ProposalIchraIntakeDAO;
 import net.superiorstate.ams.data.dao.ProposalIchraSnapshotDAO;
 import net.superiorstate.ams.data.dao.SalesDAO;
 import net.superiorstate.ams.data.dao.StorageDAO;
@@ -16,6 +17,7 @@ import net.superiorstate.ams.data.resolver.OriginatingAgencyResolver;
 import net.superiorstate.ams.model.market.RatingAreaRateCache;
 import net.superiorstate.ams.model.sales.agency.Agency;
 import net.superiorstate.ams.model.sales.agency.Proposal;
+import net.superiorstate.ams.model.sales.agency.ProposalIchraIntake;
 import net.superiorstate.ams.model.sales.agency.ProposalIchraSnapshot;
 import net.superiorstate.ams.model.sales.agency.ProposalIchraSnapshotBand;
 import net.superiorstate.ams.model.sales.agency.ProposalPriceLine;
@@ -337,7 +339,7 @@ public class ViewProposal extends HttpServlet {
 
                 if (!sections.isEmpty()) {
                     // Build token replacement map
-                    Map<String, String> tokens = buildTokenMap(proposal, psp, primaryColor, accentColor, request);
+                    Map<String, String> tokens = buildTokenMap(em, proposal, psp, primaryColor, accentColor, request);
 
                     // Build rendered HTML map for sections with content
                     Map<Long, String> sectionHtml = new LinkedHashMap<>();
@@ -443,7 +445,7 @@ public class ViewProposal extends HttpServlet {
     }
 
     /** Builds the merge token map from proposal data */
-    private Map<String, String> buildTokenMap(Proposal proposal, PSP psp, String primaryColor, String accentColor, HttpServletRequest request) {
+    private Map<String, String> buildTokenMap(EntityManager em, Proposal proposal, PSP psp, String primaryColor, String accentColor, HttpServletRequest request) {
         Map<String, String> tokens = new HashMap<>();
 
         // Prospect
@@ -492,6 +494,26 @@ public class ViewProposal extends HttpServlet {
                 "<a href=\"" + applyUrl + "\" style=\"display:inline-block; padding:0.75rem 3rem; background:" +
                         accentColor + "; color:white; text-decoration:none; font-size:1.15rem; font-weight:600; border-radius:6px;\">" +
                         "<i class=\"bi bi-pencil-square\" style=\"margin-right:0.5rem;\"></i>Apply Now</a>");
+
+        // T128 — ICHRA plus-tier intake (T125's proposal_ichra_intake row), for CUSTOM
+        // sections. No entitlement check here: this method only resolves values, it does
+        // not gate — what holds a tier-1 CUSTOM section closed today is reference data
+        // (rate assignment), not this map (see T129). Absent for every proposal with no
+        // intake row — every existing line of service, and every proposal created before
+        // T125 shipped — so these four keys are ALWAYS put into the map, with empty-string
+        // values in that case: an unresolved key would render as the literal "{{ICHRA_COUNTY}}"
+        // on a customer-facing page, and empty is the fail-closed choice. The lookup must
+        // never stop the proposal from rendering, so a DAO failure falls through the same way.
+        ProposalIchraIntake ichraIntake = null;
+        try {
+            ichraIntake = ProposalIchraIntakeDAO.findByProposalId(em, proposal.getId());
+        } catch (Exception e) {
+            System.out.println("ICHRA intake lookup failed for proposal #" + proposal.getId() + ": " + e.getMessage());
+        }
+        tokens.put("ICHRA_COUNTY", ichraIntake != null && ichraIntake.getCountyName() != null ? ichraIntake.getCountyName() : "");
+        tokens.put("ICHRA_COUNTY_FIPS", ichraIntake != null && ichraIntake.getCountyFips() != null ? ichraIntake.getCountyFips() : "");
+        tokens.put("ICHRA_HEADCOUNT", ichraIntake != null && ichraIntake.getHeadcount() != null ? ichraIntake.getHeadcount().toString() : "");
+        tokens.put("ICHRA_PLAN_YEAR", ichraIntake != null && ichraIntake.getPlanYear() != null ? ichraIntake.getPlanYear().toString() : "");
 
         return tokens;
     }
