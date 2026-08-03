@@ -5,6 +5,7 @@ import jakarta.persistence.EntityManagerFactory;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import net.superiorstate.ams.model.sales.agency.Agency;
+import net.superiorstate.ams.model.sales.agency.Proposal;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -91,6 +92,75 @@ public final class IchraAccessResolver {
             return available;
         } catch (Exception e) {
             log.debug("[ICHRA] Access resolution failed; defaulting to not available", e);
+            return false;
+        }
+    }
+
+    /**
+     * Is ICHRA content permitted on <em>this proposal</em>? The session-free counterpart to
+     * {@link #isAvailable(EntityManager, HttpServletRequest)}, for the public, unauthenticated
+     * proposal view (<code>/proposal/*</code>), which has no {@code HttpSession} to resolve against —
+     * {@code ViewProposal} is exempted from {@code LoginFilter} and reads no session anywhere in its
+     * render path. Entitlement is therefore resolved from the {@code Proposal} instance alone.
+     * <p>
+     * <b>This is a compliance control, not a display preference.</b> Under <b>LA-17</b> the entitled
+     * agency behind a proposal is the machine-checkable proxy for "a licensed agent composed and sent
+     * this document" — the fact LA-17's whole assumption rests on. Over-reporting entitlement here does
+     * not merely show a section to the wrong audience; it renders market data into an employer-facing
+     * document in a case LA-17 does not cover, which is a state producer-licensing question rather
+     * than a UI bug. Review changes to this method accordingly. See <b>T116</b>.
+     * <p>
+     * <b>There is deliberately no {@code isPspAdmin} bypass, and none may be added.</b>
+     * {@link #isAvailable(EntityManager, HttpServletRequest)} short-circuits on the session's PSP-admin
+     * attribute, which is correct on an authenticated agent surface and <b>wrong here</b>: a PSP admin
+     * who happens to be logged in and opens a public proposal link must not thereby cause
+     * employer-facing market data to render in a document sent to a prospect. The audience of this page
+     * is the employer, never the viewer's own session. This method reads no session state of any kind.
+     * <p>
+     * <b>Multi-membership rule — strictly the originating agency.</b> Entitlement follows
+     * {@link OriginatingAgencyResolver#resolve(Proposal)}: the same resolver, and therefore necessarily
+     * the same agency, that {@code ViewProposal} already uses to pick the {@code TITLE}/{@code CLOSING}
+     * agency override and the {@code AGENCY_NAME} merge token. <b>The gate and the branding cannot
+     * disagree</b> — whichever agency's name is on the document is the agency whose flag governs it.
+     * The rejected alternative was "any entitled agency in the originating agent's membership," which
+     * would let a document branded agency Y render ICHRA content because unrelated agency X is
+     * entitled — precisely the case LA-17's constraints do not cover.
+     * <p>
+     * ⚠️ This does <b>not</b> fix {@code OriginatingAgencyResolver.agencyOf}'s unordered
+     * {@code list.get(0)} pick over a {@code @ManyToMany}. It makes that nondeterminism <i>harmless for
+     * gating</i>, because brand and gate now go wrong together or not at all. The underlying branding
+     * nondeterminism is a separate pre-existing defect and is tracked separately — do not "fix" it here.
+     * <p>
+     * Fails closed on every path and never throws: a null argument, an unresolvable agency, or any
+     * exception encountered while resolving yields {@code false}. Consistent with the class-level
+     * prohibition, this method references no {@code LOS}, {@code ServiceItem}, {@code PlanType},
+     * {@code ServiceModule} or {@code RateTable} — it answers entitlement, never catalog state.
+     *
+     * @param em       an open {@code EntityManager}; must still be open, since resolution lazily walks
+     *                 the originating agent's agency membership
+     * @param proposal the proposal being rendered
+     * @return {@code true} only when the proposal's originating agency exists and carries
+     *         {@code agency.ichra_enabled}
+     */
+    public static boolean isAvailableForProposal(EntityManager em, Proposal proposal) {
+        try {
+            if (em == null || proposal == null) {
+                return false;
+            }
+
+            Agency agency = OriginatingAgencyResolver.resolve(proposal);
+            if (agency == null) {
+                log.info("[ICHRA] Proposal access resolved: proposalId={}, agency=none, available=false",
+                        proposal.getId());
+                return false;
+            }
+
+            boolean available = agency.isIchraEnabled();
+            log.info("[ICHRA] Proposal access resolved: proposalId={}, agencyId={}, available={}",
+                    proposal.getId(), agency.getId(), available);
+            return available;
+        } catch (Exception e) {
+            log.debug("[ICHRA] Proposal access resolution failed; defaulting to not available", e);
             return false;
         }
     }
