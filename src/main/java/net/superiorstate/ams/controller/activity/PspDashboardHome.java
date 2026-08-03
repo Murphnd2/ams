@@ -31,6 +31,16 @@ public class PspDashboardHome extends HttpServlet {
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
 
+        // T124 hardening: the PSP admin dashboard, linked only from the isPspAdmin-gated navbar
+        // block (navbar25.jsp:227) and nowhere else. Disclosure rather than escalation — it writes
+        // nothing — but it aggregates PSP-wide operational data.
+        // Same guard, same shape as AgencyAction.doPost's V067 precedent.
+        boolean isPspAdmin = Boolean.TRUE.equals(request.getSession().getAttribute("isPspAdmin"));
+        if (!isPspAdmin) {
+            response.sendError(HttpServletResponse.SC_FORBIDDEN);
+            return;
+        }
+
         AmsDataLocal local = (AmsDataLocal) request.getSession().getAttribute("local");
         if (local == null || !local.isAuthenticated()) {
             response.sendRedirect("login");

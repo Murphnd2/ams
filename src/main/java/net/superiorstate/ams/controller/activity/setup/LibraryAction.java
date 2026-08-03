@@ -36,6 +36,18 @@ public class LibraryAction extends HttpServlet {
 
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        // T124 hardening: 6 actions — createResource, editResource, deleteResource, createCategory,
+        // editCategory, deleteCategory — including multipart uploads and hard deletes of marketing
+        // resources. Reached only from library25.jsp, which is served solely by LibraryHome (guarded
+        // in this run) and linked only from the isPspAdmin-gated navbar block. Verified there is no
+        // agent- or client-facing caller. Placed before the action dispatch and before EMF acquisition.
+        // Same shape as AgencyAction.doPost's V067 guard — deliberately identical, not improved.
+        boolean isPspAdmin = Boolean.TRUE.equals(request.getSession().getAttribute("isPspAdmin"));
+        if (!isPspAdmin) {
+            response.sendError(HttpServletResponse.SC_FORBIDDEN);
+            return;
+        }
+
         EntityManagerFactory emf = (EntityManagerFactory) getServletContext().getAttribute("emf");
         EntityManager em = emf.createEntityManager();
         AmsDataLocal local = (AmsDataLocal) request.getSession().getAttribute("local");

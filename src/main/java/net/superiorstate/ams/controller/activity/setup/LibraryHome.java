@@ -17,6 +17,16 @@ public class LibraryHome extends HttpServlet {
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        // T124 hardening: the render half of the Resource Library, and the only servlet that serves
+        // library25.jsp — the sole poster to LibraryAction. Linked only from the isPspAdmin-gated
+        // navbar block; no agent- or client-facing caller exists (verified S9-H).
+        // Same guard, same shape as AgencyAction.doPost's V067 precedent.
+        boolean isPspAdmin = Boolean.TRUE.equals(request.getSession().getAttribute("isPspAdmin"));
+        if (!isPspAdmin) {
+            response.sendError(HttpServletResponse.SC_FORBIDDEN);
+            return;
+        }
+
         EntityManagerFactory emf = (EntityManagerFactory) getServletContext().getAttribute("emf");
         EntityManager em = emf.createEntityManager();
         AmsDataLocal local = (AmsDataLocal) request.getSession().getAttribute("local");

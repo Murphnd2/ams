@@ -28,6 +28,17 @@ public class QuestionnaireManager25 extends HttpServlet {
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
 
+        // T124 hardening: the admin Questionnaire Manager, linked only from the isPspAdmin-gated
+        // navbar block. ⚠️ Distinct from QuestionnaireInstanceAction, which S9-H deliberately did
+        // NOT guard — that one is posted from the activity-detail panel and is legitimately used by
+        // agents and PSP users, so an isPspAdmin guard there would be an outage.
+        // Same guard, same shape as AgencyAction.doPost's V067 precedent.
+        boolean isPspAdmin = Boolean.TRUE.equals(request.getSession().getAttribute("isPspAdmin"));
+        if (!isPspAdmin) {
+            response.sendError(HttpServletResponse.SC_FORBIDDEN);
+            return;
+        }
+
         EntityManagerFactory emf = (EntityManagerFactory) getServletContext().getAttribute("emf");
         EntityManager em = emf.createEntityManager();
         AmsDataLocal local = (AmsDataLocal) request.getSession().getAttribute("local");

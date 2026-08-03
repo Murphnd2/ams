@@ -15,6 +15,19 @@ public class PriceItemAction extends HttpServlet {
 
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        // T124 hardening: pricing — the highest-severity item of the T124 remainder. Reached only
+        // from rateManager25.jsp (fetch at :440, initDrag at :466), which is served by PspAdminHome,
+        // guarded in S9-G. Reorders and suppresses PriceItem rows, i.e. the fee types that make up a
+        // rate table. Placed before the action dispatch, before EMF acquisition, and deliberately
+        // BEFORE setContentType — sendError after the writer is acquired can throw
+        // IllegalStateException and turn a clean 403 into a 500.
+        // Same shape as AgencyAction.doPost's V067 guard — deliberately identical, not improved.
+        boolean isPspAdmin = Boolean.TRUE.equals(request.getSession().getAttribute("isPspAdmin"));
+        if (!isPspAdmin) {
+            response.sendError(HttpServletResponse.SC_FORBIDDEN);
+            return;
+        }
+
         EntityManagerFactory emf = (EntityManagerFactory) getServletContext().getAttribute("emf");
         EntityManager em = emf.createEntityManager();
         response.setContentType("application/json");

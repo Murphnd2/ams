@@ -30,6 +30,19 @@ public class PspAgencyHome extends HttpServlet {
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        // T63 (and T124) hardening: this closes T63, open since V067 (2026-07-09). The Agency
+        // Manager page lists the PSP's full agency roster, rate assignments and pending agents, and
+        // was nav-gated only — the exact gap V067's own comment noted when it added the 403 guard to
+        // AgencyAction.doPost but not here. The write path has been safe since V067; this closes the
+        // disclosure half. Linked only from the isPspAdmin-gated navbar block and from AgencyAction /
+        // SendInvitation redirects, which are themselves admin-only.
+        // Same guard, same shape as AgencyAction.doPost's V067 precedent — the sibling it belongs to.
+        boolean isPspAdmin = Boolean.TRUE.equals(request.getSession().getAttribute("isPspAdmin"));
+        if (!isPspAdmin) {
+            response.sendError(HttpServletResponse.SC_FORBIDDEN);
+            return;
+        }
+
         EntityManagerFactory emf = (EntityManagerFactory) getServletContext().getAttribute("emf");
         EntityManager em = emf.createEntityManager();
         AmsDataLocal local = (AmsDataLocal) request.getSession().getAttribute("local");
