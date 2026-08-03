@@ -287,12 +287,31 @@ git push
 git log -1 --format="%h %ci %s"
 ```
 
-Commit hash, read from `git log` **after** the push, following the S10-A precedent (a disclosed follow-up
-commit records it if this close-out cannot contain its own hash — see below):
+Commit hash, read from `git log` **after** the push:
 
 ```
-COMMIT_HASH_RECORDED_IN_FOLLOWUP_COMMIT
+1d4c284 2026-08-03 12:30:12 -0500 feat: ICHRA intake interjection in the Proposal Builder (T125, V087)
 ```
+
+`git show --stat` on `1d4c284`:
+
+```
+ docs/analysis/migration_tracker.md                 |   3 +-
+ docs/analysis/project_backlog.md                   |   2 +-
+ docs/migrations/V087__proposal_ichra_intake.sql    |  69 +++++
+ docs/runs/S10-B_closeout.md                        | 321 +++++++++++++++++++++
+ docs/schema_version_migration.sql                  |   3 +-
+ .../controller/activity/setup/ProposalBuilder.java | 122 ++++++++
+ .../ams/data/dao/ProposalIchraIntakeDAO.java       |  43 +++
+ .../model/sales/agency/ProposalIchraIntake.java    | 146 ++++++++++
+ .../webapp/WEB-INF/view/sales/proposalBuilder.jsp  | 250 +++++++++++++++-
+ 9 files changed, 954 insertions(+), 5 deletions(-)
+```
+
+⚠️ **Same disclosed deviation as S10-A, for the same reason.** This close-out cannot both record its own
+commit's hash and be inside that commit, so §13's hash is filled in via a **second** commit touching only
+`docs/runs/S10-B_closeout.md` — a path already inside the scope fence — rather than by amending `1d4c284`
+after it was already pushed.
 
 ---
 
