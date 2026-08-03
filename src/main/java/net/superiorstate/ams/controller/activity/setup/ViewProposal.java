@@ -11,6 +11,7 @@ import net.superiorstate.ams.data.dao.AppConstantDAO;
 import net.superiorstate.ams.data.dao.ProposalIchraSnapshotDAO;
 import net.superiorstate.ams.data.dao.SalesDAO;
 import net.superiorstate.ams.data.dao.StorageDAO;
+import net.superiorstate.ams.data.resolver.IchraAccessResolver;
 import net.superiorstate.ams.data.resolver.OriginatingAgencyResolver;
 import net.superiorstate.ams.model.market.RatingAreaRateCache;
 import net.superiorstate.ams.model.sales.agency.Agency;
@@ -40,6 +41,17 @@ public class ViewProposal extends HttpServlet {
 
     /** Matches [link text](resourceId) markers in feature descriptions */
     private static final Pattern LINK_PATTERN = Pattern.compile("\\[([^\\]]+)]\\((\\d+)\\)");
+
+    /**
+     * Section types withheld unless the proposal's originating agency is ICHRA-entitled
+     * (LA-17 / T116). Gated by {@link IchraAccessResolver#isAvailableForProposal}, which is a
+     * compliance control on this page and not a display preference — see its javadoc.
+     * <p>
+     * The single element is {@link ProposalIchraSnapshot#SECTION_TYPE}, i.e. the literal
+     * {@code "ICHRA_ILLUSTRATION"}, referenced through the constant so the gate cannot drift
+     * from the type it is gating.
+     */
+    private static final Set<String> ICHRA_GATED_SECTION_TYPES = Set.of(ProposalIchraSnapshot.SECTION_TYPE);
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
@@ -88,7 +100,17 @@ public class ViewProposal extends HttpServlet {
             // PRODUCTION never sets these attributes, so this public, unauthenticated
             // page renders neither staging figures nor a staging warning for it — it
             // simply does not appear.
-            ProposalIchraSnapshot ichraSnapshot = ProposalIchraSnapshotDAO.findByProposalId(em, proposal.getId());
+            // LA-17 / T116 — resolved ONCE per request, here, while the EM is still open (it closes in
+            // the finally below, before the JSP forward) and before either half of the gate needs it.
+            // Fails closed internally, so no try/catch is needed at the call site. Deliberately NOT the
+            // session-based isAvailable(): this page is public and unauthenticated, and a PSP admin who
+            // happens to be logged in must not cause market data to render in a document sent to a
+            // prospect. Half one of the gate is immediately below; half two follows section filtering.
+            boolean ichraEntitled = IchraAccessResolver.isAvailableForProposal(em, proposal);
+
+            ProposalIchraSnapshot ichraSnapshot = ichraEntitled
+                    ? ProposalIchraSnapshotDAO.findByProposalId(em, proposal.getId())
+                    : null;
             if (ichraSnapshot != null && RatingAreaRateCache.SOURCE_ENV_PRODUCTION.equals(ichraSnapshot.getSourceEnv())) {
                 request.setAttribute("ichraSnapshot", ichraSnapshot);
                 if (ProposalIchraSnapshot.MODE_AGE_BAND.equals(ichraSnapshot.getMode())) {
@@ -252,6 +274,27 @@ public class ViewProposal extends HttpServlet {
                     }
                 }
                 sections = filteredSections;
+
+                // LA-17 / T116 — entitlement gate, half two. A SEPARATE pass after scope filtering,
+                // deliberately not folded into it: scope answers "does this proposal include the
+                // service", entitlement answers "may this audience be shown market data at all", and
+                // conflating them would make one silently stand in for the other.
+                //
+                // ⚠️ Half one already suppresses all visible output on its own TODAY, because
+                // viewProposal.jsp wraps the entire ICHRA <div> in <c:if test="${not empty
+                // ichraSnapshot}"> — verified by runtime walk 2026-08-02, not assumed. This pass is
+                // therefore defence in depth, and deliberately so: it does not depend on that JSP
+                // detail holding. Move the <c:if> inside the div, add a header outside it, or render
+                // a section index from proposalSections, and half one alone would start leaking
+                // chrome for an unentitled agency. The section must not be in the list at all.
+                //
+                // No-op for every proposal carrying no ICHRA-typed section, which today is all of
+                // them: the stream rebuilds an equal list and nothing downstream sees a difference.
+                if (!ichraEntitled) {
+                    sections = sections.stream()
+                            .filter(s -> !ICHRA_GATED_SECTION_TYPES.contains(s.getSectionType()))
+                            .collect(java.util.stream.Collectors.toList());
+                }
 
                 // Agency override for TITLE and CLOSING
                 Agency proposalAgency = OriginatingAgencyResolver.resolve(proposal);
