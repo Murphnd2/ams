@@ -352,8 +352,24 @@ environment's state.
 Read from `git log -1` **after** the push:
 
 ```
-COMMIT_HASH_RECORDED_BELOW
+0a1a783 2026-08-03 14:05:59 -0500 feat: market-data merge tokens for plus-tier proposal sections
 ```
+
+`git show --stat` on `0a1a783` — **proving no file outside the fence was touched**:
+
+```
+ docs/analysis/project_backlog.md                   |   2 +
+ docs/runs/S10-G_closeout.md                        | 388 +++++++++++++++++++++
+ .../controller/activity/setup/ViewProposal.java    | 139 +++++++-
+ 3 files changed, 527 insertions(+), 2 deletions(-)
+```
+
+Three files, all named in §3's permitted list. The only file under `src/` is `ViewProposal.java`; the two
+deletions in the changeset are its replaced signature and call-site lines.
+
+⚠️ **Same disclosed deviation as S10-A/B/D/E/F:** a close-out cannot carry its own commit's hash and be
+inside that commit, so §14 is filled in by a **second** commit touching only `docs/runs/S10-G_closeout.md`,
+already inside the fence, rather than by amending a pushed commit.
 
 ---
 
