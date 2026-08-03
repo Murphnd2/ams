@@ -105,4 +105,5 @@ INSERT IGNORE INTO schema_version (version, description, script_name) VALUES
 ('V082', 'Make ICHRA_DESIGN_ADVISOR available to non-admin callers (chatbot_skill.is_admin_only 1 -> 0)', 'V082__ichra_design_advisor_non_admin.sql'),
 ('V083', 'Fix retired model on ICHRA_DESIGN_ADVISOR (chatbot_skill.model -> claude-sonnet-5, max_tokens -> 3072)', 'V083__ichra_design_advisor_model.sql'),
 ('V084', 'ZIP to county crosswalk table for T74 ZIP intake (zip_county, composite PK, no FK)', 'V084__zip_county_crosswalk.sql'),
-('V085', 'Texas ZIP to county crosswalk data (2894 rows, Census 2020 ZCTA relationship file)', 'V085__zip_county_crosswalk_tx.sql');
+('V085', 'Texas ZIP to county crosswalk data (2894 rows, Census 2020 ZCTA relationship file)', 'V085__zip_county_crosswalk_tx.sql'),
+('V086', 'Plus-tier classification flag on line of service (los.is_plus_tier, default OFF, no consumer yet)', 'V086__los_plus_tier.sql');

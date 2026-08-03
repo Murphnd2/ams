@@ -36,6 +36,18 @@ public class LOS implements Comparable<LOS> {
     @Column
     private boolean suppressed;
 
+    /**
+     * V086: this line of service requires additional intake (ZIP + headcount) before a
+     * proposal carrying it can be created. A workflow trigger on the LOS, not a visibility
+     * marker on a proposal section.
+     * <p>
+     * ⚠️ Nothing reads this yet. Set only through the Service Manager's edit-LOS form; no
+     * query, resolver, filter or render path consults it. The proposal-builder interjection
+     * that will read it is separate work.
+     */
+    @Column(name="is_plus_tier", nullable = false)
+    private boolean plusTier;
+
     @ManyToOne
     @JoinColumn(name="psp_id")
     private PSP psp;
@@ -67,6 +79,8 @@ public class LOS implements Comparable<LOS> {
     public void setSortOrder(int sortOrder) { this.sortOrder = sortOrder; }
     public boolean isSuppressed() { return suppressed; }
     public void setSuppressed(boolean suppressed) { this.suppressed = suppressed; }
+    public boolean isPlusTier() { return plusTier; }
+    public void setPlusTier(boolean plusTier) { this.plusTier = plusTier; }
     public PSP getPsp() { return psp; }
     public void setPsp(PSP psp) { this.psp = psp; }
     public ServiceItem getServiceItem() { return serviceItem; }

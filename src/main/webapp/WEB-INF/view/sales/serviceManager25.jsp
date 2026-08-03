@@ -885,6 +885,15 @@
                                                                                                          maxlength="10"
                                                                                                          value="${selectedLos.getShortText()}">
                         </div>
+                        <%-- V086: plus-tier classification. Nothing reads this yet. --%>
+                        <div class="mb-2 form-check">
+                            <input type="checkbox" class="form-check-input" id="plusTierCheck" name="plusTier"
+                                   ${selectedLos.isPlusTier() ? 'checked' : ''}>
+                            <label class="form-check-label" for="plusTierCheck" style="font-size: 0.85rem;">
+                                Plus Tier
+                            </label>
+                            <div class="form-text" style="font-size: 0.72rem;">Requires additional intake before a proposal can be created.</div>
+                        </div>
                     </div>
                     <div class="modal-footer border-0">
                         <button type="button"

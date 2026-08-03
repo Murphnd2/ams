@@ -105,6 +105,12 @@ public class ServiceManagerAction extends HttpServlet {
                     em.getTransaction().begin();
                     los.setDescription(request.getParameter("description").trim());
                     los.setShortText(request.getParameter("shortText").trim());
+                    // V086: plus-tier classification. Unconditional assignment, mirroring
+                    // AgencyAction's ichraEnabled/markupEnabled handling exactly — an unchecked
+                    // HTML checkbox submits no parameter at all, so this must set false rather
+                    // than skip, or the flag could be set but never cleared. The edit modal
+                    // always posts the whole form, so absence here genuinely means unchecked.
+                    los.setPlusTier("on".equals(request.getParameter("plusTier")));
                     em.merge(los);
                     em.getTransaction().commit();
                 }
