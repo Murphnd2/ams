@@ -96,6 +96,19 @@
                     </div>
                 </c:if>
 
+                <%-- T138 — pre-selection provenance: same banner the results path renders
+                     (below, :218-224 as of S13-B), computed over the dropdown's county set
+                     rather than a selected county, since none is selected yet. Gated on
+                     empty selectedCounty so this never doubles up with the results-path
+                     banner once a county is chosen. --%>
+                <c:if test="${empty selectedCounty and not empty sourceEnv and sourceEnv != 'PRODUCTION'}">
+                    <div class="disclaimer" style="background:#f8d7da; border-color:#f5c2c7; color:#842029;">
+                        <i class="bi bi-exclamation-triangle-fill me-1"></i>
+                        <strong>Test-environment rates.</strong> These figures came from the
+                        <c:out value="${sourceEnv}"/> environment, not production market data. Do not present this to a client.
+                    </div>
+                </c:if>
+
                 <div class="status-card">
                     <form method="post" action="GroupConversion" class="row gy-2 gx-3 align-items-end">
                         <%-- Item 13: carry the opportunity attribution across this form's own

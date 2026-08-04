@@ -459,6 +459,19 @@ public class GroupConversionServlet extends HttpServlet {
         List<CountyReference> availableCounties = CountyReferenceDAO.findByFipsIn(em, cachedFips);
         request.setAttribute("availableCounties", availableCounties);
         request.setAttribute("missingReferenceCount", cachedFips.size() - availableCounties.size());
+
+        // T138 — pre-selection provenance banner. Same fail-toward-warning rule as
+        // stagingCountyFips above, applied to the set actually offered in the dropdown
+        // (not the raw cached set, which can include a fips with no CountyReference row
+        // and therefore never appears as an option). Empty dropdown -> no match -> no
+        // banner, which is correct: a provenance warning about zero rows is a false claim.
+        // The results path (computeConversion -> setProvenanceAttributes) overwrites this
+        // same attribute with the selected county's own value once a county is chosen.
+        boolean dropdownHasStaging = availableCounties.stream()
+                .map(CountyReference::getCountyFips)
+                .anyMatch(stagingCountyFips::contains);
+        request.setAttribute("sourceEnv", dropdownHasStaging ? RatingAreaRateCache.SOURCE_ENV_STAGING : null);
+
         return availableCounties;
     }
 
