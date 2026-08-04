@@ -12,9 +12,10 @@ expectation, so no discrepancy to report.
 
 | Commit | Subject |
 |---|---|
-| `PLACEHOLDER_C1` | fix: label staging-sourced counties in GroupConversion dropdown (T137, S13-B) |
+| `77fa57bfab4c2de63b769dbbd85d3b5cf9bc05fe` | fix: label staging-sourced counties in GroupConversion dropdown (T137, S13-B) |
 
-Filled in from `git log` after the push, and recorded in a second commit per the standing
+Read from `git log -1 --format="%H %s"` after the push — not carried from the run brief, not a
+placeholder. This close-out's own hash is recorded in the follow-up commit below, per the standing
 convention.
 
 ---
