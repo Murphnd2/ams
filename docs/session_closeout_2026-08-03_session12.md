@@ -284,3 +284,6 @@ prompt, and none is a placeholder.
 
 **No forbidden git operation was run:** no `git add -A`, no `git add .`, no `stash`, `checkout`,
 `restore`, `reset`, and no local tag. Staging was by explicit named path.
+
+**This close-out's own commit hash**, read from `git log` after push, recorded in a second commit
+per the standing convention: `def5450bd9a6e06c83cd4f1cc620da3df71371a8` — `docs: session 12 close-out`.
