@@ -111,9 +111,18 @@ Tokens, and their **absent-row fallbacks — which are mandatory, not optional**
 | Token | With an intake row | No intake row |
 |---|---|---|
 | `{{ICHRA_COUNTY}}` | `Hopkins County` | `your county` |
-| `{{ICHRA_STATE}}` | `TX` | `` (empty) |
+| ~~`{{ICHRA_STATE}}`~~ | ~~`TX`~~ | ~~`` (empty)~~ |
 | `{{ICHRA_HEADCOUNT}}` | `10` | `your` |
 | `{{ICHRA_PLAN_YEAR}}` | `2026` | `` (empty) |
+
+⚠️ **S11-I correction (2026-08-03): `{{ICHRA_STATE}}` was never built and does not exist.** This
+was the plan at authoring time; S10-E's build prompt explicitly enumerated county name, county
+FIPS, headcount and plan year as the four tokens to expose and instructed the state abbreviation
+be added "only if the existing convention makes it obvious and free... do not add speculatively" —
+it wasn't, so it wasn't added (`docs/runs/S10-E_closeout.md`). Struck rather than deleted, since
+the row is why the confusion kept recurring across later docs. Do not use `{{ICHRA_STATE}}` in any
+authored HTML — see `.claude/skills/proposal-content-page/SKILL.md`'s Merge Tokens section for the
+authoritative, current list.
 
 ⚠️ **A token with no fallback is a defect, not a blank.** `replaceTokens`
 ([ViewProposal.java:500-509](../../src/main/java/net/superiorstate/ams/controller/activity/setup/ViewProposal.java:500))

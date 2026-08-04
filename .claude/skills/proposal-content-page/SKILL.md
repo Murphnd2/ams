@@ -56,6 +56,7 @@ Every block follows this exact skeleton:
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Source+Sans+3:ital,wght@0,400;0,600;0,700;1,400&display=swap');
   .PREFIX { --s:1; /* scale factor — adjust to fill page */ /* ...colors, font... */ }
+  .PREFIX h1, .PREFIX h2, .PREFIX h3 { color: var(--white); }
   .PREFIX h1 { font-size:calc(24pt * var(--s)); margin:0 0 calc(0.5rem * var(--s)) 0; }
   .PREFIX .body { font-size:calc(11pt * var(--s)); }
   /* ... all sizes use calc(Xunit * var(--s)) ... */
@@ -82,6 +83,15 @@ Key rules:
 - **`@import` inside `<style>`** — external `<link>` tags won't work reliably in this context
 - **`page-break-before:always`** on the outer div so each block starts a new printed page
 - **`padding:0.5in 0`** on the outer div for comfortable top/bottom margins in print
+- **Set heading color explicitly — never rely on inheriting it from `.card-inset`.** The host
+  page loads Bootstrap 5, and Bootstrap has its own rule matching heading elements directly
+  (`h1, h2, h3, h4, h5, h6 { color: var(--bs-heading-color); }`). A directly-matching rule always
+  wins over an inherited value, no matter how low its specificity is — so if anything in the
+  cascade ever gives `--bs-heading-color` a concrete value, every `<h1>`/`<h2>`/`<h3>` inside your
+  card silently switches to the host's heading color instead of the white you intended, even
+  though `.card-inset` itself correctly sets `color: var(--white)`. The skeleton above already
+  includes the fix — `.PREFIX h1, .PREFIX h2, .PREFIX h3 { color: var(--white); }` — keep it in
+  every block rather than dropping it as redundant.
 
 ## The Inset Card
 
@@ -91,6 +101,8 @@ floats on the light background:
 ```css
 .PREFIX .card-inset {
   background: var(--navy);           /* rich color contrasting #f8f9fa */
+  -webkit-print-color-adjust: exact; /* REQUIRED -- see "Printing Backgrounds" below */
+  print-color-adjust: exact;         /* REQUIRED -- see "Printing Backgrounds" below */
   border-radius: 12px;              /* aesthetic — don't scale */
   padding: calc(2.5rem * var(--s)) calc(2.75rem * var(--s)) calc(2.25rem * var(--s));
   color: var(--white);
@@ -107,6 +119,24 @@ stats section) to push it down and fill remaining space, so the card doesn't end
 The `@media print` rule relaxes `min-height` to `auto` so printed pages don't force blank
 space. The `@media (max-width:700px)` rule collapses grids to single-column and reduces
 padding.
+
+### ⚠️ Printing Backgrounds — `print-color-adjust: exact` is not optional
+
+**There is no PDF-generation engine anywhere in this system.** A customer's "PDF" of a proposal
+is produced by their own browser's native Print / Save-as-PDF, printing the exact live page —
+same HTML, same CSS, no separate renderer to account for. Every mainstream browser **omits
+background colors and images by default when printing**, to save ink, unless the CSS on that
+element explicitly opts back in.
+
+Without the opt-in, `.card-inset`'s `background: var(--navy)` silently vanishes on print. The
+card's own text colors (`--white`, `--off`, `--muted`) don't change — they just end up sitting
+directly on the page's plain white background instead of the navy panel that gave them contrast,
+which is exactly what makes `--off`/`--muted` body text (chosen to read cleanly against navy)
+look like faint, illegible light grey on white once the panel is gone. **Every element that sets
+its own `background` needs both declarations** — `-webkit-print-color-adjust: exact;` and
+`print-color-adjust: exact;` — not just `.card-inset`. That includes `.info-box`, `.card`,
+`.callout`, and any one-off `background:` you add. The skeleton and every pattern below now
+includes them; keep them on anything you add.
 
 ## Default Color Palette
 
@@ -139,7 +169,8 @@ Side-by-side boxes on darker navy backgrounds, good for comparing concepts or pa
 related details:
 ```css
 .PREFIX .two-col { display:grid; grid-template-columns:1fr 1fr; gap:1rem; }
-.PREFIX .info-box { background:var(--navy-lt); border-radius:8px; padding:1.15rem 1.25rem; }
+.PREFIX .info-box { background:var(--navy-lt); -webkit-print-color-adjust:exact; print-color-adjust:exact;
+  border-radius:8px; padding:1.15rem 1.25rem; }
 ```
 
 ### Stat Rings
@@ -157,14 +188,16 @@ Circular indicators for key numbers — uses CSS borders for the ring effect:
 Inner cards with teal top borders, each containing an icon, title, body, and bullet list:
 ```css
 .PREFIX .grid { display:grid; grid-template-columns:1fr 1fr; gap:0.85rem; flex:1; }
-.PREFIX .card { background:var(--navy-lt); border-radius:8px; padding:1rem 1.15rem;
+.PREFIX .card { background:var(--navy-lt); -webkit-print-color-adjust:exact; print-color-adjust:exact;
+  border-radius:8px; padding:1rem 1.15rem;
   border-top:3px solid var(--teal); display:flex; flex-direction:column; }
 ```
 
 ### Callout Box
 Teal-background box for important notes or summaries:
 ```css
-.PREFIX .callout { background:var(--teal-bg); border-radius:6px; padding:0.75rem 1rem; }
+.PREFIX .callout { background:var(--teal-bg); -webkit-print-color-adjust:exact; print-color-adjust:exact;
+  border-radius:6px; padding:0.75rem 1rem; }
 ```
 
 ### Icon Circles
@@ -173,7 +206,8 @@ Teal-tinted circles for card icons (use Unicode emoji or HTML entities):
 .PREFIX .card-icon span {
   display:inline-flex; align-items:center; justify-content:center;
   width:36px; height:36px; border-radius:50%;
-  background:rgba(42,127,142,0.2); font-size:16px; color:var(--teal);
+  background:rgba(42,127,142,0.2); -webkit-print-color-adjust:exact; print-color-adjust:exact;
+  font-size:16px; color:var(--teal);
 }
 ```
 
@@ -227,19 +261,111 @@ To get the natural content height (without the min-height floor), temporarily se
 
 ## Merge Tokens
 
-The proposal system resolves these tokens server-side before rendering. Use them in the
-HTML content wherever personalization makes sense:
+The proposal system resolves these tokens server-side, in `ViewProposal.buildTokenMap`
+(`src/main/java/net/superiorstate/ams/controller/activity/setup/ViewProposal.java`), before
+rendering. **This table is generated from that method directly — every token below is real, and
+these 25 are the complete set.** Do not add a token to your HTML unless it appears here.
 
-| Token | Resolves To |
-|-------|-------------|
-| `{{PROSPECT_NAME}}` | Company/prospect name |
-| `{{AGENT_NAME}}` | Sales agent's full name |
-| `{{AGENT_EMAIL}}` | Sales agent's email |
-| `{{AGENT_PHONE}}` | Sales agent's phone |
-| `{{PRIMARY_COLOR}}` | PSP primary brand color |
-| `{{SECONDARY_COLOR}}` | PSP secondary brand color |
-| `{{CURRENT_DATE}}` | Today's date |
-| `{{PROPOSAL_DATE}}` | Proposal creation date |
+### ⚠️ An unmatched token is not stripped and not blanked — it renders literally
+
+`replaceTokens` only ever looks at the token map's own keys; a `{{TOKEN}}` in your HTML whose name
+isn't one of the 25 below is never touched by anything. It passes straight through to the
+customer's page as the literal text `{{TOKEN}}` — braces and all. This has already happened on a
+live, generated proposal PDF.
+
+**Five names have been used in this project's own docs or drafts as if they were real tokens.
+None of them exist. Do not use any of these:**
+
+| Written as | Why it looks real | What to use instead |
+|---|---|---|
+| `{{AGENT_PHONE}}` | Seems like the obvious sibling of `{{AGENT_EMAIL}}` | No phone token exists at all |
+| `{{SECONDARY_COLOR}}` | Sounds like the counterpart to `{{PRIMARY_COLOR}}` | `{{ACCENT_COLOR}}` |
+| `{{CURRENT_DATE}}` | "Today's date" is a common thing to want | `{{DATE_CREATED}}` (the proposal's creation date — there is no "today" token) |
+| `{{PROPOSAL_DATE}}` | Reads naturally as "the proposal's date" | `{{DATE_CREATED}}` |
+| `{{ICHRA_STATE}}` | ⚠️ **The trap here is different — `ProposalIchraIntake.state` genuinely exists as a database column and a Java field.** It was deliberately never exposed as a merge token (a documented decision, not an oversight), so the entity field existing is exactly why people keep assuming the token does. | Not available. If a draft needs the state abbreviation next to the county name, say so before writing the prose — there is no token for it today. |
+
+### Proposal and agent
+
+| Token | Resolves to | When blank |
+|---|---|---|
+| `{{PROSPECT_NAME}}` | The prospect/employer's name | Empty string |
+| `{{AGENT_NAME}}` | Selling agent's first + last name | Empty string, if no agent resolves for this proposal |
+| `{{AGENT_EMAIL}}` | Selling agent's email | Empty string |
+| `{{AGENCY_NAME}}` | Resolved agency name | Falls back to the PSP's name if no agency resolves — essentially never blank |
+| `{{PSP_NAME}}` | The PSP's full name | Empty string |
+| `{{DATE_CREATED}}` | Proposal creation date, formatted like `August 3, 2026` | Empty string, if the proposal has no creation date on record |
+| `{{PROPOSAL_ID}}` | The proposal's numeric id | Empty string (not observed in practice) |
+| `{{APPLY_BUTTON}}` | A complete, styled `<a>` "Apply Now" button — insert where you want the call to action | Never blank — always renders the button |
+
+`{{AGENT_NAME}}`/`{{AGENT_EMAIL}}` blank together only when no agent resolves for the proposal at
+all; otherwise each is independent.
+
+### Brand colors
+
+| Token | Resolves to | When blank |
+|---|---|---|
+| `{{PRIMARY_COLOR}}` | PSP's primary brand color (hex) | Never blank — falls back to a hardcoded default if the PSP hasn't set one |
+| `{{ACCENT_COLOR}}` | PSP's accent/secondary brand color (hex) | Never blank, same fallback behavior |
+
+### ICHRA intake — county, headcount, plan year
+
+Populated from the ZIP/county/headcount an agent enters in the Proposal Builder for a plus-tier
+line of service (T125). **Not entitlement-gated and not provenance-gated** — these are the
+agent's own input, resolved the same way regardless of who is viewing the page.
+
+| Token | Resolves to | When blank |
+|---|---|---|
+| `{{ICHRA_COUNTY}}` | County name, e.g. `Hopkins County` | Empty string |
+| `{{ICHRA_COUNTY_FIPS}}` | 5-digit county FIPS code | Empty string |
+| `{{ICHRA_HEADCOUNT}}` | Eligible employee count the agent entered | Empty string |
+| `{{ICHRA_PLAN_YEAR}}` | Plan year the county/rates were interpreted against | Empty string |
+
+All four blank together whenever the proposal has no intake row at all (every line of service that
+isn't plus-tier, and any proposal created before this existed) — there is no case where some of
+the four are populated and others aren't.
+
+### ICHRA contribution — the employer's own stated contribution (V088)
+
+The employer's monthly-per-employee ICHRA contribution, as entered by the agent — **an intake
+token like the four above, not a market-data one.** Not entitlement-gated, not provenance-gated.
+
+| Token | Resolves to | When blank |
+|---|---|---|
+| `{{ICHRA_CONTRIBUTION_MONTHLY}}` | Contribution per employee per month, formatted currency | Empty string |
+| `{{ICHRA_CONTRIBUTION_ANNUAL}}` | Contribution per employee per year | Empty string |
+| `{{ICHRA_CONTRIBUTION_TOTAL_MONTHLY}}` | Contribution × headcount, per month | Empty string |
+| `{{ICHRA_CONTRIBUTION_TOTAL_ANNUAL}}` | Contribution × headcount, per year | Empty string |
+
+⚠️ **Strict all-or-nothing group of these four.** The contribution field is optional at intake —
+if the agent left it blank, or headcount is missing or zero, **all four** resolve to empty string
+together, never a mix of some populated and some blank, and never `$0.00`.
+
+### ICHRA market — plan/carrier counts and premium floors
+
+Resolved from the cached market rate data for the intake row's county and plan year. **Behind a
+provenance gate** — see below — because this is real market data, not the agent's own input.
+
+| Token | Resolves to | When blank |
+|---|---|---|
+| `{{ICHRA_PLAN_COUNT}}` | Number of plans available in the county (age-40 row) | Empty string |
+| `{{ICHRA_CARRIER_COUNT}}` | Number of carriers | Empty string |
+| `{{ICHRA_FLOOR_AGE_21}}` | Lowest available monthly premium at age 21, formatted currency | Empty string |
+| `{{ICHRA_FLOOR_AGE_40}}` | Same, at age 40 | Empty string |
+| `{{ICHRA_FLOOR_AGE_64}}` | Same, at age 64 | Empty string |
+| `{{ICHRA_RATES_AS_OF}}` | Date the cached rates were fetched, formatted like `{{DATE_CREATED}}` | Empty string |
+| `{{ICHRA_RATES_SCOPE}}` | A full disclosure sentence — off-exchange only, not a quote, not complete | Empty string |
+
+⚠️ **All seven blank together** unless every one of these holds: the selling agency is
+ICHRA-entitled, an intake row exists with a county and plan year, cached rate rows exist for that
+county/year, and **every** one of those rows is production-sourced (not staging). As of this
+writing, production HealthSherpa access does not exist, so **these seven tokens are empty on every
+live proposal today** — do not build page content that assumes they will resolve. Even once the
+gate passes, an individual age's floor can still be empty on its own if that specific age has no
+cached row — the group-level gate and a single figure's own presence are two different things.
+
+**⚠️ Not documented here on purpose: an `{{ICHRA_MARKET_BLOCK}}` token does not exist.** If you've
+seen it referenced anywhere, that reference is stale — `buildTokenMap` was checked directly for
+this skill update (2026-08-03) and no such key is ever put into the token map.
 
 ## Workflow
 
