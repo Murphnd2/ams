@@ -48,7 +48,8 @@ silently picking a side.** `GroupConversionServlet.java` was not opened for edit
 - **Hash at preflight (post-pull):** `cd047452e5bce83da0f97c4812ba59bf705488d8`. **Matches the
   prompt's expected start (`cd04745`) exactly.** No divergence to report.
 - **Hash at end (feature commit, pushed):** `bcc14174787b4308361eb4635bab25ca85f1171e`
-- **Hash at end (this close-out commit):** recorded below, read from `git log` after push.
+- **Hash at end (this close-out commit):** `27e3574a792a580fc4555d7c8d24dec70831dcee`, read from
+  `git log` after push, never carried from the prompt and never written before the push.
 
 Preflight passed all four gates: branch `refactor/modernize-architecture`, `git status --short`
 empty, `git pull --ff-only` reported "Already up to date."
@@ -166,7 +167,8 @@ S11-G's own LA-S11G-1 reasoning for the identical shape of fix in `IchraZipLooku
 - `bcc14174787b4308361eb4635bab25ca85f1171e` — `fix: close Illustration's dropdown labeling gap,
   amend T48 (S12-B)`. 3 files, +28/−7: `IllustrationServlet.java`, `illustration25.jsp`,
   `project_backlog.md`. Pushed to `origin/refactor/modernize-architecture`.
-- `<recorded below>` — this close-out, as a second commit.
+- `27e3574a792a580fc4555d7c8d24dec70831dcee` — `docs: S12-B close-out` (this document, as a second
+  commit). Pushed.
 
 ## In flight
 
