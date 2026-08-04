@@ -19,7 +19,8 @@ S11-C established, and a defensive heading-color baseline rule.
   fetched a new tag, `v0.88.01` — noted, not investigated; out of scope for a documentation-only
   run.)
 - **Hash at end (feature commit, pushed):** `a48529c7209ae7e9ecbfda36b7bc3c4778dffa44`
-- **Hash at end (this close-out commit):** recorded below, read from `git log` after push.
+- **Hash at end (this close-out commit):** `72b13fb04959b81bd9d986deb973a893b5aa55a9`, read from
+  `git log` after push, never carried from the prompt and never written before the push.
 
 Preflight passed all four gates: branch `refactor/modernize-architecture`, `git status --short`
 empty, `git pull --ff-only` reported a fast-forward (new tag only, no commits).
@@ -86,7 +87,8 @@ needed no correction.
 - `a48529c7209ae7e9ecbfda36b7bc3c4778dffa44` — `docs: correct the proposal-content-page skill's
   token table (T132)`. 3 files, +154/−19: `SKILL.md`, `project_backlog.md`,
   `phase_a_tier1_proposal_section.md`. Pushed to `origin/refactor/modernize-architecture`.
-- `<recorded below>` — this close-out, as a second commit.
+- `72b13fb04959b81bd9d986deb973a893b5aa55a9` — `docs: S11-I close-out` (this document, as a second
+  commit). Pushed.
 
 ## Decisions made
 
