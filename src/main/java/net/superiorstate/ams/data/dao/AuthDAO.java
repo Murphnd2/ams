@@ -216,7 +216,14 @@ public abstract class AuthDAO {
         a.setAddress1(e.getAddress1());
         a.setAddress2(e.getAddress2());
         a.setCity(e.getCity());
-        a.setState(e.getState().substring(0,2));
+        // e.getState() is frequently null on imported employee records (807 of
+        // them locally at the time of writing). This method was unreachable
+        // until PersonDAO.getPersonByEmployee was corrected to return null, so
+        // the unguarded substring(0,2) had never actually been executed — it
+        // would have thrown mid-send the first time a CC'd address resolved to
+        // a stateless employee.
+        String st = e.getState();
+        a.setState((st != null && st.trim().length() >= 2) ? st.trim().substring(0, 2) : null);
         a.setZipCode(e.getZipCode());
         em.persist(a);
         em.getTransaction().commit();
@@ -240,7 +247,10 @@ public abstract class AuthDAO {
         try{
             person = (Person) q.getSingleResult();
         } catch (NoResultException exception){
-            exception.printStackTrace();
+            // Normal, expected outcome — this is the "no Person yet" probe that
+            // createPersonFromEmployee makes before creating one. Now that that
+            // path is actually reachable, stack-tracing it would put one trace
+            // in catalina.out per Person created (807 candidates locally).
             return null;
         }
         return person;

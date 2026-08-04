@@ -27,12 +27,22 @@ public abstract class PersonDAO {
                     .setMaxResults(1)
                     .getResultList();
 
-            if (results.isEmpty()) {
-                Person p = new Person();
-                p.setEmail(null);
-                return p;
-            }
-            return results.get(0);
+            // Returns null when no Person is linked to this Employee.
+            //
+            // This previously returned an empty, unsaved Person (email=null,
+            // employee=null). Every caller is written as `if (p == null)` or
+            // `if (p != null)`, so a non-null placeholder defeated all three:
+            //   - AmsDataLocal.fillPrimaryContacts / SessionVar installed the
+            //     placeholder as the activity's primary contact, which then
+            //     rendered blank and could never receive mail;
+            //   - EmailDAO.getPersonByEmail's `if (p == null)
+            //     createPersonFromEmployee(...)` branch was unreachable, so a
+            //     CC'd address belonging to an Employee with no Person row
+            //     resolved to the placeholder and was silently dropped from the
+            //     send by the isValidEmail filter — no error, no delivery.
+            // getPersonByEmployee1 below is this same method written correctly
+            // and has no callers.
+            return results.isEmpty() ? null : results.get(0);
         } catch (Exception ex) {
             System.err.println("❌ getPersonByEmployee: " + ex.getMessage());
             return null;

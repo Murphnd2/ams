@@ -78,6 +78,19 @@ Deliberately **not** switched to `getEffectiveEmail()`: `ModifyContact25` / `Mod
 pre-fill an *editable* field — resolving there would write the employee's address onto the person row
 on save. That is a data-migration decision, not a display fix.
 
+**Typed To/CC addresses that belong to an Employee (2026-08-04).** When a user types an address into
+the injected `To:` field (`SendAutoFinal25`) or a CC list (`AutomationHelper.processLists`), resolution
+runs through `EmailDAO.getPersonByEmail()`. If the address matches an `Employee` that has no `Person`
+row, `AuthDAO.createPersonFromEmployee()` now creates one — carrying the employee's real name and
+address — and that Person becomes the recipient. The `NEW PERSON` placeholder fallback is reserved for
+addresses matching no employee at all.
+
+This branch was **unreachable until 2026-08-04**: `PersonDAO.getPersonByEmployee()` returned an empty
+placeholder rather than `null`, so `if (p == null)` never fired, and the placeholder — carrying no
+address — was silently filtered out of the send by `isValidEmail`. The recipient simply never received
+the mail, with no error surfaced. If you are auditing a "they never got the email" report predating
+this fix, that is the mechanism.
+
 ---
 
 ## Infrastructure

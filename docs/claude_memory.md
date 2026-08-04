@@ -259,10 +259,25 @@ Static resources (`/images/`, `/css/`, `/js/`, `/fonts/`, etc.) are exempted bef
   identical Employee-first rule** as a private helper — the precedence chosen here is house convention,
   not a new invention; it simply had never been applied to the automation path. (3) **`ModifyContact25` /
   `ModContact25` were deliberately left alone** — they pre-fill an *editable* field, so resolving there
-  would write the employee's address onto the person row on save. (4) **Latent, unfixed:**
-  `PersonDAO.getPersonByEmployee()` returns an empty unsaved `Person` (not `null`) when no match exists,
-  so `fillPrimaryContacts()`'s `if (p != null)` guard is always true — a phantom blank contact.
-  `getPersonByEmployee1()` is the identical method that correctly returns `null`.
+  would write the employee's address onto the person row on save. (4) **The phantom-Person bug, fixed
+  in a follow-up commit the same day — and it was the larger half.** `PersonDAO.getPersonByEmployee()`
+  returned an empty unsaved `Person` (not `null`) when no match existed. All **three** callers are
+  written as `if (p == null)` / `if (p != null)`, so a non-null placeholder defeated every one:
+  `AmsDataLocal.fillPrimaryContacts()` and `SessionVar` installed the placeholder as the activity's
+  primary contact (renders blank, can never receive mail), and — the consequential one —
+  **`EmailDAO.getPersonByEmail()`'s `if (p == null) AuthDAO.createPersonFromEmployee(...)` branch was
+  unreachable dead code.** So a CC'd address belonging to an Employee with no Person row resolved to the
+  placeholder, got added to the recipient list by `AutomationHelper.processLists`, and was then
+  **silently dropped** by `EmailDAO`'s `isValidEmail` filter — no error, no delivery. **7,892 employees**
+  were in that state. Fixed by returning `null` (matching `getPersonByEmployee1()`, the correct twin
+  that had zero callers). ⚠️ **The one-line fix alone would have been a regression**: it activates
+  `createPersonFromEmployee()`, never executed before, whose `e.getState().substring(0,2)` NPEs on a
+  null state — **807** of those employees have one. Hardened in the same commit, along with silencing a
+  `printStackTrace()` on the now-routine "no Person yet" probe. Blast radius on the display half was
+  nil: **0 open renewals** would have produced a phantom primary contact. Note 5 employees carry
+  duplicate Person rows, which `AuthDAO.getPersonFromEmployee()`'s `getSingleResult()` would throw
+  `NonUniqueResultException` on — unreachable from the create path (duplicates imply a Person exists),
+  but a live trap for any future caller.
   **Also this session:** discovered that local `beta_ssa` is refreshed from production **weekly by a
   scheduled task** (`Weekly-Refresh-beta_ssa`, Sundays 03:05, `C:\Scripts\Pull-BetaSsa.ps1`) — undocumented
   until now, and the source of two wrong conclusions before it was found. Documented in
