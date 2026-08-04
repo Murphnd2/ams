@@ -165,3 +165,6 @@ Four candidates were on the table; here is the weighing, not just the pick.
 **Every hash cited in this document was read from `git log` during this run** — the release-tag hashes via `git log -1 --format="%H %s" v0.88.00`/`v0.88.01`, the ancestry claims via `git merge-base --is-ancestor`, and every per-run commit hash by reading the run's own close-out and cross-checking against `git log --oneline 27b0d03..1b58d79`. None was carried from the prompt, and none is a placeholder.
 
 **No forbidden git operation was run:** no `git add -A`, no `git add .`, no `stash`, `checkout`, `restore`, `reset`, and no local tag. Staging was by explicit named path.
+
+**This close-out's own commit hash**, read from `git log` after push, recorded in a second commit
+per the standing convention: `d4d682b75953efc85318d20b658e4c13c3bcea6b` — `docs: session 11 close-out`.
