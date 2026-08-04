@@ -342,3 +342,6 @@ individually.
 **No hard stop fired in this run.** (Two fired in the sub-runs this close-out documents; none in
 S13-C itself — preflight passed, and nothing in the permitted set conflicted with anything
 forbidden.)
+
+**This close-out's own commit hash**, read from `git log` after push, recorded per the standing
+convention: `d8a8237797b96ff287b60e0c3a6081dc50fd7789` — `docs: session 13 close-out`.
