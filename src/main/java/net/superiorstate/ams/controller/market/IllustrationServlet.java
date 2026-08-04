@@ -204,7 +204,7 @@ public class IllustrationServlet extends HttpServlet {
                     request.setAttribute("zipCandidates", resolution.getCandidates());
                     // Which candidates the illustration can actually price. A label, not an
                     // ordering — see pricedCountyFips.
-                    request.setAttribute("pricedCountyFips", pricedCountyFips(availableCounties));
+                    request.setAttribute("pricedCountyFips", pricedCountyFips(em, planYear, availableCounties));
                     request.getRequestDispatcher("/WEB-INF/view/market/illustration25.jsp").forward(request, response);
                     return;
                 } else {
@@ -625,19 +625,38 @@ public class IllustrationServlet extends HttpServlet {
     }
 
     /**
-     * County FIPS codes that actually have cached rates for this plan year — the set the
-     * dropdown is built from. Handed to the JSP so the crossing-ZIP chooser can mark which
-     * of its candidates can be priced.
+     * County FIPS codes with <b>production-sourced</b> cached rates for this plan year.
+     * Handed to the JSP so the crossing-ZIP chooser can mark which of its candidates can
+     * actually be priced.
+     * <p>
+     * ⚠️ <b>S12-B — corrected to check provenance, not merely presence</b>, the same fix
+     * S11-G applied to {@code IchraZipLookup.pricedCountyFips}: a county with cached rows
+     * that are all {@code STAGING} previously counted as "priced" here, even though
+     * selecting it renders the red test-environment banner and disables the proposal
+     * hand-off. Now asks {@link RateCacheDAO#check} per county and counts only
+     * {@link RateCacheDAO.MarketDataAvailability#PRODUCTION_OK}.
+     * <p>
+     * ⚠️ <b>This method feeds the crossing-ZIP chooser's labels ONLY</b>
+     * ({@code illustration25.jsp:615}) — it does not touch {@code availableCounties}, the
+     * separate list that populates the main county {@code <select>}. That list must stay
+     * provenance-blind: every county {@code RATE_CACHE_COUNTIES} currently warms is
+     * staging-sourced, so filtering it by provenance would empty the dropdown entirely.
+     * See {@code docs/session_s12b_closeout.md} for why {@code GroupConversionServlet}'s
+     * analogous method was deliberately left untouched — it has no separate label to
+     * correct; its county list <em>is</em> the dropdown.
      * <p>
      * ⚠️ <b>Descriptive only.</b> This drives a factual label, never an ordering and never
      * a recommendation: the candidates keep the resolver's land-area order, a county with
      * no rates is <b>not</b> demoted, and nothing is pre-selected. The no-steering boundary
      * applies to counties exactly as it does to plans.
      */
-    private Set<String> pricedCountyFips(List<CountyReference> availableCounties) {
+    private Set<String> pricedCountyFips(EntityManager em, int planYear, List<CountyReference> availableCounties) {
         Set<String> priced = new HashSet<>();
         for (CountyReference county : availableCounties) {
-            priced.add(county.getCountyFips());
+            String fips = county.getCountyFips();
+            if (RateCacheDAO.check(em, planYear, fips) == RateCacheDAO.MarketDataAvailability.PRODUCTION_OK) {
+                priced.add(fips);
+            }
         }
         return priced;
     }

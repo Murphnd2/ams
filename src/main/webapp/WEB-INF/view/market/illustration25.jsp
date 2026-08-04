@@ -963,6 +963,7 @@
                                 <c:choose>
                                     <c:when test="${sourceEnv == 'PRODUCTION'}"> &middot; Source: production</c:when>
                                     <c:when test="${empty sourceEnv}"> &middot; Source: not recorded</c:when>
+                                    <c:otherwise> &middot; Source: <c:out value="${sourceEnv}"/> environment</c:otherwise>
                                 </c:choose>
                             </div>
 
@@ -1382,6 +1383,7 @@
                                 <c:choose>
                                     <c:when test="${sourceEnv == 'PRODUCTION'}"> &middot; Source: production</c:when>
                                     <c:when test="${empty sourceEnv}"> &middot; Source: not recorded</c:when>
+                                    <c:otherwise> &middot; Source: <c:out value="${sourceEnv}"/> environment</c:otherwise>
                                 </c:choose>
                             </div>
 
