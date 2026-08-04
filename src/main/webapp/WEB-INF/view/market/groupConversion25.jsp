@@ -117,6 +117,20 @@
                         <c:if test="${not empty opportunityId}">
                             <input type="hidden" name="opportunityId" value="${opportunityId}">
                         </c:if>
+                        <%-- T74 follow-on (S14-E) — ZIP intake mirrored from illustration25.jsp:289-300.
+                             The county dropdown deliberately stays: it is the way through when a
+                             ZIP does not resolve, it is the existing URL contract, and it is what
+                             makes this reversible by deleting this block. Server-side precedence
+                             only (GroupConversionServlet.resolveZipPrecedence) — no blur/JS lookup;
+                             /IchraZipLookup's "priced" flag assumes PRODUCTION_OK-only availability,
+                             which contradicts this page's own T137 fail-toward-labeling. --%>
+                        <div class="col-auto">
+                            <label class="form-label mb-1" for="zip">ZIP</label>
+                            <input type="text" class="form-control form-control-sm" id="zip" name="zip"
+                                   inputmode="numeric" pattern="[0-9]{5}" maxlength="5" placeholder="#####"
+                                   value="${submittedZip}" style="max-width:110px;">
+                        </div>
+
                         <div class="col-auto">
                             <label class="form-label mb-1" for="countyFips">County</label>
                             <select class="form-select form-select-sm" id="countyFips" name="countyFips" ${empty availableCounties ? 'disabled' : ''}>
@@ -212,6 +226,56 @@
                         </div>
                     </c:if>
                 </div>
+
+                <%-- T74 follow-on (S14-E) — crossing-ZIP chooser, mirrored from
+                     illustration25.jsp:560-621. Nothing pre-selected, nothing marked likely —
+                     each entry is the ordinary GET URL, land-area order preserved as a
+                     stability convenience, never a ranking. Unlike Illustration's chooser,
+                     this omits the per-candidate "no rates cached yet" caveat: that caveat
+                     is driven by pricedCountyFips (PRODUCTION_OK-only), the same concept this
+                     page deliberately does not import (see the ZIP box comment above). A
+                     candidate this page cannot actually price is instead caught by the
+                     existing "Select a valid county from the list" validation below, same as
+                     any other unavailable county. --%>
+                <c:if test="${not empty zipCandidates}">
+                    <div class="status-card">
+                        <strong><i class="bi bi-signpost-2 me-1"></i>ZIP <c:out value="${submittedZip}"/> is in more than one county</strong>
+                        <div class="footnote" style="margin-bottom:0.6rem;">
+                            Rates differ by county, so pick the one this employer is in.
+                        </div>
+                        <ul style="list-style:none; padding-left:0; margin-bottom:0;">
+                            <c:forEach var="cand" items="${zipCandidates}">
+                                <c:url value="GroupConversion" var="candUrl">
+                                    <c:param name="countyFips" value="${cand.countyFips}"/>
+                                    <c:param name="planYear" value="${selectedPlanYear}"/>
+                                    <c:param name="zip" value="${submittedZip}"/>
+                                    <c:if test="${not empty opportunityId}">
+                                        <c:param name="opportunityId" value="${opportunityId}"/>
+                                    </c:if>
+                                </c:url>
+                                <li style="padding:0.25rem 0;">
+                                    <a href="${candUrl}"><c:out value="${cand.countyName}"/>, <c:out value="${cand.state}"/></a>
+                                </li>
+                            </c:forEach>
+                        </ul>
+                    </div>
+                </c:if>
+
+                <%-- T74 follow-on (S14-E) — the ZIP is not in the crosswalk, mirrored from
+                     illustration25.jsp:623-656. Wording is load-bearing: this is almost
+                     certainly a real ZIP (our data is ZCTA-derived and Texas-only), never
+                     "invalid ZIP". --%>
+                <c:if test="${zipNoMatch}">
+                    <div class="status-card">
+                        <strong><i class="bi bi-info-circle me-1"></i>We don't have ZIP <c:out value="${submittedZip}"/> in our county lookup</strong>
+                        <div class="footnote" style="margin-top:0.4rem;">
+                            ZIP coverage is incomplete — the lookup is built from Census tabulation areas,
+                            which omit some valid ZIPs, and currently covers Texas only. This is a gap in
+                            our data, not a problem with the ZIP.
+                            <strong>Select the county above instead</strong> — everything else works the same.
+                        </div>
+                    </div>
+                </c:if>
 
                 <c:if test="${empty availableCounties}">
                     <div class="empty-state">

@@ -14,6 +14,7 @@ import net.superiorstate.ams.data.dao.RateCacheDAO;
 import net.superiorstate.ams.data.resolver.AgencyScope;
 import net.superiorstate.ams.data.resolver.AgencyScopeResolver;
 import net.superiorstate.ams.data.resolver.IchraAccessResolver;
+import net.superiorstate.ams.data.resolver.ZipCountyResolver;
 import net.superiorstate.ams.data.util.OpportunityAuthz;
 import net.superiorstate.ams.model.general.Person;
 import net.superiorstate.ams.model.market.CountyReference;
@@ -110,6 +111,22 @@ public class GroupConversionServlet extends HttpServlet {
             int planYear = resolvePlanYear(request, configuredPlanYears);
             request.setAttribute("selectedPlanYear", planYear);
             loadAvailableCounties(em, request, planYear);
+
+            // T74 follow-on (S14-E) — a chooser link (built exactly like the one below,
+            // mirroring illustration25.jsp's) is a GET carrying both zip and countyFips;
+            // a bookmarked ?zip= URL is too. doGet never read countyFips before this
+            // build and must not start doing so absent a zip — that would be new,
+            // unasked-for GET behavior. Only engage the precedence rule when zip is
+            // actually present.
+            String zipParam = request.getParameter("zip");
+            if (zipParam != null && !zipParam.isBlank()) {
+                String resolvedCountyFips = resolveZipPrecedence(em, request, response, request.getParameter("countyFips"));
+                if (resolvedCountyFips == null) {
+                    return; // chooser or no-match already forwarded
+                }
+                request.setAttribute("submittedCountyFips", resolvedCountyFips);
+            }
+
             request.getRequestDispatcher(VIEW).forward(request, response);
         } finally {
             if (em.isOpen()) em.close();
@@ -167,6 +184,17 @@ public class GroupConversionServlet extends HttpServlet {
             request.setAttribute("submittedProposedContribution", contributionParam);
 
             String countyFips = request.getParameter("countyFips");
+
+            // T74 follow-on (S14-E) — same precedence rule as doGet, applied here for
+            // the Compare-button submission. See resolveZipPrecedence.
+            String zipParam = request.getParameter("zip");
+            if (zipParam != null && !zipParam.isBlank()) {
+                countyFips = resolveZipPrecedence(em, request, response, countyFips);
+                if (countyFips == null) {
+                    return; // chooser or no-match already forwarded
+                }
+            }
+
             request.setAttribute("submittedCountyFips", countyFips);
             if (countyFips == null || countyFips.isBlank()) {
                 request.setAttribute("inputError", "Select a county.");
@@ -174,8 +202,12 @@ public class GroupConversionServlet extends HttpServlet {
                 return;
             }
 
+            // countyFips is no longer effectively final — the ZIP branch above may have
+            // reassigned it — so the lambda captures a final copy, mirroring
+            // IllustrationServlet.java:228-230's identical fix for the same shape.
+            final String resolvedFips = countyFips;
             CountyReference selectedCounty = availableCounties.stream()
-                    .filter(c -> countyFips.equals(c.getCountyFips()))
+                    .filter(c -> resolvedFips.equals(c.getCountyFips()))
                     .findFirst()
                     .orElse(null);
             if (selectedCounty == null) {
@@ -475,6 +507,67 @@ public class GroupConversionServlet extends HttpServlet {
         return availableCounties;
     }
 
+    /**
+     * T74 follow-on (S14-E) — the R1 ZIP precedence rule, read from and matching
+     * IllustrationServlet's implementation verbatim (IllustrationServlet.java:161-220;
+     * IllustrationServlet is read-only under this build's fence, so the rule is
+     * reproduced here rather than shared code across files). Called only when the
+     * caller has already confirmed a non-blank {@code zip} parameter — from both
+     * {@code doGet} (a chooser-link click, or a bookmarked {@code ?zip=} URL) and
+     * {@code doPost} (the Compare-button submission). Centralized in one method,
+     * called from both entry points, so the rule cannot drift into two copies —
+     * {@code /GroupConversion} has two entry points where the GET-only
+     * {@code /Illustration} has one. A precedence bug here does not throw and does
+     * not look wrong on screen — it quotes the wrong county's rates with full
+     * confidence, which is exactly what happened in production once (R1, `de0efe0`).
+     * <p>
+     * Deliberately does NOT call {@code /IchraZipLookup} — that endpoint's
+     * {@code priced} flag counts only {@code PRODUCTION_OK} rows, which contradicts
+     * this page's own T137 fail-toward-labeling (every warmed county stays
+     * selectable, staging-sourced ones just marked). Server-side resolution only.
+     * <pre>
+     *   zip agrees with the passed-in county, or none was passed -> that county governs
+     *   zip disagrees, resolves to exactly one                   -> the ZIP replaces it
+     *   zip disagrees, resolves to several                        -> chooser; nothing computed
+     *   zip resolves to nothing                                    -> no-match; no fallback
+     * </pre>
+     *
+     * @return the countyFips the caller should proceed with, or {@code null} if this
+     * method has already forwarded to {@link #VIEW} (chooser or no-match) and the
+     * caller must return immediately without doing anything further.
+     */
+    private String resolveZipPrecedence(EntityManager em, HttpServletRequest request, HttpServletResponse response,
+                                         String countyFips) throws ServletException, IOException {
+        String zipParam = request.getParameter("zip");
+        request.setAttribute("submittedZip", zipParam.trim());
+        ZipCountyResolver.Resolution resolution = ZipCountyResolver.resolve(em, zipParam);
+
+        if (resolution.containsCounty(countyFips)) {
+            // They agree (or nothing was selected and resolution is empty, which
+            // containsCounty already treats as disagreement — see its own contract).
+            return countyFips;
+        } else if (resolution.isUnique()) {
+            // Either no county was selected, or the selected one is contradicted.
+            // Both resolve the same way: the ZIP the agent just typed governs.
+            request.setAttribute("resolvedCounty", resolution.getUnique());
+            return resolution.getUnique().getCountyFips();
+        } else if (resolution.isAmbiguous()) {
+            // The common path — 34% of Texas ZIPs. The agent picks; nothing here
+            // selects, ranks by preference, or marks a likely answer.
+            request.setAttribute("zipCandidates", resolution.getCandidates());
+            request.getRequestDispatcher(VIEW).forward(request, response);
+            return null;
+        } else {
+            // Coverage gap, not a bad ZIP — the crosswalk is ZCTA-derived and
+            // Texas-only, so a real USPS ZIP can legitimately be absent. Deliberately
+            // NOT a fallback to whatever county happened to be selected: an
+            // unresolvable ZIP agrees with nothing.
+            request.setAttribute("zipNoMatch", true);
+            request.getRequestDispatcher(VIEW).forward(request, response);
+            return null;
+        }
+    }
+
     /** Tolerant parse matching IllustrationServlet's own RATE_CACHE_PLAN_YEARS handling — display only. */
     private List<Integer> parsePlanYears(String raw) {
         List<Integer> years = new ArrayList<>();
@@ -621,7 +714,16 @@ public class GroupConversionServlet extends HttpServlet {
             }
             logRow.setParentAgencyId(parentAgencyId);
 
-            logRow.setZipCode(county.getRepresentativeZip());
+            // T74 follow-on (S14-E) — mirrors IllustrationServlet's W2 fix
+            // (IllustrationServlet.java:917-930) exactly: record a ZIP only when the
+            // agent actually typed one. This previously wrote
+            // county.getRepresentativeZip() unconditionally, which read like agent
+            // input and was not — the same defect W2 corrected on /Illustration.
+            // ⚠️ Historical rows written before this change carry the county's
+            // representative ZIP, not agent input, with nothing in the row itself
+            // distinguishing the two eras — see docs/session_s14e_closeout.md.
+            Object submittedZipAttr = request.getAttribute("submittedZip");
+            logRow.setZipCode(submittedZipAttr instanceof String ? (String) submittedZipAttr : null);
             logRow.setCountyFips(county.getCountyFips());
             logRow.setState(county.getState());
             logRow.setPlanYear(planYear);
