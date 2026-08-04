@@ -110,7 +110,7 @@
                                 <option value="">-- Select a county --</option>
                                 <c:forEach var="county" items="${availableCounties}">
                                     <option value="${county.countyFips}" ${county.countyFips == submittedCountyFips ? 'selected' : ''}>
-                                        <c:out value="${county.countyName}"/>, <c:out value="${county.state}"/>
+                                        <c:out value="${county.countyName}"/>, <c:out value="${county.state}"/><c:if test="${not empty stagingCountyFips and stagingCountyFips.contains(county.countyFips)}"> &mdash; test rates</c:if>
                                     </option>
                                 </c:forEach>
                             </select>

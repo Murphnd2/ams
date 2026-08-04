@@ -33,6 +33,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -441,6 +442,19 @@ public class GroupConversionServlet extends HttpServlet {
         List<String> cachedFips = summaries.stream()
                 .map(RateCacheDAO.CountySummary::getCountyFips)
                 .collect(Collectors.toList());
+
+        // T137 — provenance rides ALONGSIDE the list, never filters it. Every warmed county
+        // stays selectable: filtering to production-sourced counties would empty the dropdown
+        // today, since every warmed county is staging-sourced. The return type is deliberately
+        // unchanged because the POST path validates a submitted county against it (:176-184);
+        // reshaping it could reject a legitimate submission.
+        // Fails toward labeling: anything not positively PRODUCTION is marked, so a county
+        // whose rows are mixed, or whose source_env is null or unrecognised, is still marked.
+        Set<String> stagingCountyFips = summaries.stream()
+                .filter(s -> !RatingAreaRateCache.SOURCE_ENV_PRODUCTION.equals(s.getSourceEnv()))
+                .map(RateCacheDAO.CountySummary::getCountyFips)
+                .collect(Collectors.toSet());
+        request.setAttribute("stagingCountyFips", stagingCountyFips);
 
         List<CountyReference> availableCounties = CountyReferenceDAO.findByFipsIn(em, cachedFips);
         request.setAttribute("availableCounties", availableCounties);

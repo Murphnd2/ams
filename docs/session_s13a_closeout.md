@@ -131,6 +131,35 @@ emit one WARN naming all of them, then replace each with the empty string. If no
 
 ## Verification claim
 
+**`runtime-verified`** as of 2026-08-04, corrected in S13-B.
+
+> ⚠️ **This section originally read `code-verified`, and that was accurate when written** — no
+> walk had been performed at that point. It was superseded hours later by Kevin's local walk.
+> Corrected during S13-B rather than left to drift, because a correct-when-written claim that
+> nobody revisits is this project's established failure mode (T48 was invalidated exactly this
+> way). The original reasoning is preserved below unaltered, since it remains the honest account
+> of what was and was not known at the time of the commit.
+
+**The walk (2026-08-04, local).** Three tests:
+
+1. An existing proposal re-rendered — every previously-resolving token still resolved.
+2. That same render produced **no** WARN, confirming silence in the normal case.
+3. A deliberate `{{NOT_A_REAL_TOKEN}}` in a `CUSTOM` section vanished from the render and
+   produced the WARN, quoted verbatim from the local log:
+
+```
+2026-08-04 14:03:36.923 [http-nio-8080-exec-46] WARN
+net.superiorstate.ams.controller.activity.setup.ViewProposal -
+T133 stripped unmatched proposal token(s) before render: {{NOT_A_REAL_TOKEN}}
+```
+
+That covers both minimum bars — a known token still substitutes, an unknown token disappears —
+plus the silence case, in the running application rather than in isolation.
+
+---
+
+### Original claim as written at commit time (superseded, retained for provenance)
+
 **`code-verified`.** Stated by name, and deliberately not upgraded.
 
 **What was actually executed.** The exact `replaceTokens` body as shipped was copied verbatim
@@ -272,6 +301,11 @@ omitted.**
 ---
 
 ## Next
+
+> ✅ **Superseded 2026-08-04 — the walk below was performed. This section's claim is corrected in
+> the Verification section above; the recommendation is retained as written for provenance.**
+> Still outstanding from it: the walk was not run against a **non-ICHRA** (COBRA/FSA) proposal
+> specifically, so the line-of-service breadth argument below has not itself been exercised.
 
 **Runtime-verify against a non-ICHRA proposal before this reaches customers.** The change is
 `code-verified` only, and it edits the single method that renders every proposal document in
