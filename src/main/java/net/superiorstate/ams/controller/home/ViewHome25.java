@@ -148,7 +148,16 @@ public class ViewHome25 extends HttpServlet {
             EntityManager em = emf.createEntityManager();
             try {
                 em.getTransaction().begin();
-                for (ToDoOut25 t : local.getCurrentActivity().getToDoList()) {
+                // T139 — null-safe: CurrentActivity.toDoList is only populated by
+                // intializeActivity, which the activity-creation servlets that forward here
+                // (AddRenewal25, CreateBlankRenewal25, CreateOpportunity) never call — they
+                // set the activity and reFilterOnExit directly, so the list is still null
+                // until some activity detail view has been opened in this session. Null means
+                // "nothing was ever loaded to change", not an error, so it is skipped
+                // silently: there are no pending completions to persist. See T140 for the
+                // partial-population root cause.
+                List<ToDoOut25> pendingToDos = local.getCurrentActivity().getToDoList();
+                for (ToDoOut25 t : pendingToDos == null ? List.<ToDoOut25>of() : pendingToDos) {
                     if (t.isComplete() != t.wasComplete() && t.getToDo().getId() != null) {
                         ToDo managed = em.find(ToDo.class, t.getToDo().getId());
                         if (managed != null) {
