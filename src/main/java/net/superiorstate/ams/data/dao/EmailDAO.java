@@ -236,7 +236,7 @@ public abstract class EmailDAO {
         List<String> toWhoList = new ArrayList<>();
         if (email.getRecipientList() != null) {
             for (Person r : email.getRecipientList()) {
-                if (r != null && isValidEmail(r.getEmail())) toWhoList.add(r.getEmail().trim());
+                if (r != null && isValidEmail(r.getEffectiveEmail())) toWhoList.add(r.getEffectiveEmail().trim());
             }
         }
         sendEmail(identity, toWhoList, Collections.emptyList(), Collections.emptyList(),
@@ -252,8 +252,8 @@ public abstract class EmailDAO {
         List<String> toWhoList = new ArrayList<>();
         if (email.getRecipientList() != null) {
             for (Person r : email.getRecipientList()) {
-                if (r != null && isValidEmail(r.getEmail())) {
-                    toWhoList.add(r.getEmail().trim());
+                if (r != null && isValidEmail(r.getEffectiveEmail())) {
+                    toWhoList.add(r.getEffectiveEmail().trim());
                 }
             }
         }

@@ -226,6 +226,36 @@ one careless import away from being shown to an agent as a real figure.
 
 - **Local DB:** MySQL **8.0.30**, `127.0.0.1:3306`, schema **`beta_ssa`**, 231 tables. Credentials live in
   `C:\ssa\ssa.properties` as `local.db.url` / `local.db.user` / `local.db.password` — **outside the repo.**
+- ⭐ **The local database is refreshed from PRODUCTION automatically, every week.** A Windows Scheduled
+  Task, **`Weekly-Refresh-beta_ssa`**, fires **Sundays 03:05** and runs `C:\Scripts\Pull-BetaSsa.ps1`:
+  SSH to production (`10.9.0.12`), `mysqldump --databases beta_ssa`, gzip, SCP down, import locally.
+  Archives are kept in `C:\Scripts\db_backups` (keep-8 retention), transcripts in `C:\Scripts\db_logs`.
+  **Consequences that matter:**
+  - Local data is never more than ~7 days behind production, but it is also **never yours** — anything
+    you create locally is destroyed at the next refresh. Local-only fixtures do not survive the week.
+  - Local `schema_version` is **production's**, restored wholesale. Its `applied_on` dates are the dates
+    those migrations were applied *on production*, not locally. Do not read them as local history.
+  - After a refresh the local schema is production's version. Migrations authored since must be
+    re-applied by hand, which is what "brought local V073 → V085" in this document's own baseline means.
+  - It carries **real member names and email addresses onto the workstation**, weekly, unattended, and
+    keeps 8 compressed copies on disk. Worth a conscious decision given the HIPAA/BAA posture, rather
+    than being an accident nobody remembers configuring.
+  - **Do not infer "someone ran a manual restore" from fresh local data.** On 2026-08-04 a session spent
+    real effort reconstructing how local got current, and concluded (wrongly, twice) that Claude Code
+    had pulled it manually. The decisive check is one query — if every row of
+    `information_schema.tables.create_time` falls inside a two-minute window, that was the scheduled task:
+    ```sql
+    SELECT DATE_FORMAT(create_time,'%Y-%m-%d %H:%i') AS created, COUNT(*)
+    FROM information_schema.tables WHERE table_schema='beta_ssa' AND table_type='BASE TABLE'
+    GROUP BY 1 ORDER BY 1 DESC;
+    ```
+  - ⚠️ **A non-zero exit code from this task does NOT mean the data failed to import.** The script dies
+    late — after every table is in — so `LastTaskResult: 1` in Task Scheduler has coexisted with a
+    perfectly good refresh for months. Judge it by table `create_time`, never by exit status.
+    (`Pull-BetaSsa.ps1` was repaired 2026-08-04: the `DROP DATABASE` had never worked because a
+    double-quoted PowerShell string ate the backticks, step 5 had no exit-code guard, retention sat
+    after a throw so it never ran, and import stderr was discarded. The late-stage failure's true cause
+    is still unknown — stderr capture was added so the next run records it.)
 - **`mysql.exe` / `mysqldump.exe` are not on `PATH`.** Full path:
   `C:\Program Files\MySQL\MySQL Server 8.0\bin\`. Pass the password via the `MYSQL_PWD` environment
   variable so it never appears on a command line or in a file.

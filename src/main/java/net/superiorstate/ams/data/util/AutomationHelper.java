@@ -28,8 +28,8 @@ public abstract class AutomationHelper {
         Activity a = local.getCurrentActivity().getActivity();
 
         Person localPc = local.getCurrentActivity().getPrimaryContact();
-        if(localPc != null && localPc.getEmail() != null && Validator.isValidEmail(localPc.getEmail())){
-            String key = localPc.getEmail().trim().toLowerCase();
+        if(localPc != null && localPc.getEffectiveEmail() != null && Validator.isValidEmail(localPc.getEffectiveEmail())){
+            String key = localPc.getEffectiveEmail().trim().toLowerCase();
             if(!emailList.contains(key)) {
                 rList.add(localPc);
                 emailList.add(key);
@@ -37,8 +37,8 @@ public abstract class AutomationHelper {
         }
 
         Person activityPc = a.getPrimaryContact();
-        if(activityPc != null && activityPc.getEmail() != null && Validator.isValidEmail(activityPc.getEmail())){
-            String key = activityPc.getEmail().trim().toLowerCase();
+        if(activityPc != null && activityPc.getEffectiveEmail() != null && Validator.isValidEmail(activityPc.getEffectiveEmail())){
+            String key = activityPc.getEffectiveEmail().trim().toLowerCase();
             if(!emailList.contains(key)) {
                 rList.add(activityPc);
                 emailList.add(key);
@@ -47,9 +47,9 @@ public abstract class AutomationHelper {
 
         if(local.getCurrentActivity().getAdditionalContacts()!=null && local.getCurrentActivity().getAdditionalContacts().size()>0){
             for(Person p: local.getCurrentActivity().getAdditionalContacts()){
-                if(p.getEmail()!=null && Validator.isValidEmail(p.getEmail()) && !emailList.contains(p.getEmail().trim().toLowerCase())) {
+                if(p.getEffectiveEmail()!=null && Validator.isValidEmail(p.getEffectiveEmail()) && !emailList.contains(p.getEffectiveEmail().trim().toLowerCase())) {
                     rList.add(p);
-                    emailList.add(p.getEmail().trim().toLowerCase());
+                    emailList.add(p.getEffectiveEmail().trim().toLowerCase());
                 }
             }
         }

@@ -27,10 +27,10 @@
               <span class="fw-semibold text-dark text-capitalize flex-grow-1">
                 ${contact.getFirstName()} ${contact.getLastName()}
               </span>
-                            <c:if test="${contact.getEmail() != null && !contact.getEmail().equals('')}">
+                            <c:if test="${contact.getEffectiveEmail() != null && !contact.getEffectiveEmail().equals('')}">
                                 <a class="text-muted text-decoration-none me-2" style="font-size: 0.75rem;"
-                                   href="ViewEmailHistory?em=${contact.getEmail()}" target="_blank">
-                                    <i class="bi bi-envelope me-1"></i>${contact.getEmail().toLowerCase()}
+                                   href="ViewEmailHistory?em=${contact.getEffectiveEmail()}" target="_blank">
+                                    <i class="bi bi-envelope me-1"></i>${contact.getEffectiveEmail().toLowerCase()}
                                 </a>
                             </c:if>
                             <form action="RemoveContact25" method="post" class="m-0 p-0">

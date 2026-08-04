@@ -93,11 +93,11 @@ public class SendAuto25 extends HttpServlet {
         if (local != null && local.getCurrentActivity() != null) {
             boolean hasRecipient = false;
             Person pc = local.getCurrentActivity().getPrimaryContact();
-            if (pc != null && pc.getEmail() != null && Validator.isValidEmail(pc.getEmail()))
+            if (pc != null && pc.getEffectiveEmail() != null && Validator.isValidEmail(pc.getEffectiveEmail()))
                 hasRecipient = true;
             if (!hasRecipient && activity != null) {
                 pc = activity.getPrimaryContact();
-                if (pc != null && pc.getEmail() != null && Validator.isValidEmail(pc.getEmail()))
+                if (pc != null && pc.getEffectiveEmail() != null && Validator.isValidEmail(pc.getEffectiveEmail()))
                     hasRecipient = true;
             }
             if (!hasRecipient) {

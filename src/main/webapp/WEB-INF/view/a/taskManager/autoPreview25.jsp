@@ -72,10 +72,10 @@
                         <i class="bi bi-envelope me-1" style="font-size:0.75rem;"></i>
                         <c:choose>
                           <c:when test="${not empty r.getFirstName() && r.getFirstName() ne 'NEW'}">
-                            ${fn:escapeXml(r.getFirstName())} ${fn:escapeXml(r.getLastName())} &lt;${fn:escapeXml(r.getEmail())}&gt;
+                            ${fn:escapeXml(r.getFirstName())} ${fn:escapeXml(r.getLastName())} &lt;${fn:escapeXml(r.getEffectiveEmail())}&gt;
                           </c:when>
                           <c:otherwise>
-                            ${fn:escapeXml(r.getEmail())}
+                            ${fn:escapeXml(r.getEffectiveEmail())}
                           </c:otherwise>
                         </c:choose>
                       </span>

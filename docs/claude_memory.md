@@ -238,6 +238,36 @@ Static resources (`/images/`, `/css/`, `/js/`, `/fonts/`, etc.) are exempted bef
   And T62's citation wording (`Cite <doc>.md section N`) is **not instruction leakage** — V080's own
   few-shot exemplar answers contain that literal string four times; the model imitated them faithfully.
   Backlog: T60/T61/T62/T63/T64 logged, T61 closed.
+- **2026-08-04 — automation email dropped a primary contact that the screen displayed (no migration).**
+  A renewal showed `CLINT ROSENBERG / clint@northernmetals.com` on the activity-detail page, but
+  `SendAuto25` treated it as having no recipient and injected a "To (Email Address)" prompt.
+  **Root cause: a `Person`'s address can live on its own `assignee.email` column *or* on a linked
+  `Employee`, and the two layers disagreed about which to read.** `detailPrimaryContact25.jsp` checks
+  the Employee first; every server-side path read only `Person.getEmail()`, a plain field getter.
+  `Employee.getEmail()` compounds it by preferring `hr_email` over `email`. Fixed by adding
+  **`Person.getEffectiveEmail()`** (`employee.hr_email` → `employee.email` → `person.email`, Employee-first
+  so what is sent matches what is shown) and routing six call sites through it: `SendAuto25`,
+  `AutomationHelper.getRecipientList` (**including its dedupe keys** — otherwise a contact that is both
+  primary and additional double-adds), `SendAutoFinal25`, both `EmailDAO` overloads, plus
+  `autoPreview25.jsp` and `detailAdditionalContacts25.jsp`, which would otherwise have rendered a
+  recipient chip with an empty `<>`. ✅ **Runtime-verified by Kevin** on a locally-created renewal — the
+  contact resolved into the SendAuto email as intended. ⚠️ **Four things worth not re-deriving.**
+  (1) **It is not a renewal bug**, despite surfacing there — production counts were **29 Tickets, 8
+  Renewals, 0 Setups**; the `primary_contact` column is on `Activity`, so every type is exposed.
+  Renewals merely *create* such contacts, via `fillPrimaryContacts()` → `employer.contactList[0]` →
+  `PersonDAO.getPersonByEmployee()`. (2) **`AddActivityContact25.getValidEmail()` already implemented the
+  identical Employee-first rule** as a private helper — the precedence chosen here is house convention,
+  not a new invention; it simply had never been applied to the automation path. (3) **`ModifyContact25` /
+  `ModContact25` were deliberately left alone** — they pre-fill an *editable* field, so resolving there
+  would write the employee's address onto the person row on save. (4) **Latent, unfixed:**
+  `PersonDAO.getPersonByEmployee()` returns an empty unsaved `Person` (not `null`) when no match exists,
+  so `fillPrimaryContacts()`'s `if (p != null)` guard is always true — a phantom blank contact.
+  `getPersonByEmployee1()` is the identical method that correctly returns `null`.
+  **Also this session:** discovered that local `beta_ssa` is refreshed from production **weekly by a
+  scheduled task** (`Weekly-Refresh-beta_ssa`, Sundays 03:05, `C:\Scripts\Pull-BetaSsa.ps1`) — undocumented
+  until now, and the source of two wrong conclusions before it was found. Documented in
+  `docs/analysis/local_render_verification.md`; the script itself was repaired (it lives on the
+  workstation, outside this repo).
 
 ## Reference Docs
 | Topic | Location |

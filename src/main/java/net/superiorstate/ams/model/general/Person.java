@@ -89,6 +89,28 @@ public class Person extends Assignee implements Comparable<Person>  {
         this.email = email;
     }
 
+    /**
+     * The address this contact is actually reachable at.
+     *
+     * A Person can carry an email on its own row, or inherit one from a linked
+     * Employee (Summit/HR record). Renewal primary contacts resolved through
+     * AmsDataLocal.fillPrimaryContacts() start life as an Employee and are mapped
+     * back to a Person, so their own email column is frequently blank while the
+     * real address sits on the employee record.
+     *
+     * Employee wins, matching what detailPrimaryContact25.jsp displays — the
+     * address AMS sends to must be the address the user sees on screen.
+     * Employee.getEmail() already prefers hr_email over email.
+     */
+    public String getEffectiveEmail() {
+        if (employee != null) {
+            String employeeEmail = employee.getEmail();
+            if (employeeEmail != null && !employeeEmail.isBlank())
+                return employeeEmail;
+        }
+        return email;
+    }
+
     public String getPhone() {
         return phone;
     }

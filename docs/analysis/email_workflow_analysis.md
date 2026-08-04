@@ -60,6 +60,24 @@ Checklist todo button → SendAutoEmail (redirect) → SendAuto25
 
 **Note:** Automation emails do NOT use the branded `EmailTemplate` wrapper — they use their own `Automation` entity templates. This is intentional; automation emails have their own formatting.
 
+**Recipient resolution (2026-08-04).** A `Person`'s address may live on its own `assignee.email`
+column **or** on a linked `Employee` (`assignee.employee_id`), and `Employee.getEmail()` itself prefers
+`hr_email` over `email`. Renewal primary contacts resolved through
+`AmsDataLocal.fillPrimaryContacts()` → `employer.contactList[0]` → `PersonDAO.getPersonByEmployee()`
+routinely have a blank person email with the real address on the employee record.
+
+Always use **`Person.getEffectiveEmail()`** (`employee.hr_email` → `employee.email` → `person.email`)
+when selecting or displaying an email recipient — including for dedupe keys, or a contact that is both
+primary and additional will double-add. Before this fix `SendAuto25` read the raw `getEmail()`, saw
+nothing, and injected a spurious "To (Email Address)" prompt for a contact whose address was visible
+on screen; the recipient was then dropped again at three further layers
+(`AutomationHelper.getRecipientList`, `SendAutoFinal25`, `EmailDAO`). Production counts at the time:
+29 Tickets, 8 Renewals, 0 Setups — **not a renewal-only bug**, despite where it surfaced.
+
+Deliberately **not** switched to `getEffectiveEmail()`: `ModifyContact25` / `ModContact25`, which
+pre-fill an *editable* field — resolving there would write the employee's address onto the person row
+on save. That is a data-migration decision, not a display fix.
+
 ---
 
 ## Infrastructure

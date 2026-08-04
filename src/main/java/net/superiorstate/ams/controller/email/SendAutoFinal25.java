@@ -298,8 +298,8 @@ public class SendAutoFinal25 extends HttpServlet {
         List<String> seenEmails = new ArrayList<>();
         if (sessionRecipients != null) {
             for (Person p : sessionRecipients) {
-                if (p != null && p.getEmail() != null && Validator.isValidEmail(p.getEmail())) {
-                    String key = p.getEmail().trim().toLowerCase();
+                if (p != null && p.getEffectiveEmail() != null && Validator.isValidEmail(p.getEffectiveEmail())) {
+                    String key = p.getEffectiveEmail().trim().toLowerCase();
                     if (!seenEmails.contains(key)) {
                         recipients.add(p);
                         seenEmails.add(key);
