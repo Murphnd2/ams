@@ -450,3 +450,9 @@ outcomes, each catching something real before it shipped:**
 | S14-B | #4 — the throw site is shared with non-renewal paths that would log at volume | Caught what would have been a WARN firing on every ordinary successful renewal, blank-renewal, and opportunity creation, had the original guard-and-warn instruction been followed literally |
 | S14-E | #2 — `/IchraZipLookup` has illustration-specific behavior baked in | Caught a response-shape assumption (`priced`, `PRODUCTION_OK`-only) that would have imported a direct contradiction with `/GroupConversion`'s own T137 design, had the endpoint been reused as originally contemplated |
 | S14-E | #5 — mirroring Illustration would change `illustration_log` semantics | Caught a production-logging semantics change that would otherwise have shipped unexamined — recording an agent-typed ZIP instead of a derived one is a data-meaning change to a table other code and future queries depend on, reserved for Kevin's explicit ruling rather than decided unilaterally |
+
+---
+
+**This close-out's own commit hash**, read from `git log` after push, recorded per the standing
+convention: `a3e4eb292a643543a7ffac50553403f84bbd43f3` — `docs: session 14 close-out (T74/T138
+upgraded runtime-verified; T142/T143 filed)`.
