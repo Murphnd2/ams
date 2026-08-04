@@ -270,7 +270,9 @@ Static resources (`/images/`, `/css/`, `/js/`, `/fonts/`, etc.) are exempted bef
   placeholder, got added to the recipient list by `AutomationHelper.processLists`, and was then
   **silently dropped** by `EmailDAO`'s `isValidEmail` filter — no error, no delivery. **7,892 employees**
   were in that state. Fixed by returning `null` (matching `getPersonByEmployee1()`, the correct twin
-  that had zero callers). ⚠️ **The one-line fix alone would have been a regression**: it activates
+  that had zero callers). ✅ **Runtime-verified by Kevin against the reported case.**
+  **Release split:** `v0.88.02` (= `809e0f2`) carries only the `getEffectiveEmail()` fix; the
+  phantom/dropped-recipient fix ships in the next release. ⚠️ **The one-line fix alone would have been a regression**: it activates
   `createPersonFromEmployee()`, never executed before, whose `e.getState().substring(0,2)` NPEs on a
   null state — **807** of those employees have one. Hardened in the same commit, along with silencing a
   `printStackTrace()` on the now-routine "no Person yet" probe. Blast radius on the display half was
