@@ -10,11 +10,11 @@
 
 | Commit | Subject |
 |---|---|
-| `PLACEHOLDER_C1` | fix: strip unmatched tokens before render (T133, S13-A) |
-| `PLACEHOLDER_C2` | docs: record S13-A close-out commit hash |
+| `eea6482968a77571c72f1ee78adcd3faba23ac9f` | fix: strip unmatched tokens before render (T133, S13-A) |
 
-Hashes are filled in from `git log` after the push, per the standing convention, and are
-recorded in the second commit.
+Read from `git log -1 --format="%H %s"` after the push — not carried from the run brief, not a
+placeholder. This close-out's own hash is recorded in the follow-up commit below, per the
+standing convention.
 
 **Preflight — trunk position.** The run brief carried two conflicting records of trunk
 (`7655286` from a session-launch note, `def5450` as session 12's own close-out hash) and
