@@ -15,8 +15,8 @@ which is exactly what Step 2 exists to do. The finding is this run's deliverable
 
 - **Hash at preflight (post-pull):** `123114ada5fa5a60dd161864c29103dacb1a86b7`
 - **Hash at end:** unchanged at `123114ada5fa5a60dd161864c29103dacb1a86b7` for all source and doc files —
-  **this close-out is the only commit this run produced.** Its hash is recorded below, read from
-  `git log` after push.
+  **this close-out is the only commit this run produced**, `9c8eb96925322b17493eda922d64111a867f7462`,
+  read from `git log` after push, never carried from the prompt and never written before the push.
 
 Preflight passed all four gates: branch was `refactor/modernize-architecture`, `git status --short` was
 empty, and `git pull --ff-only` reported "Already up to date."
@@ -149,8 +149,10 @@ this fence — it is a decision to reverse, and reversing a recorded compliance 
 
 ## Shipped
 
-**No code. No feature. No migration.** This close-out document is the only artifact this run produced;
-its commit hash is recorded at the top and in "Decisions made" below.
+**No code. No feature. No migration.** This close-out document is the only artifact this run produced:
+
+- `9c8eb96925322b17493eda922d64111a867f7462` — `docs: S11-D close-out — hard stop at Step 2, no code written`.
+  One file, 265 insertions, 0 deletions. Pushed to `origin/refactor/modernize-architecture`.
 
 ## In flight
 
