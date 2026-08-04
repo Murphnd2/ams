@@ -21,7 +21,8 @@ section row, which today is every proposal, renders exactly as before.
   docs-only change to `docs/session_s11g_closeout.md`. `d49b09b` is its immediate parent. No source
   file differs between them.
 - **Hash at end (feature commit, pushed):** `c3232dabbc469ca8ea4f55947bb8ae68aac3792d`
-- **Hash at end (this close-out commit):** recorded below, read from `git log` after push.
+- **Hash at end (this close-out commit):** `c5f8cf1ccb148d3f768d65ed6b6596970764ea47`, read from
+  `git log` after push, never carried from the prompt and never written before the push.
 
 Preflight passed all four gates: branch `refactor/modernize-architecture`, `git status --short` empty,
 `git pull --ff-only` reported "Already up to date."
@@ -142,7 +143,8 @@ extending that block.
 - `c3232dabbc469ca8ea4f55947bb8ae68aac3792d` — `feat: conditional Market page in the proposal sequence (S11-H)`.
   5 files, +365/−2: `ViewProposal.java`, `proposalMarket.jsp` (new), `viewProposal.jsp`,
   `ProposalSettings.java`, `proposalSettings.jsp`. Pushed to `origin/refactor/modernize-architecture`.
-- `<recorded below>` — this close-out plus the `project_backlog.md` T136 update, as a second commit.
+- `c5f8cf1ccb148d3f768d65ed6b6596970764ea47` — `docs: S11-H close-out, and record the Market page
+  against T136` (this document plus the `project_backlog.md` T136 update, as a second commit). Pushed.
 
 ## In flight
 
