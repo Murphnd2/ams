@@ -111,13 +111,25 @@ public class IchraZipLookup extends HttpServlet {
     }
 
     /**
-     * County FIPS codes with cached rates for the requested plan year — the same set the
-     * illustration's county dropdown is built from.
+     * County FIPS codes with <b>production-sourced</b> cached rates for the requested plan
+     * year — the same set the illustration's county dropdown label is built from.
      * <p>
      * Exists because the crosswalk knows 254 Texas counties (V085) while the illustration
      * can price only the handful that have been warmed, so a chooser that did not say
      * which is which would hand an agent a county and then reject it. The flag lets the
      * page label that honestly <b>before</b> the click.
+     * <p>
+     * ⚠️ <b>S11-G — corrected to check provenance, not merely presence.</b> Until this
+     * change, any cached row counted as "priced", including a county warmed only from
+     * staging — which meant this endpoint told an agent a county was priced while
+     * {@code ViewProposal}'s render-time gate (the actual consumer of these rates on a
+     * customer-facing document) would produce empty market tokens for that same county.
+     * This now asks {@link RateCacheDAO#check} per county and counts only
+     * {@link RateCacheDAO.MarketDataAvailability#PRODUCTION_OK} as priced — the same
+     * question the render path asks, so the advisory and the render can no longer
+     * disagree. {@code NONE_CACHED} and {@code STAGING_ONLY} both report unpriced; this
+     * endpoint has no vocabulary for the distinction and must not acquire one — an agent
+     * sees "not ready yet", never "staging".
      * <p>
      * ⚠️ <b>A label, never an ordering.</b> Candidates keep the resolver's land-area order;
      * an unpriced county is not demoted and nothing is pre-selected.
@@ -134,7 +146,10 @@ public class IchraZipLookup extends HttpServlet {
         try {
             int planYear = Integer.parseInt(planYearParam.trim());
             for (RateCacheDAO.CountySummary summary : RateCacheDAO.getCountySummaries(em, planYear)) {
-                priced.add(summary.getCountyFips());
+                String fips = summary.getCountyFips();
+                if (RateCacheDAO.check(em, planYear, fips) == RateCacheDAO.MarketDataAvailability.PRODUCTION_OK) {
+                    priced.add(fips);
+                }
             }
         } catch (Exception e) {
             log.debug("[ZIP-LOOKUP] Could not resolve priced counties for plan year {}", planYearParam, e);

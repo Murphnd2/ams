@@ -61,6 +61,65 @@ public abstract class RateCacheDAO {
     }
 
     /**
+     * S11-G — the single source of truth for "can market data actually be shown for this
+     * county and plan year", shared by every ICHRA-scoped caller that needs to ask it:
+     * today {@code IchraZipLookup}'s agent-facing advisory, later {@code ViewProposal}'s
+     * customer-facing render gate (S11-F Phase A). <b>Takes no {@code HttpServletRequest}
+     * and reads no session</b> — deliberately, since the second caller is the session-free
+     * public proposal render path ({@code /proposal/*}, see
+     * {@code docs/session_s11d_closeout.md}) and a check that could not be called from
+     * there would be the wrong check.
+     * <p>
+     * Reuses {@link #getRatesForCounty} and reproduces {@code ViewProposal.putIchraMarketTokens}'s
+     * production condition exactly: tobacco rows excluded, then every remaining row's
+     * {@code sourceEnv} checked individually against {@link RatingAreaRateCache#SOURCE_ENV_PRODUCTION}
+     * — not merely the first row, since a partially-warmed county is not a produced one.
+     * <p>
+     * Fails closed: any exception yields {@link MarketDataAvailability#NONE_CACHED}, the
+     * most conservative of the three states, never {@link MarketDataAvailability#PRODUCTION_OK}.
+     */
+    public static MarketDataAvailability check(EntityManager em, int planYear, String countyFips) {
+        try {
+            List<RatingAreaRateCache> rows = getRatesForCounty(em, planYear, countyFips);
+
+            List<RatingAreaRateCache> nonTobacco = new ArrayList<>();
+            for (RatingAreaRateCache r : rows) {
+                if (!r.isUsesTobacco()) nonTobacco.add(r);
+            }
+
+            if (nonTobacco.isEmpty()) {
+                return MarketDataAvailability.NONE_CACHED;
+            }
+
+            for (RatingAreaRateCache r : nonTobacco) {
+                if (!RatingAreaRateCache.SOURCE_ENV_PRODUCTION.equals(r.getSourceEnv())) {
+                    return MarketDataAvailability.STAGING_ONLY;
+                }
+            }
+
+            return MarketDataAvailability.PRODUCTION_OK;
+        } catch (Exception e) {
+            log.debug("[MARKET-AVAILABILITY] Could not resolve availability for county {} plan year {}; " +
+                    "defaulting to NONE_CACHED", countyFips, planYear, e);
+            return MarketDataAvailability.NONE_CACHED;
+        }
+    }
+
+    /**
+     * The three mutually exclusive, exhaustive states {@link #check} can return. Ordered
+     * from least to most available, though callers should compare by identity/equality,
+     * never by ordinal.
+     */
+    public enum MarketDataAvailability {
+        /** No rows cached for this county and plan year at all. */
+        NONE_CACHED,
+        /** Rows exist, but at least one non-tobacco row is not {@code PRODUCTION}-sourced. */
+        STAGING_ONLY,
+        /** Rows exist and every non-tobacco row is {@code PRODUCTION}-sourced. */
+        PRODUCTION_OK
+    }
+
+    /**
      * Per-county summary for the admin page: row count, oldest/newest fetchedAt,
      * and source_env. A county's rows are always written together in one
      * {@link #replaceCountyRates} transaction, so MAX(sourceEnv) and MAX/MIN(fetchedAt)
