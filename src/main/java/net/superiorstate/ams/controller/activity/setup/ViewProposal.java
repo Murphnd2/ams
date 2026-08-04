@@ -42,9 +42,13 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @WebServlet(name = "ViewProposal", value = "/proposal/*")
 public class ViewProposal extends HttpServlet {
+
+    private static final Logger log = LoggerFactory.getLogger(ViewProposal.class);
 
     /** Matches [link text](resourceId) markers in feature descriptions */
     private static final Pattern LINK_PATTERN = Pattern.compile("\\[([^\\]]+)]\\((\\d+)\\)");
@@ -877,6 +881,24 @@ public class ViewProposal extends HttpServlet {
             // Case-insensitive replacement of {{TOKEN_NAME}}
             String pattern = "(?i)\\{\\{" + Pattern.quote(entry.getKey()) + "\\}\\}";
             result = result.replaceAll(pattern, Matcher.quoteReplacement(entry.getValue()));
+        }
+        // T133 — the loop above iterates the map's keys, so a token present in the content
+        // but absent from the map is never visited and survives into the rendered output and
+        // onto a customer-facing document. Strip any residual token, naming it first.
+        // Token-shaped only: {{a:1}} (a nested JS object literal) must never match, and the
+        // character class mirrors exactly the shape the substitution above recognises, so a
+        // spaced variant like "{{ FOO }}" is left alone here just as it is left alone there.
+        // No proposal or section identifier is in scope in this method and the signature is
+        // fixed, so the token names are the whole message — they are enough to grep for.
+        String residualPattern = "\\{\\{[A-Za-z0-9_]+\\}\\}";
+        Matcher residual = Pattern.compile(residualPattern).matcher(result);
+        if (residual.find()) {
+            StringBuilder unmatched = new StringBuilder(residual.group());
+            while (residual.find()) {
+                unmatched.append(", ").append(residual.group());
+            }
+            log.warn("T133 stripped unmatched proposal token(s) before render: {}", unmatched);
+            result = result.replaceAll(residualPattern, "");
         }
         return result;
     }
