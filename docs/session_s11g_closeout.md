@@ -15,7 +15,8 @@ counts a staging-warmed county as priced — a deliberate, disclosed behavior ch
 - **Hash at preflight (post-pull):** `9b72edbebabc364b5e9fcec00db2b4204c4fb726` — **matches the
   prompt's expected start (`9b72edb`) exactly.** No divergence to report.
 - **Hash at end (feature commit, pushed):** `444abd43a331789f017cb8550270f1f07792c90c`
-- **Hash at end (this close-out commit):** recorded below, read from `git log` after push.
+- **Hash at end (this close-out commit):** `d49b09bf5ebc31c22f3faa7180568d674799e582`, read from
+  `git log` after push, never carried from the prompt and never written before the push.
 
 Preflight passed all four gates: branch `refactor/modernize-architecture`, `git status --short` empty,
 `git pull --ff-only` reported "Already up to date."
@@ -128,7 +129,8 @@ gate, unaffected by anything in `IchraZipLookup`. **Proceeded to build.**
 - `444abd43a331789f017cb8550270f1f07792c90c` — `feat: shared market-data availability check, fix provenance-blind advisory`.
   3 files changed (+78/−4): `RateCacheDAO.java`, `IchraZipLookup.java`, `project_backlog.md`. Pushed to
   `origin/refactor/modernize-architecture`.
-- `<recorded below>` — this close-out, as a second commit.
+- `d49b09bf5ebc31c22f3faa7180568d674799e582` — `docs: S11-G close-out` (this document, as a second
+  commit). Pushed.
 
 ## In flight
 
