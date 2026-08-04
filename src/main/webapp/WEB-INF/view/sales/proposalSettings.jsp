@@ -200,6 +200,15 @@
             </c:if>
         </c:forEach>
 
+        <%-- S11-H: same singleton pattern as the ICHRA section above — a second MARKET
+             section would render the page twice, so the trigger hides once one exists. --%>
+        <c:set var="hasMarketSection" value="false"/>
+        <c:forEach var="s" items="${sections}">
+            <c:if test="${s.getSectionType() == 'MARKET'}">
+                <c:set var="hasMarketSection" value="true"/>
+            </c:if>
+        </c:forEach>
+
         <%-- Left Panel: Section List --%>
         <div class="ps-left">
             <div class="card">
@@ -209,6 +218,11 @@
                         <c:if test="${!hasIchraSection && not empty allLos}">
                             <button class="btn btn-sm btn-outline-light" data-bs-toggle="modal" data-bs-target="#addIchraModal" title="Add ICHRA Illustration Section">
                                 <i class="bi bi-heart-pulse"></i>
+                            </button>
+                        </c:if>
+                        <c:if test="${!hasMarketSection}">
+                            <button class="btn btn-sm btn-outline-light" data-bs-toggle="modal" data-bs-target="#addMarketModal" title="Add Market Section">
+                                <i class="bi bi-graph-up"></i>
                             </button>
                         </c:if>
                         <button class="btn btn-sm btn-outline-light" data-bs-toggle="modal" data-bs-target="#addCustomModal" title="Add Custom Page">
@@ -637,6 +651,38 @@
                             <option value="${los.getId()}">${los.getDescription()}</option>
                         </c:forEach>
                     </select>
+                </div>
+                <div class="modal-footer justify-content-center border-0">
+                    <button type="submit" class="ssa-action save"><i class="bi bi-plus-circle me-1"></i>Create</button>
+                    <span class="ssa-action-sep">|</span>
+                    <button type="button" class="ssa-action cancel" data-bs-dismiss="modal"><i class="bi bi-x-lg me-1"></i>Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<%-- Add Market Section Modal (S11-H) --%>
+<div class="modal fade" id="addMarketModal" tabindex="-1">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <form method="post" action="ProposalSettings">
+                <input type="hidden" name="action" value="createMarketSection"/>
+                <div class="modal-header py-2" style="background-color: var(--ssa); color: white;">
+                    <h6 class="modal-title fw-semibold"><i class="bi bi-graph-up me-2"></i>Add Market Section</h6>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted mb-2" style="font-size: 0.85rem;">
+                        Shows an individual-market overview for the county captured on the proposal —
+                        plan and carrier counts and the lowest available premiums at ages 21, 40 and 64.
+                    </p>
+                    <p class="text-muted mb-0" style="font-size: 0.85rem;">
+                        No line of service to pick: this section appears on a proposal only when the
+                        selling agency is ICHRA-enabled, the proposal quotes a plus-tier line of service,
+                        <strong>and</strong> production rate data exists for that county. Otherwise it is
+                        silently omitted. Set its position with the section list's reorder controls.
+                    </p>
                 </div>
                 <div class="modal-footer justify-content-center border-0">
                     <button type="submit" class="ssa-action save"><i class="bi bi-plus-circle me-1"></i>Create</button>

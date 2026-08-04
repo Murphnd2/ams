@@ -50,15 +50,32 @@ public class ViewProposal extends HttpServlet {
     private static final Pattern LINK_PATTERN = Pattern.compile("\\[([^\\]]+)]\\((\\d+)\\)");
 
     /**
+     * S11-H — the {@code proposal_section.section_type} discriminator for the conditional Market
+     * page. Free-text {@code varchar(20)} column, so this is data rather than schema and needed no
+     * migration. Declared here rather than on an entity because, unlike
+     * {@code ICHRA_ILLUSTRATION}/{@link ProposalIchraSnapshot#SECTION_TYPE}, no entity owns this
+     * page — it renders from the live rate cache, not from a persisted row of its own.
+     * {@code ProposalSettings} references this constant so the admin CRUD and the render gate
+     * cannot drift apart.
+     */
+    public static final String MARKET_SECTION_TYPE = "MARKET";
+
+    /**
      * Section types withheld unless the proposal's originating agency is ICHRA-entitled
      * (LA-17 / T116). Gated by {@link IchraAccessResolver#isAvailableForProposal}, which is a
      * compliance control on this page and not a display preference — see its javadoc.
      * <p>
-     * The single element is {@link ProposalIchraSnapshot#SECTION_TYPE}, i.e. the literal
+     * The first element is {@link ProposalIchraSnapshot#SECTION_TYPE}, i.e. the literal
      * {@code "ICHRA_ILLUSTRATION"}, referenced through the constant so the gate cannot drift
      * from the type it is gating.
+     * <p>
+     * S11-H added {@link #MARKET_SECTION_TYPE}. ⚠️ <b>Adding a type here is safe only for a
+     * type no existing row carries.</b> {@code MARKET} is brand new, so gating it strips
+     * nothing that renders today. {@code CUSTOM} must never be added for exactly the opposite
+     * reason — see the T129 note at the filter site.
      */
-    private static final Set<String> ICHRA_GATED_SECTION_TYPES = Set.of(ProposalIchraSnapshot.SECTION_TYPE);
+    private static final Set<String> ICHRA_GATED_SECTION_TYPES =
+            Set.of(ProposalIchraSnapshot.SECTION_TYPE, MARKET_SECTION_TYPE);
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
@@ -125,6 +142,12 @@ public class ViewProposal extends HttpServlet {
                     request.setAttribute("ichraBands", ichraBands);
                 }
             }
+
+            // S11-H — the conditional Market page. Resolved here, while the EM is still open (it
+            // closes in the finally below, before the JSP forward), for the same reason the
+            // snapshot above is: the fragment renders from request attributes and can issue no
+            // query of its own.
+            resolveMarketPage(request, em, proposal, ichraEntitled);
 
             // Collect direct-FK module IDs for all proposed LOSs and all Enhancements with pricing
             Set<Long> featureModuleIds = new LinkedHashSet<>();
@@ -377,6 +400,118 @@ public class ViewProposal extends HttpServlet {
 
         RequestDispatcher dispatcher = request.getRequestDispatcher("/WEB-INF/view/sales/viewProposal.jsp");
         dispatcher.forward(request, response);
+    }
+
+    /**
+     * S11-H — resolves the conditional Market page, setting {@code marketPageVisible} plus the
+     * figures the fragment renders. The page appears only when <b>all three</b> hold:
+     * <ol>
+     *   <li><b>The originating agency is ICHRA-entitled</b> — {@code ichraEntitled}, already
+     *       resolved once per request by {@link IchraAccessResolver#isAvailableForProposal}. Not
+     *       re-derived here; a second resolution could disagree with the one the section filter
+     *       used.</li>
+     *   <li><b>The proposal is quoting a plus-tier LOS</b> — {@code los.isPlusTier()} (V086) over
+     *       {@code proposal.getLosList()}. ⚠️ <b>Deliberately the proposal-level question, not
+     *       {@link #isPlusTierScoped}'s section-level one.</b> That method asks whether a given
+     *       <i>section</i> is scoped to a plus-tier LOS, which is the right question for T129's
+     *       blanket filter and the wrong one here: this page is about what the proposal quotes,
+     *       and a MARKET section is deliberately not LOS-scoped. Mirrors
+     *       {@code ProposalBuilder.attachIchraIntakeIfPresent}'s own {@code anyPlusTier} loop, so
+     *       the page can only appear on a proposal the intake row was allowed to be written for.
+     *       Reads no LOS id literal — plus-tier is whatever the column says, per PSP.</li>
+     *   <li><b>Production-sourced rates exist for the intake row's county and plan year</b> —
+     *       one call to {@link RateCacheDAO#check} (S11-G), the same question the agent-facing
+     *       advisory asks, so builder and proposal cannot disagree. The provenance condition is
+     *       not restated here; restating it is how the two drift.</li>
+     * </ol>
+     * <b>Fails closed at every step.</b> No intake row, a null plan year or county, anything short
+     * of {@link RateCacheDAO.MarketDataAvailability#PRODUCTION_OK}, or any exception at all leaves
+     * {@code marketPageVisible} false and every figure attribute unset — the JSP's {@code <c:if>}
+     * then renders nothing, exactly as the features page does with no features. Never throws: a
+     * proposal must not fail to render because a rate lookup failed.
+     * <p>
+     * <b>Byte-identical for every proposal with no MARKET section row</b>, which today is all of
+     * them — the attributes are simply never read.
+     */
+    private void resolveMarketPage(HttpServletRequest request, EntityManager em,
+                                   Proposal proposal, boolean ichraEntitled) {
+        request.setAttribute("marketPageVisible", false);
+        try {
+            if (!ichraEntitled) {
+                return;
+            }
+
+            boolean anyPlusTier = false;
+            if (proposal.getLosList() != null) {
+                for (LOS los : proposal.getLosList()) {
+                    if (los != null && los.isPlusTier()) {
+                        anyPlusTier = true;
+                        break;
+                    }
+                }
+            }
+            if (!anyPlusTier) {
+                return;
+            }
+
+            ProposalIchraIntake intake = ProposalIchraIntakeDAO.findByProposalId(em, proposal.getId());
+            if (intake == null || intake.getPlanYear() == null || intake.getCountyFips() == null) {
+                return;
+            }
+
+            if (RateCacheDAO.check(em, intake.getPlanYear(), intake.getCountyFips())
+                    != RateCacheDAO.MarketDataAvailability.PRODUCTION_OK) {
+                return;
+            }
+
+            // Provenance is settled by check() above, so these rows are known PRODUCTION-sourced.
+            // Tobacco rows are a separate rating basis and are excluded, matching
+            // putIchraMarketTokens and IllustrationServlet.handleRangeMode.
+            List<RatingAreaRateCache> nonTobacco = new ArrayList<>();
+            for (RatingAreaRateCache r : RateCacheDAO.getRatesForCounty(em, intake.getPlanYear(), intake.getCountyFips())) {
+                if (!r.isUsesTobacco()) nonTobacco.add(r);
+            }
+            if (nonTobacco.isEmpty()) {
+                return;
+            }
+
+            Map<Integer, RatingAreaRateCache> byAge = new HashMap<>();
+            LocalDateTime newestFetchedAt = null;
+            for (RatingAreaRateCache r : nonTobacco) {
+                byAge.putIfAbsent(r.getAge(), r);
+                if (r.getFetchedAt() != null
+                        && (newestFetchedAt == null || r.getFetchedAt().isAfter(newestFetchedAt))) {
+                    newestFetchedAt = r.getFetchedAt();
+                }
+            }
+
+            // Counts come from the AGE-40 row specifically, matching putIchraMarketTokens and
+            // IllustrationServlet.handleRangeMode's deterministic choice, and for its stated reason:
+            // carrier/plan counts are age-specific, because catastrophic plans are under-30 only.
+            RatingAreaRateCache countRow = byAge.get(40) != null ? byAge.get(40) : nonTobacco.get(0);
+
+            request.setAttribute("marketPlanCount", countRow.getPlanCount());
+            request.setAttribute("marketCarrierCount", countRow.getCarrierCount());
+            request.setAttribute("marketFloor21", premiumOrNull(byAge.get(21)));
+            request.setAttribute("marketFloor40", premiumOrNull(byAge.get(40)));
+            request.setAttribute("marketFloor64", premiumOrNull(byAge.get(64)));
+            request.setAttribute("marketCountyName", intake.getCountyName());
+            request.setAttribute("marketState", intake.getState());
+            request.setAttribute("marketPlanYear", intake.getPlanYear());
+            request.setAttribute("marketRatesAsOf",
+                    newestFetchedAt == null ? null : newestFetchedAt.format(DateTimeFormatter.ofPattern("MMMM d, yyyy")));
+            request.setAttribute("marketPageVisible", true);
+
+        } catch (Exception e) {
+            request.setAttribute("marketPageVisible", false);
+            System.out.println("S11-H Market page resolution failed for proposal #"
+                    + (proposal != null ? proposal.getId() : "null") + "; omitting the page: " + e.getMessage());
+        }
+    }
+
+    /** The bronze-floor premium on a cache row, or null when the row or the figure is absent. */
+    private BigDecimal premiumOrNull(RatingAreaRateCache row) {
+        return row == null ? null : row.getLowestBronzePremium();
     }
 
     /**

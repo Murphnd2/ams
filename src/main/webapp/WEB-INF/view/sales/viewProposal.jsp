@@ -200,6 +200,18 @@
             ${sectionHtml[section.getId()]}
           </div>
         </c:when>
+        <%-- S11-H: conditional Market page. Same shape as FEATURES above -- the section row
+             is always in the list, the page is suppressed here when there is nothing to
+             show. marketPageVisible is resolved server-side by
+             ViewProposal.resolveMarketPage (entitled agency + plus-tier LOS on the
+             proposal + RateCacheDAO.check() == PRODUCTION_OK) and fails closed. --%>
+        <c:when test="${section.getSectionType() == 'MARKET'}">
+          <c:if test="${marketPageVisible}">
+          <div class="proposal-section market-section">
+            <%@ include file="proposalMarket.jsp" %>
+          </div>
+          </c:if>
+        </c:when>
       </c:choose>
     </c:forEach>
   </c:when>

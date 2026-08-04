@@ -374,6 +374,65 @@ public class ProposalSettings extends HttpServlet {
                     }
                 }
 
+                case "createMarketSection" -> {
+                    // S11-H. Modeled on createIchraSection above, with two deliberate differences.
+                    // ⚠️ Not extending initializeDefaults, for the same reason that one isn't:
+                    // it only fires when a PSP has zero sections at all, and every real PSP
+                    // already has the four defaults, so it would never run for this.
+                    //
+                    // (1) scope stays 'ALL' and no LOS is attached. Unlike ICHRA_ILLUSTRATION,
+                    //     this page's visibility is resolved entirely server-side per proposal by
+                    //     ViewProposal.resolveMarketPage — which already requires the proposal to
+                    //     quote a plus-tier LOS — so section-level LOS scoping would be a second,
+                    //     independently-maintained copy of the same condition.
+                    // (2) Agency-agnostic by design (S11-F): the agency-override block in
+                    //     ViewProposal handles TITLE/CLOSING only, and a MARKET row carrying an
+                    //     agency_id would fall straight through it and render for every agency.
+                    //     So no agency is ever set here.
+                    //
+                    // Singleton per PSP, like ICHRA_ILLUSTRATION: a second MARKET section would
+                    // render the page twice on any qualifying proposal.
+                    List<ProposalSection> existingMarket = em.createQuery(
+                                    "SELECT s FROM ProposalSection s WHERE s.psp.id = :pspId AND s.sectionType = :type",
+                                    ProposalSection.class)
+                            .setParameter("pspId", psp.getId())
+                            .setParameter("type", ViewProposal.MARKET_SECTION_TYPE)
+                            .getResultList();
+
+                    if (!existingMarket.isEmpty()) {
+                        request.getSession().setAttribute("flashMessage", "A Market section already exists for this PSP.");
+                    } else {
+                        List<ProposalSection> sections = loadSections(em, psp);
+                        int maxOrder = sections.stream()
+                                .filter(s -> !"CLOSING".equals(s.getSectionType()))
+                                .mapToInt(ProposalSection::getSortOrder)
+                                .max().orElse(0);
+
+                        em.getTransaction().begin();
+                        ProposalSection marketSection = new ProposalSection();
+                        marketSection.setPsp(psp);
+                        marketSection.setSectionType(ViewProposal.MARKET_SECTION_TYPE);
+                        marketSection.setTitle("Individual Market Overview");
+                        marketSection.setSortOrder(maxOrder + 1);
+                        marketSection.setActive(true);
+                        marketSection.setScope("ALL");
+                        em.persist(marketSection);
+
+                        // Ensure CLOSING is after this new section
+                        for (ProposalSection s : sections) {
+                            if ("CLOSING".equals(s.getSectionType()) && s.getSortOrder() <= marketSection.getSortOrder()) {
+                                s.setSortOrder(marketSection.getSortOrder() + 1);
+                                em.merge(s);
+                            }
+                        }
+                        em.getTransaction().commit();
+                        redirectSectionId = String.valueOf(marketSection.getId());
+                        request.getSession().setAttribute("flashMessage",
+                                "Market section created. It appears on a proposal only when the agency is ICHRA-enabled, "
+                                        + "the proposal quotes a plus-tier line of service, and production rate data exists for the county.");
+                    }
+                }
+
                 case "deleteAgencySection" -> {
                     long sectionId = Long.parseLong(request.getParameter("sectionId"));
                     ProposalSection section = em.find(ProposalSection.class, sectionId);
