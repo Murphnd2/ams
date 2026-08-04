@@ -146,28 +146,38 @@
                         </c:choose>
 
                         <div class="col-12">
+                            <%-- S14-C — census input shape mirrored from the Illustration's age-band
+                                 repeater (illustration25.jsp:444-483): stacked one-row-per-line, small
+                                 label above small input, plain Bootstrap utility classes already used
+                                 on this page — no new CSS, no JS. The add/remove/zero-start apparatus
+                                 was deliberately NOT copied: GroupConversion always offers exactly
+                                 CENSUS_ROWS (6) rows with no empty-start state, unlike the
+                                 Illustration's dynamic repeater, and copying that would change the
+                                 number of rows offered. Deduction — the field with no Illustration
+                                 counterpart — extends the row in Income's slot, third field after
+                                 Count. Every name="ageN"/"countN"/"deductionN" is unchanged; the
+                                 servlet parses by request.getParameter(name), not by markup shape
+                                 (GroupConversionServlet.java:150-157, :190-221). --%>
                             <label class="form-label mb-1 d-block">Census <span class="text-muted fw-normal">(blank age = skip row; deduction is optional)</span></label>
-                            <div class="d-flex flex-wrap gap-2">
-                                <c:forEach begin="1" end="6" var="i">
-                                    <div class="d-flex align-items-end gap-1">
-                                        <div>
-                                            <label class="form-label mb-1" style="font-size:0.7rem;" for="age${i}">Age</label>
-                                            <input type="number" class="form-control form-control-sm" id="age${i}" name="age${i}"
-                                                   min="21" max="64" value="${submittedAges[i-1]}" style="width:75px;">
-                                        </div>
-                                        <div>
-                                            <label class="form-label mb-1" style="font-size:0.7rem;" for="count${i}">Count</label>
-                                            <input type="number" class="form-control form-control-sm" id="count${i}" name="count${i}"
-                                                   min="1" placeholder="1" value="${submittedCounts[i-1]}" style="width:65px;">
-                                        </div>
-                                        <div>
-                                            <label class="form-label mb-1" style="font-size:0.7rem;" for="deduction${i}">Deduction</label>
-                                            <input type="number" step="0.01" class="form-control form-control-sm" id="deduction${i}" name="deduction${i}"
-                                                   min="0" placeholder="Monthly" value="${submittedDeductions[i-1]}" style="width:100px;">
-                                        </div>
+                            <c:forEach begin="1" end="6" var="i">
+                                <div class="d-flex align-items-end gap-2 mb-2">
+                                    <div>
+                                        <label class="form-label mb-1" style="font-size:0.7rem;" for="age${i}">Age</label>
+                                        <input type="number" class="form-control form-control-sm" id="age${i}" name="age${i}"
+                                               min="21" max="64" value="${submittedAges[i-1]}">
                                     </div>
-                                </c:forEach>
-                            </div>
+                                    <div>
+                                        <label class="form-label mb-1" style="font-size:0.7rem;" for="count${i}">Count</label>
+                                        <input type="number" class="form-control form-control-sm" id="count${i}" name="count${i}"
+                                               min="1" placeholder="1" value="${submittedCounts[i-1]}">
+                                    </div>
+                                    <div>
+                                        <label class="form-label mb-1" style="font-size:0.7rem;" for="deduction${i}">Deduction</label>
+                                        <input type="number" step="0.01" class="form-control form-control-sm" id="deduction${i}" name="deduction${i}"
+                                               min="0" placeholder="Monthly" value="${submittedDeductions[i-1]}">
+                                    </div>
+                                </div>
+                            </c:forEach>
                         </div>
 
                         <div class="col-auto">
