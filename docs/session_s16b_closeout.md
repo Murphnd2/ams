@@ -5,9 +5,10 @@
 ## 1. Shipped
 
 - `d77a9ac12a5f46e739aba0207f70022e98c1a0ae` — fix: T143 -- collapse GroupConversion's input form once results exist (`groupConversion25.jsp`, +55/−1)
-- `<recorded below, commit 2>` — docs: T142 mechanism correction, T143 resolved, ichra_strategy.md D20/D38/D39 + precedence fix, session close-out
+- `de3f3eb11c60936e47579fde26c44bb0c897ae83` — docs: T142 mechanism correction, T143 resolved, ichra_strategy.md D20/D38/D39 + precedence fix, session close-out
+- `<this commit>` — docs: record commit 2's hash in the close-out (this file only; recorded per the run brief's capped-at-three convention, no fourth commit follows). Its own hash is not recorded in itself; it is `git log -1` at time of writing.
 
-Both hashes read from `git log` in this run. Per the capped hash convention, this file is committed as part of commit 2, so commit 2 cannot cite its own hash inside itself — see the compliance statement (§12) for how that is resolved without a fourth commit.
+All hashes read from `git log` in this run, not carried from the prompt.
 
 ## 2. Part 1 — what was anchored on
 
