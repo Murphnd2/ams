@@ -16,7 +16,7 @@ Tracks database schema versions across environments.
 | BPO | bpo.superiorstate.biz | beta_ssa | BPO instance (V038, initialized, release V0.37.0) |
 | Master | master.superiorstate.biz | beta_ssa | Snapshot v9 (V057, stopped) |
 
-## Current Highest Version: V088
+## Current Highest Version: V089
 
 ⚠️ **Maintenance note (added 2026-07-30):** production status in the table below must be back-filled
 *after a deployment actually succeeds*, not only when the migration is written. The V072/V073 rows
@@ -130,6 +130,7 @@ _N/A = environment decommissioned / not maintained (applies to Demo PSP, BPO, Ma
 | V086 | Plus-tier classification flag on line of service (`los.is_plus_tier`, NOT NULL DEFAULT 0, no backfill) — ⚠️ **nothing reads it yet** | ✅ | ⬜ | ⬜ | ⬜ | N/A | N/A | N/A |
 | V087 | Plus-tier ZIP/county/headcount intake captured in the Proposal Builder (`proposal_ichra_intake`, `proposal_id` UNIQUE FK ON DELETE CASCADE, `plan_year` derived server-side not agent-asserted — S10-B HS-1) — the T125 consumer of V086 | ⬜ | ⬜ | ⬜ | ✅ | N/A | N/A | N/A |
 | V088 | Employer monthly contribution per employee on `proposal_ichra_intake` (`monthly_contribution_per_employee` DECIMAL(10,2) NULL, no backfill) — T80 half 1, an intake token exactly like V087's four | ⬜ | ⬜ | ⬜ | ⬜ | N/A | N/A | N/A |
+| V089 | System-managed classification flag on enhancement (`enhancement.system_managed`, NOT NULL DEFAULT 0, no backfill) — ⚠️ **nothing reads it yet**; consumer is `FlaggedEnhancementResolver` (S18-D) | ⬜ | ⬜ | ⬜ | ⬜ | N/A | N/A | N/A |
 
 **Production column reconciled 2026-07-30** against a live, read-only `schema_version` probe run
 directly against the production database — that probe is the source of truth for the corrections

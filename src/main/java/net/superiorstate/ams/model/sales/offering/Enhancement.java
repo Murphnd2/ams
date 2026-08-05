@@ -26,6 +26,9 @@ public class Enhancement implements Comparable<Enhancement> {
     @Column
     private boolean suppressed;
 
+    @Column(name = "system_managed", nullable = false)
+    private boolean systemManaged;
+
     @ManyToOne
     @JoinColumn(name = "psp_id")
     private PSP psp;
@@ -59,6 +62,9 @@ public class Enhancement implements Comparable<Enhancement> {
 
     public boolean isSuppressed() { return suppressed; }
     public void setSuppressed(boolean suppressed) { this.suppressed = suppressed; }
+
+    public boolean isSystemManaged() { return systemManaged; }
+    public void setSystemManaged(boolean systemManaged) { this.systemManaged = systemManaged; }
 
     public PSP getPsp() { return psp; }
     public void setPsp(PSP psp) { this.psp = psp; }

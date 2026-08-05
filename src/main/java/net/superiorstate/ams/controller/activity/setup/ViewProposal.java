@@ -13,6 +13,7 @@ import net.superiorstate.ams.data.dao.ProposalIchraSnapshotDAO;
 import net.superiorstate.ams.data.dao.RateCacheDAO;
 import net.superiorstate.ams.data.dao.SalesDAO;
 import net.superiorstate.ams.data.dao.StorageDAO;
+import net.superiorstate.ams.data.resolver.FlaggedEnhancementResolver;
 import net.superiorstate.ams.data.resolver.IchraAccessResolver;
 import net.superiorstate.ams.data.resolver.OriginatingAgencyResolver;
 import net.superiorstate.ams.model.market.RatingAreaRateCache;
@@ -297,7 +298,7 @@ public class ViewProposal extends HttpServlet {
                     }
                     if (!matches && section.getEnhancementList() != null) {
                         for (Enhancement enh : section.getEnhancementList()) {
-                            if (proposalEnhIds.contains(enh.getId())) {
+                            if (proposalEnhIds.contains(enh.getId()) && FlaggedEnhancementResolver.isSectionEnabled(em, proposal, enh)) {
                                 matches = true;
                                 break;
                             }
