@@ -83,7 +83,7 @@ Ranked by **agent utility per unit of build effort**. "Credential" means a Healt
 | **2** | **Age-band net-cost table** (AGE_BAND mode) | *"Your four under-30s, seven forties, three over-55 — here's each band's cost and your monthly total at a $400 contribution."* | ✅ Verified — **every age 21–64 is already cached**; the servlet reads three of them | **None** | **Small** — servlet + JSP branch |
 | **3** | **Affordability threshold per employee** | *"At $350 your offer is unaffordable for Maria, she keeps her subsidy and comes out ahead. At $450 it's affordable, she loses the credit, she's worse off. Here's the exact flip point — for each of your fourteen."* | ⚠️ **Cached LCSP is off-exchange only (T44); ICHRA affordability needs the on-exchange LCSP** | 2 calls to fix T44 | **Small–Medium** |
 | **4** | **Group-to-ICHRA conversion analysis** (A4a) | *"Your renewal is $9,840/month, up 14%. ICHRA at $430/head is $6,020, and eleven of your fourteen come out ahead."* | ✅ Verified — cache + census + the group premium the agent already knows | **None** | **Small–Medium** |
-| **5** | **Subsidy segmentation** | *"Nine of your fourteen are subsidy-eligible — QSEHRA preserves their credit. Five aren't — ICHRA serves them fully. That's which product you're buying, before you commit."* | ⚠️ `POST /api/v1/aptc_estimates` **documented, never called**; the income request field on this product is **unverified** | **Yes** | **Medium** |
+| **5** | **Subsidy segmentation** | *"Nine of your fourteen are subsidy-eligible — QSEHRA preserves their credit. Five aren't — ICHRA serves them fully. That's which product you're buying, before you commit."* | ⭐ **Upgraded 2026-08-04 (O2):** `household_income` is **verified as a documented parameter on `POST /api/v1/quotes` itself**, returning subsidy data inline — so this needs one optional field on a call `HealthSherpaService` already makes, not a second endpoint. `POST /api/v1/aptc_estimates` also confirmed present (returns `estimated_aptc` + `csr_level`). The *"income field unverified"* caveat is retired | **Yes** | ~~Medium~~ → **Small–Medium** (T147) |
 | **6** | **Design advisor** (chatbot skill) | *"Does my client's dental plan kill the QSEHRA?"* — answered with citations, never plan selection | ✅ Content and infrastructure both exist (V046/V063/V065) | **None** | **Very small** |
 | **7** | **Class optimization** | *"Split salaried from hourly. $520 and $310. That's $1,140/month less than a flat $450, everyone lands within $40 of where they are, and both classes clear the minimum-size rule."* **ICHRA permits classes; QSEHRA forbids them** — this is an ICHRA-only lever and one of the few places ICHRA is structurally better than what they have | ✅ Cache + design census. O38 suggests Summit supports division-scoped contributions natively | **None** | **Medium** |
 | **8** | **Provider check** — *"will I lose my doctor?"* | *"Give me your three doctors. Thirty-one of the 65 plans cover all three; here's the cheapest."* The first question every ICHRA employee asks, and a common reason employers decline | ✅ O23 resolved favorably — request takes `providers[]`, plans return `covered` + `covered_addresses`. ⚠️ **But the API takes NPIs, not names — see the gap below** | **Yes** (uncacheable) | **Medium** + gap |
@@ -103,6 +103,18 @@ A2 is specified as *"enter physicians, see which plans include them."* The ICHRA
 ---
 
 ## 4. What is actually built, and what a user can do with it right now
+
+> ⚠️ **THIS ENTIRE SECTION IS STALE — flagged 2026-08-03 (session 10), banner added 2026-08-04, not yet rewritten.**
+> It describes the state at release `v0.76.00` on 2026-07-31. Since then the ICHRA sequence shipped
+> through **V088** and release **`v0.88.05`**, and its central claim — *"What a user can do today:
+> **nothing**"* — is **false end to end**: `/IchraHome`, `/Illustration` (progressive RANGE →
+> AGE_BAND → affordability), `/GroupConversion`, `/IchraOpportunityAnalyses` and the plus-tier
+> proposal chain are all live and several are runtime-verified in production. The five constants are
+> seeded and the cache is warmed for four counties (staging-sourced — **T136**).
+> **Do not read the table below as current.** Live state: `ls docs/migrations/`,
+> `docs/analysis/migration_tracker.md`, and the session close-outs from 2026-08-01 onward.
+> **A rewrite of this section is still owed** — deliberately not attempted in the 2026-08-04 doc pass,
+> which was scoped to HealthSherpa API facts and would have had to reconstruct build state to do it.
 
 **Built and deployed to production** (release `v0.76.00`, 2026-07-31 11:37; `update.sh` applied V074/V075/V076 in order, verified against the production database afterward — `county_reference` = 254 rows, `48223` → Hopkins County, `schema_info` reports V076):
 
@@ -315,6 +327,13 @@ Everything with human lead time. **Its absence is the most visible gap in the cu
 
 **Six items sent to HealthSherpa on 2026-07-29 have no recorded response as of 2026-07-31. Four asks that gate later phases have never been sent at all.** Chasing these costs an afternoon and is the difference between waiting three weeks in August and waiting three weeks in October.
 
+⭐ **Revised 2026-08-04, after O2.** Still no reply — but **no follow-up has been sent either**, so this reads less like a stalled vendor and more like a relationship with one exchange and then silence on both sides. Two things changed:
+
+1. **Several items on this register were never vendor-gated.** O2's documentation pass answered the enrollment surface, the poll design, the payment model, the effective-date question and the carrier matrix — including **half of O16** (BCBS TX policy status is publicly marked *"coming in 2026"*; the **month** is what still needs a human). Check the docs before adding a row here.
+2. **The remaining asks are fewer and much sharper.** For webhooks it is no longer "which auth methods" — the setup *process* is public, so ask for the **delivery semantics**: authentication method, **retry policy, delivery guarantees, ordering, idempotency/`transaction_id` handling, signature verification, IP allow-listing.** Those five decide whether AMS's receiver needs dedup and reordering logic. **Add: CHRISTUS policy status — is it planned at all?** It is absent from the published matrix entirely, not marked "coming," and it is 18 of Hopkins' 65 plans and the carrier zizzl switched off for Forrest.
+
+**One relationship gates the rest.** Production allow-listing, staging deeplink Basic Auth, the webhook form and the BAA all route through the same unassigned onboarding representative (O12).
+
 **Detail:** `docs/business/healthsherpa.md` "Open items — 2026-07-29" and "Outreach log"; `docs/analysis/plus_tier_build_plan.md` Part 2 (O12–O21) and Part 7's tiered question list.
 
 ---
@@ -377,7 +396,7 @@ Four buckets. **Self-answerable first, because that is the bucket that gets skip
 
 | # | Item | Cost | Blocks |
 |---|---|---|---|
-| **O2** | Re-verify the enrollment/status API surface against the ICHRA Partner API. Public docs, `?ask=`, **no account needed** | **~1 hour** | The correlation map, the poll design, and **every HSOne-inherited assumption** |
+| ~~**O2**~~ | ✅ **DONE 2026-08-04.** Re-verified the enrollment/status API surface against the ICHRA Partner API — 13 of 25 documentation pages read, no credential used. **Corrected six standing claims** (deeplink path is `/public/ichra/off_ex`; UHC **is** API-enrollable in TX and has been since 2026-06-09, so the 2026-07-28 claim was *wrong when written*, not superseded; `tpa_slug` is accepted, not rejected; the deeplink accepts `ssn`, so PHI minimisation is a design choice not a property of the rail; `pending_effectuation` is a Submission-Confirmation value, not a Policy-Status one; headless enrollment is carrier-dependent, not impossible). **Settled the poll design** (1h before first poll, then 4–8h, max 1/min/application) and **made D20's opaque correlation UUID a requirement** (`external_id` is unique-per-platform, create and submit are both non-idempotent). Full write-up: `docs/business/healthsherpa.md` **2026-08-04 section**. New items **T144–T149** | ~~~1 hour~~ (actual: about that) | ~~The correlation map, the poll design, and every HSOne-inherited assumption~~ — all three unblocked |
 | **O1** | **Gate 0 probe** — do live databases hold ICHRA/QSEHRA `LOS`, `ServiceItem`, `PlanType`, a *priced* `ServiceModule`→`RateTable` path, and a task sequence? Per environment. Read-only SQL, **script already written** | ~1 hour | **The size of B1** — days versus weeks |
 | **O4** | Does the AMS import promote `DivisionName`? (staged and discarded today) | Code read | The ICHRA class model |
 | **O32** | Does `SummitImportService` parse J3's SSN at read, or skip it? | Code read | Whether D32's hash-at-parse is free or new code |
@@ -388,7 +407,7 @@ Four buckets. **Self-answerable first, because that is the bucket that gets skip
 
 *Adjacent — the staging key is in hand, but the call is made out-of-band, not through AMS:* **O3** (which carriers are actually in Hopkins off-exchange, settling the Ambetter discrepancy), **T42** (`include_non_enrollable_offex` semantics), **T44**'s empirical half, **T47** (the 29 low-containment counties).
 
-**As of 2026-07-31 none of these has been done.** O2 in particular has been open since 2026-07-29 and is the umbrella over five separate stale assumptions.
+**As of 2026-07-31 none of these had been done.** ⭐ **O2 was done 2026-08-04** — see its row above. It took about the estimated hour, needed no credential, and it falsified more recorded claims than any other single action in this workstream. **The remaining Bucket 1 items are still untouched**, and O2's outcome is the argument for doing them: the umbrella assumption that "we are blocked on HealthSherpa" was, for a large part of this list, blocked on nobody.
 
 ### Bucket 2 — blocked on HealthSherpa (credential, allow-listing, or the company)
 
@@ -472,7 +491,13 @@ One more worth watching, from 2026-07-31: **if production allow-listing lands wh
 
 **"B-1b" and "B1" are unrelated.** `B-1b` is the rate-cache build inside A1 — shipped. `B1` is the "+" catalog and proposal integration — Gate-0-blocked and not started. A session reading V074's header as *"this is phase B1"* will draw exactly the wrong conclusion about what is built.
 
-### ⚠️ Known-stale items in `docs/business/README.md` (as of 2026-07-31)
+### ~~⚠️ Known-stale items in `docs/business/README.md` (as of 2026-07-31)~~ — ✅ ALL FOUR FIXED 2026-08-04
+
+**That doc pass happened.** All four items below were corrected in `docs/business/README.md` on
+2026-08-04: the HealthSherpa row was rewritten off the ICHRA Partner API (HSOne paths removed, the
+three-way enrollment routing and the `plan_hios_id` requirement added), the AOR/TPA line now records
+it as **resolved**, and the build-plan row reads **Revision 6 / Part 8 governs / D1–D39 / O1–O40**.
+**The list is retained below as the record of what was wrong**, not as an outstanding to-do.
 
 Recorded here rather than fixed, because that file gets its own doc pass:
 

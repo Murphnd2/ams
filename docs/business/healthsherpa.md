@@ -955,3 +955,543 @@ run 2026-07-31 because no key is configured anywhere. The compliance half belong
 - `docs/analysis/project_backlog.md` — **T41** (`fields` parameter), **T42**
   (`include_non_enrollable_offex` semantics)
 - `docs/deployment_backlog.md` — **D-78** / **D-79**, unapplied everywhere
+
+---
+
+# 2026-08-04 — O2 CLOSED: THE ENROLLMENT/STATUS SURFACE, READ FROM PUBLIC DOCS
+
+> **This section closes O2**, open since 2026-07-29 at an estimated one hour: *"re-verify the
+> enrollment/status API surface against the ICHRA Partner API — public docs, no account needed."*
+> It **corrects six standing claims** in this document, resolves several open items, and needed
+> no credential, no representative, and no BAA.
+>
+> **Method:** `https://docs.ichra.healthsherpa.com/llms.txt` gives a 25-page index. Nine pages were
+> read on 2026-08-04: Integration Setup, Endpoints, QuoteConnect, Application Deeplink, Submission
+> Confirmation, Policy Status, Supported Carriers, Enrollment Decision Path, Deeplinks V2. Then four
+> more, after a first pass under-read the enrollment side: **EnrollConnect**, Carrier Effective Date
+> Logic, Webhooks API (parent), API Changelog. **Thirteen of 25 read; twelve unread** — listed near
+> the end of this section.
+>
+> ⚠️ **Pages were fetched and summarised, not parsed from the schema.** Since 2026-07-09 every API
+> reference page links its **OpenAPI YAML**. Given this document's history with `fip_code`, `/api`
+> and now `/public`, **nothing below should be coded against without checking the YAML first** —
+> filed as **T145**.
+
+## ⚠️ Corrections to claims recorded in this document
+
+| This document says | Documentation says | Consequence |
+|---|---|---|
+| Deeplink is `POST /ichra/off_ex` (2026-07-29) | **`POST /public/ichra/off_ex`** | Missing path segment — the **third** instance of this error class after `/v1/quotes` to `/api/v1/quotes` |
+| *"UnitedHealthcare — quotable but not API-enrollable in TX"* (open question #4, 2026-07-28); *"the known non-API-enrollable carrier in this county"* (2026-07-31) | **UHC: quote, deeplink, EnrollConnect, submission confirmation AND policy status all live** | See "The UHC finding" below. **This was wrong when written, not superseded** |
+| `tpa_slug` *"rejected if caller-supplied (400 invalid_request, enforced via `not`/`anyOf`)"* (2026-07-28) | **`tpa_slug` is an accepted request field** inside the HRA object — *"auto-fill TPA from database"* | That constraint is HSOne's. Combined with `_agent_id` and nine `agent_of_record_*` fields, the AOR/TPA model is resolved at contract level |
+| Deeplink *"substantially dissolves the hardest problem... SSA transmits prefill demographics only"* (2026-07-29) | The deeplink API **accepts `ssn`** (9 digits, no dashes), race/ethnicity, hispanic origin, DOB, gender, existing coverage, household income | **Half wrong.** PHI minimisation on the deeplink path is a **design choice AMS makes**, not a structural property of the rail. Material to the BAA scope (O13) |
+| Policy Status values include `pending_effectuation` (2026-07-29) | Policy Status carries **`effectuated` / `cancelled` / `terminated`**; `pending_effectuation` arrives on the **Submission Confirmation** webhook | Two webhooks, two state vocabularies. Do not build one state machine from the wrong list |
+| *"Enrollment cannot be fully headless — carrier payment is a browser form POST"* (2026-07-29, repeated since) | True for the `payment_redirect` path only. **`PUT /applications/:id/payment_method` takes ACH server-side**, and the 2026-07-29 changelog added in-flow ACH for Anthem/Wellpoint | **Carrier-dependent, not universal.** Some carriers can be fully headless |
+
+## The UHC finding — and why it matters beyond UHC
+
+**API Changelog, 2026-06-09:** *"UnitedHealthcare Expansion: Added across 25 states (AL, AZ, CO, FL,
+GA, IA, IL, IN, KS, LA, MA, MI, MO, MS, NC, NE, NM, OH, OK, SC, TN, TX, VA, WA, WI, WY). NJ and NY
+still in testing."*
+
+UHC EnrollConnect went live in Texas **seven weeks before** this document recorded UHC as the known
+non-API-enrollable carrier in Hopkins County. **That claim was false at the time it was written** —
+not correct-then-superseded.
+
+**Standing consequence:** the 2026-07-28 HSOne-era findings need to be distrusted harder than
+"superseded on request/response shape." At least one was substantively wrong about the market on the
+day it was recorded.
+
+**Partial mitigation, and worth knowing:** the carrier matrix was genuinely moving underneath that
+evaluation. **BCBS TX (HCSC) EnrollConnect only went live 2026-07-16**, twelve days before it.
+
+## The enrollment decision path — a documented three-way tree
+
+Both flags are already present on every plan in the quote response AMS receives today.
+
+1. `api_enrollment = true` then **EnrollConnect API**
+2. else `deeplink_enrollment = true` then **Application Deeplink**
+3. else **quote-only**; an enrollment attempt returns `422` *"Plan is not available for enrollment"*
+
+*"Both endpoints accept the same canonical request schema, so you can build once and route
+accordingly."* One payload builder, two routes — simpler than the plan assumed.
+
+Pre-enrolment validation: `GET /api/v1/plans/{hios_id}?include=enrollment_requirements` returns
+per-plan attestations, SEP reasons, HRA fields, applicant questions and proof-of-residency
+instructions.
+
+## `plan_hios_id` is REQUIRED — the architectural question, settled
+
+Required on the current deeplink **and** on Deeplinks V2, whose specification states plainly:
+*"A specific plan HIOS ID remains required; no shopping/browse experience is supported."*
+
+**There is no version of this integration where AMS hands off to a HealthSherpa shopping experience.**
+AMS must present plans and pass a chosen one.
+
+**Therefore the ERISA neutral-presentation burden lands on SSA, not on HealthSherpa.** Two consequences:
+
+- **O20** (*"is SSA building a plan display on the employer's behalf itself an endorsement problem?"*)
+  moves from theoretical to load-bearing. It gates the only input the enrollment API requires.
+- `ichra_platform_capability_map.md` Layer 3's design constraint — complete list, neutral ordering,
+  employee-controlled sort/filter, no "recommended" badge, no default selection, no hidden carriers —
+  is now **mandatory rather than a stated preference**. It is the only compliant route to a
+  `plan_hios_id`.
+
+## EnrollConnect API — full application lifecycle, live since 2026-04-13
+
+Same base URLs and `x-api-key` as quoting (`api.ichra-staging.healthsherpa.com` /
+`api.ichra.healthsherpa.com`).
+
+| Method | Path | Purpose |
+|---|---|---|
+| POST | `/api/v1/applications` | Create draft |
+| PUT | `/api/v1/applications/:id` | Update |
+| GET | `/api/v1/applications/:id` and `/api/v1/applications` | Retrieve, list (paginated) |
+| POST | `/api/v1/applications/:id/submit` | Submit to carrier |
+| POST | `/api/v1/applications/:id/cancel` and `/terminate` | Pre- / post-effectuation |
+| PUT | `/api/v1/applications/:id/payment_method` | Set ACH payment method |
+| GET | `/api/v1/applications/:id/payment_redirect` | Carrier payment form |
+| POST | `/api/v1/applications/:id/supporting_documentation` | Upload SEP docs |
+
+**Not a single monolithic submit.** A draft/validate/submit lifecycle with inline validation
+(`errors` array — **empty means ready to submit**), hypermedia `next_actions`, and an `events` audit
+timeline carrying field-level from/to diffs with **automatic PII redaction** (newest-first, max 50).
+
+`policy_status`: `draft` to `pending_effectuation` to `effectuated` / `submission_failed` /
+`cancelled` / `terminated`. `document_status`: `none_needed` / `required` / `uploaded` / `verified` /
+`denied`.
+
+⚠️ **Full-replacement model:** *"Send the complete application on every call. Any field you omit may
+be cleared."*
+
+⚠️ **Neither create nor submit is idempotent.** `external_id` is enforced **unique per platform**;
+a duplicate returns `422 duplicate_external_id`. **This makes D20's opaque correlation UUID a
+requirement, not a tidiness preference.**
+
+**Post-enrolment constraints:** cannot change `first_name` and `last_name` simultaneously after
+submission; `date_of_birth` cannot change alongside a name change; plan changes need OEP or a
+qualifying SEP; check `supports_changes` / `can_change_plan` / `can_report_change` first.
+
+## PHI, attestations and signatures — larger than recorded
+
+**EnrollConnect collects:** SSN (encrypted at rest) or ITIN, DOB, gender, Medicare/Medicaid enrolment
+status, disability status with end date, incarceration status, veteran/active-duty status,
+immigration eligibility indicator, race/ethnicity, hispanic origin, spoken and written language,
+addresses with FIPS, tobacco use in last 6 months, communication impairment type, existing coverage
+(insurer, policy id, term date), full-time student status, marital status, guardian information for
+minors, responsible-party details.
+
+**The deeplink-vs-EnrollConnect PHI asymmetry recorded 2026-07-29 holds** — if anything it
+understated EnrollConnect's surface.
+
+**Attestations** (state- and carrier-specific): `agrees_issuer_attestations`,
+`electronic_signature_consent`, `broker_signature_attestation`,
+`coverage_replacement_attestation_accepted`, `pediatric_dental`, `consumer_working_with_agent`,
+`spouse_or_dependent_authorization`, plus four agent attestations —
+`agent_submitted_application`, `agent_provided_consumer_marketing_materials`,
+`agent_advised_consumer_of_product_features`, `agent_retained_signed_application_copy`.
+
+**`disclosure_statement_accepted` is required for Texas HMO plans** — and the Hopkins reference plan
+is **Blue Advantage Silver HMO 306**. The demo county's flagship plan hits this requirement.
+
+**Signatures:** primary applicant's typed full legal name in `applicants.primary.signature`, plus
+`signatures.signature_date`. Supplemental state signatures for **CO, UT, NJ**.
+
+⚖️ **The four `agent_*` attestations model an agent in the loop and record what that agent did.**
+That is evidence for the **agent-workstation** reading of **O14**, at least on the EnrollConnect
+path — the API expects a licensed agent, not an unattended employee.
+
+## Payment — a decision tree, not a single redirect
+
+`payment_instructions` carries three booleans: `payment_required_with_submission`,
+`payment_redirect_supported`, `pay_by_phone_supported`.
+
+1. **`payment_required_with_submission = true`** then `PUT /payment_method` with ACH details
+   **before** submit; requires 200 to proceed.
+2. **Otherwise** submit first, poll until status leaves `draft`, then evaluate post-submit options.
+3. **Post-submit:** if `next_actions` contains `rel: "payment_redirect"` then `GET /payment_redirect`
+   returns carrier destination, `POST` method and form fields — *"submit all returned fields in the
+   member's browser without interpreting them."* Else if `pay_by_phone_supported`, show
+   `payment_phone_number`. Else the carrier handles payment outside the integration.
+
+⚠️ **The redirect does not confirm payment.** Continue polling or rely on webhooks for reconciliation.
+
+## Polling and rate limits — the design O2 existed to unblock
+
+- Wait a **minimum of 1 hour** after submission before the first poll.
+- Then poll every **4-8 hours**; most carriers report effectuation within **1-3 business days**.
+- **Never more than once per minute per application**, or `429`.
+- `429` carries **`Retry-After`**. `5xx` is retryable with exponential backoff, **max 3 attempts**.
+- `include_events=false` for a lightweight poll that skips the audit timeline.
+- **Webhooks are the documented primary mechanism; polling is the fallback.**
+
+`422` error codes: `missing_required_field`, `invalid_field_value`, `invalid_field_format`,
+`plan_not_found`, `plan_not_available`, `duplicate_external_id`, `ineligible_for_enrollment`,
+`supporting_documentation_required`, `latest_submission_failed`, `payload_too_large`.
+
+## Effective dates — this document's existing claim CONFIRMED
+
+**Confirmed:** *"No endpoint to query valid dates ahead of time"* — the carrier validates and returns
+either a list of valid dates or a message indicating selection is unavailable.
+`ichra_administration_scope.md`'s *"no API endpoint pre-validates effective dates for a SEP reason;
+a human step"* holds exactly as written.
+
+`desired_effective_date` (ISO 8601) is optional. *"When omitted, the carrier auto-determines the
+effective date based on the SEP type and event date (recommended)."*
+
+**Carrier logic varies.** The majority pattern — *"first of next month from today"* — covers
+**Ambetter, BCBS entities, Cigna, Molina, Oscar and UHC**. The 15th-of-month cutoff applies to
+CareSource and MedMutual, **not** the Texas carriers. Anthem/Wellpoint/Sanford use *"depends on QLE
+1st-or-later."*
+
+⚠️ **Consequence for Sandoval (9/1/26 effective, `sep_reason: offered_ichra`):** on a
+first-of-next-month carrier, the submission must land in **August**.
+
+## Webhooks — setup process public, delivery semantics not
+
+**Documented setup (four steps):** supply your HTTPS endpoint URL, authentication preference,
+**exchange scope (on / off / both)**, which APIs (Submission Confirmation / Policy Status / both) and
+environment (sandbox / production) to your account manager; they register the endpoint and enable
+delivery; verify in staging; go live. Delivery is `HTTPS POST`, `Content-Type: application/json`.
+
+⚠️ **Still not public, and this sharpens O15 considerably** — it is not merely "which auth methods":
+
+- Authentication methods (*"a variety"*, unspecified)
+- **Retry policy and limits**
+- **Delivery guarantees** (at-least-once vs exactly-once)
+- **Ordering guarantees**
+- **Idempotency / `transaction_id` handling**
+- **Signature verification**
+- **IP allow-listing**
+
+**Those five operational items decide whether AMS's receiver needs dedup and reordering logic.**
+Ask for them by name.
+
+**Payload note:** the **off-exchange payload is a superset of on-exchange**. Off-ex adds
+`application_id`, `issuer_hios_id`, `members[]` and `policies[]`; on-exchange webhooks carry
+materially less. This **strengthens D16 (off-exchange first)** — the data coverage verification needs
+only exists on the off-ex rail. `payment` object: `payment_status` (`unpaid_binder` / `paid_binder` /
+`paid` / `past_due`), `payment_status_updated_date`, `grace_period_start_date`, `paid_through_date`,
+balances, `autopay_indicator`.
+
+⚠️ **Payment dates are `MM/DD/YYYY` strings, not ISO.** Relevant to backlog #38 / phase B3.
+
+## Carrier matrix — off-exchange, as published 2026-08-04
+
+The full matrix covers 26 carriers. Texas-relevant rows, and what they mean for Hopkins' 65 plans:
+
+| Carrier | Hopkins plans | Quote | Deeplink | EnrollConnect | Submission | **Policy status** |
+|---|---|---|---|---|---|---|
+| BCBS TX | 24 | live | live | live | live | **Coming in 2026** |
+| UHC | 23 | live | live | live | live | **Live now** |
+| CHRISTUS | 18 | live | live | live | live | **Not listed** |
+| Ambetter | (25 states incl. TX) | live | live | live | live | live |
+
+**O16 is half-answered without a representative.** BCBS TX policy status is publicly marked "coming
+in 2026." **The year is confirmed; the month is not** — and the month is what the 2026-vs-2027 launch
+decision turns on.
+
+**The "rural Texas has no automated coverage verification" framing is too pessimistic.**
+**UHC policy status is live today**, covering 23 of Hopkins' 65 plans. Automated verification is
+available now for roughly a third of that market — the difference between *"impossible"* and
+*"depends which plan the member picked."* The manual fallback stays first-class, but it is not the
+only path from day one.
+
+⚠️ **CHRISTUS has no policy-status roadmap at all** — not "coming," simply absent. That is the
+carrier zizzl switched off for Forrest, and 18 of Hopkins' plans. **Ask about it by name.**
+
+Also published: *"Support for all carriers and all states is expected prior to OEP PY2027"*
+(EnrollConnect gaps are NJ and NY).
+
+## Quoting — parameters this document had not recorded
+
+`POST /api/v1/quotes` accepts more than previously catalogued: **`household_income`**,
+`dental_search`, `add_attributes`, `utilization` (low/medium/high), `all_benefits`, `all_details`,
+`networks` (HMO/PPO/EPO/POS/Indemnity), `issuer_hios_ids`, `providers` (NPIs), `filter`, and
+`per_page` **max 500** (not 100).
+
+**`household_income` returns subsidy information inline.** Subsidy segmentation — capability #5 in
+`ichra_strategy.md` §3, recorded as *"documented, never called"* — is **a request field on a call AMS
+already makes**, not a new integration. Filed as **T147**.
+
+**`GET /api/v1/plans?state=&plan_year=&off_ex=` was added 2026-07-09** and the changelog states its
+purpose explicitly: *"enables plan catalog caching with pagination support."* **HealthSherpa built the
+state-level endpoint for the caching use case.** It is the intended path for rate-cache warming, not
+a workaround. Filed as **T146**.
+
+`POST /api/v1/aptc_estimates` requires `zip_code`, `fip_code`, `household_income`, `applicants[]`;
+returns `estimated_aptc` and `csr_level` (enum `00`-`06`).
+
+## SEP reasons — `offered_ichra` and `offered_qsehra` are first-class
+
+The deeplink `sep_reason` enum includes **`offered_ichra`** and **`offered_qsehra`** alongside
+`birth`, `adoption`, `death`, `divorce`, `marriage`, `loss_of_mec`, `relocation`, and roughly twenty
+others.
+
+⚖️ **Operational evidence — not proof — for the counsel question** in
+`ichra_administration_scope.md` about whether the QSEHRA/ICHRA triggering event reliably compels
+off-exchange issuers. HealthSherpa's own off-exchange rail treats both as valid SEP reasons across
+its carrier matrix. **Still a counsel question; the evidence is now better than it was.**
+
+## HRA object — native, and it maps onto AMS entities
+
+Required: `type` (**`ichra` | `qsehra`**) and `offered_hra`. Also carried: `amount` (monthly employer
+contribution), `contribution_covers` (**`premium` | `premium_oop`**),
+`hra_used_for_spousal_or_family_premiums`, `start`, employer `name` / `phone` / address / `fein`,
+`premium_payer`, `household_size`, `annual_household_income`,
+`annual_household_income_determination`, `offered_hra_unknown`, **`tpa_slug`**.
+
+## ⚠️ Open contradiction — resolve before building the AOR path
+
+**Changelog 2026-04-09:** *"`_agent_id` no longer required."*
+**Current Application Deeplink page:** `_agent_id` is listed as **required**.
+
+Most likely the change applied to EnrollConnect (where `agent_of_record` is optional) while the
+deeplink retained it — **but that is inference.** `_agent_id` is the AOR mechanism and the whole SWBD
+downline attribution model rests on it. Filed as **T144**.
+
+## Pages not read (12 of 25)
+
+Introduction, Onboarding, AI Agents & MCP, Supporting Material (parent), FIPS County Codes,
+Carrier-Specific Info, Use Cases, Integration Scenarios, FAQs, Coming Soon Overview, Expanded
+Deeplink API (parent), Deeplink Mapping.
+
+**Highest value among them:** Carrier-Specific Info (CHRISTUS and BCBS TX quirks), Integration
+Scenarios and Use Cases (HealthSherpa's own framing of the TPA/administrator account shape), FAQs
+(often where rate limits and SLA posture live), Onboarding (the approval process).
+
+## What is still genuinely human-gated after this section
+
+Everything else on the old blocker list was answerable from a URL. What remains:
+
+1. **Webhook authentication method plus the five delivery semantics** above (O15)
+2. **Staging deeplink Basic Auth** credentials
+3. **Production allow-listing** (T136)
+4. **BAA** — counterparty Geozoning, Inc. DBA HealthSherpa (O13)
+5. **BCBS TX policy status — which month in 2026?** (O16)
+6. **CHRISTUS policy status — planned at all?**
+7. **Published rate limits for quoting** (a `429` exists; no values documented)
+
+## Related to this section
+
+- `docs/analysis/project_backlog.md` — **T144** (`_agent_id` contradiction), **T145** (verify against
+  the OpenAPI YAML), **T146** (`GET /api/v1/plans` as the warm path), **T147** (`household_income`
+  subsidy inline), **T148** (`AgeCurve` has no 2027 curve), **T149** (`per_page` 500)
+- `docs/ichra_strategy.md` §3 (capability ranking), §6 (data surface), §10 (long-lead register)
+- `docs/business/ichra_platform_capability_map.md` — Layer 3
+- `docs/business/ichra_administration_scope.md` — effective-date claim, now confirmed
+
+---
+
+# 2026-08-04 (b) — RATE STABILITY, SILVER LOADING, AND WHAT STAGING DATA ACTUALLY IS
+
+> **Companion to the O2 section above.** That one recorded what the API *does*; this one records what
+> the *data* is — how often it changes, why the on- and off-exchange figures diverge, and what can and
+> cannot be claimed about staging. **Produced from a design discussion on 2026-08-04**, reasoning over
+> data already in the repository. It introduces no new API calls.
+>
+> ⚠️ **Provenance discipline.** Claims below are marked **[verified]** (checked against this
+> repository or the API documentation), **[domain]** (ACA regulatory mechanics — settled law, but not
+> verified here and worth a counsel or carrier confirmation before it reaches client-facing material),
+> or **[inference]**. **The silver-loading explanation is [inference] over [verified] numbers** — it
+> fits the data and nothing else proposed fits as well, but it has not been tested. The test is
+> specified at the end and is two staging calls.
+
+## How often off-exchange rates change: annually, and not otherwise
+
+**[domain]** ACA-compliant individual-market plans are the **same filed products** whether sold on or
+off exchange. Three mechanics lock this:
+
+- **Single risk pool** (ACA §1312(c)(1)) — an issuer must pool all its individual-market enrollees,
+  on *and* off exchange, and derive one index rate for that pool.
+- **Rating factors are exhaustive** — age (the statutory curve `AgeCurve` implements), geographic
+  rating area, tobacco (capped 1.5×), family composition. Nothing varies by sales channel.
+- **Rates are filed and approved annually** with the state DOI and are **fixed for the plan year.**
+
+**Consequence: an off-exchange premium for plan X, rating area Y, age Z, plan year 2026 does not
+change between January and December.** Off-exchange is not a less stable data source than
+on-exchange — it is the same filed rate, a different catalog.
+
+⚠️ **"Off-exchange" is not a synonym for ACA-compliant, and only one meaning is stable.** Short-term
+limited duration, fixed indemnity and health care sharing ministries are all sold off-exchange, none
+are MEC, and none are subject to any of the above — they can reprice whenever the carrier likes.
+`ichra_administration_scope.md` already carries this as a substantiation guardrail; it applies to the
+**data** conversation equally. **Everything in `rating_area_rate_cache` is ACA individual market**,
+because it comes from this rail. Nothing cached here is exposed to that volatility.
+
+### What does change inside a plan year: the catalog, not the rates
+
+**[verified/domain]** This matters more for AMS than rate churn would, because **the cache stores
+aggregates over a catalog, not individual plan rates.** `market_low_premium`, `lcsp_premium`,
+`benchmark_silver_premium`, `lowest_bronze_premium`, `plan_count` and `carrier_count` are all
+functions of *which plans were in the response*. **One plan added, corrected or withdrawn moves every
+one of those figures even though no rate moved at all.**
+
+Realistic sources: issuer service-area corrections, carrier data corrections flowing through to
+HealthSherpa, and product discontinuations (rare mid-year — guaranteed renewability generally
+requires advance notice and takes effect at renewal).
+
+⭐ **Design consequence: the refresh AMS needs is change *detection*, not re-fetch.** One age-21 call
+per county, compare `plan_count` / `carrier_count` / `market_low_premium` against what is stored,
+rewrite only on drift. That is the same shape as the existing age-curve **canary**, applied to the
+catalog instead of the curve — and it turns the cache into its own drift alarm. Tracked as **T152**.
+
+### The cadence mismatch this exposes
+
+**[verified]** `RateCacheWarmService.INTERVAL_HOURS = 24`, with a full delete-and-replace per county
+(`RateCacheDAO.replaceCountyRates`). **The job re-fetches, roughly 365 times a year, data that is
+filed once a year.** The cadence was a generic scheduled-job default, not a reading of the data's
+volatility. See **T152**; it is also why "which counties can we afford to warm" was never the
+question it appeared to be — see the cost model below.
+
+## What warming actually costs — the numbers, so nobody re-derives them
+
+**[verified]** against `RateCacheWarmService.warmCounty` and `AgeCurve`:
+
+**Per county-year: two API calls.** One off-exchange quote at age 21, one on-exchange quote at age 21
+(T44/V078). Plus **one canary per plan year in total**, not per county. Each call paginates at
+`per_page: 100` until a short page, so a 65-plan market is a single round trip.
+
+**Output: 44 rows** (ages 21–64). **Every row above age 21 is arithmetic** — `AgeCurve.scale()`
+multiplying the age-21 premium by a statutory factor. No API call learns anything about ages 22–64.
+
+| Scope | Rows |
+|---|---|
+| 1 county, 1 plan year | 44 |
+| 4 counties, 1 plan year (state as of 2026-07-31) | 176 |
+| **All 254 Texas counties, 2 plan years** | **22,352** |
+| Every US county (~3,143), 2 plan years | ~276,600 |
+
+⭐ **Storage is not a constraint and will not become one**, even nationally — the row is ~15 small
+numeric columns. **Any framing of the county list as "how much data can we afford to store" is
+answering a question that does not exist.**
+
+**The real cost is API calls, and it is entirely a function of cadence.** All 254 Texas counties ×
+2 plan years = ~1,016 calls **per cycle**. At 24-hour cadence that is ~370,000 calls a year. At
+plan-year cadence plus a rollover re-warm it is ~1,016 calls, **once** — less than three days of the
+current four-county schedule.
+
+⭐ **Warm the whole state once and the "which counties" question dissolves.** It was never a storage
+decision and never really a business decision; it was an artifact of refreshing annual data daily.
+**This is the substantive update to D-83.**
+
+## ⭐ Silver loading — what the V078 gap almost certainly is
+
+**[verified]** V078's header records a live staging probe, Hopkins TX, plan year 2026:
+
+| | Off-exchange | On-exchange | Ratio |
+|---|---|---|---|
+| Age 40 lowest silver | $489.38 | $705.37 | 1.4414 |
+| Age 21 lowest silver | $382.93 | $551.93 | 1.4413 |
+
+**[domain]** For a genuinely identical plan — same HIOS id — the premium **must** be the same on and
+off exchange. The index rate is set for the whole single risk pool; the only market-wide adjustments
+are risk adjustment, reinsurance and **Exchange user fees**, and the user fee is applied *market-wide*
+rather than loaded onto exchange plans. Plan-level adjustments (AV, network, benefits beyond EHB,
+admin costs) **explicitly exclude Exchange user fees.** The regulation deliberately prevents charging
+more for the same plan on-exchange.
+
+**[inference]** So a 44% gap cannot be the same plan priced twice. It is almost certainly **silver
+loading**, which works by creating **different plans**, not different prices for one plan:
+
+When CSR reimbursements were defunded in 2017, issuers recovered the cost by loading it into silver
+premiums. Because the load only needs to cover CSR-eligible enrollees — who are on-exchange by
+definition — issuers in many states file **off-exchange-only silver "mirror" plans without the
+load**: separate HIOS ids, near-identical coverage, materially cheaper. That produces exactly the
+observed shape, including the **identical ratio at both ages** (a uniform load, with the age curve
+holding on both rails as `RateCacheWarmService` already notes).
+
+### Three consequences
+
+1. ⭐ **T44/V078 is systematic, not defensive.** If this is silver loading, the off-exchange LCSP
+   understates the true ICHRA-affordability LCSP in **every silver-loaded market, always**, and always
+   in the dangerous direction (a too-low LCSP makes an unaffordable offer look affordable). V078 is
+   load-bearing infrastructure, not a belt-and-braces column.
+2. ⭐ **It is a genuine selling point for the off-exchange rail, and nothing in the pitch says so.**
+   For an **unsubsidized** employee the off-exchange silver mirror really is ~44% cheaper than its
+   on-exchange twin. That is real money, and it is an argument for the off-exchange ICHRA model that
+   `swbd_premiumpath.md` and the capability map do not currently make.
+3. ⭐ **It explains *why* the population splits so hard.** The same mechanism that makes off-exchange
+   cheaper for the unsubsidized **inflates the on-exchange benchmark silver plan, which inflates
+   APTC** — making on-exchange more valuable for the subsidized. `ichra_administration_scope.md`
+   records *that* the population splits; this is the quantitative reason.
+
+### The test, and it is two calls
+
+**Unrun.** Quote Hopkins at age 21 with `off_ex: true` and again with `off_ex: false`, intersect the
+plan lists on `hios_id`, compare `gross_premium` for matched plans:
+
+- **Matched plans price identically** → the single-risk-pool rule holds, the whole gap is catalog
+  difference (off-exchange-only silver mirrors), and the on/off overlap percentage — never measured —
+  falls out of the same call.
+- **Matched plans price differently** → the reasoning above is wrong and needs investigating before
+  any affordability figure ships.
+
+`RateCacheWarmService.canaryCheck` (`:452-491`) already does exactly this shape — builds a
+`Map<hiosId, premium>` from a second response and compares plan-by-plan. Tracked as **T151**.
+
+⚠️ **Also unmeasured: how much the two catalogs overlap at all.** The only figures on record are
+**65 off-exchange vs 45 on-exchange** in Hopkins — and the 45 dates from 2026-07-28, before the
+pagination finding. Counts do not give overlap; those numbers are consistent with near-total overlap
+or with substantial disjointness in both directions.
+
+## What staging data is, and what may not be claimed about it
+
+**[verified] Staging returns real rate data, not synthetic.** Corroborated twice against independent
+external baselines — `$582.78` to the penny against both the zizzl CSA figure and HSOne, and the
+Hopkins 65-plan / BCBS 24 / CHRISTUS 18 / UHC 23 split reproduced exactly.
+
+**Not established, and worth stating precisely because the inference is easy to make:**
+
+1. **Staging has never been compared to production**, because production 403s. Every parity check is
+   staging-versus-*third party*. **"Staging equals production" is a well-supported inference, not a
+   measurement.**
+2. **Staging's refresh cadence is unknown.** It could be a periodic snapshot rather than a live
+   mirror. Within a plan year that is nearly harmless — annual rates do not move. **At plan-year
+   rollover it matters**, since PY2027 could appear in one environment before the other. Never asked.
+3. **Catalog completeness on staging rests on one county.**
+4. **Non-quoting surfaces genuinely differ** — the staging deeplink is a separate host behind Basic
+   Auth, webhooks have their own sandbox, and staging enrollments produce no real policies.
+
+### ⭐ The provenance gate is an accountability gate, not a data-quality gate
+
+**This reframe matters and is not recorded anywhere else.** The red banner and the
+`source_env = 'PRODUCTION'` checks are **not** protecting anyone from wrong numbers — on the evidence
+the staging numbers are very likely right. They protect the **accountability trail**: if SSA puts a
+premium in front of an employer it must be able to say where it came from and stand behind it, and
+*"fetched from a staging environment we were told is real"* is not that.
+
+**Two things follow.** The fix is **production allow-listing** (T136), an accountability change — not
+a data-quality investigation, and not a loosened check. And it is an *additional*, independent reason
+not to relax the gate, alongside the ones already settled in session 10.
+
+## HSOne and the ICHRA Partner API are two APIs over one data set
+
+**[verified]** The 2026-07-30 rate-parity test recorded it directly: *"the two products return the
+same underlying market data for this county."* Same plan counts, same carrier split, same
+`$582.78`. What differs is the surface — host, path, request nesting, field spellings, response
+shape, and feature scope (HSOne being, per KJ Sherman, *"simplified versions of the ICHRA APIs"*).
+
+**[domain] Neither product is the source of this data.** ACA individual-market rates are carrier
+filings, submitted to state DOIs and CMS, approved and published. HealthSherpa reads them. So does
+zizzl. So does Ideon. **That is why three independent vendors agree to the cent.**
+
+⭐ **Strategic consequence, worth stating plainly because it changes how the dependency should be
+weighed:** SSA is **not** buying access to proprietary data.
+
+- **No vendor can out-quote another on accuracy.** The numbers are the numbers.
+- **The differentiation is catalog completeness and who controls it** — which is precisely where
+  zizzl failed Forrest. They did not lack Christus data; they chose not to show it.
+- **It lowers the risk half of the HealthSherpa dependency.** `healthsherpa.md` calls the dependency
+  *"a conscious strategic bet"* — fair, but the **rate-data** half of that bet is low-risk, because
+  the underlying filings are public and another vendor reads the same ones. What would genuinely have
+  to be re-integrated if HealthSherpa vanished is the **enrollment rail**, not the rate data.
+
+## Related to this section
+
+- `docs/analysis/project_backlog.md` — **T151** (on/off overlap and same-plan price probe),
+  **T152** (refresh cadence and full-state warm), **T148** (`AgeCurve` 2027), **T146**
+  (`GET /api/v1/plans`)
+- `docs/deployment_backlog.md` — **D-83** (county list, now not cost-constrained), **D-84**
+- `docs/migrations/V078__rate_cache_onex_lcsp.sql` — the probe numbers reproduced above
+- `docs/business/ichra_administration_scope.md` — MEC/subsidy segmentation

@@ -65,7 +65,14 @@ spouse's group plan can invalidate an ICHRA design that would have worked as a Q
 - ⚖️ **Initial substantiation** — proof of individual-market MEC or Medicare before the first
   reimbursement. Narrower than QSEHRA (see table above).
 - Effective-date coordination — no API endpoint pre-validates effective dates for a SEP reason; a
-  human step.
+  human step. ✅ **CONFIRMED 2026-08-04** against HealthSherpa's own documentation: *"No endpoint to
+  query valid dates ahead of time"* — the carrier validates on submission and returns either a list
+  of valid dates or a message that selection is unavailable. `desired_effective_date` is optional,
+  and omitting it (recommended) lets the carrier derive from SEP type and event date. **Carrier logic
+  varies:** *"first of next month from today"* covers Ambetter, the BCBS entities, Cigna, Molina,
+  Oscar and UHC; the 15th-of-month cutoff applies to CareSource and MedMutual, **not** the Texas
+  carriers. ⚠️ **Operational consequence:** a 9/1/26 effective date on a first-of-next-month Texas
+  carrier requires the submission to land in **August**.
 - Payment mechanics: employee-pays-then-reimbursed, or direct-to-carrier premium payment. **The
   former is cleaner on the endorsement question.**
 - **Enrollment does not end on SSA's system.** Carrier payment is a browser form; until the member
@@ -155,9 +162,14 @@ open item on the exact SEP window (60-day placeholder).
 level, adjusted for household size, and upper-threshold behavior has changed with legislation more
 than once. **Verify current-plan-year thresholds rather than relying on a remembered number.**
 
-This is a calculation, and the tooling exists: HealthSherpa's `POST /aptc_estimate` endpoint, and
-quoting with `household_income`, which returns subsidy information inline. **Both are on the free
-tier, ungated.**
+This is a calculation, and the tooling exists: HealthSherpa's `POST /api/v1/aptc_estimates` endpoint
+(required: `zip_code`, `fip_code`, `household_income`, `applicants[]`; returns `estimated_aptc` and
+`csr_level`), and quoting with `household_income`, which returns subsidy information inline.
+✅ **Both confirmed present 2026-08-04** — the endpoint path is corrected here from `/aptc_estimate`,
+and `household_income` is verified as a documented parameter on `POST /api/v1/quotes` itself, so the
+segmentation output needs **one optional field added to a call AMS already makes**, not a second
+integration (backlog **T147**). ⚠️ **"Ungated" means no separate approval, not no credential** — both
+are live calls and sit behind the same staging/production access gate as all quoting.
 
 **So intake includes a routing step:**
 

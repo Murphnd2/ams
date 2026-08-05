@@ -1304,7 +1304,36 @@ ON DUPLICATE KEY UPDATE value = VALUES(value);
 
 **Update 2026-07-30 (V076) — bare-FIPS form now also accepted.** `RATE_CACHE_COUNTIES` entries now accept two formats, both supported indefinitely with no cutover required: the legacy `zip:fips:state` triple above, and a bare `county_fips` (e.g. `48223`) resolved through the new `county_reference` table (V076) via `CountyReferenceDAO.findByFips`, which supplies the zip and state from that row. `RateCacheWarmService.readConfiguredCounties` dispatches on entry shape — 3 colon-separated parts is the legacy triple, 1 part is the bare-FIPS form, anything else is malformed and skipped as before. Bare FIPS is preferred for new entries going forward since it keeps county identity in one place (`county_reference`) instead of duplicating a hand-picked ZIP into every constant entry, but the triple form is not deprecated — it still works unchanged and needs no migration.
 
-**Applies to:** Production ⬜ — the actual county list is a business decision (which markets SSA quotes), not yet made.
+> ⭐ **Reframed 2026-08-04 — "which counties" is largely not a business decision, and never was a cost one.**
+>
+> This item has been carried as blocked on an unmade business call about which markets SSA quotes.
+> The cost model says otherwise. Verified against `RateCacheWarmService.warmCounty`:
+>
+> - **A county-year costs two API calls** — one off-exchange quote at age 21, one on-exchange at 21
+>   (T44/V078) — plus one canary per plan year *in total*, not per county. It yields **44 rows**, and
+>   every row above age 21 is `AgeCurve` arithmetic, not a fetch.
+> - **Storage is irrelevant at any plausible scale.** All 254 Texas counties × 2 plan years is
+>   **22,352 rows**; every US county × 2 years is ~276,600. The row is ~15 small numeric columns.
+> - **The only real cost is calls, and it is a function of cadence, not county count.** The full state
+>   × 2 plan years is ~1,016 calls per cycle. At today's 24-hour cadence that is ~370,000 calls a
+>   year — which is what makes a long county list look expensive. **ACA rates are annual filings**, so
+>   at a plan-year cadence the same full-state warm is ~1,016 calls **once** — less than three days of
+>   the current four-county schedule. See **T152**.
+>
+> **Recommendation: seed all 254 Texas counties and stop treating the list as a gating decision.**
+> Pair it with **T76** (warm-on-miss) as the safety net — which also handles the multi-installation
+> case, where each TPA's counties differ and cannot be known centrally.
+>
+> ⚠️ **What *does* remain a real decision** is **which states**, not which counties: the ZIP crosswalk
+> is Texas-only (V084/V085, 2,894 rows) and `AgeCurve` implements the **federal default curve only**,
+> which Texas uses and several states do not. Expanding beyond Texas needs both a crosswalk migration
+> and a state dimension on the curve. See **T148**.
+>
+> ⚠️ **Warming more counties does not make them demoable** — every warmed row is stamped
+> `source_env = STAGING` until production allow-listing lands (**T136**), and the provenance gates
+> still fire. Volume and provenance are independent problems.
+
+**Applies to:** Production ⬜ — the county *list* is no longer the blocker (see above); seeding it is. State scope beyond Texas remains a genuine decision.
 
 ---
 
@@ -1323,6 +1352,33 @@ ON DUPLICATE KEY UPDATE value = VALUES(value);
 **Why this exists.** `RateCacheWarmService` originally derived its plan year from `Year.now()` — wrong during the period it matters most. Open enrollment for plan year 2027 begins November 1, 2026. From that date, an agent illustrating a group with a January 1, 2027 effective date needs 2027 rates, but `Year.now()` returns 2026 until January 1. The cache would have served the wrong plan year while appearing perfectly healthy — no error, no warning, just wrong numbers during the busiest quoting window of the year. `plan_year` is already part of `rating_area_rate_cache`'s unique key, so the cache can hold multiple years simultaneously — the fix is configuration, not schema.
 
 **During open enrollment (November 1 onward), configure both the current and upcoming plan year**, e.g. `2026,2027`, so illustrations for either effective date resolve correctly.
+
+> ⚠️ **BLOCKED PREREQUISITE — added 2026-08-04. This item is NOT config-only for plan year 2027.**
+>
+> **`AgeCurve` currently contains a curve for plan year 2026 and no other** (`AgeCurve.java:90-92`,
+> `CURVES_BY_PLAN_YEAR` is a hardcoded static map). Adding `2027` to this constant therefore
+> **produces nothing**: `hasCurveFor(2027)` returns false, `RateCacheWarmService` logs the ERROR
+> described below and skips the year, and no 2027 county is ever warmed.
+>
+> **So the November step is a code change plus a deployment, not a constant update.** Sequence it
+> accordingly — the curve has to ship *before* the constant is seeded, or the seeding is a no-op that
+> looks done. Tracked as **T148** in `docs/analysis/project_backlog.md`.
+>
+> **Verify the 2026 curve at the same time.** `AgeCurve`'s own Javadoc records that **only five of its
+> 44 factors are empirically confirmed** (ages 21, 25, 40, 45, 64); the remaining 39 are transcribed
+> from the CMS federal default and have never been checked against a published CMS source. Every
+> premium the illustration displays at any age other than 21 is derived from that table by
+> `AgeCurve.scale()`, so a wrong interior factor yields a confidently wrong figure with no symptom.
+>
+> **Also note the curve is state-scoped.** Texas uses the federal default; several states publish
+> their own. A state dimension is required before any non-federal-default state is warmed.
+>
+> ⚠️ **Two related plan-year items, so they are not discovered separately in November:**
+> **T127** — with two plan years live simultaneously, `IllustrationServlet.resolvePlanYear` falls
+> through to `configuredPlanYears.get(0)`, so **sort order in this constant silently decides the plan
+> year** for every illustration and every plus-tier proposal intake. Reordering does not fix it; it
+> moves the silent error to the other population. **D-86** — `ICHRA_AFFORDABILITY_PCT_2027` will need
+> its own IRS-verified value; it is per plan year and does not carry forward.
 
 **A year with no `AgeCurve` entry is skipped with a logged error, never guessed or silently substituted with a different year's curve.** `RateCacheWarmService` reads this constant fresh at the start of every run (not once at startup), so a change takes effect on the next scheduled tick without a restart. If the constant is absent, empty, or wholly unparseable, the run is skipped entirely and logged as an error rather than falling back to any default year.
 

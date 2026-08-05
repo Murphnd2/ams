@@ -286,6 +286,69 @@ Static resources (`/images/`, `/css/`, `/js/`, `/fonts/`, etc.) are exempted bef
   `docs/analysis/local_render_verification.md`; the script itself was repaired (it lives on the
   workstation, outside this repo).
 
+## Session 2026-08-04 (b) — HealthSherpa research + doc reconciliation (docs only, no code, no migration)
+
+**O2 closed** — the enrollment/status API surface re-verified against the ICHRA Partner API's public
+documentation. Open since 2026-07-29 at an estimated hour; it took about that, **needed no
+credential, no representative and no BAA**, and falsified more recorded claims than any other single
+action in this workstream. 13 of 25 doc pages read.
+
+**Six corrections to `docs/business/healthsherpa.md`**, the headline being that **UnitedHealthcare
+has been API-enrollable in Texas since 2026-06-09** — seven weeks *before* this repo recorded it as
+"the known non-API-enrollable carrier." **That claim was wrong when written, not superseded**, which
+is a reason to distrust the 2026-07-28 HSOne-era findings harder than "wrong shape." Also: the
+deeplink path is `/public/ichra/off_ex`; `tpa_slug` is accepted, not rejected; the deeplink accepts
+`ssn`, so PHI minimisation is a **design choice**, not a property of the rail; `pending_effectuation`
+belongs to Submission Confirmation, not Policy Status; headless enrollment is **carrier-dependent**,
+not impossible (ACH can be set server-side).
+
+⭐ **`plan_hios_id` is required on every enrollment route**, including Deeplinks V2 (*"no
+shopping/browse experience is supported"*). **There is no hand-off that moves the ERISA
+neutral-presentation burden to HealthSherpa** — it sits with SSA, which makes **O20** load-bearing
+rather than theoretical.
+
+⭐ **The market data is not proprietary.** ACA rates are carrier filings; HealthSherpa, zizzl and
+Ideon all read the same ones — which is why three vendors agree to the cent. Differentiation is
+catalog completeness and who controls it (exactly where zizzl failed Forrest). The **rate-data** half
+of the HealthSherpa dependency is therefore low-risk; the **enrollment rail** is the real bet.
+
+⭐ **Silver loading almost certainly explains V078's 44% on-vs-off LCSP gap** — off-exchange-only
+silver *mirror* plans without the CSR load, i.e. different plans, not different prices for one plan.
+Makes T44/V078 **systematic infrastructure, not belt-and-braces**. Untested; the probe is two staging
+calls (**T151**).
+
+**Cache economics, settled:** a county-year is **2 API calls → 44 rows**; storage is irrelevant at
+any scale (22,352 rows for all Texas × 2 plan years). **The only cost is calls, and it is a function
+of cadence** — the job refreshes daily, but ACA rates are annual filings. D-83's "which counties"
+was never a cost question (**T152**, **D-83** reframed).
+
+⚠️ **Two dated items with a November deadline:** **T148** — `AgeCurve` has **no 2027 curve**, so
+D-84's plan-year seeding is a **no-op** without a code change (and only 5 of the 2026 curve's 44
+factors were ever verified). **T127** raised LOW→MED — once two plan years are live, **sort order in
+a constant silently decides the plan year**.
+
+⚠️ **The demo breaks at step 6**, and has since item 7 shipped: the *"Use This in a Proposal"*
+control is `disabled` on staging rates, so `swbd_ichra_build_plan.md` §1's *"no external gate"* claim
+was wrong the day it was written. Its gate is **redundant** — `ViewProposal` refuses staging data at
+three further points. Kevin reopened the provenance decision deliberately and asked for a
+time-boxed, agency-scoped admin override: **T150** (requirement + design sketch, not specced).
+
+**Filed:** T144–T152. **Updated:** `healthsherpa.md` (two new dated sections, +540 lines),
+`business/README.md` (all four §15-flagged stale items fixed), `ichra_strategy.md` (O2 closed, §4
+staleness banner, §10 register), `ichra_platform_capability_map.md`, `ichra_administration_scope.md`,
+`project_backlog.md`, `deployment_backlog.md` (D-83, D-84), `swbd_ichra_build_plan.md`.
+
+⚠️ **Not updated, deliberately:** `docs/analysis/plus_tier_build_plan.md` — canonical for build
+mechanics with O1–O40, not read this session, and editing it blind is this project's recurring
+failure mode. **O2's findings almost certainly move several O-items there; it needs its own pass.**
+
+⚠️ **Caveat on everything above:** findings came from fetched-and-summarised documentation pages, not
+from parsing the OpenAPI YAML each API reference page has linked since 2026-07-09. **Nothing is safe
+to code against without that check** — filed as **T145**, and the reason is the three prior misses
+(`fip_code`, `/api`, `/public`).
+
+---
+
 ## Reference Docs
 | Topic | Location |
 |-------|----------|

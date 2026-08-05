@@ -51,19 +51,45 @@ that exist for QSEHRA and need ICHRA variants.
 Shopping UI, census-gated access, deeplink handoff. Available for every carrier in the support matrix
 including BCBS TX and CHRISTUS.
 
-**Open question shaping this layer:** whether the deeplink supports employee self-service or assumes
-an agent drives it. **The answer determines whether this is an employee portal or an agent
+**Open question shaping this layer (O14):** whether the deeplink supports employee self-service or
+assumes an agent drives it. **The answer determines whether this is an employee portal or an agent
 workstation.** See `docs/business/healthsherpa.md`.
+
+⚖️ **Partial answer, 2026-08-04 (O2 documentation pass) — leaning agent workstation.** The
+EnrollConnect payload carries four agent attestations by name: `agent_submitted_application`,
+`agent_provided_consumer_marketing_materials`, `agent_advised_consumer_of_product_features`,
+`agent_retained_signed_application_copy`, alongside `consumer_working_with_agent` and
+`broker_signature_attestation`. **The API models a licensed agent in the loop and records what that
+agent did.** That is evidence, not a settled answer — it speaks to EnrollConnect specifically, and
+the deeplink path may still differ. **O14 stays open; the prior is no longer neutral.**
+
+⭐ **Design constraint upgraded from principle to mechanism, 2026-08-04.** `plan_hios_id` is a
+**required** field on every enrollment route — the current deeplink, EnrollConnect, and Deeplinks V2,
+whose spec states *"no shopping/browse experience is supported."* **There is no version of this
+integration where SSA hands off to a HealthSherpa shopping experience and the presentation burden
+travels with it.** AMS must present plans and pass a chosen one.
 
 **Design constraint (⚖️, non-negotiable):** neutral, complete plan presentation. No curation, no
 "recommended" badge, no default selection, no hidden carriers. Two independent reasons — the ERISA
 safe harbor requires the employer not endorse any particular issuer or plan, and SSA holds no
 licensure to advise on plan selection. Route plan-choice questions to the licensed agent.
+**This is now the only compliant route to the one input the enrollment API requires**, which makes
+**O20** ("is SSA building a plan display on the employer's behalf itself an endorsement problem?")
+load-bearing rather than theoretical.
 
 ## Layer 4 — Administration (recurring revenue)
 
 Coverage verification by webhook where the carrier supports it, **manual fallback where it does not —
-build the fallback as a first-class path, not an afterthought.** Reimbursement processing, which has
+build the fallback as a first-class path, not an afterthought.**
+
+⭐ **Corrected 2026-08-04 (O2 documentation pass): the "no automated verification in rural Texas"
+framing was too pessimistic.** Against Hopkins County's 65 plans — **UHC policy status is live
+today** (23 plans), BCBS TX is marked *"coming in 2026"* (24 plans), and **CHRISTUS has no
+policy-status roadmap at all** — not "coming," simply absent from the matrix (18 plans). So automated
+verification already covers roughly a third of that market. The distinction that matters is not
+"metro versus rural" but **"which carrier did this member pick"** — and CHRISTUS, the carrier zizzl
+switched off for Forrest, is the one with no published path. The manual fallback stays first-class;
+it is no longer the only path from day one. Reimbursement processing, which has
 **no rail in AMS today** (backlog #38). Employer billing and agency remittance, which exist. Then
 ⚖️ 1095-B and ⚖️ PCORI.
 

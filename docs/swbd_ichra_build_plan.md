@@ -59,7 +59,7 @@ his own losing case and winning it is a different event from a feature walkthrou
 | 3 | Picks Hopkins County, enters 3 lives | *"65 plans, three carriers. The practical floor is $412 at 21, $588 at 40, $1,236 at 64. Rates as of this morning."* | ✅ **Built** — RANGE illustration |
 | 4 | Enters the three actual ages | A per-band net-cost table at a $400 contribution, and the group monthly total | Item 5 |
 | 5 | Moves the contribution slider | **The flip point per employee.** *"At $350 Maria keeps her subsidy and comes out ahead. At $450 she loses it and is worse off. Here is the exact number, for each of your three."* | Items 8 + 9 |
-| 6 | Clicks **Use this in a proposal** | The existing ProposalBuilder, prospect pre-filled, the illustration already attached as a proposal section | Items 6 + 7 |
+| 6 | Clicks **Use this in a proposal** | The existing ProposalBuilder, prospect pre-filled, the illustration already attached as a proposal section | Items 6 + 7 — ⚠️ **BUT the control is `disabled` on staging rates; see the 2026-08-04 correction below. T150** |
 | 7 | Sends it; opens the public link | An SWBD-branded proposal. **No SSA chrome. Sell price only — his markup applied and invisible** | ✅ **Built** — white-label + V066/V067 markup |
 | 8 | Clicks **Apply**, submits | An application, then a **Setup activity carrying an ICHRA task sequence** — 90-day notice, ERISA safe-harbor notice, affordability determination, substantiation, PCORI | Items 4 + 10 |
 
@@ -98,7 +98,38 @@ capability it does not have.
 | **Anything employee-facing** | The whole build-now scope sits on the agent side of `legal_assumptions.md`'s scope line. Crossing it is a decision, not an increment (LA-09) |
 | **The card, PremiumPath mechanics** | A DataPath Summit configuration in flight. Out of scope by decision — `ichra_strategy.md` §8 |
 
-### ⭐ The demo has no external gate — settled 2026-07-31 (S6)
+### ⚠️ CORRECTION 2026-08-04 — the demo *does* break at step 6, and the claim below is wrong as written
+
+**The heading below says the demo has no external gate. Step 6 has one, and it shipped the same day
+this section was written.**
+
+`illustration25.jsp:991-1003` renders *"Use This in a Proposal"* as a **disabled button** with the
+note *"Available once production rates are configured"* whenever `sourceEnv != 'PRODUCTION'`. It was
+gated that way from item 7's first commit (`e5b2009`, 2026-07-31) — the same date this section was
+settled. **So the demo does not degrade gracefully at a banner, as §1.5 anticipated; it stops
+mid-pipeline on a greyed-out control**, which is a worse demo moment than the banner ever was,
+because the quote→proposal→application→setup pipeline *is* the pitch (§1.2).
+
+⭐ **And the button's gate is redundant with respect to employer-facing exposure.** `ViewProposal`
+independently refuses staging data at three further points — the illustration snapshot section
+(`:142`), the conditional MARKET page (`resolveMarketPage`, `:467`) and the seven market tokens
+(`:796`). **Enabling the hand-off on staging data puts no staging figure in front of an employer**;
+the public proposal renders exactly the tier-1 administration content it renders today. The gate
+costs the demo's central claim and buys nothing the three downstream gates do not already enforce.
+
+**This is a distinct question from the one session 10 settled.** That decision — *"the provenance
+gate is not to be relaxed to make the market-data demo work"* — concerned **employer-facing market
+figures on an unauthenticated public link**. This is an **agent-facing control on an authenticated
+page** with three independent gates still standing behind it.
+
+**Kevin reopened this deliberately on 2026-08-04** and asked for a time-boxed, agency-scoped
+PSP-admin override. **Requirement and design sketch are filed as T150** — not yet specced, not yet
+built. Until it exists, **the demo stops at step 5** and steps 6–8 have to be narrated.
+
+The rest of this section — that the banner is correct, stays, and does not itself block a *partner*
+demo — is unaffected and still stands.
+
+### ⭐ The demo has no external gate — settled 2026-07-31 (S6) — ⚠️ **superseded in part, see the correction directly above**
 
 **Today every cached rate row is stamped `source_env = STAGING`, and the illustration page says so in
 a red banner reading *"Do not present this to a client"*** (verified 2026-07-31 in
