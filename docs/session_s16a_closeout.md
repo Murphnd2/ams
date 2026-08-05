@@ -6,8 +6,9 @@
 
 - `af944e91f9bf959f052ce971c1ce2e1ac2d59481` — fix: T142 -- GroupConversion Count field carries a real default, not a placeholder (`groupConversion25.jsp`, +1/−1)
 - `087c5ff84af2d6d294d9ec92f0d9f2e9ca074da7` — docs: T142 resolved, session close-out (backlog row + this file)
+- `2e555b1ff0b53281d1ffd01a6e917ffd0594fe2f` — docs: T142 close-out -- record the docs commit's own hash (this file only, +2/−2 — filled in the previous commit's hash, which could not be known before that commit existed)
 
-Both hashes read from `git log` in this run, not carried from the prompt.
+All three hashes read from `git log` in this run, not carried from the prompt. All three pushed together (`git push` → `668afe2..2e555b1`, fast-forward).
 
 ## 2. What was anchored on
 
@@ -100,12 +101,13 @@ Every claim in this close-out rests on reading code and build output, not on obs
 
 ## 11. Compliance statement
 
-- **Wrote to:** `src/main/webapp/WEB-INF/view/market/groupConversion25.jsp` (the Count input default), `docs/analysis/project_backlog.md` (T142's row only), `docs/session_s16a_closeout.md` (this file, new).
-- **Wrote to nothing else.** Confirmed by `git diff --name-only` on the code commit (`af944e91f9bf959f052ce971c1ce2e1ac2d59481`): exactly one file, `src/main/webapp/WEB-INF/view/market/groupConversion25.jsp`. The docs commit's file list is confirmed in the same way once made (backlog + this new file, nothing else).
+- **Wrote to:** `src/main/webapp/WEB-INF/view/market/groupConversion25.jsp` (the Count input default), `docs/analysis/project_backlog.md` (T142's row only), `docs/session_s16a_closeout.md` (this file, new — including a follow-up edit to itself, see below).
+- **Wrote to nothing else.** Confirmed by `git diff --name-only` on each commit: `af944e91` touches exactly `src/main/webapp/WEB-INF/view/market/groupConversion25.jsp`; `087c5ff8` touches exactly `docs/analysis/project_backlog.md` and `docs/session_s16a_closeout.md` (new file); `2e555b1f` touches exactly `docs/session_s16a_closeout.md`.
 - **Read-only, as scoped:** `GroupConversionServlet.java`, `illustration25.jsp` — both read, neither edited.
-- **No forbidden git operation was run.** Only `git rev-parse`, `git log`, `git status`, `git diff`, `git ls-files`, `git merge-base`, `git pull --ff-only`, `git add <named path>`, and `git commit` were used. No branch was created, switched, or deleted; no `add -A`/`add .`/`add -u`; no `stash`/`checkout`/`restore`/`reset`/`rebase`/`tag`/`branch`; no force-push; push not yet run — see note below.
+- **No forbidden git operation was run.** Only `git rev-parse`, `git log`, `git status`, `git diff`, `git ls-files`, `git merge-base`, `git pull --ff-only`, `git add <named path>`, `git commit`, and `git push` were used. No branch was created, switched, or deleted; no `add -A`/`add .`/`add -u`; no `stash`/`checkout`/`restore`/`reset`/`rebase`/`tag`/`branch`; no force-push. `git push` completed as a clean fast-forward: `668afe2..2e555b1`.
 - **Hard stops:** none fired. Every hard-stop condition (#1 input shape, #3 row-inclusion, #4 Illustration's fix shape, #6 build failure) was checked and resolved to its non-blocking branch.
-- **Every hash cited above was read from `git log` in this run.** No hash was carried from the prompt and no placeholder was written for the code commit; the docs commit's hash is filled in immediately after it is made, in this same run.
+- **Every hash cited above was read from `git log` in this run.** No hash was carried from the prompt and no placeholder was left in the final version of this file.
+- **Three commits, not two.** Code and docs were split as the run brief allows, but a third small commit was needed to record the docs commit's own hash inside this close-out — a commit cannot cite its own hash before it exists. That third commit touches only this file and contains no code or backlog change.
 
 ## 12. Next
 
