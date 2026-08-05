@@ -204,6 +204,7 @@ public class ServiceManagerAction extends HttpServlet {
                     em.getTransaction().begin();
                     enh.setDescription(request.getParameter("description").trim());
                     enh.setShortText(request.getParameter("shortText").trim());
+                    enh.setSystemManaged("on".equals(request.getParameter("systemManaged")));
                     em.merge(enh);
                     em.getTransaction().commit();
                 }

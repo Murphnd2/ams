@@ -941,6 +941,14 @@
                                                                                                          maxlength="20"
                                                                                                          value="${selectedEnhancement.getShortText()}">
                         </div>
+                        <div class="mb-2 form-check">
+                            <input type="checkbox" class="form-check-input" id="systemManagedCheck" name="systemManaged"
+                                   ${selectedEnhancement.isSystemManaged() ? 'checked' : ''}>
+                            <label class="form-check-label" for="systemManagedCheck" style="font-size: 0.85rem;">
+                                System Managed
+                            </label>
+                            <div class="form-text" style="font-size: 0.72rem;">Marks this enhancement as driving system-generated proposal content. While marked, its scoped proposal section is withheld from the public proposal page. Has no effect on the application.</div>
+                        </div>
                     </div>
                     <div class="modal-footer border-0">
                         <button type="button"
