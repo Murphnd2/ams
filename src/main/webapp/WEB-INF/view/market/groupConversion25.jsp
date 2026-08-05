@@ -109,7 +109,40 @@
                     </div>
                 </c:if>
 
-                <div class="status-card">
+                <%-- T143 — collapse the inputs once they have done their job, mirroring
+                     illustration25.jsp's W14 mechanism (two sibling status-cards toggled by
+                     inline style="display:none", never by <c:if>/<c:choose> omission, so the
+                     form stays in the DOM and stays submittable). Diverges from W14 on ONE
+                     point deliberately: the summary line here is built server-side from EL
+                     (selectedCounty/selectedPlanYear/submittedTotalLives/
+                     submittedCurrentTotalPremium are all already-set request attributes) rather
+                     than from a client-side describe() reading live form values — those three
+                     facts are already in JSP scope, so no new request attribute, no scriptlet,
+                     and no servlet touch was needed to get them. JS is used only for the
+                     one-directional Edit-click toggle, matching W14's own editBtn handler.
+
+                     hasResult is empty selectedCounty and hasRates: the exact compound gate the
+                     results block itself uses ({@code not empty selectedCounty} at :287 wrapping
+                     a hasRates <c:choose>). The extra `empty inputError` conjunct is defensive
+                     parity with W14's own three-part hasResult and is structurally redundant
+                     today — GroupConversionServlet.doPost returns immediately on every inputError
+                     path before hasRates is ever set (countyFips validation :199-203, county
+                     lookup :213-216, census row age/count validation :228-238), so hasRates is
+                     always unset (falsy) whenever inputError is set. Kept anyway so a future
+                     servlet change can't silently make the two disagree. --%>
+                <c:set var="hasResult" value="${not empty selectedCounty and empty inputError and hasRates}"/>
+
+                <div class="status-card" id="inputSummary" ${hasResult ? '' : 'style="display:none;"'}>
+                    <div class="d-flex align-items-center flex-wrap gap-2">
+                        <span><i class="bi bi-sliders2 me-1"></i><strong>Inputs</strong></span>
+                        <span class="text-muted">
+                            <c:if test="${not empty selectedCounty}"><c:out value="${selectedCounty.countyName}"/>, <c:out value="${selectedCounty.state}"/> &middot; </c:if>Plan Year ${selectedPlanYear} &middot; ${submittedTotalLives} ${submittedTotalLives == 1 ? 'life' : 'lives'}<c:if test="${not empty submittedCurrentTotalPremium}"> &middot; <fmt:formatNumber value="${submittedCurrentTotalPremium}" type="currency"/>/mo current premium</c:if>
+                        </span>
+                        <button type="button" class="btn btn-sm btn-outline-secondary ms-auto" id="inputSummaryEdit">Edit</button>
+                    </div>
+                </div>
+
+                <div class="status-card" id="inputCard" ${hasResult ? 'style="display:none;"' : ''}>
                     <form method="post" action="GroupConversion" class="row gy-2 gx-3 align-items-end">
                         <%-- Item 13: carry the opportunity attribution across this form's own
                              re-submissions. Already resolved and scope-checked server-side;
@@ -433,5 +466,26 @@
 
     </div>
 </div>
+
+<script>
+/* T143 — one-directional Edit toggle for the collapsed input summary. Presentation only:
+   #inputCard is hidden via inline style, never removed from the DOM, so clicking Edit
+   re-shows the form exactly as it was -- no re-submit, no reload, nothing cleared. Mirrors
+   illustration25.jsp's W14 editBtn handler; unlike W14, no describe() is needed here since
+   the summary text is rendered server-side (see the T143 comment above inputSummary). */
+(function () {
+    var card = document.getElementById('inputCard');
+    var summary = document.getElementById('inputSummary');
+    var editBtn = document.getElementById('inputSummaryEdit');
+    if (!card || !summary || !editBtn) return;
+
+    editBtn.addEventListener('click', function () {
+        summary.style.display = 'none';
+        card.style.display = '';
+        var zip = document.getElementById('zip');
+        if (zip) zip.focus();
+    });
+})();
+</script>
 </body>
 </html>
