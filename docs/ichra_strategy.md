@@ -496,8 +496,18 @@ One more worth watching, from 2026-07-31: **if production allow-listing lands wh
 **That doc pass happened.** All four items below were corrected in `docs/business/README.md` on
 2026-08-04: the HealthSherpa row was rewritten off the ICHRA Partner API (HSOne paths removed, the
 three-way enrollment routing and the `plan_hios_id` requirement added), the AOR/TPA line now records
-it as **resolved**, and the build-plan row reads **Revision 6 / Part 8 governs / D1–D39 / O1–O40**.
+it as **resolved**, and the build-plan row reads **Revision 9 / Part 11 governs / D1–D39 / O1–O42**.
 **The list is retained below as the record of what was wrong**, not as an outstanding to-do.
+
+⚠️ **Item 3 below was itself wrong, and this section propagated the error.** It says the build plan
+*"is **Revision 6, with Part 8 governing**"* — but **Parts 9 and 10 already existed** when that was
+written (D38 the LCSP split, D39 the two-LOS decision, both 2 August), having shipped without a header
+bump. The build plan's own header block said "Part 8 governs" too, and this section copied it rather
+than checking the file's last `# Part N` heading. The first correction to `README.md` on 2026-08-04
+copied it a third time before being caught. **All four are now fixed, and the build plan's header
+carries a note explaining the jump to Revision 9.** ⭐ **The transferable rule: read a document's last
+section heading, not its self-description.** A header block is a claim about the file; the headings
+are the file.
 
 Recorded here rather than fixed, because that file gets its own doc pass:
 

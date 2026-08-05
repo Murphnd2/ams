@@ -4,9 +4,29 @@
 **Date:** 29 July 2026
 **Status:** Planning only. No code, no schema, no SQL produced.
 **Baseline:** Migration **V073**, to be re-verified against `ls docs/migrations/` before any script is written.
-**Revision 6** — Custom ID mailing-export correlation resolved negatively, division-scoped ICHRA
+**Revision 9** — O2 resolved from public documentation; four HSOne-era premises dissolved; O20
+escalated to load-bearing.
+**Part 11 governs.** It resolves **O2** (with one residual promoted to O41), partially answers O14,
+sharpens O15, half-answers O16, escalates **O20**, upgrades **D20** from a decision to a requirement,
+strengthens D16 and D38, makes D17's `HS_POLICY_STATUS` rung concrete per carrier, and adds O41–O42.
+
+⚠️ **Header correction, 2026-08-04.** This block previously read *"Revision 6 — Part 8 governs"* while
+**Parts 9 and 10 already existed** in the file (D38, the LCSP data-source split, 2 August; and D39,
+the two-LOS decision, 2 August). Under this document's own precedence rule — later Parts govern — the
+header had been understating the current revision by two Parts and pointing readers at a superseded
+one. **`docs/business/README.md` had copied the same wrong claim** and was corrected the same day.
+Two revision numbers were never assigned in the header (Parts 9 and 10 shipped without bumping it);
+this block jumps to **Revision 9** so the number and the Part count agree from here.
+
+*Revision 8* — **Part 10**: D39, `ICHRA+` and `QSEHRA+` are two separate LOS rows (structural — the
+quotable attached-product bundle differs by statute).
+
+*Revision 7* — **Part 9**: D38, the LCSP data-source split (CMS for compliance, HealthSherpa for
+illustration; V078's columns retained as a cross-check).
+
+*Revision 6* — Custom ID mailing-export correlation resolved negatively, division-scoped ICHRA
 classes, the two-report notice model, and the HealthSherpa provider-check resolution.
-**Part 8 governs.** It resolves O34 (negatively), O35, O36, and O38, narrows B4a's reconciliation
+**Part 8** resolves O34 (negatively), O35, O36, and O38, narrows B4a's reconciliation
 problem, adds O39–O40, and resolves O23 favorably.
 
 *Revision 5* — Summit Data Exchange capabilities, correlation keys, and the J7 benefit export.
@@ -63,7 +83,20 @@ bridge, finds strong evidence for division-scoped ICHRA classes (O38), and estab
 notice reports are complementary rather than competing, narrowing B4a's reconciliation problem. It
 adds O39–O40 and resolves O23 favorably via `docs/business/healthsherpa.md`'s 2026-07-30 section.
 
-**Precedence: Part 8 > Part 7 > Part 6 > Part 5 > Part 4 > Parts 1–3.**
+**Part 9** splits the LCSP data source (**D38**): CMS's ICHRA Employer LCSP Look-up Table for
+compliance-facing affordability, HealthSherpa for illustration figures. V078's `onex_*` columns are
+retained as a cross-check, not removed.
+
+**Part 10** establishes (**D39**) that `ICHRA+` and `QSEHRA+` are **two separate `LOS` rows** — the
+quotable attached-product bundle differs by statute, not by preference.
+
+**Part 11** resolves **O2** from public documentation — the enrollment/status surface, the poll
+design, and the correlation model — and dissolves four HSOne-era premises, including the
+employer-scoped `GET /v1/enrollments` polling design that backlog **#38**'s "concrete unblock" rested
+on. It escalates **O20** to load-bearing (`plan_hios_id` is required on every enrollment route, so the
+plan display cannot be handed off), upgrades **D20** to a requirement, and adds **O41–O42**.
+
+**Precedence: Part 11 > Part 10 > Part 9 > Part 8 > Part 7 > Part 6 > Part 5 > Part 4 > Parts 1–3.**
 
 ### Provenance warning governing everything below
 
@@ -2056,3 +2089,156 @@ COBRA attachment above is real, but **it quotes mainly at the larger end of the 
 Do not build the ICHRA+ bundle presentation as though COBRA were a standard attachment for this
 population. `state continuation on ICHRA loss` is already carried in the **O21** standing docket
 (Part 2), and this is the second decision to lean on it.
+
+---
+---
+
+# Part 11 — O2 resolved: the enrollment surface is documented, and four HSOne-era premises dissolve
+
+**Date:** 4 August 2026
+**Source:** `docs/business/healthsherpa.md` sections **2026-08-04** and **2026-08-04 (b)**, produced by
+reading 13 of the 25 pages at `docs.ichra.healthsherpa.com`. No credential, no representative, no BAA.
+**Part 11 governs.**
+
+## O1–O21 status changes
+
+| # | Was | Now |
+|---|---|---|
+| **O2** | Open since 2026-07-29, *"~1 hour, no account needed"* | ✅ **RESOLVED** — with one residual, promoted to **O41** below. See "What O2 actually answered" |
+| **O14** | Deeplink self-service or agent-completed? Open | ⚠️ **Partially answered, leaning agent workstation.** Not closed |
+| **O15** | Webhook auth methods supported | ⚠️ **Sharpened, still vendor-gated.** The *setup process* is public; the **delivery semantics** are not, and they are the part that changes AMS's code |
+| **O16** | BCBS TX policy status *when* in 2026; CHRISTUS at all | ⚠️ **Half-answered from public material.** BCBS TX is published as *"coming in 2026"* — **year confirmed, month not.** CHRISTUS is **absent from the matrix entirely**, not marked "coming" |
+| **O20** | ERISA posture on an AMS-built plan display | ⬆️ **ESCALATED from "confirm" to load-bearing.** No longer avoidable — see below |
+| **O13** | BAA execution | **Scope changed, not status.** The deeplink accepts `ssn`, so PHI minimisation is a **design choice AMS makes**, not a property of the rail. EnrollConnect's PHI surface is materially larger than Part 1 recorded |
+
+## What O2 actually answered — and the one thing it did not
+
+O2 was written as four HSOne-era sub-questions: *is the enrollment list employer-scoped; do
+`employer_external_id`, `updated_since`, and `employer.external_id` exist.*
+
+**Three of the four dissolve.** There is no `GET /v1/enrollments` employer-scoped polling endpoint on
+this product. `employer_external_id` and `updated_since` do not appear anywhere in the ICHRA Partner
+API's documented surface — they are HSOne's, exactly as the provenance warning in this document's
+header anticipated. **The correlation model is different in kind, not in spelling:**
+
+- **`external_id` is set by the platform, per application**, and is **enforced unique per platform**
+  (a duplicate returns `422 duplicate_external_id`).
+- It is echoed in **both** webhook payloads, alongside `application_id` and `transaction_id`.
+- Employer identity travels in the **`hra` object** (employer `name`, `phone`, address, **`fein`**,
+  plus `tpa_slug`) — as application content, not as a queryable scope key.
+
+⚠️ **The fourth sub-question is NOT answered, and is promoted rather than buried.** `GET
+/api/v1/applications` exists and is paginated, but **its query parameters were not captured in this
+read.** Whether it can be filtered by employer — or whether per-employer grouping is entirely AMS-side
+off `external_id` — is unestablished. **See O41.**
+
+⭐ **Consequence for C4 (Part 1) and for backlog #38.** C4 treated `employer.external_id` as a third
+correlation key, and `healthsherpa.md`'s 2026-07-28 section framed #38's *"concrete unblock"* as
+employer-scoped `GET /v1/enrollments` polling with `updated_since`. **That unblock, as described, does
+not exist on this product.** What replaces it is stronger, not weaker: **push webhooks carrying
+`paid_through_date`** (Policy Status), which is a better substantiation artifact than a polled list —
+*"coverage was in force through this date"* rather than *"is this person active now."* But it is
+**push, correlated on AMS's own key**, and any design assuming a pull-by-employer needs rewriting.
+
+## The poll design — settled, and it belongs to EnrollConnect not to a status endpoint
+
+O2 was said to block *"the correlation map, the poll design, and every HSOne-inherited assumption."*
+All three are now unblocked. Documented polling guidance:
+
+- **Minimum 1 hour** after submission before the first poll; then every **4–8 hours**.
+- **Never more than once per minute per application** (`429`, carrying `Retry-After`).
+- `5xx` retryable, exponential backoff, **max 3 attempts**.
+- `include_events=false` for a lightweight poll.
+- **Webhooks are the documented primary; polling is the fallback** — which inverts the emphasis Part 1
+  C3 carried.
+
+Most carriers report effectuation within **1–3 business days**.
+
+## D-series consequences
+
+| # | Change |
+|---|---|
+| **D20** | ⬆️ **Upgraded from a decision to a requirement.** *"Outbound correlation key is a separate opaque UUID"* was adopted as good hygiene. `external_id` being **unique per platform**, with **create and submit both non-idempotent**, makes it structurally necessary — AMS must own dedup and cannot retry blindly. **D20 is no longer optional and should stop being described as a choice** |
+| **D16** | ✅ **Strengthened.** The **off-exchange webhook payload is a superset of on-exchange** — off-ex adds `application_id`, `issuer_hios_id`, `members[]` and `policies[]`; on-exchange carries materially less. The data coverage verification needs **exists only on the off-exchange rail**. Off-exchange-first is now a data-availability argument, not only a licensing one |
+| **D17** | **The `HS_POLICY_STATUS` rung becomes concrete per carrier**, and the launch market is mixed: **UHC live today** (23 of Hopkins' 65 plans), **BCBS TX coming in 2026** (24 plans), **CHRISTUS absent from the matrix** (18 plans). ⭐ **The "rural Texas has no automated verification" premise is wrong** — roughly a third of that market is automatable now. The `ATTESTATION` rung is still primary and **O18 is still terminal for B3**, but D17's ladder is no longer hypothetical at its top rung |
+| **D15** | Unchanged and reinforced. The rail asymmetry stands; `sep_reason` carries **both** `offered_ichra` and `offered_qsehra` as first-class values, so QSEHRA's *SEP trigger* is supported off-exchange even though D15's *enrollment leg* asymmetry is unaffected |
+| **D38** (Part 9) | ✅ **Reinforced by an independent mechanism.** D38 chose CMS for compliance-facing LCSP because it is *"on-exchange by construction,"* making T44/V078's defect class *"structurally impossible."* **Silver loading explains why that defect class is systematic rather than incidental** — issuers file off-exchange-only silver *mirror* plans without the CSR load, so the off-exchange LCSP understates the on-exchange one **in every silver-loaded market, always in the dangerous direction**. V078's Hopkins numbers (44% gap, identical 1.441 ratio at both ages) fit this exactly. **D38's reasoning was right and is now better supported than when it was written.** ⚠️ Still **[inference]** — the discriminating test is two staging calls, filed as backlog **T151** |
+
+## ⭐ O20 is now load-bearing — the enrollment API forces the plan display
+
+**`plan_hios_id` is a required field on every enrollment route** — the current Application Deeplink,
+EnrollConnect, and Deeplinks V2, whose specification states *"A specific plan HIOS ID remains
+required; no shopping/browse experience is supported."*
+
+**There is no integration shape in which SSA hands off to a HealthSherpa shopping experience and the
+presentation burden travels with it.** AMS must present plans and pass one.
+
+**So O20 stops being a confirmation item and becomes a gate on B5 existing at all.** The ERISA
+safe-harbour constraints already recorded — complete list, neutral ordering, employee-controlled
+sort/filter, no "recommended" badge, no default selection, no hidden carriers — are now the **only
+compliant route to the single input the enrollment API requires**. They are a mechanism, not a
+preference.
+
+⚖️ **Sharpen the counsel question accordingly.** It is no longer *"is a curated list an endorsement
+problem?"* — nobody is proposing curation. It is: **does SSA building a complete, neutral, uncurated
+plan display on the employer's behalf itself constitute employer endorsement?** If the answer is yes,
+**B5 has no compliant form on this rail** and the enrollment leg needs rethinking rather than
+redesigning. That is a materially bigger question than O20 was carrying, and it should go to counsel
+with **O18 and O17** rather than after them.
+
+## B5 / B7 — the architecture is now fully specified
+
+Not a scope change; a removal of unknowns. The route is documented end to end:
+
+1. Quote (built) → every plan carries `deeplink_enrollment` and `api_enrollment`.
+2. Present neutrally (O20) → obtain `plan_hios_id`.
+3. Route on the documented tree: `api_enrollment` → **EnrollConnect**; else `deeplink_enrollment` →
+   **Deeplink**; else quote-only (`422 "Plan is not available for enrollment"`).
+4. Optional pre-validate: `GET /api/v1/plans/{hios_id}?include=enrollment_requirements`.
+5. Submit. ⭐ **Both routes accept the same canonical request schema** — one payload builder, two
+   routes, which is simpler than Part 3 assumed.
+6. Payment: `payment_required_with_submission` → ACH server-side via `PUT /payment_method`; else
+   submit then `payment_redirect` / pay-by-phone / carrier-external.
+7. Reconcile on webhooks; poll as fallback.
+
+⚠️ **Correction to a claim repeated throughout this document set:** *"enrollment cannot be fully
+headless"* is **carrier-dependent, not universal.** It holds for the `payment_redirect` path; ACH can
+be set server-side, and Anthem/Wellpoint gained in-flow ACH on 2026-07-29.
+
+⚠️ **Texas-specific, and it lands on the demo county:** `disclosure_statement_accepted` is a
+**required attestation for Texas HMO plans** — and Hopkins' reference plan is *Blue Advantage Silver
+HMO 306*. EnrollConnect also requires supplemental signatures for **CO, UT, NJ**, and a typed full
+legal name plus signature date.
+
+## New open items
+
+| # | Item | Settled by | Blocks |
+|---|---|---|---|
+| **O41** | **Can `GET /api/v1/applications` be filtered by employer**, or is per-employer grouping entirely AMS-side off `external_id`? The endpoint exists and is paginated; its query parameters were not captured. **This is O2's one unanswered sub-question, promoted rather than closed silently** | The linked **OpenAPI YAML** — public, no credential | The B4a/#38 correlation map, and whether AMS needs its own employer↔application index |
+| **O42** | **`_agent_id` — required or not?** The **2026-04-09 changelog** says *"no longer required"*; the **current Application Deeplink page** lists it as required. Both cannot be true of the same endpoint. **`_agent_id` is the AOR mechanism** and SWBD's downline attribution rests on it — if it is optional, attribution may silently fall back to an account default, re-creating the single-AOR failure mode the 2026-07-28 evaluation flagged as potentially fatal | The OpenAPI YAML for both endpoints — public | The AOR design; backlog twin is **T144** |
+
+**O15 is sharpened, not replaced.** The webhook *setup process* is documented (supply HTTPS endpoint,
+auth preference, exchange scope on/off/both, which APIs, environment; they register; verify in
+staging; go live). **What remains vendor-only is the operational contract:** authentication methods
+(*"a variety"*, unspecified), **retry policy, delivery guarantees, ordering, idempotency /
+`transaction_id` handling, signature verification, IP allow-listing.** Those five decide whether AMS's
+receiver needs dedup and reordering logic — i.e. whether `ApiTokenFilter` suffices is now the *smaller*
+half of O15. **Ask for them by name.**
+
+## ⚠️ Standing caveat on everything in this Part
+
+These findings come from **fetched-and-summarised documentation pages, not from parsing the OpenAPI
+YAML** that each API reference page has linked since 2026-07-09. This document set has now been bitten
+**four times** by precisely what prose drops — `fips_code`/**`fip_code`**, `uses_tobacco`/**`smoker`**,
+`/v1/quotes`/**`/api/v1/quotes`**, and now `/ichra/off_ex`/**`/public/ichra/off_ex`**.
+
+**Nothing in this Part is safe to code against without a YAML diff first.** Filed as backlog **T145**,
+and it would settle **O41** and **O42** as a side effect.
+
+## What this Part does not touch
+
+**The Gate 0 / B1 track, the Summit correlation work (O5–O11, O26–O40), the card items, and the
+notice model are all unaffected by O2.** O2 was scoped to the HealthSherpa enrollment/status surface
+and nothing in it bears on Summit, billing, or the catalog. Parts 5–8 stand unchanged.
+
+**Precedence: Part 11 > Part 10 > Part 9 > Part 8 > Part 7 > Part 6 > Part 5 > Part 4 > Parts 1–3.**
