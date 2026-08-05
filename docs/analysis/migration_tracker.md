@@ -127,10 +127,10 @@ _N/A = environment decommissioned / not maintained (applies to Demo PSP, BPO, Ma
 | V083 | Fix retired model on ICHRA_DESIGN_ADVISOR (chatbot_skill.model -> claude-sonnet-5, max_tokens -> 3072) | ⬜ | ⬜ | ⬜ | ✅ | N/A | N/A | N/A |
 | V084 | ZIP to county crosswalk table for T74 ZIP intake (zip_county; CHAR(5) zip, composite PK, no FK to county_reference) | ⬜ | ⬜ | ⬜ | ✅ | N/A | N/A | N/A |
 | V085 | Texas ZIP to county crosswalk data — 2,894 rows from the Census 2020 ZCTA-county relationship file | ⬜ | ⬜ | ⬜ | ✅ | N/A | N/A | N/A |
-| V086 | Plus-tier classification flag on line of service (`los.is_plus_tier`, NOT NULL DEFAULT 0, no backfill) — ⚠️ **nothing reads it yet** | ✅ | ⬜ | ⬜ | ⬜ | N/A | N/A | N/A |
+| V086 | Plus-tier classification flag on line of service (`los.is_plus_tier`, NOT NULL DEFAULT 0, no backfill) — **read on three surfaces, found stale and corrected 2026-08-05 (S18-H)**: public unauthenticated `/proposal/*` (`ViewProposal.java:338`, `:452`), the authenticated Proposal Builder (`ProposalBuilder.java:459`), and written from the Service Manager admin UI (`ServiceManagerAction.java:125`) | ✅ | ⬜ | ⬜ | ✅ | N/A | N/A | N/A |
 | V087 | Plus-tier ZIP/county/headcount intake captured in the Proposal Builder (`proposal_ichra_intake`, `proposal_id` UNIQUE FK ON DELETE CASCADE, `plan_year` derived server-side not agent-asserted — S10-B HS-1) — the T125 consumer of V086 | ⬜ | ⬜ | ⬜ | ✅ | N/A | N/A | N/A |
-| V088 | Employer monthly contribution per employee on `proposal_ichra_intake` (`monthly_contribution_per_employee` DECIMAL(10,2) NULL, no backfill) — T80 half 1, an intake token exactly like V087's four | ⬜ | ⬜ | ⬜ | ⬜ | N/A | N/A | N/A |
-| V089 | System-managed classification flag on enhancement (`enhancement.system_managed`, NOT NULL DEFAULT 0, no backfill) — ⚠️ **nothing reads it yet**; consumer is `FlaggedEnhancementResolver` (S18-D) | ⬜ | ⬜ | ⬜ | ⬜ | N/A | N/A | N/A |
+| V088 | Employer monthly contribution per employee on `proposal_ichra_intake` (`monthly_contribution_per_employee` DECIMAL(10,2) NULL, no backfill) — T80 half 1, an intake token exactly like V087's four | ⬜ | ⬜ | ⬜ | ✅ | N/A | N/A | N/A |
+| V089 | System-managed classification flag on enhancement (`enhancement.system_managed`, NOT NULL DEFAULT 0, no backfill) — **read by `FlaggedEnhancementResolver.isSectionEnabled`, called from `ViewProposal.java:300` on every proposal render** — runtime-verified on production, session 18 (S18-D/S18-G): `system_managed = 1` hid the scoped section, `0` restored it | ⬜ | ⬜ | ⬜ | ✅ | N/A | N/A | N/A |
 
 **Production column reconciled 2026-07-30** against a live, read-only `schema_version` probe run
 directly against the production database — that probe is the source of truth for the corrections
@@ -225,8 +225,8 @@ pattern the 2026-07-30 maintenance note at the top of this file exists to preven
 direct evidence from `docs/session_closeout_2026-08-03_session10.md`: "`V087__proposal_ichra_intake.sql`
 ... applied to production by Kevin on 2026-08-03, released in `v0.87.00`." Production cell for V087
 above is now ✅. `beta_ssa (work)`, `beta_ssa (home)`, and `dev_ssa` are unchanged — still unapplied,
-not re-probed. V088 (this session) is unapplied everywhere, including Production — Kevin applies it
-via `update.sh` per this run's close-out.
+not re-probed. V088 is applied on production, confirmed 2026-08-05 (session 18) by a direct `schema_version`
+query: `SELECT version FROM schema_version WHERE version IN ('V086','V087','V088','V089') ORDER BY version;` returned all four.
 
 ## Notes
 
