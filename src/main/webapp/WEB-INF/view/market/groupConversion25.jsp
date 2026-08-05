@@ -183,7 +183,7 @@
                                     <div>
                                         <label class="form-label mb-1" style="font-size:0.7rem;" for="count${i}">Count</label>
                                         <input type="number" class="form-control form-control-sm" id="count${i}" name="count${i}"
-                                               min="1" placeholder="1" value="${submittedCounts[i-1]}">
+                                               min="1" value="${empty submittedCounts[i-1] ? 1 : submittedCounts[i-1]}">
                                     </div>
                                     <div>
                                         <label class="form-label mb-1" style="font-size:0.7rem;" for="deduction${i}">Deduction</label>
