@@ -5,9 +5,9 @@
 ## 1. Shipped
 
 - `af944e91f9bf959f052ce971c1ce2e1ac2d59481` — fix: T142 -- GroupConversion Count field carries a real default, not a placeholder (`groupConversion25.jsp`, +1/−1)
-- `<pending — see note below>` — docs: T142 resolved, session close-out (backlog row + this file)
+- `087c5ff84af2d6d294d9ec92f0d9f2e9ca074da7` — docs: T142 resolved, session close-out (backlog row + this file)
 
-Both hashes read from `git log` in this run, not carried from the prompt. The docs commit hash is filled in after the commit below completes; this file is written before that final commit per the run's own instructions ("write it after the final push, with real hashes read from `git log` in this same run") — the code commit's hash was already available at write time, so it is real; the docs commit's hash is added in the same run once it exists.
+Both hashes read from `git log` in this run, not carried from the prompt.
 
 ## 2. What was anchored on
 
