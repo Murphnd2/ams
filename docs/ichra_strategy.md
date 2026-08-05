@@ -338,7 +338,7 @@ Everything with human lead time. **Its absence is the most visible gap in the cu
 
 ---
 
-## 11. Decisions settled — D1–D37
+## 11. Decisions settled — D1–D39
 
 The **only place all 37 appear together.** They live in two files: **D1–D17** in `plus_tier.md`, **D15–D37** in `plus_tier_build_plan.md` (D15–D17 appear in both). One line each; the sources carry the rationale.
 
@@ -363,7 +363,7 @@ The **only place all 37 appear together.** They live in two files: **D1–D17** 
 | D17 | Verification ladder: `ATTESTATION` → `CARD_TRANSACTION` (on O10) → `HS_POLICY_STATUS` (per carrier) | ✅ subject to ⚖️ **O18** |
 | D18 | Reference-row delivery: migration `INSERT` vs `D-NN` items | ⏸ **deferred until Gate 0 runs** |
 | D19 | Month-attribution rule for card verification | ⏸ dormant (O6/O10) |
-| D20 | Outbound correlation key is a separate opaque UUID; **`ssn_hash` never leaves AMS** | ✅ |
+| D20 | Outbound correlation key is a separate opaque UUID; **`ssn_hash` never leaves AMS.** ⬆️ **Upgraded from a decision to a requirement, Part 11** — `external_id` is unique per platform and both create and submit are non-idempotent, so AMS-side dedup is structural, not optional hygiene; stop describing it as a choice | ✅ **required** (Part 11) |
 | D21 | The pre-sale **design census** is a separate object from the post-sale administrative census | ✅ **what lets A3 ship years before the BAA resolves** |
 | D22 | Illustration access is authenticated agent-facing first | ✅ **shipped** — slightly broader than specified |
 | D23 | The group book lives in a new `agency_book_group`, not on `Prospect` | ✅ (O24) |
@@ -381,8 +381,10 @@ The **only place all 37 appear together.** They live in two files: **D1–D17** 
 | D35 | Participant Custom ID may retire the SSN hash entirely | ❌ **DOES NOT FIRE, Part 8** — `ParticipantCustomID` is in J2 but **not** in the mailing export (O34 resolved negatively) |
 | D36 | Read benefit plan IDs from J7; do not assert them | ✅ (⚠️ O40 — likely needs a new column) |
 | D37 | Summit Data Exchange: scheduled SFTP, both directions | ✅ designated **P1** |
+| D38 | **LCSP data-source split** — CMS's ICHRA Employer LCSP Look-up Table is the source for compliance-facing affordability (on-exchange by construction); HealthSherpa remains the illustration source (market premiums, plan/carrier counts). V078's `onex_*` columns retained as a cross-check, not removed | ✅ adopted, Part 9 |
+| D39 | **`ICHRA+` and `QSEHRA+` are two separate `LOS` rows**, not one LOS with a design attribute — the quotable attached-product bundle differs by statute (QSEHRA excludes any group health plan, so QSEHRA + FSA disqualifies the QSEHRA; ICHRA has no such exclusion) | ✅ adopted, Part 10 — sharpens D15 |
 
-**Reversal discipline:** within `plus_tier_build_plan.md`, **later Parts govern earlier ones**. Part 8 is current. Four decisions above are not what an unwary reader of Parts 1–5 would conclude — **D26, D31, D34, D35** — and all four are marked.
+**Reversal discipline:** within `plus_tier_build_plan.md`, **later Parts govern earlier ones**. Revision 9 / Part 11 is current. Four decisions above are not what an unwary reader of Parts 1–5 would conclude — **D26, D31, D34, D35** — and all four are marked.
 
 **Detail:** `docs/business/plus_tier.md` (D1–D17 with rationale); `docs/analysis/plus_tier_build_plan.md` Parts 2, 3, 4, 5, 6, 7, 8.
 
@@ -475,7 +477,7 @@ One more worth watching, from 2026-07-31: **if production allow-listing lands wh
 ### Which document supersedes which
 
 - **`docs/business/healthsherpa.md` is authoritative on the API** — but read it **backwards**. Its **2026-07-31** section supersedes the 2026-07-28 response field map in full; **2026-07-30** corrects the request shape and the access model; **2026-07-29** corrects the product itself (ICHRA Partner API, not HSOne). Superseded text is retained deliberately — the framing reversed twice and the trail is worth keeping. **Any endpoint or field detail above those sections describes HSOne.**
-- **`docs/analysis/plus_tier_build_plan.md` is canonical for build mechanics** — D18–D37, O1–O40, the phased build list. **Later Parts govern earlier ones. Part 8 is current.** Its own header states the precedence: Part 8 > Part 7 > Part 6 > Part 5 > Part 4 > Parts 1–3.
+- **`docs/analysis/plus_tier_build_plan.md` is canonical for build mechanics** — D18–D37, O1–O40, the phased build list. **Later Parts govern earlier ones. Revision 9 / Part 11 is current.** Its own header states the precedence: Part 11 > Part 10 > Part 9 > Part 8 > Part 7 > Part 6 > Part 5 > Part 4 > Parts 1–3.
 - **`docs/business/plus_tier.md` holds product intent and D1–D17.** It carries a provenance warning on itself: it was written without `healthsherpa.md` in context and several assumptions descend from HSOne-era findings. **Where they conflict, `healthsherpa.md` and the build plan are later.**
 - **`docs/analysis/phase_a_ichra_enrollment_portal.md`** — every factual finding remains accurate; its *stakes* dropped on 2026-07-29 when the deeplink model replaced the AMS-collects-PHI premise.
 - **Live state always wins over any document:** migrations → `ls docs/migrations/`; branches → `git branch -a`; per-environment migration state → `docs/analysis/migration_tracker.md`.
