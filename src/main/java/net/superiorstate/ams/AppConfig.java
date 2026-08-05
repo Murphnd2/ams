@@ -225,6 +225,32 @@ public final class AppConfig {
         return url;
     }
 
+    // --- ICHRA demo override (ssa.properties only, no default — fails closed) ---
+
+    /**
+     * T150 — true only when {@code ICHRA_DEMO_ALLOW_STAGING_PROPOSAL} is explicitly
+     * {@code "true"} in ssa.properties. Absent, blank, or any other value means OFF,
+     * mirroring {@link #getHealthSherpaBaseUrl()}'s fail-closed contract: absence is a
+     * decision, never a default.
+     * <p>
+     * <b>Deliberately NOT a DB constant.</b> A demo flag must not travel with a database
+     * restore — a properties entry is per-installation by construction and cannot be
+     * replicated onto another environment by a dump.
+     * <p>
+     * ⚠️ <b>Read from the {@code props} object loaded once by {@link #load()} at startup,
+     * never from disk per call.</b> Changing this line in ssa.properties therefore requires
+     * a Tomcat restart to take effect.
+     * <p>
+     * <b>This is one half of a two-condition gate, never a gate by itself.</b> Every call
+     * site must additionally require a PSP-admin session. It enables the ICHRA proposal
+     * hand-off button and the snapshot write on staging-sourced rates; it does not and must
+     * not affect what renders on the public {@code /proposal/*} path (LA-17), and it
+     * suppresses no staging banner.
+     */
+    public static boolean isIchraDemoStagingAllowed() {
+        return "true".equalsIgnoreCase(get("ICHRA_DEMO_ALLOW_STAGING_PROPOSAL"));
+    }
+
     // --- Build Info ---
 
     private static String appVersion;

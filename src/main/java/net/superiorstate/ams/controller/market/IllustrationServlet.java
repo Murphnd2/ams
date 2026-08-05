@@ -7,6 +7,8 @@ import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
+import net.superiorstate.ams.AppConfig;
 import net.superiorstate.ams.data.AmsDataLocal;
 import net.superiorstate.ams.data.dao.AppConstantDAO;
 import net.superiorstate.ams.data.dao.CountyReferenceDAO;
@@ -135,6 +137,22 @@ public class IllustrationServlet extends HttpServlet {
             // back out of the request by logIllustration. Null whenever absent or not
             // permitted; never an error and never a message on screen.
             request.setAttribute("opportunityId", resolveOpportunityId(em, request));
+
+            // T150 — the step-6 demo override. Resolved once here, alongside opportunityId
+            // and for the identical reason: there are thirteen forward points below,
+            // including several early returns, and a path that missed this attribute would
+            // silently fail closed (button stays disabled) in a way that looks like a data
+            // problem rather than a plumbing one. handleRangeMode and handleAgeBandMode are
+            // both called from below this line, so every one of the thirteen is covered.
+            //
+            // ⚠️ BOTH conditions are required — the properties flag AND a PSP-admin session.
+            // Never `||`. getSession(false) deliberately: a feature check must not create a
+            // session. Absent flag, absent session, or a non-admin caller all yield false.
+            //
+            // Scope: this enables the hand-off BUTTON only. It suppresses no staging banner
+            // (those read sourceEnv directly and are untouched), and it has no bearing on the
+            // public /proposal/* render, which is gated session-free under LA-17.
+            request.setAttribute("ichraDemoOverride", isIchraDemoOverride(request));
 
             String planYearsConstant = AppConstantDAO.getConstantValue(em, "RATE_CACHE_PLAN_YEARS");
             List<Integer> configuredPlanYears = parsePlanYears(planYearsConstant);
@@ -688,6 +706,26 @@ public class IllustrationServlet extends HttpServlet {
         } finally {
             if (em.isOpen()) em.close();
         }
+    }
+
+    /**
+     * T150 — the step-6 demo override: {@code ICHRA_DEMO_ALLOW_STAGING_PROPOSAL=true} in
+     * ssa.properties <b>AND</b> a PSP-admin session. Both, always; either alone is false.
+     * <p>
+     * Not an authorization check and not a substitute for {@link #isAuthorized}. It decides
+     * one thing only: whether the "Use This in a Proposal" hand-off is offered on an
+     * illustration built from staging-sourced rates. {@code ProposalBuilder} re-evaluates the
+     * same two conditions independently before writing a snapshot, so enabling the button
+     * cannot by itself produce a row.
+     * <p>
+     * {@code getSession(false)} deliberately — a feature check must never create a session.
+     */
+    private boolean isIchraDemoOverride(HttpServletRequest request) {
+        if (!AppConfig.isIchraDemoStagingAllowed()) {
+            return false;
+        }
+        HttpSession session = request.getSession(false);
+        return session != null && Boolean.TRUE.equals(session.getAttribute("isPspAdmin"));
     }
 
     /**

@@ -989,7 +989,14 @@
                                 </c:forEach>
                             </c:url>
                             <c:choose>
-                                <c:when test="${sourceEnv == 'PRODUCTION'}">
+                                <%-- T150 — the step-6 demo override. `ichraDemoOverride` is set once in
+                                     IllustrationServlet.doGet and is true only when
+                                     ICHRA_DEMO_ALLOW_STAGING_PROPOSAL=true in ssa.properties AND the
+                                     session is PSP admin. Absent attribute evaluates false, so every
+                                     path that did not set it fails closed to the disabled button.
+                                     The staging banner above is untouched and still renders — the agent
+                                     sees the warning and the enabled button together, deliberately. --%>
+                                <c:when test="${sourceEnv == 'PRODUCTION' or ichraDemoOverride}">
                                     <a href="${proposalHandoffUrl}" class="ssa-action save" id="ichraProposalLink">
                                         <i class="bi bi-file-earmark-plus me-1"></i>Use This in a Proposal
                                     </a>
@@ -1401,7 +1408,9 @@
                                 <c:param name="headcount" value="${submittedHeadcount}"/>
                             </c:url>
                             <c:choose>
-                                <c:when test="${sourceEnv == 'PRODUCTION'}">
+                                <%-- T150 — the step-6 demo override. Same two-condition gate as the
+                                     AGE_BAND hand-off above; see that block's note. --%>
+                                <c:when test="${sourceEnv == 'PRODUCTION' or ichraDemoOverride}">
                                     <a href="${proposalHandoffUrl}" class="ssa-action save">
                                         <i class="bi bi-file-earmark-plus me-1"></i>Use This in a Proposal
                                     </a>

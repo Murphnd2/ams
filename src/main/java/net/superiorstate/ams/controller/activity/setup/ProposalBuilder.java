@@ -5,6 +5,7 @@ import jakarta.persistence.EntityManagerFactory;
 import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
+import net.superiorstate.ams.AppConfig;
 import net.superiorstate.ams.data.AmsDataLocal;
 import net.superiorstate.ams.data.dao.AppConstantDAO;
 import net.superiorstate.ams.data.dao.CountyReferenceDAO;
@@ -575,6 +576,31 @@ public class ProposalBuilder extends HttpServlet {
         // Any other mode value: not recognized, no snapshot written.
     }
 
+    /**
+     * T150 — the step-6 demo override: {@code ICHRA_DEMO_ALLOW_STAGING_PROPOSAL=true} in
+     * ssa.properties <b>AND</b> a PSP-admin session. Both, always; either alone is false.
+     * <p>
+     * Re-evaluated here rather than threaded down from the caller precisely so that no
+     * method signature in this class changes. {@code ProposalBuilder} is on every
+     * proposal-creation path for every line of service, and both snapshot writers already
+     * receive the {@code request} they need.
+     * <p>
+     * When true, the two provenance guards below admit staging-sourced rates so the snapshot
+     * write path can be exercised before production rate data exists. ⚠️ <b>The snapshot is
+     * still stamped with its ACTUAL {@code sourceEnv}</b> — see the setters — so
+     * {@code ViewProposal}'s public-path gate refuses it permanently and the artifact stays
+     * self-identifying. Enabling the demo never produces a client-facing figure.
+     * <p>
+     * {@code getSession(false)} deliberately — a feature check must never create a session.
+     */
+    private boolean isIchraDemoOverride(HttpServletRequest request) {
+        if (!AppConfig.isIchraDemoStagingAllowed()) {
+            return false;
+        }
+        HttpSession session = request.getSession(false);
+        return session != null && Boolean.TRUE.equals(session.getAttribute("isPspAdmin"));
+    }
+
     /** RANGE snapshot — group premium range at ages 21/64 times headcount, mirroring IllustrationServlet.handleRangeMode's own arithmetic. */
     private void attachRangeSnapshot(HttpServletRequest request, EntityManager em, Proposal proposal, Person createdBy,
                                       CountyReference county, int planYear, String countyFips) {
@@ -595,7 +621,11 @@ public class ProposalBuilder extends HttpServlet {
         }
 
         // Fail closed — no PRODUCTION-sourced data backing this range, no snapshot.
-        if (!RatingAreaRateCache.SOURCE_ENV_PRODUCTION.equals(sourceEnv)) return;
+        // T150: unless the demo override is on (properties flag AND PSP-admin session), in
+        // which case staging-sourced rates are admitted so this write path can be exercised.
+        // The stamp below stays honest — setSourceEnv gets the real value, not PRODUCTION.
+        if (!isIchraDemoOverride(request)
+                && !RatingAreaRateCache.SOURCE_ENV_PRODUCTION.equals(sourceEnv)) return;
 
         RatingAreaRateCache age21Row = byAge.get(21);
         RatingAreaRateCache age64Row = byAge.get(64);
@@ -650,12 +680,21 @@ public class ProposalBuilder extends HttpServlet {
         LocalDateTime fetchedAt = null;
         int sortOrder = 1;
 
+        // T150 — hoisted out of the loop: the answer cannot change between rows, and this
+        // keeps the per-row cost identical to before.
+        boolean demoOverride = isIchraDemoOverride(request);
+
         for (int[] pair : ageCountPairs) {
             int age = pair[0], count = pair[1];
             RatingAreaRateCache row = RateCacheDAO.getRate(em, planYear, countyFips, age, false);
-            // Fail closed — missing cache row, or not PRODUCTION-sourced: no snapshot.
+            // Fail closed — missing cache row: no snapshot. This is a data-completeness
+            // check, NOT a provenance check, and the demo override deliberately does not
+            // touch it: a missing row means there is no figure to record at all.
             if (row == null || row.getLowestBronzePremium() == null) return;
-            if (!RatingAreaRateCache.SOURCE_ENV_PRODUCTION.equals(row.getSourceEnv())) return;
+            // Provenance. T150: staging admitted only under the two-condition override.
+            // The stamp below stays honest — setSourceEnv gets the real value.
+            if (!demoOverride
+                    && !RatingAreaRateCache.SOURCE_ENV_PRODUCTION.equals(row.getSourceEnv())) return;
 
             BigDecimal floorPremium = row.getLowestBronzePremium();
             BigDecimal netPerEmployee = floorPremium.subtract(contribution).max(BigDecimal.ZERO);
