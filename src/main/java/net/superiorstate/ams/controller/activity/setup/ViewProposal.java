@@ -959,6 +959,7 @@ public class ViewProposal extends HttpServlet {
         tokens.put("ICHRA_PAYLOAD_AS_OF", payloadAsOf);
 
         putIchraContributionScenarioToken(em, tokens, proposal);
+        putIchraGroupComparisonToken(em, tokens, proposal);
     }
 
     /**
@@ -1040,6 +1041,67 @@ public class ViewProposal extends HttpServlet {
             scenarioTable = "";
         }
         tokens.put("ICHRA_CONTRIBUTION_SCENARIO_TABLE", scenarioTable);
+    }
+
+    /**
+     * S21-E/T172 — {@code ICHRA_GROUP_COMPARISON_TABLE}, build 3 of the four ICHRA sections
+     * (docs/analysis/S20A_ichra_sections_spec.md §7). What the employer's current group plan
+     * costs against the planned ICHRA contribution. Read-only off {@code
+     * ProposalIchraSnapshot.getPayloadJson()}'s {@code groupComparison} sub-block (S21-E,
+     * frozen at build time in {@code ProposalBuilder.buildIchraPayload}) — never re-fetches
+     * {@code rating_area_rate_cache}, never calls HealthSherpa, and never reads {@code
+     * proposal_ichra_intake} at render; the frozen payload is the source of truth, same
+     * discipline as {@link #putIchraPayloadTokens} and {@link
+     * #putIchraContributionScenarioToken}.
+     * <p>
+     * {@code groupComparison} is absent on every payload written before this build, and on
+     * any proposal where the employer's current-coverage figures were never entered — both
+     * degrade to "" here, never a literal {{TOKEN}}, never a fabricated figure, never a zero
+     * standing in for "not entered".
+     * <p>
+     * Presents figures only: current total premium, current employer share, planned
+     * contribution, and the employer delta already computed at freeze time — never
+     * recomputed here. No "savings" framing, no highlighted column, no sort implying
+     * preference, no implied verdict; the employer draws the conclusion. No affordability
+     * determination — section 4 stays blocked and this method makes no such claim.
+     */
+    private void putIchraGroupComparisonToken(EntityManager em, Map<String, String> tokens, Proposal proposal) {
+        String comparisonTable = "";
+        try {
+            ProposalIchraSnapshot snapshot = ProposalIchraSnapshotDAO.findByProposalId(em, proposal.getId());
+            String payloadJson = snapshot != null ? snapshot.getPayloadJson() : null;
+            if (payloadJson != null) {
+                JsonObject payload = new Gson().fromJson(payloadJson, JsonObject.class);
+                if (payload.has("groupComparison") && payload.get("groupComparison").isJsonObject()) {
+                    JsonObject gc = payload.getAsJsonObject("groupComparison");
+                    if (gc.has("currentTotalMonthlyPremium") && !gc.get("currentTotalMonthlyPremium").isJsonNull()
+                            && gc.has("currentEmployerMonthlyShare") && !gc.get("currentEmployerMonthlyShare").isJsonNull()
+                            && gc.has("plannedContribution") && !gc.get("plannedContribution").isJsonNull()
+                            && gc.has("employerDelta") && !gc.get("employerDelta").isJsonNull()) {
+                        String currentTotal = formatCurrency(gc.get("currentTotalMonthlyPremium").getAsBigDecimal());
+                        String currentShare = formatCurrency(gc.get("currentEmployerMonthlyShare").getAsBigDecimal());
+                        String planned = formatCurrency(gc.get("plannedContribution").getAsBigDecimal());
+                        String delta = formatCurrency(gc.get("employerDelta").getAsBigDecimal());
+
+                        StringBuilder sb = new StringBuilder("<table class=\"ichra-group-comparison-table\"><thead><tr>"
+                                + "<th>Current Total Monthly Premium</th><th>Current Employer Monthly Share</th>"
+                                + "<th>Planned ICHRA Contribution</th><th>Employer Monthly Difference</th></tr></thead><tbody>");
+                        sb.append("<tr><td>").append(escapeHtml(currentTotal)).append("</td><td>")
+                                .append(escapeHtml(currentShare)).append("</td><td>")
+                                .append(escapeHtml(planned)).append("</td><td>")
+                                .append(escapeHtml(delta)).append("</td></tr>");
+                        sb.append("</tbody></table>");
+                        comparisonTable = sb.toString();
+                    }
+                }
+            }
+        } catch (Exception e) {
+            // Empty string already holds; an absent/unparseable payload must never break the render.
+            log.warn("T172 ICHRA group comparison token lookup failed for proposal #{}: {}",
+                    proposal != null ? proposal.getId() : "null", e.getMessage());
+            comparisonTable = "";
+        }
+        tokens.put("ICHRA_GROUP_COMPARISON_TABLE", comparisonTable);
     }
 
     /**
