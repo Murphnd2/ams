@@ -1022,16 +1022,45 @@ public class ViewProposal extends HttpServlet {
                     sb.append("</tbody></table>");
                     scenarioTable = sb.toString();
                 } else if (snapshot.getGroupMonthlyLow() != null && snapshot.getGroupMonthlyHigh() != null) {
-                    // RANGE mode (or an AGE_BAND snapshot with no contribution entered): no
-                    // frozen per-employee contribution figure exists for this row, so only the
-                    // gross group premium range renders -- never a fabricated net.
-                    StringBuilder sb = new StringBuilder("<table class=\"ichra-contribution-scenario-table\"><thead><tr>"
-                            + "<th>Group Monthly Premium (Low)</th><th>Group Monthly Premium (High)</th></tr></thead><tbody>");
-                    sb.append("<tr><td>").append(escapeHtml(formatCurrency(snapshot.getGroupMonthlyLow())))
-                            .append("</td><td>").append(escapeHtml(formatCurrency(snapshot.getGroupMonthlyHigh())))
-                            .append("</td></tr>");
-                    sb.append("</tbody></table>");
-                    scenarioTable = sb.toString();
+                    // RANGE mode. S21-F — attachRangeSnapshot (fixed S21-D, 468cf7c) now
+                    // persists the same per-employee monthly figure attachAgeBandSnapshot
+                    // always did: proposalBuilder.jsp:266's own label ("Monthly employer
+                    // contribution per employee") and the identical shared request parameter
+                    // (ichraParam(request, "contribution", "intakeContribution")) confirm the
+                    // unit -- per employee, never a group total. snapshot.getHeadcount()
+                    // (also set by attachRangeSnapshot) converts it to a group total so it is
+                    // comparable to groupMonthlyLow/High, which are themselves group totals.
+                    if (snapshot.getContribution() != null && snapshot.getHeadcount() != null) {
+                        BigDecimal totalContribution = snapshot.getContribution()
+                                .multiply(BigDecimal.valueOf(snapshot.getHeadcount()));
+                        // Not clamped at zero, unlike the per-band branch above: a contribution
+                        // that exceeds the low end of the range is a real, honest negative net,
+                        // not an error to hide or floor away.
+                        BigDecimal netLow = snapshot.getGroupMonthlyLow().subtract(totalContribution);
+                        BigDecimal netHigh = snapshot.getGroupMonthlyHigh().subtract(totalContribution);
+                        StringBuilder sb = new StringBuilder("<table class=\"ichra-contribution-scenario-table\"><thead><tr>"
+                                + "<th>Scenario</th><th>Group Monthly Premium</th>"
+                                + "<th>Total Monthly Contribution</th><th>Net Monthly</th></tr></thead><tbody>");
+                        sb.append("<tr><td>Low</td><td>").append(escapeHtml(formatCurrency(snapshot.getGroupMonthlyLow())))
+                                .append("</td><td>").append(escapeHtml(formatCurrency(totalContribution)))
+                                .append("</td><td>").append(escapeHtml(formatCurrency(netLow))).append("</td></tr>");
+                        sb.append("<tr><td>High</td><td>").append(escapeHtml(formatCurrency(snapshot.getGroupMonthlyHigh())))
+                                .append("</td><td>").append(escapeHtml(formatCurrency(totalContribution)))
+                                .append("</td><td>").append(escapeHtml(formatCurrency(netHigh))).append("</td></tr>");
+                        sb.append("</tbody></table>");
+                        scenarioTable = sb.toString();
+                    } else {
+                        // No frozen contribution -- predates S21-D (468cf7c), or genuinely never
+                        // entered. Exactly today's degraded output: the gross range, never a
+                        // fabricated contribution or net column.
+                        StringBuilder sb = new StringBuilder("<table class=\"ichra-contribution-scenario-table\"><thead><tr>"
+                                + "<th>Group Monthly Premium (Low)</th><th>Group Monthly Premium (High)</th></tr></thead><tbody>");
+                        sb.append("<tr><td>").append(escapeHtml(formatCurrency(snapshot.getGroupMonthlyLow())))
+                                .append("</td><td>").append(escapeHtml(formatCurrency(snapshot.getGroupMonthlyHigh())))
+                                .append("</td></tr>");
+                        sb.append("</tbody></table>");
+                        scenarioTable = sb.toString();
+                    }
                 }
             }
         } catch (Exception e) {
