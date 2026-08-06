@@ -289,3 +289,129 @@ writes a snapshot row with zero band rows and a non-null `payload_json.ageBands`
 contribution-bearing submission is bit-identical to its pre-S19-J behaviour; that `proposalIchra.jsp`
 renders the blank-currency case as reasoned above rather than throwing. Compiling is not rendering,
 and a query against a live schema is not the same as observing the write path execute.
+
+---
+
+## S19-N — T165 milestone: `payload_json` verified carrying real content, end to end
+
+Date: 2026-08-06. Read-only spot-check, no code changes. Kevin created proposal **#137451** on dev
+(A1 Door Company, SWBD Pricing, SWBD PremiumPath Program, ZIP 75482, Hopkins County TX, bands 40×3
+and 55×2, contribution $200) — the first proposal built after local dev's V087/V088 gap was closed
+(S19-M) and this session's staging-source uncertainty (S19-K/S19-L) was resolved.
+
+**Result: T165's core question is answered affirmatively.** Snapshot row, band rows, and payload all
+present and mutually consistent: `mode = AGE_BAND`, band rows 40×3/55×2 with correct
+`net_per_employee`/`band_net` arithmetic against the $200 contribution, `payload_json.ageBands`
+matching those bands exactly (`age`/`lives`/`premium`), `provenance` populated
+(`sourceEnv: STAGING`, `capturedAt`, `ratesFetchedAt`, `countyFips`, `countyName`), `schemaVersion: 1`.
+`source_env = STAGING` on the write confirms the T150 demo override was active for that session —
+the earlier "staging rates block every write" theory from S19-K was correct in principle but this
+proposal shows the override does let a real write through when it's on.
+
+Two defects surfaced during that verification, reported rather than patched at the time. Fixed in
+this run (S19-O), below.
+
+## S19-O — Two defects from the 137451 verification
+
+Date: 2026-08-06. Hashes: `47c4e19` (defect 1), `7df82ea` (defect 2). Edited: `ProposalBuilder.java`
+only, both commits.
+
+### Defect 1 — Gson silently dropped `affordability`/`planLandscape`
+
+`buildIchraPayload` added both as `JsonNull.INSTANCE` but serialized with a plain `new Gson()`,
+which omits null-valued object members by default — so both keys vanished from the persisted JSON
+instead of appearing as explicit `null`. Confirmed directly against proposal 137451's own
+`payload_json` (S19-N): neither key was present at all.
+
+**Why this mattered:** the S19-D spec's whole point in specifying a stable four-key schema with
+explicit nulls was so a reader could tell "this proposal has no affordability data" apart from "this
+payload predates the affordability block." As shipped, both cases looked identical — no key at all.
+
+**Checked before changing the serializer:** (1) row count — `SELECT COUNT(*), SUM(payload_json IS
+NOT NULL) FROM proposal_ichra_snapshot` → `1, 1`. Exactly one non-null payload exists anywhere on
+this database (proposal 137451's), and it is not touched by this fix — the fence required leaving it
+as-is, and the fix only changes future serialization. No conversion was needed or performed; the
+claim that none was needed is now verified against a real count, not assumed. (2) The payload's one
+reader, `ViewProposal.putIchraPayloadTokens` — every check there is `payload.has(key) &&
+payload.get(key).isJsonObject()/.isJsonArray()`. A `JsonNull` value fails the type check exactly like
+an absent key does, so a present-but-null member and an absent member already behaved identically to
+that reader. Nothing depended on the omission.
+
+**Fix:** a shared `private static final Gson ICHRA_PAYLOAD_GSON = new GsonBuilder().serializeNulls()
+.create()` field replaces the inline `new Gson()` at the serializer's one call site.
+`schemaVersion` stays `1`. No migration. What goes *into* the payload is unchanged — only how it
+serializes.
+
+### Defect 2 — a band-only proposal wrote no `proposal_ichra_intake` row
+
+`attachIchraIntakeIfPresent` unconditionally required a valid `intakeHeadcount` (1–10000) and
+returned early otherwise. S19-I's band-repeater UI hides the real `#intakeHeadcount` input the moment
+a band exists, showing only a read-only derived total — so that input submits blank, and the intake
+write never happened for any band-only proposal, including 137451 itself (confirmed by S19-N: no
+intake row despite a completed proposal).
+
+**This was an S19-I scope oversight, not a defect in what S19-I built.** S19-I made the *snapshot*
+write path (`attachAgeBandSnapshot`, via `deriveIntakeMode`/`ichraParam`) fully band-aware. The
+separate *intake* write path — a different table, a different entity, a different purpose (T125's
+own ZIP/county/headcount collection, distinct from the snapshot's computed rate output; see V087's
+own migration header on why the two tables are deliberately separate) — was never updated to match.
+
+**`proposal_ichra_intake`'s actual columns** (read via `DESCRIBE` before deciding anything):
+`intake_id`, `proposal_id`, `zip`, `county_fips`, `county_name`, `state`, `headcount` (`smallint NOT
+NULL`), `monthly_contribution_per_employee` (nullable, V088), `plan_year`, `collected_at`,
+`created_by`. **No band-detail columns exist — only a single `headcount` integer.** Per the prompt's
+own branching this made the answer unambiguous, not a judgment call: the derived sum of entered band
+counts is what `headcount` gets. No hard stop was needed.
+
+**Fix:** when `intakeHeadcount` parses to `null`, fall back to `sumIntakeBandCounts(request)` — a new
+helper that sums `intakeCount1..N` for every row where count ≥ 1. **Deliberately mirrors
+`proposalBuilder.jsp`'s own `ichraBandTotalLives()` field-for-field** — same parameter names, same
+"count ≥ 1" rule, no age-validity check in either function. This was a specific design choice, not an
+oversight: the JS function sums every present count with no age check at all (so even a
+freshly-added row with a still-blank age already counts toward the live "N from bands" display), and
+matching that exactly — rather than filtering by age validity the way `attachAgeBandSnapshot`'s own
+band loop does — is what makes UI and server structurally unable to disagree. They are not two
+implementations that happen to agree; they are the same summation rule expressed twice over the same
+field names, so there is nothing for a future edit to one side to silently desynchronize from the
+other except by construction.
+
+**Headcount-only path confirmed unchanged:** the new fallback only triggers when
+`parseIntOrNull(request.getParameter("intakeHeadcount"))` is `null` — a headcount-only submission
+supplies that parameter directly and the fallback is never reached; behaviour for that path is
+bit-identical to before this run.
+
+**Non-plus-tier path confirmed unchanged, both defects:** defect 1 only changes how an
+already-decided payload string is serialized — it cannot affect whether `buildIchraPayload` is
+called at all, and that call only happens from inside the AGE_BAND/RANGE snapshot writers, themselves
+reachable only when `countyFips`/`mode` are present (never true for a non-plus-tier submission, per
+S19-I's own established reasoning, reconfirmed here rather than re-asserted). Defect 2's new code
+sits entirely *after* `attachIchraIntakeIfPresent`'s existing `anyPlusTier` early-return gate
+(unchanged, still the first substantive check) — a non-plus-tier submission returns there before
+reaching any of this run's new code. Confirmed by reading the diff: both changes are nested strictly
+inside already-gated code, nothing moved earlier.
+
+### SQL close-out audit
+
+No SQL produced, run, or recommended by this run. No `.sql` file created or edited; nothing under
+`docs/migrations/` touched; no `INSERT`/`UPDATE`/`DELETE`/`ALTER`/`CREATE` against any database — the
+only database interaction was the read-only row-count check and the read-only `DESCRIBE`. Proposal
+137451's existing `payload_json` was not modified, per the fence. Current highest migration version,
+read from `docs/migrations/`: **V090** (`V090__proposal_ichra_payload.sql`), unchanged by this run.
+Dev is now contiguous through V090 (S19-M); production remains pending V090 only (per the tracker,
+V087–V089 already applied there, V090 not yet — unchanged by this run, not re-checked here).
+
+### Code-verified vs. runtime-verified
+
+**Code-verified:** compiles (`mvnw package`, no `clean`) → `BUILD SUCCESS` for both commits in
+sequence; diff confined to `ProposalBuilder.java` across both; the Gson-omission mechanism and the
+reader's null-tolerance were confirmed by reading the actual code paths, not inferred; the
+`proposal_ichra_intake` column list was read directly via `DESCRIBE`, not assumed; the UI/server
+total-matching claim is a direct comparison of the two functions' source, not a behavioural
+assumption.
+
+**Runtime-verified: nothing.** Not walked: that a new band-only proposal now produces both a
+snapshot row *and* an intake row; that the intake row's `headcount` matches what the UI displayed;
+that a fresh payload now genuinely serializes `"affordability":null,"planLandscape":null` rather than
+omitting them; that a headcount-only (no bands) proposal's intake write is unaffected. Compiling is
+not rendering, and reading the two summation functions side by side is not the same as observing
+them agree on a live submission.
