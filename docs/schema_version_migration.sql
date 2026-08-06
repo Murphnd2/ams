@@ -109,4 +109,5 @@ INSERT IGNORE INTO schema_version (version, description, script_name) VALUES
 ('V086', 'Plus-tier classification flag on line of service (los.is_plus_tier, default OFF, no consumer yet)', 'V086__los_plus_tier.sql'),
 ('V087', 'Plus-tier ZIP/county/headcount intake captured in the Proposal Builder (proposal_ichra_intake, plan_year derived not agent-asserted)', 'V087__proposal_ichra_intake.sql'),
 ('V088', 'Employer monthly contribution per employee on proposal_ichra_intake (T80 half 1, nullable, no backfill)', 'V088__proposal_ichra_intake_contribution.sql'),
-('V089', 'System-managed classification flag on enhancement (enhancement.system_managed, default OFF)', 'V089__enhancement_system_managed.sql');
+('V089', 'System-managed classification flag on enhancement (enhancement.system_managed, default OFF)', 'V089__enhancement_system_managed.sql'),
+('V090', 'ICHRA JSON payload column on proposal_ichra_snapshot (payload_json, MEDIUMTEXT, nullable, no backfill)', 'V090__proposal_ichra_payload.sql');

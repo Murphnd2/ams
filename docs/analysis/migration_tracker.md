@@ -16,7 +16,7 @@ Tracks database schema versions across environments.
 | BPO | bpo.superiorstate.biz | beta_ssa | BPO instance (V038, initialized, release V0.37.0) |
 | Master | master.superiorstate.biz | beta_ssa | Snapshot v9 (V057, stopped) |
 
-## Current Highest Version: V089
+## Current Highest Version: V090
 
 ⚠️ **Maintenance note (added 2026-07-30):** production status in the table below must be back-filled
 *after a deployment actually succeeds*, not only when the migration is written. The V072/V073 rows
@@ -131,6 +131,7 @@ _N/A = environment decommissioned / not maintained (applies to Demo PSP, BPO, Ma
 | V087 | Plus-tier ZIP/county/headcount intake captured in the Proposal Builder (`proposal_ichra_intake`, `proposal_id` UNIQUE FK ON DELETE CASCADE, `plan_year` derived server-side not agent-asserted — S10-B HS-1) — the T125 consumer of V086 | ⬜ | ⬜ | ⬜ | ✅ | N/A | N/A | N/A |
 | V088 | Employer monthly contribution per employee on `proposal_ichra_intake` (`monthly_contribution_per_employee` DECIMAL(10,2) NULL, no backfill) — T80 half 1, an intake token exactly like V087's four | ⬜ | ⬜ | ⬜ | ✅ | N/A | N/A | N/A |
 | V089 | System-managed classification flag on enhancement (`enhancement.system_managed`, NOT NULL DEFAULT 0, no backfill) — **read by `FlaggedEnhancementResolver.isSectionEnabled`, called from `ViewProposal.java:300` on every proposal render** — runtime-verified on production, session 18 (S18-D/S18-G): `system_managed = 1` hid the scoped section, `0` restored it | ✅ | ⬜ | ⬜ | ✅ | N/A | N/A | N/A |
+| V090 | ICHRA JSON payload column on `proposal_ichra_snapshot` (`payload_json`, `MEDIUMTEXT`, nullable, no backfill) — T165, holds the schema-versioned payload `FlaggedEnhancementResolver` will read once T164/T166 wire the predicate, plus affordability/age-band/plan-landscape data. Written by `ProposalBuilder`'s `attachRangeSnapshot`/`attachAgeBandSnapshot`; read by three new `ViewProposal` tokens (`ICHRA_AGE_BAND_TABLE`, `ICHRA_PLAN_LANDSCAPE_TABLE`, `ICHRA_PAYLOAD_AS_OF`) — no affordability token defined, by design (S19D spec §4/§9). Applied to local dev (`beta_ssa`, work) 2026-08-05 (S19-E): column confirmed `mediumtext`/nullable, `proposal_ichra_snapshot` had 0 existing rows. See `docs/analysis/S19D_ichra_payload_spec.md` | ✅ | ⬜ | ⬜ | ⬜ | N/A | N/A | N/A |
 
 **Production column reconciled 2026-07-30** against a live, read-only `schema_version` probe run
 directly against the production database — that probe is the source of truth for the corrections
