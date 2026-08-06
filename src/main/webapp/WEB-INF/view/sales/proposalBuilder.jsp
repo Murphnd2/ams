@@ -318,12 +318,12 @@
                      this panel. --%>
                 <div class="row g-3 align-items-end mt-1" id="intakeComparisonFields" style="display:none;">
                     <div class="col-auto">
-                        <label class="form-label mb-1" for="intakeCurrentTotalPremium">Current total monthly premium</label>
+                        <label class="form-label mb-1" for="intakeCurrentTotalPremium">Current total monthly premium (whole group)</label>
                         <input type="number" class="form-control form-control-sm" id="intakeCurrentTotalPremium" name="intakeCurrentTotalPremium"
                                min="0" step="0.01" style="max-width:170px;">
                     </div>
                     <div class="col-auto">
-                        <label class="form-label mb-1" for="intakeCurrentEmployerShare">Current employer monthly share</label>
+                        <label class="form-label mb-1" for="intakeCurrentEmployerShare">Current employer monthly share (whole group)</label>
                         <input type="number" class="form-control form-control-sm" id="intakeCurrentEmployerShare" name="intakeCurrentEmployerShare"
                                min="0" step="0.01" style="max-width:170px;">
                     </div>
