@@ -439,16 +439,39 @@ public class ClaudeApiService {
 
     /**
      * Extracts the text content from the Anthropic API response JSON.
-     * Response format: { "content": [ { "type": "text", "text": "..." } ] }
+     * Response format: { "content": [ { "type": "text", "text": "..." }, ... ] }
+     * <p>
+     * S20-F — scans every block in {@code content} for {@code type == "text"} rather than
+     * assuming index 0 is the text block (S20-E: a non-text block ahead of the text block,
+     * e.g. from a future response shape this code predates, broke index-based extraction
+     * with no way to recover the actual answer). <b>Multiple text blocks are concatenated in
+     * order</b>, not just the first returned: this class's callers include long HTML/CSS page
+     * generation (see {@code ProposalAiBuilder}), and returning only the first block would
+     * silently truncate output if Anthropic ever splits a long generation across more than
+     * one text block. A single-block response (the shape every caller has produced to date)
+     * concatenates to exactly that block's text, byte-identical to the prior
+     * {@code content.get(0)} behavior.
+     * <p>
+     * Non-text blocks anywhere in the array (before, between, or after text blocks) are
+     * skipped, not treated as errors — only their absence of any text block at all falls
+     * through to the existing failure path, which is unchanged: same message, same
+     * {@code log.warn} raw-body dump.
      */
     private static String extractResponseText(String responseBody) {
         try {
             JsonObject resp = gson.fromJson(responseBody, JsonObject.class);
             JsonArray content = resp.getAsJsonArray("content");
             if (content != null && content.size() > 0) {
-                JsonObject first = content.get(0).getAsJsonObject();
-                if ("text".equals(first.get("type").getAsString())) {
-                    return first.get("text").getAsString();
+                StringBuilder text = new StringBuilder();
+                for (int i = 0; i < content.size(); i++) {
+                    JsonObject block = content.get(i).getAsJsonObject();
+                    if (block.has("type") && "text".equals(block.get("type").getAsString())
+                            && block.has("text")) {
+                        text.append(block.get("text").getAsString());
+                    }
+                }
+                if (text.length() > 0) {
+                    return text.toString();
                 }
             }
             log.warn("Unexpected response structure: {}", responseBody);
