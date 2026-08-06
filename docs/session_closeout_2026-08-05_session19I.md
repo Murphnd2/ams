@@ -167,3 +167,125 @@ enables on a band-only intake; that a standalone band entry actually produces an
 with `ProposalIchraSnapshotBand` rows; and that `payload_json.ageBands` serializes non-null (which,
 per §6, also requires a contribution). Compiling is not rendering, and code-verified is not
 runtime-verified.
+
+---
+
+## S19-J — Contribution becomes optional for the ICHRA snapshot write
+
+Date: 2026-08-06. Hash: `a949fbf` — `fix: S19-J -- contribution is optional for the ICHRA snapshot
+write`. Edited: `ProposalBuilder.java` only.
+
+### Decision and its four reasons (§0, recorded as directed)
+
+Relaxed `attachAgeBandSnapshot`'s contribution guard. Contribution is now optional; never
+fabricated.
+
+1. The illustration already treats contribution as an optional fidelity step — its own card says
+   adding one unlocks net cost and the flip-point slider, capability rather than a gate. The
+   snapshot refusing to record ZIP, county, and bands without one contradicted that tiering.
+2. The snapshot's job changed under the guard: it was written for cost math, but since S19-E it is
+   the carrier for `payload_json` — provenance, `ageBands`, `planLandscape` — none of which need a
+   contribution.
+3. Corrects a prior finding — see below.
+4. Defaulting to zero stays forbidden. Recording "the employer contributes nothing" as though the
+   agent stated it is a fabricated employer statement in a frozen document. Null is stored null and
+   disclosed as absent (or, per §6 below, not yet disclosed at all — an open item).
+
+### §2 findings
+
+1. **The range path did not carry the same guard — the prompt's premise here did not hold.**
+   `attachRangeSnapshot` never reads `contribution` at all; RANGE mode never collects one. Only
+   `attachAgeBandSnapshot` had the guard. Verified by reading both methods in full before editing
+   either.
+2. **`contribution` column nullability — nullable, confirmed both ways.** Entity:
+   `ProposalIchraSnapshot.java`, `@Column(name = "contribution")` with no `nullable = false`. Live
+   local schema: `SHOW COLUMNS FROM proposal_ichra_snapshot LIKE 'contribution%'` →
+   `contribution | decimal(8,2) | YES | | NULL`. No hard stop; no migration needed for this column.
+3. **A second NOT NULL finding the prompt did not anticipate, and the reason this run's shape isn't
+   a one-line guard removal.** `ProposalIchraSnapshotBand.netPerEmployee` and `.bandNet` are both
+   `nullable = false` — and both are *computed from* contribution
+   (`floorPremium.subtract(contribution)`). `ProposalIchraSnapshotBand.java` is out of this run's
+   fence and no migration was permitted, so neither could be relaxed at the schema level. Resolved
+   by **not persisting band rows when contribution is null** — the same "pass `null` bands to
+   `ProposalIchraSnapshotDAO.save`" pattern the RANGE path already uses — rather than writing a
+   fabricated net figure into a column whose entire purpose is a net-of-contribution breakdown.
+   `groupNetTotal`/`employerOutlay` on the snapshot itself (both nullable) are left `null`, not
+   `BigDecimal.ZERO`, for the same reason.
+4. **The payload serializer needs no change and received none.** `buildIchraPayload`'s `ageBands`
+   array (S19-F's schema) reads only `age`/`lives`/`floorPremium` off each band object — never
+   `netPerEmployee`/`bandNet`. The in-memory `ProposalIchraSnapshotBand` objects built during the
+   loop always carry those three fields regardless of contribution, so the payload's `ageBands`
+   populates whether or not a contribution was entered. Confirmed by reading the serializer; not
+   touched, as the fence required.
+
+### How each consumer now behaves on null
+
+- **`ProposalIchraSnapshotBand` table** — zero rows written for a contribution-less AGE_BAND
+  snapshot (see finding 3). Not "null net figures stored" — no band rows at all, honestly reflecting
+  that no net computation happened.
+- **`ProposalIchraSnapshot.groupNetTotal` / `.employerOutlay`** — stored `null`.
+- **`payload_json.ageBands`** — populates normally (age/lives/premium), independent of contribution.
+- **`proposalIchra.jsp`** (read, not edited — out of this run's fence): `<c:forEach var="band"
+  items="${ichraBands}">` over zero rows renders an empty `<tbody>`, not an error. `<fmt:formatNumber
+  value="${ichraSnapshot.groupNetTotal}">` / `.contribution` on a null value is standard,
+  spec-defined JSTL behaviour — no output is written, no exception thrown. Net effect: the page
+  currently shows "Group Monthly Net Cost: " and "...contribution ( per employee)." with blank
+  currency slots rather than a number — not broken, not a fabricated zero, but not a clear
+  disclosure either. **Not runtime-verified** — reasoned from the JSTL spec and this file's own
+  read, not observed in a browser.
+
+### Correction to S19-G's 0-rows attribution
+
+**The prompt's proposed explanation does not hold for the walk it names, and this run traced the
+real one instead of repeating the guess.** S19-G's spot-check walk was explicitly `mode=RANGE`
+(`ProposalBuilder?mode=RANGE&countyFips=48223&...&headcount=3`). RANGE never gates on contribution
+(finding 1), so a missing contribution could not have caused that walk's zero rows. Queried the live
+local rate cache instead: `SELECT age, source_env, lowest_bronze_premium FROM
+rating_area_rate_cache WHERE plan_year=2026 AND county_fips='48223' AND age IN (21,64)` returned both
+rows with `source_env = STAGING`. `attachRangeSnapshot` fails closed on exactly this — it refuses to
+write from anything but `PRODUCTION`-sourced rates unless the T150 demo override (ssa.properties
+flag AND PSP-admin session) was active for that request. **The actual, verified cause of S19-G's
+zero rows is locally-cached staging-only rate data for that county, not a missing contribution.**
+
+### Non-plus-tier path confirmed unchanged
+
+`attachIchraSnapshotIfPresent` still requires `countyFips` and a resolvable `mode` (explicit or
+derived) before doing anything at all; a non-plus-tier submission carries neither — no `age{i}`,
+`intakeAge{i}`, `countyFips`, or `mode` parameters exist on such a submission at the HTTP layer, so
+this method returns at its first guard exactly as before S19-J. This run changed nothing about *when*
+`attachAgeBandSnapshot` runs, only what it does once already inside it with a valid band set — so
+the non-plus-tier path is unreachable-by-construction here, the same conclusion S19-I already
+reached and reconfirmed by re-reading rather than re-asserted.
+
+### Open question — not built, per the fence
+
+**Does the rendered proposal need an explicit "no contribution entered" disclosure?** Per §6 above,
+`proposalIchra.jsp` currently renders blank currency text rather than a stated absence when
+`groupNetTotal`/`contribution` are null — a real gap, but display-only and not a fabrication. The
+RANGE branch of the same file already has a precedent for this exact situation
+(`<c:when test="${not empty ichraSnapshot.groupMonthlyLow and not empty
+ichraSnapshot.groupMonthlyHigh}">` ... `<c:otherwise>&mdash;</c:otherwise>`) that a future run could
+mirror for the AGE_BAND branch. Not built here — `ViewProposal.java`/`proposalIchra.jsp` are both
+outside this run's fence, and the prompt's own §3 marks any such UI text as out of scope. Recorded as
+its own item, not assumed away.
+
+### SQL close-out audit
+
+No SQL produced, run, or recommended by this run. No `.sql` file created or edited; nothing under
+`docs/migrations/` touched. The only database interaction was two read-only `SELECT`s (§2 finding 2,
+and the correction's rate-cache query) — no `INSERT`/`UPDATE`/`ALTER` of any kind. Current highest
+migration version, read from `docs/migrations/`: **V090**
+(`V090__proposal_ichra_payload.sql`) — unchanged by this run.
+
+### Code-verified vs. runtime-verified
+
+**Code-verified:** compiles (`mvnw package`, no `clean`, per the live-Tomcat constraint) →
+`BUILD SUCCESS`; diff confined to `ProposalBuilder.java`; the nullability findings (§2 items 2-3) are
+read directly from the entity mappings and the live local schema, not assumed; the payload
+serializer's independence from `netPerEmployee`/`bandNet` is confirmed by reading it, not inferred.
+
+**Runtime-verified: nothing.** Not walked: that a bands-only, no-contribution submission actually
+writes a snapshot row with zero band rows and a non-null `payload_json.ageBands`; that a
+contribution-bearing submission is bit-identical to its pre-S19-J behaviour; that `proposalIchra.jsp`
+renders the blank-currency case as reasoned above rather than throwing. Compiling is not rendering,
+and a query against a live schema is not the same as observing the write path execute.
