@@ -168,18 +168,26 @@ public class ClaudeApiService {
      * truncated excerpt otherwise (see {@link #askDetailed} for the bound and why) — callers
      * needing to show it to an end user MUST still gate on their own authorization, exactly as
      * {@code ClaudeApiService} has never made any authorization decision of its own.
+     * <p>
+     * {@code truncated} (S20-F) is true only when {@code ok} is also true and Anthropic's
+     * {@code stop_reason} was {@code "max_tokens"} — {@code answer} already carries a visible
+     * notice appended in that case (see {@link #askDetailed}); this field is the machine-
+     * readable form of the same fact, for a future caller that wants to act on it without
+     * scraping the text.
      */
     public static final class DetailedResult {
         public final String answer;
         public final boolean ok;
         public final Integer statusCode;
         public final String errorDetail;
+        public final boolean truncated;
 
-        private DetailedResult(String answer, boolean ok, Integer statusCode, String errorDetail) {
+        private DetailedResult(String answer, boolean ok, Integer statusCode, String errorDetail, boolean truncated) {
             this.answer = answer;
             this.ok = ok;
             this.statusCode = statusCode;
             this.errorDetail = errorDetail;
+            this.truncated = truncated;
         }
     }
 
@@ -210,7 +218,7 @@ public class ClaudeApiService {
         if (apiKey == null) {
             log.error("ANTHROPIC_API_KEY not configured");
             return new DetailedResult("The AI assistant is not configured. Please contact an administrator.",
-                    false, null, "API key not configured (checked DB constant, then ssa.properties)");
+                    false, null, "API key not configured (checked DB constant, then ssa.properties)", false);
         }
 
         try {
@@ -251,21 +259,30 @@ public class ClaudeApiService {
                 // truncateForDisplay applies to a non-200 body.
                 ExtractedText extracted = extractText(response.body());
                 if (extracted.extracted) {
-                    return new DetailedResult(extracted.text, true, 200, null);
+                    // S20-F — usable content is never discarded on a max_tokens stop: the full
+                    // extracted text is kept, with a visible notice appended so the admin knows
+                    // it may be incomplete, rather than silently handing back cut-off HTML.
+                    // ok stays true — this is a working response, not a failure.
+                    String answerText = extracted.truncated
+                            ? extracted.text + "\n\n---\n⚠️ This response was cut off — it hit the "
+                                    + maxTokens + "-token output limit before finishing. Try a shorter "
+                                    + "or simpler request, or ask for the rest to continue."
+                            : extracted.text;
+                    return new DetailedResult(answerText, true, 200, null, extracted.truncated);
                 } else {
-                    return new DetailedResult(extracted.text, false, 200, truncateForDisplay(response.body()));
+                    return new DetailedResult(extracted.text, false, 200, truncateForDisplay(response.body()), false);
                 }
             } else {
                 log.error("Claude API returned status {}: {}", response.statusCode(), response.body());
                 String detail = truncateForDisplay(response.body());
                 return new DetailedResult("Sorry, I'm having trouble connecting right now. Please try again in a moment.",
-                        false, response.statusCode(), detail);
+                        false, response.statusCode(), detail, false);
             }
 
         } catch (Exception e) {
             log.error("Error calling Claude API (multi-turn, detailed)", e);
             String detail = truncateForDisplay(e.getClass().getSimpleName() + ": " + e.getMessage());
-            return new DetailedResult("Sorry, something went wrong. Please try again.", false, null, detail);
+            return new DetailedResult("Sorry, something went wrong. Please try again.", false, null, detail, false);
         }
     }
 
@@ -456,20 +473,28 @@ public class ClaudeApiService {
      * {@link #askDetailed} tell a genuine answer apart from a fallback string that merely
      * looks like one; every other caller only ever sees {@code text} via
      * {@link #extractResponseText}, exactly as before this commit.
+     * <p>
+     * {@code truncated} is true when {@code extracted} is true AND Anthropic's own
+     * {@code stop_reason} was {@code "max_tokens"} — real, usable content that was cut off
+     * before the model finished, as distinct from {@code extracted == false} (no usable
+     * content was found at all). Always false when {@code extracted} is false: a response
+     * with no text block has nothing to have been truncated.
      */
     private static final class ExtractedText {
         final String text;
         final boolean extracted;
+        final boolean truncated;
 
-        ExtractedText(String text, boolean extracted) {
+        ExtractedText(String text, boolean extracted, boolean truncated) {
             this.text = text;
             this.extracted = extracted;
+            this.truncated = truncated;
         }
     }
 
     /**
      * Extracts the text content from the Anthropic API response JSON.
-     * Response format: { "content": [ { "type": "text", "text": "..." }, ... ] }
+     * Response format: { "content": [ { "type": "text", "text": "..." }, ... ], "stop_reason": "..." }
      * <p>
      * S20-F — scans every block in {@code content} for {@code type == "text"} rather than
      * assuming index 0 is the text block (S20-E: a non-text block ahead of the text block,
@@ -486,6 +511,11 @@ public class ClaudeApiService {
      * skipped, not treated as errors — only their absence of any text block at all falls
      * through to the existing failure path, which is unchanged: same message, same
      * {@code log.warn} raw-body dump.
+     * <p>
+     * {@code stop_reason} (S20-F) is read once real text was found, to set
+     * {@link ExtractedText#truncated}. This never changes which branch is taken or what text
+     * is returned — a {@code max_tokens} stop still returns whatever text was actually
+     * generated, unmodified; usable content is never discarded.
      */
     private static ExtractedText extractText(String responseBody) {
         try {
@@ -501,14 +531,16 @@ public class ClaudeApiService {
                     }
                 }
                 if (text.length() > 0) {
-                    return new ExtractedText(text.toString(), true);
+                    boolean truncated = resp.has("stop_reason") && !resp.get("stop_reason").isJsonNull()
+                            && "max_tokens".equals(resp.get("stop_reason").getAsString());
+                    return new ExtractedText(text.toString(), true, truncated);
                 }
             }
             log.warn("Unexpected response structure: {}", responseBody);
-            return new ExtractedText("I received a response but couldn't process it. Please try again.", false);
+            return new ExtractedText("I received a response but couldn't process it. Please try again.", false, false);
         } catch (Exception e) {
             log.error("Error parsing Claude API response", e);
-            return new ExtractedText("Sorry, I couldn't understand the response. Please try again.", false);
+            return new ExtractedText("Sorry, I couldn't understand the response. Please try again.", false, false);
         }
     }
 
