@@ -113,6 +113,23 @@ public class ProposalBuilder extends HttpServlet {
                 // the panel itself stays hidden below rather than collect data that
                 // attachIchraIntakeIfPresent will refuse to persist at submit time.
                 request.setAttribute("ichraPlanYear", resolveCurrentPlanYear(em));
+
+                // S19-G — prefill only, for the plus-tier intake panel. The illustration
+                // hand-off posts UN-prefixed countyFips/headcount/zip (see the hand-off's own
+                // comment above the c:url in illustration25.jsp); attachIchraIntakeIfPresent
+                // reads intake*-prefixed params at submit time and is untouched by this. Every
+                // value is validated with the same helpers the POST-time writers already use
+                // (normalizeFiveDigitCode / parseIntOrNull) so only a vetted 5-digit code or a
+                // vetted positive integer is ever echoed into the page — never a raw,
+                // attacker-controllable query-string value. Missing or malformed input yields
+                // a null attribute, which the JSP renders as today's empty field; a direct
+                // visit to ProposalBuilder with no ICHRA params carries none of these
+                // parameters at all and is unaffected.
+                request.setAttribute("handoffZip", normalizeFiveDigitCode(request.getParameter("zip")));
+                request.setAttribute("handoffCountyFips", normalizeFiveDigitCode(request.getParameter("countyFips")));
+                Integer handoffHeadcount = parseIntOrNull(request.getParameter("headcount"));
+                request.setAttribute("handoffHeadcount",
+                        (handoffHeadcount != null && handoffHeadcount >= 1 && handoffHeadcount <= 10000) ? handoffHeadcount : null);
             }
 
             // ── Build rate → LOS availability map ──

@@ -235,6 +235,12 @@
                 <p class="intake-msg mt-2 mb-0 text-muted" id="intakeUnpricedMsg">
                     <i class="bi bi-info-circle me-1"></i>No rate data is cached yet for the selected county -- the proposal will still be created.
                 </p>
+                <%-- S19-G: shown when the illustration hand-off's countyFips is not among this
+                     ZIP's resolved candidates -- never resolved silently either direction; the
+                     agent must pick explicitly from what the ZIP actually returns. --%>
+                <p class="intake-msg mt-2 mb-0" id="intakeCountyMismatchMsg">
+                    <i class="bi bi-exclamation-triangle me-1"></i>This ZIP does not match the county the illustration was built for. Please confirm the correct county below.
+                </p>
             </div>
         </div>
         </c:if>
@@ -573,6 +579,13 @@
     var ichraPlanYear = <c:choose><c:when test="${ichraAvailable and not empty ichraPlanYear}">${ichraPlanYear}</c:when><c:otherwise>null</c:otherwise></c:choose>;
     var ichraLastLookedUpZip = '';
 
+    // S19-G — illustration hand-off prefill. Server-validated (normalizeFiveDigitCode /
+    // parseIntOrNull in ProposalBuilder.doGet) before reaching here, so these are either
+    // null or a vetted 5-digit code / positive integer -- never a raw query-string value.
+    var ichraHandoffZip = <c:choose><c:when test="${not empty handoffZip}">'${handoffZip}'</c:when><c:otherwise>null</c:otherwise></c:choose>;
+    var ichraHandoffCountyFips = <c:choose><c:when test="${not empty handoffCountyFips}">'${handoffCountyFips}'</c:when><c:otherwise>null</c:otherwise></c:choose>;
+    var ichraHandoffHeadcount = <c:choose><c:when test="${handoffHeadcount != null}">${handoffHeadcount}</c:when><c:otherwise>null</c:otherwise></c:choose>;
+
     function anySelectedLosIsPlusTier() {
         var found = false;
         selectedLosIds.forEach(function(id) {
@@ -585,8 +598,10 @@
     function hideIntakeMessages() {
         var noMatch = document.getElementById('intakeNoMatchMsg');
         var unpriced = document.getElementById('intakeUnpricedMsg');
+        var mismatch = document.getElementById('intakeCountyMismatchMsg');
         if (noMatch) noMatch.style.display = 'none';
         if (unpriced) unpriced.style.display = 'none';
+        if (mismatch) mismatch.style.display = 'none';
     }
 
     function clearIntakeFields() {
@@ -715,20 +730,42 @@
                     if (noMatchZipEl) noMatchZipEl.textContent = raw;
                     if (noMatchMsg) noMatchMsg.style.display = '';
                     if (countyEl) { countyEl.innerHTML = '<option value="">-- No county found for this ZIP --</option>'; countyEl.disabled = false; }
-                } else if (counties.length === 1) {
+                } else if (counties.length === 1 && ichraCountyAgreesWithHandoff(counties[0].fips)) {
                     ichraSelectCounty(counties[0]);
                     if (counties[0].priced === false) {
                         var unpricedMsg = document.getElementById('intakeUnpricedMsg');
                         if (unpricedMsg) unpricedMsg.style.display = '';
                     }
                 } else {
+                    // Either genuinely ambiguous (multiple counties -- unchanged, agent must
+                    // choose) or a single county that disagrees with the illustration
+                    // hand-off's countyFips. Neither is auto-selected; ichraRenderChooser
+                    // never auto-selects even for a one-item list.
                     ichraRenderChooser(counties);
+                    if (!ichraCountyAmongCandidates(counties)) {
+                        var mismatchMsg = document.getElementById('intakeCountyMismatchMsg');
+                        if (mismatchMsg) mismatchMsg.style.display = '';
+                    }
                 }
                 updateSteps();
             })
             .catch(function() {
                 // Leave it to the submit path; nothing here blocks the form.
             });
+    }
+
+    // S19-G — the known-trap guard (sec 3): the ZIP-driven lookup stays the sole authority
+    // for what is selectable; ichraHandoffCountyFips is only ever an expected-agreement
+    // check, never a substitute. Both return true (nothing to check / nothing to flag) when
+    // no handoff countyFips is present -- a hand-typed ZIP with no hand-off behaves exactly
+    // as it always has.
+    function ichraCountyAgreesWithHandoff(fips) {
+        return !ichraHandoffCountyFips || ichraHandoffCountyFips === fips;
+    }
+
+    function ichraCountyAmongCandidates(counties) {
+        if (!ichraHandoffCountyFips) return true;
+        return counties.some(function(c) { return c.fips === ichraHandoffCountyFips; });
     }
 
     // Fires when the agent manually picks from the multi-county chooser -- fills the
@@ -774,8 +811,29 @@
         if (ichraHeadcountEl) {
             ichraHeadcountEl.addEventListener('input', updateSteps);
         }
+        ichraApplyHandoffPrefill();
         updateSteps();
     });
+
+    // S19-G — prefill only, from the illustration hand-off. No-op (both guarded fields
+    // simply stay empty) when ichraIntakePanel is absent from the DOM, exactly like every
+    // other function in this block. Never overwrites a field the agent has already typed
+    // into -- the emptiness check on each field means an edit always wins, even if this were
+    // ever called a second time. Fires the same ZIP lookup a hand-typed ZIP would trigger;
+    // the panel itself stays hidden (unchanged) until a plus-tier LOS is selected, so this
+    // has no visible effect at all for a non-plus-tier proposal.
+    function ichraApplyHandoffPrefill() {
+        var headcountEl = document.getElementById('intakeHeadcount');
+        if (headcountEl && ichraHandoffHeadcount != null && !headcountEl.value) {
+            headcountEl.value = ichraHandoffHeadcount;
+        }
+
+        var zipEl = document.getElementById('intakeZip');
+        if (zipEl && ichraHandoffZip != null && !zipEl.value) {
+            zipEl.value = ichraHandoffZip;
+            ichraZipLookup();
+        }
+    }
 </script>
 </body>
 </html>

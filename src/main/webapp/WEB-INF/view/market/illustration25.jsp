@@ -979,6 +979,13 @@
                             <c:url value="ProposalBuilder" var="proposalHandoffUrl">
                                 <c:param name="mode" value="AGE_BAND"/>
                                 <c:param name="countyFips" value="${submittedCountyFips}"/>
+                                <%-- S19-G: the plus-tier intake panel's County dropdown can only ever be
+                                     populated by re-running this same ZIP lookup (ProposalBuilder has no
+                                     FIPS -> ZIP direction to exploit -- V084/V085 crosswalk is ZIP-keyed,
+                                     many-to-many). Carrying the ZIP is what lets ProposalBuilder prefill
+                                     that dropdown at all; countyFips above stays as the expected-agreement
+                                     check, never a substitute for the ZIP-driven lookup. --%>
+                                <c:param name="zip" value="${submittedZip}"/>
                                 <c:param name="planYear" value="${selectedPlanYear}"/>
                                 <c:param name="contribution" value="${submittedContribution}"/>
                                 <c:forEach begin="1" end="6" var="i">
@@ -1404,6 +1411,10 @@
                             <c:url value="ProposalBuilder" var="proposalHandoffUrl">
                                 <c:param name="mode" value="RANGE"/>
                                 <c:param name="countyFips" value="${submittedCountyFips}"/>
+                                <%-- S19-G: see the AGE_BAND hand-off's identical note above -- ZIP is what
+                                     lets ProposalBuilder prefill the plus-tier intake panel's County
+                                     dropdown; countyFips stays the expected-agreement check only. --%>
+                                <c:param name="zip" value="${submittedZip}"/>
                                 <c:param name="planYear" value="${selectedPlanYear}"/>
                                 <c:param name="headcount" value="${submittedHeadcount}"/>
                             </c:url>
