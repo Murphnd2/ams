@@ -216,16 +216,70 @@
                         <input type="hidden" id="intakeCountyName" name="intakeCountyName" value="">
                         <input type="hidden" id="intakeState" name="intakeState" value="">
                     </div>
-                    <div class="col-auto">
+                    <%-- S19-I: wrapper id so the band repeater can hide this the moment a band
+                         exists -- the illustration's own convention (its #headcountField), hidden
+                         rather than removed so nothing is lost switching back, and the servlet
+                         ignores headcount in AGE_BAND regardless. --%>
+                    <div class="col-auto" id="intakeHeadcountField">
                         <label class="form-label mb-1" for="intakeHeadcount">Eligible Employees</label>
                         <input type="number" class="form-control form-control-sm" id="intakeHeadcount" name="intakeHeadcount"
                                min="1" max="10000" step="1" style="max-width:130px;">
+                    </div>
+                    <%-- S19-I: derived total shown in place of the input once bands carry the
+                         counts, so the figure never simply disappears from the panel. --%>
+                    <div class="col-auto" id="intakeDerivedHeadcountField" style="display:none;">
+                        <label class="form-label mb-1">Eligible Employees</label>
+                        <div class="form-control form-control-sm bg-light" style="max-width:130px;">
+                            <span id="intakeDerivedHeadcount">0</span>
+                            <span class="text-muted" style="font-size:0.75rem;">from bands</span>
+                        </div>
                     </div>
                     <div class="col-auto">
                         <label class="form-label mb-1" for="intakeContribution">Monthly employer contribution per employee</label>
                         <input type="number" class="form-control form-control-sm" id="intakeContribution" name="intakeContribution"
                                min="0" step="0.01" style="max-width:150px;" placeholder="Optional">
                     </div>
+                </div>
+
+                <%-- S19-I: the age-band repeater, mirroring the illustration's own (its W7 block)
+                     rather than inventing a second convention -- same template-clone structure,
+                     same renumber-to-contiguous-1..N parameter contract, same max cap, same
+                     "adding one replaces Eligible Employees" behaviour, same age 21-64 bounds and
+                     same REAL count default of 1 (its W15: entered and assumed must never be
+                     indistinguishable).
+
+                     ⚠️ Names are intakeAge{i}/intakeCount{i} -- intake*-prefixed like every other
+                     field in this panel, because the form already posts un-prefixed age{i}/count{i}
+                     hidden fields for the illustration hand-off and reusing those names would
+                     silently collide (request.getParameter returns the first).
+
+                     ⚠️ The cap is ${ichraAgeBandMaxRows}, matching ProposalBuilder.ICHRA_AGE_BAND_ROWS,
+                     IllustrationServlet.AGE_BAND_ROWS, and the six age/count hidden pairs at the top
+                     of this form. Raising one without the others silently drops the extra rows. --%>
+                <div class="mt-3">
+                    <label class="form-label mb-1 d-block">Ages and Headcounts
+                        <span class="text-muted fw-normal" style="font-size:0.78rem;">&mdash; optional; adding one replaces Eligible Employees</span>
+                    </label>
+                    <%-- Unnamed inputs, so the template itself can never submit anything. Its
+                         class is swapped on clone, which is what makes a clone count as a row. --%>
+                    <div class="intake-band-template align-items-end gap-2 mb-2" id="intakeBandTemplate" style="display:none;" aria-hidden="true">
+                        <div>
+                            <label class="form-label mb-1" style="font-size:0.7rem;">Age</label>
+                            <input type="number" class="form-control form-control-sm intake-band-age" min="21" max="64" style="max-width:100px;">
+                        </div>
+                        <div>
+                            <label class="form-label mb-1" style="font-size:0.7rem;">Count</label>
+                            <input type="number" class="form-control form-control-sm intake-band-count" min="1" max="10000" value="1" style="max-width:100px;">
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline-secondary intake-band-remove"
+                                aria-label="Remove this age band">&times;</button>
+                    </div>
+                    <div id="intakeBandRows"></div>
+                    <button type="button" class="btn btn-sm btn-outline-primary fw-semibold" id="intakeBandAdd"
+                            data-max="${ichraAgeBandMaxRows}"><i class="bi bi-plus-lg me-1"></i>Add age band</button>
+                    <span class="ms-2 text-muted" id="intakeBandMaxNote" style="display:none; font-size:0.78rem;">
+                        Maximum ${ichraAgeBandMaxRows} age bands.
+                    </span>
                 </div>
                 <%-- Never "invalid ZIP" -- the crosswalk is Texas-only and ZCTA-derived, so a
                      perfectly valid USPS ZIP can land here (ZipCountyResolver javadoc). --%>
@@ -585,6 +639,10 @@
     var ichraHandoffZip = <c:choose><c:when test="${not empty handoffZip}">'${handoffZip}'</c:when><c:otherwise>null</c:otherwise></c:choose>;
     var ichraHandoffCountyFips = <c:choose><c:when test="${not empty handoffCountyFips}">'${handoffCountyFips}'</c:when><c:otherwise>null</c:otherwise></c:choose>;
     var ichraHandoffHeadcount = <c:choose><c:when test="${handoffHeadcount != null}">${handoffHeadcount}</c:when><c:otherwise>null</c:otherwise></c:choose>;
+    // S19-I — validated {age,count} pairs from the AGE_BAND hand-off; [] when none. Built
+    // server-side from parsed ints only (buildHandoffBandsJson), never from request text.
+    var ichraHandoffBands = <c:choose><c:when test="${not empty handoffBandsJson}">${handoffBandsJson}</c:when><c:otherwise>[]</c:otherwise></c:choose>;
+    var ichraBandMaxRows = <c:choose><c:when test="${ichraAgeBandMaxRows != null}">${ichraAgeBandMaxRows}</c:when><c:otherwise>6</c:otherwise></c:choose>;
     // S19-H — apply-once latch. filterLosCards()/toggleLos() call updateIntakePanel() on
     // every rate/LOS change, and its hide branch calls clearIntakeFields() whenever no
     // plus-tier LOS is currently selected -- routine during the normal prospect-then-rate
@@ -625,8 +683,123 @@
         if (stateEl) stateEl.value = '';
         if (headcountEl) headcountEl.value = '';
         if (contributionEl) contributionEl.value = '';
+        // S19-I — bands are fields too, and a hidden input still submits: leaving rows behind
+        // on a deselect would post intakeAge{i} for a proposal whose plus-tier LOS is gone,
+        // and deriveIntakeMode would read them as an AGE_BAND intent. Remove, then resync.
+        ichraRemoveAllBandRows();
         ichraLastLookedUpZip = '';
         hideIntakeMessages();
+    }
+
+    // ── S19-I: age-band repeater ────────────────────────────────────────────────────
+    // Mirrors the illustration's own repeater (illustration25.jsp, W7) rather than inventing
+    // a second convention: template-clone structure, renumber-to-contiguous-1..N as the
+    // parameter contract, a remove control hidden on a lone row, an add button hidden at the
+    // cap, and Eligible Employees replaced the moment a band exists. Every function no-ops
+    // when the panel is absent from the DOM, exactly like the rest of this block.
+
+    function ichraBandRowList() {
+        var rows = document.getElementById('intakeBandRows');
+        if (!rows) return [];
+        return Array.prototype.slice.call(rows.querySelectorAll('.intake-band-row'));
+    }
+
+    // Rewrites id/name/for on every row so the submitted set is always 1..N with no gaps.
+    // attachAgeBandSnapshot scans intakeAge1..N contiguously, so a gap would silently
+    // truncate the bands at the hole.
+    function ichraRenumberBands() {
+        ichraBandRowList().forEach(function(row, idx) {
+            var n = idx + 1;
+            [['intakeAge', '.intake-band-age'], ['intakeCount', '.intake-band-count']].forEach(function(pair) {
+                var input = row.querySelector(pair[1]);
+                if (!input) return;
+                input.id = pair[0] + n;
+                input.name = pair[0] + n;
+            });
+        });
+        ichraSyncBandControls();
+        ichraSyncBandTier();
+        updateSteps();
+    }
+
+    // The tier transition: zero bands -- Eligible Employees is the input; one or more -- the
+    // bands carry the counts and their sum IS the headcount. Hidden, never removed, so
+    // nothing is lost switching back.
+    function ichraSyncBandTier() {
+        var hasBands = ichraBandRowList().length > 0;
+        var headcountField = document.getElementById('intakeHeadcountField');
+        var derivedField = document.getElementById('intakeDerivedHeadcountField');
+        var derivedValue = document.getElementById('intakeDerivedHeadcount');
+        if (headcountField) headcountField.style.display = hasBands ? 'none' : '';
+        if (derivedField) derivedField.style.display = hasBands ? '' : 'none';
+        if (derivedValue) derivedValue.textContent = ichraBandTotalLives();
+    }
+
+    function ichraBandTotalLives() {
+        var total = 0;
+        ichraBandRowList().forEach(function(row) {
+            var countEl = row.querySelector('.intake-band-count');
+            var n = countEl ? parseInt(countEl.value, 10) : NaN;
+            if (!isNaN(n) && n >= 1) total += n;
+        });
+        return total;
+    }
+
+    // At least one row carrying a valid age -- the same "a blank band is not a band" rule
+    // attachAgeBandSnapshot applies server-side when it skips blank rows.
+    function ichraHasValidBand() {
+        return ichraBandRowList().some(function(row) {
+            var ageEl = row.querySelector('.intake-band-age');
+            var age = ageEl ? parseInt(ageEl.value, 10) : NaN;
+            return !isNaN(age) && age >= 21 && age <= 64;
+        });
+    }
+
+    function ichraSyncBandControls() {
+        var list = ichraBandRowList();
+        var addBtn = document.getElementById('intakeBandAdd');
+        var maxNote = document.getElementById('intakeBandMaxNote');
+        // Removing the only row must stay possible here -- unlike the illustration, this
+        // panel's zero-band state is fully valid (it falls back to Eligible Employees), so
+        // the control is always offered.
+        list.forEach(function(row) {
+            var btn = row.querySelector('.intake-band-remove');
+            if (btn) btn.style.display = '';
+        });
+        var atMax = list.length >= ichraBandMaxRows;
+        if (addBtn) addBtn.style.display = atMax ? 'none' : '';
+        if (maxNote) maxNote.style.display = atMax ? '' : 'none';
+    }
+
+    function ichraAddBandRow(age, count) {
+        var rows = document.getElementById('intakeBandRows');
+        var template = document.getElementById('intakeBandTemplate');
+        if (!rows || !template) return null;
+        if (ichraBandRowList().length >= ichraBandMaxRows) return null;
+
+        var clone = template.cloneNode(true);
+        clone.removeAttribute('id');
+        clone.removeAttribute('aria-hidden');
+        clone.style.display = '';
+        clone.className = 'intake-band-row d-flex align-items-end gap-2 mb-2';
+
+        var ageEl = clone.querySelector('.intake-band-age');
+        var countEl = clone.querySelector('.intake-band-count');
+        if (ageEl) ageEl.value = (age != null) ? age : '';
+        // A real default of 1, never a placeholder -- entered and assumed must not look alike.
+        if (countEl) countEl.value = (count != null) ? count : '1';
+
+        rows.appendChild(clone);
+        ichraRenumberBands();
+        return clone;
+    }
+
+    function ichraRemoveAllBandRows() {
+        var rows = document.getElementById('intakeBandRows');
+        if (!rows) return;
+        ichraBandRowList().forEach(function(row) { row.parentNode.removeChild(row); });
+        ichraSyncBandControls();
+        ichraSyncBandTier();
     }
 
     // Gate link 4: the panel appears iff a selected LOS is plus-tier, and a stale value
@@ -653,7 +826,11 @@
         var zip = (document.getElementById('intakeZip').value || '').trim();
         var county = document.getElementById('intakeCountyFips').value;
         var headcount = parseInt(document.getElementById('intakeHeadcount').value, 10);
-        return /^[0-9]{5}$/.test(zip) && county !== '' && headcount >= 1;
+        // S19-I — bands satisfy the headcount requirement in their own right: when any band
+        // carries a valid age, the counts ARE the headcount and the Eligible Employees input
+        // is hidden, so requiring it too would leave btnCreate permanently disabled.
+        var headcountOk = ichraHasValidBand() || headcount >= 1;
+        return /^[0-9]{5}$/.test(zip) && county !== '' && headcountOk;
     }
 
     function ichraSelectCounty(county) {
@@ -823,6 +1000,34 @@
         if (ichraHeadcountEl) {
             ichraHeadcountEl.addEventListener('input', updateSteps);
         }
+        // S19-I — band repeater wiring. Delegated on the rows container so it covers every
+        // row, including ones added later by the button or by the hand-off prefill.
+        var ichraBandAddBtn = document.getElementById('intakeBandAdd');
+        if (ichraBandAddBtn) {
+            ichraBandAddBtn.addEventListener('click', function() {
+                var row = ichraAddBandRow(null, null);
+                var firstInput = row ? row.querySelector('.intake-band-age') : null;
+                if (firstInput) firstInput.focus();
+            });
+        }
+        var ichraBandRowsEl = document.getElementById('intakeBandRows');
+        if (ichraBandRowsEl) {
+            ichraBandRowsEl.addEventListener('click', function(e) {
+                var btn = e.target.closest ? e.target.closest('.intake-band-remove') : null;
+                if (!btn) return;
+                var row = btn.closest('.intake-band-row');
+                if (row) row.parentNode.removeChild(row);
+                ichraRenumberBands();
+            });
+            // Keeps the derived Eligible Employees total and btnCreate honest as the agent types.
+            ichraBandRowsEl.addEventListener('input', function(e) {
+                if (!e.target.closest) return;
+                if (e.target.closest('.intake-band-age') || e.target.closest('.intake-band-count')) {
+                    ichraSyncBandTier();
+                    updateSteps();
+                }
+            });
+        }
         updateSteps();
     });
 
@@ -850,6 +1055,17 @@
         if (zipEl && ichraHandoffZip != null && !zipEl.value) {
             zipEl.value = ichraHandoffZip;
             ichraZipLookup();
+        }
+
+        // S19-I — bands from an AGE_BAND hand-off. Only when the panel currently has none, so
+        // this can never duplicate or clobber rows an agent has already built. Each row is
+        // added through the same ichraAddBandRow() the "+ Add age band" button uses, so the
+        // renumber/tier/gating sync is identical on both paths. ichraRenumberBands() (called
+        // inside) hides Eligible Employees and publishes the derived total once rows exist.
+        if (ichraHandoffBands && ichraHandoffBands.length && ichraBandRowList().length === 0) {
+            ichraHandoffBands.forEach(function(band) {
+                ichraAddBandRow(band.age, band.count);
+            });
         }
     }
 </script>

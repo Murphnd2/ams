@@ -42,6 +42,15 @@ public class ProposalBuilder extends HttpServlet {
     /** T165/V090 — machine-readable timestamp format for the ICHRA JSON payload's provenance block. */
     private static final DateTimeFormatter ICHRA_PAYLOAD_TIMESTAMP = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss");
 
+    /**
+     * S19-I — age/count pairs this servlet reads, emits and echoes. Must stay equal to
+     * {@code IllustrationServlet.AGE_BAND_ROWS} (6) and to the number of age/count hidden
+     * field pairs in {@code proposalBuilder.jsp}: the illustration's own cap comment warns
+     * that raising one without the others silently drops the extra rows from every proposal
+     * snapshot. A form-field cap, not a reference-row id.
+     */
+    private static final int ICHRA_AGE_BAND_ROWS = 6;
+
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
 
@@ -130,6 +139,18 @@ public class ProposalBuilder extends HttpServlet {
                 Integer handoffHeadcount = parseIntOrNull(request.getParameter("headcount"));
                 request.setAttribute("handoffHeadcount",
                         (handoffHeadcount != null && handoffHeadcount >= 1 && handoffHeadcount <= 10000) ? handoffHeadcount : null);
+
+                // S19-I — the AGE_BAND hand-off's age{i}/count{i} pairs, same validated-only
+                // discipline as the three values above. Bounds mirror the illustration's own
+                // controls exactly (age 21-64; a blank/invalid count defaults to 1, matching
+                // attachAgeBandSnapshot's own parse and the illustration's W15 real-default
+                // convention). Emitted as a JSON array literal built from parsed ints only —
+                // no request text is ever concatenated in, so this cannot carry markup or a
+                // quote out of the query string; same hand-built-JSON convention as
+                // rateLosMapJson below. An absent/malformed pair is skipped, so a page with no
+                // band parameters simply receives [].
+                request.setAttribute("handoffBandsJson", buildHandoffBandsJson(request));
+                request.setAttribute("ichraAgeBandMaxRows", ICHRA_AGE_BAND_ROWS);
             }
 
             // ── Build rate → LOS availability map ──
@@ -557,6 +578,67 @@ public class ProposalBuilder extends HttpServlet {
         return null;
     }
 
+    /**
+     * S19-I — the hand-off's validated age/count pairs as a JSON array literal for the intake
+     * block's repeater. Only parsed ints reach the output; request text never does. See the
+     * call site in {@code doGet} for the validation rationale.
+     */
+    private String buildHandoffBandsJson(HttpServletRequest request) {
+        StringBuilder json = new StringBuilder("[");
+        boolean first = true;
+        for (int i = 1; i <= ICHRA_AGE_BAND_ROWS; i++) {
+            Integer age = parseIntOrNull(request.getParameter("age" + i));
+            if (age == null || age < 21 || age > 64) continue;
+            Integer count = parseIntOrNull(request.getParameter("count" + i));
+            if (count == null || count < 1) count = 1;
+            if (count > 10000) continue;
+            if (!first) json.append(',');
+            json.append("{\"age\":").append(age).append(",\"count\":").append(count).append('}');
+            first = false;
+        }
+        return json.append(']').toString();
+    }
+
+    /**
+     * S19-I — one ICHRA input, resolved across the two namespaces this form carries.
+     * <p>
+     * The illustration hand-off echoes UN-prefixed {@code countyFips/headcount/contribution/
+     * age{i}/count{i}} hidden fields; the plus-tier intake block posts its own
+     * {@code intake*}-prefixed fields (deliberately distinct — see the intake panel's own
+     * comment in {@code proposalBuilder.jsp}, reusing a name would silently collide). The
+     * hand-off wins when present so an untouched hand-off behaves exactly as it did before
+     * this run; the intake value is the fallback, which is what makes a standalone intake —
+     * no illustration, no URL parameters — able to produce a snapshot at all.
+     */
+    private String ichraParam(HttpServletRequest request, String handoffName, String intakeName) {
+        String handoffValue = request.getParameter(handoffName);
+        if (handoffValue != null && !handoffValue.isBlank()) return handoffValue;
+        return request.getParameter(intakeName);
+    }
+
+    /**
+     * S19-I — the snapshot mode a standalone intake implies, or null when the intake block
+     * submitted nothing usable (every field blank, or the panel never rendered).
+     * <p>
+     * Mirrors the illustration's own rule that mode is DERIVED from whether any age band is
+     * present, rather than asserted separately — see {@code illustration25.jsp}'s K3-b note.
+     * Only ever consulted when the URL carries no explicit {@code mode}, so a hand-off's
+     * declared mode is never overridden by it.
+     */
+    private String deriveIntakeMode(HttpServletRequest request) {
+        for (int i = 1; i <= ICHRA_AGE_BAND_ROWS; i++) {
+            String age = request.getParameter("intakeAge" + i);
+            if (age != null && !age.isBlank()) {
+                return ProposalIchraSnapshot.MODE_AGE_BAND;
+            }
+        }
+        String headcount = request.getParameter("intakeHeadcount");
+        if (headcount != null && !headcount.isBlank()) {
+            return ProposalIchraSnapshot.MODE_RANGE;
+        }
+        return null;
+    }
+
     /** Exactly five digits after trimming, or null. Used for intakeZip/intakeCountyFips. */
     private String normalizeFiveDigitCode(String raw) {
         if (raw == null) return null;
@@ -579,13 +661,25 @@ public class ProposalBuilder extends HttpServlet {
      * recording what the agent saw, not computing affordability).
      */
     private void attachIchraSnapshotIfPresent(HttpServletRequest request, EntityManager em, Proposal proposal, Person createdBy) {
-        String countyFips = request.getParameter("countyFips");
+        // S19-I — resolved across both namespaces (see ichraParam). Before this run all three
+        // came from the illustration hand-off's URL parameters only, so a plus-tier intake
+        // filled in by hand — with no illustration behind it — wrote an intake row and never
+        // a snapshot, which meant payload_json.ageBands could never be non-null on that path.
+        // A hand-off still wins every field it supplies, so an untouched hand-off is
+        // bit-identical to its pre-S19-I behaviour.
+        String countyFips = ichraParam(request, "countyFips", "intakeCountyFips");
         String mode = request.getParameter("mode");
+        if (mode == null || mode.isBlank()) {
+            mode = deriveIntakeMode(request);
+        }
         if (countyFips == null || countyFips.isBlank() || mode == null || mode.isBlank()) {
             return;
         }
 
+        // Derived rather than agent-asserted when the hand-off does not carry one — the same
+        // source and the same fail-closed posture attachIchraIntakeIfPresent already uses.
         Integer planYear = parseIntOrNull(request.getParameter("planYear"));
+        if (planYear == null) planYear = resolveCurrentPlanYear(em);
         if (planYear == null) return;
 
         CountyReference county = CountyReferenceDAO.findByFips(em, countyFips);
@@ -627,7 +721,8 @@ public class ProposalBuilder extends HttpServlet {
     /** RANGE snapshot — group premium range at ages 21/64 times headcount, mirroring IllustrationServlet.handleRangeMode's own arithmetic. */
     private void attachRangeSnapshot(HttpServletRequest request, EntityManager em, Proposal proposal, Person createdBy,
                                       CountyReference county, int planYear, String countyFips) {
-        Integer headcount = parseIntOrNull(request.getParameter("headcount"));
+        // S19-I — hand-off value first, intake block's field as fallback (see ichraParam).
+        Integer headcount = parseIntOrNull(ichraParam(request, "headcount", "intakeHeadcount"));
         if (headcount == null || headcount < 1) return;
 
         List<RatingAreaRateCache> rows = RateCacheDAO.getRatesForCounty(em, planYear, countyFips);
@@ -686,16 +781,21 @@ public class ProposalBuilder extends HttpServlet {
     /** AGE_BAND snapshot — per-row net cost and group total, mirroring IllustrationServlet.handleAgeBandMode's own arithmetic. */
     private void attachAgeBandSnapshot(HttpServletRequest request, EntityManager em, Proposal proposal, Person createdBy,
                                         CountyReference county, int planYear, String countyFips) {
-        BigDecimal contribution = parseDecimalOrNull(request.getParameter("contribution"));
+        // S19-I — hand-off value first, intake block's field as fallback (see ichraParam).
+        // ⚠️ Contribution remains REQUIRED here, deliberately unchanged: a missing one returns
+        // without writing any snapshot. Defaulting it to zero would record "the employer
+        // contributes nothing" as though the agent had said so, making entered and assumed
+        // indistinguishable — the exact failure the illustration's W15 note exists to prevent.
+        BigDecimal contribution = parseDecimalOrNull(ichraParam(request, "contribution", "intakeContribution"));
         if (contribution == null || contribution.signum() < 0) return;
 
         List<int[]> ageCountPairs = new ArrayList<>(); // {age, count}
-        for (int i = 1; i <= 6; i++) {
-            String ageRaw = request.getParameter("age" + i);
+        for (int i = 1; i <= ICHRA_AGE_BAND_ROWS; i++) {
+            String ageRaw = ichraParam(request, "age" + i, "intakeAge" + i);
             if (ageRaw == null || ageRaw.isBlank()) continue; // blank age = ignored row, same as the illustration
             Integer age = parseIntOrNull(ageRaw);
             if (age == null || age < 21 || age > 64) continue;
-            Integer count = parseIntOrNull(request.getParameter("count" + i));
+            Integer count = parseIntOrNull(ichraParam(request, "count" + i, "intakeCount" + i));
             if (count == null || count < 1) count = 1;
             ageCountPairs.add(new int[]{age, count});
         }
