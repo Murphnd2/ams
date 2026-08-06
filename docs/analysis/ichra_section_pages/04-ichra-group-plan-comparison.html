@@ -1,0 +1,94 @@
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Source+Sans+3:ital,wght@0,400;0,600;0,700;1,400&display=swap');
+
+  .ichracmp {
+    --s: 1;
+    --navy: #1B2A4A;
+    --navy-lt: #243B5C;
+    --teal: #2A7F8E;
+    --teal-bg: #1E5F6B;
+    --white: #fff;
+    --off: #D0D8E4;
+    --muted: #A0ADBF;
+    font-family: 'Source Sans 3', 'Liberation Sans', Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .ichracmp h1, .ichracmp h2, .ichracmp h3 { color: var(--white); }
+
+  .ichracmp .card-inset {
+    background: var(--navy);
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    border-radius: 12px;
+    padding: calc(2.5rem * var(--s)) calc(2.75rem * var(--s)) calc(2.25rem * var(--s));
+    color: var(--white);
+    min-height: calc(11in - 1.5in);
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .ichracmp h1 { font-size: calc(24pt * var(--s)); font-weight: 700; margin: 0 0 calc(0.3rem * var(--s)) 0; }
+  .ichracmp .prepared-for { font-size: calc(11pt * var(--s)); color: var(--muted); margin: 0 0 calc(1.25rem * var(--s)) 0; }
+  .ichracmp .body { font-size: calc(11pt * var(--s)); line-height: 1.6; color: var(--off); margin: 0 0 calc(1.5rem * var(--s)) 0; }
+
+  .ichracmp .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: calc(0.85rem * var(--s)); margin-bottom: calc(1.5rem * var(--s)); }
+  .ichracmp .info-box {
+    background: var(--navy-lt); -webkit-print-color-adjust: exact; print-color-adjust: exact;
+    border-radius: 8px; padding: calc(1rem * var(--s)) calc(1.15rem * var(--s));
+  }
+  .ichracmp .info-box .label { font-size: calc(8pt * var(--s)); font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); margin-bottom: calc(0.35rem * var(--s)); }
+  .ichracmp .info-box .desc { font-size: calc(9.5pt * var(--s)); line-height: 1.5; color: var(--off); }
+
+  .ichracmp .section-heading {
+    font-size: calc(12.5pt * var(--s)); font-weight: 700; color: var(--teal);
+    text-transform: uppercase; letter-spacing: 0.03em;
+    margin: calc(0.5rem * var(--s)) 0 calc(0.6rem * var(--s)) 0;
+  }
+
+  .ichracmp table { width: 100%; border-collapse: collapse; margin: calc(0.35rem * var(--s)) 0 calc(1rem * var(--s)) 0; font-size: calc(9.5pt * var(--s)); color: var(--off); flex: 1; }
+  .ichracmp th {
+    text-align: left; padding: calc(0.5rem * var(--s)) calc(0.7rem * var(--s));
+    background: var(--navy-lt); -webkit-print-color-adjust: exact; print-color-adjust: exact;
+    color: var(--white); font-weight: 600; border-bottom: 1px solid rgba(255,255,255,0.15);
+  }
+  .ichracmp td { padding: calc(0.5rem * var(--s)) calc(0.7rem * var(--s)); border-bottom: 1px solid rgba(255,255,255,0.08); }
+  .ichracmp tbody tr:nth-child(even) td { background: rgba(255,255,255,0.03); }
+
+  .ichracmp .disclosure { font-size: calc(8.5pt * var(--s)); line-height: 1.5; color: var(--muted); margin-top: calc(1.25rem * var(--s)); padding-top: calc(1rem * var(--s)); border-top: 1px solid rgba(255,255,255,0.12); }
+
+  @media print { .ichracmp .card-inset { min-height: auto; } }
+  @media (max-width: 700px) {
+    .ichracmp .two-col { grid-template-columns: 1fr; }
+    .ichracmp table { font-size: calc(8.5pt * var(--s)); }
+  }
+</style>
+<div class="ichracmp" style="page-break-before:always; padding:0.5in 0;">
+  <div class="card-inset">
+    <h1>Group Plan Comparison</h1>
+    <div class="prepared-for">Prepared for {{PROSPECT_NAME}}</div>
+    <p class="body">
+      This page places the group's current group plan costs alongside the planned ICHRA
+      contribution, using the figures entered for this proposal.
+    </p>
+
+    <div class="two-col">
+      <div class="info-box">
+        <div class="label">Current Group Plan</div>
+        <div class="desc">The group's current total monthly premium and the employer's current monthly share of it.</div>
+      </div>
+      <div class="info-box">
+        <div class="label">Planned ICHRA Approach</div>
+        <div class="desc">The monthly contribution entered for this proposal, and the resulting monthly difference.</div>
+      </div>
+    </div>
+
+    <div class="section-heading">Comparison</div>
+    {{ICHRA_GROUP_COMPARISON_TABLE}}
+
+    <div class="disclosure">
+      These figures reflect the inputs entered for this proposal at the time it was built. Actual
+      results depend on plan selection, enrollment, and other factors specific to the group.
+    </div>
+  </div>
+</div>

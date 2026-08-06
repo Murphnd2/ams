@@ -1,0 +1,78 @@
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Source+Sans+3:ital,wght@0,400;0,600;0,700;1,400&display=swap');
+
+  .ichrab {
+    --s: 1;
+    --navy: #1B2A4A;
+    --navy-lt: #243B5C;
+    --teal: #2A7F8E;
+    --teal-bg: #1E5F6B;
+    --white: #fff;
+    --off: #D0D8E4;
+    --muted: #A0ADBF;
+    font-family: 'Source Sans 3', 'Liberation Sans', Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .ichrab h1, .ichrab h2, .ichrab h3 { color: var(--white); }
+
+  .ichrab .card-inset {
+    background: var(--navy);
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    border-radius: 12px;
+    padding: calc(2.5rem * var(--s)) calc(2.75rem * var(--s)) calc(2.25rem * var(--s));
+    color: var(--white);
+    min-height: calc(11in - 1.5in);
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .ichrab h1 { font-size: calc(24pt * var(--s)); font-weight: 700; margin: 0 0 calc(0.3rem * var(--s)) 0; }
+  .ichrab .prepared-for { font-size: calc(11pt * var(--s)); color: var(--muted); margin: 0 0 calc(1.25rem * var(--s)) 0; }
+  .ichrab .body { font-size: calc(11pt * var(--s)); line-height: 1.6; color: var(--off); margin: 0 0 calc(1.25rem * var(--s)) 0; }
+
+  .ichrab .section-heading {
+    font-size: calc(12.5pt * var(--s)); font-weight: 700; color: var(--teal);
+    text-transform: uppercase; letter-spacing: 0.03em;
+    margin: calc(1rem * var(--s)) 0 calc(0.6rem * var(--s)) 0;
+  }
+  .ichrab .section-intro { font-size: calc(9.5pt * var(--s)); line-height: 1.5; color: var(--muted); margin: 0 0 calc(0.5rem * var(--s)) 0; }
+
+  .ichrab table { width: 100%; border-collapse: collapse; margin: calc(0.35rem * var(--s)) 0 calc(1rem * var(--s)) 0; font-size: calc(9pt * var(--s)); color: var(--off); }
+  .ichrab th {
+    text-align: left; padding: calc(0.4rem * var(--s)) calc(0.6rem * var(--s));
+    background: var(--navy-lt); -webkit-print-color-adjust: exact; print-color-adjust: exact;
+    color: var(--white); font-weight: 600; border-bottom: 1px solid rgba(255,255,255,0.15);
+  }
+  .ichrab td { padding: calc(0.35rem * var(--s)) calc(0.6rem * var(--s)); border-bottom: 1px solid rgba(255,255,255,0.08); }
+  .ichrab tbody tr:nth-child(even) td { background: rgba(255,255,255,0.03); }
+
+  .ichrab .disclosure { font-size: calc(8.5pt * var(--s)); line-height: 1.5; color: var(--muted); margin-top: calc(1.25rem * var(--s)); padding-top: calc(1rem * var(--s)); border-top: 1px solid rgba(255,255,255,0.12); }
+
+  @media print { .ichrab .card-inset { min-height: auto; } }
+  @media (max-width: 700px) {
+    .ichrab table { font-size: calc(8pt * var(--s)); }
+  }
+</style>
+<div class="ichrab" style="page-break-before:always; padding:0.5in 0;">
+  <div class="card-inset">
+    <h1>Age Bands &amp; Plan Landscape</h1>
+    <div class="prepared-for">Prepared for {{PROSPECT_NAME}}</div>
+    <p class="body">
+      This page details the group's age-specific premium picture and the range of off-exchange
+      plans available in its county, as captured at the time this proposal was built.
+    </p>
+
+    <div class="section-heading">By Age Band</div>
+    <p class="section-intro">Where age-specific data was captured for this group, individual premiums by age and headcount appear below.</p>
+    {{ICHRA_AGE_BAND_TABLE}}
+
+    <div class="section-heading">Off-Exchange Plan Landscape</div>
+    <p class="section-intro">Where cached market data exists for this county and plan year, the plans below are itemized by metal level and premium.</p>
+    {{ICHRA_PLAN_LANDSCAPE_TABLE}}
+    <p class="section-intro">These figures reflect off-exchange coverage only and do not represent a complete view of the market.</p>
+
+    <div class="disclosure">{{ICHRA_PAYLOAD_AS_OF}}</div>
+  </div>
+</div>
