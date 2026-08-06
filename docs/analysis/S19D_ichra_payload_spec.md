@@ -226,13 +226,15 @@ discipline; do not assume V090 is still unclaimed by the time this is built.
     "countyName": "Hopkins"
   },
   "affordability": {
-    "onExchangeLcspPremium": 705.37,
+    "applicablePercentage": 0.0883,
     "incomeBasis": {
       "type": "ENTERED",
       "annualIncome": 34000.00
     },
-    "applicablePercentage": 0.0883,
-    "subsidyPreservingCeiling": 450.00
+    "bands": [
+      { "age": 21, "onExchangeLcspPremium": 551.93, "subsidyPreservingCeiling": 300.12 },
+      { "age": 40, "onExchangeLcspPremium": 705.37, "subsidyPreservingCeiling": 450.00 }
+    ]
   },
   "ageBands": [
     { "age": 21, "lives": 4, "premium": 382.93 },
@@ -273,18 +275,23 @@ discipline; do not assume V090 is still unclaimed by the time this is built.
   the snapshot row's own columns, and robust to the payload someday moving storage location.
   `capturedAt` is the payload's own write timestamp (mirrors `ProposalIchraSnapshot.snapshotAt`'s
   existing convention — same format, same source: `LocalDateTime.now()` at write time).
-- **`affordability`** — see §5 (Contradictions found) for the audience tension this block sits inside.
-  `onExchangeLcspPremium` is the raw input (`RatingAreaRateCache.onexLcspPremium`, §1.5) — the
-  affordability *threshold's* underlying figure. `subsidyPreservingCeiling` is
-  `AffordabilityCalculator.flipContribution`'s **output** — LA-15's "ceiling," a different number
+- **`affordability`** — **per-band as of the 2026-08-05 correction below** (originally a single
+  group-level block; see the correction note at the end of this section for the full history). See
+  §5 (Contradictions found) for the audience tension this block sits inside regardless of shape.
+  `applicablePercentage` and `incomeBasis` stay block-level — both are genuinely single group-level
+  inputs (one `ICHRA_AFFORDABILITY_PCT_<planYear>` constant; one `annualIncome` request parameter,
+  since no JSP submits per-band income). `incomeBasis.type` is `"ENTERED"` (employer-supplied
+  household income) or `"FPL_SAFE_HARBOR"` (the configured federal poverty line constant used as the
+  reference income) — mirrors `AffordabilityCalculator.flipContribution`'s own `annualIncome`
+  parameter doc: *"entered household income, or the configured FPL for the safe-harbor basis."*
+  Whichever basis was used at write time is recorded, never re-derived later. Each entry in
+  `affordability.bands` — keyed by `age`, aligned entry-for-entry with `ageBands` — carries
+  `onExchangeLcspPremium` (the raw input, `RatingAreaRateCache.onexLcspPremium`, §1.5 — the
+  affordability *threshold's* underlying figure) and `subsidyPreservingCeiling`
+  (`AffordabilityCalculator.flipContribution`'s **output** — LA-15's "ceiling," a different number
   computed from the threshold, income, and `applicablePercentage`, **never derived by relabeling the
-  threshold figure at render time.** `applicablePercentage` is carried for audit/transparency (so a
-  later correction to the IRS-indexed constant, per LA-14's own recorded risk, doesn't leave a payload
-  that can't be explained) — informational, not intended for direct display. `incomeBasis.type` is
-  `"ENTERED"` (employer-supplied household income) or `"FPL_SAFE_HARBOR"` (the configured federal
-  poverty line constant used as the reference income) — mirrors `AffordabilityCalculator.flipContribution`'s
-  own `annualIncome` parameter doc: *"entered household income, or the configured FPL for the safe-harbor
-  basis."* Whichever basis was used at write time is recorded, never re-derived later.
+  threshold figure at render time**) as two separate fields, per band. A band lacking a cached
+  on-exchange LCSP still gets an entry, with both figures `null`, rather than being silently dropped.
 - **`ageBands`** — one entry per age actually present in the proposal-build request (mirrors
   `attachAgeBandSnapshot`'s existing `age1..age6` parameter loop, §1.2), **premium only** — the raw
   floor premium at that age, not a contribution-net figure. Net-of-contribution math for a "contribution
@@ -303,6 +310,23 @@ discipline; do not assume V090 is still unclaimed by the time this is built.
 **Explicitly excluded, standing compliance boundary:** no SSN, no name, no date of birth, no any other
 employee-identifying field. `ageBands` carries `age` and `lives` (a count), never a roster. This mirrors
 `ProposalIchraSnapshotBand`'s own existing shape, which already made the same choice.
+
+**Correction, 2026-08-05 (S19-F).** This section originally specified `affordability` as a single
+group-level block (`onExchangeLcspPremium`, `incomeBasis`, `applicablePercentage`,
+`subsidyPreservingCeiling` — no per-band structure). S19-E built it exactly that way, resolving *how*
+to get one group-level figure by evaluating at age 40 (mirroring `ViewProposal.putIchraMarketTokens`'s
+own representative-age convention) — a build-time call the S19-D spec left open and S19-E made and
+flagged for review (see `docs/session_closeout_2026-08-05_session19E.md` §3 decision 3 and §6). S19-F
+reversed it: on-exchange premiums are age-rated on roughly a 3:1 spread, so a single mid-band figure
+is not a rounding error — an offer that computes affordable at 40 can be unaffordable at 60, the
+direction that carries employer exposure, and LA-15's subsidy-preserving ceiling has the same age
+dependency. `affordability` is now per-band, keyed the same way `ageBands` is, exactly as shown in
+§3's JSON example and field notes above (both already updated in place by this correction — the
+original single-block text was not preserved verbatim elsewhere; this paragraph is the historical
+record of what it said and why it changed). No migration and no `schemaVersion` bump were needed or
+made — `payload_json` had zero non-null rows anywhere when this correction landed, so no v1 payload
+in the original shape ever existed to migrate away from. See
+`docs/session_closeout_2026-08-05_session19E.md`'s own append for the mirrored note on that side.
 
 ---
 

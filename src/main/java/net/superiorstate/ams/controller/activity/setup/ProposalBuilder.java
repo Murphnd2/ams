@@ -760,9 +760,12 @@ public class ProposalBuilder extends HttpServlet {
      * {@code provenance} is always populated — every input it needs is already required by the
      * caller to reach this point at all. {@code ageBands} is null when {@code bands} is null or
      * empty (RANGE mode, per S19-E §2's decision — never synthesized). {@code affordability} is
-     * null unless {@link #buildAffordabilityBlock} resolves every one of its own inputs.
-     * {@code planLandscape} is always null — nothing in this build calls HealthSherpa; that is
-     * T166's plan-fetch, not this one's.
+     * null unless {@link #buildAffordabilityBlock} resolves every one of its own inputs — as of
+     * S19-F it is a per-band structure keyed the same way {@code ageBands} is, so it aligns with
+     * {@code ageBands} entry-for-entry rather than collapsing the whole group into one age (see
+     * {@code docs/analysis/S19D_ichra_payload_spec.md}'s dated correction note). {@code
+     * planLandscape} is always null — nothing in this build calls HealthSherpa; that is T166's
+     * plan-fetch, not this one's.
      */
     private String buildIchraPayload(HttpServletRequest request, EntityManager em, int planYear, String countyFips,
                                       String countyName, String sourceEnv, LocalDateTime fetchedAt,
@@ -793,7 +796,7 @@ public class ProposalBuilder extends HttpServlet {
             root.add("ageBands", JsonNull.INSTANCE);
         }
 
-        JsonObject affordability = buildAffordabilityBlock(request, em, planYear, countyFips);
+        JsonObject affordability = buildAffordabilityBlock(request, em, planYear, countyFips, bands);
         root.add("affordability", affordability != null ? affordability : JsonNull.INSTANCE);
 
         // T166's plan-fetch is not built by this run — nothing supplies plans, so this stays
@@ -804,20 +807,34 @@ public class ProposalBuilder extends HttpServlet {
     }
 
     /**
-     * T165/V090 — the {@code affordability} sub-block. Mirrors {@code IllustrationServlet
-     * .computeAffordability}'s constant lookups (same constant names, same fail-closed
-     * behaviour: a missing {@code ICHRA_AFFORDABILITY_PCT_<planYear>} or
-     * {@code FPL_ANNUAL_<planYear>} constant means no affordability output, never a default)
-     * and the same {@link AffordabilityCalculator#flipContribution} call. Evaluated at age 40
-     * as the single representative age for one group-level figure — the same age
-     * {@code ViewProposal.putIchraMarketTokens} already falls back to when one figure must
-     * stand in for a whole group (T130's {@code byAge.get(40)} convention). Returns null
-     * (no affordability block at all) on any missing input — no {@code affordabilityBasis}
-     * parameter, no configured constant, no cached on-exchange LCSP at age 40, or (for the
-     * {@code INCOME} basis) no {@code annualIncome} parameter. Never a default, never a partial
-     * block.
+     * T165/V090, reshaped S19-F. The {@code affordability} sub-block — per-band, keyed the same
+     * way {@code ageBands} is (by {@code age}), so the two align entry-for-entry. Reverses S19-E's
+     * age-40 collapse: {@code IllustrationServlet.computeAffordability} (uncalled, unmodified —
+     * consulted only as the precedent for its constant lookups and fail-closed shape) computes
+     * affordability per age band, never one group-level figure, because on-exchange premiums are
+     * age-rated on roughly a 3:1 spread — an offer computed affordable at one age can be
+     * unaffordable at another, and that is employer exposure, not a rounding error.
+     * <p>
+     * {@code applicablePercentage} and {@code incomeBasis} stay block-level: both are genuinely
+     * single group-level inputs today — one {@code ICHRA_AFFORDABILITY_PCT_<planYear>} constant,
+     * and one {@code annualIncome} request parameter (no JSP submits a per-band income; if one
+     * ever does, {@code incomeBasis} would need to move into each band entry, not before). Each
+     * band entry carries {@code onExchangeLcspPremium} (the threshold's raw input) and
+     * {@code subsidyPreservingCeiling} (the computed flip-contribution) as two separate fields,
+     * per LA-15 — never collapsed into one number. A band lacking a cached on-exchange LCSP still
+     * gets an entry, with both figures {@code null}, so positional alignment with {@code ageBands}
+     * never silently drops an age — mirrors {@code IllustrationServlet}'s own per-row
+     * "not cached" disposition rather than failing the whole block closed over one missing row.
+     * <p>
+     * Returns null (no affordability block at all, {@code bands} array included) when
+     * {@code bands} itself is null/empty (RANGE mode, or nothing collected), when no
+     * {@code affordabilityBasis} parameter is present, or when the applicable-percentage/income
+     * inputs are missing. No default, ever, for any of these.
      */
-    private JsonObject buildAffordabilityBlock(HttpServletRequest request, EntityManager em, int planYear, String countyFips) {
+    private JsonObject buildAffordabilityBlock(HttpServletRequest request, EntityManager em, int planYear, String countyFips,
+                                                List<ProposalIchraSnapshotBand> bands) {
+        if (bands == null || bands.isEmpty()) return null;
+
         String basis = request.getParameter("affordabilityBasis");
         if (!"FPL".equals(basis) && !"INCOME".equals(basis)) return null;
 
@@ -835,20 +852,31 @@ public class ProposalBuilder extends HttpServlet {
         }
         if (annualIncome == null) return null;
 
-        RatingAreaRateCache referenceRow = RateCacheDAO.getRate(em, planYear, countyFips, 40, false);
-        BigDecimal onexLcsp = referenceRow != null ? referenceRow.getOnexLcspPremium() : null;
-        if (onexLcsp == null) return null;
+        JsonArray bandsArr = new JsonArray();
+        for (ProposalIchraSnapshotBand band : bands) {
+            RatingAreaRateCache referenceRow = RateCacheDAO.getRate(em, planYear, countyFips, band.getAge(), false);
+            BigDecimal onexLcsp = referenceRow != null ? referenceRow.getOnexLcspPremium() : null;
 
-        BigDecimal ceiling = AffordabilityCalculator.flipContribution(onexLcsp, applicablePct, annualIncome);
+            JsonObject bandEntry = new JsonObject();
+            bandEntry.addProperty("age", band.getAge());
+            if (onexLcsp != null) {
+                BigDecimal ceiling = AffordabilityCalculator.flipContribution(onexLcsp, applicablePct, annualIncome);
+                bandEntry.addProperty("onExchangeLcspPremium", onexLcsp);
+                bandEntry.addProperty("subsidyPreservingCeiling", ceiling);
+            } else {
+                bandEntry.add("onExchangeLcspPremium", JsonNull.INSTANCE);
+                bandEntry.add("subsidyPreservingCeiling", JsonNull.INSTANCE);
+            }
+            bandsArr.add(bandEntry);
+        }
 
         JsonObject affordability = new JsonObject();
-        affordability.addProperty("onExchangeLcspPremium", onexLcsp);
+        affordability.addProperty("applicablePercentage", applicablePct);
         JsonObject incomeBasisObj = new JsonObject();
         incomeBasisObj.addProperty("type", incomeBasisType);
         incomeBasisObj.addProperty("annualIncome", annualIncome);
         affordability.add("incomeBasis", incomeBasisObj);
-        affordability.addProperty("applicablePercentage", applicablePct);
-        affordability.addProperty("subsidyPreservingCeiling", ceiling);
+        affordability.add("bands", bandsArr);
         return affordability;
     }
 

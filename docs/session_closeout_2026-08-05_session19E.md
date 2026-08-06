@@ -179,3 +179,18 @@ running in a live servlet; no `payload_json` value produced by `attachRangeSnaps
 public page shows zero affordability content regardless of payload contents. Compiling is not
 rendering — all four steps are Kevin's walk, unperformed by this run, exactly as the prompt said
 they would be.
+
+## 10. Reversal note, 2026-08-05 (S19-F)
+
+**§3 decision 3 above (the age-40 single-block affordability resolution) was reversed by S19-F.**
+`affordability` is now per-band, keyed the same way `ageBands` is, for the reasoning recorded in
+S19-F's own prompt and mirrored in `docs/analysis/S19D_ichra_payload_spec.md`'s §3 correction note
+(dated 2026-08-05): on-exchange premiums are age-rated on roughly a 3:1 spread, so a single mid-band
+figure understates real variance in a way that carries employer exposure, not just imprecision. No
+migration and no `schemaVersion` bump were needed — `payload_json` had zero non-null rows anywhere
+when S19-F landed, confirmed by that run's own preflight query, so no v1 payload in the original
+single-block shape ever existed to migrate away from. S19-F's commit hash: read via `git log` in
+that run's own transcript (this note is appended by S19-F itself, before its own commit, so it
+cannot self-reference its hash any more than S19-E's own commit 2 could — see §1 above for the same
+limitation). The rest of this document's body is unchanged from what S19-E actually shipped and is
+not rewritten by this note.
