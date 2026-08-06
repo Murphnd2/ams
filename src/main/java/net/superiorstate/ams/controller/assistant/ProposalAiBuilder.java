@@ -91,6 +91,27 @@ public class ProposalAiBuilder extends HttpServlet {
             "- {{APPLY_BUTTON}} — renders a styled Apply Now button\n" +
             "- {{PROPOSAL_ID}} — proposal ID\n\n" +
             "Using {{PRIMARY_COLOR}} and {{ACCENT_COLOR}} in CSS vars (e.g., --primary: {{PRIMARY_COLOR}}) makes pages auto-adapt to any PSP's branding.\n\n" +
+            "ICHRA TOKENS:\n" +
+            "These are only meaningful on a proposal carrying ICHRA plus-tier data. Every one of them degrades to an empty string when its underlying data is absent — never wrap one in surrounding text that only reads correctly if it resolves (e.g. \"Lowest premium: {{ICHRA_FLOOR_AGE_21}}/mo\" becomes \"Lowest premium: /mo\" when empty). Structure the layout so an empty ICHRA token collapses cleanly, not so it leaves a visible gap or a broken sentence.\n" +
+            "- {{ICHRA_COUNTY}} — resolved county name from the ICHRA intake (empty if this proposal carries no ICHRA hand-off)\n" +
+            "- {{ICHRA_COUNTY_FIPS}} — resolved county FIPS code, same condition\n" +
+            "- {{ICHRA_HEADCOUNT}} — eligible employee headcount from the intake\n" +
+            "- {{ICHRA_PLAN_YEAR}} — plan year the ICHRA data was captured against\n" +
+            "- {{ICHRA_CONTRIBUTION_MONTHLY}} — employer's stated monthly contribution per employee, as currency (empty unless both a contribution and a headcount were entered)\n" +
+            "- {{ICHRA_CONTRIBUTION_ANNUAL}} — the same contribution, annualized\n" +
+            "- {{ICHRA_CONTRIBUTION_TOTAL_MONTHLY}} — total monthly employer outlay across the group\n" +
+            "- {{ICHRA_CONTRIBUTION_TOTAL_ANNUAL}} — total annual employer outlay\n" +
+            "- {{ICHRA_PLAN_COUNT}} — count of off-exchange plans available in the county at age 40 (empty unless production-sourced market rates are cached)\n" +
+            "- {{ICHRA_CARRIER_COUNT}} — count of distinct carriers available, same condition\n" +
+            "- {{ICHRA_FLOOR_AGE_21}} — lowest available monthly premium at age 21, as currency\n" +
+            "- {{ICHRA_FLOOR_AGE_40}} — same at age 40\n" +
+            "- {{ICHRA_FLOOR_AGE_64}} — same at age 64\n" +
+            "- {{ICHRA_RATES_AS_OF}} — a bare date (e.g. \"August 5, 2026\"), when the market rates were fetched — safe to use inline\n" +
+            "- {{ICHRA_RATES_SCOPE}} — a complete disclosure sentence stating the figures are off-exchange and not a quote; emitted only alongside real figures, never alone\n\n" +
+            "Three more ICHRA tokens are richer than a bare value and must each get their own block-level spot in the layout, never embedded inline in a sentence:\n" +
+            "- {{ICHRA_AGE_BAND_TABLE}} — a complete <table> of age / lives / premium rows\n" +
+            "- {{ICHRA_PLAN_LANDSCAPE_TABLE}} — a complete <table> of metal level / premium / HSA-eligible / ICHRA-only rows. It never includes plan names or carrier names — do not add columns or labels that would supply them yourself.\n" +
+            "- {{ICHRA_PAYLOAD_AS_OF}} — a complete disclosure sentence (not a table) about when the underlying ICHRA data snapshot was captured — it is frozen at that moment and never re-priced on later views\n\n" +
             "WORKFLOW:\n" +
             "1. Ask what the page is about and what section type (TITLE, CLOSING, or CUSTOM)\n" +
             "2. Ask about desired style/colors (or analyze provided reference material)\n" +
