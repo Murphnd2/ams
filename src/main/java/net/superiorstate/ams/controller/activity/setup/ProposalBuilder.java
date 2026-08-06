@@ -1032,6 +1032,26 @@ public class ProposalBuilder extends HttpServlet {
         // null unconditionally. See S19D_ichra_payload_spec.md §4 (Read), "Out of scope".
         root.add("planLandscape", JsonNull.INSTANCE);
 
+        // S21-E — section 3's frozen comparison figures. Null (not a zero for any absent
+        // input) unless all three of contribution, currentTotalPremium and
+        // currentEmployerShare are present, matching sections.ICHRA_COMPARISON's own
+        // completeness rule below exactly so the two can never disagree. employerDelta is
+        // computed here, at freeze time, and never recomputed at render — the planned
+        // contribution minus the employer's current share, a neutral arithmetic figure, not
+        // a verdict. No schemaVersion bump: an absent groupComparison is unambiguous because
+        // sections.ICHRA_COMPARISON already says whether section 3 was selected (spec §4.4's
+        // own principled line — bump only when an absent block's meaning is ambiguous).
+        if (contribution != null && currentTotalPremium != null && currentEmployerShare != null) {
+            JsonObject groupComparison = new JsonObject();
+            groupComparison.addProperty("currentTotalMonthlyPremium", currentTotalPremium);
+            groupComparison.addProperty("currentEmployerMonthlyShare", currentEmployerShare);
+            groupComparison.addProperty("plannedContribution", contribution);
+            groupComparison.addProperty("employerDelta", contribution.subtract(currentEmployerShare));
+            root.add("groupComparison", groupComparison);
+        } else {
+            root.add("groupComparison", JsonNull.INSTANCE);
+        }
+
         // S20-B/V091 — always present, all four keys, per docs/analysis/S20A_ichra_sections_spec.md §4.
         root.add("sections", buildSectionsBlock(request, contribution, bands, currentTotalPremium,
                 currentEmployerShare, affordability));
