@@ -1,5 +1,6 @@
 package net.superiorstate.ams.controller.activity.setup;
 
+import com.google.gson.*;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
 import jakarta.servlet.*;
@@ -17,6 +18,7 @@ import net.superiorstate.ams.data.resolver.AgencyScope;
 import net.superiorstate.ams.data.resolver.AgencyScopeResolver;
 import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.data.resolver.IchraAccessResolver;
+import net.superiorstate.ams.data.util.AffordabilityCalculator;
 import net.superiorstate.ams.model.activity.Activity;
 import net.superiorstate.ams.model.general.Person;
 import net.superiorstate.ams.model.market.CountyReference;
@@ -30,11 +32,15 @@ import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
 
 @WebServlet(name = "ProposalBuilder", value = "/ProposalBuilder")
 public class ProposalBuilder extends HttpServlet {
+
+    /** T165/V090 — machine-readable timestamp format for the ICHRA JSON payload's provenance block. */
+    private static final DateTimeFormatter ICHRA_PAYLOAD_TIMESTAMP = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss");
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
@@ -651,6 +657,11 @@ public class ProposalBuilder extends HttpServlet {
         snapshot.setRatesFetchedAt(fetchedAt);
         snapshot.setSnapshotAt(LocalDateTime.now());
         snapshot.setCreatedBy(createdBy);
+        // T165/V090 — RANGE mode has no per-age loop (S19-D open question 1, decided
+        // S19-E §2): ageBands stays null rather than inventing per-age data this mode
+        // never collected.
+        snapshot.setPayloadJson(buildIchraPayload(request, em, planYear, countyFips, county.getCountyName(),
+                sourceEnv, fetchedAt, null));
 
         ProposalIchraSnapshotDAO.save(em, snapshot, null);
     }
@@ -733,8 +744,112 @@ public class ProposalBuilder extends HttpServlet {
         snapshot.setRatesFetchedAt(fetchedAt);
         snapshot.setSnapshotAt(LocalDateTime.now());
         snapshot.setCreatedBy(createdBy);
+        // T165/V090 — bands is the same list about to be persisted as ProposalIchraSnapshotBand
+        // rows; the payload's ageBands array carries the same age/lives/premium as a
+        // self-contained JSON copy, per S19D_ichra_payload_spec.md §3.
+        snapshot.setPayloadJson(buildIchraPayload(request, em, planYear, countyFips, county.getCountyName(),
+                sourceEnv, fetchedAt, bands));
 
         ProposalIchraSnapshotDAO.save(em, snapshot, bands);
+    }
+
+    /**
+     * T165/V090 — serializes {@link ProposalIchraSnapshot#getPayloadJson()}'s schema-versioned
+     * JSON payload. See {@code docs/analysis/S19D_ichra_payload_spec.md} §3/§4.
+     * <p>
+     * {@code provenance} is always populated — every input it needs is already required by the
+     * caller to reach this point at all. {@code ageBands} is null when {@code bands} is null or
+     * empty (RANGE mode, per S19-E §2's decision — never synthesized). {@code affordability} is
+     * null unless {@link #buildAffordabilityBlock} resolves every one of its own inputs.
+     * {@code planLandscape} is always null — nothing in this build calls HealthSherpa; that is
+     * T166's plan-fetch, not this one's.
+     */
+    private String buildIchraPayload(HttpServletRequest request, EntityManager em, int planYear, String countyFips,
+                                      String countyName, String sourceEnv, LocalDateTime fetchedAt,
+                                      List<ProposalIchraSnapshotBand> bands) {
+        JsonObject root = new JsonObject();
+        root.addProperty("schemaVersion", 1);
+
+        JsonObject provenance = new JsonObject();
+        provenance.addProperty("sourceEnv", sourceEnv);
+        provenance.addProperty("capturedAt", ICHRA_PAYLOAD_TIMESTAMP.format(LocalDateTime.now()));
+        provenance.addProperty("ratesFetchedAt", fetchedAt != null ? ICHRA_PAYLOAD_TIMESTAMP.format(fetchedAt) : null);
+        provenance.addProperty("planYear", planYear);
+        provenance.addProperty("countyFips", countyFips);
+        provenance.addProperty("countyName", countyName);
+        root.add("provenance", provenance);
+
+        if (bands != null && !bands.isEmpty()) {
+            JsonArray ageBandsArr = new JsonArray();
+            for (ProposalIchraSnapshotBand band : bands) {
+                JsonObject b = new JsonObject();
+                b.addProperty("age", band.getAge());
+                b.addProperty("lives", band.getLives());
+                b.addProperty("premium", band.getFloorPremium());
+                ageBandsArr.add(b);
+            }
+            root.add("ageBands", ageBandsArr);
+        } else {
+            root.add("ageBands", JsonNull.INSTANCE);
+        }
+
+        JsonObject affordability = buildAffordabilityBlock(request, em, planYear, countyFips);
+        root.add("affordability", affordability != null ? affordability : JsonNull.INSTANCE);
+
+        // T166's plan-fetch is not built by this run — nothing supplies plans, so this stays
+        // null unconditionally. See S19D_ichra_payload_spec.md §4 (Read), "Out of scope".
+        root.add("planLandscape", JsonNull.INSTANCE);
+
+        return new Gson().toJson(root);
+    }
+
+    /**
+     * T165/V090 — the {@code affordability} sub-block. Mirrors {@code IllustrationServlet
+     * .computeAffordability}'s constant lookups (same constant names, same fail-closed
+     * behaviour: a missing {@code ICHRA_AFFORDABILITY_PCT_<planYear>} or
+     * {@code FPL_ANNUAL_<planYear>} constant means no affordability output, never a default)
+     * and the same {@link AffordabilityCalculator#flipContribution} call. Evaluated at age 40
+     * as the single representative age for one group-level figure — the same age
+     * {@code ViewProposal.putIchraMarketTokens} already falls back to when one figure must
+     * stand in for a whole group (T130's {@code byAge.get(40)} convention). Returns null
+     * (no affordability block at all) on any missing input — no {@code affordabilityBasis}
+     * parameter, no configured constant, no cached on-exchange LCSP at age 40, or (for the
+     * {@code INCOME} basis) no {@code annualIncome} parameter. Never a default, never a partial
+     * block.
+     */
+    private JsonObject buildAffordabilityBlock(HttpServletRequest request, EntityManager em, int planYear, String countyFips) {
+        String basis = request.getParameter("affordabilityBasis");
+        if (!"FPL".equals(basis) && !"INCOME".equals(basis)) return null;
+
+        BigDecimal applicablePct = parseDecimalOrNull(AppConstantDAO.getConstantValue(em, "ICHRA_AFFORDABILITY_PCT_" + planYear));
+        if (applicablePct == null) return null;
+
+        BigDecimal annualIncome;
+        String incomeBasisType;
+        if ("FPL".equals(basis)) {
+            annualIncome = parseDecimalOrNull(AppConstantDAO.getConstantValue(em, "FPL_ANNUAL_" + planYear));
+            incomeBasisType = "FPL_SAFE_HARBOR";
+        } else {
+            annualIncome = parseDecimalOrNull(request.getParameter("annualIncome"));
+            incomeBasisType = "ENTERED";
+        }
+        if (annualIncome == null) return null;
+
+        RatingAreaRateCache referenceRow = RateCacheDAO.getRate(em, planYear, countyFips, 40, false);
+        BigDecimal onexLcsp = referenceRow != null ? referenceRow.getOnexLcspPremium() : null;
+        if (onexLcsp == null) return null;
+
+        BigDecimal ceiling = AffordabilityCalculator.flipContribution(onexLcsp, applicablePct, annualIncome);
+
+        JsonObject affordability = new JsonObject();
+        affordability.addProperty("onExchangeLcspPremium", onexLcsp);
+        JsonObject incomeBasisObj = new JsonObject();
+        incomeBasisObj.addProperty("type", incomeBasisType);
+        incomeBasisObj.addProperty("annualIncome", annualIncome);
+        affordability.add("incomeBasis", incomeBasisObj);
+        affordability.addProperty("applicablePercentage", applicablePct);
+        affordability.addProperty("subsidyPreservingCeiling", ceiling);
+        return affordability;
     }
 
     private Integer parseIntOrNull(String raw) {

@@ -25,9 +25,14 @@ import java.time.format.DateTimeFormatter;
  * Carries INPUTS (county, plan year, mode parameters) and OUTPUTS (computed group
  * premiums/net totals) together with provenance ({@code sourceEnv},
  * {@code ratesFetchedAt}), so the document is stable after the cache moves on.
- * Deliberately carries no affordability figure of any kind — {@code /proposal/*} is
- * public and unauthenticated (LA-12), a materially weaker audience guarantee than the
- * illustration page behind {@code IchraAccessResolver}.
+ * <p>
+ * {@code /proposal/*} is public and unauthenticated (LA-12), a materially weaker audience
+ * guarantee than the illustration page behind {@code IchraAccessResolver}. That guarantee
+ * still holds for the public read path: {@link #payloadJson} (T165, V090) does carry an
+ * affordability figure in storage, but {@code ViewProposal}'s token set deliberately defines
+ * no token that exposes it — the field is written so it exists the moment a compliance
+ * decision permits display, not because the public page renders it. See
+ * {@code docs/analysis/S19D_ichra_payload_spec.md} §4/§6/§9.
  */
 @Entity
 @Table(name = "proposal_ichra_snapshot")
@@ -95,6 +100,10 @@ public class ProposalIchraSnapshot {
     @ManyToOne
     @JoinColumn(name = "created_by")
     private Person createdBy;
+
+    /** T165/V090 — schema-versioned JSON payload; see docs/analysis/S19D_ichra_payload_spec.md §3. */
+    @Column(name = "payload_json", columnDefinition = "MEDIUMTEXT")
+    private String payloadJson;
 
     public ProposalIchraSnapshot() {}
 
@@ -237,5 +246,13 @@ public class ProposalIchraSnapshot {
 
     public void setCreatedBy(Person createdBy) {
         this.createdBy = createdBy;
+    }
+
+    public String getPayloadJson() {
+        return payloadJson;
+    }
+
+    public void setPayloadJson(String payloadJson) {
+        this.payloadJson = payloadJson;
     }
 }

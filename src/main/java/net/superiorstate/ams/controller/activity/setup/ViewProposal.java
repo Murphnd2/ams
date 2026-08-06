@@ -1,5 +1,6 @@
 package net.superiorstate.ams.controller.activity.setup;
 
+import com.google.gson.*;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
 import jakarta.persistence.NoResultException;
@@ -737,6 +738,7 @@ public class ViewProposal extends HttpServlet {
         }
 
         putIchraMarketTokens(em, tokens, ichraIntake, ichraEntitled, proposal);
+        putIchraPayloadTokens(em, tokens, proposal);
 
         return tokens;
     }
@@ -856,6 +858,99 @@ public class ViewProposal extends HttpServlet {
         tokens.put("ICHRA_FLOOR_AGE_64", floor64);
         tokens.put("ICHRA_RATES_AS_OF", ratesAsOf);
         tokens.put("ICHRA_RATES_SCOPE", ratesScope);
+    }
+
+    /**
+     * T165/V090 — three read-only tokens off {@code ProposalIchraSnapshot.payloadJson}:
+     * {@code ICHRA_AGE_BAND_TABLE}, {@code ICHRA_PLAN_LANDSCAPE_TABLE}, {@code ICHRA_PAYLOAD_AS_OF}.
+     * See {@code docs/analysis/S19D_ichra_payload_spec.md} §4 (Read). <b>Deliberately defines no
+     * token for the payload's {@code affordability} block</b> — the spec's BLOCKED item 2; this
+     * method must never quietly grow one.
+     * <p>
+     * The plan-landscape table withholds plan {@code name} and {@code issuerName} pending O25,
+     * even though both are present in storage (spec §3). Never throws — a proposal must not fail
+     * to render because the payload is absent, unparseable, or an unrecognized schema version;
+     * mirrors {@link #putIchraMarketTokens}'s own try/catch discipline exactly.
+     */
+    private void putIchraPayloadTokens(EntityManager em, Map<String, String> tokens, Proposal proposal) {
+        String ageBandTable = "";
+        String planLandscapeTable = "";
+        String payloadAsOf = "";
+        try {
+            ProposalIchraSnapshot snapshot = ProposalIchraSnapshotDAO.findByProposalId(em, proposal.getId());
+            String payloadJson = snapshot != null ? snapshot.getPayloadJson() : null;
+            if (payloadJson != null) {
+                JsonObject payload = new Gson().fromJson(payloadJson, JsonObject.class);
+
+                if (payload.has("provenance") && payload.get("provenance").isJsonObject()) {
+                    JsonObject provenance = payload.getAsJsonObject("provenance");
+                    if (provenance.has("capturedAt") && !provenance.get("capturedAt").isJsonNull()) {
+                        payloadAsOf = "Figures reflect an ICHRA data snapshot captured on "
+                                + provenance.get("capturedAt").getAsString() + ". They are not a live quote.";
+                    }
+                }
+
+                if (payload.has("ageBands") && payload.get("ageBands").isJsonArray()) {
+                    JsonArray ageBands = payload.getAsJsonArray("ageBands");
+                    if (ageBands.size() > 0) {
+                        StringBuilder sb = new StringBuilder("<table class=\"ichra-age-band-table\"><thead><tr>"
+                                + "<th>Age</th><th>Lives</th><th>Premium</th></tr></thead><tbody>");
+                        for (JsonElement el : ageBands) {
+                            JsonObject band = el.getAsJsonObject();
+                            String age = band.has("age") && !band.get("age").isJsonNull() ? band.get("age").getAsString() : "";
+                            String lives = band.has("lives") && !band.get("lives").isJsonNull() ? band.get("lives").getAsString() : "";
+                            String premium = band.has("premium") && !band.get("premium").isJsonNull()
+                                    ? formatCurrency(band.get("premium").getAsBigDecimal()) : "";
+                            sb.append("<tr><td>").append(escapeHtml(age)).append("</td><td>")
+                                    .append(escapeHtml(lives)).append("</td><td>")
+                                    .append(escapeHtml(premium)).append("</td></tr>");
+                        }
+                        sb.append("</tbody></table>");
+                        ageBandTable = sb.toString();
+                    }
+                }
+
+                if (payload.has("planLandscape") && payload.get("planLandscape").isJsonObject()) {
+                    JsonObject planLandscape = payload.getAsJsonObject("planLandscape");
+                    if (planLandscape.has("plans") && planLandscape.get("plans").isJsonArray()) {
+                        JsonArray plans = planLandscape.getAsJsonArray("plans");
+                        if (plans.size() > 0) {
+                            // name/issuerName withheld pending O25 (spec §4/§9), even though both are in storage.
+                            StringBuilder sb = new StringBuilder("<table class=\"ichra-plan-landscape-table\"><thead><tr>"
+                                    + "<th>Metal Level</th><th>Premium</th><th>HSA Eligible</th><th>ICHRA Only</th></tr></thead><tbody>");
+                            for (JsonElement el : plans) {
+                                JsonObject plan = el.getAsJsonObject();
+                                String metalLevel = plan.has("metalLevel") && !plan.get("metalLevel").isJsonNull() ? plan.get("metalLevel").getAsString() : "";
+                                String premium = plan.has("premium") && !plan.get("premium").isJsonNull()
+                                        ? formatCurrency(plan.get("premium").getAsBigDecimal()) : "";
+                                String hsaEligible = plan.has("hsaEligible") && !plan.get("hsaEligible").isJsonNull()
+                                        ? (plan.get("hsaEligible").getAsBoolean() ? "Yes" : "No") : "";
+                                String ichraOnly = plan.has("ichraOnly") && !plan.get("ichraOnly").isJsonNull()
+                                        ? (plan.get("ichraOnly").getAsBoolean() ? "Yes" : "No") : "";
+                                sb.append("<tr><td>").append(escapeHtml(metalLevel)).append("</td><td>")
+                                        .append(escapeHtml(premium)).append("</td><td>")
+                                        .append(escapeHtml(hsaEligible)).append("</td><td>")
+                                        .append(escapeHtml(ichraOnly)).append("</td></tr>");
+                            }
+                            sb.append("</tbody></table>");
+                            planLandscapeTable = sb.toString();
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            // Empty strings already hold; an absent/unparseable/unrecognized-schema payload must
+            // never break the render.
+            log.warn("T165 ICHRA payload token lookup failed for proposal #{}: {}",
+                    proposal != null ? proposal.getId() : "null", e.getMessage());
+            ageBandTable = "";
+            planLandscapeTable = "";
+            payloadAsOf = "";
+        }
+
+        tokens.put("ICHRA_AGE_BAND_TABLE", ageBandTable);
+        tokens.put("ICHRA_PLAN_LANDSCAPE_TABLE", planLandscapeTable);
+        tokens.put("ICHRA_PAYLOAD_AS_OF", payloadAsOf);
     }
 
     /**
