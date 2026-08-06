@@ -1035,19 +1035,60 @@ public class ProposalBuilder extends HttpServlet {
         // S21-E — section 3's frozen comparison figures. Null (not a zero for any absent
         // input) unless all three of contribution, currentTotalPremium and
         // currentEmployerShare are present, matching sections.ICHRA_COMPARISON's own
-        // completeness rule below exactly so the two can never disagree. employerDelta is
-        // computed here, at freeze time, and never recomputed at render — the planned
-        // contribution minus the employer's current share, a neutral arithmetic figure, not
-        // a verdict. No schemaVersion bump: an absent groupComparison is unambiguous because
-        // sections.ICHRA_COMPARISON already says whether section 3 was selected (spec §4.4's
-        // own principled line — bump only when an absent block's meaning is ambiguous).
+        // completeness rule below exactly so the two can never disagree. No schemaVersion
+        // bump: an absent groupComparison is unambiguous because sections.ICHRA_COMPARISON
+        // already says whether section 3 was selected (spec §4.4's own principled line —
+        // bump only when an absent block's meaning is ambiguous).
+        //
+        // S21-G — unit correction. currentTotalPremium/currentEmployerShare are whole-group
+        // monthly figures (docs/migrations/V091__ichra_section_selection.sql:86-88's own
+        // comment: "these are whole-group monthly figures rather than per-employee ones"),
+        // but contribution is the SAME per-employee monthly figure section 2 uses
+        // (proposalBuilder.jsp:266, "Monthly employer contribution per employee" — confirmed
+        // S21-F). The prior version of this block subtracted the raw per-employee figure from
+        // a group total and froze a materially wrong, direction-flattering employerDelta
+        // (never in production — S21-G finding). Converting to a group total requires a
+        // headcount: AGE_BAND mode's own bands (already a parameter here) carry it via
+        // getLives() summed across the group; RANGE mode has no headcount in its parameters,
+        // so it is re-derived from the same request field attachRangeSnapshot itself already
+        // validated non-null and >=1 before ever calling this method — request is already a
+        // parameter here too, so no signature change and no touch to either caller's body.
+        // Both the per-employee figure and the headcount used to convert it are frozen
+        // alongside the total, under distinct keys, so the arithmetic is auditable rather than
+        // just its result.
         if (contribution != null && currentTotalPremium != null && currentEmployerShare != null) {
-            JsonObject groupComparison = new JsonObject();
-            groupComparison.addProperty("currentTotalMonthlyPremium", currentTotalPremium);
-            groupComparison.addProperty("currentEmployerMonthlyShare", currentEmployerShare);
-            groupComparison.addProperty("plannedContribution", contribution);
-            groupComparison.addProperty("employerDelta", contribution.subtract(currentEmployerShare));
-            root.add("groupComparison", groupComparison);
+            Integer comparisonHeadcount;
+            if (bands != null && !bands.isEmpty()) {
+                int sum = 0;
+                for (ProposalIchraSnapshotBand band : bands) {
+                    if (band.getLives() != null) sum += band.getLives();
+                }
+                comparisonHeadcount = sum;
+            } else {
+                comparisonHeadcount = parseIntOrNull(ichraParam(request, "headcount", "intakeHeadcount"));
+            }
+
+            if (comparisonHeadcount != null && comparisonHeadcount >= 1) {
+                BigDecimal plannedContributionTotal = contribution.multiply(BigDecimal.valueOf(comparisonHeadcount));
+                // Sign convention, stated plainly: planned minus current. Positive means the
+                // employer would pay MORE per month under the planned ICHRA contribution than
+                // they pay today; negative means less. Computed once, here, at freeze time —
+                // ViewProposal reads this value and never recomputes it.
+                BigDecimal employerDelta = plannedContributionTotal.subtract(currentEmployerShare);
+
+                JsonObject groupComparison = new JsonObject();
+                groupComparison.addProperty("currentTotalMonthlyPremium", currentTotalPremium);
+                groupComparison.addProperty("currentEmployerMonthlyShare", currentEmployerShare);
+                groupComparison.addProperty("plannedContributionPerEmployee", contribution);
+                groupComparison.addProperty("headcount", comparisonHeadcount);
+                groupComparison.addProperty("plannedContributionTotal", plannedContributionTotal);
+                groupComparison.addProperty("employerDelta", employerDelta);
+                root.add("groupComparison", groupComparison);
+            } else {
+                // No reliable headcount to convert the per-employee contribution into a group
+                // total -- never fall back to the per-employee figure as if it were a total.
+                root.add("groupComparison", JsonNull.INSTANCE);
+            }
         } else {
             root.add("groupComparison", JsonNull.INSTANCE);
         }
