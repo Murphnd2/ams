@@ -585,6 +585,14 @@
     var ichraHandoffZip = <c:choose><c:when test="${not empty handoffZip}">'${handoffZip}'</c:when><c:otherwise>null</c:otherwise></c:choose>;
     var ichraHandoffCountyFips = <c:choose><c:when test="${not empty handoffCountyFips}">'${handoffCountyFips}'</c:when><c:otherwise>null</c:otherwise></c:choose>;
     var ichraHandoffHeadcount = <c:choose><c:when test="${handoffHeadcount != null}">${handoffHeadcount}</c:when><c:otherwise>null</c:otherwise></c:choose>;
+    // S19-H — apply-once latch. filterLosCards()/toggleLos() call updateIntakePanel() on
+    // every rate/LOS change, and its hide branch calls clearIntakeFields() whenever no
+    // plus-tier LOS is currently selected -- routine during the normal prospect-then-rate
+    // walk, before the agent ever reaches a plus-tier LOS. Prefilling once at page load was
+    // wiped by that clear before the panel ever became visible. This latch is checked inside
+    // ichraApplyHandoffPrefill() itself so it is true after the FIRST time the panel becomes
+    // visible and stays true regardless of how many times the panel is later hidden/reshown.
+    var ichraHandoffPrefillApplied = false;
 
     function anySelectedLosIsPlusTier() {
         var found = false;
@@ -629,6 +637,10 @@
 
         if (anySelectedLosIsPlusTier()) {
             panel.style.display = '';
+            // S19-H — applied here, not at page load, so it survives every clearIntakeFields()
+            // call that happens before this LOS was selected. Latched inside the function
+            // itself; safe to call on every reveal.
+            ichraApplyHandoffPrefill();
         } else {
             panel.style.display = 'none';
             clearIntakeFields();
@@ -811,18 +823,24 @@
         if (ichraHeadcountEl) {
             ichraHeadcountEl.addEventListener('input', updateSteps);
         }
-        ichraApplyHandoffPrefill();
         updateSteps();
     });
 
-    // S19-G — prefill only, from the illustration hand-off. No-op (both guarded fields
-    // simply stay empty) when ichraIntakePanel is absent from the DOM, exactly like every
-    // other function in this block. Never overwrites a field the agent has already typed
-    // into -- the emptiness check on each field means an edit always wins, even if this were
-    // ever called a second time. Fires the same ZIP lookup a hand-typed ZIP would trigger;
-    // the panel itself stays hidden (unchanged) until a plus-tier LOS is selected, so this
-    // has no visible effect at all for a non-plus-tier proposal.
+    // S19-G/S19-H — prefill only, from the illustration hand-off. Invoked from
+    // updateIntakePanel()'s visible branch, not at page load, so it runs at the moment the
+    // panel actually appears rather than being wiped by an intervening clearIntakeFields()
+    // call (S19-H). Latched: no-ops on every call after the first, so toggling a plus-tier
+    // LOS off and back on never overwrites what the agent has since typed. No-op (both
+    // guarded fields simply stay empty) when ichraIntakePanel is absent from the DOM, exactly
+    // like every other function in this block. Sets ZIP synchronously, then calls
+    // ichraZipLookup() -- that function is the ONLY code path that ever populates or selects
+    // County, so County is never set here directly and there is nothing to race: the
+    // dropdown reflects whatever that lookup's own (unchanged) promise chain decides once it
+    // resolves. Headcount is independent and set synchronously alongside ZIP.
     function ichraApplyHandoffPrefill() {
+        if (ichraHandoffPrefillApplied) return;
+        ichraHandoffPrefillApplied = true;
+
         var headcountEl = document.getElementById('intakeHeadcount');
         if (headcountEl && ichraHandoffHeadcount != null && !headcountEl.value) {
             headcountEl.value = ichraHandoffHeadcount;
