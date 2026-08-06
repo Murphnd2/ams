@@ -538,6 +538,16 @@ public class ProposalBuilder extends HttpServlet {
         if (countyNameRaw == null || countyNameRaw.isBlank()) return;
 
         Integer headcount = parseIntOrNull(request.getParameter("intakeHeadcount"));
+        if (headcount == null) {
+            // S19-O — band-only intake. S19-I's UI hides #intakeHeadcount and shows only a
+            // read-only derived total when bands are in use, so the real input submits blank.
+            // Falls back to the sum of the entered band counts — derived arithmetic on values
+            // the agent typed, never a placeholder. sumIntakeBandCounts mirrors the JSP's own
+            // ichraBandTotalLives() field-for-field (same intakeCount{i} names, same "count
+            // >= 1" rule, no age check in either), so this can never disagree with the number
+            // the agent actually saw on screen before clicking Create.
+            headcount = sumIntakeBandCounts(request);
+        }
         if (headcount == null || headcount < 1 || headcount > 10000) return;
 
         // T80 half 1 — optional, unlike every field above: a missing or unparseable value
@@ -652,6 +662,25 @@ public class ProposalBuilder extends HttpServlet {
             return ProposalIchraSnapshot.MODE_RANGE;
         }
         return null;
+    }
+
+    /**
+     * S19-O — sum of {@code intakeCount1..N}, or null if none is present. Deliberately mirrors
+     * {@code proposalBuilder.jsp}'s {@code ichraBandTotalLives()} exactly: same field names,
+     * same "count >= 1" rule, no age check in either — so this can never derive a different
+     * total than the one already displayed to the agent as "N from bands".
+     */
+    private Integer sumIntakeBandCounts(HttpServletRequest request) {
+        int total = 0;
+        boolean any = false;
+        for (int i = 1; i <= ICHRA_AGE_BAND_ROWS; i++) {
+            Integer count = parseIntOrNull(request.getParameter("intakeCount" + i));
+            if (count != null && count >= 1) {
+                total += count;
+                any = true;
+            }
+        }
+        return any ? total : null;
     }
 
     /** Exactly five digits after trimming, or null. Used for intakeZip/intakeCountyFips. */
