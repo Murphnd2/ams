@@ -35,7 +35,7 @@
   .ichram .section-heading {
     font-size: calc(12.5pt * var(--s)); font-weight: 700; color: var(--teal);
     text-transform: uppercase; letter-spacing: 0.03em;
-    margin: 0 0 calc(0.85rem * var(--s)) 0;
+    margin: calc(1.1rem * var(--s)) 0 calc(0.6rem * var(--s)) 0;
     display: flex; align-items: center; gap: calc(0.6rem * var(--s));
   }
   .ichram .section-heading .tag {
@@ -43,8 +43,9 @@
     color: var(--muted); background: var(--navy-lt); -webkit-print-color-adjust: exact; print-color-adjust: exact;
     border-radius: 999px; padding: calc(0.15rem * var(--s)) calc(0.6rem * var(--s));
   }
+  .ichram .section-intro { font-size: calc(9.5pt * var(--s)); line-height: 1.5; color: var(--muted); margin: 0 0 calc(0.5rem * var(--s)) 0; }
 
-  .ichram .two-col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: calc(0.85rem * var(--s)); margin-bottom: calc(1.75rem * var(--s)); }
+  .ichram .two-col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: calc(0.85rem * var(--s)); margin-bottom: calc(1.5rem * var(--s)); }
   .ichram .info-box {
     background: var(--navy-lt); -webkit-print-color-adjust: exact; print-color-adjust: exact;
     border-radius: 8px; padding: calc(1rem * var(--s)) calc(1.15rem * var(--s));
@@ -53,26 +54,37 @@
   .ichram .info-box .value { font-size: calc(15pt * var(--s)); font-weight: 700; color: var(--white); }
   .ichram .info-box .caption { font-size: calc(8pt * var(--s)); color: var(--muted); margin-top: calc(0.2rem * var(--s)); }
 
-  .ichram .grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: calc(0.75rem * var(--s)); flex: 1; align-content: start; }
+  .ichram .grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: calc(0.75rem * var(--s)); margin-bottom: calc(1rem * var(--s)); }
   .ichram .stat {
     background: var(--navy-lt); -webkit-print-color-adjust: exact; print-color-adjust: exact;
     border-radius: 8px; padding: calc(0.9rem * var(--s)) calc(0.6rem * var(--s));
     text-align: center; border-top: 3px solid var(--teal);
   }
-  .ichram .stat .stat-label { font-size: calc(7.5pt * var(--s)); font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; color: var(--muted); margin-bottom: calc(0.4rem * var(--s)); min-height: calc(2 * 1.2 * 7.5pt * var(--s)); }
-  .ichram .stat .stat-value { font-size: calc(16pt * var(--s)); font-weight: 700; color: var(--white); }
+  .ichram .stat .stat-label { font-size: calc(7.5pt * var(--s)); font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; color: var(--muted); margin-bottom: calc(0.4rem * var(--s)); }
+  .ichram .stat .stat-value { font-size: calc(15pt * var(--s)); font-weight: 700; color: var(--white); }
 
-  .ichram .disclosure { font-size: calc(8.5pt * var(--s)); line-height: 1.5; color: var(--muted); margin-top: calc(1.5rem * var(--s)); padding-top: calc(1rem * var(--s)); border-top: 1px solid rgba(255,255,255,0.12); }
+  .ichram table { width: 100%; border-collapse: collapse; margin: calc(0.35rem * var(--s)) 0 calc(1rem * var(--s)) 0; font-size: calc(8.5pt * var(--s)); color: var(--off); }
+  .ichram th {
+    text-align: left; padding: calc(0.35rem * var(--s)) calc(0.55rem * var(--s));
+    background: var(--navy-lt); -webkit-print-color-adjust: exact; print-color-adjust: exact;
+    color: var(--white); font-weight: 600; border-bottom: 1px solid rgba(255,255,255,0.15);
+  }
+  .ichram td { padding: calc(0.3rem * var(--s)) calc(0.55rem * var(--s)); border-bottom: 1px solid rgba(255,255,255,0.08); }
+  .ichram tbody tr:nth-child(even) td { background: rgba(255,255,255,0.03); }
+
+  .ichram .disclosure { font-size: calc(8.5pt * var(--s)); line-height: 1.5; color: var(--muted); margin: calc(0.5rem * var(--s)) 0; }
+  .ichram .disclosure.footer { margin-top: calc(1.25rem * var(--s)); padding-top: calc(1rem * var(--s)); border-top: 1px solid rgba(255,255,255,0.12); }
 
   @media print { .ichram .card-inset { min-height: auto; } }
   @media (max-width: 700px) {
     .ichram .two-col { grid-template-columns: 1fr; }
     .ichram .grid { grid-template-columns: 1fr 1fr; }
+    .ichram table { font-size: calc(7.5pt * var(--s)); }
   }
 </style>
 <div class="ichram" style="page-break-before:always; padding:0.5in 0;">
   <div class="card-inset">
-    <h1>ICHRA Market Snapshot</h1>
+    <h1>ICHRA Market Overview</h1>
     <div class="prepared-for">Prepared for {{PROSPECT_NAME}}</div>
     <p class="body">
       This page summarizes the eligible group entered for this proposal and the off-exchange
@@ -107,19 +119,29 @@
         <div class="stat-value">{{ICHRA_CARRIER_COUNT}}</div>
       </div>
       <div class="stat">
-        <div class="stat-label">Lowest Monthly Premium, Age 21</div>
+        <div class="stat-label">Lowest Premium, Age 21</div>
         <div class="stat-value">{{ICHRA_FLOOR_AGE_21}}</div>
       </div>
       <div class="stat">
-        <div class="stat-label">Lowest Monthly Premium, Age 40</div>
+        <div class="stat-label">Lowest Premium, Age 40</div>
         <div class="stat-value">{{ICHRA_FLOOR_AGE_40}}</div>
       </div>
       <div class="stat">
-        <div class="stat-label">Lowest Monthly Premium, Age 64</div>
+        <div class="stat-label">Lowest Premium, Age 64</div>
         <div class="stat-value">{{ICHRA_FLOOR_AGE_64}}</div>
       </div>
     </div>
-
     <div class="disclosure">{{ICHRA_RATES_SCOPE}}</div>
+
+    <div class="section-heading">By Age Band</div>
+    <p class="section-intro">Where age-specific data was captured for this group, premiums by age and headcount appear below. This is census and market context only — it does not reflect any employer contribution.</p>
+    {{ICHRA_AGE_BAND_TABLE}}
+
+    <div class="section-heading">Off-Exchange Plan Landscape</div>
+    <p class="section-intro">Where cached market data exists for this county and plan year, the plans below are itemized by metal level and premium.</p>
+    {{ICHRA_PLAN_LANDSCAPE_TABLE}}
+    <p class="section-intro">These figures reflect off-exchange coverage only and do not represent a complete view of the market.</p>
+
+    <div class="disclosure footer">{{ICHRA_PAYLOAD_AS_OF}}</div>
   </div>
 </div>
