@@ -957,6 +957,89 @@ public class ViewProposal extends HttpServlet {
         tokens.put("ICHRA_AGE_BAND_TABLE", ageBandTable);
         tokens.put("ICHRA_PLAN_LANDSCAPE_TABLE", planLandscapeTable);
         tokens.put("ICHRA_PAYLOAD_AS_OF", payloadAsOf);
+
+        putIchraContributionScenarioToken(em, tokens, proposal);
+    }
+
+    /**
+     * S21-C/T171 — {@code ICHRA_CONTRIBUTION_SCENARIO_TABLE}, build 2 of the four ICHRA
+     * sections (docs/analysis/S20A_ichra_sections_spec.md §7). What the entered employer
+     * contribution produces against the frozen snapshot. Read-only off {@code
+     * ProposalIchraSnapshot} — never re-fetches {@code rating_area_rate_cache} and never
+     * calls HealthSherpa; the snapshot taken at proposal build time is the source of truth,
+     * same discipline as {@link #putIchraPayloadTokens}.
+     * <p>
+     * Per-band net (age, lives, premium, contribution, net) when the snapshot carries age
+     * bands — {@code payload.ageBands} plus {@code snapshot.getContribution()}, both frozen
+     * at build time. <b>Finding: {@code attachRangeSnapshot} never calls {@code
+     * setContribution} on the snapshot</b> (only {@code attachAgeBandSnapshot} does) — so a
+     * RANGE-mode (headcount-only) proposal has no frozen per-employee contribution figure to
+     * net against, even though the sections-block gate can mark {@code ICHRA_CONTRIBUTION}
+     * complete for that mode. Falling back to {@code proposal_ichra_intake}'s live,
+     * independently-editable row would break the point-in-time guarantee this whole payload
+     * design exists for (spec §3), so that mode instead renders the gross group premium range
+     * ({@code snapshot.getGroupMonthlyLow()}/{@code getGroupMonthlyHigh()}) with no net
+     * column, rather than fabricate one. Age bands are a fidelity upgrade, never a gate — see
+     * spec §2.
+     * <p>
+     * No ranking, no recommendation, no highlighted row — arithmetic on employer-supplied
+     * inputs only. Degrades to "" on any missing/unparseable input; never throws, mirroring
+     * {@link #putIchraPayloadTokens}'s own try/catch discipline exactly.
+     */
+    private void putIchraContributionScenarioToken(EntityManager em, Map<String, String> tokens, Proposal proposal) {
+        String scenarioTable = "";
+        try {
+            ProposalIchraSnapshot snapshot = ProposalIchraSnapshotDAO.findByProposalId(em, proposal.getId());
+            String payloadJson = snapshot != null ? snapshot.getPayloadJson() : null;
+            if (snapshot != null && payloadJson != null) {
+                JsonObject payload = new Gson().fromJson(payloadJson, JsonObject.class);
+                BigDecimal contribution = snapshot.getContribution();
+
+                if (payload.has("ageBands") && payload.get("ageBands").isJsonArray()
+                        && payload.getAsJsonArray("ageBands").size() > 0 && contribution != null) {
+                    JsonArray ageBands = payload.getAsJsonArray("ageBands");
+                    StringBuilder sb = new StringBuilder("<table class=\"ichra-contribution-scenario-table\"><thead><tr>"
+                            + "<th>Age</th><th>Lives</th><th>Premium</th><th>Contribution</th><th>Net</th></tr></thead><tbody>");
+                    for (JsonElement el : ageBands) {
+                        JsonObject band = el.getAsJsonObject();
+                        String age = band.has("age") && !band.get("age").isJsonNull() ? band.get("age").getAsString() : "";
+                        String lives = band.has("lives") && !band.get("lives").isJsonNull() ? band.get("lives").getAsString() : "";
+                        String premiumStr = "", contributionStr = "", netStr = "";
+                        if (band.has("premium") && !band.get("premium").isJsonNull()) {
+                            BigDecimal premium = band.get("premium").getAsBigDecimal();
+                            BigDecimal net = premium.subtract(contribution).max(BigDecimal.ZERO);
+                            premiumStr = formatCurrency(premium);
+                            contributionStr = formatCurrency(contribution);
+                            netStr = formatCurrency(net);
+                        }
+                        sb.append("<tr><td>").append(escapeHtml(age)).append("</td><td>")
+                                .append(escapeHtml(lives)).append("</td><td>")
+                                .append(escapeHtml(premiumStr)).append("</td><td>")
+                                .append(escapeHtml(contributionStr)).append("</td><td>")
+                                .append(escapeHtml(netStr)).append("</td></tr>");
+                    }
+                    sb.append("</tbody></table>");
+                    scenarioTable = sb.toString();
+                } else if (snapshot.getGroupMonthlyLow() != null && snapshot.getGroupMonthlyHigh() != null) {
+                    // RANGE mode (or an AGE_BAND snapshot with no contribution entered): no
+                    // frozen per-employee contribution figure exists for this row, so only the
+                    // gross group premium range renders -- never a fabricated net.
+                    StringBuilder sb = new StringBuilder("<table class=\"ichra-contribution-scenario-table\"><thead><tr>"
+                            + "<th>Group Monthly Premium (Low)</th><th>Group Monthly Premium (High)</th></tr></thead><tbody>");
+                    sb.append("<tr><td>").append(escapeHtml(formatCurrency(snapshot.getGroupMonthlyLow())))
+                            .append("</td><td>").append(escapeHtml(formatCurrency(snapshot.getGroupMonthlyHigh())))
+                            .append("</td></tr>");
+                    sb.append("</tbody></table>");
+                    scenarioTable = sb.toString();
+                }
+            }
+        } catch (Exception e) {
+            // Empty string already holds; an absent/unparseable payload must never break the render.
+            log.warn("T171 ICHRA contribution scenario token lookup failed for proposal #{}: {}",
+                    proposal != null ? proposal.getId() : "null", e.getMessage());
+            scenarioTable = "";
+        }
+        tokens.put("ICHRA_CONTRIBUTION_SCENARIO_TABLE", scenarioTable);
     }
 
     /**
