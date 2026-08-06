@@ -209,6 +209,18 @@
             </c:if>
         </c:forEach>
 
+        <%-- S20-G — count of inactive sections that will actually be hidden on load, so the
+             toggle can say "Show N inactive" without a round trip. Mirrors the main render
+             loop's own initial-selection rule (loop.first / param.sectionId) exactly, so this
+             count and what the JS leaves hidden never disagree: the initially-selected section
+             is never counted here, because it is never hidden either. --%>
+        <c:set var="inactiveHiddenCount" value="0"/>
+        <c:forEach var="s" items="${sections}" varStatus="cLoop">
+            <c:if test="${!s.isActive() && !(s.getId() == param.sectionId || (empty param.sectionId && cLoop.first))}">
+                <c:set var="inactiveHiddenCount" value="${inactiveHiddenCount + 1}"/>
+            </c:if>
+        </c:forEach>
+
         <%-- Left Panel: Section List --%>
         <div class="ps-left">
             <div class="card">
@@ -230,10 +242,26 @@
                         </button>
                     </div>
                 </div>
+                <%-- S20-G — client-side only: loadSections/${sections} still returns every
+                     section and the render loop below still emits a card for every one of
+                     them. This button only ever flips display on cards already in the DOM, so
+                     reorder (which reads querySelectorAll('.section-card') for the full,
+                     complete DOM) and every other consumer of ${sections} on this page are
+                     unaffected. Omitted entirely when nothing is actually hidden. --%>
+                <c:if test="${inactiveHiddenCount > 0}">
+                <div class="d-flex justify-content-end px-2 pt-2">
+                    <button type="button" class="btn btn-sm btn-link text-muted p-0" id="toggleInactiveBtn"
+                            data-showing="false" data-count="${inactiveHiddenCount}"
+                            onclick="toggleInactiveSections(this)" style="font-size:0.8rem; text-decoration:none;">
+                        <i class="bi bi-eye-slash me-1"></i>Show ${inactiveHiddenCount} inactive
+                    </button>
+                </div>
+                </c:if>
                 <div class="card-body p-2" id="sectionList">
                     <c:forEach var="section" items="${sections}" varStatus="loop">
                         <div class="section-card ${section.getId() == param.sectionId || (empty param.sectionId && loop.first) ? 'active' : ''} ${section.getSectionType() == 'TITLE' || section.getSectionType() == 'CLOSING' ? 'pinned' : ''} ${section.getAgency() != null ? 'agency-scoped' : ''}"
                              data-id="${section.getId()}" data-type="${section.getSectionType()}"
+                             data-inactive="${!section.isActive()}"
                              onclick="selectSection(${section.getId()})">
 
                             <i class="bi bi-grip-vertical drag-handle"></i>
@@ -798,7 +826,15 @@
     function selectSection(sectionId) {
         // Update left panel selection
         document.querySelectorAll('.section-card').forEach(c => c.classList.remove('active'));
-        document.querySelector('.section-card[data-id="' + sectionId + '"]').classList.add('active');
+        const card = document.querySelector('.section-card[data-id="' + sectionId + '"]');
+        if (card) {
+            card.classList.add('active');
+            // S20-G — a section can be selected from somewhere other than the visible list
+            // (e.g. the Agency Overrides links below), and the inactive-hide filter keys off
+            // this same .active class. Clearing any inline display it may be hiding under
+            // ensures the selected section never stays invisible in the list beneath it.
+            card.style.display = '';
+        }
 
         // Show/hide editor panels
         document.querySelectorAll('.editor-panel').forEach(p => p.style.display = 'none');
@@ -806,10 +842,37 @@
         if (panel) panel.style.display = 'flex';
     }
 
+    // S20-G — inactive sections hidden by default, toggle to reveal. Client-side only: the
+    // full section list (loadSections, every consumer of ${sections}) is untouched, this only
+    // flips display on cards already in the DOM. Not persisted anywhere — every page load
+    // starts back at hidden. The selected card (.active) is always exempted in both
+    // directions, so it can never be hidden out from under the open editor panel.
+    function toggleInactiveSections(btn) {
+        const list = document.getElementById('sectionList');
+        if (!list) return;
+        const showing = btn.dataset.showing === 'true';
+        list.querySelectorAll('.section-card[data-inactive="true"]:not(.active)').forEach(card => {
+            card.style.display = showing ? 'none' : '';
+        });
+        btn.dataset.showing = showing ? 'false' : 'true';
+        btn.innerHTML = showing
+            ? '<i class="bi bi-eye-slash me-1"></i>Show ' + btn.dataset.count + ' inactive'
+            : '<i class="bi bi-eye me-1"></i>Hide ' + btn.dataset.count + ' inactive';
+    }
+
     // ── Drag-and-Drop Reorder ───────────────────────────────────────────
     document.addEventListener('DOMContentLoaded', () => {
         const list = document.getElementById('sectionList');
         if (list) {
+            // S20-G — inactive sections start hidden on every load; never persisted. The
+            // selected card (.active, set server-side by the JSTL render loop above) is
+            // exempted so it's never hidden out from under the editor panel already open
+            // beside it. Sortable below still walks every .section-card regardless of
+            // display, so this has no effect on drag-and-drop or the ids it submits.
+            list.querySelectorAll('.section-card[data-inactive="true"]:not(.active)').forEach(card => {
+                card.style.display = 'none';
+            });
+
             Sortable.create(list, {
                 handle: '.drag-handle',
                 animation: 150,
