@@ -43,6 +43,21 @@ public class ProposalBuilder extends HttpServlet {
     private static final DateTimeFormatter ICHRA_PAYLOAD_TIMESTAMP = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss");
 
     /**
+     * S19-O — {@code serializeNulls()} deliberately, unlike the plain {@code new Gson()} this
+     * replaces. Without it, a default {@code Gson} instance silently omits any object member
+     * whose value is {@code JsonNull.INSTANCE} when writing a {@code JsonElement} tree, which
+     * defeated {@code buildIchraPayload}'s own intent of a stable four-key schema with absent
+     * sub-blocks explicit as {@code null}: "this proposal had no affordability data" and "this
+     * payload predates the affordability block" were indistinguishable as shipped — exactly
+     * the distinction {@code schemaVersion} and a stable key set exist to preserve. Confirmed
+     * safe against {@code ViewProposal.putIchraPayloadTokens}, the payload's one reader: every
+     * check there is {@code payload.has(key) && payload.get(key).isJsonObject()/.isJsonArray()}
+     * — a {@code JsonNull} value fails the type check exactly like an absent key does, so a
+     * present-but-null member and an absent member already behaved identically to that reader.
+     */
+    private static final Gson ICHRA_PAYLOAD_GSON = new GsonBuilder().serializeNulls().create();
+
+    /**
      * S19-I — age/count pairs this servlet reads, emits and echoes. Must stay equal to
      * {@code IllustrationServlet.AGE_BAND_ROWS} (6) and to the number of age/count hidden
      * field pairs in {@code proposalBuilder.jsp}: the illustration's own cap comment warns
@@ -948,7 +963,7 @@ public class ProposalBuilder extends HttpServlet {
         // null unconditionally. See S19D_ichra_payload_spec.md §4 (Read), "Out of scope".
         root.add("planLandscape", JsonNull.INSTANCE);
 
-        return new Gson().toJson(root);
+        return ICHRA_PAYLOAD_GSON.toJson(root);
     }
 
     /**
