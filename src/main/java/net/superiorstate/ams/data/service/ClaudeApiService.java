@@ -162,6 +162,110 @@ public class ClaudeApiService {
     }
 
     /**
+     * S20-D — the result of {@link #askDetailed}: the same display-safe {@code answer} text
+     * {@link #ask(String, List, String, int)} would return, plus the diagnostic detail that
+     * method discards. {@code errorDetail} is {@code null} on success and is a bounded,
+     * truncated excerpt otherwise (see {@link #askDetailed} for the bound and why) — callers
+     * needing to show it to an end user MUST still gate on their own authorization, exactly as
+     * {@code ClaudeApiService} has never made any authorization decision of its own.
+     */
+    public static final class DetailedResult {
+        public final String answer;
+        public final boolean ok;
+        public final Integer statusCode;
+        public final String errorDetail;
+
+        private DetailedResult(String answer, boolean ok, Integer statusCode, String errorDetail) {
+            this.answer = answer;
+            this.ok = ok;
+            this.statusCode = statusCode;
+            this.errorDetail = errorDetail;
+        }
+    }
+
+    /** Anthropic error response bodies are small structured JSON, but bounded defensively — see {@link #askDetailed}. */
+    private static final int ERROR_DETAIL_MAX_CHARS = 500;
+
+    /**
+     * S20-D — a variant of {@link #ask(String, List, String, int)} that returns the Anthropic
+     * status code and a bounded excerpt of the response/exception detail alongside the same
+     * display-safe answer text, instead of silently discarding everything but a generic
+     * fallback string. Added as a NEW method rather than changing {@code ask}'s own behaviour:
+     * every existing caller of any {@code ask*} overload in this class is untouched by this
+     * commit — none of their method bodies changed by a single character.
+     * <p>
+     * {@code errorDetail} is truncated to {@link #ERROR_DETAIL_MAX_CHARS} characters. Anthropic
+     * error bodies are small structured JSON (e.g. {@code {"type":"error","error":{"type":
+     * "not_found_error","message":"model: ..."}}}) and never echo the request's API key — the
+     * key is a request header only, never reflected in any Anthropic response — so the bound
+     * here is defense against an unexpectedly large or malformed body reaching a rendered page,
+     * not against credential leakage. The API key itself is never placed in {@code errorDetail},
+     * {@code answer}, or any field of this class, under any branch.
+     * <p>
+     * Callers MUST NOT surface {@code errorDetail} to anyone but an authorized administrator —
+     * this method makes no such decision itself, matching every other method in this class.
+     */
+    public static DetailedResult askDetailed(String systemPrompt, List<Map<String, String>> messages, String model, int maxTokens) {
+        String apiKey = AppConfig.getAnthropicApiKey();
+        if (apiKey == null) {
+            log.error("ANTHROPIC_API_KEY not configured");
+            return new DetailedResult("The AI assistant is not configured. Please contact an administrator.",
+                    false, null, "API key not configured (checked DB constant, then ssa.properties)");
+        }
+
+        try {
+            JsonObject body = new JsonObject();
+            body.addProperty("model", model);
+            body.addProperty("max_tokens", maxTokens);
+            body.addProperty("system", systemPrompt);
+
+            JsonArray msgArray = new JsonArray();
+            for (Map<String, String> m : messages) {
+                JsonObject msg = new JsonObject();
+                msg.addProperty("role", m.get("role"));
+                msg.addProperty("content", m.get("content"));
+                msgArray.add(msg);
+            }
+            body.add("messages", msgArray);
+
+            String json = gson.toJson(body);
+
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(API_URL))
+                    .header("Content-Type", "application/json")
+                    .header("x-api-key", apiKey)
+                    .header("anthropic-version", API_VERSION)
+                    .timeout(Duration.ofSeconds(TIMEOUT_SECONDS))
+                    .POST(HttpRequest.BodyPublishers.ofString(json))
+                    .build();
+
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+
+            if (response.statusCode() == 200) {
+                return new DetailedResult(extractResponseText(response.body()), true, 200, null);
+            } else {
+                log.error("Claude API returned status {}: {}", response.statusCode(), response.body());
+                String detail = truncateForDisplay(response.body());
+                return new DetailedResult("Sorry, I'm having trouble connecting right now. Please try again in a moment.",
+                        false, response.statusCode(), detail);
+            }
+
+        } catch (Exception e) {
+            log.error("Error calling Claude API (multi-turn, detailed)", e);
+            String detail = truncateForDisplay(e.getClass().getSimpleName() + ": " + e.getMessage());
+            return new DetailedResult("Sorry, something went wrong. Please try again.", false, null, detail);
+        }
+    }
+
+    /** Bounds a diagnostic string to {@link #ERROR_DETAIL_MAX_CHARS} before it is ever handed to a caller. */
+    private static String truncateForDisplay(String raw) {
+        if (raw == null) return null;
+        return raw.length() > ERROR_DETAIL_MAX_CHARS
+                ? raw.substring(0, ERROR_DETAIL_MAX_CHARS) + "… (truncated)"
+                : raw;
+    }
+
+    /**
      * Sends a message with structured content blocks (text + documents) to Claude.
      * Used for PDF analysis where the user message contains both text and a base64 document.
      *

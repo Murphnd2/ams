@@ -197,8 +197,14 @@ public class ProposalAiBuilder extends HttpServlet {
             messages.add(currentMsg);
         }
 
-        // Call Claude with multi-turn messages — use Sonnet for higher-quality HTML generation
-        String answer = ClaudeApiService.ask(SYSTEM_PROMPT, messages, MODEL, MAX_TOKENS);
+        // Call Claude with multi-turn messages — use Sonnet for higher-quality HTML generation.
+        // S20-D — askDetailed rather than ask: this servlet is already gated to PSP admin only
+        // (the isPspAdmin() check at the top of this method, line 116), so failure detail from
+        // Anthropic may be shown here without a second authorization decision. Every other
+        // ClaudeApiService caller (ChatAssistant's skill path, etc.) is untouched — this calls a
+        // new method added alongside ask(), not a changed one.
+        ClaudeApiService.DetailedResult claudeResult = ClaudeApiService.askDetailed(SYSTEM_PROMPT, messages, MODEL, MAX_TOKENS);
+        String answer = claudeResult.answer;
 
         // Update conversation history
         Map<String, String> userEntry = new HashMap<>();
@@ -219,9 +225,17 @@ public class ProposalAiBuilder extends HttpServlet {
 
         session.setAttribute(SESSION_KEY, history);
 
-        // Return response
+        // Return response. errorDetail/statusCode are populated only when claudeResult failed,
+        // and only ever reach a PSP admin — the same isPspAdmin() gate this whole method already
+        // requires to be reached at all (line 116). No lesser role can hit this branch.
         JsonObject result = new JsonObject();
         result.addProperty("answer", answer);
+        if (!claudeResult.ok) {
+            result.addProperty("errorDetail", claudeResult.errorDetail);
+            if (claudeResult.statusCode != null) {
+                result.addProperty("statusCode", claudeResult.statusCode);
+            }
+        }
         response.getWriter().write(gson.toJson(result));
     }
 

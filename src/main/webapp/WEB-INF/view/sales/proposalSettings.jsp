@@ -884,6 +884,18 @@
             document.getElementById(loadId).remove();
             let html = '<div class="ps-ai-msg assistant"><div class="ps-ai-bubble">';
             html += formatProposalAiResponse(data.answer, sectionId);
+            // S20-D — errorDetail/statusCode are only ever present when the server call to
+            // Anthropic failed, and the server only ever populates them for a PSP admin (the
+            // /ProposalAiBuilder endpoint is PSP-admin-only end to end). escapeHtml() before
+            // display: this text originates from Anthropic's response body, not from this
+            // application, and must not be trusted as safe markup.
+            if (data.errorDetail) {
+                html += '<div class="text-danger small mt-2" style="font-family: monospace; white-space: pre-wrap;">';
+                html += '<strong>Anthropic API error';
+                if (data.statusCode) html += ' (HTTP ' + escapeHtml('' + data.statusCode) + ')';
+                html += ':</strong><br>' + escapeHtml(data.errorDetail);
+                html += '</div>';
+            }
             html += '</div></div>';
             messagesDiv.innerHTML += html;
             messagesDiv.scrollTop = messagesDiv.scrollHeight;
