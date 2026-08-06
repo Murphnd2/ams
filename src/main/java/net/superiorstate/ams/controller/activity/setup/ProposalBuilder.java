@@ -836,6 +836,7 @@ public class ProposalBuilder extends HttpServlet {
         snapshot.setHeadcount(headcount);
         snapshot.setGroupMonthlyLow(groupMonthlyLow);
         snapshot.setGroupMonthlyHigh(groupMonthlyHigh);
+        snapshot.setContribution(contribution);
         snapshot.setSourceEnv(sourceEnv);
         snapshot.setRatesFetchedAt(fetchedAt);
         snapshot.setSnapshotAt(LocalDateTime.now());
