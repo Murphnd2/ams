@@ -16,7 +16,8 @@ import java.time.LocalDateTime;
  * PRODUCTION-only invariant to protect. A proposal may carry either, both, or neither;
  * they are written by independent best-effort paths.
  * <p>
- * Nothing reads this table yet — T126, deliberately out of scope for T125.
+ * Read by {@code ViewProposal} ({@code resolveMarketPage}, the section-scope filter) since
+ * S11-H/S20-B — the "nothing reads this table yet" note from T125 no longer holds.
  * <p>
  * {@code zip} and {@code countyFips} are the county the agent CHOSE, never auto-picked —
  * see {@code ZipCountyResolver}'s multi-county-is-the-common-case javadoc. {@code planYear}
@@ -60,6 +61,42 @@ public class ProposalIchraIntake {
      */
     @Column(name = "monthly_contribution_per_employee", columnDefinition = "decimal(10,2)", nullable = true)
     private BigDecimal monthlyContributionPerEmployee;
+
+    /**
+     * S20-B / V091 — the four ICHRA proposal-section selections
+     * (docs/analysis/S20A_ichra_sections_spec.md §2/§3). Stored here, not only in
+     * {@code payload_json}, because a selection recorded only in the payload is lost
+     * entirely for a county with no warmed production rates — the snapshot (and therefore
+     * the payload) is never written for that case, but intake always is.
+     * <p>
+     * {@code sectionMarket} is stored as both submitted AND derived: {@code ProposalBuilder}
+     * sets it true whenever any of the other three is true, since market illustration data
+     * is the base layer every other section needs, not a peer selection.
+     */
+    @Column(name = "section_market", nullable = false)
+    private boolean sectionMarket;
+
+    @Column(name = "section_contribution", nullable = false)
+    private boolean sectionContribution;
+
+    @Column(name = "section_comparison", nullable = false)
+    private boolean sectionComparison;
+
+    /** Always false today — build 4 (ICHRA_AFFORDABILITY) is blocked pending an LA-NN entry. */
+    @Column(name = "section_affordability", nullable = false)
+    private boolean sectionAffordability;
+
+    /**
+     * S20-B / V091 — the employer's CURRENT group plan cost, as the agent reports it.
+     * Section 3 (ICHRA_COMPARISON) input. Employer-reported, not computed or market-derived,
+     * same as {@link #monthlyContributionPerEmployee}. Null until the agent selects section 3.
+     */
+    @Column(name = "current_total_monthly_premium", columnDefinition = "decimal(10,2)", nullable = true)
+    private BigDecimal currentTotalMonthlyPremium;
+
+    /** S20-B / V091 — section 3 input, paired with {@link #currentTotalMonthlyPremium}. */
+    @Column(name = "current_employer_monthly_share", columnDefinition = "decimal(10,2)", nullable = true)
+    private BigDecimal currentEmployerMonthlyShare;
 
     @Column(name = "plan_year", nullable = false)
     private Integer planYear;
@@ -135,6 +172,54 @@ public class ProposalIchraIntake {
 
     public void setMonthlyContributionPerEmployee(BigDecimal monthlyContributionPerEmployee) {
         this.monthlyContributionPerEmployee = monthlyContributionPerEmployee;
+    }
+
+    public boolean isSectionMarket() {
+        return sectionMarket;
+    }
+
+    public void setSectionMarket(boolean sectionMarket) {
+        this.sectionMarket = sectionMarket;
+    }
+
+    public boolean isSectionContribution() {
+        return sectionContribution;
+    }
+
+    public void setSectionContribution(boolean sectionContribution) {
+        this.sectionContribution = sectionContribution;
+    }
+
+    public boolean isSectionComparison() {
+        return sectionComparison;
+    }
+
+    public void setSectionComparison(boolean sectionComparison) {
+        this.sectionComparison = sectionComparison;
+    }
+
+    public boolean isSectionAffordability() {
+        return sectionAffordability;
+    }
+
+    public void setSectionAffordability(boolean sectionAffordability) {
+        this.sectionAffordability = sectionAffordability;
+    }
+
+    public BigDecimal getCurrentTotalMonthlyPremium() {
+        return currentTotalMonthlyPremium;
+    }
+
+    public void setCurrentTotalMonthlyPremium(BigDecimal currentTotalMonthlyPremium) {
+        this.currentTotalMonthlyPremium = currentTotalMonthlyPremium;
+    }
+
+    public BigDecimal getCurrentEmployerMonthlyShare() {
+        return currentEmployerMonthlyShare;
+    }
+
+    public void setCurrentEmployerMonthlyShare(BigDecimal currentEmployerMonthlyShare) {
+        this.currentEmployerMonthlyShare = currentEmployerMonthlyShare;
     }
 
     public Integer getPlanYear() {

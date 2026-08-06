@@ -46,8 +46,10 @@ public class ProposalBuilder extends HttpServlet {
      * S19-O — {@code serializeNulls()} deliberately, unlike the plain {@code new Gson()} this
      * replaces. Without it, a default {@code Gson} instance silently omits any object member
      * whose value is {@code JsonNull.INSTANCE} when writing a {@code JsonElement} tree, which
-     * defeated {@code buildIchraPayload}'s own intent of a stable four-key schema with absent
-     * sub-blocks explicit as {@code null}: "this proposal had no affordability data" and "this
+     * defeated {@code buildIchraPayload}'s own intent of a stable top-level key set (six as of
+     * S20-B/V091: {@code schemaVersion}/{@code provenance}/{@code affordability}/
+     * {@code ageBands}/{@code planLandscape}/{@code sections}) with absent sub-blocks explicit
+     * as {@code null}: "this proposal had no affordability data" and "this
      * payload predates the affordability block" were indistinguishable as shipped — exactly
      * the distinction {@code schemaVersion} and a stable key set exist to preserve. Confirmed
      * safe against {@code ViewProposal.putIchraPayloadTokens}, the payload's one reader: every
@@ -555,10 +557,21 @@ public class ProposalBuilder extends HttpServlet {
         // negative is also treated as unanswered rather than failing the whole intake write,
         // since this field alone is optional (the browser control already enforces min="0";
         // this is defense against a direct POST).
-        BigDecimal monthlyContribution = parseDecimalOrNull(request.getParameter("intakeContribution"));
-        if (monthlyContribution != null && monthlyContribution.signum() < 0) {
-            monthlyContribution = null;
-        }
+        BigDecimal monthlyContribution = parseOptionalNonNegativeDecimal(request.getParameter("intakeContribution"));
+
+        // S20-B/V091 — the four section selections, via the one place that derives them
+        // (§8.4's server-side rule) so this write and buildSectionsBlock's payload copy can
+        // never disagree. None of these may block the intake write (spec §7 edit 6): a
+        // section left unselected, or selected with incomplete inputs, is a normal outcome
+        // recorded in payload_json.sections, not a reason to fail closed here.
+        IchraSectionSelections sections = resolveSectionSelections(request);
+
+        // Section 3 (ICHRA_COMPARISON) — the employer's current group plan cost, as reported
+        // by the agent. Same "negative collapses to unanswered" rule as monthlyContribution
+        // above, and for the same reason: optional at the database level, and a direct POST
+        // must not be trusted to respect the browser's min="0".
+        BigDecimal currentTotalPremium = parseOptionalNonNegativeDecimal(request.getParameter("intakeCurrentTotalPremium"));
+        BigDecimal currentEmployerShare = parseOptionalNonNegativeDecimal(request.getParameter("intakeCurrentEmployerShare"));
 
         // Derived, not agent-asserted (S10-B HS-1) — re-resolved here rather than trusting
         // whatever doGet rendered, since the constant could change between GET and POST.
@@ -573,6 +586,12 @@ public class ProposalBuilder extends HttpServlet {
         intake.setState(state);
         intake.setHeadcount(headcount);
         intake.setMonthlyContributionPerEmployee(monthlyContribution);
+        intake.setSectionMarket(sections.market());
+        intake.setSectionContribution(sections.contribution());
+        intake.setSectionComparison(sections.comparison());
+        intake.setSectionAffordability(sections.affordability());
+        intake.setCurrentTotalMonthlyPremium(currentTotalPremium);
+        intake.setCurrentEmployerMonthlyShare(currentEmployerShare);
         intake.setPlanYear(planYear);
         intake.setCollectedAt(LocalDateTime.now());
         intake.setCreatedBy(createdBy);
@@ -799,6 +818,14 @@ public class ProposalBuilder extends HttpServlet {
         BigDecimal groupMonthlyLow = age21Row.getLowestBronzePremium().multiply(BigDecimal.valueOf(headcount));
         BigDecimal groupMonthlyHigh = age64Row.getLowestBronzePremium().multiply(BigDecimal.valueOf(headcount));
 
+        // S20-B/V091 — sections 2/3 (contribution scenarios, group comparison) are a fidelity
+        // upgrade over RANGE mode's group-level figures, never gated on AGE_BAND — spec §2.
+        // Parsed here purely for sections-block completeness (§4.3); RANGE mode's own
+        // structured columns (groupNetTotal/employerOutlay are AGE_BAND-only) are unchanged.
+        BigDecimal contribution = parseOptionalNonNegativeDecimal(ichraParam(request, "contribution", "intakeContribution"));
+        BigDecimal currentTotalPremium = parseOptionalNonNegativeDecimal(request.getParameter("intakeCurrentTotalPremium"));
+        BigDecimal currentEmployerShare = parseOptionalNonNegativeDecimal(request.getParameter("intakeCurrentEmployerShare"));
+
         ProposalIchraSnapshot snapshot = new ProposalIchraSnapshot();
         snapshot.setProposal(proposal);
         snapshot.setMode(ProposalIchraSnapshot.MODE_RANGE);
@@ -817,7 +844,7 @@ public class ProposalBuilder extends HttpServlet {
         // S19-E §2): ageBands stays null rather than inventing per-age data this mode
         // never collected.
         snapshot.setPayloadJson(buildIchraPayload(request, em, planYear, countyFips, county.getCountyName(),
-                sourceEnv, fetchedAt, null));
+                sourceEnv, fetchedAt, null, contribution, currentTotalPremium, currentEmployerShare));
 
         ProposalIchraSnapshotDAO.save(em, snapshot, null);
     }
@@ -834,10 +861,13 @@ public class ProposalBuilder extends HttpServlet {
         // write, mirroring attachIchraIntakeIfPresent's own established convention for this
         // exact field's intake-side counterpart (T80 half 1): a typed negative is treated as
         // no answer, not as a reason to refuse everything else the agent supplied.
-        BigDecimal contribution = parseDecimalOrNull(ichraParam(request, "contribution", "intakeContribution"));
-        if (contribution != null && contribution.signum() < 0) {
-            contribution = null;
-        }
+        BigDecimal contribution = parseOptionalNonNegativeDecimal(ichraParam(request, "contribution", "intakeContribution"));
+
+        // S20-B/V091 — section 3 (ICHRA_COMPARISON) inputs, parsed here purely for
+        // sections-block completeness (§4.3); no structured column on this snapshot mode
+        // stores either figure — spec §6 puts both on proposal_ichra_intake only.
+        BigDecimal currentTotalPremium = parseOptionalNonNegativeDecimal(request.getParameter("intakeCurrentTotalPremium"));
+        BigDecimal currentEmployerShare = parseOptionalNonNegativeDecimal(request.getParameter("intakeCurrentEmployerShare"));
 
         List<int[]> ageCountPairs = new ArrayList<>(); // {age, count}
         for (int i = 1; i <= ICHRA_AGE_BAND_ROWS; i++) {
@@ -931,20 +961,22 @@ public class ProposalBuilder extends HttpServlet {
         // payload's ageBands per S19-F's schema was never contribution-dependent in the first
         // place. See S19D_ichra_payload_spec.md §3.
         snapshot.setPayloadJson(buildIchraPayload(request, em, planYear, countyFips, county.getCountyName(),
-                sourceEnv, fetchedAt, bands));
+                sourceEnv, fetchedAt, bands, contribution, currentTotalPremium, currentEmployerShare));
 
-        // S19-J — the structured ProposalIchraSnapshotBand rows are a net-of-contribution
-        // breakdown by column design (NOT NULL netPerEmployee/bandNet); without a
-        // contribution there is no net figure to store, so nothing is persisted to that table
-        // — same as the RANGE path's own ProposalIchraSnapshotDAO.save(em, snapshot, null)
-        // below. The snapshot row itself still writes, and the payload still carries the
-        // bands' raw age/lives/premium.
-        ProposalIchraSnapshotDAO.save(em, snapshot, contribution != null ? bands : null);
+        // S20-B/V091 — bands now persist unconditionally. net_per_employee/band_net were
+        // widened off NOT NULL (spec §6 item 4) precisely because sections 1 and 3 are both
+        // available with no contribution at all; before this the structured table silently
+        // dropped every contribution-less AGE_BAND proposal's band rows (spec §1.6). Net
+        // figures on each band stay null when no contribution was entered — set above, never
+        // backfilled with a zero standing in for "not computed".
+        ProposalIchraSnapshotDAO.save(em, snapshot, bands);
     }
 
     /**
-     * T165/V090 — serializes {@link ProposalIchraSnapshot#getPayloadJson()}'s schema-versioned
-     * JSON payload. See {@code docs/analysis/S19D_ichra_payload_spec.md} §3/§4.
+     * T165/V090, schemaVersion 2 since S20-B/V091 — serializes
+     * {@link ProposalIchraSnapshot#getPayloadJson()}'s schema-versioned JSON payload. See
+     * {@code docs/analysis/S19D_ichra_payload_spec.md} §3/§4 and
+     * {@code docs/analysis/S20A_ichra_sections_spec.md} §4.
      * <p>
      * {@code provenance} is always populated — every input it needs is already required by the
      * caller to reach this point at all. {@code ageBands} is null when {@code bands} is null or
@@ -954,13 +986,20 @@ public class ProposalBuilder extends HttpServlet {
      * {@code ageBands} entry-for-entry rather than collapsing the whole group into one age (see
      * {@code docs/analysis/S19D_ichra_payload_spec.md}'s dated correction note). {@code
      * planLandscape} is always null — nothing in this build calls HealthSherpa; that is T166's
-     * plan-fetch, not this one's.
+     * plan-fetch, not this one's. {@code sections} (S20-B/V091, new) is always present with all
+     * four keys — see {@link #buildSectionsBlock}.
+     * <p>
+     * {@code contribution}/{@code currentTotalPremium}/{@code currentEmployerShare} are the
+     * section 2/3 inputs, resolved by the caller and passed in purely for the sections block's
+     * completeness computation (§4.3 of the S20-A spec) — this method persists none of them to
+     * a structured column itself.
      */
     private String buildIchraPayload(HttpServletRequest request, EntityManager em, int planYear, String countyFips,
                                       String countyName, String sourceEnv, LocalDateTime fetchedAt,
-                                      List<ProposalIchraSnapshotBand> bands) {
+                                      List<ProposalIchraSnapshotBand> bands, BigDecimal contribution,
+                                      BigDecimal currentTotalPremium, BigDecimal currentEmployerShare) {
         JsonObject root = new JsonObject();
-        root.addProperty("schemaVersion", 1);
+        root.addProperty("schemaVersion", 2);
 
         JsonObject provenance = new JsonObject();
         provenance.addProperty("sourceEnv", sourceEnv);
@@ -992,7 +1031,78 @@ public class ProposalBuilder extends HttpServlet {
         // null unconditionally. See S19D_ichra_payload_spec.md §4 (Read), "Out of scope".
         root.add("planLandscape", JsonNull.INSTANCE);
 
+        // S20-B/V091 — always present, all four keys, per docs/analysis/S20A_ichra_sections_spec.md §4.
+        root.add("sections", buildSectionsBlock(request, contribution, bands, currentTotalPremium,
+                currentEmployerShare, affordability));
+
         return ICHRA_PAYLOAD_GSON.toJson(root);
+    }
+
+    /**
+     * S20-B/V091 — the payload's {@code sections} block. See
+     * {@code docs/analysis/S20A_ichra_sections_spec.md} §4. {@code selected} is derived via
+     * {@link #resolveSectionSelections} — the same derivation the intake write uses, so the
+     * two can never disagree. {@code complete} restates §4.3's rules exactly:
+     * <ul>
+     *   <li>{@code ICHRA_MARKET} — always complete. Reaching this method at all is the proof:
+     *       every caller already refused to write a snapshot without a resolvable county,
+     *       plan year, and (headcount or ≥1 band).</li>
+     *   <li>{@code ICHRA_CONTRIBUTION} — complete iff {@code contribution} is non-null.</li>
+     *   <li>{@code ICHRA_COMPARISON} — complete iff {@code contribution},
+     *       {@code currentTotalPremium} and {@code currentEmployerShare} are all non-null. No
+     *       cross-check that the share doesn't exceed the total — record what was collected,
+     *       do not adjudicate it (spec §4.3).</li>
+     *   <li>{@code ICHRA_AFFORDABILITY} — complete iff {@code affordability} (this method's own
+     *       {@link #buildAffordabilityBlock} result) is non-null, reusing that method's outcome
+     *       rather than duplicating its bands/basis/income conditions so the two can never
+     *       drift. Always {@code selected: false} in this build — section 4 renders no control
+     *       that could select it (build 4 is blocked pending an LA-NN entry).</li>
+     * </ul>
+     */
+    private JsonObject buildSectionsBlock(HttpServletRequest request, BigDecimal contribution,
+                                           List<ProposalIchraSnapshotBand> bands, BigDecimal currentTotalPremium,
+                                           BigDecimal currentEmployerShare, JsonObject affordability) {
+        IchraSectionSelections selections = resolveSectionSelections(request);
+        JsonObject sections = new JsonObject();
+
+        sections.add("ICHRA_MARKET", sectionEntry(selections.market(), true, new JsonArray()));
+
+        JsonArray contributionMissing = new JsonArray();
+        if (contribution == null) contributionMissing.add("contribution");
+        sections.add("ICHRA_CONTRIBUTION",
+                sectionEntry(selections.contribution(), contribution != null, contributionMissing));
+
+        JsonArray comparisonMissing = new JsonArray();
+        if (contribution == null) comparisonMissing.add("contribution");
+        if (currentTotalPremium == null) comparisonMissing.add("currentTotalMonthlyPremium");
+        if (currentEmployerShare == null) comparisonMissing.add("currentEmployerMonthlyShare");
+        boolean comparisonComplete = contribution != null && currentTotalPremium != null && currentEmployerShare != null;
+        sections.add("ICHRA_COMPARISON", sectionEntry(selections.comparison(), comparisonComplete, comparisonMissing));
+
+        // Best-effort diagnostic detail only — section 4 is never selectable in this build, so
+        // precision beyond "incomplete" carries no render-path consequence.
+        JsonArray affordabilityMissing = new JsonArray();
+        if (bands == null || bands.isEmpty()) affordabilityMissing.add("ageBands");
+        if (contribution == null) affordabilityMissing.add("contribution");
+        String basis = request.getParameter("affordabilityBasis");
+        if (!"FPL".equals(basis) && !"INCOME".equals(basis)) {
+            affordabilityMissing.add("affordabilityBasis");
+        } else if ("INCOME".equals(basis)) {
+            String income = request.getParameter("annualIncome");
+            if (income == null || income.isBlank()) affordabilityMissing.add("annualIncome");
+        }
+        sections.add("ICHRA_AFFORDABILITY",
+                sectionEntry(selections.affordability(), affordability != null, affordabilityMissing));
+
+        return sections;
+    }
+
+    private JsonObject sectionEntry(boolean selected, boolean complete, JsonArray missing) {
+        JsonObject entry = new JsonObject();
+        entry.addProperty("selected", selected);
+        entry.addProperty("complete", complete);
+        entry.add("missing", missing);
+        return entry;
     }
 
     /**
@@ -1085,6 +1195,42 @@ public class ProposalBuilder extends HttpServlet {
         } catch (NumberFormatException e) {
             return null;
         }
+    }
+
+    /**
+     * S20-B/V091 — parses an optional employer-reported decimal, collapsing a typed negative
+     * to "unanswered" rather than treating it as invalid input. This feature's established
+     * convention (T80 half 1's {@code intakeContribution}), now shared by every optional
+     * decimal field this build adds — a typed negative on any of them means the agent didn't
+     * answer, not that the whole write should fail.
+     */
+    private BigDecimal parseOptionalNonNegativeDecimal(String raw) {
+        BigDecimal value = parseDecimalOrNull(raw);
+        return (value != null && value.signum() < 0) ? null : value;
+    }
+
+    /**
+     * S20-B/V091 — the four ICHRA proposal-section selections
+     * (docs/analysis/S20A_ichra_sections_spec.md §2/§8.4). {@code market} is derived, not
+     * read: it is true whenever any of the other three is true, since market illustration
+     * data is the base layer every other section needs, not a peer selection. {@code
+     * affordability} is always false — build 4 is blocked pending an LA-NN entry (spec §7)
+     * and this build renders no control that could set it.
+     */
+    private record IchraSectionSelections(boolean market, boolean contribution, boolean comparison, boolean affordability) {}
+
+    /**
+     * The one place these four booleans are derived from the request, so
+     * {@code attachIchraIntakeIfPresent}'s write and {@code buildSectionsBlock}'s payload
+     * copy of the same facts can never disagree.
+     */
+    private IchraSectionSelections resolveSectionSelections(HttpServletRequest request) {
+        boolean secContribution = "on".equals(request.getParameter("sectionContribution"));
+        boolean secComparison = "on".equals(request.getParameter("sectionComparison"));
+        boolean secAffordability = false; // build 4 blocked -- never read from the request
+        boolean secMarket = "on".equals(request.getParameter("sectionMarket"))
+                || secContribution || secComparison || secAffordability;
+        return new IchraSectionSelections(secMarket, secContribution, secComparison, secAffordability);
     }
 
     private EntityManager getEntityManager(HttpServletRequest request) {

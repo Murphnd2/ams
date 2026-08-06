@@ -205,6 +205,13 @@ public class ServiceManagerAction extends HttpServlet {
                     enh.setDescription(request.getParameter("description").trim());
                     enh.setShortText(request.getParameter("shortText").trim());
                     enh.setSystemManaged("on".equals(request.getParameter("systemManaged")));
+                    // S20-B/V091 — the Rule-4-compliant discriminator (spec §5.1). Trimmed,
+                    // blank collapses to null: a fixed dropdown (serviceManager25.jsp) is the
+                    // only writer, so "blank" here means the admin chose "-- none --", not a
+                    // typo to preserve.
+                    String sectionKeyRaw = request.getParameter("systemSectionKey");
+                    String sectionKey = sectionKeyRaw != null ? sectionKeyRaw.trim() : "";
+                    enh.setSystemSectionKey(sectionKey.isBlank() ? null : sectionKey);
                     em.merge(enh);
                     em.getTransaction().commit();
                 }

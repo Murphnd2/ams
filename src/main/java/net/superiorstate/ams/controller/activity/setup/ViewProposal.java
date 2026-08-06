@@ -280,6 +280,12 @@ public class ViewProposal extends HttpServlet {
                         proposalEnhIds.add(line.getModule().getEnhancement().getId());
                     }
                 }
+                // S20-B/V091 — a system_managed enhancement drives no pricing by design, so it
+                // never enters proposalEnhIds via the loop above. Widen membership directly from
+                // the proposal's LOS list so its section can be reached at all. See
+                // docs/analysis/S20A_ichra_sections_spec.md §1.4b/§5.2. Bit-identical when no
+                // enhancement on this PSP is flagged, which is every PSP until an admin flags one.
+                proposalEnhIds.addAll(FlaggedEnhancementResolver.systemManagedIdsForProposal(em, proposal));
 
                 List<ProposalSection> filteredSections = new ArrayList<>();
                 for (ProposalSection section : sections) {

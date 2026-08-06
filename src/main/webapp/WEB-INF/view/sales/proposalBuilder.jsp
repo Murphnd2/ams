@@ -201,6 +201,34 @@
             </div>
             <div class="card-body">
                 <p class="text-muted small mb-3">This line of service needs the employer's ZIP and eligible employee count before the proposal is created.</p>
+
+                <%-- S20-B/V091 — the four ICHRA proposal-section selections
+                     (docs/analysis/S20A_ichra_sections_spec.md §2/§8.6). Placed above the
+                     ZIP/county row, since selecting any of these determines what that row
+                     requires (Rule B). No ICHRA_AFFORDABILITY control -- build 4 is blocked
+                     pending an LA-NN entry (spec §7); rendering a control for it would invite
+                     the question every time an agent sees it. The server never trusts these
+                     checkboxes (ProposalBuilder resolves selection itself, §8.4) -- this JS is
+                     for agent guidance only. --%>
+                <div class="mb-3">
+                    <label class="form-label mb-1 d-block">What should this proposal include?</label>
+                    <div class="form-check">
+                        <input type="checkbox" class="form-check-input" id="sectionMarket" name="sectionMarket">
+                        <label class="form-check-label" for="sectionMarket">Market illustration data</label>
+                    </div>
+                    <div class="form-check">
+                        <input type="checkbox" class="form-check-input" id="sectionContribution" name="sectionContribution">
+                        <label class="form-check-label" for="sectionContribution">Contribution scenarios</label>
+                    </div>
+                    <div class="form-check">
+                        <input type="checkbox" class="form-check-input" id="sectionComparison" name="sectionComparison">
+                        <label class="form-check-label" for="sectionComparison">Comparison against their current group plan</label>
+                    </div>
+                    <p class="text-muted mb-0 mt-1" id="sectionMarketAutoNote" style="font-size:0.78rem; display:none;">
+                        <i class="bi bi-info-circle me-1"></i>Market illustration data is included automatically — the other sections are built from it.
+                    </p>
+                </div>
+
                 <div class="row g-3 align-items-end">
                     <div class="col-auto">
                         <label class="form-label mb-1" for="intakeZip">Employer ZIP</label>
@@ -281,6 +309,26 @@
                         Maximum ${ichraAgeBandMaxRows} age bands.
                     </span>
                 </div>
+
+                <%-- S20-B/V091 — section 3 (ICHRA_COMPARISON) inputs. Hidden, not removed,
+                     following #intakeHeadcountField's own established convention -- and the
+                     readiness gate must skip required checks on anything currently hidden
+                     (spec §8.7). intake*-prefixed: no hand-off equivalent exists for either
+                     field, but the prefix is kept for consistency with every other field in
+                     this panel. --%>
+                <div class="row g-3 align-items-end mt-1" id="intakeComparisonFields" style="display:none;">
+                    <div class="col-auto">
+                        <label class="form-label mb-1" for="intakeCurrentTotalPremium">Current total monthly premium</label>
+                        <input type="number" class="form-control form-control-sm" id="intakeCurrentTotalPremium" name="intakeCurrentTotalPremium"
+                               min="0" step="0.01" style="max-width:170px;">
+                    </div>
+                    <div class="col-auto">
+                        <label class="form-label mb-1" for="intakeCurrentEmployerShare">Current employer monthly share</label>
+                        <input type="number" class="form-control form-control-sm" id="intakeCurrentEmployerShare" name="intakeCurrentEmployerShare"
+                               min="0" step="0.01" style="max-width:170px;">
+                    </div>
+                </div>
+
                 <%-- Never "invalid ZIP" -- the crosswalk is Texas-only and ZCTA-derived, so a
                      perfectly valid USPS ZIP can land here (ZipCountyResolver javadoc). --%>
                 <p class="intake-msg mt-2 mb-0" id="intakeNoMatchMsg">
@@ -687,8 +735,52 @@
         // on a deselect would post intakeAge{i} for a proposal whose plus-tier LOS is gone,
         // and deriveIntakeMode would read them as an AGE_BAND intent. Remove, then resync.
         ichraRemoveAllBandRows();
+        // S20-B/V091 — a stale section selection must not survive a deselect either, same
+        // reasoning as every other field above.
+        var sectionMarketEl = document.getElementById('sectionMarket');
+        var sectionContributionEl = document.getElementById('sectionContribution');
+        var sectionComparisonEl = document.getElementById('sectionComparison');
+        var totalPremiumEl = document.getElementById('intakeCurrentTotalPremium');
+        var employerShareEl = document.getElementById('intakeCurrentEmployerShare');
+        if (sectionMarketEl) { sectionMarketEl.checked = false; sectionMarketEl.disabled = false; }
+        if (sectionContributionEl) sectionContributionEl.checked = false;
+        if (sectionComparisonEl) sectionComparisonEl.checked = false;
+        if (totalPremiumEl) totalPremiumEl.value = '';
+        if (employerShareEl) employerShareEl.value = '';
+        ichraSyncSectionSelections();
         ichraLastLookedUpZip = '';
         hideIntakeMessages();
+    }
+
+    // S20-B/V091 — Rule A: ticking #2 or #3 ticks #1 and marks it read-only (cosmetic only;
+    // ProposalBuilder's own server-side derivation, §8.4, is authoritative regardless of what
+    // this checkbox shows). Rule C: #intakeContribution required while #2 or #3 is selected.
+    // Rule D: #intakeComparisonFields shown and required only while #3 is selected, and #3
+    // also requires the contribution (the planned ICHRA/QSEHRA contribution is its third
+    // input). See docs/analysis/S20A_ichra_sections_spec.md §8.7.
+    function ichraSyncSectionSelections() {
+        var marketEl = document.getElementById('sectionMarket');
+        if (!marketEl) return; // panel absent from the DOM -- no-op, same as every function here
+        var contributionEl = document.getElementById('sectionContribution');
+        var comparisonEl = document.getElementById('sectionComparison');
+        var autoNote = document.getElementById('sectionMarketAutoNote');
+
+        var forced = (contributionEl && contributionEl.checked) || (comparisonEl && comparisonEl.checked);
+        marketEl.disabled = forced;
+        if (forced) marketEl.checked = true;
+        if (autoNote) autoNote.style.display = forced ? '' : 'none';
+
+        var contributionRequired = (contributionEl && contributionEl.checked) || (comparisonEl && comparisonEl.checked);
+        var contributionField = document.getElementById('intakeContribution');
+        if (contributionField) {
+            contributionField.placeholder = contributionRequired ? '' : 'Optional';
+        }
+
+        var comparisonSelected = comparisonEl && comparisonEl.checked;
+        var comparisonFields = document.getElementById('intakeComparisonFields');
+        if (comparisonFields) comparisonFields.style.display = comparisonSelected ? '' : 'none';
+
+        updateSteps();
     }
 
     // ── S19-I: age-band repeater ────────────────────────────────────────────────────
@@ -814,6 +906,10 @@
             // call that happens before this LOS was selected. Latched inside the function
             // itself; safe to call on every reveal.
             ichraApplyHandoffPrefill();
+            // S20-B/V091 — syncs the market-forced/comparison-visible/contribution-placeholder
+            // state to whatever the checkboxes currently hold (they may still carry a value the
+            // agent set before toggling the plus-tier LOS off and back on).
+            ichraSyncSectionSelections();
         } else {
             panel.style.display = 'none';
             clearIntakeFields();
@@ -823,6 +919,16 @@
     function ichraIntakeComplete() {
         var panel = document.getElementById('ichraIntakePanel');
         if (!panel || panel.style.display === 'none') return true; // panel not showing -- nothing required
+
+        // S20-B/V091 — Rule B: only required at all when at least one section is selected. An
+        // agent who wants no ICHRA content on this proposal is not blocked by the panel.
+        var marketEl = document.getElementById('sectionMarket');
+        var contributionEl = document.getElementById('sectionContribution');
+        var comparisonEl = document.getElementById('sectionComparison');
+        var anySectionSelected = (marketEl && marketEl.checked) || (contributionEl && contributionEl.checked)
+                || (comparisonEl && comparisonEl.checked);
+        if (!anySectionSelected) return true;
+
         var zip = (document.getElementById('intakeZip').value || '').trim();
         var county = document.getElementById('intakeCountyFips').value;
         var headcount = parseInt(document.getElementById('intakeHeadcount').value, 10);
@@ -830,7 +936,26 @@
         // carries a valid age, the counts ARE the headcount and the Eligible Employees input
         // is hidden, so requiring it too would leave btnCreate permanently disabled.
         var headcountOk = ichraHasValidBand() || headcount >= 1;
-        return /^[0-9]{5}$/.test(zip) && county !== '' && headcountOk;
+        var ok = /^[0-9]{5}$/.test(zip) && county !== '' && headcountOk;
+
+        // Rule C — #2 selected requires a contribution.
+        var contributionRaw = document.getElementById('intakeContribution').value;
+        var contributionOk = contributionRaw !== '' && !isNaN(parseFloat(contributionRaw));
+        if (contributionEl && contributionEl.checked) {
+            ok = ok && contributionOk;
+        }
+
+        // Rule D — #3 selected requires both comparison fields AND the contribution (the
+        // planned ICHRA/QSEHRA contribution is #3's third input, spec §2).
+        if (comparisonEl && comparisonEl.checked) {
+            var totalRaw = document.getElementById('intakeCurrentTotalPremium').value;
+            var shareRaw = document.getElementById('intakeCurrentEmployerShare').value;
+            var totalOk = totalRaw !== '' && !isNaN(parseFloat(totalRaw));
+            var shareOk = shareRaw !== '' && !isNaN(parseFloat(shareRaw));
+            ok = ok && totalOk && shareOk && contributionOk;
+        }
+
+        return ok;
     }
 
     function ichraSelectCounty(county) {
@@ -1000,6 +1125,16 @@
         if (ichraHeadcountEl) {
             ichraHeadcountEl.addEventListener('input', updateSteps);
         }
+        // S20-B/V091 — section checkboxes drive Rule A/C/D's show/hide and required state;
+        // the three optional decimal fields only need btnCreate re-evaluated as they're typed.
+        ['sectionMarket', 'sectionContribution', 'sectionComparison'].forEach(function(id) {
+            var el = document.getElementById(id);
+            if (el) el.addEventListener('change', ichraSyncSectionSelections);
+        });
+        ['intakeContribution', 'intakeCurrentTotalPremium', 'intakeCurrentEmployerShare'].forEach(function(id) {
+            var el = document.getElementById(id);
+            if (el) el.addEventListener('input', updateSteps);
+        });
         // S19-I — band repeater wiring. Delegated on the rows container so it covers every
         // row, including ones added later by the button or by the hand-off prefill.
         var ichraBandAddBtn = document.getElementById('intakeBandAdd');

@@ -30,10 +30,22 @@ public class ProposalIchraSnapshotBand {
     @Column(name = "floor_premium", nullable = false)
     private BigDecimal floorPremium;
 
-    @Column(name = "net_per_employee", nullable = false)
+    /**
+     * S20-B / V091 — widened from {@code nullable = false}. Net-of-contribution by
+     * definition; without an employer contribution there is nothing honest to put here, and
+     * the market ({@code ICHRA_MARKET}) and comparison ({@code ICHRA_COMPARISON}) sections
+     * are both available with no contribution at all. Null means no contribution was entered
+     * at build time, not a zero net cost.
+     */
+    @Column(name = "net_per_employee")
     private BigDecimal netPerEmployee;
 
-    @Column(name = "band_net", nullable = false)
+    /**
+     * S20-B / V091 — widened from {@code nullable = false}, same reason as
+     * {@link #netPerEmployee}: net-of-contribution by definition, null when no contribution
+     * was entered.
+     */
+    @Column(name = "band_net")
     private BigDecimal bandNet;
 
     @Column(name = "sort_order", nullable = false)

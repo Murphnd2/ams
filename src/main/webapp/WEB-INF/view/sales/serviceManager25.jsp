@@ -947,7 +947,22 @@
                             <label class="form-check-label" for="systemManagedCheck" style="font-size: 0.85rem;">
                                 System Managed
                             </label>
-                            <div class="form-text" style="font-size: 0.72rem;">Marks this enhancement as driving system-generated proposal content. While marked, its scoped proposal section is withheld from the public proposal page. Has no effect on the application.</div>
+                            <div class="form-text" style="font-size: 0.72rem;">Marks this enhancement as driving system-generated proposal content. Its scoped proposal section renders only when the matching ICHRA section below is both selected and complete on a given proposal. Has no effect on the application.</div>
+                        </div>
+                        <%-- S20-B/V091 — the Rule-4-compliant discriminator (spec §5.1). A fixed
+                             dropdown, never a text input: the key must be byte-identical to the
+                             payload's own sections key, and a mistyped free-text value would be
+                             permanent, silent withholding with no error anywhere. --%>
+                        <div class="mb-2">
+                            <label class="form-label fw-semibold" for="systemSectionKeySelect" style="font-size: 0.85rem;">System Section</label>
+                            <select class="form-select form-select-sm" id="systemSectionKeySelect" name="systemSectionKey">
+                                <option value="" ${empty selectedEnhancement.getSystemSectionKey() ? 'selected' : ''}>-- none --</option>
+                                <option value="ICHRA_MARKET" ${selectedEnhancement.getSystemSectionKey() == 'ICHRA_MARKET' ? 'selected' : ''}>ICHRA_MARKET — Market illustration data</option>
+                                <option value="ICHRA_CONTRIBUTION" ${selectedEnhancement.getSystemSectionKey() == 'ICHRA_CONTRIBUTION' ? 'selected' : ''}>ICHRA_CONTRIBUTION — Contribution scenarios</option>
+                                <option value="ICHRA_COMPARISON" ${selectedEnhancement.getSystemSectionKey() == 'ICHRA_COMPARISON' ? 'selected' : ''}>ICHRA_COMPARISON — Comparison against current group plan</option>
+                                <option value="ICHRA_AFFORDABILITY" ${selectedEnhancement.getSystemSectionKey() == 'ICHRA_AFFORDABILITY' ? 'selected' : ''}>ICHRA_AFFORDABILITY — Affordability comparison</option>
+                            </select>
+                            <div class="form-text" style="font-size: 0.72rem;">Which system-generated section this enhancement drives. Only meaningful when System Managed is ticked.</div>
                         </div>
                     </div>
                     <div class="modal-footer border-0">
