@@ -648,6 +648,49 @@
                         <code>{{PROPOSAL_ID}}</code> — Proposal ID<br>
                     </div>
                 </div>
+                <%-- S21-H/T173 — ICHRA merge tokens, gated by the same resolver every other
+                     ICHRA surface asks. Session-cached visibility hint only, matching
+                     navbar25.jsp's own precedent — this popup only decides what to display,
+                     it enforces nothing. Never advertises the ICHRA capability to an agency
+                     that hasn't been granted it. --%>
+                <% pageContext.setAttribute("ichraTokensAvailable",
+                     net.superiorstate.ams.data.resolver.IchraAccessResolver.isAvailableForNav(request)); %>
+                <c:if test="${ichraTokensAvailable}">
+                    <hr class="my-3">
+                    <div class="fw-semibold text-muted mb-2" style="font-size:0.75rem; text-transform:uppercase;">ICHRA</div>
+                    <div class="row">
+                        <div class="col-6">
+                            <code>{{ICHRA_COUNTY}}</code> — County name<br>
+                            <code>{{ICHRA_COUNTY_FIPS}}</code> — County FIPS<br>
+                            <code>{{ICHRA_HEADCOUNT}}</code> — Headcount<br>
+                            <code>{{ICHRA_PLAN_YEAR}}</code> — Plan year<br>
+                            <code>{{ICHRA_CONTRIBUTION_MONTHLY}}</code> — Contribution, per employee, monthly<br>
+                            <code>{{ICHRA_CONTRIBUTION_ANNUAL}}</code> — Contribution, per employee, annual<br>
+                            <code>{{ICHRA_CONTRIBUTION_TOTAL_MONTHLY}}</code> — Contribution, group total, monthly<br>
+                            <code>{{ICHRA_CONTRIBUTION_TOTAL_ANNUAL}}</code> — Contribution, group total, annual<br>
+                        </div>
+                        <div class="col-6">
+                            <code>{{ICHRA_PLAN_COUNT}}</code> — Off-exchange plan count<br>
+                            <code>{{ICHRA_CARRIER_COUNT}}</code> — Off-exchange carrier count<br>
+                            <code>{{ICHRA_FLOOR_AGE_21}}</code> — Lowest premium, age 21<br>
+                            <code>{{ICHRA_FLOOR_AGE_40}}</code> — Lowest premium, age 40<br>
+                            <code>{{ICHRA_FLOOR_AGE_64}}</code> — Lowest premium, age 64<br>
+                            <code>{{ICHRA_RATES_AS_OF}}</code> — Rate cache as-of date<br>
+                            <code>{{ICHRA_RATES_SCOPE}}</code> — Off-exchange market disclosure<br>
+                            <code>{{ICHRA_PAYLOAD_AS_OF}}</code> — Snapshot point-in-time disclosure<br>
+                        </div>
+                    </div>
+                    <div class="mt-2 text-muted" style="font-size:0.8rem;">
+                        <i class="bi bi-info-circle me-1"></i>
+                        The four tokens below each resolve to a complete <code>&lt;table&gt;</code> element — do not wrap them in one.
+                    </div>
+                    <div class="mt-1">
+                        <code>{{ICHRA_AGE_BAND_TABLE}}</code> — Age-band premium table<br>
+                        <code>{{ICHRA_PLAN_LANDSCAPE_TABLE}}</code> — Plan landscape table<br>
+                        <code>{{ICHRA_CONTRIBUTION_SCENARIO_TABLE}}</code> — Contribution scenario table<br>
+                        <code>{{ICHRA_GROUP_COMPARISON_TABLE}}</code> — Group plan comparison table<br>
+                    </div>
+                </c:if>
                 <div class="mt-3 text-muted" style="font-size:0.8rem;">
                     <i class="bi bi-info-circle me-1"></i>
                     <code>&lt;style&gt;</code> blocks and inline <code>style=</code> attributes are supported.
