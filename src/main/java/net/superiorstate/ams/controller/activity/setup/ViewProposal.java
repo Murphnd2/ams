@@ -1105,16 +1105,28 @@ public class ViewProposal extends HttpServlet {
                     JsonObject gc = payload.getAsJsonObject("groupComparison");
                     if (gc.has("currentTotalMonthlyPremium") && !gc.get("currentTotalMonthlyPremium").isJsonNull()
                             && gc.has("currentEmployerMonthlyShare") && !gc.get("currentEmployerMonthlyShare").isJsonNull()
-                            && gc.has("plannedContribution") && !gc.get("plannedContribution").isJsonNull()
+                            && gc.has("plannedContributionTotal") && !gc.get("plannedContributionTotal").isJsonNull()
                             && gc.has("employerDelta") && !gc.get("employerDelta").isJsonNull()) {
+                        // S21-G — reads plannedContributionTotal (group total, corrected), not
+                        // the pre-S21-G plannedContribution key (the raw per-employee figure
+                        // that produced a materially wrong delta). A payload frozen before this
+                        // fix carries the old key name only, so it has no plannedContributionTotal
+                        // and this whole block degrades to "" for it — never a re-derived or
+                        // partially-corrected figure for old data, per the same withhold-rather-
+                        // than-fabricate rule as everywhere else in this method.
                         String currentTotal = formatCurrency(gc.get("currentTotalMonthlyPremium").getAsBigDecimal());
                         String currentShare = formatCurrency(gc.get("currentEmployerMonthlyShare").getAsBigDecimal());
-                        String planned = formatCurrency(gc.get("plannedContribution").getAsBigDecimal());
+                        String planned = formatCurrency(gc.get("plannedContributionTotal").getAsBigDecimal());
                         String delta = formatCurrency(gc.get("employerDelta").getAsBigDecimal());
 
+                        // Headings state their unit explicitly, following S21-F's own
+                        // precedent ("Total Monthly Contribution", not bare "Contribution") --
+                        // every figure here is a whole-group monthly total, and the difference
+                        // column names its own sign convention so a negative number never
+                        // requires the reader to guess the direction.
                         StringBuilder sb = new StringBuilder("<table class=\"ichra-group-comparison-table\"><thead><tr>"
-                                + "<th>Current Total Monthly Premium</th><th>Current Employer Monthly Share</th>"
-                                + "<th>Planned ICHRA Contribution</th><th>Employer Monthly Difference</th></tr></thead><tbody>");
+                                + "<th>Current Total Monthly Premium (Group)</th><th>Current Employer Monthly Share (Group)</th>"
+                                + "<th>Planned ICHRA Contribution (Group Total)</th><th>Employer Monthly Difference (Planned − Current)</th></tr></thead><tbody>");
                         sb.append("<tr><td>").append(escapeHtml(currentTotal)).append("</td><td>")
                                 .append(escapeHtml(currentShare)).append("</td><td>")
                                 .append(escapeHtml(planned)).append("</td><td>")
