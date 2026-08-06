@@ -37,7 +37,10 @@ public class EmailDraftService {
     private static final Gson   gson = new Gson();
 
     private static final String SKILL_NAME     = "EMAIL_DRAFT_ASSISTANT";
-    private static final String DEFAULT_MODEL  = "claude-sonnet-4-20250514";
+    // S20-D — was the retired "claude-sonnet-4-20250514" snapshot. Fallback only: the live
+    // chatbot_skill.model DB row for EMAIL_DRAFT_ASSISTANT wins whenever it is non-blank
+    // (line ~145), so this constant is reached only if that row is ever cleared.
+    private static final String DEFAULT_MODEL  = "claude-sonnet-5";
     private static final int    DEFAULT_MAX_TOKENS = 4096;
 
     private static final Set<String> ALWAYS_LOAD_KBS = Set.of("style_voice");
