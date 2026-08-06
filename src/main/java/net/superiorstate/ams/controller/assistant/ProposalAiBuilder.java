@@ -36,8 +36,8 @@ public class ProposalAiBuilder extends HttpServlet {
     private static final int MAX_HISTORY_TURNS = 10;
     private static final String SESSION_KEY = "proposalAiBuilderHistory";
 
-    /** Use Sonnet for complex HTML/CSS generation */
-    private static final String MODEL = "claude-sonnet-4-20250514";
+    /** Use Sonnet for complex HTML/CSS generation. S20-D — was the retired "claude-sonnet-4-20250514" snapshot; matches the production ICHRA Design Advisor's live claude-sonnet-5 config. */
+    private static final String MODEL = "claude-sonnet-5";
     private static final int MAX_TOKENS = 4096;
 
     private static final Set<String> TARGET_KB = Set.of("proposal_page_builder");
