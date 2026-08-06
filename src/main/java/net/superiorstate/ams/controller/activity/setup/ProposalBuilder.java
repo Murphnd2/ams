@@ -782,12 +782,18 @@ public class ProposalBuilder extends HttpServlet {
     private void attachAgeBandSnapshot(HttpServletRequest request, EntityManager em, Proposal proposal, Person createdBy,
                                         CountyReference county, int planYear, String countyFips) {
         // S19-I — hand-off value first, intake block's field as fallback (see ichraParam).
-        // ⚠️ Contribution remains REQUIRED here, deliberately unchanged: a missing one returns
-        // without writing any snapshot. Defaulting it to zero would record "the employer
-        // contributes nothing" as though the agent had said so, making entered and assumed
-        // indistinguishable — the exact failure the illustration's W15 note exists to prevent.
+        // S19-J — contribution is now OPTIONAL. The illustration itself treats it as an
+        // optional fidelity step (adding one unlocks net-cost math; it does not gate the
+        // tool), and since S19-E this snapshot is also the carrier for payload_json —
+        // provenance/ageBands/planLandscape — none of which need a contribution. A negative
+        // entered value collapses to "unanswered" (null) rather than blocking the whole
+        // write, mirroring attachIchraIntakeIfPresent's own established convention for this
+        // exact field's intake-side counterpart (T80 half 1): a typed negative is treated as
+        // no answer, not as a reason to refuse everything else the agent supplied.
         BigDecimal contribution = parseDecimalOrNull(ichraParam(request, "contribution", "intakeContribution"));
-        if (contribution == null || contribution.signum() < 0) return;
+        if (contribution != null && contribution.signum() < 0) {
+            contribution = null;
+        }
 
         List<int[]> ageCountPairs = new ArrayList<>(); // {age, count}
         for (int i = 1; i <= ICHRA_AGE_BAND_ROWS; i++) {
@@ -802,7 +808,11 @@ public class ProposalBuilder extends HttpServlet {
         if (ageCountPairs.isEmpty()) return;
 
         List<ProposalIchraSnapshotBand> bands = new ArrayList<>();
-        BigDecimal groupNetTotal = BigDecimal.ZERO;
+        // S19-J — null, not BigDecimal.ZERO, until a real contribution proves a real net
+        // figure. ProposalIchraSnapshot.groupNetTotal/employerOutlay are nullable columns;
+        // rendering a computed "$0.00" here would claim a net cost of zero that was never
+        // actually derived, which is exactly the fabrication this run must not commit.
+        BigDecimal groupNetTotal = (contribution != null) ? BigDecimal.ZERO : null;
         int totalLives = 0;
         String sourceEnv = null;
         LocalDateTime fetchedAt = null;
@@ -825,19 +835,29 @@ public class ProposalBuilder extends HttpServlet {
                     && !RatingAreaRateCache.SOURCE_ENV_PRODUCTION.equals(row.getSourceEnv())) return;
 
             BigDecimal floorPremium = row.getLowestBronzePremium();
-            BigDecimal netPerEmployee = floorPremium.subtract(contribution).max(BigDecimal.ZERO);
-            BigDecimal bandNet = netPerEmployee.multiply(BigDecimal.valueOf(count));
 
             ProposalIchraSnapshotBand band = new ProposalIchraSnapshotBand();
             band.setAge(age);
             band.setLives(count);
             band.setFloorPremium(floorPremium);
-            band.setNetPerEmployee(netPerEmployee);
-            band.setBandNet(bandNet);
             band.setSortOrder(sortOrder++);
+
+            // S19-J — netPerEmployee/bandNet are NOT NULL columns on
+            // ProposalIchraSnapshotBand (schema unchanged by this run, no migration written).
+            // Both are net-of-contribution figures by definition, so without a contribution
+            // there is nothing honest to put in either — left unset here (this band object is
+            // then never persisted; see the save() call below) rather than filled with a zero
+            // or the raw floor premium standing in for "net". The payload's ageBands array
+            // still gets this band — it reads only age/lives/floorPremium, never these two.
+            if (contribution != null) {
+                BigDecimal netPerEmployee = floorPremium.subtract(contribution).max(BigDecimal.ZERO);
+                BigDecimal bandNet = netPerEmployee.multiply(BigDecimal.valueOf(count));
+                band.setNetPerEmployee(netPerEmployee);
+                band.setBandNet(bandNet);
+                groupNetTotal = groupNetTotal.add(bandNet);
+            }
             bands.add(band);
 
-            groupNetTotal = groupNetTotal.add(bandNet);
             totalLives += count;
             sourceEnv = row.getSourceEnv();
             if (row.getFetchedAt() != null && (fetchedAt == null || row.getFetchedAt().isAfter(fetchedAt))) {
@@ -845,7 +865,8 @@ public class ProposalBuilder extends HttpServlet {
             }
         }
 
-        BigDecimal employerOutlay = contribution.multiply(BigDecimal.valueOf(totalLives));
+        BigDecimal employerOutlay = (contribution != null)
+                ? contribution.multiply(BigDecimal.valueOf(totalLives)) : null;
 
         ProposalIchraSnapshot snapshot = new ProposalIchraSnapshot();
         snapshot.setProposal(proposal);
@@ -861,13 +882,20 @@ public class ProposalBuilder extends HttpServlet {
         snapshot.setRatesFetchedAt(fetchedAt);
         snapshot.setSnapshotAt(LocalDateTime.now());
         snapshot.setCreatedBy(createdBy);
-        // T165/V090 — bands is the same list about to be persisted as ProposalIchraSnapshotBand
-        // rows; the payload's ageBands array carries the same age/lives/premium as a
-        // self-contained JSON copy, per S19D_ichra_payload_spec.md §3.
+        // T165/V090 — bands (age/lives/floorPremium only, never netPerEmployee/bandNet) feeds
+        // the payload's ageBands array regardless of whether contribution is present; the
+        // payload's ageBands per S19-F's schema was never contribution-dependent in the first
+        // place. See S19D_ichra_payload_spec.md §3.
         snapshot.setPayloadJson(buildIchraPayload(request, em, planYear, countyFips, county.getCountyName(),
                 sourceEnv, fetchedAt, bands));
 
-        ProposalIchraSnapshotDAO.save(em, snapshot, bands);
+        // S19-J — the structured ProposalIchraSnapshotBand rows are a net-of-contribution
+        // breakdown by column design (NOT NULL netPerEmployee/bandNet); without a
+        // contribution there is no net figure to store, so nothing is persisted to that table
+        // — same as the RANGE path's own ProposalIchraSnapshotDAO.save(em, snapshot, null)
+        // below. The snapshot row itself still writes, and the payload still carries the
+        // bands' raw age/lives/premium.
+        ProposalIchraSnapshotDAO.save(em, snapshot, contribution != null ? bands : null);
     }
 
     /**
