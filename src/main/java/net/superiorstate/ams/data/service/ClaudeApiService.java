@@ -242,7 +242,19 @@ public class ClaudeApiService {
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
             if (response.statusCode() == 200) {
-                return new DetailedResult(extractResponseText(response.body()), true, 200, null);
+                // S20-F — extractText's own extracted flag decides ok, not the bare HTTP
+                // status. When extraction hit its fallback path despite a 200, ok=false is the
+                // honest read: extracted.text is one of extractText's two fallback strings,
+                // never real content, so there is no working response being mischaracterized
+                // here — errorDetail carries the same bounded raw-body excerpt log.warn/
+                // log.error already captured inside extractText, via the same 500-char bound
+                // truncateForDisplay applies to a non-200 body.
+                ExtractedText extracted = extractText(response.body());
+                if (extracted.extracted) {
+                    return new DetailedResult(extracted.text, true, 200, null);
+                } else {
+                    return new DetailedResult(extracted.text, false, 200, truncateForDisplay(response.body()));
+                }
             } else {
                 log.error("Claude API returned status {}: {}", response.statusCode(), response.body());
                 String detail = truncateForDisplay(response.body());
@@ -438,6 +450,24 @@ public class ClaudeApiService {
     }
 
     /**
+     * S20-F — the result of {@link #extractText}: the display text (real content on success,
+     * one of the two existing fallback strings on failure — unchanged wording either way) plus
+     * whether a real text block was actually found. {@code extracted == false} is what lets
+     * {@link #askDetailed} tell a genuine answer apart from a fallback string that merely
+     * looks like one; every other caller only ever sees {@code text} via
+     * {@link #extractResponseText}, exactly as before this commit.
+     */
+    private static final class ExtractedText {
+        final String text;
+        final boolean extracted;
+
+        ExtractedText(String text, boolean extracted) {
+            this.text = text;
+            this.extracted = extracted;
+        }
+    }
+
+    /**
      * Extracts the text content from the Anthropic API response JSON.
      * Response format: { "content": [ { "type": "text", "text": "..." }, ... ] }
      * <p>
@@ -457,7 +487,7 @@ public class ClaudeApiService {
      * through to the existing failure path, which is unchanged: same message, same
      * {@code log.warn} raw-body dump.
      */
-    private static String extractResponseText(String responseBody) {
+    private static ExtractedText extractText(String responseBody) {
         try {
             JsonObject resp = gson.fromJson(responseBody, JsonObject.class);
             JsonArray content = resp.getAsJsonArray("content");
@@ -471,14 +501,25 @@ public class ClaudeApiService {
                     }
                 }
                 if (text.length() > 0) {
-                    return text.toString();
+                    return new ExtractedText(text.toString(), true);
                 }
             }
             log.warn("Unexpected response structure: {}", responseBody);
-            return "I received a response but couldn't process it. Please try again.";
+            return new ExtractedText("I received a response but couldn't process it. Please try again.", false);
         } catch (Exception e) {
             log.error("Error parsing Claude API response", e);
-            return "Sorry, I couldn't understand the response. Please try again.";
+            return new ExtractedText("Sorry, I couldn't understand the response. Please try again.", false);
         }
+    }
+
+    /**
+     * Thin, behavior-preserving wrapper over {@link #extractText} for every caller that only
+     * ever wanted the display string — {@code ask}, {@code askWithContent},
+     * {@code askWithStructuredMessages}. Returns exactly {@link ExtractedText#text}; the
+     * {@code extracted} flag is discarded here on purpose, matching this method's behavior
+     * before S20-F added it.
+     */
+    private static String extractResponseText(String responseBody) {
+        return extractText(responseBody).text;
     }
 }
