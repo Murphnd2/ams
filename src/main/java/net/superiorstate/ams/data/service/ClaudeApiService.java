@@ -109,7 +109,7 @@ public class ClaudeApiService {
      *
      * @param systemPrompt the system prompt
      * @param messages     list of maps with "role" and "content" keys
-     * @param model        the Anthropic model ID (e.g., "claude-sonnet-4-5-20250514")
+     * @param model        the Anthropic model ID (e.g., "claude-sonnet-5")
      * @param maxTokens    maximum tokens in the response
      * @return Claude's response text, or an error message if the call fails
      */

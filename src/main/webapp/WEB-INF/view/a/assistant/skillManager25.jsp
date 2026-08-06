@@ -161,9 +161,14 @@
                         </div>
                         <div class="col-md-3">
                             <label class="form-label fw-semibold">Model</label>
+                            <%-- T169/S20-J — this list is a curated shortlist, not a validation set. A
+                                 skill's stored model may be neither of these two (e.g. a future
+                                 release), and the dropdown must still be able to represent it —
+                                 setSkillModelValue() below injects a marked, non-error option for
+                                 exactly that case rather than rendering blank. --%>
                             <select class="form-select form-select-sm" name="model" id="smModel">
-                                <option value="claude-haiku-4-5-20251001">Haiku 4.5 (fast/cheap)</option>
-                                <option value="claude-sonnet-4-5-20250514">Sonnet 4.5 (balanced)</option>
+                                <option value="claude-haiku-4-5-20251001">Haiku 4.5</option>
+                                <option value="claude-sonnet-5">Sonnet 5</option>
                             </select>
                         </div>
                         <div class="col-md-3">
@@ -212,7 +217,7 @@
         document.getElementById('smAcceptsFile').checked = false;
         document.getElementById('smAcceptedMime').value = '';
         document.getElementById('smMimeGroup').style.display = 'none';
-        document.getElementById('smModel').value = 'claude-haiku-4-5-20251001';
+        setSkillModelValue('claude-haiku-4-5-20251001');
         document.getElementById('smMaxTokens').value = '1024';
         document.getElementById('smAdminOnly').checked = false;
         document.getElementById('smSortOrder').value = '100';
@@ -232,11 +237,35 @@
         document.getElementById('smAcceptsFile').checked = d.acceptsFileUpload;
         document.getElementById('smAcceptedMime').value = d.acceptedMimeTypes;
         document.getElementById('smMimeGroup').style.display = d.acceptsFileUpload ? 'block' : 'none';
-        document.getElementById('smModel').value = d.model;
+        setSkillModelValue(d.model);
         document.getElementById('smMaxTokens').value = d.maxTokens;
         document.getElementById('smAdminOnly').checked = d.adminOnly;
         document.getElementById('smSortOrder').value = d.sortOrder;
         new bootstrap.Modal(document.getElementById('skillModal')).show();
+    }
+
+    // T169/S20-J — the Model dropdown must always be able to represent whatever is actually
+    // stored, even when it isn't one of the two curated options above. Without this, an
+    // unrecognized value (e.g. a model released after this page was last updated) renders
+    // blank — which is exactly what led an admin to pick a wrong listed option and silently
+    // overwrite a working configuration. If the value has no matching <option>, inject one
+    // marked "(current)" rather than styling it as an error: the stored value is very often
+    // correct, just newer than this hardcoded list. Any option injected by a prior call is
+    // removed first, so switching between skills never leaves a stale custom entry behind.
+    function setSkillModelValue(model) {
+        const select = document.getElementById('smModel');
+        const existingCustom = document.getElementById('smModelCustomOption');
+        if (existingCustom) existingCustom.remove();
+
+        const hasOption = Array.from(select.options).some(o => o.value === model);
+        if (!hasOption && model) {
+            const opt = document.createElement('option');
+            opt.id = 'smModelCustomOption';
+            opt.value = model;
+            opt.textContent = model + ' (current)';
+            select.appendChild(opt);
+        }
+        select.value = model;
     }
 </script>
 </body>
