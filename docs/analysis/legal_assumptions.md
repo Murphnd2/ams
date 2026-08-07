@@ -114,6 +114,7 @@ spent deliberately rather than drifted across.
 | **LA-12** | Affordability is computed for the employer, not presented to the employee | Display edit — but **gated on T44 correctness** | Any employee-facing affordability figure | Assumed |
 | **LA-13** | This register is internal work product and is not disclosed to partner agencies through SSA-built tools | ⭐ **Low, one direction only** — restoring disclosure is a data edit; a disclosure already made cannot be withdrawn | Any disclosure of SSA's regulatory status or the review state of its positions to a partner | Assumed |
 | **LA-17** | An agent-composed, agent-sent, agency-branded proposal may carry market data to an employer without SSA becoming a producer | ⭐ **Low — display edit — and only because constraint 2 holds.** **Escalates to rebuild** if an agentless front door is ever built | A second state beyond Texas; any agentless front door; any SSA-initiated communication to a prospect | Assumed — **thin** |
+| **LA-18** | Staging rate data is treated as fully authoritative, with no distinguishing marker, until production HealthSherpa access is live | Low one direction (flip the constant); **not reversible for proposals already sent under it** | Granting `agency.ichra_enabled` to any agency other than through PSP-admin access, while `ICHRA_RATE_SOURCE_ENV` still reads `STAGING` | Assumed — accepted explicitly |
 
 ⚠️ **Index gap, not fixed here.** **LA-14, LA-15 and LA-16 exist in the register below but have never
 been added to this table.** Recorded rather than backfilled, because backfilling three entries someone
@@ -1097,6 +1098,72 @@ disposes of the safe-harbor half of it while the design declines to rely on the 
 in a proposal remain separately open** — LA-17 says an agent may send market data, not that SSA may
 print a carrier name. Constraint 3 is what keeps the two questions apart: the agent's section and
 SSA's are different paper.
+
+---
+
+### LA-18 — Staging rate data is treated as fully authoritative pending production HealthSherpa access
+
+**This is a technical/operational assumption, not a reading of statute** — recorded here because
+`legal_assumptions.md` is this project's only assumption register (confirmed by direct search, S21-L;
+no separate technical register exists) and because its risk, once an agency is entitled, is the same
+class of exposure LA-17 already governs: market data reaching an employer on a document neither SSA
+nor the agent can vouch for as accurate.
+
+**Assumption.** Cached rate data sourced from AMS's staging HealthSherpa environment is presented to
+entitled ICHRA users — including on the public, unauthenticated proposal page — as though it were
+authoritative market fact, with no distinguishing marker, disclaimer, or staging banner anywhere in
+the rendered document. A single reference constant, `ICHRA_RATE_SOURCE_ENV` (read via
+`RateSourceEnvResolver.authoritativeSourceEnv`, S21-L), names which `RatingAreaRateCache.sourceEnv`
+value — `STAGING` or `PRODUCTION` — is authoritative for this installation. **Today it reads
+`STAGING`.**
+
+**Basis.** Kevin's explicit, on-the-record decision (2026-08-06, S21-L): the product must be
+demonstrable end to end before production HealthSherpa access exists, and gating every ICHRA surface
+behind "no data is production yet" would make that impossible during the demonstration window. **The
+control is entitlement, not data provenance** — `IchraAccessResolver` / `agency.ichra_enabled` decides
+who can see ICHRA content at all, and **nobody outside PSP admin is being granted that entitlement
+while the constant reads `STAGING`.** Kevin is not treating the figures as real himself; he is choosing
+to let entitled users see them presented as though they were, for demonstration purposes, ahead of
+granting entitlement to any real agency. Staging remains meaningful afterward — dev and test
+installations continue to point at it — so this is a configurable constant with a considered default,
+not a temporary switch awaiting deletion.
+
+**Design choice.** One resolver, one question ("which source env is authoritative"), backed by a
+`constant` row seeded to `STAGING` (`DatabaseInitializer`). Every read-time provenance check that
+previously hardcoded `SOURCE_ENV_PRODUCTION` — `RateCacheDAO.check`, `ViewProposal.putIchraMarketTokens`,
+`ProposalBuilder`'s two snapshot-attach checks — now asks the resolver instead, uncached across
+requests, so flipping the constant takes effect on the next call, no restart. What is written to a
+cache row or stamped onto a snapshot at build time is unchanged and stays honest regardless of what
+this resolver currently favors.
+
+**Risk if wrong.** If an agency is entitled while the constant still reads `STAGING`, that agency's
+agents — and any employer who receives one of their proposal links, since `/proposal/*` is public and
+unauthenticated — see plan counts, carrier counts, and premium floors sourced from a staging
+environment, presented as plain fact, with nothing in the document marking them as non-production. If
+staging figures diverge materially from the real market — a live possibility, not a hypothetical: a
+different S21-K-adjacent probe this session found an off-exchange LCSP figure understated by roughly
+44% at age 40 against a comparable on-exchange baseline — an employer could make a real coverage
+decision, or an agent could make a real representation to a client, based on a number that does not
+reflect the actual market. This is a materially larger exposure than a code bug: it is data presented
+as fact that is not fact, on a customer-facing document, by deliberate design rather than by accident.
+
+**Reversal cost.** Low in one direction, not reversible in the other. Flipping `ICHRA_RATE_SOURCE_ENV`
+to `PRODUCTION` once real data is live is a one-row change with no code impact — every read-time check
+follows immediately. **But any proposal already sent while the constant read `STAGING` cannot be
+un-sent or silently corrected** — its figures are frozen into that proposal's `payload_json` at build
+time (this session's own point-in-time design, T162), and an employer who has already read them has
+already read them. The reversal cost that matters is not the constant's; it is the accumulated set of
+documents already built under it by the time it flips.
+
+**Confirm before.** Granting `agency.ichra_enabled` to any agency other than through PSP-admin access,
+while `ICHRA_RATE_SOURCE_ENV` still reads `STAGING`. That is the one trigger — not a code change, not a
+deploy, a single-row data change in a different table (`agency`) than the one this entry is about
+(`constant`).
+
+**Status.** Assumed — **accepted explicitly**, 2026-08-06 (S21-L). Not thin in the sense of "nobody
+has considered it" — this is a deliberate, informed trade Kevin made with the risk stated plainly and
+on the record, per this run's own instructions not to soften it. It is unresolved only in the sense
+that production data readiness, not further review, is what closes it.
 
 ---
 
