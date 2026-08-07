@@ -35,13 +35,11 @@
   .ichram .section-heading {
     font-size: calc(12.5pt * var(--s)); font-weight: 700; color: var(--teal);
     text-transform: uppercase; letter-spacing: 0.03em;
-    margin: calc(1.1rem * var(--s)) 0 calc(0.6rem * var(--s)) 0;
-    display: flex; align-items: center; gap: calc(0.6rem * var(--s));
+    margin: calc(1.1rem * var(--s)) 0 calc(0.3rem * var(--s)) 0;
   }
-  .ichram .section-heading .tag {
-    font-size: calc(8pt * var(--s)); font-weight: 600; text-transform: none; letter-spacing: normal;
-    color: var(--muted); background: var(--navy-lt); -webkit-print-color-adjust: exact; print-color-adjust: exact;
-    border-radius: 999px; padding: calc(0.15rem * var(--s)) calc(0.6rem * var(--s));
+  .ichram .section-caption {
+    font-size: calc(8.5pt * var(--s)); font-weight: 600; color: var(--muted);
+    margin: 0 0 calc(0.6rem * var(--s)) 0;
   }
   .ichram .section-intro { font-size: calc(9.5pt * var(--s)); line-height: 1.5; color: var(--muted); margin: 0 0 calc(0.5rem * var(--s)) 0; }
 
@@ -108,7 +106,8 @@
       </div>
     </div>
 
-    <div class="section-heading">Market at a Glance <span class="tag">{{ICHRA_RATES_AS_OF}}</span></div>
+    <div class="section-heading">Market at a Glance</div>
+    <div class="section-caption">{{ICHRA_RATES_AS_OF}}</div>
     <div class="grid">
       <div class="stat">
         <div class="stat-label">Plans Available</div>
