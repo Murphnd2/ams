@@ -142,7 +142,7 @@ public class ViewProposal extends HttpServlet {
             ProposalIchraSnapshot ichraSnapshot = ichraEntitled
                     ? ProposalIchraSnapshotDAO.findByProposalId(em, proposal.getId())
                     : null;
-            if (ichraSnapshot != null && RatingAreaRateCache.SOURCE_ENV_PRODUCTION.equals(ichraSnapshot.getSourceEnv())) {
+            if (ichraSnapshot != null && RateSourceEnvResolver.authoritativeSourceEnv(em).equals(ichraSnapshot.getSourceEnv())) {
                 request.setAttribute("ichraSnapshot", ichraSnapshot);
                 if (ProposalIchraSnapshot.MODE_AGE_BAND.equals(ichraSnapshot.getMode())) {
                     List<ProposalIchraSnapshotBand> ichraBands = ProposalIchraSnapshotDAO.findBandsBySnapshotId(em, ichraSnapshot.getId());
