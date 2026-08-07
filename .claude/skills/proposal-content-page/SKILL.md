@@ -261,15 +261,15 @@ To get the natural content height (without the min-height floor), temporarily se
 
 ## Merge Tokens
 
-The proposal system resolves these tokens server-side, in `ViewProposal.buildTokenMap`
-(`src/main/java/net/superiorstate/ams/controller/activity/setup/ViewProposal.java`), before
-rendering. **This table is generated from that method directly — every token below is real, and
-these 25 are the complete set.** Do not add a token to your HTML unless it appears here.
+The proposal system resolves these tokens server-side, in `ViewProposal.buildTokenMap` and the
+`putIchra*` methods it calls (`src/main/java/net/superiorstate/ams/controller/activity/setup/ViewProposal.java`),
+before rendering. **This table is generated from that method directly — every token below is
+real, and these 30 are the complete set.** Do not add a token to your HTML unless it appears here.
 
 ### ⚠️ An unmatched token is not stripped and not blanked — it renders literally
 
 `replaceTokens` only ever looks at the token map's own keys; a `{{TOKEN}}` in your HTML whose name
-isn't one of the 25 below is never touched by anything. It passes straight through to the
+isn't one of the 30 below is never touched by anything. It passes straight through to the
 customer's page as the literal text `{{TOKEN}}` — braces and all. This has already happened on a
 live, generated proposal PDF.
 
@@ -340,6 +340,14 @@ token like the four above, not a market-data one.** Not entitlement-gated, not p
 if the agent left it blank, or headcount is missing or zero, **all four** resolve to empty string
 together, never a mix of some populated and some blank, and never `$0.00`.
 
+| Token | Resolves to | When blank |
+|---|---|---|
+| `{{ICHRA_CONTRIBUTION_SCENARIO_TABLE}}` | A complete `<table>` element (T171) — insert on its own, never wrapped in another `<table>` — showing per-age-band premium/contribution/net rows when age-specific data was captured at build time, or a single group-level low/high range row when it was not | Empty string |
+
+Unlike the four scalar tokens above, this one is not a live intake read — it comes from the
+proposal's frozen snapshot (same source as "ICHRA payload" below), captured once at build time
+and never recomputed at render.
+
 ### ICHRA market — plan/carrier counts and premium floors
 
 Resolved from the cached market rate data for the intake row's county and plan year. **Behind a
@@ -366,6 +374,21 @@ cached row — the group-level gate and a single figure's own presence are two d
 **⚠️ Not documented here on purpose: an `{{ICHRA_MARKET_BLOCK}}` token does not exist.** If you've
 seen it referenced anywhere, that reference is stale — `buildTokenMap` was checked directly for
 this skill update (2026-08-03) and no such key is ever put into the token map.
+
+### ICHRA payload — frozen snapshot data (T165/V090, T172)
+
+Resolved from `ProposalIchraSnapshot.payloadJson` — a frozen, point-in-time snapshot captured at
+proposal **build** time, never re-fetched or recomputed at render. **This is a different source
+and a different gate than "ICHRA market" above**, which queries the live rate cache on every
+render — a proposal can show real age-band premiums here while every live market token above is
+empty, or the reverse. That is not a bug.
+
+| Token | Resolves to | When blank |
+|---|---|---|
+| `{{ICHRA_AGE_BAND_TABLE}}` | A complete `<table>` element — insert on its own, never wrapped in another `<table>` — of age/lives/premium rows, frozen at build time | Empty string, if the proposal has no age-band data captured |
+| `{{ICHRA_PLAN_LANDSCAPE_TABLE}}` | A complete `<table>` element — insert on its own, never wrapped in another `<table>` — of metal level/premium/HSA-eligible/ICHRA-only rows | **Always empty on every proposal today.** The HealthSherpa plan-fetch that would populate this (build item T166) has never been built — do not build page content that assumes this will resolve |
+| `{{ICHRA_PAYLOAD_AS_OF}}` | A complete disclosure sentence — **not** a table — stating when the snapshot was captured | Empty string, if no snapshot exists |
+| `{{ICHRA_GROUP_COMPARISON_TABLE}}` | A complete `<table>` element (T172) — insert on its own, never wrapped in another `<table>` — comparing the group's current plan cost against the planned ICHRA contribution | Empty string, if the employer's current-coverage figures or the contribution were never entered |
 
 ## Workflow
 
