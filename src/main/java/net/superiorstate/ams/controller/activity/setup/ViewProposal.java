@@ -891,8 +891,17 @@ public class ViewProposal extends HttpServlet {
                 if (payload.has("provenance") && payload.get("provenance").isJsonObject()) {
                     JsonObject provenance = payload.getAsJsonObject("provenance");
                     if (provenance.has("capturedAt") && !provenance.get("capturedAt").isJsonNull()) {
+                        // S21-K — capturedAt is stored machine-readable (ProposalBuilder's
+                        // ICHRA_PAYLOAD_TIMESTAMP, "yyyy-MM-dd'T'HH:mm:ss") for a customer-facing
+                        // read here, not for display as-is. Re-parsed with that same pattern and
+                        // reformatted for a human reader; a parse failure falls to this method's
+                        // existing outer catch, same as any other malformed payload field.
+                        LocalDateTime capturedAt = LocalDateTime.parse(
+                                provenance.get("capturedAt").getAsString(),
+                                DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss"));
                         payloadAsOf = "Figures reflect an ICHRA data snapshot captured on "
-                                + provenance.get("capturedAt").getAsString() + ". They are not a live quote.";
+                                + capturedAt.format(DateTimeFormatter.ofPattern("MMMM d, yyyy, h:mm a"))
+                                + ". They are not a live quote.";
                     }
                 }
 
