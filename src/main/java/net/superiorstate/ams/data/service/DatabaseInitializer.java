@@ -882,6 +882,13 @@ public abstract class DatabaseInitializer {
             createConstant(em,"USE_CUSTOM_LANDING","false");
 
         addIchraAffordabilityConstants(em);
+
+        // S21-L — RateSourceEnvResolver's backing constant: which RatingAreaRateCache.sourceEnv
+        // is authoritative for this installation. STAGING today, by Kevin's explicit decision
+        // (legal_assumptions.md LA-18) — flip to PRODUCTION once real HealthSherpa data is live.
+        // A one-row change, never a code change.
+        if(getConstantByName(em,"ICHRA_RATE_SOURCE_ENV")==null)
+            createConstant(em,"ICHRA_RATE_SOURCE_ENV","STAGING");
     }
 
     /**

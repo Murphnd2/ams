@@ -2,6 +2,7 @@ package net.superiorstate.ams.data.dao;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.NoResultException;
+import net.superiorstate.ams.data.resolver.RateSourceEnvResolver;
 import net.superiorstate.ams.model.market.RatingAreaRateCache;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -72,8 +73,14 @@ public abstract class RateCacheDAO {
      * <p>
      * Reuses {@link #getRatesForCounty} and reproduces {@code ViewProposal.putIchraMarketTokens}'s
      * production condition exactly: tobacco rows excluded, then every remaining row's
-     * {@code sourceEnv} checked individually against {@link RatingAreaRateCache#SOURCE_ENV_PRODUCTION}
-     * — not merely the first row, since a partially-warmed county is not a produced one.
+     * {@code sourceEnv} checked individually against whichever env
+     * {@link RateSourceEnvResolver#authoritativeSourceEnv} currently names — not merely the
+     * first row, since a partially-warmed county is not an authoritatively-warmed one.
+     * <p>
+     * S21-L — {@link MarketDataAvailability#PRODUCTION_OK} means "every row matches the
+     * currently-authoritative env," not literally "every row is PRODUCTION-sourced." The enum
+     * constant names are unchanged (every existing caller compares by identity, not by what the
+     * name literally spells), but its meaning now follows {@link RateSourceEnvResolver}.
      * <p>
      * Fails closed: any exception yields {@link MarketDataAvailability#NONE_CACHED}, the
      * most conservative of the three states, never {@link MarketDataAvailability#PRODUCTION_OK}.
@@ -91,8 +98,9 @@ public abstract class RateCacheDAO {
                 return MarketDataAvailability.NONE_CACHED;
             }
 
+            String authoritativeEnv = RateSourceEnvResolver.authoritativeSourceEnv(em);
             for (RatingAreaRateCache r : nonTobacco) {
-                if (!RatingAreaRateCache.SOURCE_ENV_PRODUCTION.equals(r.getSourceEnv())) {
+                if (!authoritativeEnv.equals(r.getSourceEnv())) {
                     return MarketDataAvailability.STAGING_ONLY;
                 }
             }
@@ -113,9 +121,13 @@ public abstract class RateCacheDAO {
     public enum MarketDataAvailability {
         /** No rows cached for this county and plan year at all. */
         NONE_CACHED,
-        /** Rows exist, but at least one non-tobacco row is not {@code PRODUCTION}-sourced. */
+        /** Rows exist, but at least one non-tobacco row does not match the env
+         *  {@link RateSourceEnvResolver#authoritativeSourceEnv} currently names. */
         STAGING_ONLY,
-        /** Rows exist and every non-tobacco row is {@code PRODUCTION}-sourced. */
+        /** Rows exist and every non-tobacco row matches the env
+         *  {@link RateSourceEnvResolver#authoritativeSourceEnv} currently names. Named
+         *  {@code PRODUCTION_OK} for its existing callers (S21-L, compared by identity,
+         *  never by string); it no longer means literally "every row is PRODUCTION." */
         PRODUCTION_OK
     }
 

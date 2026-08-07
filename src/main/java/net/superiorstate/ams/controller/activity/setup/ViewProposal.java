@@ -17,6 +17,7 @@ import net.superiorstate.ams.data.dao.StorageDAO;
 import net.superiorstate.ams.data.resolver.FlaggedEnhancementResolver;
 import net.superiorstate.ams.data.resolver.IchraAccessResolver;
 import net.superiorstate.ams.data.resolver.OriginatingAgencyResolver;
+import net.superiorstate.ams.data.resolver.RateSourceEnvResolver;
 import net.superiorstate.ams.model.market.RatingAreaRateCache;
 import net.superiorstate.ams.model.sales.agency.Agency;
 import net.superiorstate.ams.model.sales.agency.Proposal;
@@ -799,16 +800,18 @@ public class ViewProposal extends HttpServlet {
                     if (!r.isUsesTobacco()) nonTobacco.add(r);
                 }
 
-                // Provenance gate — EVERY row must be PRODUCTION-sourced, not merely the first.
-                boolean allProduction = !nonTobacco.isEmpty();
+                // Provenance gate — EVERY row must match the currently-authoritative env
+                // (S21-L, RateSourceEnvResolver), not merely the first.
+                String authoritativeEnv = RateSourceEnvResolver.authoritativeSourceEnv(em);
+                boolean allAuthoritative = !nonTobacco.isEmpty();
                 for (RatingAreaRateCache r : nonTobacco) {
-                    if (!RatingAreaRateCache.SOURCE_ENV_PRODUCTION.equals(r.getSourceEnv())) {
-                        allProduction = false;
+                    if (!authoritativeEnv.equals(r.getSourceEnv())) {
+                        allAuthoritative = false;
                         break;
                     }
                 }
 
-                if (allProduction) {
+                if (allAuthoritative) {
                     Map<Integer, RatingAreaRateCache> byAge = new HashMap<>();
                     LocalDateTime newestFetchedAt = null;
                     for (RatingAreaRateCache r : nonTobacco) {

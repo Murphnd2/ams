@@ -18,6 +18,7 @@ import net.superiorstate.ams.data.resolver.AgencyScope;
 import net.superiorstate.ams.data.resolver.AgencyScopeResolver;
 import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.data.resolver.IchraAccessResolver;
+import net.superiorstate.ams.data.resolver.RateSourceEnvResolver;
 import net.superiorstate.ams.data.util.AffordabilityCalculator;
 import net.superiorstate.ams.model.activity.Activity;
 import net.superiorstate.ams.model.general.Person;
@@ -801,12 +802,13 @@ public class ProposalBuilder extends HttpServlet {
             }
         }
 
-        // Fail closed — no PRODUCTION-sourced data backing this range, no snapshot.
-        // T150: unless the demo override is on (properties flag AND PSP-admin session), in
-        // which case staging-sourced rates are admitted so this write path can be exercised.
-        // The stamp below stays honest — setSourceEnv gets the real value, not PRODUCTION.
+        // Fail closed — no data backing this range matching the currently-authoritative env
+        // (S21-L, RateSourceEnvResolver), no snapshot. T150: unless the demo override is on
+        // (properties flag AND PSP-admin session), in which case non-authoritative rates are
+        // admitted so this write path can be exercised. The stamp below stays honest —
+        // setSourceEnv gets the real value, not the authoritative one.
         if (!isIchraDemoOverride(request)
-                && !RatingAreaRateCache.SOURCE_ENV_PRODUCTION.equals(sourceEnv)) return;
+                && !RateSourceEnvResolver.authoritativeSourceEnv(em).equals(sourceEnv)) return;
 
         RatingAreaRateCache age21Row = byAge.get(21);
         RatingAreaRateCache age64Row = byAge.get(64);
@@ -904,10 +906,11 @@ public class ProposalBuilder extends HttpServlet {
             // check, NOT a provenance check, and the demo override deliberately does not
             // touch it: a missing row means there is no figure to record at all.
             if (row == null || row.getLowestBronzePremium() == null) return;
-            // Provenance. T150: staging admitted only under the two-condition override.
+            // Provenance, against the currently-authoritative env (S21-L, RateSourceEnvResolver).
+            // T150: non-authoritative rows admitted only under the two-condition override.
             // The stamp below stays honest — setSourceEnv gets the real value.
             if (!demoOverride
-                    && !RatingAreaRateCache.SOURCE_ENV_PRODUCTION.equals(row.getSourceEnv())) return;
+                    && !RateSourceEnvResolver.authoritativeSourceEnv(em).equals(row.getSourceEnv())) return;
 
             BigDecimal floorPremium = row.getLowestBronzePremium();
 
