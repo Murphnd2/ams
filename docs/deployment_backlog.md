@@ -1445,3 +1445,31 @@ ON DUPLICATE KEY UPDATE value = VALUES(value);
 **Why this exists.** The affordability feature's FPL safe-harbor basis (build item 9) needs no per-employee income data — it uses this single figure for the whole group instead. If this constant is absent, empty, or unparseable, the FPL safe-harbor basis is simply unavailable and the page says so; the entered-income basis is unaffected and keeps working.
 
 **Applies to:** Production ⬜, Demo PSP ⬜, BPO ⬜, Master image ⬜ — same environments as D-86, per plan year in use.
+
+---
+
+### D-88: Seed `ICHRA_RATE_SOURCE_ENV` constant on already-initialized installations
+
+**Priority:** MEDIUM — the resolver's fail-closed default happens to match the intended value today, so nothing visibly breaks; the row is easy to forget precisely because of that
+**Status:** Not started
+
+S21-L added `RateSourceEnvResolver` — the single source of truth for "which `RatingAreaRateCache.sourceEnv` is authoritative for this installation" — backed by a `constant` row seeded through `DatabaseInitializer.createConstant(em, "ICHRA_RATE_SOURCE_ENV", "STAGING")` (`data/service/DatabaseInitializer.java`, called from `initializeDataBase()`). **That path only runs on a brand-new installation.** Kevin's dev database and production have both already initialized, so neither will ever execute that seed — this is the `D-NN` counterpart the project's standing rule requires for an existing database, exactly as D-77/D-78/D-79/D-82/D-83/D-84/D-86/D-87 are for their own constants. Both paths stay in place; neither replaces the other.
+
+```sql
+INSERT INTO constant (name, value) VALUES ('ICHRA_RATE_SOURCE_ENV', 'STAGING')
+ON DUPLICATE KEY UPDATE value = VALUES(value);
+```
+
+Matches `createConstant`'s own row shape exactly: only `name` and `value` are set; `note` and `text_value` are left at their column defaults (`NULL`), the same as every row that method creates. Safe to run twice and safe on a database that already has the row — `ON DUPLICATE KEY UPDATE` on `name` (the table's primary key) makes this idempotent either way.
+
+**If this is not applied:** `RateSourceEnvResolver.authoritativeSourceEnv` finds no row, logs `log.error("[RATE-SOURCE-ENV] Constant '...' missing or unrecognized ...")` on every single call, and falls to its coded fail-closed default — which is also `STAGING`. **The resulting behavior is therefore identical to having applied this row, by coincidence, not by correctness.** That is exactly what makes the missing row easy to overlook: nothing renders wrong, nothing looks broken, and the only sign anything is missing is a log line that will scroll past unnoticed unless someone is watching for it. Apply the row anyway — a resolver silently running on its error path in steady state is not an acceptable resting state, even when today's error-path answer and today's correct answer happen to agree.
+
+**The flip, when production rate access is enabled:**
+
+```sql
+UPDATE constant SET value = 'PRODUCTION' WHERE name = 'ICHRA_RATE_SOURCE_ENV';
+```
+
+One row, no code change, no deploy, no restart — `RateSourceEnvResolver` reads uncached, per call. **Cross-reference: `legal_assumptions.md` LA-18.** Its confirm-before trigger is granting `agency.ichra_enabled` to any agency, other than through PSP-admin access, while this constant still reads `STAGING`. The flip above and LA-18's trigger are two sides of the same decision — do not flip this row without also having confirmed LA-18's condition, and do not grant entitlement while assuming this row already reads `PRODUCTION` without checking it directly.
+
+**Applies to:** Kevin's local dev database (`beta_ssa`, work) ⬜ — needed now, for local ICHRA testing to stop hitting the resolver's error-log path on every render. Production ⬜ — needed before this run's own LA-18 confirm-before trigger can ever be satisfied. Demo PSP, BPO, Master: not currently running ICHRA-dependent code; apply only if/when one of them does.
