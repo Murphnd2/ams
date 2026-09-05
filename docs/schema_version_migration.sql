@@ -111,4 +111,5 @@ INSERT IGNORE INTO schema_version (version, description, script_name) VALUES
 ('V088', 'Employer monthly contribution per employee on proposal_ichra_intake (T80 half 1, nullable, no backfill)', 'V088__proposal_ichra_intake_contribution.sql'),
 ('V089', 'System-managed classification flag on enhancement (enhancement.system_managed, default OFF)', 'V089__enhancement_system_managed.sql'),
 ('V090', 'ICHRA JSON payload column on proposal_ichra_snapshot (payload_json, MEDIUMTEXT, nullable, no backfill)', 'V090__proposal_ichra_payload.sql'),
-('V091', 'ICHRA section selection: enhancement.system_section_key, four selection flags and section 3 comparison inputs on proposal_ichra_intake, band net NOT NULL widened', 'V091__ichra_section_selection.sql');
+('V091', 'ICHRA section selection: enhancement.system_section_key, four selection flags and section 3 comparison inputs on proposal_ichra_intake, band net NOT NULL widened', 'V091__ichra_section_selection.sql'),
+('V092', 'HSA Enrollment Assistant: HSA_ENROLLMENT_ASSISTANT chatbot_skill row + 3 ssa_business knowledge_chunk rows (myRSC self-enrollment, [[MYRSC EMPLOYER CODE]] placeholder)', 'V092__hsa_enrollment_assistant.sql');
