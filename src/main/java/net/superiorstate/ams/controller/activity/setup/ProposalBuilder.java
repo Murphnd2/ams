@@ -560,6 +560,13 @@ public class ProposalBuilder extends HttpServlet {
         // this is defense against a direct POST).
         BigDecimal monthlyContribution = parseOptionalNonNegativeDecimal(request.getParameter("intakeContribution"));
 
+        // V093 — Section 125 structure inputs, same optional convention as
+        // monthlyContribution above: unparseable, absent, or negative collapses to
+        // unanswered rather than blocking the intake write. No section reads either
+        // field yet; this run captures them only.
+        BigDecimal monthlyStipend = parseOptionalNonNegativeDecimal(request.getParameter("intakeStipend"));
+        BigDecimal alternativeCoverageCost = parseOptionalNonNegativeDecimal(request.getParameter("intakeAlternativeCoverageCost"));
+
         // S20-B/V091 — the four section selections, via the one place that derives them
         // (§8.4's server-side rule) so this write and buildSectionsBlock's payload copy can
         // never disagree. None of these may block the intake write (spec §7 edit 6): a
@@ -587,6 +594,8 @@ public class ProposalBuilder extends HttpServlet {
         intake.setState(state);
         intake.setHeadcount(headcount);
         intake.setMonthlyContributionPerEmployee(monthlyContribution);
+        intake.setMonthlyStipendPerEmployee(monthlyStipend);
+        intake.setAlternativeCoverageMonthlyCost(alternativeCoverageCost);
         intake.setSectionMarket(sections.market());
         intake.setSectionContribution(sections.contribution());
         intake.setSectionComparison(sections.comparison());

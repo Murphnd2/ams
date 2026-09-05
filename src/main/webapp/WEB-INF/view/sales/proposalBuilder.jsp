@@ -269,6 +269,22 @@
                     </div>
                 </div>
 
+                <%-- V093 — Section 125 structure intake inputs. Deliberately a separate row from
+                     the ICHRA contribution above, not grouped with it: neither field is a
+                     contribution, and no section renders either one yet. --%>
+                <div class="row g-3 align-items-end mt-1">
+                    <div class="col-auto">
+                        <label class="form-label mb-1" for="intakeStipend">Monthly employee stipend (taxable)</label>
+                        <input type="number" class="form-control form-control-sm" id="intakeStipend" name="intakeStipend"
+                               min="0" step="0.01" style="max-width:170px;" placeholder="Optional">
+                    </div>
+                    <div class="col-auto">
+                        <label class="form-label mb-1" for="intakeAlternativeCoverageCost">Alternative coverage monthly cost</label>
+                        <input type="number" class="form-control form-control-sm" id="intakeAlternativeCoverageCost" name="intakeAlternativeCoverageCost"
+                               min="0" step="0.01" style="max-width:170px;" placeholder="Optional">
+                    </div>
+                </div>
+
                 <%-- S19-I: the age-band repeater, mirroring the illustration's own (its W7 block)
                      rather than inventing a second convention -- same template-clone structure,
                      same renumber-to-contiguous-1..N parameter contract, same max cap, same
@@ -725,12 +741,18 @@
         var stateEl = document.getElementById('intakeState');
         var headcountEl = document.getElementById('intakeHeadcount');
         var contributionEl = document.getElementById('intakeContribution');
+        // V093 — same reasoning as every other field above: a stale stipend or
+        // alternative-coverage figure must not survive a deselect/reselect cycle.
+        var stipendEl = document.getElementById('intakeStipend');
+        var alternativeCoverageCostEl = document.getElementById('intakeAlternativeCoverageCost');
         if (zipEl) zipEl.value = '';
         if (countyEl) { countyEl.innerHTML = '<option value="">-- Enter a ZIP first --</option>'; countyEl.disabled = true; }
         if (countyNameEl) countyNameEl.value = '';
         if (stateEl) stateEl.value = '';
         if (headcountEl) headcountEl.value = '';
         if (contributionEl) contributionEl.value = '';
+        if (stipendEl) stipendEl.value = '';
+        if (alternativeCoverageCostEl) alternativeCoverageCostEl.value = '';
         // S19-I — bands are fields too, and a hidden input still submits: leaving rows behind
         // on a deselect would post intakeAge{i} for a proposal whose plus-tier LOS is gone,
         // and deriveIntakeMode would read them as an AGE_BAND intent. Remove, then resync.
@@ -1126,12 +1148,15 @@
             ichraHeadcountEl.addEventListener('input', updateSteps);
         }
         // S20-B/V091 — section checkboxes drive Rule A/C/D's show/hide and required state;
-        // the three optional decimal fields only need btnCreate re-evaluated as they're typed.
+        // the optional decimal fields only need btnCreate re-evaluated as they're typed.
+        // V093 adds two more (stipend, alternative coverage cost) to this second group —
+        // neither is part of any section-selection rule, so neither joins the array above.
         ['sectionMarket', 'sectionContribution', 'sectionComparison'].forEach(function(id) {
             var el = document.getElementById(id);
             if (el) el.addEventListener('change', ichraSyncSectionSelections);
         });
-        ['intakeContribution', 'intakeCurrentTotalPremium', 'intakeCurrentEmployerShare'].forEach(function(id) {
+        ['intakeContribution', 'intakeCurrentTotalPremium', 'intakeCurrentEmployerShare',
+         'intakeStipend', 'intakeAlternativeCoverageCost'].forEach(function(id) {
             var el = document.getElementById(id);
             if (el) el.addEventListener('input', updateSteps);
         });

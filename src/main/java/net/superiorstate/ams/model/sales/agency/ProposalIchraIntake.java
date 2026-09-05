@@ -63,6 +63,25 @@ public class ProposalIchraIntake {
     private BigDecimal monthlyContributionPerEmployee;
 
     /**
+     * V093 — the employer's flat monthly taxable stipend per employee, agent-entered.
+     * Unconditional taxable wages, not an ICHRA allowance and not conditioned on any
+     * coverage election. Optional, same convention as {@link #monthlyContributionPerEmployee}:
+     * null means the agent did not enter one. Not a contribution — must not be summed
+     * with {@link #monthlyContributionPerEmployee} anywhere.
+     */
+    @Column(name = "monthly_stipend_per_employee", columnDefinition = "decimal(10,2)", nullable = true)
+    private BigDecimal monthlyStipendPerEmployee;
+
+    /**
+     * V093 — agent-entered monthly premium for the alternative coverage an employee
+     * could buy instead of an ACA plan. Carries no carrier or product identity — a
+     * number the agent types, nothing more. Optional, same convention as every other
+     * decimal field on this entity.
+     */
+    @Column(name = "alternative_coverage_monthly_cost", columnDefinition = "decimal(10,2)", nullable = true)
+    private BigDecimal alternativeCoverageMonthlyCost;
+
+    /**
      * S20-B / V091 — the four ICHRA proposal-section selections
      * (docs/analysis/S20A_ichra_sections_spec.md §2/§3). Stored here, not only in
      * {@code payload_json}, because a selection recorded only in the payload is lost
@@ -172,6 +191,22 @@ public class ProposalIchraIntake {
 
     public void setMonthlyContributionPerEmployee(BigDecimal monthlyContributionPerEmployee) {
         this.monthlyContributionPerEmployee = monthlyContributionPerEmployee;
+    }
+
+    public BigDecimal getMonthlyStipendPerEmployee() {
+        return monthlyStipendPerEmployee;
+    }
+
+    public void setMonthlyStipendPerEmployee(BigDecimal monthlyStipendPerEmployee) {
+        this.monthlyStipendPerEmployee = monthlyStipendPerEmployee;
+    }
+
+    public BigDecimal getAlternativeCoverageMonthlyCost() {
+        return alternativeCoverageMonthlyCost;
+    }
+
+    public void setAlternativeCoverageMonthlyCost(BigDecimal alternativeCoverageMonthlyCost) {
+        this.alternativeCoverageMonthlyCost = alternativeCoverageMonthlyCost;
     }
 
     public boolean isSectionMarket() {
