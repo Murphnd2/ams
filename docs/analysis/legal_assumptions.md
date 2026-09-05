@@ -1167,6 +1167,208 @@ that production data readiness, not further review, is what closes it.
 
 ---
 
+### LA-19 — §125 pre-tax treatment of individual premiums requires ICHRA coverage and off-exchange purchase
+
+**Assumption.** A cafeteria plan may treat individual health insurance premiums as a qualified
+benefit only where the employee is covered by an ICHRA and the coverage was not purchased through
+an Exchange. IRC §125(f)(3) independently and permanently bars any QHP offered through an Exchange
+from being a qualified benefit. The employee population therefore splits three ways:
+excepted-benefit buyers, who run on the ordinary §125 voluntary-benefit track and need no ICHRA —
+and arguably cannot validly hold one, since ICHRA eligibility requires enrollment in individual
+health insurance coverage and excepted benefits are not that; off-exchange individual major medical
+buyers, who keep the ICHRA and pre-tax the residual; and on-exchange buyers, who waive the ICHRA to
+preserve PTC eligibility and pay post-tax only.
+
+**Basis.** IRC §125(f)(3). Notice 2013-54, under which an employer arrangement paying or
+reimbursing individual market premiums — including through §125 salary reduction — is an employer
+payment plan that fails PHSA 2711 and 2713. The 2019 ICHRA final rule's amendment to the cafeteria
+plan regulations creating the off-exchange exception. 26 CFR 54.9802-4's individual-coverage
+requirement. Thin point, stated plainly: whether the amended regulation conditions the permission
+on the employee being covered by an ICHRA or merely offered one has not been read against primary
+text. All reasoning here assumes "covered by," which is the more restrictive reading.
+
+**Design choice.** Model the three buckets explicitly. Treat ICHRA waiver state as determinative of
+§125 eligibility for individual major medical. Substantiation gains a channel element: the
+attestation must establish not only enrollment in individual coverage but that it was not purchased
+through an Exchange. An employee who moves to on-exchange coverage mid-year has their election
+terminated rather than warned.
+
+**Risk if wrong.** If the condition is "offered," the design is merely more conservative than
+required and nothing breaks. If it is "covered by" and the opposite had been assumed, employees who
+waived would have taken impermissible pre-tax reductions — W-2 and 941 corrections plus a §125
+operational failure.
+
+**Reversal cost.** Low before any employee election is collected. High afterward: corrections run
+per-employee, per-pay-period.
+
+**Confirm before.** Before any plan document is issued, and before any employee salary reduction
+election is accepted for individual major medical.
+
+**Status.** OPEN — assumed, not verified against primary text. The most load-bearing unverified
+item in the structure.
+
+---
+
+### LA-20 — ICHRA and §125 funds may share one card with separate sub-accounts
+
+**Assumption.** An ICHRA may pay individual premiums directly to the issuer, including through a
+card in the employee's name, and may share a single card with a §125 salary-reduction sub-account
+provided the sub-accounts are separately ledgered and the §125 election is set net of the ICHRA
+allowance.
+
+**Basis.** An ICHRA is a group health plan integrated with individual coverage; paying or
+reimbursing individual premiums is its authorized purpose, so the employer-payment-plan concern
+governing unintegrated arrangements does not reach it. §105(b) excludes reimbursement only of
+expenses not otherwise compensated, so pre-taxing the full premium while the ICHRA also pays part
+of it would exclude the same dollars twice. Existing FSA/HRA stacked-card practice with an ordering
+rule is the operational precedent. The PremiumPath constraint requiring clearly-employee dollars was
+developed in a QSEHRA context, where no integration exists, and is not assumed to govern here.
+
+**Design choice.** Two sub-accounts, one purse. ICHRA drawn first, so employer dollars do not sit
+unspent while the employee over-reduces. §125 election capped at premium minus the ICHRA allowance
+and re-set when the premium changes. Separate ledgering is a merit rather than plumbing: it proves
+the ICHRA paid exactly its allowance and no more.
+
+**Risk if wrong.** If separate accounts or separate settlement were required, the card
+configuration is wrong but no tax position is.
+
+**Reversal cost.** Low — card configuration and funding schedule.
+
+**Confirm before.** First mixed-funded card transaction.
+
+**Status.** Assumed; design chosen for cheap reversal.
+
+---
+
+### LA-21 — Arrears loading is the control preventing employer-payment-plan characterization
+
+**Assumption.** A funding schedule that releases salary-reduction dollars only after the pay dates
+funding them cannot produce a purse that systematically runs ahead of withholding, and therefore
+cannot constitute an arrangement under which the employer pays individual premiums beyond the ICHRA
+allowance. Isolated variances from payroll error remain failures correctable within the §4980D
+reasonable-cause window rather than features of the design.
+
+**Basis.** §4980D imposes $100 per day per employee for market reform failures, with relief where
+the failure is due to reasonable cause rather than willful neglect and is corrected within 30 days
+of when the employer knew or should have known. A schedule designed to post ahead of withholding is
+not a failure being corrected — it is the arrangement operating as intended, and reasonable cause is
+hard to argue for a mechanism that was specified, documented and configured. A §125 election must
+also be prospective; reductions recovering money already spent are repaying an advance.
+
+**Design choice.** Arrears loading for the off-exchange ACA bucket, on a monthly cadence so the
+full premium is available on the first and no carrier draft fails. The resulting one-cycle gap at
+plan year start is absorbed by setting the coverage effective date one payroll cycle after salary
+reduction begins. Annual true-up explicitly rejected as the control point: twelve months of
+accumulated advance is a standing arrangement. If arrears loading is ever relaxed, 30-day variance
+detection substitutes for it.
+
+**Risk if wrong.** Overstated in the conservative direction. If a modest systematic advance were
+acceptable, the design costs one onboarding cycle and nothing else. The asymmetry justifying it: an
+under-funded purse is a customer-service problem, while a declined premium draft can lapse an
+off-exchange policy, which in turn breaks the ICHRA's individual-coverage requirement for that month
+and converts a payment glitch into a substantiation failure.
+
+**Reversal cost.** Low — funding schedule.
+
+**Confirm before.** First mid-year termination with an outstanding purse balance. Any proposal to
+load ahead of withholding.
+
+**Status.** Assumed; conservative by choice.
+
+---
+
+### LA-22 — Employer advance of excepted-benefit premiums is not an employer payment plan
+
+**Assumption.** An employer may pay excepted-benefit premiums — accident-only, specified disease —
+at the start of a coverage period and collect the employee's share by salary reduction across that
+period, without creating an employer payment plan.
+
+**Basis.** Excepted benefits are excepted from PHSA 2711 and 2713, so there is no market reform to
+violate. Employer-provided accident and health coverage is excludable under §106, so unrecovered
+premium is employer-paid coverage rather than taxable income or discharged debt. Economically
+identical to conventional group list-bill practice, where the employer remits on the first and
+collects employee contributions during the month.
+
+**Design choice.** Frame in the plan document as employer premium payment with employee
+contribution collected over the coverage period — not as an advance the employer recoups. The
+framing determines the tax result on a mid-year termination: forgiven debt is taxable, unrecovered
+§106 coverage is not. Wage deduction authorization included in the salary reduction agreement; Texas
+Labor Code §61.018 requires written authorization and final-paycheck limits still cap recovery.
+Reported salary reduction must equal what was actually withheld, not what was scheduled.
+
+**Risk if wrong.** The characterization rests entirely on the policies being genuine excepted
+benefits. If that fails, the employer has been advancing money against unintegrated individual
+major medical. Fronting converts a carrier's regulatory problem into the employer's and the TPA's.
+
+**Reversal cost.** Low — funding schedule. But retroactive if the excepted-benefit characterization
+is ever challenged.
+
+**Confirm before.** Any challenge to the excepted-benefit characterization of the underlying
+policies.
+
+**Status.** Assumed. Arrears loading is available as a no-cost hedge, since it is being built for
+the ACA bucket regardless.
+
+---
+
+### LA-23 — An ICHRA may fund on-exchange premiums by member-name card; residual is post-tax only
+
+**Assumption.** Nothing in the ICHRA rules restricts reimbursable coverage to off-exchange. A full
+ICHRA may fund an on-exchange individual policy through a card in the employee's name. The
+employee's residual is post-tax only, since §125(f)(3) bars Exchange QHPs from a cafeteria plan
+categorically.
+
+**Basis.** 26 CFR 54.9802-4 does not condition on purchase channel; the off-exchange condition
+attaches to the §125 permission alone. §125(f)(3) is statutory. A card presenting as the member
+also sidesteps carrier policies on accepting premium from third parties.
+
+**Design choice.** Support as a fourth funding profile: ICHRA sub-account on schedule, post-tax
+employee sub-account in arrears. Declining APTC at enrollment is an operational requirement of the
+arrangement rather than a notice footnote — an employee covered by an ICHRA is PTC-ineligible for
+those months, and with the reconciliation repayment caps removed there is no ceiling on what an
+unchecked box costs at reconciliation. Arrears still applies to the residual: a purse running ahead
+of employee contribution is employer money paying an on-exchange premium above the allowance, and
+there is no §106 to catch a forgiven balance on termination.
+
+**Risk if wrong.** The ICHRA-side assumption is low risk. The residual-must-be-post-tax point is
+statutory and high confidence. Unknown: whether any carrier or marketplace-side rule treats
+HRA-funded card payment differently for on-exchange business. That is carrier policy, not
+regulation, and varies.
+
+**Reversal cost.** Low.
+
+**Confirm before.** First on-exchange card configuration for a live client.
+
+**Status.** Assumed. Governs existing conventional ICHRA clients, not only the prospective
+structure.
+
+---
+
+### LA-24 — The structure is designed for non-ALEs and inverts above 50 FTEs
+
+**Assumption.** A deliberately unaffordable micro-ICHRA is an offer of coverage that avoids the
+4980H(a) penalty but not 4980H(b). An applicable large employer therefore incurs a (b) penalty for
+every employee who receives a subsidy, and the economics invert above 50 full-time equivalents.
+
+**Basis.** 4980H(a) and (b) mechanics. An ICHRA offer counts as an offer of coverage. Affordability
+is measured against the on-exchange lowest cost silver plan for the rating area, minus the ICHRA
+amount — a CSR-loaded figure, which makes a small allowance comfortably unaffordable and the (b)
+exposure correspondingly certain.
+
+**Design choice.** Non-ALE status is a qualifying question in the sales motion, asked before design
+work begins — not a footnote in the plan document.
+
+**Risk if wrong.** Selling into an ALE creates penalty exposure at the employer, designed by the
+TPA.
+
+**Reversal cost.** None if caught at qualification. The engagement if not.
+
+**Confirm before.** Any prospect at or approaching 50 full-time equivalents.
+
+**Status.** Assumed, high confidence.
+
+---
+
 ## Candidates considered and not adopted
 
 Recorded so the next reader knows they were seen and declined, rather than missed. **None of these
