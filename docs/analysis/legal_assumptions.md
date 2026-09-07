@@ -1461,6 +1461,55 @@ an annual filing comes due — a gap that surfaces long after setup.
 
 ---
 
+### LA-29 — `Prospect.id` is the employer identity Summit keys on
+
+**Assumption.** `Employer TPA Custom ID` in the Employer Demographic and Employer CDH Plan files
+should be sourced from AMS's own `Prospect.id`, not from any employer-record or Summit-facing field.
+
+**Basis.** **Code-verified.** `Prospect.id` is `@GeneratedValue`, immutable, and exists before the
+employer is ever sent to Summit. The alternatives considered — `Employer.organization_id`, an
+`er_key` — are Summit-owned and circular for the create case (Summit has not assigned one until
+after the first successful import), and a tax ID is mutable and unsuitable for an upsert key per
+LA-26.
+
+**Design choice.** `SummitExportServlet` renders `Prospect.id` as a plain string into the
+`Employer TPA Custom ID` column of both files (`SummitExportServlet.java`).
+
+**Risk if wrong.** Employers keyed wrongly in Summit — either a new employer created per file
+(never converging) or two AMS employers upserted onto the same Summit record.
+
+**Reversal cost.** Cheap before the first file is imported; rising sharply after, since LA-26
+establishes this is an upsert key and changing it orphans the old record and creates a duplicate.
+
+**Confirm before.** The first real (non-test) employer file is imported into Summit.
+
+**Status.** Assumed, 2026-09-07.
+
+---
+
+### LA-30 — ICHRA plan years are calendar years
+
+**Assumption.** An ICHRA plan year always runs January 1 through December 31 of
+`proposal_ichra_intake.plan_year`.
+
+**Basis.** `proposal_ichra_intake.plan_year` stores a single year integer with no accompanying
+begin/end date pair, so Jan 1 – Dec 31 of that year is the only interpretation the current schema
+can express. `SummitExportServlet` derives `Effective Date`, `Plan Year Begin`, and `Plan Year End`
+this way.
+
+**Risk if wrong.** A non-calendar plan year cannot be exported at all today, and would be silently
+exported as a calendar year instead of erroring — the export has no way to know the assumption
+does not hold for a given employer.
+
+**Reversal cost.** Moderate — requires capturing explicit begin/end dates on the intake (or plan),
+a schema change, plus a servlet update to prefer the explicit dates when present.
+
+**Confirm before.** The first non-calendar ICHRA plan year is sold.
+
+**Status.** Assumed, 2026-09-07.
+
+---
+
 ## Candidates considered and not adopted
 
 Recorded so the next reader knows they were seen and declined, rather than missed. **None of these
