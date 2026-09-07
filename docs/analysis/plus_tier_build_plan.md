@@ -2267,6 +2267,43 @@ checklists key off plan types" — read that first; this Part is the decision, n
 
 ## D40 — the ICHRA+ bundle gets its own Summit plan types
 
+> ⚠️ **Amended 2026-09-07 (S27-G). The ICHRA half of D40 is reversed — read this before the original
+> text below, which is retained for provenance.**
+>
+> **The standard `ICHRA` plan type is reused**, with the card difference carried by the **`ICHRA+`
+> plan template (1030)** rather than by a distinct type. **Rationale:** a plan type in AMS drives only
+> the renewal checklist, and **the ICHRA renews identically whether or not a card is attached**.
+> Card-on/card-off is a *template* setting. Heavier funding and higher opt-out rates on the
+> facilitated model are **data differences, not task differences** — and the renewal mechanism keys on
+> tasks, not amounts.
+>
+> **The `Ins125+` split stands and carries the load.** The existing `Ins125` type serves groups SSA
+> performs annual testing for — **no cards, no per-cardholder premium loading**. Because tasks attach
+> to a plan type and fire for every group holding it, and **the union is additive with no subtraction
+> on either the setup or the renewal path**, card-loading tasks on the existing `Ins125` would fire on
+> **every testing-only group**. That is the differentiating recurring work, and it lives on **the card
+> plans, not on the ICHRA** — which is exactly why the ICHRA can stay standard.
+>
+> **Two notice plan types added:** **`I_NOTICE`** and **`Q_NOTICE`**, kept separate because notice
+> content and renewal process are expected to differ between ICHRA and QSEHRA.
+>
+> **`FSA`, `DCA` and `HSA` remain unchanged** — nothing about this sale varies for them.
+>
+> **Reversal cost:** creating a plan type is cheap; **merging two later is not**, because `Benefit` is
+> an inbound Summit mirror and existing rows keep the type they were created with. That asymmetry is
+> unchanged by this amendment and still argues for splitting where a task set genuinely differs.
+>
+> ⚠️ **Open, and it should be checked before renewal sequences are built:** whether the existing
+> `ICHRA` and `Ins125` types **already carry renewal sequences built for direct sales**. The union is
+> additive, so a facilitated group **inherits whatever the shared type carries**. `Ins125+` starts
+> **empty** — which is **correct** if facilitated groups need no non-discrimination testing, and a
+> **gap** if they do, since those tasks would have to be **rebuilt on the new type rather than
+> inherited**.
+>
+> The Summit objects that now exist under this amended decision are recorded in
+> [`docs/business/summit_data_exchange.md`](../business/summit_data_exchange.md), "Summit objects
+> created for the ICHRA+ bundle — 2026-09-07".
+
 **Decision.** The ICHRA+ bundle gets **its own Summit plan types**, rather than reusing the existing
 ones.
 
@@ -2281,9 +2318,9 @@ sets apart.
 
 | # | Type | Platform | Notes |
 |---|---|---|---|
-| 1 | **ICHRA+** | CDH | The employer contribution leg |
-| 2 | **Ins125+** | CDH | **One type, two plan templates** — Presidio card and off-exchange card |
-| 3 | **ICHRA+ notice plan** | Premium Billing | Gated on **O43** below — not yet safe to assume |
+| 1 | ~~**ICHRA+**~~ | CDH | ⚠️ **REVERSED by the 2026-09-07 amendment above** — the standard `ICHRA` type is reused; the card difference is carried by plan template **1030** |
+| 2 | **Ins125+** | CDH | **Stands.** One type, two plan templates — templates **1031** (Excepted Benefit) and **1032** (Off-Exchange) |
+| 3 | **ICHRA+ notice plan** | Premium Billing | **Stands, and now split in two** — types `I_NOTICE` and `Q_NOTICE`. `I_NOTICE` has template **1033**; `Q_NOTICE` has none yet. Still gated on **O43** below |
 
 ⚠️ **Why `Ins125+` is one type and not two.** Both templates are premium salary reduction landing on
 the card, so they carry the **same eligibility** and therefore the same type. A group holding both

@@ -1473,3 +1473,26 @@ UPDATE constant SET value = 'PRODUCTION' WHERE name = 'ICHRA_RATE_SOURCE_ENV';
 One row, no code change, no deploy, no restart — `RateSourceEnvResolver` reads uncached, per call. **Cross-reference: `legal_assumptions.md` LA-18.** Its confirm-before trigger is granting `agency.ichra_enabled` to any agency, other than through PSP-admin access, while this constant still reads `STAGING`. The flip above and LA-18's trigger are two sides of the same decision — do not flip this row without also having confirmed LA-18's condition, and do not grant entitlement while assuming this row already reads `PRODUCTION` without checking it directly.
 
 **Applies to:** Kevin's local dev database (`beta_ssa`, work) ⬜ — needed now, for local ICHRA testing to stop hitting the resolver's error-log path on every render. Production ⬜ — needed before this run's own LA-18 confirm-before trigger can ever be satisfied. Demo PSP, BPO, Master: not currently running ICHRA-dependent code; apply only if/when one of them does.
+
+---
+
+### D-89: `ssa.properties` needs `SUMMIT_TPA_ID_PREFIX` and `SUMMIT_ICHRA_PLAN_TEMPLATE_ID`, plus a Tomcat restart
+
+**Priority:** MEDIUM — nothing is broken today because nothing has run; this is the entire remaining gap between three code-verified emitters and three runtime-verified ones
+**Status:** Not started. ⚠️ **`SUMMIT_TPA_ID_PREFIX` is undecided and must be settled before this is applied — see below.**
+
+`SummitExportServlet` (`/SummitExport`, PSP-admin only, linked from the Setup detail screen since S27-C) emits Summit files 1, 2 and 4. **It has never executed.** It reads both properties at request time via `AppConfig.get(...)` and **refuses to emit** — with a plain-text error naming the missing key — when either is absent or malformed. These are `ssa.properties` entries, not `constant` rows, so **there is no SQL for this item** and **Tomcat must be restarted to pick them up**.
+
+**`SUMMIT_ICHRA_PLAN_TEMPLATE_ID` = `1030`.** That is the `ICHRA+` plan template created 2026-09-07 (see `docs/business/summit_data_exchange.md`, "Summit objects created for the ICHRA+ bundle"). ⚠️ **Known limitation, recorded there and repeated here:** the `ICHRA` plan type now carries **two** active templates — `ICHRA` at **1009** and `ICHRA+` at **1030** — and AMS carries exactly one such property, so **every ICHRA sale AMS emits will point at 1030**, facilitated or not. 1009's status is unexamined. This is a single-template configuration behaving as designed, not a defect.
+
+**`SUMMIT_TPA_ID_PREFIX` is undecided.** DataPath assigned SSA **TPA ID 158**, and the leading candidate is to build the prefix from it. The reasoning is **not** routing — the FTP credentials already handle that. It is that a TPA-derived prefix **closes a uniqueness scope that cannot be tested**: the participant-key global-uniqueness finding was established with two employers **under one TPA**, so whether Summit's participant namespace is **per-TPA or instance-wide is unproven**. A TPA-derived prefix is correct under either answer. It is also **naturally distinct per installation**, which is the property `resolveEmployerTpaCustomId` exists to guarantee.
+
+⚠️ **Effectively irreversible once real records land.** The prefix is the **leading segment of both upsert keys** — `{PREFIX}-{prospectId}` for the employer and `{PREFIX}-P-{participantId}` for the participant. **Changing an upsert key orphans every Summit record keyed on the old value**, leaving the old rows stranded and creating duplicates under the new key. Decide it once, before the first real import — not after.
+
+**The value must not be blank and must not contain a pipe or any whitespace** — `resolveEmployerTpaCustomId` validates exactly that and refuses to emit otherwise, rather than falling back to a bare id.
+
+**Also required before an emitted file will import, and not an `ssa.properties` matter:** the **Summit-side Demographics template must be mapped to the eleven elements in the order recorded** in `docs/business/summit_data_exchange.md` ("An optional field must never be the last column"). **The tested template carried nine.** A file AMS emits against a nine-column template will not import correctly. No code change is involved — this is Summit-side template configuration.
+
+**Third prerequisite, also outside `ssa.properties`:** `plan_year_eligibility` must be attached to the LOS being sold, or file 2 refuses — it sources plan year from the `plan_year_start`/`plan_year_end` application answers that section carries.
+
+**Applies to:** Kevin's local dev database / local Tomcat ⬜ — needed for the first runtime walk of any of the three files. Production ⬜ — needed before any real employer is exported. Demo PSP, BPO, Master: not running the Summit export; apply only if/when one of them does.

@@ -235,6 +235,68 @@ Plan template configuration as tested:
 - `Enable debit card` will be needed for premium payment on the card; it was off in the test template.
 - `PCOR Reportable` was off in the test template — see [LA-28](../analysis/legal_assumptions.md).
 
+### Claim processing rules on `Ins125+` templates — all off
+
+> **Evidence class: Summit vendor AI plus reasoning, 2026-09-07. Not test-verified.** Cheap to
+> reverse — these are checkboxes.
+
+On the `Ins125+` templates (1031, 1032), **all four Claim Processing Rules and Spenddown are off**:
+`None-Contributions Only`, `Enable off-set manual transactions`, `Allow off-set of transactions of
+other plans`, `Allow withdrawals`, `Allow on-hold claims`, `Spenddown`.
+
+- **The reason is cross-plan offset.** A manual claim on one plan can clear a denied debit-card
+  transaction on another. With the ICHRA and the 125 rail **on the same card**, that is precisely the
+  blurring of funding streams the separate plans exist to prevent.
+- ⚠️ **`Enable off-set manual transactions` auto-checks `Allow off-set of transactions of other
+  plans`.** The two are **not independent** — the narrower-sounding one silently enables the broader
+  one. Anyone re-enabling the first should expect the second.
+- ⚠️ **Both ends must be off.** An offset needs two plans, so leaving it off on `Ins125+` while it is
+  on for `ICHRA+` **may still open the path**. Checking one template is not sufficient verification.
+- **Withdrawals off** — cash-out on a premium rail is a **pre-tax exclusion problem**, not merely an
+  unusual setting.
+- ⚠️ **One vendor claim to treat as thin:** that most claim toggles have no practical effect unless
+  the card is enabled for the plan. **The card is enabled here**, so that conditional does not apply,
+  and "premium-only plans do not adjudicate" **should not be leaned on as a general safety argument**.
+
+## Summit objects created for the ICHRA+ bundle — 2026-09-07
+
+> **Evidence class: reported by Kevin from the Summit UI, 2026-09-07. Not test-verified.** Nothing
+> below has been exercised by an import. No repo evidence exists for any of it and none is possible —
+> these are Summit-side objects. Recorded as reported.
+
+### Three new plan types, all **TPA Custom**
+
+| Code | Name | Line of Service |
+|---|---|---|
+| `Ins125+` | Section 125 Premium — Card Funded | CDH |
+| `I_NOTICE` | ICHRA notice plan | COBRA |
+| `Q_NOTICE` | QSEHRA notice plan | COBRA |
+
+### Four new plan templates
+
+| Template ID | Name | Plan type | Line of Service |
+|---|---|---|---|
+| 1030 | `ICHRA+` | `ICHRA` (pre-existing type) | CDH |
+| 1031 | `Ins125+ Excepted Benefit` | `Ins125+` | CDH |
+| 1032 | `Ins125+ Off-Exchange` | `Ins125+` | CDH |
+| 1033 | `ICHRA+ Notice` | `I_NOTICE` | COBRA |
+
+### Notes on what exists and what does not
+
+- **`Q_NOTICE` has no template yet.** The type exists; nothing is configured under it.
+- ⚠️ **The `ICHRA` plan type now carries two active templates** — `ICHRA` at **1009** and `ICHRA+` at
+  **1030**. AMS carries exactly one `SUMMIT_ICHRA_PLAN_TEMPLATE_ID`, so **every ICHRA sale AMS emits
+  points at 1030**, whether or not the sale is a facilitated one. 1009's status is unexamined.
+  **Recorded as a known limitation, not a defect** — a single-template config is what the emitter was
+  built for, and nothing has yet needed the other.
+- **`LFSA` (1002) and `HSA` (1021) templates already exist.** The limited-purpose FSA fork required by
+  an HSA pairing has its Summit-side objects ready whenever that decision unblocks — no Summit work
+  is on that critical path.
+- ⭐ **`ICHRA+ Notice` (1033) is Line of Service COBRA, which confirms** that the notice plan lives on
+  **Premium Billing, not CDH**, and therefore **cannot be a row in file 2**. The spec previously
+  stated this as design intent; it is now confirmed against a real object. See file 3 in the client
+  setup sequence.
+
 ## How AMS task checklists key off plan types
 
 Established by reading source in session 27 (S27-D, S27-E), 2026-09-07. Recorded here rather than in a
@@ -293,6 +355,19 @@ open-question registry (`O1`–`O52+`, tracked in `docs/swbd_ichra_build_plan.md
    notices? **Not safely testable — the failure mode is a notice reaching a real person. Route to
    Summit support.**
 10. **SDX-10** — Does `PCOR Reportable` drive PCORI reporting data capture?
+11. **SDX-11** — **Is `Schedule Name` unique TPA-wide or per-employer?** Reported as unique within the
+    TPA, while schedules are managed **under an employer**. ⚠️ **This is the same shape as the
+    participant-key trap** — a per-employer object living in a global namespace, where the create
+    succeeds and the collision surfaces somewhere else later. **If TPA-wide, per-employer schedule
+    names must be derived from something immutable, not typed.** Testable cheaply: two employers, same
+    schedule name.
+12. **SDX-12** — **What is `125 PI Elections`' true required field set?** Never imported. Three columns
+    show Mandatory in the picker; the rest show Optional. Discovered by importing and reading the
+    results file, never by reading the picker — this document's standing rule that **"Optional" does
+    not mean optional**.
+13. **SDX-13** — **Is `Employer Contribution Schedule` meaningful on a plan whose funding source is
+    Participant only?** Both schedule elements are mappable on `125 PI Elections`; only one obviously
+    applies to a participant-funded premium plan.
 
 ## Test artifacts
 
@@ -358,6 +433,55 @@ key to derive one from for a client not yet imported from Summit.
 including employees who will opt out, because the opt-out only exists relative to an offer. This
 enrolls the full census, not a subset.
 
+### ⚠️ `125 PI Elections` — the file type the tested chain never touched
+
+> **Evidence class: Summit vendor AI, 2026-09-07. Not test-verified — this file type has never been
+> imported.** Recorded as unproven, on the same footing as file 3.
+
+**A `125 PI Elections` import file type exists.** Per Summit's vendor AI it is **the correct file type
+for enrolling participants into an `Ins125` plan with per-participant premium amounts**, and **HRA
+Enrollment is for HRA plans and is not correct for `Ins125` enrollments**.
+
+⚠️ **This corrects the sequence below.** **The proven chain's HRA Enrollment file (file 4 of that
+chain) covers the ICHRA only.** Files 6 and 7 of this setup sequence were both written against HRA
+Enrollment and both describe enrolling into `Ins125` plans — see the dated corrections on each.
+
+Mapped columns observed in the template picker, all **Mandatory**: `Employer TPA Custom ID`,
+`Participant TPA Custom ID`, `Import Plan ID`.
+
+Available **optional** elements: `Participant Annual Election Amount`, `Effective Date`, `Plan Start
+Date`, `Coverage End Date`, `Participant Per Contribution Amount`, `Plan Status`, `Participant
+Contribution Schedule`, `Employer Contribution Schedule`, and a run of `Filler` elements.
+
+⚠️ **The true required field set is unproven.** The standing rule of this document applies in full:
+**"Optional" does not mean optional** — requirements are discovered by importing a file and reading
+the results file, never by reading the element picker. See [SDX-12](#open-questions).
+
+### ⚠️ Contribution schedules are a setup prerequisite — before any election file
+
+> **Evidence class: Summit vendor AI plus reasoning, 2026-09-07. Not test-verified.**
+
+**Contribution schedules must already exist in Summit before an election file will import.**
+**Supplying a schedule name in a file does not create one.** This sits **between file 2 and any
+election file** in the dependency order.
+
+- ⭐ **The `Participant Contribution Schedule` and `Employer Contribution Schedule` elements take the
+  Schedule *Name*** — not a code, and not a Summit-assigned id. **So this adds no fifth Summit-owned
+  identifier: the ID-ownership table above stays at four.** AMS supplies a string it controls.
+- Schedules are managed **per employer**: Employer → Employer Central → an employer → Schedules tab.
+  Funding source is a checkbox pair, **both checked by default**.
+- **Two schedules are needed per group:**
+  1. a **monthly post on the 1st** for excepted-benefit premiums — uniform across employers, since
+     the premium is monthly regardless of payroll;
+  2. one matching **the employer's actual payroll calendar** for off-exchange funding — **per-employer
+     hand configuration whenever that calendar does not match a default**.
+- ⚠️ **This raises the setup-labour floor**, and it compounds with the existing note that Summit
+  provides **no import template for creating Premium Billing benefit plans**, so every group already
+  needs at least two benefits hand-created. **The pitch is that ongoing administration is automated —
+  never that setup is cheap.**
+- See [SDX-11](#open-questions) on whether `Schedule Name` is unique TPA-wide or per-employer. That
+  question is load-bearing for how these names are generated.
+
 ### Tail (files 6–8)
 
 Each of these waits on data from a third party. Event-driven on arrival, not part of the
@@ -367,8 +491,17 @@ implementation batch — some may never arrive, in which case the data is entere
 into the off-exchange `Ins125` plan and the `ICHRA` plan with dollar amounts. Where no file is
 available, entered by hand.
 
+> ⚠️ **Correction, 2026-09-07.** This was written against **HRA Enrollment**, which is **wrong for the
+> `Ins125` leg**. File 6 splits across **two** file types: the off-exchange `Ins125` enrollment goes
+> through **`125 PI Elections`**, and only the `ICHRA` leg goes through **HRA Enrollment**. See the
+> `125 PI Elections` section above. Its required field set is unproven.
+
 **File 7 — Presidio enrollments**, sourced from Presidio where available. Enrolls into the Presidio
 `Ins125` plan based on elections. Underwriting means the enrolled set is not the applied-for set.
+
+> ⚠️ **Correction, 2026-09-07.** This was written against **HRA Enrollment**. File 7 enrolls into an
+> `Ins125` plan only, so it goes through **`125 PI Elections`** in full — HRA Enrollment does not
+> apply to it at all. See the `125 PI Elections` section above. Its required field set is unproven.
 
 **File 8 — FSA and DCA elections**, where the employer supplies them in a usable form.
 
