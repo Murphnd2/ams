@@ -1483,7 +1483,12 @@ establishes this is an upsert key and changing it orphans the old record and cre
 
 **Confirm before.** The first real (non-test) employer file is imported into Summit.
 
-**Status.** Assumed, 2026-09-07.
+**Status.** Assumed, 2026-09-07. **Updated 2026-09-07 (S25-C):** the employer key is now emitted as
+a configured installation prefix (`SUMMIT_TPA_ID_PREFIX`) plus `Prospect.id`, raising uniqueness
+from per-installation to cross-installation — `Prospect.id` alone is only unique within one AMS
+database, and the platform's multi-installation ambition means two installations could someday feed
+the same Summit TPA account. The prefix must never change once any employer has been imported under
+it, for the same reversal-cost reason `Prospect.id` itself must not.
 
 ---
 
@@ -1505,6 +1510,77 @@ does not hold for a given employer.
 a schema change, plus a servlet update to prefer the explicit dates when present.
 
 **Confirm before.** The first non-calendar ICHRA plan year is sold.
+
+**Status.** Assumed, 2026-09-07. **Narrowed 2026-09-07 (S25-B):** no longer load-bearing for the
+Employer CDH Plan export — `SummitExportServlet` now reads `plan_year_start`/`plan_year_end` as real
+dates from application answers, so a non-calendar plan year is expressible there. Still applies
+anywhere a bare year integer is the only available source.
+
+---
+
+### LA-31 — Employer identity details for the Summit export come from application answers, not `Prospect` or `proposal_ichra_intake`
+
+**Assumption.** The employer's mailing address and plan year emitted in the Employer Demographic and
+Employer CDH Plan files are sourced from the proposal's application field values
+(`address_street1`/`address_city`/`address_state`/`address_zip` and
+`plan_year_start`/`plan_year_end`), not from `Prospect.address` or `proposal_ichra_intake.plan_year`.
+
+**Basis.** **Code-verified.** `Prospect.address` is unset at five of the seven `new Prospect()`
+creation sites (`CreateOpportunity`, `CreateProspect`, `CreateSetup25`, `RequestQuote`, and the demo
+seeder is the sixth, address-set) and, at the remaining two (`GenerateProp`, `GenerateProp25`), is
+assigned from the contact `Person`'s address — which was itself set from the selling `Agency`'s
+address, not the employer's. `Prospect.address` therefore never holds the employer's own address. The
+applicant asserts the real address and plan year during the application process; those answers persist
+in `applicationfieldvalue`, keyed by `applicationfield.field_key`.
+
+**Design choice.** `SummitExportServlet` reads the answer map by literal `fieldKey`, following the
+established house pattern (`ApplyForProposal:243-247`, `ReviewApplication`, `bill_benefit_plans`
+throughout the application surfaces). It refuses to emit, with a message naming the missing field key,
+when the proposal has no application, no saved answers, or a required key is absent, blank, or
+(for the two plan-year fields) unparseable as a date. No fallback chain to `Prospect`/`Agency` data is
+implemented, deliberately — a silent fallback is the failure pattern this assumption exists to remove.
+
+**Risk if wrong.** An export that refuses more often than strictly necessary — e.g. on an installation
+that has not loaded the `s125_fsa` package's `plan_year_eligibility` section, `plan_year_start`/
+`plan_year_end` will never be present regardless of whether the applicant supplied a plan year some
+other way. That is the safe direction: it fails closed, not open.
+
+**Reversal cost.** Cheap — a source repoint confined to `SummitExportServlet`, no schema.
+
+**Confirm before.** The first real (non-test) Employer Demographic or Employer CDH Plan file is
+generated for an installation, to confirm the expected `ApplicationField` rows are actually present.
+
+**Status.** Confirmed by code inspection, 2026-09-07.
+
+---
+
+### LA-32 — The Summit TPA prefix is configuration, not a code literal
+
+**Assumption.** The installation-specific prefix combined with `Prospect.id` to form `Employer TPA
+Custom ID` (and, by extension, `Import Plan ID`) must be read from config (`SUMMIT_TPA_ID_PREFIX`)
+at request time, never hardcoded in `SummitExportServlet`.
+
+**Basis.** **Code-verified.** `Employer TPA Custom ID` is Summit's upsert key (LA-26); `Prospect.id`
+is `@GeneratedValue` and only unique within one AMS database (LA-29). A literal prefix baked into the
+servlet would be identical across every installation running that code, defeating the purpose the
+moment a second installation exists — the platform's stated ambition.
+
+**Design choice.** `resolveEmployerTpaCustomId` reads `AppConfig.get("SUMMIT_TPA_ID_PREFIX")` at
+request time and validates it (non-blank after trim, no pipe, no whitespace) before use. No config
+file for this key is tracked in the repo — same as `SUMMIT_ICHRA_PLAN_TEMPLATE_ID` — so it is an
+operational note for Kevin to set in `ssa.properties`, not a code or migration change.
+
+**Risk if wrong.** None in the refusing direction — an absent or invalid prefix causes both file
+types to refuse rather than emit. The risk is entirely in the alternative not taken: a silent
+bare-`Prospect.id` fallback would let two installations both emit `42` for different employers,
+and Summit would upsert one onto the other.
+
+**Reversal cost.** Cheap before the first real import — the config value can be corrected freely.
+Effectively irreversible after — changing an upsert key orphans every record keyed on the old value,
+the same failure mode LA-29 already establishes for `Prospect.id` itself.
+
+**Confirm before.** The first real (non-test) employer file is imported into Summit — same
+confirmation point as LA-29, since the two assumptions are verified together in practice.
 
 **Status.** Assumed, 2026-09-07.
 
