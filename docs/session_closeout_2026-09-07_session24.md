@@ -295,3 +295,114 @@ values — a live-data read, deliberately not proposed as SQL. Whether any live 
 actually contains two Setups on one `proposal_id` — the schema permits it, which is the finding.
 Whether plan-year begin/end dates are recoverable by convention from `plan_year`'s SMALLINT. Where a
 per-participant election would come from (T178 — net-new capture, not a mapping problem).
+
+---
+
+## 10. Second half — S24-E (export stage 1) and S24-F (setup sequence design)
+
+Two more sub-runs after section 9's S24-B investigation closed. **S24-E** built the first working
+piece of the emitter. **S24-F** (this section) designed the full client setup sequence as
+documentation and closed the session. Baseline for both: `2330e1a`.
+
+### 10.1 Shipped
+
+- `66eb81e` — docs: session 24 close-out — Summit Data Exchange integration spec (S24-C's
+  `docs/business/summit_data_exchange.md` + LA-25–28; S24-D's `O-NN` → `SDX-NN` renumbering).
+- `2330e1a` — docs: session 24 close-out expansion and backlog updates (S24-B's findings folded into
+  sections 6–9 above, plus the T177/T178 backlog rows).
+
+### 10.2 In flight
+
+**S24-E, uncommitted** (working tree dirty by explicit instruction throughout):
+
+- `src/main/java/net/superiorstate/ams/controller/market/SummitExportServlet.java` (new) —
+  PSP-admin-only, URL-only browser-download servlet generating the Employer Demographic and Employer
+  CDH Plan files. Stage 1 of the emitter: employer and plan only, no participants or enrollment.
+- `docs/analysis/legal_assumptions.md` — **LA-29** (`Prospect.id` as the Summit employer key) and
+  **LA-30** (calendar-year plan years) appended.
+
+**Code-verified only — never run, never deployed, output never validated against Summit.** Blocked on:
+`SUMMIT_ICHRA_PLAN_TEMPLATE_ID` being set in `ssa.properties` on this installation (no tracked config
+file exists to hold it — see open question 4 below), and a proposal existing with both an ICHRA intake
+row carrying a `plan_year` and a `Prospect` with a complete address (`address1`/`city`/`state`/`zip`
+all non-blank).
+
+### 10.3 Decisions made
+
+1. The four-file chain — Employer Demographic → Employer CDH Plan → Demographics → HRA Enrollment —
+   proven by live test against Summit.
+2. `Prospect.id` is the employer identity Summit keys on (**LA-29**).
+3. ICHRA is premium-reimbursement-only — settled earlier in the session.
+4. The emitter emits full current state on every run, never deltas (**LA-26**), so there is no
+   sent-state store or create-vs-update branch anywhere in the design.
+5. Stage 1 of the emitter is scoped to employer and plan only — participants and enrollment need an
+   employee roster AMS does not have, and are explicitly deferred.
+6. The client setup sequence splits into a deterministic core (files 1–4, fires as one batch at
+   implementation) and a partner-dependent tail (files 5–8, event-driven on third-party data arrival,
+   some of which may never arrive and get entered by hand instead).
+7. Renewal is explicitly out of scope for the setup sequence just designed — new-client setup only.
+
+### 10.4 New assumptions
+
+All six from this session, LA-25 through LA-30, one line each with reversal cost:
+
+- **LA-25** — Participant identifiers must be globally unique. Reversal cost: cheap before any
+  participant is created in Summit, rising sharply after (re-keying live records).
+- **LA-26** — Summit upserts on `Employer TPA Custom ID`; AMS emits full state, not deltas. Reversal
+  cost: moderate — would require adding a sent-state store.
+- **LA-27** — `Funding tax treatment = Pre-tax` correctly represents employer ICHRA contributions.
+  Reversal cost: cheap as a template setting, rising once contributions are actually processed.
+- **LA-28** — `PCOR Reportable` should be enabled on the ICHRA plan template. Reversal cost: cheap now,
+  expensive to reconstruct retroactively once a filing is due.
+- **LA-29** — `Prospect.id` is the employer identity Summit keys on. Reversal cost: cheap before the
+  first file is imported, rising sharply after — it is an upsert key.
+- **LA-30** — ICHRA plan years are calendar years. Reversal cost: moderate — requires capturing
+  explicit begin/end dates on the intake, a schema change.
+
+### 10.5 Open questions raised
+
+`SDX-01`–`SDX-10` carried forward by reference from `docs/business/summit_data_exchange.md` (section 5
+above lists all ten). Four more raised this half:
+
+1. ⚠️ **The participant identity gap, which blocks setup files 4 onward.** AMS has no AMS-generated
+   employee key: `Employee.@Id` is an *assigned* int holding Summit's ID, and `Employee.custom_id`
+   only has a value for employees already imported from Summit. AMS also has no pre-Summit employee
+   roster carrying names, addresses, and effective dates. This is both a schema decision and a new
+   collection point for data about real people — the one category the project's build rules say to
+   settle before building. Settled by: a design decision in the next session.
+2. What is the PB file type and field set for the ICHRA notice plan? Settled by: a test import, the
+   same way the CDH chain was proven.
+3. Should the V048 import configuration family be extended to drive outbound mapping? Settled by: a
+   design decision.
+4. Where should installation config keys be documented, given no `ssa.properties` or sample is tracked
+   in the repo at all? `HEALTHSHERPA_API_KEY`, `ICHRA_DEMO_ALLOW_STAGING_PROPOSAL`, and
+   `SUMMIT_ICHRA_PLAN_TEMPLATE_ID` exist only in Javadoc and scattered analysis docs. Recommended: a
+   key list in `docs/deployment_runbook.md`, names and purposes only, never values. Settled by: a
+   small separate run.
+
+### 10.6 Contradictions found
+
+Five, recorded plainly because four were believed and stated as fact before being corrected:
+
+1. `Benefit` is **not** created at setup and cannot source the export — it is an inbound mirror in
+   `model/summit/**archive**/` with `summit_id NOT NULL`. The build plan's "benefits created during
+   setup flow into renewals" needs correcting. (Section 6 item 3 above.)
+2. Setup ↔ Application is **not** DB-enforced 1:1. Proposal ↔ Application is (`PRIMARY KEY
+   (proposal_id)`), but `assignee.proposal_id` carries a plain index, not a unique key — while
+   `proposal_ichra_intake` declares one, so the pattern exists in the codebase and was not used here.
+   (Section 6 item 2 above.)
+3. Vendor AI ("Atlas") stated ICHRA had no native Summit plan type and "likely uses HRA." **Wrong** —
+   ICHRA is a native plan type, as are EBHRA, LFSA, HSA, Ins125, and Ins125_w_HSA.
+4. `Participant TPA Custom ID` must be **globally unique**, not per-employer. The Demographics import
+   accepts a duplicate and reports success; the failure surfaces one file later as
+   `Employer ID Conflict`. This was concluded wrongly mid-session from the successful create, and
+   corrected only by the later enrollment failure. (**LA-25**.)
+5. **`CLAUDE.md` says the latest migration is V073 and `MEMORY.md` said V089. Both are stale — the
+   tree is at V093.** `CLAUDE.md`'s drift was already caught in section 6 item 1 above; `MEMORY.md`'s
+   own V089 drift was caught and self-corrected during this session's memory read. Not fixed in either
+   tracked file by this run — worth a separate one.
+
+### 10.7 Next
+
+The participant identity decision (open question 1 above), because it blocks setup files 4 through 8.
+Then a runtime walk of `SummitExportServlet`, which has never executed.

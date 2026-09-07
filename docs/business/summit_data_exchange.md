@@ -217,3 +217,111 @@ open-question registry (`O1`–`O52+`, tracked in `docs/swbd_ichra_build_plan.md
 
 Test records `ZZTEST001`, `ZZTEST002`, participants `ZZP001`–`ZZP003`, plan template `1029` and
 templates prefixed `ZZ_TEST_` exist in the live Summit environment and should be cleaned up.
+
+## Client setup sequence
+
+⚠️ **Scope statement.** This sequence covers **new client setup only**. Renewal is explicitly out of
+scope — nothing below describes, implies, or should be read as a renewal path.
+
+`Benefit` is **not** part of this sequence in either direction. It is an inbound mirror of plans
+Summit already created (`summit_id NOT NULL`), so it cannot precede an export — it is downstream of
+setup, not a source for it.
+
+The sequence has two phases with different triggers and different failure modes: a **deterministic
+core** derivable entirely from the employer's application, and a **partner-dependent tail** that waits
+on data from a third party.
+
+### Core (files 1–4)
+
+Everything here is derivable from the employer's application and fires at implementation as one
+sequence.
+
+**File 1 — Employer Demographic.** Creates the employer. `Employer TPA Custom ID` = `Prospect.id`
+([LA-29](../analysis/legal_assumptions.md)), which is what ties the Summit record back to the AMS
+application permanently — recurring monthly employer exports carry the same custom ID, so the linkage
+established here is what makes every later reconciliation possible. **`Enable COBRA Administration`
+must be set true here** — it is the flag that enables Premium Billing, which file 4 depends on. AMS
+sets this true on employers with no COBRA of their own, so it should not later be read as a defect.
+
+**File 2 — Employer CDH Plan.** ⚠️ **One file, multiple rows** — one row per plan, each with its own
+`Plan Template ID` and `Import Plan ID`, all sharing the employer key. This is not one import per
+plan. Rows, in the order the application elects them:
+
+| Plan | Summit plan type | Carries |
+|---|---|---|
+| PremiumPath card plan for Presidio premiums | `Ins125` | Employee pre-tax salary reduction |
+| PremiumPath card plan for off-exchange premiums | `Ins125` | Employee pre-tax salary reduction |
+| ICHRA | `ICHRA` | Employer contribution |
+| Health FSA (optional) | `FSA` | Employee pre-tax election |
+| Dependent Care FSA (optional) | `DCA` | Employee pre-tax election |
+
+⚠️ **Why the first three are separate plans, not one:** the employee's pre-tax salary reduction and
+the employer's ICHRA contribution are distinct funding streams that both happen to land on the same
+card. Keeping them as separate plans is what preserves the Section 125 premium rail as a thing
+distinct from the ICHRA. Collapsing them would blur the two funding streams together.
+
+**HSA is deliberately deferred** — setup is more involved and it interacts with the limited-purpose
+FSA fork. Out of scope for now, not forgotten.
+
+**File 3 — Premium Billing ICHRA notice plan.** The plan that generates ICHRA notices lives on the
+**Premium Billing platform, not CDH**, so it is a different file type from file 2 and cannot be a row
+in it. Depends on `Enable COBRA Administration` from file 1. ⚠️ **The exact PB file type and its field
+requirements are unproven** — the tested chain (above) covered CDH only. Recorded here as unproven,
+not as known.
+
+**File 4 — Census (Demographics).** Creates participants. Requires a `Participant TPA Custom ID`
+convention. ⚠️ **This is blocked** — see the open question below; AMS has no AMS-generated employee
+key to derive one from for a client not yet imported from Summit.
+
+**File 5 — Enrollment into the PB ICHRA notice plan.** Everyone offered the ICHRA needs the notice,
+including employees who will opt out, because the opt-out only exists relative to an offer. This
+enrolls the full census, not a subset.
+
+### Tail (files 6–8)
+
+Each of these waits on data from a third party. Event-driven on arrival, not part of the
+implementation batch — some may never arrive, in which case the data is entered by hand.
+
+**File 6 — Off-exchange enrollments and amounts**, sourced from HealthSherpa where available. Enrolls
+into the off-exchange `Ins125` plan and the `ICHRA` plan with dollar amounts. Where no file is
+available, entered by hand.
+
+**File 7 — Presidio enrollments**, sourced from Presidio where available. Enrolls into the Presidio
+`Ins125` plan based on elections. Underwriting means the enrolled set is not the applied-for set.
+
+**File 8 — FSA and DCA elections**, where the employer supplies them in a usable form.
+
+### Ingestion — reuse the existing pattern
+
+Partner files arrive in whatever shape the partner sends, with varying column order and naming. AMS
+should map them to a canonical form and emit Summit files from that, rather than parsing each partner
+format ad hoc.
+
+**AMS already has this pattern.** The V048 configuration family is PSP-scoped, config-driven, and does
+exactly this mapping:
+
+- `import_provider` — `provider_id`, `provider_code`, `psp_id NOT NULL`
+- `import_file_type` — `file_label`, `target_entity`, `file_format`, `sort_order`
+- `import_field_mapping` — `source_column` → `canonical_field`, `is_required`, `is_key`,
+  `transform_rule`
+- `import_plan_type_mapping` — `source_plan_code` → `target_plan_type_id`, nullable provider = system
+  default
+- `import_run_log` — per-entity inserted/updated/skipped counters
+
+It is inbound-only today. **Extending it is preferable to inventing a second mapping layer.** Recorded
+here as the recommended direction, not as a decision — it has not been designed.
+
+### Ordering
+
+Summit enforces a real dependency order: **employer → plans → participants → enrollments**. A file
+referencing an employer or plan that does not exist yet will fail. Within a single enrollment file,
+row order does not matter.
+
+⚠️ **Distinguish this from partner-file column ordering**, which is a different problem solved by the
+mapping layer above. The two are easy to conflate.
+
+### Transport
+
+Three inbound sources with three different mechanisms — employer upload, Presidio (SFTP likely),
+HealthSherpa (existing process). **None is needed to prove the chain.** Manual upload works for all
+three initially. Building all three transports on spec is explicitly not the plan.
