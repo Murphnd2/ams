@@ -10,7 +10,7 @@
 ## Current State
 - **Integration branch:** `refactor/modernize-architecture` — feature branches are cut from / merged back to it, so it trails the in-flight feature by only a few commits. `main` is ~345 commits stale and is **not** the working line.
 - **In-flight branch:** none — the agency-scope-resolver work merged to trunk 2026-07-15 (`e0a62d1`); branch deleted.
-- **Latest migration:** **V093** (`proposal_ichra_intake_section125` — two Section 125 structure intake inputs, `monthly_stipend_per_employee`/`alternative_coverage_monthly_cost`, S23-C) — corrected 2026-09-07 (session 25 close); this line had drifted to V085 (eight versions stale) with no session having corrected it since. Not yet applied to any environment (`docs/analysis/migration_tracker.md` shows all four environment columns unchecked for V090–V093). Always re-check `ls docs/migrations/` rather than trusting this line — it has drifted before and will again. ⚠️ **V084 and V085** (`zip_county` crosswalk, T74 ZIP intake) **are applied on Production**, shipped with release `v0.85.00` — confirmed **behaviourally**, not from a deployment log: a 2026-08-01 runtime walk showed ZIP `75482`→Hopkins, `75009`→Collin/Denton chooser, `90210`→correct miss, none of which is reachable against an empty table. V079 onward remains unapplied on every local schema.
+- **Latest migration:** **V094** (`employer_participant` — the AMS-owned participant roster, session 26). Updated 2026-09-07 (session 26 close); the line read V093 before that, and V085 before session 25 corrected it. **V092, V093 and V094 are unapplied in Production, Demo, BPO and Master.** V092 and V093 were applied to local `beta_ssa` in session 26 (S26-E) and **both applied cleanly with no errors** — useful information for the production deployment. ⚠️ **`schema_info` reflects apply order, not the highest version applied**: locally V093 ran after V094 and won the `CREATE OR REPLACE VIEW`, so the view understates the schema. Production applies in version order via `update.sh`, so the exposure is to out-of-order or partial applies only. Always re-check `ls docs/migrations/` rather than trusting this line — it has drifted before and will again. ⚠️ **V084 and V085** (`zip_county` crosswalk, T74 ZIP intake) **are applied on Production**, shipped with release `v0.85.00` — confirmed **behaviourally**, not from a deployment log: a 2026-08-01 runtime walk showed ZIP `75482`→Hopkins, `75009`→Collin/Denton chooser, `90210`→correct miss, none of which is reachable against an empty table. V079 onward remains unapplied on every local schema.
 - **Latest release:** superseded the 2026-07-31/08-01 entries here entirely; see `docs/session_closeout_2026-08-01_session6.md` §1 for the full `v0.85.00`–`v0.85.06` ladder. ⚠️ **`v0.85.06` is built and pushed (commit `cabbe88`) but NOT DEPLOYED.** Production runs **`v0.85.05`**, which carries a live defect: the AGE_BAND repeater force-rendered a duplicate blank first row under specific conditions, silently doubling the submitted headcount with nothing on screen explaining it (**K3-b**, fixed in `v0.85.06`). `v0.85.06` is a WAR-only release — no migrations attached, since V084/V085 already shipped with `v0.85.00`. Release tags are typed in the GitHub web UI, never pushed from local git — a local `git tag` listing is stale by design; `git fetch --tags` first or read the Releases page.
 - **ICHRA/QSEHRA admin stream active — and now BUILT.** Origin: SWBD (Forrest) quoting ICHRA through zizzl, which gated
   carriers and charged a ~$660/mo admin minimum — unbundle logic gives the admin to SSA. Target rail is
@@ -142,6 +142,35 @@
 Static resources (`/images/`, `/css/`, `/js/`, `/fonts/`, etc.) are exempted before the auth check via `isStaticResource()`. Resolves open question #17.
 
 ## Recent Sessions
+- **Session 26 (2026-09-07, S26-A–H, migration V094):** Built the **AMS-owned participant roster**
+  that sessions 24–25 were blocked on — `employer_participant` (**V094**) plus a census upload at
+  the Setup screen. Two read-only Phase A runs came first and **falsified three claims carried
+  forward from sessions 24–25**: AMS *does* have employee-key allocators (a negative-id namespace
+  at `min(id)-1`, and `ImportIdResolver`'s `MAX(employee_id)+1`); `employee.custom_id` is
+  **write-only** (`getCustomId` has zero callers) and does not round-trip Summit's
+  ParticipantCustomID; and `Employee.@Id` is a *mixed* namespace, not simply Summit's id. The
+  roster is therefore a **new table, not `employee`** — an id a later import can reallocate cannot
+  back a Summit upsert key. It **FKs to `prospect`, not `Employer`**: file 4 fires in the same
+  batch as file 1, before the Summit-sourced `Employer` row exists, and S26-A established that
+  nothing in the codebase links a `Prospect` to an `Employer` at all. `CensusParseService` does
+  CSV + XLSX with header-synonym matching (column order irrelevant, unrecognised columns dropped
+  silently), all-or-nothing on any row error, a 5,000-row cap, and XLSX numeric-cell leading-zero
+  ZIP recovery. `CensusUploadServlet` is PSP-admin + ICHRA gated, resolves `proposalId → Proposal →
+  Prospect`, and **parses from the `Part` stream without ever writing the file to disk** — names and
+  home addresses. **SSN, DOB and compensation are excluded at the parser, not just the schema**
+  (**LA-35**), so the values never enter the process. Registered **LA-33** (participant key derived
+  at emit time, never stored), **LA-34** (replacement refuses rather than merges), **LA-35**.
+  **Runtime-verified against a real 38-employee employer file** — the parser end to end, both gates,
+  the `proposalId` resolution, `insertAll`, `deleteByProspectId`, and the mapping report. Two
+  browser walks found what code review had not: S26-F added a "what was read from the file" mapping
+  report (a row count alone cannot distinguish "it parsed" from "it read the columns I think it
+  read"), and S26-G fixed a dead end where a loaded roster suppressed the upload form entirely,
+  making the replacement refusal unreachable — the refusal now fires **after** parsing, so a
+  rejected replacement still reports what the submitted file contained before the operator destroys
+  a good roster. ⚠️ **Next is the multi-row sink**: `SummitExportServlet.writeFile` takes a single
+  `String`, so **file 2 (Employer CDH Plan) is already wrong on committed code**, not merely
+  unbuilt. Commits: `1cfb402` (the build), `e2fc648` (Phase A findings), `3c1c770` (close-out).
+  Full detail: `docs/session_closeout_2026-09-07_session26.md`.
 - **Session 25 (2026-09-07, S25-A–E, no migration):** Corrected the two wrong data sources in
   session 24's just-shipped `SummitExportServlet` (`cd5c7e0`) before its first real use. Employer
   address and plan year had been read from `Prospect.address` and
