@@ -142,6 +142,20 @@
 Static resources (`/images/`, `/css/`, `/js/`, `/fonts/`, etc.) are exempted before the auth check via `isStaticResource()`. Resolves open question #17.
 
 ## Recent Sessions
+- **Session 24 (2026-09-07, S24-C/D, docs only, no code, no migration):** First-ever integration
+  spec for DataPath Summit's file-based Data Exchange, `docs/business/summit_data_exchange.md` —
+  transport, template mechanics, the proven four-file import chain (Employer Demographic → Employer
+  CDH Plan → Demographics → HRA Enrollment), and the ID-ownership table. **Every field requirement
+  in it is test-verified** (files imported, results read), not inferred from vendor docs, which were
+  wrong or silent on several points including ICHRA being a native Summit plan type. Two
+  test-verified findings matter most: Summit **upserts** on `Employer TPA Custom ID` (so AMS can
+  safely emit full current state with no delta tracking — **LA-26**), and `Participant TPA Custom
+  ID` must be **globally unique across every employer**, not per-employer — a duplicate is accepted
+  at Demographics import and only fails one file later at HRA Enrollment as `Employer ID Conflict`
+  (**LA-25**). Two additional assumptions (**LA-27** pre-tax funding treatment, **LA-28** PCOR
+  Reportable) are flagged thin-basis, unverified against actual Summit behavior. The doc's ten local
+  open questions are numbered **SDX-01**–**SDX-10**, deliberately distinct from the project's
+  existing global `O-NN` registry. Full detail: `docs/session_closeout_2026-09-07_session24.md`.
 - **Session 70:** Sequence Manager enhancements — copy-from-existing modal, inline rename, unsaved changes warning, wider left panel, fixed-width badges, filter scoping fix
 - **Session 78:** Outlook add-in "Create Ticket" feature — new API endpoints (ticket-categories, create-ticket), tabbed taskpane UI, contact selection from email recipients
 - **Session 80:** Wasabi S3 upload reliability overhaul — `RequestBody.fromBytes()` instead of InputStream, singleton client, Apache HTTP client, 120s timeout, JSP spinner fix

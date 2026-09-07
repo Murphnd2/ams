@@ -1369,6 +1369,98 @@ TPA.
 
 ---
 
+### LA-25 — Participant identifiers must be globally unique
+
+**Assumption.** `Participant TPA Custom ID` must be unique across every employer in the Summit
+installation, not merely within one employer.
+
+**Basis.** **Test-verified.** A duplicated per-employer participant ID was accepted by the
+Demographics import and reported success; enrollment on that same ID under HRA Enrollment returned
+`Employer ID Conflict`, even though `Employer TPA Custom ID` was supplied in the enrollment row.
+Summit could not disambiguate the participant. See `docs/business/summit_data_exchange.md`.
+
+**Design choice.** Derive participant IDs from a globally unique AMS key, such as the employee
+record's own primary key — never a per-employer sequence.
+
+**Risk if wrong.** None in this direction; the reverse — treating the ID as per-employer-unique —
+is what failed the test.
+
+**Reversal cost.** **Rising sharply.** Cheap before any participant is created in Summit; requires
+re-keying live records afterward.
+
+**Confirm before.** N/A — already confirmed by test.
+
+**Status.** Confirmed by test, 2026-09-07.
+
+---
+
+### LA-26 — Summit upserts on `Employer TPA Custom ID`, so AMS emits full state
+
+**Assumption.** Re-importing an Employer Demographic file with an existing `Employer TPA Custom ID`
+updates that employer in place rather than creating a duplicate, so AMS can safely regenerate and
+resend full current state on every run with no delta tracking.
+
+**Basis.** **Test-verified.** Re-import with the same ID produced `Employer edited successfully`
+in place of the original `Employer created successfully`; a byte-identical record was rewritten
+rather than skipped. See `docs/business/summit_data_exchange.md`.
+
+**Design choice.** No sent-state store, no create-vs-update branch, no reconciliation table. AMS
+emits full current state each run.
+
+**Risk if wrong.** Silent duplicate employers.
+
+**Reversal cost.** Moderate — adds a sent-state store.
+
+**Confirm before.** N/A — already confirmed by test.
+
+**Status.** Confirmed by test, 2026-09-07.
+
+---
+
+### LA-27 — `Funding tax treatment = Pre-tax` correctly represents employer ICHRA contributions
+
+**Assumption.** Setting the ICHRA plan template's Funding tax treatment element to `Pre-tax`
+correctly represents an employer-funded ICHRA contribution.
+
+**Basis.** ⚠️ **Reasoning from option names only, not verified against Summit behaviour.** Employer
+ICHRA money is excluded under §105/§106 and is not a salary reduction, which is what "pre-tax"
+normally denotes; no option among the six available actually describes employer-provided excludable
+money. Every alternative taxes money that should not be taxed.
+
+**Design choice.** Configure the test template as `Pre-tax` pending confirmation.
+
+**Risk if wrong.** Incorrect payroll or W-2 treatment on real money.
+
+**Reversal cost.** **Cheap as a template setting, rising once contributions are processed.**
+
+**Confirm before.** First live ICHRA funding.
+
+**Status.** Assumed — thin basis, 2026-09-07.
+
+---
+
+### LA-28 — `PCOR Reportable` should be enabled on the ICHRA plan template
+
+**Assumption.** The ICHRA plan template should have `PCOR Reportable` enabled.
+
+**Basis.** ⚠️ **General PCORI treatment of HRAs, not read against primary text.** An ICHRA is a
+self-insured group health plan, and the employer generally owes PCORI fees counted on covered
+employees. The flag was off in the test template.
+
+**Design choice.** Flag pending confirmation; not yet changed from the test template's off setting.
+
+**Risk if wrong.** If Summit uses the flag to drive reporting data capture, the data is absent when
+an annual filing comes due — a gap that surfaces long after setup.
+
+**Reversal cost.** **Cheap now, expensive to reconstruct retroactively.**
+
+**Confirm before.** First live ICHRA plan is created.
+
+**Status.** Assumed — thin basis, pairs with open question O-10 in
+`docs/business/summit_data_exchange.md`, 2026-09-07.
+
+---
+
 ## Candidates considered and not adopted
 
 Recorded so the next reader knows they were seen and declined, rather than missed. **None of these
