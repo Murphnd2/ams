@@ -69,6 +69,14 @@ already dynamic — `ApplyForProposal` and `CreateSetup25` are confirmed **fully
 work. **The demo is mostly assembly, not construction.** That is why this target is reachable and a
 larger one is not.
 
+> ⚠️ **Correction, session 27 (S27-D), 2026-09-07.** The setup checklist keys on `ServiceItem`, not
+> LOS. `CreateSetup25` populates `ApplicationModule` from `LOS.serviceItem` **and**
+> `Enhancement.serviceItem` (`ApplyForProposal.java:451-457` is an Enhancement loop immediately below
+> the LOS loop this claim cites), and `AddSetupModule25` is a third door where a PSP user attaches a
+> `ServiceItem` to a live Setup by hand. Tasks resolve via
+> `RequiredTaskList WHERE serviceItem.id = :id`. A new LOS does flow through with no code change; LOS
+> is one input to a ServiceItem-keyed mechanism, not the mechanism.
+
 ### Why it ends at setup, not at a number
 
 **A competitor can show a quote engine.** zizzl did, and Forrest called anyway. Take Command, Thatch,

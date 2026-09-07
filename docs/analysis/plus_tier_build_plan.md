@@ -96,7 +96,10 @@ employer-scoped `GET /v1/enrollments` polling design that backlog **#38**'s "con
 on. It escalates **O20** to load-bearing (`plan_hios_id` is required on every enrollment route, so the
 plan display cannot be handed off), upgrades **D20** to a requirement, and adds **O41–O42**.
 
-**Precedence: Part 11 > Part 10 > Part 9 > Part 8 > Part 7 > Part 6 > Part 5 > Part 4 > Parts 1–3.**
+**Part 12** (7 September 2026) adds **D40** — the ICHRA+ bundle gets its own Summit plan types — and
+**O43**, whether Premium Billing plans mirror into AMS as `Benefit` rows.
+
+**Precedence: Part 12 > Part 11 > Part 10 > Part 9 > Part 8 > Part 7 > Part 6 > Part 5 > Part 4 > Parts 1–3.**
 
 ### Provenance warning governing everything below
 
@@ -1151,6 +1154,14 @@ V068-sized, not a config addition.
 `ApplyForProposal` and `CreateSetup25` are confirmed **fully dynamic** and per-LOS driven
 (`ApplyForProposal.java:444-448` via `ActivityDAO.addModule()`). The customer-facing sales-to-setup
 path needs no work to carry a new LOS — only the internal Manual Setup tool does.
+
+> ⚠️ **Correction, session 27 (S27-D), 2026-09-07.** The setup checklist keys on `ServiceItem`, not
+> LOS. `CreateSetup25` populates `ApplicationModule` from `LOS.serviceItem` **and**
+> `Enhancement.serviceItem` (`ApplyForProposal.java:451-457` is an Enhancement loop immediately below
+> the LOS loop this claim cites), and `AddSetupModule25` is a third door where a PSP user attaches a
+> `ServiceItem` to a live Setup by hand. Tasks resolve via
+> `RequiredTaskList WHERE serviceItem.id = :id`. A new LOS does flow through with no code change; LOS
+> is one input to a ServiceItem-keyed mechanism, not the mechanism.
 
 ## New phase B0 — participant-model prerequisites
 
@@ -2241,4 +2252,69 @@ and it would settle **O41** and **O42** as a side effect.
 notice model are all unaffected by O2.** O2 was scoped to the HealthSherpa enrollment/status surface
 and nothing in it bears on Summit, billing, or the catalog. Parts 5–8 stand unchanged.
 
-**Precedence: Part 11 > Part 10 > Part 9 > Part 8 > Part 7 > Part 6 > Part 5 > Part 4 > Parts 1–3.**
+**Precedence: Part 12 > Part 11 > Part 10 > Part 9 > Part 8 > Part 7 > Part 6 > Part 5 > Part 4 > Parts 1–3.**
+
+---
+---
+
+# Part 12 — The ICHRA+ bundle gets its own Summit plan types
+
+**Date:** 7 September 2026 (S27-D, S27-E, S27-F)
+**Source:** Kevin's decision, taken on the source-reading findings of S27-D and S27-E. The mechanism
+those runs established is recorded in
+[`docs/business/summit_data_exchange.md`](../business/summit_data_exchange.md) under "How AMS task
+checklists key off plan types" — read that first; this Part is the decision, not the evidence.
+
+## D40 — the ICHRA+ bundle gets its own Summit plan types
+
+**Decision.** The ICHRA+ bundle gets **its own Summit plan types**, rather than reusing the existing
+ones.
+
+**Why.** The existing `Ins125` type serves groups SSA does annual testing for — **no cards, no
+per-cardholder premium loading**. Tasks attach to a plan type and, as S27-E established, **fire for
+every group holding that type**; there is no subtraction and no substitution on either the setup or
+the renewal path. So card-loading tasks hung on the existing `Ins125` would fire on **every
+testing-only group**. Separating the types is the only mechanism the model offers to keep those task
+sets apart.
+
+**The new types:**
+
+| # | Type | Platform | Notes |
+|---|---|---|---|
+| 1 | **ICHRA+** | CDH | The employer contribution leg |
+| 2 | **Ins125+** | CDH | **One type, two plan templates** — Presidio card and off-exchange card |
+| 3 | **ICHRA+ notice plan** | Premium Billing | Gated on **O43** below — not yet safe to assume |
+
+⚠️ **Why `Ins125+` is one type and not two.** Both templates are premium salary reduction landing on
+the card, so they carry the **same eligibility** and therefore the same type. A group holding both
+generates **two `RenewalItem`s that dedupe to one task set** — the correct outcome, not a defect.
+What differs between them is the **inbound data source** (Presidio vs off-exchange), and that is
+**ingestion, not adjudication**. Splitting the type to model a data source would push an ingestion
+concern into the claims-eligibility dimension, which is what the plan type actually means.
+
+**Unchanged: `FSA`, `DCA` and `HSA`.** Nothing about this sale varies for them, so they keep their
+existing types and existing sequences.
+
+### Reversal cost — asymmetric, and that asymmetry is the argument
+
+**Creating a type is cheap. Merging two types later is not.** `Benefit` is an inbound Summit mirror
+(`summit_id NOT NULL`), so **existing rows keep the type they were created with**. Unwinding a split
+would mean either reassigning historical benefit rows — rewriting mirrored data AMS does not own — or
+carrying both types indefinitely. Splitting later is cheap; merging later is not.
+
+## O43 — do Premium Billing plans mirror into AMS as `Benefit` rows?
+
+**Open question.** Do Premium Billing plans appear in the **Summit plan-type export**, and do they
+**mirror into AMS as `Benefit` rows carrying a plan type**?
+
+**Why it matters.** The tested chain (`docs/business/summit_data_exchange.md`, "The proven chain") was
+**CDH-only**. Renewal checklists resolve exclusively through `Benefit → PlanType → ServiceItem`, so a
+plan type that never arrives as a `Benefit` row **cannot drive a renewal checklist at all**. If PB
+plans do not mirror, the ICHRA+ notice plan type (item 3 of D40) cannot carry its own renewal tasks
+and **that work must hang off a CDH type instead**.
+
+**Settled by:** a **Summit test** — export the plan types, run an import, look for the PB plan in
+`plantype` and for a mirrored `Benefit`. **Not settleable by reading AMS code**, which can only show
+what AMS does with rows it receives, never which rows Summit sends.
+
+**Precedence: Part 12 > Part 11 > Part 10 > Part 9 > Part 8 > Part 7 > Part 6 > Part 5 > Part 4 > Parts 1–3.**

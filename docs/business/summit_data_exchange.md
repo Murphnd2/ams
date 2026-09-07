@@ -195,13 +195,30 @@ Always map `Record Comment` into the results template. `Record Processing Status
 
 ## Plan types and the ICHRA template
 
-**ICHRA is a native Plan Type in Summit.** Vendor AI said this was not documented and likely used the
-generic HRA code; that was wrong.
+**ICHRA is a selectable Plan Type in Summit.** Vendor AI said this was not documented and likely used
+the generic HRA code; that was wrong.
 
-Native types relevant to the bundle: **ICHRA**, **EBHRA**, **HRA**, **MERP**, **FSA**, **LFSA**,
-**DCA**, **HSA**, **Ins125**, **Ins125_w_HSA**, plus TRN, PRK, PRA, DRiP and custom codes. `LFSA`
-existing natively matters — the limited-purpose FSA fork required by an HSA pairing needs no
-workaround.
+> ⚠️ **Correction, session 27, 2026-09-07.** An earlier revision of this section listed **ICHRA**,
+> **Ins125** and **MERP** among the *native* types. That is wrong, and it is the kind of error that
+> would silently break a second installation. **Summit plan types are user-creatable, and several in
+> use here are SSA's own** — `ICHRA`, `Ins125` and `MERP` were created by Kevin. They appeared in the
+> picker because they already existed in this tenant, not because Summit ships them. **A fresh Summit
+> tenant does not carry them.** `FSA`, `DCA` and `HRA` are native.
+
+Types relevant to the bundle, as they appear in **this** tenant's picker: **ICHRA**, **EBHRA**,
+**HRA**, **MERP**, **FSA**, **LFSA**, **DCA**, **HSA**, **Ins125**, **Ins125_w_HSA**, plus TRN, PRK,
+PRA, DRiP and custom codes. Of these, `FSA`, `DCA` and `HRA` are confirmed native; `ICHRA`, `Ins125`
+and `MERP` are SSA-created; the rest are **unverified either way** and should not be assumed native.
+`LFSA` existing natively would matter — the limited-purpose FSA fork required by an HSA pairing would
+need no workaround — but that is now an assumption to test, not an established fact.
+
+**The plan-type dimension is claims eligibility.** A plan type determines which expense categories
+adjudicate — `DRiP` excludes copay and coinsurance, `MERP` allows deductible and coinsurance but not
+copay, `HRA` allows all three. This is encoded in the type rather than in per-plan benefit orders.
+**AMS mirrors plan types; it does not author them** — they arrive via the monthly billing import,
+which refreshes the full list from Summit. No AMS code branches on a plan-type code string (a
+repo-wide search for `getCode().equals(...)` returns nothing), so the adjudication meaning lives
+entirely in Summit.
 
 Plan template configuration as tested:
 
@@ -217,6 +234,41 @@ Plan template configuration as tested:
   examined.
 - `Enable debit card` will be needed for premium payment on the card; it was off in the test template.
 - `PCOR Reportable` was off in the test template — see [LA-28](../analysis/legal_assumptions.md).
+
+## How AMS task checklists key off plan types
+
+Established by reading source in session 27 (S27-D, S27-E), 2026-09-07. Recorded here rather than in a
+build plan because it is a durable statement about how the two systems relate, and because the
+plan-type decision it justifies ([D40](../analysis/plus_tier_build_plan.md)) depends on it entirely.
+
+⚠️ **Setup and renewal key on different things. They are separate mechanisms and are easy to
+conflate.**
+
+| | Setup | Renewal |
+|---|---|---|
+| Keyed on | `ServiceItem` via `ApplicationModule` | `ServiceItem` via `PlanType` |
+| Reached from | `LOS.serviceItem`, `Enhancement.serviceItem`, or a PSP user's manual `AddSetupModule25` | `Benefit.planType.serviceItem` only |
+| `ActivityCategory` | 2 (Setup) | 1 (Renewal) |
+| Sees the plan type? | **No** — no setup path reads `PlanType` at all | Yes — it is the only input |
+| Sees the LOS / sale? | Yes | **No** |
+
+**Renewal keys only on `Benefit → PlanType → ServiceItem (ActivityCategory 1) → RequiredTaskList`.**
+`RenewalService` is the only class in the codebase that builds a renewal checklist, and
+`PlanType.serviceItem` is its only `ServiceItem` source across all four of its task-building methods
+(`getTasksRequiredForRenewal2`, `getTasksRequiredForRenewal`, `getTasksRequiredForBenefit`,
+`getTasksRequiredForRenewalItem`).
+
+**`Benefit` is an inbound Summit mirror carrying no trace of the LOS, Enhancement, proposal or
+application the sale came through.** There is nothing to traverse back toward the sale even in
+principle. **Two employers holding the same plan types resolve byte-identical renewal task sets,
+however differently they were sold.** On renewal, the plan type is the only lever the code offers.
+
+**The checklist is the union over the benefits an operator ticks, deduplicated by task id.** One
+`RenewalItem` is created per `Benefit` selected; each contributes its plan type's sequence; overlapping
+tasks collapse to one. ⚠️ **There is no subtraction and no substitution on either the setup or the
+renewal path — a task attached to a plan type fires for every group holding that plan type.** This is
+the constraint that drives D40: a task cannot be added for one group's benefit without adding it for
+every group holding the same type.
 
 ## Open questions
 

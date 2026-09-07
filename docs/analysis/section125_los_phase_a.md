@@ -166,6 +166,15 @@ The `model/market` package holds only `CountyReference`, `IllustrationLog`, `Rat
    with no work", is **confirmed** by this run. The `GenerateProp*` id literals sit outside that path, and the
    doc's wording already scopes the claim to the customer-facing path.
 
+   > ⚠️ **Correction, session 27 (S27-D), 2026-09-07.** This confirmation covered the *narrow* reading
+   > only, and recording it as bare "confirmed" invites the broad one. The setup checklist keys on
+   > `ServiceItem`, not LOS. `CreateSetup25` populates `ApplicationModule` from `LOS.serviceItem`
+   > **and** `Enhancement.serviceItem` (`ApplyForProposal.java:451-457` is an Enhancement loop
+   > immediately below the LOS loop this claim cites), and `AddSetupModule25` is a third door where a
+   > PSP user attaches a `ServiceItem` to a live Setup by hand. Tasks resolve via
+   > `RequiredTaskList WHERE serviceItem.id = :id`. A new LOS does flow through with no code change;
+   > LOS is one input to a ServiceItem-keyed mechanism, not the mechanism.
+
 ---
 
 ## What I could not determine
