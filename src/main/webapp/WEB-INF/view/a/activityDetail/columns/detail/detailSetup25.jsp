@@ -56,6 +56,28 @@
       </a>
     </div>
   </div>
+
+  <%-- Summit export (S27-C) — same gate as Census Upload above, same proposalId expression.
+       Numbered 1 / 2 / 4 to match Summit's own file numbering (file 3, Premium Billing, is
+       unproven and has no link here; file 5+ do not exist yet). Plain links: whatever
+       SummitExportServlet's Content-Disposition does on click is what happens. --%>
+  <div class="detail-section-card">
+    <div class="detail-section-body">
+      <div class="text-muted small fw-semibold mb-1">Summit export</div>
+      <a href="${pageContext.request.contextPath}/SummitExport?proposalId=${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}&type=employer"
+         class="btn btn-sm btn-outline-ssa w-100 mb-1">
+        <i class="bi bi-download me-1"></i>Summit file 1 — Employer
+      </a>
+      <a href="${pageContext.request.contextPath}/SummitExport?proposalId=${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}&type=cdhplan"
+         class="btn btn-sm btn-outline-ssa w-100 mb-1">
+        <i class="bi bi-download me-1"></i>Summit file 2 — CDH Plan
+      </a>
+      <a href="${pageContext.request.contextPath}/SummitExport?proposalId=${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}&type=demographics"
+         class="btn btn-sm btn-outline-ssa w-100">
+        <i class="bi bi-download me-1"></i>Summit file 4 — Demographics
+      </a>
+    </div>
+  </div>
 </c:if>
 
 <%-- Full list modal --%>

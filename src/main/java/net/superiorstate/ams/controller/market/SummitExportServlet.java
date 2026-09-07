@@ -9,7 +9,9 @@ import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import net.superiorstate.ams.AppConfig;
+import net.superiorstate.ams.data.dao.EmployerParticipantDAO;
 import net.superiorstate.ams.data.resolver.IchraAccessResolver;
+import net.superiorstate.ams.model.market.EmployerParticipant;
 import net.superiorstate.ams.model.sales.agency.Proposal;
 import net.superiorstate.ams.model.sales.agency.Prospect;
 import net.superiorstate.ams.model.sales.application.ApplicationFieldValue;
@@ -69,9 +71,10 @@ public class SummitExportServlet extends HttpServlet {
         String proposalIdParam = request.getParameter("proposalId");
         String type = request.getParameter("type");
         if (proposalIdParam == null || proposalIdParam.isBlank()
-                || type == null || !(type.equals("employer") || type.equals("cdhplan"))) {
+                || type == null || !(type.equals("employer") || type.equals("cdhplan")
+                        || type.equals("demographics"))) {
             writePlainError(response, HttpServletResponse.SC_BAD_REQUEST,
-                    "proposalId and type (employer|cdhplan) are required.");
+                    "proposalId and type (employer|cdhplan|demographics) are required.");
             return;
         }
 
@@ -130,8 +133,10 @@ public class SummitExportServlet extends HttpServlet {
 
             if (type.equals("employer")) {
                 writeEmployerDemographic(response, prospect, answers, employerTpaCustomId);
-            } else {
+            } else if (type.equals("cdhplan")) {
                 writeEmployerCdhPlan(response, prospect, answers, employerTpaCustomId);
+            } else {
+                writeDemographics(response, em, prospect, employerTpaCustomId);
             }
         } finally {
             if (em.isOpen()) em.close();
@@ -279,7 +284,60 @@ public class SummitExportServlet extends HttpServlet {
 
         String filename = "employer-cdh-plan-" + sanitizeFilename(prospect.getName())
                 + "-" + prospect.getId() + "-" + LocalDate.now().format(SUMMIT_DATE) + ".txt";
-        writeFile(response, filename, line);
+        List<String> lines = java.util.Collections.singletonList(line);
+        writeFile(response, filename, lines);
+    }
+
+    /**
+     * Demographics (file 4) — eleven columns, one row per participant on this prospect's roster
+     * ({@code employer_participant}, V094). {@code Mailing Address Line 2} and {@code Email} are
+     * nullable on the roster and emit empty rather than being dropped, reordered, or defaulted —
+     * a Summit importer defect mishandles a trailing empty value, so both nullable columns sit
+     * ahead of the always-populated {@code Effective Date}
+     * (docs/business/summit_data_exchange.md). {@code Effective Date} comes from
+     * {@code EmployerParticipant.effectiveDate} itself, not file 2's plan-year-answer derivation
+     * — the entity's own field is documented as applied uniformly from a single form field for
+     * exactly this column, never read from a spreadsheet. {@code Participant TPA Custom ID}
+     * follows the same rule as {@code Employer TPA Custom ID} (S25-C, LA-29): derived here from
+     * the AMS-owned, immutable primary key plus the configured prefix, and never persisted
+     * (LA-33). An empty roster emits a zero-row file rather than refusing.
+     */
+    private void writeDemographics(HttpServletResponse response, EntityManager em,
+                                    Prospect prospect, String employerTpaCustomId)
+            throws IOException {
+        List<EmployerParticipant> roster = EmployerParticipantDAO.findByProspectId(em, prospect.getId());
+
+        String prefix = summitTpaIdPrefix();
+        List<String> lines = new java.util.ArrayList<>();
+        for (EmployerParticipant participant : roster) {
+            String participantTpaCustomId = prefix + "-P-" + participant.getId();
+            lines.add(String.join("|",
+                    employerTpaCustomId,
+                    participantTpaCustomId,
+                    sanitize(participant.getFirstName()),
+                    sanitize(participant.getLastName()),
+                    sanitize(participant.getAddressLine1()),
+                    sanitize(participant.getAddressLine2()),
+                    sanitize(participant.getCity()),
+                    sanitize(participant.getState()),
+                    sanitize(participant.getPostalCode()),
+                    sanitize(participant.getEmail()),
+                    participant.getEffectiveDate().format(SUMMIT_DATE)));
+        }
+
+        String filename = "demographics-" + sanitizeFilename(prospect.getName())
+                + "-" + prospect.getId() + "-" + LocalDate.now().format(SUMMIT_DATE) + ".txt";
+        writeFile(response, filename, lines);
+    }
+
+    /**
+     * The raw configured Summit TPA prefix, trimmed — matching
+     * {@link #resolveEmployerTpaCustomId(Prospect)}. Safe to call unvalidated wherever
+     * {@code employerTpaCustomId} was already successfully resolved in the same request, since
+     * that could not have happened unless this same config key held a valid value.
+     */
+    private static String summitTpaIdPrefix() {
+        return AppConfig.get("SUMMIT_TPA_ID_PREFIX").trim();
     }
 
     /**
@@ -297,12 +355,24 @@ public class SummitExportServlet extends HttpServlet {
     }
 
     private void writeFile(HttpServletResponse response, String filename, String line) throws IOException {
+        writeFile(response, filename, java.util.Collections.singletonList(line));
+    }
+
+    /**
+     * File 2 (Employer CDH Plan) is one file with one row per plan — this overload is the
+     * multi-row sink that lets a single response carry more than one plan's row.
+     */
+    private void writeFile(HttpServletResponse response, String filename, List<String> lines) throws IOException {
         response.setContentType("text/plain");
         response.setCharacterEncoding("UTF-8");
         response.setHeader("Content-Disposition", "attachment; filename=\"" + filename + "\"");
         PrintWriter out = response.getWriter();
-        out.print(line);
-        out.print("\n");
+        if (lines != null) {
+            for (String line : lines) {
+                out.print(line);
+                out.print("\n");
+            }
+        }
         out.flush();
     }
 

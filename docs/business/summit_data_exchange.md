@@ -129,6 +129,8 @@ Columns: `Employer TPA Custom ID`, `Participant TPA Custom ID`, `First Name`, `L
 ZZTEST001|ZZP001|Alice|Testcase|100 Main Street|Marinette|WI|54143|20270101
 ```
 
+This nine-column list is the element set of the **test** template only — the eleven-column list under "An optional field must never be the last column" above is the AMS template layout `SummitExportServlet` actually emits.
+
 **Neither SSN nor DOB is required.** The setup export carries no SSN, so the project's no-SSN boundary
 extends from proposal through enrollment without an exception.
 
