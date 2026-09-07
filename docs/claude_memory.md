@@ -10,7 +10,7 @@
 ## Current State
 - **Integration branch:** `refactor/modernize-architecture` — feature branches are cut from / merged back to it, so it trails the in-flight feature by only a few commits. `main` is ~345 commits stale and is **not** the working line.
 - **In-flight branch:** none — the agency-scope-resolver work merged to trunk 2026-07-15 (`e0a62d1`); branch deleted.
-- **Latest migration:** **V085** (`zip_county` crosswalk table + 2,894-row Texas data, Census 2020 ZCTA-county relationship file, T74 ZIP intake) — always re-check `ls docs/migrations/`; this line lags. ⚠️ **V084 and V085 are applied on Production**, shipped with release `v0.85.00` — confirmed **behaviourally**, not from a deployment log: a 2026-08-01 runtime walk showed ZIP `75482`→Hopkins, `75009`→Collin/Denton chooser, `90210`→correct miss, none of which is reachable against an empty table. Still unapplied on every local schema (V079 onward).
+- **Latest migration:** **V093** (`proposal_ichra_intake_section125` — two Section 125 structure intake inputs, `monthly_stipend_per_employee`/`alternative_coverage_monthly_cost`, S23-C) — corrected 2026-09-07 (session 25 close); this line had drifted to V085 (eight versions stale) with no session having corrected it since. Not yet applied to any environment (`docs/analysis/migration_tracker.md` shows all four environment columns unchecked for V090–V093). Always re-check `ls docs/migrations/` rather than trusting this line — it has drifted before and will again. ⚠️ **V084 and V085** (`zip_county` crosswalk, T74 ZIP intake) **are applied on Production**, shipped with release `v0.85.00` — confirmed **behaviourally**, not from a deployment log: a 2026-08-01 runtime walk showed ZIP `75482`→Hopkins, `75009`→Collin/Denton chooser, `90210`→correct miss, none of which is reachable against an empty table. V079 onward remains unapplied on every local schema.
 - **Latest release:** superseded the 2026-07-31/08-01 entries here entirely; see `docs/session_closeout_2026-08-01_session6.md` §1 for the full `v0.85.00`–`v0.85.06` ladder. ⚠️ **`v0.85.06` is built and pushed (commit `cabbe88`) but NOT DEPLOYED.** Production runs **`v0.85.05`**, which carries a live defect: the AGE_BAND repeater force-rendered a duplicate blank first row under specific conditions, silently doubling the submitted headcount with nothing on screen explaining it (**K3-b**, fixed in `v0.85.06`). `v0.85.06` is a WAR-only release — no migrations attached, since V084/V085 already shipped with `v0.85.00`. Release tags are typed in the GitHub web UI, never pushed from local git — a local `git tag` listing is stale by design; `git fetch --tags` first or read the Releases page.
 - **ICHRA/QSEHRA admin stream active — and now BUILT.** Origin: SWBD (Forrest) quoting ICHRA through zizzl, which gated
   carriers and charged a ~$660/mo admin minimum — unbundle logic gives the admin to SSA. Target rail is
@@ -142,6 +142,29 @@
 Static resources (`/images/`, `/css/`, `/js/`, `/fonts/`, etc.) are exempted before the auth check via `isStaticResource()`. Resolves open question #17.
 
 ## Recent Sessions
+- **Session 25 (2026-09-07, S25-A–E, no migration):** Corrected the two wrong data sources in
+  session 24's just-shipped `SummitExportServlet` (`cd5c7e0`) before its first real use. Employer
+  address and plan year had been read from `Prospect.address` and
+  `proposal_ichra_intake.plan_year` — both wrong. **`Prospect.address` never holds the employer's
+  address**: unset at five of seven `new Prospect()` creation sites, and agency-derived (via the
+  contact `Person`, set from the selling `Agency`) at the other two — the servlet as committed
+  would have hard-failed for most proposals and silently emitted the selling agency's address for
+  the rest. Re-sourced both fields to `applicationfieldvalue` (`address_street1/city/state/zip`,
+  `plan_year_start`/`plan_year_end`), following the established literal-`fieldKey` house pattern
+  (`ApplyForProposal`, `ReviewApplication`). Also added a configured installation prefix to
+  `Employer TPA Custom ID` (`SUMMIT_TPA_ID_PREFIX`, e.g. `SSA-42`) — a bare `Prospect.id` is only
+  unique within one AMS database, and the platform's multi-installation ambition means two
+  installations could someday feed the same Summit TPA account. `DEPLOYMENT_KEY` was considered and
+  rejected as the prefix source — it's a credential gating destructive operations
+  (`InitializeDataBase`, `ReSeedDb`, `SystemRegisterApi`), never a display value. Every missing
+  input now refuses by name rather than emitting a partial file; no silent fallbacks anywhere.
+  Registered **LA-31** (application answers as the export source) and **LA-32** (installation
+  prefix as configuration); narrowed **LA-29**/**LA-30** status lines only. **Code-verified only —
+  still never run, output never validated against Summit.** Blocked on three operational
+  prerequisites, none of them code: `SUMMIT_TPA_ID_PREFIX`/`SUMMIT_ICHRA_PLAN_TEMPLATE_ID` in
+  `ssa.properties` + a Tomcat restart, the `plan_year_eligibility` section (`s125_fsa` package)
+  attached to the LOS being sold, and a proposal with a submitted application. Commits: `fb8673d`
+  (the fix), `736f9ee` (close-out). Full detail: `docs/session_closeout_2026-09-07_session25.md`.
 - **Session 24 (2026-09-07, S24-C/D, docs only, no code, no migration):** First-ever integration
   spec for DataPath Summit's file-based Data Exchange, `docs/business/summit_data_exchange.md` —
   transport, template mechanics, the proven four-file import chain (Employer Demographic → Employer
