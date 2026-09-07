@@ -39,6 +39,25 @@
   </div>
 </div>
 
+<%-- Census Upload (V094) — this page renders only for a Setup (detailDetail25.jsp:5-21 switches
+     on the activity's class name), so the button cannot appear on a non-Setup activity by
+     construction. proposalId travels as a request parameter rather than through the session,
+     matching SummitExportServlet on the sibling surface of this flow: AmsDataLocal.currentActivity
+     is a single slot that a second tab rebinds, which on a roster insert would load named people
+     against the wrong employer. Hidden when the Setup has no application or proposal to key on. --%>
+<c:if test="${sessionScope.local.isPspAdmin()
+              and not empty sessionScope.local.getCurrentActivity().getActivity().getApplication()
+              and not empty sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal()}">
+  <div class="detail-section-card">
+    <div class="detail-section-body">
+      <a href="${pageContext.request.contextPath}/CensusUpload?proposalId=${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}"
+         class="btn btn-sm btn-outline-ssa w-100">
+        <i class="bi bi-people me-1"></i>Census Upload
+      </a>
+    </div>
+  </div>
+</c:if>
+
 <%-- Full list modal --%>
 <div class="modal fade" id="setupFullModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-lg modal-fullscreen-sm-down">

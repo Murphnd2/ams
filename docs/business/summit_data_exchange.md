@@ -55,6 +55,33 @@ Requirements are discovered by importing, never by reading the picker. Two prove
 employer mailing address block, and plan year information on an annual-renewal plan — both labelled
 Optional, both hard requirements.
 
+## ⚠️ An optional field must never be the last column
+
+**This rule governs files AMS emits to Summit and the custom Summit import templates that consume
+them. It has nothing to do with files employers upload into AMS**, where column order is irrelevant
+because every column is located by its header (see `CensusParseService`). The two directions are
+independent, and conflating them is the misreading this note exists to prevent.
+
+**Established operationally by Kevin** — a known defect in Summit's importer, observed in practice.
+Not from vendor documentation, and not verified by any automated test in this repository.
+
+> A column that may be empty cannot be the final mapped column in a template. The importer
+> mishandles a trailing empty value. Any nullable element must be ordered **before** a column
+> guaranteed to carry data on every row. This governs both the template's Body Format and the emitted
+> file, and the two must agree.
+
+The resulting column order for **file 4 (Demographics)**, which a later prompt implements:
+
+```
+Employer TPA Custom ID | Participant TPA Custom ID | First Name | Last Name |
+Mailing Address Line 1 | Mailing Address Line 2 | Mailing Address City |
+Mailing Address State | Mailing Address Zip Code | Email | Effective Date
+```
+
+Both nullable columns — `Mailing Address Line 2` and `Email` — sit ahead of `Effective Date`, which is
+always populated because it is a form field applied uniformly to every participant rather than a
+spreadsheet column the employer might leave blank.
+
 ## The proven chain
 
 Four files in strict order. Each depends on the one before.

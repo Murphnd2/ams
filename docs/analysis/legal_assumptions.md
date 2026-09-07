@@ -1586,6 +1586,108 @@ confirmation point as LA-29, since the two assumptions are verified together in 
 
 ---
 
+### LA-33 — The participant key is derived, not stored
+
+**Assumption.** The Summit `Participant TPA Custom ID` is built at emit time as
+`{SUMMIT_TPA_ID_PREFIX}-P-{employer_participant.id}` and is never persisted. `employer_participant`
+carries no column for it, deliberately.
+
+**Basis.** **Code and operational experience, not counsel.** This mirrors the employer key already
+established in LA-29 and LA-32: an installation-scoped prefix read from config at request time,
+combined with an AMS-generated surrogate id that is only unique within one AMS database. The `-P-`
+infix keeps the participant namespace disjoint from the employer namespace, so a prospect id and a
+participant id can never collide into the same Summit key.
+
+**Design choice.** `employer_participant.id` is `BIGINT AUTO_INCREMENT` and is the opaque immutable
+key. A stored copy of the derived value would be a second source of truth that can drift from the
+derivation — the emit path would then have two answers and no rule about which wins.
+
+**Risk if wrong.** If Summit turns out to require a participant key that is stable across a change of
+prefix, or one that carries employer-scoped rather than installation-scoped uniqueness, every
+participant already imported is keyed on a value AMS can no longer reproduce. The refusing direction
+is safe: an absent or invalid prefix causes the emit to refuse rather than fall back to a bare id.
+
+**Reversal cost.** Cheap before the first real import — nothing is keyed on it yet. **Effectively
+irreversible after** — changing an upsert key orphans every record keyed on the old value, the same
+failure mode LA-29 and LA-32 already establish for the employer key.
+
+**Confirm before.** The first real (non-test) Demographics file is imported into Summit — the same
+confirmation point as LA-29 and LA-32, since all three are verified together in one import.
+
+**Status.** Assumed, 2026-09-07.
+
+---
+
+### LA-34 — The roster refuses replacement rather than merging
+
+**Assumption.** Once a census is loaded for an employer, a second upload is refused. The operator
+must explicitly clear the roster first. AMS does not merge, diff, or upsert an incoming census against
+a loaded one.
+
+**Basis.** **Code and operational experience, not counsel.** Participant ids are AMS-generated and are
+not reissued: clearing and re-uploading assigns new ids to the same people. Under LA-33 the Summit key
+is derived from that id, so a silent re-key orphans every Summit participant record created from the
+previous load, and the orphaning is invisible until Summit is next reconciled. A refusal is
+recoverable — the operator sees it immediately and decides. A silent re-key is not.
+
+**Design choice.** `CensusUploadServlet` calls `EmployerParticipantDAO.countByProspectId` before
+parsing and refuses by name when it is non-zero. The clear action is POST-only, PSP-admin gated, and
+requires an explicit confirmation parameter; the confirmation text states the orphaning consequence
+in the operator's own terms rather than in schema terms.
+
+**Risk if wrong.** The cost is operator friction on a legitimate mid-year census correction — an
+employer adds three employees and the whole roster must be cleared and reloaded, reassigning ids for
+everyone including the unchanged majority. That is a real cost, and it is the reason a merge path is
+worth building once the reconciliation behaviour is understood.
+
+**Reversal cost.** Cheap. A merge or incremental-add path can be added later with no schema change —
+the table already has a surrogate key and no name or address uniqueness constraint, so appending
+participants to an existing roster is a pure code change.
+
+**Confirm before.** The first employer needs a mid-year census correction after an emission. That is
+the point at which the friction becomes real and the merge semantics have to be decided.
+
+**Status.** Assumed, 2026-09-07.
+
+---
+
+### LA-35 — Employee email is collected; SSN, date of birth and compensation never are
+
+**Assumption.** `employer_participant` collects email when the employer's file supplies it, and never
+collects social security number, date of birth, or compensation — even when the employer's census
+contains all three, as employer censuses routinely do.
+
+**Basis.** **Code and operational experience, not counsel.** Summit's Demographics import requires
+none of the four. Email is routinely present in employer files, is not a sensitive identifier in the
+way the other three are, and is the identifier a future employee-facing portal or notice-delivery
+surface would need. The other three would be collected only because the employer's spreadsheet
+happened to carry them, which is not a reason.
+
+**Design choice.** The exclusion lives at the **parser**, not only at the schema. `CensusParseService`
+recognises columns by header against a fixed synonym set and drops every unrecognised column silently;
+SSN, DOB and compensation headers match nothing, so those values are never mapped, never held in a
+parsed row, and never reach the persistence layer. A schema-only exclusion would still pull the values
+into process memory and into any future logging or error message that echoed a row.
+
+**Risk if wrong.** If Summit or a downstream product later requires date of birth — for age-banded
+enrollment, say — the roster cannot supply it and every employer must be asked for a second file. That
+is a real re-work cost, and it is the deliberate trade: the cost falls on the direction that can be
+paid later, not on the direction that cannot be undone.
+
+**Reversal cost.** Asymmetric, which is the whole point. **Dropping a nullable column is cheap;
+collecting personal data is the direction that does not reverse** — once SSNs have been written to a
+production table, backups, and any log that echoed them, "we stopped collecting it" does not undo the
+collection. That asymmetry is why the three are excluded at the parser rather than merely left out of
+the schema.
+
+**Confirm before.** Any change that would add SSN, date of birth, or compensation to this roster —
+which is a new assumption requiring its own entry and a fresh look at what the data protection posture
+then has to be, not an edit to this one.
+
+**Status.** Assumed, 2026-09-07.
+
+---
+
 ## Candidates considered and not adopted
 
 Recorded so the next reader knows they were seen and declined, rather than missed. **None of these
