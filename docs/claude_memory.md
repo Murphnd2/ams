@@ -10,7 +10,7 @@
 ## Current State
 - **Integration branch:** `refactor/modernize-architecture` — feature branches are cut from / merged back to it, so it trails the in-flight feature by only a few commits. `main` is ~345 commits stale and is **not** the working line.
 - **In-flight branch:** none — the agency-scope-resolver work merged to trunk 2026-07-15 (`e0a62d1`); branch deleted.
-- **Latest migration:** **V094** (`employer_participant` — the AMS-owned participant roster, session 26). Updated 2026-09-07 (session 26 close); the line read V093 before that, and V085 before session 25 corrected it. **V092, V093 and V094 are unapplied in Production, Demo, BPO and Master.** V092 and V093 were applied to local `beta_ssa` in session 26 (S26-E) and **both applied cleanly with no errors** — useful information for the production deployment. ⚠️ **`schema_info` reflects apply order, not the highest version applied**: locally V093 ran after V094 and won the `CREATE OR REPLACE VIEW`, so the view understates the schema. Production applies in version order via `update.sh`, so the exposure is to out-of-order or partial applies only. Always re-check `ls docs/migrations/` rather than trusting this line — it has drifted before and will again. ⚠️ **V084 and V085** (`zip_county` crosswalk, T74 ZIP intake) **are applied on Production**, shipped with release `v0.85.00` — confirmed **behaviourally**, not from a deployment log: a 2026-08-01 runtime walk showed ZIP `75482`→Hopkins, `75009`→Collin/Denton chooser, `90210`→correct miss, none of which is reachable against an empty table. V079 onward remains unapplied on every local schema.
+- **Latest migration:** **V094** (`employer_participant` — the AMS-owned participant roster, session 26). Updated 2026-09-07 (session 26 close); the line read V093 before that, and V085 before session 25 corrected it. ⭐ **V092, V093 and V094 are now APPLIED to Production** via release **`v0.94.00`** (session 27, 2026-09-08) — Kevin's report, corroborated for V094 by a production walk of `/SummitExport?type=demographics` returning a valid empty file, which requires the table to exist. **Production is no longer behind on any migration in this tree.** Demo, BPO and Master are **N/A** for all three — none runs the ICHRA/HSA/roster code they serve. ⚠️ **The local `beta_ssa` state is disputed and unsettled:** `migration_tracker.md` reads unapplied while the note below (and session 26's own record) says V092/V093 applied cleanly locally in S26-E. **Session 27 ran no database query and did not resolve it — settle with a `schema_version` query before trusting either.** The pre-session-27 text of this line, retained because it is what the sentence below still assumes: **V092, V093 and V094 were unapplied in Production, Demo, BPO and Master.** V092 and V093 were applied to local `beta_ssa` in session 26 (S26-E) and **both applied cleanly with no errors** — useful information for the production deployment. ⚠️ **`schema_info` reflects apply order, not the highest version applied**: locally V093 ran after V094 and won the `CREATE OR REPLACE VIEW`, so the view understates the schema. Production applies in version order via `update.sh`, so the exposure is to out-of-order or partial applies only. Always re-check `ls docs/migrations/` rather than trusting this line — it has drifted before and will again. ⚠️ **V084 and V085** (`zip_county` crosswalk, T74 ZIP intake) **are applied on Production**, shipped with release `v0.85.00` — confirmed **behaviourally**, not from a deployment log: a 2026-08-01 runtime walk showed ZIP `75482`→Hopkins, `75009`→Collin/Denton chooser, `90210`→correct miss, none of which is reachable against an empty table. V079 onward remains unapplied on every local schema.
 - **Latest release:** superseded the 2026-07-31/08-01 entries here entirely; see `docs/session_closeout_2026-08-01_session6.md` §1 for the full `v0.85.00`–`v0.85.06` ladder. ⚠️ **`v0.85.06` is built and pushed (commit `cabbe88`) but NOT DEPLOYED.** Production runs **`v0.85.05`**, which carries a live defect: the AGE_BAND repeater force-rendered a duplicate blank first row under specific conditions, silently doubling the submitted headcount with nothing on screen explaining it (**K3-b**, fixed in `v0.85.06`). `v0.85.06` is a WAR-only release — no migrations attached, since V084/V085 already shipped with `v0.85.00`. Release tags are typed in the GitHub web UI, never pushed from local git — a local `git tag` listing is stale by design; `git fetch --tags` first or read the Releases page.
 - **ICHRA/QSEHRA admin stream active — and now BUILT.** Origin: SWBD (Forrest) quoting ICHRA through zizzl, which gated
   carriers and charged a ~$660/mo admin minimum — unbundle logic gives the admin to SSA. Target rail is
@@ -142,6 +142,35 @@
 Static resources (`/images/`, `/css/`, `/js/`, `/fonts/`, etc.) are exempted before the auth check via `isStaticResource()`. Resolves open question #17.
 
 ## Recent Sessions
+- **Session 27 (2026-09-07/08, S27-A–H, no migration):** ⭐ **`SummitExportServlet` executed for the
+  first time in its existence.** It had needed `SUMMIT_TPA_ID_PREFIX` and
+  `SUMMIT_ICHRA_PLAN_TEMPLATE_ID` in `ssa.properties`, a Tomcat restart, and `plan_year_eligibility`
+  on the LOS being sold — never all three at once until now. **All three emitters are
+  runtime-verified** on production (`v0.94.00`) and local: file 1 six fields with employer key
+  `158-136748`, file 2 eight fields with template `1030` and a matching employer key, **file 4 38 rows**
+  (`158-P-39`–`158-P-76`, contiguous) with empty address-2 delimited not dropped, email populated
+  throughout, and **Red Creek's duplicated address emitted untouched** as specified. Empty-roster
+  behaviour confirmed on production. ⚠️ **Generation is proven; acceptance is not — no file has been
+  imported into Summit**, and the Summit-side Demographics template still carries nine columns, not
+  eleven. Built: the `List<String>` `writeFile` overload (S27-A), **file 4 Demographics** (S27-B, after
+  a **correct hard stop** — the spec carried two different column lists and the run refused to pick),
+  three PSP-admin-gated links on the Setup screen (S27-C). **`SUMMIT_TPA_ID_PREFIX` = `158`**, from the
+  DataPath-assigned TPA ID — chosen for uniqueness, not routing, and **effectively irreversible now
+  that a real employer key has been emitted**. Two read-only runs (S27-D/E) established that **the
+  setup checklist keys on `ServiceItem`, not LOS** — reached from `LOS`, `Enhancement` *and*
+  `AddSetupModule25` — while **renewal keys only on `Benefit → PlanType → ServiceItem`**, so two
+  employers holding the same plan types get byte-identical renewal tasks however differently they were
+  sold. **D40 amended:** the standard `ICHRA` type is reused with the `ICHRA+` template (1030); the
+  `Ins125+` split stands and carries the load. Summit objects created: types `Ins125+`, `I_NOTICE`,
+  `Q_NOTICE`; templates 1030–1033. **`125 PI Elections` discovered** — files 6 and 7 of the setup
+  sequence were written against HRA Enrollment, which is HRA-only, and are corrected. **Nine defects
+  filed, none fixed:** T179–T184 (S27-D/E code reading) and **T185–T187** (the walk: `Import Plan ID`
+  embeds the plan year in an upsert key so renewal would create a second plan; a static year in the
+  plan name; mojibake in the three link labels). ⚠️ **New and larger than it looks: AMS cannot know
+  what Summit already holds** — Red Creek's census exists in Summit under pre-existing keys, and AMS
+  derives `158-P-{id}` from its own AUTO_INCREMENT, so importing file 4 for **any employer already in
+  Summit** would create duplicates rather than update. Recorded, not solved. Commits `8bcde0e`,
+  `ceb8d7e`, `5e470c6`, `2cb6077`. Detail: `docs/session_closeout_2026-09-08_session27.md`.
 - **Session 26 (2026-09-07, S26-A–H, migration V094):** Built the **AMS-owned participant roster**
   that sessions 24–25 were blocked on — `employer_participant` (**V094**) plus a census upload at
   the Setup screen. Two read-only Phase A runs came first and **falsified three claims carried
