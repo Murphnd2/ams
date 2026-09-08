@@ -11,10 +11,14 @@ import jakarta.servlet.http.HttpServletResponse;
 import net.superiorstate.ams.AppConfig;
 import net.superiorstate.ams.data.dao.EmployerParticipantDAO;
 import net.superiorstate.ams.data.resolver.IchraAccessResolver;
+import net.superiorstate.ams.data.resolver.SummitPlanTemplateResolver;
+import net.superiorstate.ams.data.resolver.SummitPlanTemplateResolver.PlanTemplate;
+import net.superiorstate.ams.model.activity.checklist.sequences.support.ServiceItem;
 import net.superiorstate.ams.model.market.EmployerParticipant;
 import net.superiorstate.ams.model.sales.agency.Proposal;
 import net.superiorstate.ams.model.sales.agency.Prospect;
 import net.superiorstate.ams.model.sales.application.ApplicationFieldValue;
+import net.superiorstate.ams.model.sales.application.ApplicationModule;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -23,6 +27,7 @@ import java.io.PrintWriter;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -57,6 +62,16 @@ public class SummitExportServlet extends HttpServlet {
     // it is not, not a defect.
     private static final String FIELD_PLAN_YEAR_START = "plan_year_start";
     private static final String FIELD_PLAN_YEAR_END = "plan_year_end";
+
+    // S28-B/S28-D -- the key segment and label the legacy single-row fallback synthesises when
+    // SUMMIT_PLAN_TEMPLATES is unset. Both were literals in the pre-S28-B row builder; the
+    // constant exists so the fallback's byte-for-byte equivalence to v0.94.00 is visible in one
+    // place rather than inferred from separate string literals.
+    private static final String LEGACY_ICHRA_SEGMENT = "ICHRA";
+    // The synthetic fallback template's service item id. Never matched against anything by
+    // construction: the legacy branch runs only when the configured list is empty, so no
+    // elected-service comparison is ever performed on this value.
+    private static final int LEGACY_UNMATCHED_SERVICE_ITEM_ID = 0;
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
@@ -134,7 +149,7 @@ public class SummitExportServlet extends HttpServlet {
             if (type.equals("employer")) {
                 writeEmployerDemographic(response, prospect, answers, employerTpaCustomId);
             } else if (type.equals("cdhplan")) {
-                writeEmployerCdhPlan(response, prospect, answers, employerTpaCustomId);
+                writeEmployerCdhPlan(response, em, proposalId, prospect, answers, employerTpaCustomId);
             } else {
                 writeDemographics(response, em, prospect, employerTpaCustomId);
             }
@@ -180,6 +195,47 @@ public class SummitExportServlet extends HttpServlet {
             valueMap.put(fv.getApplicationField().getFieldKey(), fv.getFieldValue());
         }
         return valueMap;
+    }
+
+    /**
+     * S28-B/S28-D — the services this proposal's employer actually elected, as an ordered map
+     * of {@code ServiceItem.id} to {@code ServiceItem.description}.
+     * <p>
+     * {@code ApplicationModule} is the join AMS records the sale on: its composite PK is
+     * application × {@code ServiceItem}, and both {@code ApplyForProposal} and
+     * {@code CreateSetup25} write it by collapsing each elected {@code LOS} and
+     * {@code Enhancement} onto that entity's own {@code serviceItem}. So this one query covers
+     * all three ways a service reaches a sale without caring which one it came through — the
+     * same keying S27-D established for the setup checklist.
+     * <p>
+     * ⚠️ <b>Matching is on the id, never on {@code ServiceItem.code}</b> — that column is
+     * unreachable from the Service Manager UI (S28-C: {@code ServiceManagerAction} never calls
+     * {@code setCode} and the JSP has no such field), so it is null on every real installation
+     * and cannot key anything. The <b>description</b> is carried alongside purely so the
+     * mismatch error page can name each service in a way a human recognises; it is never
+     * matched on.
+     * <p>
+     * Returns the entity rather than projecting a scalar, matching the two live precedents for
+     * this filter — {@code ApplicationTaskDAO.getModulesForApplication} and
+     * {@code ActivityDAO.moduleExists}. Rows with no {@code ServiceItem} are skipped; a null
+     * description becomes an empty string rather than dropping the row, since the row still
+     * matters for matching. Empty when the proposal has no modules.
+     */
+    private Map<Integer, String> loadElectedServiceItems(EntityManager em, long proposalId) {
+        Query q = em.createQuery(
+                "SELECT am FROM ApplicationModule am " +
+                "WHERE am.application.proposal.id = :pid");
+        q.setParameter("pid", proposalId);
+        @SuppressWarnings("unchecked")
+        List<ApplicationModule> modules = (List<ApplicationModule>) q.getResultList();
+        Map<Integer, String> elected = new LinkedHashMap<>();
+        for (ApplicationModule module : modules) {
+            ServiceItem serviceItem = module.getServiceItem();
+            if (serviceItem == null) continue;
+            String description = serviceItem.getDescription();
+            elected.put(serviceItem.getId(), description == null ? "" : description);
+        }
+        return elected;
     }
 
     /**
@@ -236,9 +292,34 @@ public class SummitExportServlet extends HttpServlet {
      * file (S25-C, LA-29) — it is the join between the two files, so a mismatch would break
      * the import. The plan template ID comes from config, resolved here at request time so it
      * is never baked into the WAR.
+     * <p>
+     * <b>S28-B/S28-D — one file, one row per elected plan.</b> {@code SUMMIT_PLAN_TEMPLATES}
+     * maps {@code ServiceItem.id} to a Summit plan template
+     * ({@link SummitPlanTemplateResolver}); rows are emitted in config order, for whichever of
+     * those ids the employer actually elected. The id — not {@code ServiceItem.code}, which is
+     * unreachable from the Service Manager UI and null on real installations (S28-C) — is the
+     * key. <b>Plan year is shared by every row</b> — it
+     * comes from the two application answers below, and {@code ApplicationFieldValue} is keyed
+     * on (application, fieldKey) with no plan or LOS dimension, so one sale structurally cannot
+     * carry two plan years.
+     * <p>
+     * <b>When {@code SUMMIT_PLAN_TEMPLATES} is unset the legacy path runs</b>: one ICHRA row
+     * from {@code SUMMIT_ICHRA_PLAN_TEMPLATE_ID}, byte-identical to what production emitted at
+     * {@code v0.94.00}. That is the deliberate fallback, not a degraded mode — an installation
+     * that has not configured the new key keeps exactly the behaviour it had.
+     * <p>
+     * ⚠️ <b>The plan year stays inside {@code Import Plan ID}</b>, which is an upsert key
+     * (T185). Whether Summit models one plan across successive years or one plan per year is
+     * unproven, and nothing has been imported yet, so the reversal cost is zero today and
+     * non-zero the moment a file lands. Keeping the year is the recoverable error — a spare
+     * plan to delete; dropping it is the destructive one — a renewal overwriting the prior
+     * year's plan. ⚠️ <b>The plan name still carries the year</b> (T186), but now derives from
+     * the configured {@code label}, so it follows whatever T185 settles rather than
+     * pre-committing it.
      */
-    private void writeEmployerCdhPlan(HttpServletResponse response, Prospect prospect,
-                                       Map<String, String> answers, String employerTpaCustomId)
+    private void writeEmployerCdhPlan(HttpServletResponse response, EntityManager em, long proposalId,
+                                       Prospect prospect, Map<String, String> answers,
+                                       String employerTpaCustomId)
             throws IOException {
         LocalDate planYearStart = parseAnswerDate(answers.get(FIELD_PLAN_YEAR_START));
         if (planYearStart == null) {
@@ -257,35 +338,106 @@ public class SummitExportServlet extends HttpServlet {
             return;
         }
 
-        Integer templateId = parsePositiveInt(AppConfig.get("SUMMIT_ICHRA_PLAN_TEMPLATE_ID"));
-        if (templateId == null) {
-            log.error("[SUMMIT-EXPORT] SUMMIT_ICHRA_PLAN_TEMPLATE_ID is absent or non-numeric on this installation");
-            writePlainError(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
-                    "Cannot generate Employer CDH Plan file: this installation has no valid"
-                            + " SUMMIT_ICHRA_PLAN_TEMPLATE_ID configured. Set it in ssa.properties"
-                            + " to the Summit-assigned Plan Template ID before generating this file.");
-            return;
+        List<PlanTemplate> configured = SummitPlanTemplateResolver.configured();
+        List<PlanTemplate> emit;
+        if (configured.isEmpty()) {
+            // LEGACY PATH -- byte-identical to what production emitted at v0.94.00.
+            Integer templateId = parsePositiveInt(AppConfig.get("SUMMIT_ICHRA_PLAN_TEMPLATE_ID"));
+            if (templateId == null) {
+                log.error("[SUMMIT-EXPORT] SUMMIT_ICHRA_PLAN_TEMPLATE_ID is absent or non-numeric on this installation");
+                writePlainError(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+                        "Cannot generate Employer CDH Plan file: this installation has no valid"
+                                + " SUMMIT_ICHRA_PLAN_TEMPLATE_ID configured. Set it in ssa.properties"
+                                + " to the Summit-assigned Plan Template ID before generating this file.");
+                return;
+            }
+            log.warn("[SUMMIT-EXPORT] {} is unset, emitting a single ICHRA row from"
+                            + " SUMMIT_ICHRA_PLAN_TEMPLATE_ID ({}); only the ICHRA plan will be"
+                            + " created in Summit",
+                    SummitPlanTemplateResolver.CONFIG_KEY, templateId);
+            emit = java.util.Collections.singletonList(new PlanTemplate(
+                    LEGACY_UNMATCHED_SERVICE_ITEM_ID, templateId,
+                    LEGACY_ICHRA_SEGMENT, LEGACY_ICHRA_SEGMENT));
+        } else {
+            Map<Integer, String> electedServices = loadElectedServiceItems(em, proposalId);
+            emit = new ArrayList<>();
+            for (PlanTemplate template : configured) {
+                if (electedServices.containsKey(template.getServiceItemId())) {
+                    emit.add(template);
+                }
+            }
+            if (emit.isEmpty()) {
+                // This error page is the ONLY way an operator can discover a ServiceItem id
+                // without running SQL, which this project does not ask of anyone -- so it names
+                // every elected service as "id = description", not just the ids. Configuring
+                // SUMMIT_PLAN_TEMPLATES for a new installation starts by reading this page.
+                StringBuilder electedList = new StringBuilder();
+                for (Map.Entry<Integer, String> service : electedServices.entrySet()) {
+                    if (electedList.length() > 0) electedList.append(", ");
+                    electedList.append(service.getKey()).append("=").append(service.getValue());
+                }
+                StringBuilder configuredIds = new StringBuilder();
+                for (PlanTemplate template : configured) {
+                    if (configuredIds.length() > 0) configuredIds.append(", ");
+                    configuredIds.append(template.getServiceItemId());
+                }
+                writePlainError(response, HttpServletResponse.SC_BAD_REQUEST,
+                        "Cannot generate Employer CDH Plan file: none of the services elected on"
+                                + " prospect " + prospect.getId() + "'s application map to a"
+                                + " configured Summit plan template. Elected services (ServiceItem"
+                                + " id = description): "
+                                + (electedServices.isEmpty() ? "(none)" : electedList.toString())
+                                + ". Ids configured in " + SummitPlanTemplateResolver.CONFIG_KEY
+                                + ": " + configuredIds + ". Configure "
+                                + SummitPlanTemplateResolver.CONFIG_KEY + " in ssa.properties"
+                                + " using the ids above, then restart Tomcat.");
+                return;
+            }
+            List<String> matchedTemplateIds = new ArrayList<>();
+            for (PlanTemplate template : emit) {
+                matchedTemplateIds.add(template.getServiceItemId() + "=" + template.getTemplateId());
+            }
+            log.info("[SUMMIT-EXPORT] proposal {} elected ServiceItem ids {} matched plan templates"
+                            + " (serviceItemId=templateId) {}",
+                    proposalId, electedServices.keySet(), matchedTemplateIds);
         }
 
         String planYearBegin = planYearStart.format(SUMMIT_DATE);
         String planYearEndStr = planYearEnd.format(SUMMIT_DATE);
         int planYear = planYearStart.getYear();
-        String importPlanId = employerTpaCustomId + "-ICHRA-" + planYear;
 
-        String line = String.join("|",
-                String.valueOf(templateId),
-                sanitize("ICHRA " + planYear),
-                sanitize(importPlanId),
-                sanitize("ICHRA Plan " + planYear + " for " + prospect.getName()),
-                planYearBegin,
-                employerTpaCustomId,
-                planYearBegin,
-                planYearEndStr);
+        List<String> lines = new ArrayList<>();
+        for (PlanTemplate template : emit) {
+            lines.add(buildCdhPlanRow(template, employerTpaCustomId, prospect.getName(),
+                    planYear, planYearBegin, planYearEndStr));
+        }
 
         String filename = "employer-cdh-plan-" + sanitizeFilename(prospect.getName())
                 + "-" + prospect.getId() + "-" + LocalDate.now().format(SUMMIT_DATE) + ".txt";
-        List<String> lines = java.util.Collections.singletonList(line);
         writeFile(response, filename, lines);
+    }
+
+    /**
+     * One Employer CDH Plan row — the eight columns in spec order
+     * (docs/business/summit_data_exchange.md §2). Field order and {@code sanitize()} usage are
+     * unchanged from the pre-S28-B single-row builder; the only difference is that the template
+     * id, plan name, import plan id and description now come from the configured
+     * {@link PlanTemplate} instead of being hardcoded to ICHRA.
+     * <p>
+     * {@code Effective Date} (column 5) and {@code Plan Year Begin} (column 7) are deliberately
+     * the same value, as they were before — the plan takes effect when its plan year opens.
+     */
+    private String buildCdhPlanRow(PlanTemplate t, String employerTpaCustomId, String prospectName,
+                                   int planYear, String planYearBegin, String planYearEnd) {
+        return String.join("|",
+                String.valueOf(t.getTemplateId()),
+                sanitize(t.getLabel() + " " + planYear),
+                sanitize(employerTpaCustomId + "-" + t.getKeySegment() + "-" + planYear),
+                sanitize(t.getLabel() + " Plan " + planYear + " for " + prospectName),
+                planYearBegin,
+                employerTpaCustomId,
+                planYearBegin,
+                planYearEnd);
     }
 
     /**
