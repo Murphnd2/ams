@@ -24,7 +24,12 @@
   coverage verification today. See `docs/business/healthsherpa.md` for the full evaluation, carrier
   matrix, and open questions.
 - **Session count:** 88 numbered sessions logged in `session_history_archive.md`, plus dated (unnumbered) entries — **July 15, 2026** (Agent Pipeline sidebar proposals + create-proposal hand-off, v0.71.08), **July 31, 2026 × 4** (the ICHRA sequence; sessions 2, 3 and 4 have close-out documents in `docs/`), and **August 1, 2026 × 2** (session 5 — ICHRA made to actually work for an agent, close-out `docs/session_closeout_2026-08-01_session5.md`; session 6 — ZIP intake + the illustration UX overhaul, close-out `docs/session_closeout_2026-08-01_session6.md`). ⚠️ **Write-up debts outstanding:** the agency/white-label epic (V068–V071, `AgencyScopeResolver`), the four 2026-07-31 ICHRA sessions, and now both 2026-08-01 sessions are all still missing from `session_history_archive.md`.
-- **Build tool:** Maven wrapper `./mvnw compile` (no system `mvn` on PATH)
+- **Build tool:** Maven wrapper `./mvnw compile` (no system `mvn` on PATH). ⚠️ **`.\mvnw.cmd` is
+  PowerShell syntax and produces a FALSE GREEN through a Bash tool** — Git Bash prints
+  `.mvnw.cmd: command not found` and the pipeline still **exits 0**, which reads as a passing build to
+  anyone skimming. This happened once in session 28. **Invoke through PowerShell, and confirm the
+  build by checking that the `.class` files under `target/classes` are freshly timestamped — not by
+  trusting the exit code.**
 - Per-environment apply status is tracked authoritatively in `docs/analysis/migration_tracker.md`.
 - Master snapshot v9 taken 2026-03-20 (V057)
 - ⭐ **Active epic (2026-07-31): ICHRA.** The 13-item sequence in `docs/swbd_ichra_build_plan.md` §3 is **complete** and all six structural decisions (S1–S6) are resolved. Shipped: gated front door + `IchraAccessResolver` + AGE_BAND mode (`0b4711b`) → on-exchange LCSP (`ba023bd`) → affordability threshold (`4556ecd`) → proposal hand-off + LOS-scoped section, V079 (`e5b2009`/`b0e524b`) → design advisor, V080 (`e25ee4e`) → setup checklist content (`4775252`) → group-to-ICHRA conversion (`7db188d`) → opportunity attribution, V081 (`a71b79d`) + the drawer console read (`619461f`). **Session 4 (same day) closed the design advisor's remaining gap** — it shipped in V080 as PSP-admin-only with no UI entry point at all; session 4 gave it one (hub card, T55/T55a), opened the chatbot entry point to ICHRA-entitled agency users (T58, `navbar25.jsp`), opened the skill itself to non-admin callers (T57, **V082**), verified the citation path survives that (matched skills consult no KB — citations are inline `Source:` lines in the `system_prompt`, so leaving the `ichra_design` KB `ADMIN_ONLY` costs nothing), and fixed T52 (matched skills now honour their configured `model`/`max_tokens`, so the advisor runs Sonnet/2048 as V080 intended rather than the hardcoded Haiku/1024 default). **What remains is Kevin's, not a build queue:** the next release (now needs V079–**V082**, not just through V081), the ICHRA/QSEHRA LOS reference rows, the item-10 checklist through the Sequence Builder, D-86/D-87, production allow-listing, the two unsent SWBD emails, and **the one runtime check nobody has run** — ask the design advisor the dental/QSEHRA question from a role-2 agent login post-deploy and confirm the reply cites a source. Close-outs: `docs/session_closeout_2026-07-31_session{2,3,4}.md`. ✅ **That runtime check ran and passed 2026-08-01 (session 5)** — a role-2 agent got a substantively correct answer citing `domain_and_compliance_rules.md` section 5, the first ICHRA capability verified end to end for a non-PSP user. It took three fixes to get there: entitlement resolution (`a5c0d8d`), a retired model (`2b79452`/V083), and an admin write path for the entitlement flag (`0852c2f`/T61). **What remains before the §1 demo is Kevin's and is configuration, not code:** the ICHRA/QSEHRA reference rows (priced `ServiceModule` → `RateTable` with an `agencyrates` assignment), the item-10 checklist through the Sequence Builder, and the two still-unsent SWBD emails (O22, "three groups renewing next quarter"). See `docs/session_closeout_2026-08-01_session5.md`.
@@ -116,6 +121,42 @@
 - **EclipseLink L2 cache eviction** required after entity mutations
 - **EclipseLink nested JOIN FETCH** silently dropped — use separate queries
 - **EntityManager must stay open** during JSP forward — move forward() inside try block
+- ⭐ **`ServiceItem.code` is an UNREACHABLE column — never key anything on it** (S28-C, 2026-09-08).
+  `ServiceManagerAction` creates every Setup-category `ServiceItem` (LOS path `:67-81`, Enhancement
+  path `:154-168`) **without ever calling `setCode`**; the string `code` does not appear in that file
+  at all, and `serviceManager25.jsp` has no such input. The `DatabaseInitializer` baseline that would
+  seed coded items is **commented out (lines 476–510)**. Only `DemoDataSeeder` and the inbound import
+  path write it, and the import writes it **only on Renewal-category items**. **On any non-demo
+  installation it is null everywhere.** S28-B built a whole feature on it before a browser walk
+  returned `(none)`; S28-D re-keyed on `ServiceItem.id`. Backlog **T189**. **The general lesson: a
+  column existing is not evidence anything can set it — check who calls the setter, not whether the
+  field is there.**
+- ⭐ **`DatabaseInitializer` seeds NO LOS, NO Enhancement and NO Setup `ServiceItem`** — that block is
+  inside the same commented-out `/* */` at lines 476–510. A fresh non-demo install has an **empty
+  service catalogue**; everything is Service-Manager-authored (or `DemoDataSeeder`-authored on demo
+  installs). Do not reason from "the baseline seeds X."
+- **`ApplicationModule` is the ONLY module collection** — there is no second one on `Setup` or on the
+  activity. The Setup screen's "Services To Implement" chips iterate
+  `Setup.getApplication().getApplicationModuleList()` (`detailSetup25.jsp:29`), and `ActivityDAO.addModule`
+  **is** the `ApplicationModule` writer shared by `ApplyForProposal` and `CreateSetup25`, not a rival
+  path. Elected-service traversal: `ApplicationModule → Application → Proposal.id`, filtered as
+  `am.application.proposal.id = :pid` — the live precedents are `ApplicationTaskDAO.getModulesForApplication:20`
+  and `ActivityDAO.moduleExists:25`. Both **return the entity**; prefer that over projecting a scalar
+  through the `@MapsId` association.
+- **Chips render `ServiceItem.description`, which is a copy of the LOS/Enhancement `shortText` taken at
+  creation and never re-propagated on rename** (`ServiceManagerAction.createLos:70` vs `editLos:114-128`).
+  Backlog **T190**.
+- **`plan_year_eligibility` is NOT a table, entity or migration** (S28-A/S28-F, 2026-09-08). It is a
+  **`templateKey` on an `ApplicationSection` row**, seeded from
+  `src/main/resources/packages/s125_fsa.json` by `PackageLoader` and attached to a LOS through the
+  **`applicationsectionlos`** join table. No migration defines it. This changes **who can change it** —
+  an admin re-running a package loader, not a migration. It carries `plan_year_start`/`plan_year_end`,
+  which Summit file 2 reads.
+- **`ApplicationFieldValue` is keyed on (application, fieldKey) only** — no LOS, section or module
+  dimension, and `ApplicationField`'s PK **is** the `fieldKey` string. So an application holds **at
+  most one value per field key**, and a `"scope": "LOS"` section governs whether a section *renders*,
+  never how many answers it can hold. Consequence: one sale structurally **cannot** carry two plan
+  years.
 
 ## Logging
 
@@ -142,6 +183,34 @@
 Static resources (`/images/`, `/css/`, `/js/`, `/fonts/`, etc.) are exempted before the auth check via `isStaticResource()`. Resolves open question #17.
 
 ## Recent Sessions
+- **Session 28 (2026-09-08, S28-A–F, no migration, no SQL):** ⭐ **Summit file 2 emits one row per
+  plan the employer elected**, config-driven and **runtime-verified in a browser walk** on local dev
+  against Red Creek Solutions. Commit **`a17f32d`**. **New key `SUMMIT_PLAN_TEMPLATES`** in
+  `ssa.properties`, read by the new `SummitPlanTemplateResolver`: comma-separated
+  `<serviceItemId>:<templateId>:<keySegment>[:<label>]` entries, **config order is emit order**,
+  tolerant parsing (a malformed entry costs one plan row, never the export), **per-installation**.
+  ⭐ **Discover the ids from the mismatch error page** — generate file 2 with the key unset or wrong
+  and the 400 lists every elected service as `id=description`; there is no other non-SQL route, which
+  is why that page is a design decision and not a diagnostic. Deployment item **D-90**. Verified live:
+  key unset reproduces the `v0.94.00` row byte for byte; a mismatch listed six elected services; two
+  configured entries emitted two rows in config order with distinct `Import Plan ID` segments and a
+  shared employer key and plan year. ⚠️ **Template `1030` was deliberately wrong on both test rows** —
+  the test was about row count, ordering and key composition, and nothing has been imported so it cost
+  nothing. ⚠️ **Still no file imported into Summit** — generation proven, acceptance not, and file 2
+  now emits a shape nothing has ever accepted. **Keyed on `ServiceItem.id`, not `.code`** — see the
+  gotcha above; that finding (**T189**) is the session's most reusable output. **Three defects filed:**
+  **T188** (the Setup chip panel is scroll-clipped at 120px and showed four of six elected services,
+  which **misled S28-C's own investigation**), T189, **T190** (LOS rename leaves `ServiceItem.description`
+  stale). ⭐ **Corrections:** the session 27 close-out was **wrong that the multi-row `writeFile` sink
+  had no consumer** — `writeEmployerCdhPlan` already called it via `singletonList`, so the plumbing was
+  always done and the missing piece was the upstream mapping; and S28-A's "free PSP-entered string"
+  description of `ServiceItem.code` was false and **rode into a shipped javadoc before S28-C caught
+  it**. `summit_data_exchange.md` corrected: the employer key is `{SUMMIT_TPA_ID_PREFIX}-{Prospect.id}`,
+  not a bare `Prospect.id`. **T185 stands** (plan year stays in `Import Plan ID`; reversal cost is zero
+  only until the first import). **Highest migration remains V094; `migration_tracker.md` untouched
+  because nothing in it changed** — including the disputed local `beta_ssa` cells for V092–V094, which
+  this session **also did not settle**, no database having been queried. Detail:
+  `docs/session_closeout_2026-09-08_session28.md`.
 - **Session 27 (2026-09-07/08, S27-A–H, no migration):** ⭐ **`SummitExportServlet` executed for the
   first time in its existence.** It had needed `SUMMIT_TPA_ID_PREFIX` and
   `SUMMIT_ICHRA_PLAN_TEMPLATE_ID` in `ssa.properties`, a Tomcat restart, and `plan_year_eligibility`

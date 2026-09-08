@@ -392,10 +392,17 @@ on data from a third party.
 Everything here is derivable from the employer's application and fires at implementation as one
 sequence.
 
-**File 1 — Employer Demographic.** Creates the employer. `Employer TPA Custom ID` = `Prospect.id`
-([LA-29](../analysis/legal_assumptions.md)), which is what ties the Summit record back to the AMS
-application permanently — recurring monthly employer exports carry the same custom ID, so the linkage
-established here is what makes every later reconciliation possible. **`Enable COBRA Administration`
+**File 1 — Employer Demographic.** Creates the employer. `Employer TPA Custom ID` =
+`{SUMMIT_TPA_ID_PREFIX}-{Prospect.id}` ([LA-29](../analysis/legal_assumptions.md)) — ⚠️ **a
+configured installation prefix plus the prospect id, not a bare `Prospect.id`.** `SummitExportServlet.resolveEmployerTpaCustomId` builds it and **refuses to emit** rather than
+fall back to a bare id when the prefix is missing or malformed; the session 27 production walk
+observed `158-136748`. Corrected 2026-09-08 (session 28) — this sentence previously read
+`Prospect.id`, which understates the shape of an **upsert key** whose prefix D-89 records as
+effectively irreversible once real records land, and a doc that understates it is how a duplicate
+employer gets created under a second key. What is unchanged is the point that follows: the custom ID
+ties the Summit record back to the AMS application permanently — recurring monthly employer exports
+carry the same custom ID, so the linkage established here is what makes every later reconciliation
+possible. **`Enable COBRA Administration`
 must be set true here** — it is the flag that enables Premium Billing, which file 4 depends on. AMS
 sets this true on employers with no COBRA of their own, so it should not later be read as a defect.
 

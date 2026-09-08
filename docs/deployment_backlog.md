@@ -1496,3 +1496,37 @@ One row, no code change, no deploy, no restart — `RateSourceEnvResolver` reads
 **Third prerequisite, also outside `ssa.properties`:** `plan_year_eligibility` must be attached to the LOS being sold, or file 2 refuses — it sources plan year from the `plan_year_start`/`plan_year_end` application answers that section carries.
 
 **Applies to:** Kevin's local dev database / local Tomcat ⬜ — needed for the first runtime walk of any of the three files. Production ⬜ — needed before any real employer is exported. Demo PSP, BPO, Master: not running the Summit export; apply only if/when one of them does.
+
+---
+
+### D-90: `ssa.properties` needs `SUMMIT_PLAN_TEMPLATES`, plus a Tomcat restart
+
+**Priority:** MEDIUM — nothing is broken today; without it file 2 emits one ICHRA row regardless of what the employer actually bought
+**Status:** Not started. **Values are installation-specific and must be discovered per installation — see below.**
+
+`SummitExportServlet` file 2 (Employer CDH Plan) emits **one row per plan the employer elected**, driven by a new `ssa.properties` key read at request time through `SummitPlanTemplateResolver.configured()` (shipped `a17f32d`, session 28). This is an `ssa.properties` entry, not a `constant` row, so **there is no SQL for this item** and **Tomcat must be restarted to pick it up** — `AppConfig` loads the file once at startup.
+
+**Format.** Comma-separated entries, each three or four colon-separated fields:
+
+```
+SUMMIT_PLAN_TEMPLATES=<serviceItemId>:<templateId>:<keySegment>[:<label>],...
+```
+
+- `serviceItemId` — the AMS `ServiceItem` primary key of the elected service. **Installation-specific.**
+- `templateId` — the Summit-assigned Plan Template ID (D-89 records `1030` for `ICHRA+`, and `1031`/`1032` for the two `Ins125+` templates).
+- `keySegment` — the segment placed inside `Import Plan ID`. No pipe, no whitespace.
+- `label` — optional, human-facing, used in `Plan Name` and `Plan Description`. Defaults to `keySegment`.
+
+⚠️ **Entry order is emit order.** The rows come out of the file in the order they appear in the property, so the property is where row ordering is decided.
+
+**How to discover this installation's `ServiceItem` ids — no SQL required.** Generate Summit file 2 for any proposal with the key **unset or deliberately mismatched**. The resulting 400 page lists every service elected on that application as `id = description`, which is exactly the input this key needs. On Kevin's local dev, Red Creek Solutions returned `12=FSA, 17=Payment Services, 19=Debit Cards, 123054=HFSA, 123057=DCAP, 123060=PRA`. **Production's ids will differ** — this is the reason the key is config rather than code (Rule 4), and the reason no `ServiceItem` id appears in any source file.
+
+⚠️ **Absence is a supported state, not a failure.** With the key unset, file 2 falls back to the legacy single-ICHRA row built from `SUMMIT_ICHRA_PLAN_TEMPLATE_ID` — byte-identical to what production emitted at `v0.94.00`, and runtime-verified as such in session 28. **Production is currently on that path and it is correct as far as it goes**; it simply emits one ICHRA row whatever else was sold. Nothing degrades by deploying `a17f32d` without setting this key.
+
+**Parsing is tolerant.** A malformed entry is skipped with a `WARN` naming it and the rest still parse, so **a typo costs one plan row, not the export**. Check `catalina.out` for `[SUMMIT-EXPORT] SUMMIT_PLAN_TEMPLATES entry '...' skipped:` after a restart. A duplicate `serviceItemId` keeps the first entry and warns on the later one.
+
+**Depends on D-89** for the template ids themselves, and on `plan_year_eligibility` being attached to the LOS being sold — file 2 refuses without the `plan_year_start`/`plan_year_end` answers that section carries, before it ever reaches this key.
+
+⚠️ **Reversible, unlike D-89's prefix.** Changing this key changes `Import Plan ID`'s middle segment, which is an upsert key — but **nothing has been imported into Summit yet**, so the cost is zero today and non-zero the moment a file lands. See T185, which is the same clock.
+
+**Applies to:** Kevin's local dev database / local Tomcat ⬜ — set with placeholder template ids during the session 28 walk; needs real values. Production ⬜ — needed before an employer holding anything other than an ICHRA is exported. Demo PSP, BPO, Master: not running the Summit export; apply only if/when one of them does.
