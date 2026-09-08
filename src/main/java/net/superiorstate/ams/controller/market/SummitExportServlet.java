@@ -11,6 +11,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import net.superiorstate.ams.AppConfig;
 import net.superiorstate.ams.data.dao.EmployerParticipantDAO;
 import net.superiorstate.ams.data.resolver.IchraAccessResolver;
+import net.superiorstate.ams.data.resolver.SummitImportTemplateResolver;
 import net.superiorstate.ams.data.resolver.SummitPlanTemplateResolver;
 import net.superiorstate.ams.data.resolver.SummitPlanTemplateResolver.PlanTemplate;
 import net.superiorstate.ams.model.activity.checklist.sequences.support.ServiceItem;
@@ -25,6 +26,7 @@ import org.apache.logging.log4j.Logger;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
@@ -48,6 +50,19 @@ public class SummitExportServlet extends HttpServlet {
     private static final Logger log = LogManager.getLogger(SummitExportServlet.class);
 
     private static final DateTimeFormatter SUMMIT_DATE = DateTimeFormatter.ofPattern("yyyyMMdd");
+
+    // S29-D -- the timestamp appended to a template-named filename. Second resolution, unlike
+    // SUMMIT_DATE's day resolution, so two downloads of the same file on the same day stay
+    // distinct in the operator's downloads folder. Used only on the configured path; the legacy
+    // filenames keep SUMMIT_DATE exactly as they had it.
+    private static final DateTimeFormatter SUMMIT_FILE_STAMP =
+            DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
+
+    // S29-D -- the three values the `type` request parameter may take. Named so the request
+    // contract, the dispatch and the SUMMIT_IMPORT_TEMPLATES lookup key can never drift apart.
+    private static final String TYPE_EMPLOYER = "employer";
+    private static final String TYPE_CDH_PLAN = "cdhplan";
+    private static final String TYPE_DEMOGRAPHICS = "demographics";
 
     // Application-answer field keys this export reads (S25-B). Defined in both
     // DatabaseInitializer's baseline sections and the package JSONs under
@@ -86,8 +101,8 @@ public class SummitExportServlet extends HttpServlet {
         String proposalIdParam = request.getParameter("proposalId");
         String type = request.getParameter("type");
         if (proposalIdParam == null || proposalIdParam.isBlank()
-                || type == null || !(type.equals("employer") || type.equals("cdhplan")
-                        || type.equals("demographics"))) {
+                || type == null || !(type.equals(TYPE_EMPLOYER) || type.equals(TYPE_CDH_PLAN)
+                        || type.equals(TYPE_DEMOGRAPHICS))) {
             writePlainError(response, HttpServletResponse.SC_BAD_REQUEST,
                     "proposalId and type (employer|cdhplan|demographics) are required.");
             return;
@@ -146,9 +161,9 @@ public class SummitExportServlet extends HttpServlet {
                 return;
             }
 
-            if (type.equals("employer")) {
+            if (type.equals(TYPE_EMPLOYER)) {
                 writeEmployerDemographic(response, prospect, answers, employerTpaCustomId);
-            } else if (type.equals("cdhplan")) {
+            } else if (type.equals(TYPE_CDH_PLAN)) {
                 writeEmployerCdhPlan(response, em, proposalId, prospect, answers, employerTpaCustomId);
             } else {
                 writeDemographics(response, em, prospect, employerTpaCustomId);
@@ -278,8 +293,9 @@ public class SummitExportServlet extends HttpServlet {
                 sanitize(state),
                 sanitize(zip));
 
-        String filename = "employer-demographic-" + sanitizeFilename(prospect.getName())
-                + "-" + prospect.getId() + "-" + LocalDate.now().format(SUMMIT_DATE) + ".txt";
+        String filename = resolveFilename(TYPE_EMPLOYER,
+                "employer-demographic-" + sanitizeFilename(prospect.getName())
+                        + "-" + prospect.getId() + "-" + LocalDate.now().format(SUMMIT_DATE) + ".txt");
         writeFile(response, filename, line);
     }
 
@@ -412,8 +428,9 @@ public class SummitExportServlet extends HttpServlet {
                     planYear, planYearBegin, planYearEndStr));
         }
 
-        String filename = "employer-cdh-plan-" + sanitizeFilename(prospect.getName())
-                + "-" + prospect.getId() + "-" + LocalDate.now().format(SUMMIT_DATE) + ".txt";
+        String filename = resolveFilename(TYPE_CDH_PLAN,
+                "employer-cdh-plan-" + sanitizeFilename(prospect.getName())
+                        + "-" + prospect.getId() + "-" + LocalDate.now().format(SUMMIT_DATE) + ".txt");
         writeFile(response, filename, lines);
     }
 
@@ -477,8 +494,9 @@ public class SummitExportServlet extends HttpServlet {
                     participant.getEffectiveDate().format(SUMMIT_DATE)));
         }
 
-        String filename = "demographics-" + sanitizeFilename(prospect.getName())
-                + "-" + prospect.getId() + "-" + LocalDate.now().format(SUMMIT_DATE) + ".txt";
+        String filename = resolveFilename(TYPE_DEMOGRAPHICS,
+                "demographics-" + sanitizeFilename(prospect.getName())
+                        + "-" + prospect.getId() + "-" + LocalDate.now().format(SUMMIT_DATE) + ".txt");
         writeFile(response, filename, lines);
     }
 
@@ -504,6 +522,30 @@ public class SummitExportServlet extends HttpServlet {
         } catch (DateTimeParseException e) {
             return null;
         }
+    }
+
+    /**
+     * S29-D — the emitted download filename for one export file.
+     * <p>
+     * Summit binds a retrieved file to an import template <b>by filename prefix</b>, so when this
+     * installation has named its templates in {@code SUMMIT_IMPORT_TEMPLATES} the file must be
+     * called {@code {templateName}_{yyyyMMddHHmmss}.txt} and nothing else. The timestamp keeps
+     * successive downloads of the same file distinct.
+     * <p>
+     * ⚠️ <b>When the key holds no entry for this file, {@code legacyFilename} is returned
+     * unchanged</b> — not adjusted, not normalised, not "improved". An installation that takes
+     * this commit without editing {@code ssa.properties} keeps the descriptive filenames it had
+     * before, byte for byte. That is the same legacy-path protection
+     * {@link SummitImportTemplateResolver} and {@code SummitPlanTemplateResolver} both carry, and
+     * it is why the caller builds the legacy name eagerly rather than behind a branch.
+     *
+     * @param type            the {@code type} discriminator this file was requested under
+     * @param legacyFilename  the descriptive filename emitted before this method existed
+     */
+    private static String resolveFilename(String type, String legacyFilename) {
+        return SummitImportTemplateResolver.templateNameFor(type)
+                .map(name -> name + "_" + LocalDateTime.now().format(SUMMIT_FILE_STAMP) + ".txt")
+                .orElse(legacyFilename);
     }
 
     private void writeFile(HttpServletResponse response, String filename, String line) throws IOException {

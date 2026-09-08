@@ -1530,3 +1530,37 @@ SUMMIT_PLAN_TEMPLATES=<serviceItemId>:<templateId>:<keySegment>[:<label>],...
 ⚠️ **Reversible, unlike D-89's prefix.** Changing this key changes `Import Plan ID`'s middle segment, which is an upsert key — but **nothing has been imported into Summit yet**, so the cost is zero today and non-zero the moment a file lands. See T185, which is the same clock.
 
 **Applies to:** Kevin's local dev database / local Tomcat ⬜ — set with placeholder template ids during the session 28 walk; needs real values. Production ⬜ — needed before an employer holding anything other than an ICHRA is exported. Demo PSP, BPO, Master: not running the Summit export; apply only if/when one of them does.
+
+---
+
+### D-91: `ssa.properties` needs `SUMMIT_IMPORT_TEMPLATES`, plus a Tomcat restart
+
+**Priority:** MEDIUM — nothing is broken today; without it the three export downloads keep their legacy descriptive filenames, which **no Summit import template will bind to**
+**Status:** Not started on Production. **Set and runtime-verified on Kevin's local dev with test templates — production names are not yet decided.**
+
+Summit binds a retrieved file to an import template **by filename prefix**: the uploaded file's name must begin with the template's own name. Until the emitted filenames carry that prefix, no file AMS produces can be imported at all. Template names live in each TPA's own Summit tenant, so this is an `ssa.properties` entry, not a `constant` row — **there is no SQL for this item** and **Tomcat must be restarted to pick it up**, since `AppConfig` loads the file once at startup. Read at request time through `SummitImportTemplateResolver.templateNameFor()` (session 29).
+
+**Format.** Comma-separated entries, each two colon-separated fields:
+
+```
+SUMMIT_IMPORT_TEMPLATES=<type>:<templateName>,...
+```
+
+- `type` — the export servlet's own `type` request parameter, so the vocabulary is fixed and not invented here: `employer` (file 1, Employer Demographic), `cdhplan` (file 2, Employer CDH Plan), `demographics` (file 4, Demographics). Matched case-insensitively.
+- `templateName` — the **exact** Summit import template name for that installation's tenant. Used verbatim as the filename prefix. Letters, digits, `_`, `-` and `.` only; a name carrying a space, quote or path separator is rejected at parse time with a `WARN`, because the value travels inside a `Content-Disposition` header.
+
+The emitted filename becomes `{templateName}_{yyyyMMddHHmmss}.txt`. The timestamp keeps successive downloads of the same file distinct.
+
+⚠️ **No configured template name may be a prefix of another.** Summit matches on prefix, so `SSA_ER` and `SSA_ER_FIX` would route one file to the wrong template **silently**. `SummitImportTemplateResolver` logs a `WARN` naming both on collision but **serves anyway** — refusing would turn a vendor-side naming choice into an AMS outage. Check `catalina.out` for `[SUMMIT-EXPORT] SUMMIT_IMPORT_TEMPLATES prefix collision:` after a restart.
+
+⚠️ **Absence is a supported state, not a failure.** With the key unset, all three files download under the legacy descriptive names (`employer-demographic-…`, `employer-cdh-plan-…`, `demographics-…`) — byte-identical to what production emits today. **This is safe to deploy before it is configured**; nothing degrades, the files simply cannot be imported into Summit until the key is set, which is already true today.
+
+**Parsing is tolerant.** A malformed entry is skipped with a `WARN` naming it and the rest still parse, so a typo costs one filename, not the export. A duplicate `type` keeps the first entry and warns on the later one.
+
+⚠️ **A misspelled `type` is silent** — `employeer:X` parses fine and simply never matches, so that one file quietly keeps its legacy name. The resolver deliberately does not whitelist the vocabulary (the servlet owns its request contract). The symptom is visible where it matters: the downloaded file does not carry the expected prefix. **Check all three filenames after setting this key, not just one.**
+
+**Currently set locally to the proven test templates** `ZZ_TEST_ER` / `ZZ_TEST_CDH` / `ZZ_TEST_DEMO`. Runtime-verified 2026-09-08 — `ZZ_TEST_ER_20260908091934.txt`, `ZZ_TEST_CDH_20260908091939.txt`, `ZZ_TEST_DEMO_20260908091948.txt`. **Production names are not yet decided** and must come from the production Summit tenant, not from these test values.
+
+**Related to D-90** but independent of it: D-90 decides what rows go *inside* file 2, this decides what the file is *called*. Neither blocks the other.
+
+**Applies to:** Kevin's local dev database / local Tomcat ✅ — set to the `ZZ_TEST_*` templates and runtime-verified 2026-09-08. Production ⬜ — needed before any file is uploaded to Summit; requires the production tenant's real template names first. Demo PSP, BPO, Master: not running the Summit export; apply only if/when one of them does.
