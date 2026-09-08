@@ -60,9 +60,11 @@
     </div>
   </div>
 
-  <%-- Summit export (S27-C) — same gate as Census Upload above, same proposalId expression.
-       Numbered 1 / 2 / 4 to match Summit's own file numbering (file 3, Premium Billing, is
-       unproven and has no link here; file 5+ do not exist yet). Plain links: whatever
+  <%-- Summit export (S27-C; fourth link S30-C) — same gate as Census Upload above, same proposalId
+       expression. AMS emits all four files of the proven Summit chain. The first three labels carry
+       Summit's client-setup file numbers (file 3, Premium Billing, is unproven and has no link here);
+       the fourth carries none — that sequence's "file 5" is a different file, enrollment into the
+       Premium Billing ICHRA notice plan, and its files 5-8 have no emitter. Plain links: whatever
        SummitExportServlet's Content-Disposition does on click is what happens. --%>
   <div class="detail-section-card">
     <div class="detail-section-body">
@@ -78,6 +80,10 @@
       <a href="${pageContext.request.contextPath}/SummitExport?proposalId=${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}&type=demographics"
          class="btn btn-sm btn-outline-ssa w-100">
         <i class="bi bi-download me-1"></i>Summit file 4 — Demographics
+      </a>
+      <a href="${pageContext.request.contextPath}/SummitExport?proposalId=${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}&type=enrollment"
+         class="btn btn-sm btn-outline-ssa w-100 mt-1">
+        <i class="bi bi-download me-1"></i>Summit — HRA Enrollment
       </a>
     </div>
   </div>
