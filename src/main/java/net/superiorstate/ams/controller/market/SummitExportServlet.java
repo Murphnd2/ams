@@ -10,6 +10,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import net.superiorstate.ams.AppConfig;
 import net.superiorstate.ams.data.dao.EmployerParticipantDAO;
+import net.superiorstate.ams.data.dao.SummitFileExportDAO;
 import net.superiorstate.ams.data.resolver.IchraAccessResolver;
 import net.superiorstate.ams.data.resolver.SummitCdhElementResolver;
 import net.superiorstate.ams.data.resolver.SummitImportTemplateResolver;
@@ -19,6 +20,7 @@ import net.superiorstate.ams.data.AmsDataLocal;
 import net.superiorstate.ams.model.activity.checklist.sequences.support.ServiceItem;
 import net.superiorstate.ams.model.general.PSP;
 import net.superiorstate.ams.model.market.EmployerParticipant;
+import net.superiorstate.ams.model.market.SummitFileExport;
 import net.superiorstate.ams.model.sales.agency.Proposal;
 import net.superiorstate.ams.model.sales.agency.Prospect;
 import net.superiorstate.ams.model.sales.application.ApplicationFieldValue;
@@ -28,6 +30,9 @@ import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
@@ -195,14 +200,22 @@ public class SummitExportServlet extends HttpServlet {
             // Demographics writers do not consult a plan mapping at all.
             Long pspId = resolveCurrentPspId(request);
 
+            // S32-A -- the identity of this export, assembled once here because doGet is the only
+            // place all of it is in scope: proposalId is parsed here, pspId is resolved here, and
+            // the acting user is reachable only from the session, which no writer receives. It is
+            // then threaded through every writer to the single shared write path, so recording
+            // happens at one point rather than at four call sites that could diverge.
+            ExportRecord record = new ExportRecord(em, type, pspId, proposalId, prospect.getId(),
+                    resolveCurrentUserName(request));
+
             if (type.equals(TYPE_EMPLOYER)) {
-                writeEmployerDemographic(response, prospect, answers, employerTpaCustomId);
+                writeEmployerDemographic(response, prospect, answers, employerTpaCustomId, record);
             } else if (type.equals(TYPE_CDH_PLAN)) {
-                writeEmployerCdhPlan(response, em, proposalId, prospect, answers, employerTpaCustomId, pspId);
+                writeEmployerCdhPlan(response, em, proposalId, prospect, answers, employerTpaCustomId, pspId, record);
             } else if (type.equals(TYPE_DEMOGRAPHICS)) {
-                writeDemographics(response, em, prospect, employerTpaCustomId);
+                writeDemographics(response, em, prospect, employerTpaCustomId, record);
             } else {
-                writeHraEnrollment(response, em, proposalId, prospect, answers, employerTpaCustomId, pspId);
+                writeHraEnrollment(response, em, proposalId, prospect, answers, employerTpaCustomId, pspId, record);
             }
         } finally {
             if (em.isOpen()) em.close();
@@ -261,6 +274,19 @@ public class SummitExportServlet extends HttpServlet {
         if (local.getCurrentPerson() == null) return null;
         PSP psp = local.getCurrentPerson().getPsp();
         return psp == null ? null : psp.getId();
+    }
+
+    /**
+     * S32-A -- display name of the acting user, for {@code summit_file_export.generated_by}.
+     * Display-only, exactly as {@code SummitPlanTemplateAdmin.resolveCurrentUserName} is: null when
+     * the session cannot name anyone, which the recording treats as a supported state rather than a
+     * reason to fail.
+     */
+    private static String resolveCurrentUserName(HttpServletRequest request) {
+        Object attribute = request.getSession().getAttribute("local");
+        if (!(attribute instanceof AmsDataLocal local)) return null;
+        if (local.getCurrentPerson() == null) return null;
+        return local.getCurrentPerson().getFullName();
     }
 
     /**
@@ -337,7 +363,8 @@ public class SummitExportServlet extends HttpServlet {
      * would reintroduce the silent-variance failure this whole change exists to remove.
      */
     private void writeEmployerDemographic(HttpServletResponse response, Prospect prospect,
-                                           Map<String, String> answers, String employerTpaCustomId)
+                                           Map<String, String> answers, String employerTpaCustomId,
+                                           ExportRecord record)
             throws IOException {
         String address1 = answers.get(FIELD_ADDRESS_STREET1);
         String city = answers.get(FIELD_ADDRESS_CITY);
@@ -369,7 +396,7 @@ public class SummitExportServlet extends HttpServlet {
         String filename = resolveFilename(TYPE_EMPLOYER,
                 "employer-demographic-" + sanitizeFilename(prospect.getName())
                         + "-" + prospect.getId() + "-" + LocalDate.now().format(SUMMIT_DATE) + ".txt");
-        writeFile(response, filename, line);
+        writeFile(response, filename, line, record);
     }
 
     /**
@@ -408,7 +435,7 @@ public class SummitExportServlet extends HttpServlet {
      */
     private void writeEmployerCdhPlan(HttpServletResponse response, EntityManager em, long proposalId,
                                        Prospect prospect, Map<String, String> answers,
-                                       String employerTpaCustomId, Long pspId)
+                                       String employerTpaCustomId, Long pspId, ExportRecord record)
             throws IOException {
         LocalDate planYearStart = parseAnswerDate(answers.get(FIELD_PLAN_YEAR_START));
         if (planYearStart == null) {
@@ -660,7 +687,7 @@ public class SummitExportServlet extends HttpServlet {
         String filename = resolveFilename(TYPE_CDH_PLAN,
                 "employer-cdh-plan-" + sanitizeFilename(prospect.getName())
                         + "-" + prospect.getId() + "-" + LocalDate.now().format(SUMMIT_DATE) + ".txt");
-        writeFile(response, filename, lines);
+        writeFile(response, filename, lines, record);
     }
 
     /**
@@ -815,7 +842,8 @@ public class SummitExportServlet extends HttpServlet {
      * (LA-33). An empty roster emits a zero-row file rather than refusing.
      */
     private void writeDemographics(HttpServletResponse response, EntityManager em,
-                                    Prospect prospect, String employerTpaCustomId)
+                                    Prospect prospect, String employerTpaCustomId,
+                                    ExportRecord record)
             throws IOException {
         List<EmployerParticipant> roster = EmployerParticipantDAO.findByProspectId(em, prospect.getId());
 
@@ -847,7 +875,7 @@ public class SummitExportServlet extends HttpServlet {
         String filename = resolveFilename(TYPE_DEMOGRAPHICS,
                 "demographics-" + sanitizeFilename(prospect.getName())
                         + "-" + prospect.getId() + "-" + LocalDate.now().format(SUMMIT_DATE) + ".txt");
-        writeFile(response, filename, lines);
+        writeFile(response, filename, lines, record);
     }
 
     /**
@@ -895,7 +923,7 @@ public class SummitExportServlet extends HttpServlet {
      */
     private void writeHraEnrollment(HttpServletResponse response, EntityManager em, long proposalId,
                                      Prospect prospect, Map<String, String> answers,
-                                     String employerTpaCustomId, Long pspId)
+                                     String employerTpaCustomId, Long pspId, ExportRecord record)
             throws IOException {
         LocalDate planYearStart = parseAnswerDate(answers.get(FIELD_PLAN_YEAR_START));
         if (planYearStart == null) {
@@ -1021,7 +1049,7 @@ public class SummitExportServlet extends HttpServlet {
         String filename = resolveFilename(TYPE_ENROLLMENT,
                 "hra-enrollment-" + sanitizeFilename(prospect.getName())
                         + "-" + prospect.getId() + "-" + LocalDate.now().format(SUMMIT_DATE) + ".txt");
-        writeFile(response, filename, lines);
+        writeFile(response, filename, lines, record);
     }
 
     /**
@@ -1116,26 +1144,118 @@ public class SummitExportServlet extends HttpServlet {
                 .orElse(legacyFilename);
     }
 
-    private void writeFile(HttpServletResponse response, String filename, String line) throws IOException {
-        writeFile(response, filename, java.util.Collections.singletonList(line));
+    private void writeFile(HttpServletResponse response, String filename, String line,
+                           ExportRecord record) throws IOException {
+        writeFile(response, filename, java.util.Collections.singletonList(line), record);
     }
 
     /**
      * File 2 (Employer CDH Plan) is one file with one row per plan — this overload is the
-     * multi-row sink that lets a single response carry more than one plan's row.
+     * multi-row sink that lets a single response carry more than one plan's row. It is also the
+     * <b>single point at which any Summit export file's bytes reach the response</b>: all four
+     * types funnel here, the single-row overload above included.
+     * <p>
+     * ⚠️ <b>S32-A — the emitted bytes are unchanged by the recording.</b> The per-line
+     * {@code print(line); print(newline)} loop this method used is replaced by one
+     * {@code StringBuilder} appending exactly the same line-then-newline sequence, printed once.
+     * Concatenation is associative, so the character sequence written to the response is
+     * identical; it is now materialised in a variable so the record can be taken <b>from the very
+     * bytes the response received</b> rather than from a regeneration that could differ. There is
+     * one {@code content} String and it is both printed and recorded.
+     * <p>
+     * ⚠️ <b>A recording failure must not fail the export.</b> The response is written and flushed
+     * <i>before</i> {@link #recordExport} is called, and that method swallows and logs rather than
+     * throwing. The reverse choice — failing the download when the record cannot be written — was
+     * considered and <b>rejected</b>: someone waiting on a file they need in order to load an
+     * employer into Summit should not be blocked by a bookkeeping failure, and the record's two
+     * consumers (response-file matching and the T194 same-hash warning) degrade to "no information
+     * about this export" rather than to a wrong answer. The ERROR log names the file, so a missing
+     * record is diagnosable after the fact.
      */
-    private void writeFile(HttpServletResponse response, String filename, List<String> lines) throws IOException {
+    private void writeFile(HttpServletResponse response, String filename, List<String> lines,
+                           ExportRecord record) throws IOException {
+        StringBuilder body = new StringBuilder();
+        if (lines != null) {
+            for (String line : lines) {
+                body.append(line);
+                body.append("\n");
+            }
+        }
+        String content = body.toString();
+
         response.setContentType("text/plain");
         response.setCharacterEncoding("UTF-8");
         response.setHeader("Content-Disposition", "attachment; filename=\"" + filename + "\"");
         PrintWriter out = response.getWriter();
-        if (lines != null) {
-            for (String line : lines) {
-                out.print(line);
-                out.print("\n");
-            }
-        }
+        out.print(content);
         out.flush();
+
+        recordExport(record, filename, content, lines == null ? 0 : lines.size());
+    }
+
+    /**
+     * S32-A — the identity of one export, assembled in {@code doGet} and carried to the single
+     * write path. A carrier, not a behaviour: it holds no logic and decides nothing.
+     * <p>
+     * The {@code EntityManager} is the request's own, still open — {@code doGet}'s {@code finally}
+     * closes it after the writer returns, and the recording runs inside that window. Every field
+     * but {@code fileType} may legitimately be null; see {@link SummitFileExport} for why
+     * nullability is the correct shape for an audit row.
+     */
+    private record ExportRecord(EntityManager em, String fileType, Long pspId, Long proposalId,
+                                Long prospectId, String userName) {}
+
+    /**
+     * S32-A — writes one {@code summit_file_export} row for a file that has already been sent.
+     * <p>
+     * ⚠️ <b>Never throws.</b> Every failure path logs at ERROR naming the file and the reason and
+     * returns; see the invariant on {@link #writeFile}. The file has already reached the client by
+     * the time this runs, so there is nothing left to fail.
+     * <p>
+     * <b>Every generated file is recorded, zero-row files included.</b> S31-J's empty-file guard
+     * covers {@code cdhplan} only — {@code demographics} and {@code enrollment} iterate the
+     * participant roster with no empty guard, so a prospect with an empty roster still produces a
+     * zero-row file that reaches this method. That send is exactly the kind worth a record, so it
+     * is written rather than skipped.
+     */
+    private void recordExport(ExportRecord record, String filename, String content, int rowCount) {
+        if (record == null) return;
+        try {
+            byte[] bytes = content.getBytes(StandardCharsets.UTF_8);
+            SummitFileExport row = new SummitFileExport();
+            row.setPspId(record.pspId());
+            row.setFileType(record.fileType());
+            row.setProposalId(record.proposalId());
+            row.setProspectId(record.prospectId());
+            row.setFileName(filename);
+            row.setGeneratedAt(LocalDateTime.now());
+            row.setGeneratedBy(record.userName());
+            row.setRowCount(rowCount);
+            row.setByteCount(bytes.length);
+            row.setContentSha256(sha256Hex(bytes));
+            row.setContent(content);
+            SummitFileExportDAO.insert(record.em(), row);
+        } catch (Exception e) {
+            log.error("[SUMMIT-EXPORT] file '{}' was delivered but could NOT be recorded in"
+                    + " summit_file_export: {}. The file is correct and was sent; only the record"
+                    + " is missing, so response-file matching and the T194 same-hash warning have"
+                    + " no entry for this export.", filename, e.getMessage(), e);
+        }
+    }
+
+    /** Lowercase hex SHA-256 — the T194 dedupe key. SHA-256 is mandatory on every JVM. */
+    private static String sha256Hex(byte[] bytes) {
+        try {
+            byte[] digest = MessageDigest.getInstance("SHA-256").digest(bytes);
+            StringBuilder hex = new StringBuilder(64);
+            for (byte b : digest) {
+                hex.append(Character.forDigit((b >> 4) & 0xF, 16));
+                hex.append(Character.forDigit(b & 0xF, 16));
+            }
+            return hex.toString();
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 unavailable", e);
+        }
     }
 
     private void writePlainError(HttpServletResponse response, int status, String message) throws IOException {

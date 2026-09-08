@@ -1640,3 +1640,22 @@ SUMMIT_CDH_GRACE_FIELDS=FSA:hfsa_roll_or_grace,DCAP:dcap_grace
 ⚠️ **Boolean representation is unproven** — nothing has been imported to establish whether Summit wants `true`/`false`, `1`/`0` or `Y`/`N`, which is why both sides are config. One import settles it and the fix is then editing these two keys, not a build.
 
 **Applies to:** Kevin's local dev / local Tomcat ⬜ — needed only when testing the optional block. Production ⬜ — needed only once the production `Employer CDH Plan` template maps optional elements; **leaving every key unset is a correct and complete configuration** until then. Demo / BPO / Master — N/A, no Summit tenant.
+
+---
+
+### D-95: Apply `V096__summit_file_export.sql` — the Summit export record table
+
+**Priority:** MED — nothing breaks without it, but every export runs unrecorded until it is applied
+**Status:** Not applied anywhere. Authored S32-A (2026-09-08). **No config key, no property, no restart beyond the WAR ship** — the table is the whole deployment step.
+
+`V096` creates `summit_file_export`: one row per file `SummitExportServlet` generates, holding the exact bytes sent, the resolved filename, row and byte counts, the acting user, and an indexed `content_sha256`. It unblocks response-file matching (T214) and makes T194's silent content-dedupe detectable before a re-send rather than after a confusing non-result (T212).
+
+⚠️ **Ship the WAR and the migration together, in either order, but do not ship the WAR alone and leave it.** The recording is best-effort by design: with the table absent, `SummitExportServlet.recordExport` catches the insert failure, logs at ERROR naming the file, and **delivers the file anyway**. So a WAR without the migration downloads correctly and writes one ERROR line per export forever. Nothing degrades for the person downloading; the record simply does not exist.
+
+⚠️ **`summit_file_export.content` holds PII** — Demographics rows carry participant first name, last name, street address, city, state, postal code and email; Enrollment rows carry the participant key and a contribution amount. It belongs in the same retention, access and backup conversation as any other PII column in this schema. It carries **no SSN**: `employer_participant` (V094) has no SSN, DOB or compensation column and `CensusParseService` drops those headers as unrecognised, so no SSN enters the process at any point.
+
+⚠️ **Nothing reads the table yet.** The DAO ships with `findByPspId`, `findByProposalId` and `findByContentHash` and none has a caller — the listing screen and the same-hash warning are **T212**. Applying V096 starts the record accumulating so that screen has history to show when it lands; it produces no visible change on its own.
+
+⭐ **`V095` is in the same position and is also unapplied on production.** Production is at **V094** (release `v0.94.00`). `V095__summit_plan_template_map.sql` is applied to `beta_ssa` only. ⚠️ **The weekly refresh from production drops both** — it returns the local schema to V094 — so re-apply `V095` and `V096` after any refresh.
+
+**Applies to:** Kevin's local dev / local Tomcat ⬜ — re-apply after every production refresh. Production ⬜ — apply with the WAR that carries the recording. Demo / BPO / Master — N/A, no Summit tenant.

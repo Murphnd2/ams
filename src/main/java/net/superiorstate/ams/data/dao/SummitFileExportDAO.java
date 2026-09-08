@@ -1,0 +1,107 @@
+package net.superiorstate.ams.data.dao;
+
+import net.superiorstate.ams.model.market.SummitFileExport;
+import jakarta.persistence.EntityManager;
+
+import java.util.List;
+
+/**
+ * DAO for {@link SummitFileExport} (V096). All methods are static; the class is abstract
+ * (not instantiable), following {@link SummitPlanTemplateMapDAO} and {@link EmployerParticipantDAO}.
+ * <p>
+ * <b>Not an authorization boundary.</b> These methods answer "what export files were generated",
+ * nothing more — they do not know who is asking. Callers establish that the caller may act for the
+ * PSP before calling, exactly as {@code SummitExportServlet} does with its PSP-admin and
+ * {@code IchraAccessResolver} gates.
+ */
+public abstract class SummitFileExportDAO {
+
+    /** The listing read, newest first, matching the (psp_id, file_type, generated_at) index. */
+    private static final String JPQL_BY_PSP =
+            "SELECT e FROM SummitFileExport e " +
+            "WHERE e.pspId = :pspId " +
+            "ORDER BY e.generatedAt DESC, e.id DESC";
+
+    /** Same, narrowed to one proposal — the per-proposal "what has been sent for this employer" read. */
+    private static final String JPQL_BY_PROPOSAL =
+            "SELECT e FROM SummitFileExport e " +
+            "WHERE e.proposalId = :proposalId " +
+            "ORDER BY e.generatedAt DESC, e.id DESC";
+
+    /**
+     * T194 — prior exports of the same file type carrying the same content hash.
+     * <p>
+     * ⚠️ <b>Summit dedupes a re-sent file on content</b>, so a non-empty answer here means
+     * re-sending these bytes would be a silent no-op: no error, no results row, nothing. The hash
+     * is matched together with {@code file_type} because two different file types could in
+     * principle share bytes (a zero-row file of either type is the degenerate case) and only a
+     * same-type match tells you anything about what Summit will do.
+     */
+    private static final String JPQL_BY_HASH =
+            "SELECT e FROM SummitFileExport e " +
+            "WHERE e.contentSha256 = :sha AND e.fileType = :fileType " +
+            "ORDER BY e.generatedAt DESC, e.id DESC";
+
+    /**
+     * Persists one export record in its own transaction.
+     * <p>
+     * ⚠️ <b>This method throws; the caller must not let that reach the user.</b> The governing rule
+     * for the recording path is that <b>a recording failure must not fail the export</b> — a person
+     * waiting on a file is not blocked by a bookkeeping failure. That decision lives at the call
+     * site ({@code SummitExportServlet.writeFile}, which records only after the response has been
+     * written and flushed, and logs at ERROR on failure). This method stays loud rather than
+     * swallowing, so the call site's choice is visible where it is made rather than hidden here
+     * where a later caller with different needs could not see it.
+     *
+     * @throws RuntimeException wrapping whatever failed, after rolling back.
+     */
+    public static void insert(EntityManager em, SummitFileExport export) {
+        try {
+            em.getTransaction().begin();
+            em.persist(export);
+            em.getTransaction().commit();
+        } catch (Exception e) {
+            if (em.getTransaction().isActive()) em.getTransaction().rollback();
+            throw new RuntimeException("Failed to record Summit file export: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Every recorded export for one PSP, newest first.
+     *
+     * @return the matching rows, or an empty list when {@code pspId} is null. Never null.
+     */
+    public static List<SummitFileExport> findByPspId(EntityManager em, Long pspId) {
+        if (pspId == null) return List.of();
+        return em.createQuery(JPQL_BY_PSP, SummitFileExport.class)
+                .setParameter("pspId", pspId)
+                .getResultList();
+    }
+
+    /**
+     * Every recorded export for one proposal, newest first.
+     *
+     * @return the matching rows, or an empty list when {@code proposalId} is null. Never null.
+     */
+    public static List<SummitFileExport> findByProposalId(EntityManager em, Long proposalId) {
+        if (proposalId == null) return List.of();
+        return em.createQuery(JPQL_BY_PROPOSAL, SummitFileExport.class)
+                .setParameter("proposalId", proposalId)
+                .getResultList();
+    }
+
+    /**
+     * T194 — prior exports of {@code fileType} whose content hashes to {@code sha}, newest first.
+     * A non-empty result means these exact bytes have already been generated, and Summit would
+     * dedupe them on a re-send rather than importing them.
+     *
+     * @return the matching rows, or an empty list when either argument is null. Never null.
+     */
+    public static List<SummitFileExport> findByContentHash(EntityManager em, String sha, String fileType) {
+        if (sha == null || fileType == null) return List.of();
+        return em.createQuery(JPQL_BY_HASH, SummitFileExport.class)
+                .setParameter("sha", sha)
+                .setParameter("fileType", fileType)
+                .getResultList();
+    }
+}
