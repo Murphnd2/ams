@@ -1600,3 +1600,43 @@ SUMMIT_IMPORT_TEMPLATES=employer:<erName>,cdhplan:<cdhName>,demographics:<demoNa
 ⚠️ **Check the new filename against the prefix-collision rule** in D-91 before setting it. Summit binds on filename prefix, so `enrollName` must not be a prefix of, nor prefixed by, any of the other three. `SummitImportTemplateResolver` logs a `WARN` on collision and still serves — grep `catalina.out` for `[SUMMIT-EXPORT] SUMMIT_IMPORT_TEMPLATES prefix collision:` after the restart.
 
 **Applies to:** Kevin's local dev database / local Tomcat ⬜ — needed before the first live execution of the emitter (T196). Production ⬜ — needed before any HRA Enrollment file is uploaded from Production. Demo / BPO / Master — N/A, no Summit tenant.
+
+### D-94: `ssa.properties` may set the Summit CDH optional-element keys — all optional, all default safely
+
+**Priority:** LOW for the AMS side (every key defaults, and unset means today's behaviour exactly), **HIGH for the Summit side** — the optional elements must be mapped on the `Employer CDH Plan` template before any file carrying them will import
+**Status:** Not started anywhere. **No new schema and no admin screen** — S31-H deliberately made every one of these a property, so nothing here needs a migration.
+
+S31-H let file 2 emit the `Employer CDH Plan` template's **optional** elements after its eight mandatory columns. Which elements exist, and in what order, is a property of the Summit-side template, so AMS conforms to config rather than compiling an order in. **Eight new keys, none required:**
+
+⚠️ **There is deliberately no grace-period day-count key.** S31-H had one (`SUMMIT_CDH_GRACE_DAYS`, default `75`) and **S31-I removed it**: Treas. Reg. §1.125-1(e) caps a grace period at the fifteenth day of the third calendar month after the plan year ends, which varies with the year-end month and which 75 days overshoots by a day for a 31 December year end. The grace period is emitted as a computed **date**, so there is nothing to configure. Do not add the key back.
+
+| Key | Default when unset | What it does |
+|---|---|---|
+| `SUMMIT_CDH_OPTIONAL_ELEMENTS` | *(empty — emit nothing extra)* | Ordered, comma-separated element list; **config order is emit order** |
+| `SUMMIT_CDH_GRACE_FIELDS` | *(empty — no plan has grace)* | `keySegment:applicationFieldKey` pairs, e.g. `FSA:hfsa_roll_or_grace,DCAP:dcap_grace` |
+| `SUMMIT_CDH_RUNOUT_DAYS` | `90` | Run-out days after plan year end |
+| `SUMMIT_CDH_TERM_RUNOUT_DAYS` | `90` | Run-out days after termination |
+| `SUMMIT_CDH_TERM_RUNOUT_TYPE` | `1` | Summit's "days after termination" type |
+| `SUMMIT_CDH_BOOL_TRUE` | `true` | How a Boolean true is written |
+| `SUMMIT_CDH_BOOL_FALSE` | `false` | How a Boolean false is written |
+
+⭐ **Unset means today's behaviour, exactly.** With `SUMMIT_CDH_OPTIONAL_ELEMENTS` absent no extra column is appended and file 2's bytes are identical to what it emitted before S31-H. **This is safe to deploy before it is configured** — nothing degrades, and an installation that takes the commit without editing `ssa.properties` sees no change whatsoever. Read at request time through `AppConfig`, so **Tomcat must be restarted** to pick any of them up.
+
+Worked example — **the element names are the vendor's**, read out of the installation's own Summit template and deliberately not written into source:
+
+```
+SUMMIT_CDH_OPTIONAL_ELEMENTS=RUNOUT_ENABLED,RUNOUT_BY_DATE,RUNOUT_DAYS,TERM_RUNOUT_TYPE,TERM_RUNOUT_DAYS,GRACE_ENABLED,GRACE_BY_DATE,GRACE_DAYS
+SUMMIT_CDH_GRACE_FIELDS=FSA:hfsa_roll_or_grace,DCAP:dcap_grace
+```
+
+⚠️ **`ZZ_TEST_CDH` currently maps no optional elements at all.** Setting `SUMMIT_CDH_OPTIONAL_ELEMENTS` before the Summit-side template maps them produces a file that **will not import**. The Summit-side change is required, is not an AMS deployment step, and must come first.
+
+⚠️ **The order must match the template's element order exactly.** Summit binds optional elements **positionally**. A wrong order does not fail — it loads each value into the neighbouring field and imports cleanly.
+
+⚠️ **An unrecognised token refuses the export**, unlike every sibling resolver's tolerant skip. That is deliberate: a skipped token would shift every element after it. Check `catalina.out` for `[SUMMIT-EXPORT] SUMMIT_CDH_OPTIONAL_ELEMENTS contains an unrecognised element token` after a restart.
+
+⚠️ **A malformed `SUMMIT_CDH_GRACE_FIELDS` entry is skipped with a `WARN`, and a skipped entry is indistinguishable at emit time from a key segment that was never listed** — that plan quietly takes the empty-grace path rather than refusing. Grep `catalina.out` for `SUMMIT_CDH_GRACE_FIELDS entry` after changing this key rather than trusting it parsed.
+
+⚠️ **Boolean representation is unproven** — nothing has been imported to establish whether Summit wants `true`/`false`, `1`/`0` or `Y`/`N`, which is why both sides are config. One import settles it and the fix is then editing these two keys, not a build.
+
+**Applies to:** Kevin's local dev / local Tomcat ⬜ — needed only when testing the optional block. Production ⬜ — needed only once the production `Employer CDH Plan` template maps optional elements; **leaving every key unset is a correct and complete configuration** until then. Demo / BPO / Master — N/A, no Summit tenant.

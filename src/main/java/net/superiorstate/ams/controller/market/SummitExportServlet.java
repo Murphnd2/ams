@@ -11,6 +11,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import net.superiorstate.ams.AppConfig;
 import net.superiorstate.ams.data.dao.EmployerParticipantDAO;
 import net.superiorstate.ams.data.resolver.IchraAccessResolver;
+import net.superiorstate.ams.data.resolver.SummitCdhElementResolver;
 import net.superiorstate.ams.data.resolver.SummitImportTemplateResolver;
 import net.superiorstate.ams.data.resolver.SummitPlanTemplateResolver;
 import net.superiorstate.ams.data.resolver.SummitPlanTemplateResolver.PlanTemplate;
@@ -517,10 +518,88 @@ public class SummitExportServlet extends HttpServlet {
         String planYearEndStr = planYearEnd.format(SUMMIT_DATE);
         int planYear = planYearStart.getYear();
 
+        // S31-H -- the optional element block, appended after the eight mandatory columns. Unset
+        // means an empty list, which appends nothing and leaves this file byte-identical to what it
+        // emitted before S31-H. That is the default and it must stay the default.
+        SummitCdhElementResolver.Parsed optional = SummitCdhElementResolver.configured();
+        if (optional.isRejected()) {
+            log.error("[SUMMIT-EXPORT] {}", optional.getRejection());
+            writePlainError(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+                    "Cannot generate Employer CDH Plan file: " + optional.getRejection());
+            return;
+        }
+        Map<String, String> graceFields = SummitCdhElementResolver.graceFields();
+
         List<String> lines = new ArrayList<>();
         for (PlanTemplate template : emit) {
+            // ⚠️ Grace is per sale and per plan. A key segment absent from SUMMIT_CDH_GRACE_FIELDS
+            // means the plan has no grace concept -- ICHRA's path -- and its grace columns emit
+            // empty. A key segment that IS listed must produce a readable answer.
+            // Null-safe and short-circuited: with SUMMIT_CDH_GRACE_FIELDS unset the map is empty,
+            // the lookup never runs, and every plan takes the NOT_APPLICABLE path -- so the default
+            // configuration adds no behaviour here at all, not merely no visible difference.
+            // getKeySegment() is non-null on all three supply paths (property, V095 table, legacy
+            // ICHRA fallback), but an NPE here would break file 2 for every employer, so it is
+            // guarded rather than assumed.
+            String graceFieldKey = null;
+            if (!graceFields.isEmpty() && template.getKeySegment() != null) {
+                graceFieldKey = graceFields.get(template.getKeySegment().toUpperCase());
+            }
+            SummitCdhElementResolver.GraceChoice grace =
+                    SummitCdhElementResolver.GraceChoice.NOT_APPLICABLE;
+            if (graceFieldKey != null) {
+                grace = SummitCdhElementResolver.classifyGrace(answers.get(graceFieldKey));
+            }
+
+            if (grace == SummitCdhElementResolver.GraceChoice.CARRYOVER) {
+                // ⚠️ Carryover has NO element anywhere in the Employer CDH Plan template -- verified
+                // against the live element list 2026-09-08 -- so this plan cannot be imported at
+                // all and must be built by hand in Summit. Omit it, name it loudly, and emit every
+                // other plan normally. The same shape as the unmapped-elected-item skip above:
+                // behaviour correct, visibility added. ⚠️ There is no carryover AMOUNT to name --
+                // S31-H searched every application package and none collects one.
+                log.warn("[SUMMIT-EXPORT] Employer CDH Plan for proposal {}: plan '{}' (ServiceItem"
+                                + " {}, template {}) OMITTED from the file -- its '{}' answer is"
+                                + " Carryover, and carryover has no element in the Employer CDH Plan"
+                                + " template, so this plan cannot be imported and must be built by"
+                                + " hand in Summit. AMS collects no carryover amount, so the amount"
+                                + " must come from the employer. Every other plan was emitted"
+                                + " normally.",
+                        proposalId, template.getLabel(), template.getServiceItemId(),
+                        template.getTemplateId(), graceFieldKey);
+                continue;
+            }
+
+            if (grace == SummitCdhElementResolver.GraceChoice.UNRECOGNISED) {
+                String raw = answers.get(graceFieldKey);
+                writePlainError(response, HttpServletResponse.SC_BAD_REQUEST,
+                        "Cannot generate Employer CDH Plan file: plan '" + template.getLabel()
+                                + "' is mapped to the application answer '" + graceFieldKey
+                                + "' for its end-of-year feature, and prospect " + prospect.getId()
+                                + "'s application"
+                                + ((raw == null || raw.isBlank())
+                                        ? " has no answer for it."
+                                        : " answers it '" + raw + "', which this export does not"
+                                          + " recognise.")
+                                + " Accepted answers are "
+                                + SummitCdhElementResolver.acceptedGraceAnswers()
+                                + ". This is refused rather than defaulted: an unanswered grace"
+                                + " question emitted as 'no grace' is a wrong plan setting that"
+                                + " Summit imports cleanly and nobody notices. If the plan genuinely"
+                                + " has no grace concept, remove its key segment from "
+                                + SummitCdhElementResolver.GRACE_FIELDS_KEY + " instead.");
+                return;
+            }
+
+            // With no optional elements configured, no values are built and none are appended --
+            // the row is the eight mandatory columns, byte for byte as before S31-H.
+            Map<SummitCdhElementResolver.Element, String> optionalValues =
+                    optional.getElements().isEmpty()
+                            ? java.util.Collections.emptyMap()
+                            : buildOptionalValues(grace, planYearEnd);
             lines.add(buildCdhPlanRow(template, employerTpaCustomId, prospect.getName(),
-                    planYear, planYearBegin, planYearEndStr));
+                    planYear, planYearBegin, planYearEndStr,
+                    optional.getElements(), optionalValues));
         }
 
         String filename = resolveFilename(TYPE_CDH_PLAN,
@@ -540,8 +619,10 @@ public class SummitExportServlet extends HttpServlet {
      * the same value, as they were before — the plan takes effect when its plan year opens.
      */
     private String buildCdhPlanRow(PlanTemplate t, String employerTpaCustomId, String prospectName,
-                                   int planYear, String planYearBegin, String planYearEnd) {
-        return String.join("|",
+                                   int planYear, String planYearBegin, String planYearEnd,
+                                   List<SummitCdhElementResolver.Element> optionalElements,
+                                   Map<SummitCdhElementResolver.Element, String> optionalValues) {
+        List<String> columns = new ArrayList<>(List.of(
                 String.valueOf(t.getTemplateId()),
                 sanitize(t.getLabel() + " " + planYear),
                 sanitize(employerTpaCustomId + "-" + t.getKeySegment() + "-" + planYear),
@@ -549,7 +630,89 @@ public class SummitExportServlet extends HttpServlet {
                 planYearBegin,
                 employerTpaCustomId,
                 planYearBegin,
-                planYearEnd);
+                planYearEnd));
+
+        // S31-H -- the optional block, appended in configured order. With no elements configured
+        // this loop runs zero times and the joined result is the eight mandatory columns exactly as
+        // before. Every configured element resolves to a value (possibly empty) rather than being
+        // omitted: Summit binds optional elements positionally, so a missing one would shift every
+        // element after it.
+        for (SummitCdhElementResolver.Element element : optionalElements) {
+            String value = optionalValues.get(element);
+            columns.add(sanitize(value == null ? "" : value));
+        }
+
+        return String.join("|", columns);
+    }
+
+    /**
+     * S31-H — the optional element values for one plan, keyed by element, ready to append after the
+     * eight mandatory columns in the order {@code SUMMIT_CDH_OPTIONAL_ELEMENTS} lists.
+     * <p>
+     * Every element in {@link Element} gets an entry, so a configured element always finds a value
+     * and never emits a stray null. An element AMS has no source for emits <b>empty</b> rather than
+     * being omitted — omitting it would shift every column after it, which is the failure the
+     * resolver's refusal-on-unknown-token exists to prevent, arriving by a different door.
+     * <p>
+     * ⚠️ {@code GRACE_DAYS} is <b>always empty</b> — the grace period is expressed as a date
+     * ({@code GRACE_DATE}), because a day count cannot encode Treas. Reg. §1.125-1(e). The token
+     * survives only so a template mapping that column still binds positionally.
+     * <p>
+     * ⚠️ {@code OPEN_ENROLL_START} and {@code OPEN_ENROLL_END} are <b>always empty</b>: S31-H
+     * searched every application package and AMS collects no open-enrollment dates anywhere. The
+     * tokens are supported so a template that maps those columns still binds positionally; they
+     * carry no data and will not until something collects it.
+     */
+    private Map<SummitCdhElementResolver.Element, String> buildOptionalValues(
+            SummitCdhElementResolver.GraceChoice grace, LocalDate planYearEnd) {
+        Map<SummitCdhElementResolver.Element, String> values =
+                new java.util.EnumMap<>(SummitCdhElementResolver.Element.class);
+
+        // Fixed on every CDH plan (settled 2026-09-08), each config-overridable.
+        values.put(SummitCdhElementResolver.Element.RUNOUT_ENABLED, SummitCdhElementResolver.bool(true));
+        values.put(SummitCdhElementResolver.Element.RUNOUT_BY_DATE, SummitCdhElementResolver.bool(false));
+        values.put(SummitCdhElementResolver.Element.RUNOUT_DAYS, SummitCdhElementResolver.runoutDays());
+        values.put(SummitCdhElementResolver.Element.TERM_RUNOUT_TYPE, SummitCdhElementResolver.termRunoutType());
+        values.put(SummitCdhElementResolver.Element.TERM_RUNOUT_DAYS, SummitCdhElementResolver.termRunoutDays());
+
+        // No source in AMS -- see the javadoc above.
+        values.put(SummitCdhElementResolver.Element.OPEN_ENROLL_START, "");
+        values.put(SummitCdhElementResolver.Element.OPEN_ENROLL_END, "");
+
+        // Per sale. A plan whose key segment is not listed in SUMMIT_CDH_GRACE_FIELDS reaches here
+        // as NOT_APPLICABLE and emits all three empty -- ICHRA's path, and correct: one layout for
+        // every row, blank where the concept does not apply.
+        switch (grace) {
+            case GRACE -> {
+                // ⚠️ BY DATE, not by day count. Treas. Reg. 1.125-1(e) caps a grace period at the
+                // fifteenth day of the third calendar month after the plan year ends -- a calendar
+                // rule whose length varies with the year-end month, so no fixed count expresses it.
+                // S31-H emitted 75 days, which for a 31 December year end resolves to 16 March: one
+                // day past the statutory maximum. Do not reintroduce a day count here.
+                LocalDate graceEnd = SummitCdhElementResolver.graceDate(planYearEnd);
+                values.put(SummitCdhElementResolver.Element.GRACE_ENABLED, SummitCdhElementResolver.bool(true));
+                values.put(SummitCdhElementResolver.Element.GRACE_BY_DATE, SummitCdhElementResolver.bool(true));
+                values.put(SummitCdhElementResolver.Element.GRACE_DATE,
+                        graceEnd == null ? "" : graceEnd.format(SUMMIT_DATE));
+                // Redundant once a date is supplied, and a second source of truth for the same fact.
+                values.put(SummitCdhElementResolver.Element.GRACE_DAYS, "");
+            }
+            case NONE -> {
+                values.put(SummitCdhElementResolver.Element.GRACE_ENABLED, SummitCdhElementResolver.bool(false));
+                values.put(SummitCdhElementResolver.Element.GRACE_BY_DATE, "");
+                values.put(SummitCdhElementResolver.Element.GRACE_DATE, "");
+                values.put(SummitCdhElementResolver.Element.GRACE_DAYS, "");
+            }
+            default -> {
+                // Not applicable to this plan: the key segment was never listed. CARRYOVER and
+                // UNRECOGNISED never reach here -- the writer skips or refuses before building a row.
+                values.put(SummitCdhElementResolver.Element.GRACE_ENABLED, "");
+                values.put(SummitCdhElementResolver.Element.GRACE_BY_DATE, "");
+                values.put(SummitCdhElementResolver.Element.GRACE_DATE, "");
+                values.put(SummitCdhElementResolver.Element.GRACE_DAYS, "");
+            }
+        }
+        return values;
     }
 
     /**

@@ -136,6 +136,125 @@ exist — an existing global `Plan Year ID`, or `Plan Year Begin`/`Plan Year End
 **Inline dates are preferred**: AMS already knows the plan year from the application, and it avoids
 carrying a second Summit-assigned reference that changes annually.
 
+#### Optional elements — the block that appends after A–H (S31-H, 2026-09-08)
+
+The `Employer CDH Plan` template also offers **optional** elements. Summit's own dialog separates them
+from the mandatory block, and AMS appends them **after** column H in whatever order the installation
+configures. ⚠️ **The eight mandatory columns are unchanged and remain import-proven** — nothing in this
+section alters them.
+
+⚠️ **AMS conforms to the template, never the reverse.** Which optional elements exist, and in what
+order, is a property of the Summit-side template; `SUMMIT_CDH_OPTIONAL_ELEMENTS` is how an operator
+states what the template was told. **Unset means AMS emits nothing extra**, which is the default and
+leaves file 2 byte-identical to what it emitted before S31-H.
+
+⚠️ **`ZZ_TEST_CDH` currently maps NO optional elements.** Until they are added on the Summit side, any
+file carrying a non-empty optional block **will not import**. Configuring the AMS side first is
+harmless but achieves nothing on its own.
+
+**The three tiers, settled 2026-09-08:**
+
+| Tier | Elements | Source in AMS |
+|---|---|---|
+| Fixed, every CDH plan | `Run-out Enabled` true · `Run-out Calculation (by date)` false · `Run-out # Days` 90 · `Terminated Run-out Type` 1 · `Terminated Run-out # Days` 90 | Config, each defaulting to the value shown |
+| Per sale | `Grace Period Enabled` · `Grace Period Calculation (by date)` **true** · `Grace Period Date` | Application answers, mapped per plan; the date is computed (see below) |
+| **Not importable** | FSA **carryover** and its amount; HRA / MERP / DRiP reimbursement logic | Nothing — the plan is skipped and logged |
+
+**Supported tokens:** `GRACE_ENABLED`, `GRACE_BY_DATE`, `GRACE_DATE`, `GRACE_DAYS`, `RUNOUT_ENABLED`,
+`RUNOUT_BY_DATE`, `RUNOUT_DAYS`, `TERM_RUNOUT_TYPE`, `TERM_RUNOUT_DAYS`, `OPEN_ENROLL_START`,
+`OPEN_ENROLL_END`. Config order is emit order.
+
+⚠️ **An unrecognised token refuses the export rather than being skipped**, breaking deliberately with
+the tolerant parsing every sibling resolver uses. Summit binds optional elements **positionally**, so
+silently dropping one shifts every element after it and loads each value into the wrong field — which
+Summit accepts without complaint. A skipped token there costs a plan row; a skipped token here costs
+column alignment.
+
+⚠️ **`OPEN_ENROLL_START` and `OPEN_ENROLL_END` always emit empty.** S31-H searched every application
+package: **AMS collects no open-enrollment dates anywhere.** The tokens exist so a template that maps
+those columns still binds positionally.
+
+##### Grace, per plan
+
+`SUMMIT_CDH_GRACE_FIELDS` maps a plan mapping's `key_segment` to the application field holding that
+plan's end-of-year answer — e.g. `FSA:hfsa_roll_or_grace,DCAP:dcap_grace`.
+
+| Case | Emitted |
+|---|---|
+| Key segment not listed | All three grace elements **empty**. ICHRA's path, and correct: one layout for every row, blank where the concept does not apply. |
+| Answer = `2-1/2 Month Grace Period` | Enabled true, **by-date true**, `GRACE_DATE` computed from the plan year end (see below). `GRACE_DAYS` empty. |
+| Answer = `None` | Enabled false, the other two empty |
+| Answer = `Carryover` | **Plan omitted from the file** — see below |
+| Answer absent or unrecognised | ⚠️ **The export refuses**, naming the field, the plan and the accepted values |
+
+⚠️ **The unanswered case is refused, never defaulted.** An unanswered grace question emitted as "no
+grace" is a wrong plan setting that Summit imports cleanly and nobody notices.
+
+⚠️ **The accepted answers are the application's own option labels, stored verbatim.** S31-H established
+by tracing render → request parameter → persist that a `RADIO` stores the option token itself:
+`applyForProposal.jsp` emits `value="${opt}"`, and both `ApplyForProposal` and
+`SaveApplicationProgress` store `paramValue.trim()`. The options are
+`None|Carryover|2-1/2 Month Grace Period` (`hfsa_roll_or_grace`) and `None|2-1/2 Month Grace Period`
+(`dcap_grace`). **So the stored value is a display label, and a display label is editable in the
+Service Manager** — reword an option and later answers stop matching. That fails to a **refusal**, not
+to a wrong setting, which is the safe direction and is deliberate.
+
+##### ⚠️ The grace period is a DATE, and it must be — a day count cannot express the rule
+
+**Treas. Reg. §1.125-1(e)** caps a grace period at **the fifteenth day of the third calendar month
+after the end of the plan year**. That is a calendar rule, and the length it implies **changes with the
+plan year's end month**:
+
+| Plan year ends | Grace period ends | Which is |
+|---|---|---|
+| 31 December | **15 March** | 74 days |
+| 30 June | **15 September** | 77 days |
+| 31 January | **15 April** | 74 days |
+
+⚠️ **So no fixed day count can express it**, and the obvious count is wrong in the dangerous direction:
+**75 days after 31 December is 16 March — one day beyond the statutory maximum**, every non-leap plan
+year. S31-H shipped exactly that and S31-I corrected it before anything was committed. The three rows
+above are computed by the emitter itself, not by hand.
+
+AMS therefore emits `Grace Period Calculation (by date)` **true** and supplies `Grace Period Date`,
+which Summit supports directly. The date is derived from the plan year end the export already parses —
+add three months, set the day to 15 — using month arithmetic, never day arithmetic. **`GRACE_DAYS`
+emits empty**: with a date supplied, a day count is redundant and a second source of truth for the same
+fact.
+
+⚠️ **No grace length is collected on the application, and none is needed.** The length lives inside the
+option text ("2-1/2 Month Grace Period") and is never stored as a number — but the statutory date is
+computable from the plan year end alone, so nothing has to be collected. **There is deliberately no
+config key for a grace day count**; one existed briefly in S31-H and was removed, because leaving it
+available invites someone to set a wrong value that Summit would accept without complaint.
+
+##### ⚠️ Carryover cannot be imported at all
+
+**Carryover has no element anywhere in the `Employer CDH Plan` template** — verified against the live
+element list 2026-09-08. A carryover FSA therefore **cannot be imported by any file AMS can produce**
+and must be built by hand in Summit.
+
+AMS's response is to **omit that plan from file 2**, log a `WARN` naming the plan, its `ServiceItem`
+and its template, and **emit every other plan normally**. The export does not fail. This is the same
+shape as the unmapped-elected-item skip: behaviour correct, visibility added.
+
+⚠️ **The WARN cannot name a carryover amount, because AMS collects none.** S31-H searched the complete
+`s125_fsa` field set — `hfsa_maximum_amount` is the annual election limit, not a carryover amount, and
+the `hra` package's `hra_roll_limit_*` fields belong to a different plan type. Whoever builds the plan
+by hand must get the amount from the employer.
+
+⚠️ **Both skips are log-only today.** Nothing on screen tells an operator that a plan was dropped —
+they see a file with fewer rows than they expected and no explanation. Surfacing them is filed as a
+backlog item.
+
+##### Boolean representation is unproven
+
+⚠️ **Nothing establishes how Summit wants a Boolean in a delimited file.** The element list says only
+"Boolean" — `true`/`false`, `1`/`0` and `Y`/`N` are all plausible and none has been imported. Rather
+than guess, both sides are config: `SUMMIT_CDH_BOOL_TRUE` and `SUMMIT_CDH_BOOL_FALSE`, defaulting to
+`true` and `false`. **One import settles it**, the way every other Summit question in this document was
+settled, and the fix is then a properties edit rather than a build.
+
 ### 3. Demographics — creates the participant
 
 Columns, A–L: `Employer TPA Custom ID`, `Participant TPA Custom ID`, `First Name`, `Last Name`,
