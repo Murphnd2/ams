@@ -691,8 +691,11 @@ public class SummitExportServlet extends HttpServlet {
                             + " decimal places, optionally preceded by a dollar sign: 7200, 7200.00"
                             + " or $7200.00. A thousands separator is refused rather than stripped:"
                             + " Summit accepts a wrong amount silently and funds the benefit from"
-                            + " it, so a value this export cannot read unambiguously is corrected"
-                            + " on the application, never guessed at here.");
+                            + " it, so a value this export cannot read unambiguously is never"
+                            + " guessed at here. Correcting it is not possible from this screen:"
+                            + " the amount is read from the application, and an application locks"
+                            + " when it converts to a Setup — which this export always runs"
+                            + " against.");
             return;
         }
 
