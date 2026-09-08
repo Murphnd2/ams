@@ -527,7 +527,8 @@ public class SummitExportServlet extends HttpServlet {
 
         String planYearBegin = planYearStart.format(SUMMIT_DATE);
         String planYearEndStr = planYearEnd.format(SUMMIT_DATE);
-        int planYear = planYearStart.getYear();
+        // S31-J -- planYear is deliberately no longer computed here. A plan's identity and its
+        // names carry no year; the year travels in Plan Year Begin / Plan Year End alone.
 
         // S31-H -- the optional element block, appended after the eight mandatory columns. Unset
         // means an empty list, which appends nothing and leaves this file byte-identical to what it
@@ -614,8 +615,8 @@ public class SummitExportServlet extends HttpServlet {
                     optional.getElements().isEmpty()
                             ? java.util.Collections.emptyMap()
                             : buildOptionalValues(grace, planYearEnd);
-            lines.add(buildCdhPlanRow(template, employerTpaCustomId, prospect.getName(),
-                    planYear, planYearBegin, planYearEndStr,
+            lines.add(buildCdhPlanRow(template, employerTpaCustomId,
+                    planYearBegin, planYearEndStr,
                     optional.getElements(), optionalValues));
         }
 
@@ -672,15 +673,28 @@ public class SummitExportServlet extends HttpServlet {
      * {@code Effective Date} (column 5) and {@code Plan Year Begin} (column 7) are deliberately
      * the same value, as they were before — the plan takes effect when its plan year opens.
      */
-    private String buildCdhPlanRow(PlanTemplate t, String employerTpaCustomId, String prospectName,
-                                   int planYear, String planYearBegin, String planYearEnd,
+    private String buildCdhPlanRow(PlanTemplate t, String employerTpaCustomId,
+                                   String planYearBegin, String planYearEnd,
                                    List<SummitCdhElementResolver.Element> optionalElements,
                                    Map<SummitCdhElementResolver.Element, String> optionalValues) {
         List<String> columns = new ArrayList<>(List.of(
                 String.valueOf(t.getTemplateId()),
-                sanitize(t.getLabel() + " " + planYear),
-                sanitize(employerTpaCustomId + "-" + t.getKeySegment() + "-" + planYear),
-                sanitize(t.getLabel() + " Plan " + planYear + " for " + prospectName),
+                // S31-J -- Plan Name and Plan Description are the mapping row's label, and nothing
+                // else. The year is already carried by Plan Year Begin / End, and the employer name
+                // restates what the row's own Employer TPA Custom ID column already says. The label
+                // is editable per mapping on the Summit Plan Templates admin screen, so renaming a
+                // plan needs no code change and no config change.
+                sanitize(t.getLabel()),
+                // ⚠️ S31-J -- THE UPSERT KEY CARRIES NO PLAN YEAR. A Summit benefit plan persists
+                // across plan years and accumulates them: a renewal imports into the SAME plan and
+                // attaches another plan year to it, with elections separating by plan year. With the
+                // year in this key, next year's export would create a SECOND plan rather than
+                // renewing -- every year, indefinitely, with elections split across duplicates that
+                // are indistinguishable in the UI except by a key nobody reads. The superseded form
+                // was {employerKey}-{keySegment}-{planYear}; T185's do-not-touch protected that
+                // shape and is retired, because its premise was wrong.
+                sanitize(employerTpaCustomId + "-" + t.getKeySegment()),
+                sanitize(t.getLabel()),
                 planYearBegin,
                 employerTpaCustomId,
                 planYearBegin,
@@ -975,8 +989,12 @@ public class SummitExportServlet extends HttpServlet {
         }
         PlanTemplate ichra = ichraMatches.get(0);
 
-        int planYear = planYearStart.getYear();
-        String importPlanId = sanitize(employerTpaCustomId + "-" + ichra.getKeySegment() + "-" + planYear);
+        // ⚠️ S31-J -- the SECOND of the two Import Plan ID composition sites. S30-A duplicated this
+        // rather than extracting it, so both must change together: if file 2 drops the plan year and
+        // this does not, every enrollment row points at a plan id that does not exist and the import
+        // fails in a way nobody expects. Composition only -- this writer's roster, amount and
+        // refusals are untouched by S31-J.
+        String importPlanId = sanitize(employerTpaCustomId + "-" + ichra.getKeySegment());
         String effectiveDate = planYearStart.format(SUMMIT_DATE);
         // The parser caps the answer at two decimal places, so setScale(2) is exact here and the
         // rounding mode is never actually exercised; toPlainString keeps a large amount out of

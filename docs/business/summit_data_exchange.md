@@ -136,6 +136,50 @@ exist — an existing global `Plan Year ID`, or `Plan Year Begin`/`Plan Year End
 **Inline dates are preferred**: AMS already knows the plan year from the application, and it avoids
 carrying a second Summit-assigned reference that changes annually.
 
+#### ⚠️ `Import Plan ID` carries NO plan year — corrected S31-J, 2026-09-08
+
+**A Summit benefit plan persists across plan years and accumulates them.** A renewal imports into the
+**same** plan and attaches another plan year to it; a plan carries multiple plan years over time, and
+elections separate by plan year. That is the fact everything below turns on.
+
+`Import Plan ID` is the **upsert key**. So with a year in it:
+
+- year one emits `158E140952-DCAP-2026` and Summit creates the plan;
+- year two emits `158E140952-DCAP-2027`, which Summit reads as a **different** plan and **creates a
+  second one** rather than attaching a plan year to the first;
+- and so on, **every year, indefinitely** — a growing set of near-duplicate plans with elections split
+  across them, indistinguishable in the UI except by a key nobody reads.
+
+**The shipped form is `{employerTpaCustomId}-{keySegment}`.** The plan year travels in
+`Plan Year Begin` / `Plan Year End`, which file 2 already emits inline and which is the mechanism
+Summit provides for exactly this.
+
+⚠️ **The superseded form was `{employerTpaCustomId}-{keySegment}-{planYear}`.** T185 recorded a
+deliberate do-not-touch on it, reasoning that keeping the year was the recoverable error (a spare plan
+to delete) and dropping it the destructive one (a renewal overwriting the prior year). **That premise
+was wrong**: a renewal does not overwrite, it attaches. T185 is retired.
+
+⚠️ **There are two composition sites, not one** — file 2's `buildCdhPlanRow` and the enrollment
+writer's `importPlanId`, which S30-A duplicated rather than extracted. **They must always agree**: if
+one carries a year and the other does not, every enrollment row points at a plan id that does not
+exist. Both changed in S31-J; anything that touches one must touch the other.
+
+#### `Plan Name` and `Plan Description` are the Label, and nothing else
+
+Both columns now emit the mapping row's **`label`** verbatim. No year — `Plan Year Begin`/`End` already
+carry it — and no employer name, which only restates what the row's own `Employer TPA Custom ID` column
+says.
+
+⭐ **The label is editable per mapping on the Summit Plan Templates admin screen (T202)**, so **renaming
+a plan needs no code change and no config change** — a PSP admin edits the Label field and the next
+export carries the new name.
+
+⚠️ **file 2's results template correlates on `Plan Name`.** It carries no row number, so the only way
+to tell which result line belongs to which submitted row is the plan name. **Two rows in one file must
+therefore not share a label.** Nothing enforces this — the unique constraint on the mapping table is on
+(PSP, service item), not on the label — so it is the operator's responsibility when filling in the
+Label field.
+
 #### Optional elements — the block that appends after A–H (S31-H, 2026-09-08)
 
 The `Employer CDH Plan` template also offers **optional** elements. Summit's own dialog separates them
@@ -317,7 +361,7 @@ emits a zero-row file rather than refusing, matching file 4.
 |---|---|
 | `Employer TPA Custom ID` | `resolveEmployerTpaCustomId` — `{SUMMIT_TPA_ID_PREFIX}E{Prospect.id}`, the same value files 1, 2 and 4 emit |
 | `Participant TPA Custom ID` | `{SUMMIT_TPA_ID_PREFIX}-P-{employer_participant.id}`, the same composition file 4 emits |
-| `Import Plan ID` | file 2's own composition for the **ICHRA** row: `{employerTpaCustomId}-{keySegment}-{planYear}` |
+| `Import Plan ID` | file 2's own composition for the **ICHRA** row: `{employerTpaCustomId}-{keySegment}` — **no plan year** (S31-J) |
 | `Effective Date` | the `plan_year_start` application answer — the same value file 2 emits as its `Effective Date` and `Plan Year Begin`, **not** `employer_participant.effective_date` (T198) |
 | `Participant Annual Election Amount` | the `hra_annual_ee` application answer ("Annual Amount per Employee", HRA package, `hra_benefit_allocation` section), two decimal places, no currency symbol, no thousands separator |
 
@@ -354,7 +398,7 @@ The single most important section. Four identifiers, three owned by AMS.
 |---|---|---|---|
 | `Employer TPA Custom ID` | **AMS** | Per installation | **Upsert key.** Must be stable for the life of the employer — changing it orphans the old record and creates a new one. Derive from something immutable, never from a name or tax ID. ⚠️ **Must be alphanumeric** — no hyphen, no underscore (import-established 2026-09-08; see below). AMS composes `{prefix}E{prospectId}`. |
 | `Participant TPA Custom ID` | **AMS** | ⚠️ **GLOBALLY UNIQUE across all employers** | See the warning below. **Hyphens are accepted** — `158-P-9001` imported *and enrolled* successfully 2026-09-08. AMS composes `{prefix}-P-{participantId}`, unchanged. |
-| `Import Plan ID` | **AMS** | Per-employer accepted — **treat as suspect** | Two employers took `ICHRA2027` and enrollment resolved correctly. But this is the same evidence pattern that misled on participants. Namespace by employer unless a test proves otherwise. **Hyphens are accepted** — `158140952-PROBEA-2026` imported successfully 2026-09-08. Shape unchanged; it now embeds the new employer key (see T185). |
+| `Import Plan ID` | **AMS** | Per-employer accepted — **treat as suspect** | Two employers took `ICHRA2027` and enrollment resolved correctly. But this is the same evidence pattern that misled on participants. Namespace by employer unless a test proves otherwise. **Hyphens are accepted** — `158140952-PROBEA-2026` imported successfully 2026-09-08. ⚠️ **The shape CHANGED in S31-J: it is now `{employerKey}-{keySegment}` with NO plan year**, because a Summit plan persists across plan years and a year in the upsert key would create a duplicate plan every renewal. T185 is retired. |
 | `Plan Template ID` | **Summit** | — | The **only** Summit-assigned foreign reference the emitter needs. Config, resolved at runtime, **never hardcoded** — it differs per installation, same reasoning as the project's reference-row rule. |
 
 **Write this warning in full, it cost a wrong conclusion:**
@@ -614,6 +658,14 @@ templates prefixed `ZZ_TEST_` exist in the live Summit environment and should be
 - Employer `158140952`, plus the rejected attempts `158-140952` and `158_140952` (those two created
   nothing — they failed before field binding — but the results files remain)
 - Plans `158140952-PROBEA-2026` and `158140952PROBEB2026`
+
+⚠️ **Every plan in the live tenant whose `Import Plan ID` ends in a year carries the SUPERSEDED shape**
+(S31-J dropped the plan year from the key). A re-export **will not update them** — it emits
+`{employerKey}-{keySegment}`, which Summit reads as a new plan, so the year-suffixed plans will be
+**joined by** a new plan rather than replaced. They are test artifacts and disposable, but they must be
+deleted rather than left to look like current records, and **no real employer should be left holding a
+year-suffixed plan** — if one exists, it needs deleting in Summit before the corrected export runs for
+that employer.
 - Participants `158-P-9001` and `158P9002`, and their HRA Enrollment records
 
 ⚠️ **Employer `158140952` predates the `E` and does not match the shipped scheme.** AMS now composes
