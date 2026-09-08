@@ -1,6 +1,9 @@
 package net.superiorstate.ams.data.resolver;
 
+import jakarta.persistence.EntityManager;
 import net.superiorstate.ams.AppConfig;
+import net.superiorstate.ams.data.dao.SummitPlanTemplateMapDAO;
+import net.superiorstate.ams.model.market.SummitPlanTemplateMap;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -13,6 +16,13 @@ import java.util.Set;
 /**
  * S28-B — the mapping from an elected AMS {@code ServiceItem} to the Summit CDH plan it
  * should create in file 2 (Employer CDH Plan).
+ * <p>
+ * ⚠️ <b>S31-D — this property is now the FALLBACK, not the only source.</b>
+ * {@link #configured(EntityManager, Long)} reads the PSP-scoped {@code summit_plan_template_map}
+ * table (V095) first and reads this property only when that table holds no active row for the
+ * PSP. Everything below still describes the property exactly, and the property path is
+ * unchanged — but it is reached second. Until T202 ships the admin screen there is no way to
+ * populate the table, so in practice the property is still what every installation runs on.
  * <p>
  * <b>Config key: {@code SUMMIT_PLAN_TEMPLATES}, read from {@code ssa.properties}.</b> Format
  * is comma-separated entries, each of three or four colon-separated fields:
@@ -48,7 +58,7 @@ import java.util.Set;
  * are placeholders</b>; they are installation-specific and are deliberately not written into
  * source (rule 4):
  * <pre>
- * SUMMIT_PLAN_TEMPLATES=&lt;ichraServiceItemId&gt;:1030:ICHRA:ICHRA,&lt;s125ExServiceItemId&gt;:1031:S125EX:Section 125 Excepted Benefit
+ * SUMMIT_PLAN_TEMPLATES=&lt;ichraServiceItemId&gt;:&lt;ichraTemplateId&gt;:ICHRA:ICHRA,&lt;s125ExServiceItemId&gt;:&lt;s125ExTemplateId&gt;:S125EX:Section 125 Excepted Benefit
  * </pre>
  * <b>To discover an installation's ids</b>: generate Summit file 2 with this key unset or
  * deliberately mismatched — the resulting error page lists every service elected on that
@@ -86,6 +96,9 @@ public final class SummitPlanTemplateResolver {
 
     /** The {@code ssa.properties} key this resolver reads. Named so callers can cite it in errors. */
     public static final String CONFIG_KEY = "SUMMIT_PLAN_TEMPLATES";
+
+    /** V095. Named here so log lines can cite the source that answered without a literal. */
+    private static final String TABLE_NAME = "summit_plan_template_map";
 
     private SummitPlanTemplateResolver() {}
 
@@ -178,12 +191,11 @@ public final class SummitPlanTemplateResolver {
             }
 
             String keySegment = fields[2].trim();
-            if (keySegment.isEmpty()) {
-                warnSkip(trimmedEntry, "blank key segment");
-                continue;
-            }
-            if (keySegment.contains("|") || keySegment.chars().anyMatch(Character::isWhitespace)) {
-                warnSkip(trimmedEntry, "key segment '" + keySegment + "' contains a pipe or whitespace");
+            // S31-D -- the rule moved to keySegmentRejection so the table reader applies exactly
+            // the same one. The skips and their wording are unchanged.
+            String keySegmentRejection = keySegmentRejection(keySegment);
+            if (keySegmentRejection != null) {
+                warnSkip(trimmedEntry, keySegmentRejection);
                 continue;
             }
 
@@ -207,8 +219,152 @@ public final class SummitPlanTemplateResolver {
         return Collections.unmodifiableList(templates);
     }
 
+    /**
+     * S31-D — the configured plan templates for one PSP, <b>table first, property as fallback</b>.
+     * This is the overload {@code SummitExportServlet} calls; the no-arg {@link #configured()} is
+     * the property-only path it falls back to.
+     * <p>
+     * <b>Resolution order.</b> {@link SummitPlanTemplateMapDAO#findActiveByPspId} first; if it
+     * returns one or more rows they are used and the property is not read at all. If it returns
+     * none — an installation that has taken V095 but entered no mapping rows, which is every
+     * installation until T202 ships the admin screen — the property is read exactly as before and
+     * an {@code INFO} records that the fallback was used.
+     * <p>
+     * ⚠️ <b>Callers cannot tell which source answered, and must not learn.</b> The return type,
+     * ordering contract and every field's meaning are identical either way, so the emitted file is
+     * byte-identical for a mapping expressed either way. That is the property this whole change
+     * rests on.
+     * <p>
+     * ⚠️ <b>Both sources are validated by the same rules</b> — {@link #keySegmentRejection} and the
+     * duplicate-{@code serviceItemId} first-wins rejection are shared, not reimplemented. A table
+     * row carrying a pipe or whitespace in {@code key_segment} is skipped with a {@code WARN}
+     * exactly as a malformed property entry is, because a bad row must cost one plan rather than
+     * corrupting a pipe-delimited file.
+     * <p>
+     * <b>A database failure is not allowed to break the export.</b> Any exception from the read is
+     * logged and treated as "no rows", which falls through to the property — the same tolerance the
+     * parser applies to a malformed entry, one layer out.
+     *
+     * @param em     an open {@code EntityManager}. Null skips the table and goes straight to the
+     *               property.
+     * @param pspId  the PSP whose mapping to read. Null skips the table — a caller with no resolved
+     *               PSP gets the property path rather than an error.
+     * @return an unmodifiable list in emit order. Empty when neither source holds a well-formed
+     *         entry. Never null.
+     */
+    public static List<PlanTemplate> configured(EntityManager em, Long pspId) {
+        List<PlanTemplate> fromTable = fromDatabase(em, pspId);
+        if (!fromTable.isEmpty()) {
+            return fromTable;
+        }
+        List<PlanTemplate> fromProperty = configured();
+        log.info("[SUMMIT-EXPORT] no active {} rows for PSP {}; falling back to the {} property"
+                        + " ({} entries)",
+                TABLE_NAME, pspId, CONFIG_KEY, fromProperty.size());
+        return fromProperty;
+    }
+
+    /**
+     * The V095 table's contribution, or an empty list. Never throws: a read failure is logged and
+     * reported as empty so the caller falls back to the property.
+     */
+    private static List<PlanTemplate> fromDatabase(EntityManager em, Long pspId) {
+        if (em == null || pspId == null) return Collections.emptyList();
+
+        List<SummitPlanTemplateMap> rows;
+        try {
+            rows = SummitPlanTemplateMapDAO.findActiveByPspId(em, pspId);
+        } catch (RuntimeException e) {
+            log.warn("[SUMMIT-EXPORT] could not read {} for PSP {} ({}); falling back to the {}"
+                            + " property", TABLE_NAME, pspId, e.toString(), CONFIG_KEY);
+            return Collections.emptyList();
+        }
+        if (rows == null || rows.isEmpty()) return Collections.emptyList();
+
+        List<PlanTemplate> templates = new ArrayList<>();
+        Set<Integer> seenServiceItemIds = new HashSet<>();
+
+        for (SummitPlanTemplateMap row : rows) {
+            String rowRef = "id " + row.getId();
+
+            Integer serviceItemId = row.getServiceItemId();
+            if (serviceItemId == null || serviceItemId <= 0) {
+                warnSkip(TABLE_NAME, rowRef, "service item id '" + serviceItemId + "' is not a positive integer");
+                continue;
+            }
+
+            Integer templateId = row.getTemplateId();
+            if (templateId == null || templateId <= 0) {
+                warnSkip(TABLE_NAME, rowRef, "template id '" + templateId + "' is not a positive integer");
+                continue;
+            }
+
+            String keySegment = row.getKeySegment() == null ? "" : row.getKeySegment().trim();
+            String rejection = keySegmentRejection(keySegment);
+            if (rejection != null) {
+                warnSkip(TABLE_NAME, rowRef, rejection);
+                continue;
+            }
+
+            // Identical rule to the property's absent-or-blank fourth field: both fall back to the
+            // key segment, so a blank label is never a way to configure a blank plan name.
+            String label = keySegment;
+            if (row.getLabel() != null && !row.getLabel().trim().isEmpty()) {
+                label = row.getLabel().trim();
+            }
+
+            // The unique constraint makes this unreachable through the admin screen; it is kept so
+            // the two sources are validated identically and so a hand-edited row cannot behave
+            // differently from a hand-edited property entry.
+            if (!seenServiceItemIds.add(serviceItemId)) {
+                log.warn("[SUMMIT-EXPORT] {} skipped: service item id {} is already mapped earlier"
+                        + " for this PSP; the first row wins", rowRef, serviceItemId);
+                continue;
+            }
+
+            templates.add(new PlanTemplate(serviceItemId, templateId, keySegment, label));
+        }
+
+        if (templates.isEmpty()) {
+            log.warn("[SUMMIT-EXPORT] {} held {} row(s) for PSP {} but none were well-formed;"
+                            + " falling back to the {} property",
+                    TABLE_NAME, rows.size(), pspId, CONFIG_KEY);
+        } else {
+            log.info("[SUMMIT-EXPORT] {} supplied {} plan template(s) for PSP {}; the {} property"
+                    + " was not read", TABLE_NAME, templates.size(), pspId, CONFIG_KEY);
+        }
+        return Collections.unmodifiableList(templates);
+    }
+
+    /**
+     * The one implementation of the {@code keySegment} rule, shared by the property parser and the
+     * table reader so the two can never diverge.
+     *
+     * @return null when the segment is acceptable, otherwise the skip reason, worded exactly as the
+     *         property parser worded it before this method existed.
+     */
+    private static String keySegmentRejection(String keySegment) {
+        if (keySegment == null || keySegment.isEmpty()) {
+            return "blank key segment";
+        }
+        if (keySegment.contains("|") || keySegment.chars().anyMatch(Character::isWhitespace)) {
+            return "key segment '" + keySegment + "' contains a pipe or whitespace";
+        }
+        return null;
+    }
+
+    /** The property path. Wording unchanged from before S31-D. */
     private static void warnSkip(String entry, String reason) {
-        log.warn("[SUMMIT-EXPORT] {} entry '{}' skipped: {}", CONFIG_KEY, entry, reason);
+        warnSkip(CONFIG_KEY, entry, reason);
+    }
+
+    /**
+     * S31-D — the same skip notice, naming the source that actually held the bad entry. Without
+     * this overload a malformed {@code summit_plan_template_map} row would be logged as a
+     * {@code SUMMIT_PLAN_TEMPLATES} entry, sending whoever reads it to edit the wrong thing.
+     */
+    private static void warnSkip(String source, String entry, String reason) {
+        log.warn("[SUMMIT-EXPORT] {} entry '{}' skipped: {}", source, entry, reason);
     }
 
     /**

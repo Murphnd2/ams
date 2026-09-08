@@ -14,7 +14,9 @@ import net.superiorstate.ams.data.resolver.IchraAccessResolver;
 import net.superiorstate.ams.data.resolver.SummitImportTemplateResolver;
 import net.superiorstate.ams.data.resolver.SummitPlanTemplateResolver;
 import net.superiorstate.ams.data.resolver.SummitPlanTemplateResolver.PlanTemplate;
+import net.superiorstate.ams.data.AmsDataLocal;
 import net.superiorstate.ams.model.activity.checklist.sequences.support.ServiceItem;
+import net.superiorstate.ams.model.general.PSP;
 import net.superiorstate.ams.model.market.EmployerParticipant;
 import net.superiorstate.ams.model.sales.agency.Proposal;
 import net.superiorstate.ams.model.sales.agency.Prospect;
@@ -32,9 +34,11 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * S24-E, stage 1 — generates the two Summit import files AMS can source today from a
@@ -182,14 +186,22 @@ public class SummitExportServlet extends HttpServlet {
                 return;
             }
 
+            // S31-D -- the PSP whose plan template mapping applies, resolved once here because
+            // the session is reachable from doGet and from nowhere further in. Null is a
+            // supported answer, not an error: SummitPlanTemplateResolver skips the V095 table
+            // and uses the SUMMIT_PLAN_TEMPLATES property, which is exactly the pre-V095
+            // behaviour. Only the two plan-emitting writers take it; the employer and
+            // Demographics writers do not consult a plan mapping at all.
+            Long pspId = resolveCurrentPspId(request);
+
             if (type.equals(TYPE_EMPLOYER)) {
                 writeEmployerDemographic(response, prospect, answers, employerTpaCustomId);
             } else if (type.equals(TYPE_CDH_PLAN)) {
-                writeEmployerCdhPlan(response, em, proposalId, prospect, answers, employerTpaCustomId);
+                writeEmployerCdhPlan(response, em, proposalId, prospect, answers, employerTpaCustomId, pspId);
             } else if (type.equals(TYPE_DEMOGRAPHICS)) {
                 writeDemographics(response, em, prospect, employerTpaCustomId);
             } else {
-                writeHraEnrollment(response, em, proposalId, prospect, answers, employerTpaCustomId);
+                writeHraEnrollment(response, em, proposalId, prospect, answers, employerTpaCustomId, pspId);
             }
         } finally {
             if (em.isOpen()) em.close();
@@ -229,6 +241,25 @@ public class SummitExportServlet extends HttpServlet {
         if (prefix.isEmpty()) return null;
         if (!prefix.matches("[A-Za-z0-9]+")) return null;
         return prefix + "E" + prospect.getId();
+    }
+
+    /**
+     * S31-D — the current session's PSP id, or null.
+     * <p>
+     * Reads {@code local.getCurrentPerson().getPsp()}, the pattern every other PSP-scoped surface
+     * uses ({@code AgencyAction:52-53}, {@code PspDashboardHome:76}). {@code Prospect} carries no
+     * PSP reference, so the session is the only route.
+     * <p>
+     * ⚠️ <b>Every step is null-tolerant and null is a supported return.</b> A caller that cannot
+     * resolve a PSP gets the {@code SUMMIT_PLAN_TEMPLATES} property path — the pre-V095 behaviour —
+     * rather than an error page. This method must never be the reason an export fails.
+     */
+    private static Long resolveCurrentPspId(HttpServletRequest request) {
+        Object attribute = request.getSession().getAttribute("local");
+        if (!(attribute instanceof AmsDataLocal local)) return null;
+        if (local.getCurrentPerson() == null) return null;
+        PSP psp = local.getCurrentPerson().getPsp();
+        return psp == null ? null : psp.getId();
     }
 
     /**
@@ -376,7 +407,7 @@ public class SummitExportServlet extends HttpServlet {
      */
     private void writeEmployerCdhPlan(HttpServletResponse response, EntityManager em, long proposalId,
                                        Prospect prospect, Map<String, String> answers,
-                                       String employerTpaCustomId)
+                                       String employerTpaCustomId, Long pspId)
             throws IOException {
         LocalDate planYearStart = parseAnswerDate(answers.get(FIELD_PLAN_YEAR_START));
         if (planYearStart == null) {
@@ -395,7 +426,7 @@ public class SummitExportServlet extends HttpServlet {
             return;
         }
 
-        List<PlanTemplate> configured = SummitPlanTemplateResolver.configured();
+        List<PlanTemplate> configured = SummitPlanTemplateResolver.configured(em, pspId);
         List<PlanTemplate> emit;
         if (configured.isEmpty()) {
             // LEGACY PATH -- byte-identical to what production emitted at v0.94.00.
@@ -450,6 +481,29 @@ public class SummitExportServlet extends HttpServlet {
                                 + " using the ids above, then restart Tomcat.");
                 return;
             }
+            // S31-D -- record what was dropped. An elected service with no configured template is
+            // still skipped silently in the emitted file, which is correct and unchanged; what was
+            // missing was any trace of it. The filter above tests config against elections and
+            // never looks the other way, so this is the only place the difference exists.
+            // Deliberately placed AFTER the empty-emit refusal: when nothing matched, the error
+            // page already names every elected service, and warning as well would double-report.
+            Set<Integer> mappedServiceItemIds = new HashSet<>();
+            for (PlanTemplate template : configured) {
+                mappedServiceItemIds.add(template.getServiceItemId());
+            }
+            StringBuilder unmapped = new StringBuilder();
+            for (Map.Entry<Integer, String> service : electedServices.entrySet()) {
+                if (mappedServiceItemIds.contains(service.getKey())) continue;
+                if (unmapped.length() > 0) unmapped.append(", ");
+                unmapped.append(service.getKey()).append("=").append(service.getValue());
+            }
+            if (unmapped.length() > 0) {
+                log.warn("[SUMMIT-EXPORT] Employer CDH Plan for proposal {}: elected service(s) with"
+                                + " no Summit plan template mapped, omitted from the file"
+                                + " (ServiceItem id = description): {}",
+                        proposalId, unmapped);
+            }
+
             List<String> matchedTemplateIds = new ArrayList<>();
             for (PlanTemplate template : emit) {
                 matchedTemplateIds.add(template.getServiceItemId() + "=" + template.getTemplateId());
@@ -610,7 +664,7 @@ public class SummitExportServlet extends HttpServlet {
      */
     private void writeHraEnrollment(HttpServletResponse response, EntityManager em, long proposalId,
                                      Prospect prospect, Map<String, String> answers,
-                                     String employerTpaCustomId)
+                                     String employerTpaCustomId, Long pspId)
             throws IOException {
         LocalDate planYearStart = parseAnswerDate(answers.get(FIELD_PLAN_YEAR_START));
         if (planYearStart == null) {
@@ -647,7 +701,7 @@ public class SummitExportServlet extends HttpServlet {
         // out of it would edit proven code to serve an unproven caller. What the two must agree on
         // is the emitted Import Plan ID, and the guarantee of that is the identical composition
         // below, not a shared method.
-        List<PlanTemplate> configured = SummitPlanTemplateResolver.configured();
+        List<PlanTemplate> configured = SummitPlanTemplateResolver.configured(em, pspId);
         List<PlanTemplate> candidates;
         if (configured.isEmpty()) {
             Integer templateId = parsePositiveInt(AppConfig.get("SUMMIT_ICHRA_PLAN_TEMPLATE_ID"));
