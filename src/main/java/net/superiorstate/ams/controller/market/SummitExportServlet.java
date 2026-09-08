@@ -88,6 +88,12 @@ public class SummitExportServlet extends HttpServlet {
     // elected-service comparison is ever performed on this value.
     private static final int LEGACY_UNMATCHED_SERVICE_ITEM_ID = 0;
 
+    // S29-I -- the Demographics template's mandatory final column (L). It exists only to guarantee
+    // the last field is never empty, which a trailing optional value cannot promise; see
+    // writeDemographics. Overridable per installation via SUMMIT_BRANCH_CODE, but never absent --
+    // an unset key falls back to this literal rather than emitting an empty mandatory column.
+    private static final String DEFAULT_BRANCH_CODE = "AMS";
+
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
@@ -478,12 +484,29 @@ public class SummitExportServlet extends HttpServlet {
     }
 
     /**
-     * Demographics (file 4) — eleven columns, one row per participant on this prospect's roster
-     * ({@code employer_participant}, V094). {@code Mailing Address Line 2} and {@code Email} are
-     * nullable on the roster and emit empty rather than being dropped, reordered, or defaulted —
-     * a Summit importer defect mishandles a trailing empty value, so both nullable columns sit
-     * ahead of the always-populated {@code Effective Date}
-     * (docs/business/summit_data_exchange.md). {@code Effective Date} comes from
+     * Demographics (file 4) — <b>twelve columns in the Summit template's own A–L order</b>, one row
+     * per participant on this prospect's roster ({@code employer_participant}, V094).
+     * <p>
+     * ⚠️ <b>S29-I — the order is dictated by the Summit import template and is not negotiable.</b>
+     * Summit cannot reorder mandatory elements: optional elements can only be appended after the
+     * mandatory block, which forces {@code E-mail Address} to J and {@code Mailing Address Line 2}
+     * to K regardless of where they belong logically. The eleven-column order this replaced put
+     * {@code Mailing Address Line 2} at position 6 and {@code Effective Date} last; bound
+     * positionally against the template, <b>City would have landed in a state field</b>.
+     * <p>
+     * ⚠️ <b>The final column exists to guarantee a non-empty last field.</b> A trailing empty
+     * optional value breaks Summit's parse, and {@code Mailing Address Line 2} at K is blank on most
+     * rosters. {@code Branch Code} is mandatory, always populated, carries no meaning to SSA and is
+     * part of no identity — so it is the cheapest possible sentinel, reversible by a template edit
+     * rather than by orphaning records. <b>Nothing may be appended after it</b>; a new optional
+     * field goes before it and {@code Branch Code} stays last.
+     * <p>
+     * ⭐ This layout is import-proven: a hand-built file in this order was accepted 2026-09-08,
+     * including rows with an empty column K. The one row that failed did so on a field-length limit
+     * ({@code Mailing Address Line 1} caps at 50), not on order or on the sentinel.
+     * <p>
+     * {@code Mailing Address Line 2} and {@code Email} are nullable on the roster and emit empty
+     * rather than being dropped or defaulted. {@code Effective Date} comes from
      * {@code EmployerParticipant.effectiveDate} itself, not file 2's plan-year-answer derivation
      * — the entity's own field is documented as applied uniformly from a single form field for
      * exactly this column, never read from a spreadsheet. {@code Participant TPA Custom ID}
@@ -497,21 +520,28 @@ public class SummitExportServlet extends HttpServlet {
         List<EmployerParticipant> roster = EmployerParticipantDAO.findByProspectId(em, prospect.getId());
 
         String prefix = summitTpaIdPrefix();
+        // Resolved once per export, not per row: it is a constant for the whole file, and a
+        // configured value that sanitizes away to nothing would defeat the very column it fills,
+        // so the default takes over rather than emitting an empty mandatory field.
+        String branchCode = sanitize(summitBranchCode());
+        if (branchCode.isEmpty()) branchCode = DEFAULT_BRANCH_CODE;
+
         List<String> lines = new java.util.ArrayList<>();
         for (EmployerParticipant participant : roster) {
             String participantTpaCustomId = prefix + "-P-" + participant.getId();
             lines.add(String.join("|",
-                    employerTpaCustomId,
-                    participantTpaCustomId,
-                    sanitize(participant.getFirstName()),
-                    sanitize(participant.getLastName()),
-                    sanitize(participant.getAddressLine1()),
-                    sanitize(participant.getAddressLine2()),
-                    sanitize(participant.getCity()),
-                    sanitize(participant.getState()),
-                    sanitize(participant.getPostalCode()),
-                    sanitize(participant.getEmail()),
-                    participant.getEffectiveDate().format(SUMMIT_DATE)));
+                    employerTpaCustomId,                                    // A
+                    participantTpaCustomId,                                 // B
+                    sanitize(participant.getFirstName()),                   // C
+                    sanitize(participant.getLastName()),                    // D
+                    sanitize(participant.getAddressLine1()),                // E
+                    sanitize(participant.getCity()),                        // F
+                    sanitize(participant.getState()),                       // G
+                    sanitize(participant.getPostalCode()),                  // H
+                    participant.getEffectiveDate().format(SUMMIT_DATE),     // I
+                    sanitize(participant.getEmail()),                       // J  optional
+                    sanitize(participant.getAddressLine2()),                // K  optional
+                    branchCode));                                           // L  mandatory sentinel
         }
 
         String filename = resolveFilename(TYPE_DEMOGRAPHICS,
@@ -528,6 +558,22 @@ public class SummitExportServlet extends HttpServlet {
      */
     private static String summitTpaIdPrefix() {
         return AppConfig.get("SUMMIT_TPA_ID_PREFIX").trim();
+    }
+
+    /**
+     * S29-I — the value emitted in Demographics column L ({@code Branch Code}), read the same way
+     * this file already reads {@code SUMMIT_TPA_ID_PREFIX} and
+     * {@code SUMMIT_ICHRA_PLAN_TEMPLATE_ID}: {@code AppConfig} at request time, never hardcoded,
+     * because the Summit-side template is per-installation configuration.
+     * <p>
+     * ⚠️ <b>Absence is not a reason to omit the column.</b> It is mandatory in the template and its
+     * whole purpose is to be non-empty, so an unset or blank key falls back to
+     * {@link #DEFAULT_BRANCH_CODE} rather than producing the trailing-empty-field case the column
+     * exists to prevent. There is deliberately no branch that emits nothing here.
+     */
+    private static String summitBranchCode() {
+        String raw = AppConfig.get("SUMMIT_BRANCH_CODE");
+        return (raw == null || raw.isBlank()) ? DEFAULT_BRANCH_CODE : raw.trim();
     }
 
     /**

@@ -1564,3 +1564,20 @@ The emitted filename becomes `{templateName}_{yyyyMMddHHmmss}.txt`. The timestam
 **Related to D-90** but independent of it: D-90 decides what rows go *inside* file 2, this decides what the file is *called*. Neither blocks the other.
 
 **Applies to:** Kevin's local dev database / local Tomcat ✅ — set to the `ZZ_TEST_*` templates and runtime-verified 2026-09-08. Production ⬜ — needed before any file is uploaded to Summit; requires the production tenant's real template names first. Demo PSP, BPO, Master: not running the Summit export; apply only if/when one of them does.
+
+---
+
+### D-92: `ssa.properties` may set `SUMMIT_BRANCH_CODE` — optional; the Summit-side template mapping is not
+
+**Priority:** LOW for the AMS side (defaults cleanly), **HIGH for the Summit side** — without the template mapping, file 4 does not import at all
+**Status:** No AMS action required. ⚠️ **The Summit-side template change is required and is not an AMS deployment step.**
+
+`ssa.properties` **may** set `SUMMIT_BRANCH_CODE`; it **defaults to `AMS` when unset**, so no action is required to deploy. It fills the mandatory final column (L) of the Demographics import template. Read at request time through `AppConfig`, so a change needs a Tomcat restart — but since the default is a real value, an installation that never sets it is fully functional.
+
+⚠️ **The Summit-side `ZZ_TEST_DEMO` template must map `Branch Code` as the final mandatory element**, after `E-mail Address` and `Mailing Address Line 2`, or the file will not import. That is Summit configuration, not an AMS deployment step, and **it must exist on any tenant AMS exports to**. The same applies to whatever the production tenant's Demographics template is named.
+
+**Why the column exists at all.** A trailing empty optional field breaks Summit's parse, and `Mailing Address Line 2` sits at K and is blank on most rosters. `Branch Code` is mandatory, always populated, has no downstream consumer in SSA's usage and is part of no identity — so its reversal cost is a template edit, not orphaned records. ⚠️ **Nothing may be appended after it**: a new optional field goes before it and `Branch Code` stays last.
+
+⭐ **Import-proven 2026-09-08** in the A–L order with `AMS` in column L: five of six rows created, including all three rows with an empty column K. The sixth failed on `Mailing Address Line 1` exceeding 50 characters (T193), not on order or on the sentinel.
+
+**Applies to:** Kevin's local dev database / local Tomcat ⬜ — no AMS change needed; the `ZZ_TEST_DEMO` template already carries the mapping as of the 2026-09-08 hand-built import. Production ⬜ — the production Demographics template must map `Branch Code` last before any file 4 is uploaded. Demo PSP, BPO, Master: not running the Summit export; apply only if/when one of them does.

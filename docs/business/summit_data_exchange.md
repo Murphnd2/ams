@@ -70,17 +70,34 @@ Not from vendor documentation, and not verified by any automated test in this re
 > guaranteed to carry data on every row. This governs both the template's Body Format and the emitted
 > file, and the two must agree.
 
-The resulting column order for **file 4 (Demographics)**, which a later prompt implements:
+The resulting column order for **file 4 (Demographics)** — twelve columns, A–L, as
+`SummitExportServlet.writeDemographics` emits them:
 
 ```
-Employer TPA Custom ID | Participant TPA Custom ID | First Name | Last Name |
-Mailing Address Line 1 | Mailing Address Line 2 | Mailing Address City |
-Mailing Address State | Mailing Address Zip Code | Email | Effective Date
+A Employer TPA Custom ID  | B Participant TPA Custom ID | C First Name
+D Last Name               | E Mailing Address Line 1    | F Mailing Address City
+G Mailing Address State   | H Mailing Address Zip Code  | I Effective Date
+J E-mail Address (opt)    | K Mailing Address Line 2 (opt) | L Branch Code
 ```
 
-Both nullable columns — `Mailing Address Line 2` and `Email` — sit ahead of `Effective Date`, which is
-always populated because it is a form field applied uniformly to every participant rather than a
-spreadsheet column the employer might leave blank.
+⚠️ **Column order is dictated by the Summit template and mandatory elements cannot be reordered.**
+Optional elements are appended after the mandatory block, so `E-mail Address` and
+`Mailing Address Line 2` land at J and K regardless of where they belong logically. **A trailing
+empty optional field breaks the parse**, so the template ends with a mandatory `Branch Code` that AMS
+always populates from `SUMMIT_BRANCH_CODE` (default `AMS`). The value carries no meaning — it exists
+to guarantee a non-empty final field.
+
+⚠️ **Read this before adding any column.** Anything appended after `Branch Code` reintroduces the
+defect. A new optional field belongs before it, and `Branch Code` stays last.
+
+⭐ **Import-proven 2026-09-08.** A hand-built file in this A–L order with `AMS` in column L was
+accepted: five of six rows created, **including all three rows with an empty column K** — the exact
+trailing-empty-optional case the sentinel exists to prevent. The sixth failed on a field-length limit
+(below), not on order or on the sentinel.
+
+⚠️ **This supersedes the earlier eleven-column layout**, which placed `Mailing Address Line 2` at
+position 6 and `Effective Date` last. That order was never accepted by anything; bound positionally
+against the template, **City would have landed in a state field**.
 
 ## The proven chain
 
@@ -121,15 +138,35 @@ carrying a second Summit-assigned reference that changes annually.
 
 ### 3. Demographics — creates the participant
 
-Columns: `Employer TPA Custom ID`, `Participant TPA Custom ID`, `First Name`, `Last Name`,
+Columns, A–L: `Employer TPA Custom ID`, `Participant TPA Custom ID`, `First Name`, `Last Name`,
 `Mailing Address Line 1`, `Mailing Address City`, `Mailing Address State`, `Mailing Address Zip Code`,
-`Effective Date`
+`Effective Date`, `E-mail Address` *(optional)*, `Mailing Address Line 2` *(optional)*, `Branch Code`
 
 ```
-ZZTEST001|ZZP001|Alice|Testcase|100 Main Street|Marinette|WI|54143|20270101
+158E140952|158-P-9001|Alice|Testcase|100 Main Street|Marinette|WI|54143|20270101|alice@example.com|Apt 4B|AMS
+158E140952|158-P-9002|Frank|Testcase|1529 Ogden Street|Marinette|WI|54143|20270101|||AMS
 ```
 
-This nine-column list is the element set of the **test** template only — the eleven-column list under "An optional field must never be the last column" above is the AMS template layout `SummitExportServlet` actually emits.
+The second row shows the case the layout exists for: **both optional columns empty, and the file still
+parses** because mandatory `Branch Code` follows them. Corrected 2026-09-08 (S29-I) — this section
+previously showed a **nine-column** example omitting `Mailing Address Line 2`, `E-mail Address` and
+`Branch Code`, and described it as the test template's element set. `ZZ_TEST_DEMO` maps twelve
+elements, so that description was wrong as well as short, and two disagreeing layouts in one file is
+how the wrong one gets implemented.
+
+⚠️ **`Mailing Address Line 1` has a 50-character maximum.** Established by import 2026-09-08: a
+55-character address was rejected per-row with
+`'…' exceeds the maximum column size of 50. Length of data exceeded for Mailing Address Line 1.`
+while the other five rows in the same file were created. **Field lengths are not documented in the
+element picker and no other field has been tested** — name, city, email and the employer-side
+address fields are all unknown. Assume any of them may have a limit, and expect to discover it the
+same way.
+
+The same address at **48 characters** (`10455 North Shore Industrial Pkwy Bldg C Ste 200`) was
+accepted, so the limit is a plain field-length check rather than something subtler.
+
+The AMS census parser accepts addresses longer than 50 characters, so a row that uploads cleanly can
+still fail at Summit. Filed as a backlog item.
 
 **Neither SSN nor DOB is required.** The setup export carries no SSN, so the project's no-SSN boundary
 extends from proposal through enrollment without an exception.
@@ -193,6 +230,26 @@ needed for create or update.**
 
 Consequence: **AMS emits full current state, not deltas.** No sent-state tracking, no create-vs-update
 branch, no reconciliation table. Regenerating and re-sending is safe.
+
+⭐ **Demographics upserts on `Participant TPA Custom ID`** the same way Employer Demographic upserts on
+`Employer TPA Custom ID`. Observed 2026-09-08: a re-import of five existing participants returned
+`Participant Successfully Edited`, while a sixth — previously rejected on a field length — returned
+`Participant Successfully Created` in the same file. **The full-state, no-deltas rule therefore extends
+to participants, not only to employers**: no sent-state tracking and no create-vs-update branch is
+needed on either.
+
+⚠️ **Summit rejects a byte-identical re-send as a duplicate file — on content, not filename.** Observed
+2026-09-08: an AMS-generated Demographics file was refused as a duplicate of a hand-built probe with
+identical content under a different name. **Changing a single byte was enough to make it process.**
+
+This is a trap in exactly one case. Re-sending unchanged state that already applied is a no-op anyway,
+so the dedupe is normally harmless. But when an import fails **for a Summit-side reason** — an unmapped
+element, a wrong template, a missing employer — the operator fixes the template and re-sends the same
+file, and **nothing happens**. The file is unchanged; the outcome would not have been. ⚠️ **Expect a
+silent no-op at the moment a retry is most expected.**
+
+**Consequence for automated transport:** a retry mechanism cannot rely on re-sending the same bytes.
+Not yet designed — transport is still manual upload.
 
 `Record Process Indicator` presumably governs termination or deletion; its valid values are unknown.
 
@@ -464,8 +521,11 @@ requirements are unproven** — the tested chain (above) covered CDH only. Recor
 not as known.
 
 **File 4 — Census (Demographics).** Creates participants. Requires a `Participant TPA Custom ID`
-convention. ⚠️ **This is blocked** — see the open question below; AMS has no AMS-generated employee
-key to derive one from for a client not yet imported from Summit.
+convention. ⭐ **Import-proven as of 2026-09-08**, keying on
+`{SUMMIT_TPA_ID_PREFIX}-P-{employer_participant.id}`. This passage previously read that File 4 was
+**blocked** because AMS had no AMS-generated employee key to derive one from for a client not yet
+imported from Summit; **V094's `employer_participant` roster resolved that**, and the file has since
+imported successfully twice into the live tenant.
 
 **File 5 — Enrollment into the PB ICHRA notice plan.** Everyone offered the ICHRA needs the notice,
 including employees who will opt out, because the opt-out only exists relative to an offer. This
