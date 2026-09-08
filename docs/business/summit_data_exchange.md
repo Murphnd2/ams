@@ -152,9 +152,9 @@ The single most important section. Four identifiers, three owned by AMS.
 
 | Identifier | Assigned by | Uniqueness | Notes |
 |---|---|---|---|
-| `Employer TPA Custom ID` | **AMS** | Per installation | **Upsert key.** Must be stable for the life of the employer — changing it orphans the old record and creates a new one. Derive from something immutable, never from a name or tax ID. |
-| `Participant TPA Custom ID` | **AMS** | ⚠️ **GLOBALLY UNIQUE across all employers** | See the warning below. |
-| `Import Plan ID` | **AMS** | Per-employer accepted — **treat as suspect** | Two employers took `ICHRA2027` and enrollment resolved correctly. But this is the same evidence pattern that misled on participants. Namespace by employer unless a test proves otherwise. |
+| `Employer TPA Custom ID` | **AMS** | Per installation | **Upsert key.** Must be stable for the life of the employer — changing it orphans the old record and creates a new one. Derive from something immutable, never from a name or tax ID. ⚠️ **Must be alphanumeric** — no hyphen, no underscore (import-established 2026-09-08; see below). AMS composes `{prefix}E{prospectId}`. |
+| `Participant TPA Custom ID` | **AMS** | ⚠️ **GLOBALLY UNIQUE across all employers** | See the warning below. **Hyphens are accepted** — `158-P-9001` imported *and enrolled* successfully 2026-09-08. AMS composes `{prefix}-P-{participantId}`, unchanged. |
+| `Import Plan ID` | **AMS** | Per-employer accepted — **treat as suspect** | Two employers took `ICHRA2027` and enrollment resolved correctly. But this is the same evidence pattern that misled on participants. Namespace by employer unless a test proves otherwise. **Hyphens are accepted** — `158140952-PROBEA-2026` imported successfully 2026-09-08. Shape unchanged; it now embeds the new employer key (see T185). |
 | `Plan Template ID` | **Summit** | — | The **only** Summit-assigned foreign reference the emitter needs. Config, resolved at runtime, **never hardcoded** — it differs per installation, same reasoning as the project's reference-row rule. |
 
 **Write this warning in full, it cost a wrong conclusion:**
@@ -168,6 +168,21 @@ The single most important section. Four identifiers, three owned by AMS.
 > different file, days or months later, looking like anything but a naming scheme. **Derive
 > participant IDs from a globally unique key such as the AMS employee record's own primary key —
 > never a per-employer sequence.**
+
+⚠️ **`Employer TPA Custom ID` must be alphanumeric — and only that field.** Established by import
+2026-09-08. `158-140952` and `158_140952` were both rejected with
+`Invalid data for Employer TPA Custom ID.` before field binding; `158140952` and `ZZTEST001` were
+accepted. AMS therefore composes `{prefix}E{prospectId}`.
+
+**The constraint does not generalise.** The same import round tested the other two AMS-assigned
+identifiers and both accept hyphens: `Import Plan ID` as `158140952-PROBEA-2026`, and
+`Participant TPA Custom ID` as `158-P-9001`. The participant value was then **enrolled
+successfully** — clearing the stage at which the known duplicate-ID failure surfaces, so this is not
+another accept-now-fail-later case. Three identifiers, three different validations. Do not infer one
+field's rules from another's.
+
+⭐ The full chain — Employer Demographic → Employer CDH Plan → Demographics → HRA Enrollment — was
+proven end to end in this round against plan template `1030` (`ICHRA+`).
 
 ## Re-import behaviour
 
@@ -374,6 +389,18 @@ open-question registry (`O1`–`O52+`, tracked in `docs/swbd_ichra_build_plan.md
 Test records `ZZTEST001`, `ZZTEST002`, participants `ZZP001`–`ZZP003`, plan template `1029` and
 templates prefixed `ZZ_TEST_` exist in the live Summit environment and should be cleaned up.
 
+**From the 2026-09-08 alphanumeric round**, all in the live tenant and all disposable:
+
+- Employer `158140952`, plus the rejected attempts `158-140952` and `158_140952` (those two created
+  nothing — they failed before field binding — but the results files remain)
+- Plans `158140952-PROBEA-2026` and `158140952PROBEB2026`
+- Participants `158-P-9001` and `158P9002`, and their HRA Enrollment records
+
+⚠️ **Employer `158140952` predates the `E` and does not match the shipped scheme.** AMS now composes
+`{prefix}E{prospectId}`, so a re-export of that same prospect emits `158E140952` and Summit creates a
+**second** employer rather than updating this one. That is accepted — it is a cleanup record, not a
+precedent, and no real employer has ever been imported.
+
 ## Client setup sequence
 
 ⚠️ **Scope statement.** This sequence covers **new client setup only**. Renewal is explicitly out of
@@ -393,10 +420,14 @@ Everything here is derivable from the employer's application and fires at implem
 sequence.
 
 **File 1 — Employer Demographic.** Creates the employer. `Employer TPA Custom ID` =
-`{SUMMIT_TPA_ID_PREFIX}-{Prospect.id}` ([LA-29](../analysis/legal_assumptions.md)) — ⚠️ **a
+`{SUMMIT_TPA_ID_PREFIX}E{Prospect.id}` ([LA-29](../analysis/legal_assumptions.md)) — ⚠️ **a
 configured installation prefix plus the prospect id, not a bare `Prospect.id`.** `SummitExportServlet.resolveEmployerTpaCustomId` builds it and **refuses to emit** rather than
-fall back to a bare id when the prefix is missing or malformed; the session 27 production walk
-observed `158-136748`. Corrected 2026-09-08 (session 28) — this sentence previously read
+fall back to a bare id when the prefix is missing or malformed; a local walk on 2026-09-08 observed
+`158E140952`. ⚠️ **The separator became `E` on 2026-09-08 (S29-G2)** — Summit rejects a
+non-alphanumeric `Employer TPA Custom ID`, so the earlier `{SUMMIT_TPA_ID_PREFIX}-{Prospect.id}` form
+is superseded. The session 27 production walk observed `158-136748` under that superseded form, so a
+value of that shape in an older close-out is a pre-S29-G2 record, not a current one.
+Corrected 2026-09-08 (session 28) — this sentence previously read
 `Prospect.id`, which understates the shape of an **upsert key** whose prefix D-89 records as
 effectively irreversible once real records land, and a doc that understates it is how a duplicate
 employer gets created under a second key. What is unchanged is the point that follows: the custom ID

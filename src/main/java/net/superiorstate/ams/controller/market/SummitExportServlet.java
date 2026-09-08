@@ -157,7 +157,9 @@ public class SummitExportServlet extends HttpServlet {
                                 + " SUMMIT_TPA_ID_PREFIX configured. Set it in ssa.properties to"
                                 + " this installation's Summit TPA prefix (e.g. SSA) before"
                                 + " generating either file. The value must not be blank and must"
-                                + " not contain a pipe or any whitespace.");
+                                + " contain only letters and digits — Summit rejects an Employer"
+                                + " TPA Custom ID carrying any other character, so a prefix like"
+                                + " SSA-158 would produce IDs it refuses.");
                 return;
             }
 
@@ -177,17 +179,35 @@ public class SummitExportServlet extends HttpServlet {
      * Resolves this installation's Summit TPA prefix from config and combines it with
      * {@code Prospect.id} into the {@code Employer TPA Custom ID} both files share. The prefix
      * is read at request time, never hardcoded — a second installation uses a different one.
-     * Returns null if the prefix is absent, blank, or contains a pipe or whitespace; the caller
-     * refuses to emit rather than fall back to a bare id, which would create a duplicate
+     * Returns null if the prefix is absent, blank, or carries any non-alphanumeric character; the
+     * caller refuses to emit rather than fall back to a bare id, which would create a duplicate
      * employer in Summit under a different key.
+     * <p>
+     * ⚠️ <b>S29-G2 — the separator is {@code E}, not a hyphen.</b> Established by import
+     * 2026-09-08: Summit rejected both {@code 158-140952} and {@code 158_140952} with
+     * {@code Invalid data for Employer TPA Custom ID.} <b>before field binding</b> — the key echo
+     * came back empty — while {@code 158140952} was accepted. That makes it character validation,
+     * not a business rule. {@code E} is alphanumeric and keeps the key self-describing rather than
+     * an undelimited digit run.
+     * <p>
+     * <b>The constraint does not generalise — do not "fix" the other two identifiers to match.</b>
+     * The same import round proved {@code Import Plan ID} accepts {@code 158140952-PROBEA-2026},
+     * and {@code Participant TPA Custom ID} accepts {@code 158-P-9001} — the latter then enrolled
+     * successfully, clearing the stage where a bad participant key surfaces as
+     * {@code Employer ID Conflict}. Three identifiers, three different validations.
+     * <p>
+     * The prefix check is widened to match the field it feeds: a prefix carrying a hyphen or
+     * underscore ({@code SSA-158}) would compose an ID Summit refuses, and that failure would
+     * surface in a results file rather than at configuration time. Rejecting every
+     * non-alphanumeric subsumes the pipe and whitespace checks it replaces.
      */
     private static String resolveEmployerTpaCustomId(Prospect prospect) {
         String rawPrefix = AppConfig.get("SUMMIT_TPA_ID_PREFIX");
         if (rawPrefix == null) return null;
         String prefix = rawPrefix.trim();
         if (prefix.isEmpty()) return null;
-        if (prefix.contains("|") || prefix.chars().anyMatch(Character::isWhitespace)) return null;
-        return prefix + "-" + prospect.getId();
+        if (!prefix.matches("[A-Za-z0-9]+")) return null;
+        return prefix + "E" + prospect.getId();
     }
 
     /**
