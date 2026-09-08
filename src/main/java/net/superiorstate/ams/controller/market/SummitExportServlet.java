@@ -427,6 +427,13 @@ public class SummitExportServlet extends HttpServlet {
             return;
         }
 
+        // S31-J -- why each candidate plan did not reach the file, one human-readable line each.
+        // Read only by the zero-row guard below, which refuses rather than writing an empty file.
+        List<String> dropReasons = new ArrayList<>();
+        // Carryover warnings are collected rather than logged inline: the sentence an operator needs
+        // -- how many OTHER plans survived -- is not knowable until the loop has finished.
+        List<String> carryoverWarnings = new ArrayList<>();
+
         List<PlanTemplate> configured = SummitPlanTemplateResolver.configured(em, pspId);
         List<PlanTemplate> emit;
         if (configured.isEmpty()) {
@@ -497,6 +504,10 @@ public class SummitExportServlet extends HttpServlet {
                 if (mappedServiceItemIds.contains(service.getKey())) continue;
                 if (unmapped.length() > 0) unmapped.append(", ");
                 unmapped.append(service.getKey()).append("=").append(service.getValue());
+                dropReasons.add("elected service " + service.getKey() + " (" + service.getValue()
+                        + ") -- no Summit plan template is mapped to it, so no plan row could be built."
+                        + " Map it on the Summit Plan Templates admin screen, or in "
+                        + SummitPlanTemplateResolver.CONFIG_KEY + ".");
             }
             if (unmapped.length() > 0) {
                 log.warn("[SUMMIT-EXPORT] Employer CDH Plan for proposal {}: elected service(s) with"
@@ -554,19 +565,25 @@ public class SummitExportServlet extends HttpServlet {
             if (grace == SummitCdhElementResolver.GraceChoice.CARRYOVER) {
                 // ⚠️ Carryover has NO element anywhere in the Employer CDH Plan template -- verified
                 // against the live element list 2026-09-08 -- so this plan cannot be imported at
-                // all and must be built by hand in Summit. Omit it, name it loudly, and emit every
-                // other plan normally. The same shape as the unmapped-elected-item skip above:
-                // behaviour correct, visibility added. ⚠️ There is no carryover AMOUNT to name --
-                // S31-H searched every application package and none collects one.
-                log.warn("[SUMMIT-EXPORT] Employer CDH Plan for proposal {}: plan '{}' (ServiceItem"
-                                + " {}, template {}) OMITTED from the file -- its '{}' answer is"
-                                + " Carryover, and carryover has no element in the Employer CDH Plan"
-                                + " template, so this plan cannot be imported and must be built by"
-                                + " hand in Summit. AMS collects no carryover amount, so the amount"
-                                + " must come from the employer. Every other plan was emitted"
-                                + " normally.",
-                        proposalId, template.getLabel(), template.getServiceItemId(),
-                        template.getTemplateId(), graceFieldKey);
+                // all and must be built by hand in Summit. Omit it and name it loudly. The same
+                // shape as the unmapped-elected-item skip above: behaviour correct, visibility
+                // added. ⚠️ There is no carryover AMOUNT to name -- S31-H searched every application
+                // package and none collects one.
+                // ⚠️ S31-J -- the warning is DEFERRED to after the loop. It used to end "Every other
+                // plan was emitted normally", which was simply false in the case that prompted this
+                // fix: on proposal 140956 there were no other plans, and the file came out empty.
+                // How many others survived cannot be known here, so the sentence is written once the
+                // loop has finished and the count is real.
+                carryoverWarnings.add("plan '" + template.getLabel() + "' (ServiceItem "
+                        + template.getServiceItemId() + ", template " + template.getTemplateId()
+                        + ") OMITTED from the file -- its '" + graceFieldKey + "' answer is Carryover,"
+                        + " and carryover has no element in the Employer CDH Plan template, so this"
+                        + " plan cannot be imported and must be built by hand in Summit. AMS collects"
+                        + " no carryover amount, so the amount must come from the employer.");
+                dropReasons.add("plan '" + template.getLabel() + "' (ServiceItem "
+                        + template.getServiceItemId() + ") -- answered Carryover on '" + graceFieldKey
+                        + "'. Carryover has no element in the Employer CDH Plan template, so this plan"
+                        + " cannot be imported at all and must be built by hand in Summit.");
                 continue;
             }
 
@@ -600,6 +617,43 @@ public class SummitExportServlet extends HttpServlet {
             lines.add(buildCdhPlanRow(template, employerTpaCustomId, prospect.getName(),
                     planYear, planYearBegin, planYearEndStr,
                     optional.getElements(), optionalValues));
+        }
+
+        // S31-J -- now the count is real, so the carryover warnings can say something true about it.
+        for (String warning : carryoverWarnings) {
+            log.warn("[SUMMIT-EXPORT] Employer CDH Plan for proposal {}: {} {}",
+                    proposalId, warning,
+                    lines.isEmpty()
+                            ? "NO other plans were emitted -- this file would have been empty, and the"
+                              + " export was refused."
+                            : lines.size() + " other plan(s) were emitted normally.");
+        }
+
+        // ⚠️ S31-J -- a zero-row file 2 is a defect, not an empty result.
+        // Runtime-verified 2026-09-08 on proposal 140956: two elected services were unmapped, the one
+        // mapped plan was omitted for carryover, and a 0-byte file downloaded with nothing anywhere
+        // saying why. A zero-row file uploaded to Summit does nothing at all, so an operator's next
+        // move is to investigate a silent no-op rather than to fix the two real problems named below.
+        // ⚠️ This deliberately does NOT reuse the all-unmapped page above by moving or rewording it:
+        // that page's exact output is the operator's only route to a ServiceItem id without SQL
+        // (D-90), so it keeps its wording, its position and its case. This is a second refusal, at the
+        // same 400, covering the case that page cannot see -- plans that mapped and were then dropped.
+        if (lines.isEmpty()) {
+            StringBuilder reasons = new StringBuilder();
+            for (String reason : dropReasons) {
+                reasons.append("\n  - ").append(reason);
+            }
+            writePlainError(response, HttpServletResponse.SC_BAD_REQUEST,
+                    "Cannot generate Employer CDH Plan file: no plan rows survived for prospect "
+                            + prospect.getId() + ", so the file would have been empty. An empty file"
+                            + " imports as nothing at all, so it is refused rather than downloaded."
+                            + (dropReasons.isEmpty()
+                                    ? " No candidate plans were found at all -- check that the"
+                                      + " application elects at least one service."
+                                    : " Every candidate plan was dropped, for these reasons:"
+                                      + reasons)
+                            + "\nFix the reasons above, then generate the file again.");
+            return;
         }
 
         String filename = resolveFilename(TYPE_CDH_PLAN,
