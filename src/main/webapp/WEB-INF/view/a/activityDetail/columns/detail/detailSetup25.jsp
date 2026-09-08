@@ -1,13 +1,16 @@
+<%@ page pageEncoding="UTF-8" %>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 <%@ taglib prefix="fmt" uri="http://java.sun.com/jsp/jstl/fmt" %>
 <c:set var="isPast" value="pe-none"/>
 <c:if test="${sessionScope.local.getCurrentActivity().getActivity().isComplete() == false}">
   <c:set var="isPast" value=""/>
 </c:if>
+<%-- T188: expose the count so a clipped list is visibly partial. Same collection the list below iterates. --%>
+<c:set var="setupModules" value="${sessionScope.local.getCurrentActivity().getActivity().getApplication().getApplicationModuleList()}"/>
 <div class="detail-section-card">
   <div class="detail-section-header">
     <i class="bi bi-gear-wide-connected"></i>
-    Services To Implement
+    Services To Implement<c:if test="${not empty setupModules}"> (${setupModules.size()})</c:if>
     <span class="section-end">
       <button class="btn btn-sm btn-outline-ssa border-0 p-0 px-1 d-none me-1" id="btnExpandSetup"
               type="button" data-bs-toggle="modal" data-bs-target="#setupFullModal" title="View all services">
@@ -25,7 +28,7 @@
         <div class="text-muted fst-italic" style="font-size: 0.82rem;">No service modules assigned yet.</div>
       </c:when>
       <c:otherwise>
-        <div id="setupContent" class="overflow-auto" style="max-height: 120px;">
+        <div id="setupContent" class="overflow-auto" style="max-height: 320px;">
           <c:forEach var="moduleItem" items="${sessionScope.local.getCurrentActivity().getActivity().getApplication().getApplicationModuleList()}">
             <div class="d-flex align-items-center py-1 border-bottom" style="font-size: 0.88rem;">
               <span class="badge me-2" style="background-color: var(--ssa); font-size: 0.7rem;">
