@@ -254,6 +254,7 @@
               <li><h6 class="dropdown-header" style="font-size:0.7rem; text-transform:uppercase; letter-spacing:0.05em; color:#6c757d;">Data Import</h6></li>
               <li><a class="dropdown-item" href="ProviderSetup"><i class="bi bi-plug me-2"></i>Import Providers</a></li>
               <li><a class="dropdown-item" href="SummitPlanTemplateAdmin"><i class="bi bi-diagram-2 me-2"></i>Summit Plan Templates</a></li>
+              <li><a class="dropdown-item" href="SummitFileExportAdmin"><i class="bi bi-archive me-2"></i>Summit Export History</a></li>
               <li><a class="dropdown-item" href="InteractiveImport"><i class="bi bi-cloud-upload me-2"></i>Interactive Import</a></li>
               <li><a class="dropdown-item" href="ImportHistory"><i class="bi bi-clock-history me-2"></i>Import History</a></li>
               <li><a class="dropdown-item" href="MonthlyBillingLauncher"><i class="bi bi-calculator me-2"></i>Monthly Billing</a></li>

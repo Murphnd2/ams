@@ -104,4 +104,20 @@ public abstract class SummitFileExportDAO {
                 .setParameter("fileType", fileType)
                 .getResultList();
     }
+
+    /**
+     * S32-G — one export record by primary key, or null.
+     * <p>
+     * Added for the retained-export listing screen's download action, which needs a single row and
+     * had no read to reach it with. ⚠️ <b>This does not scope by PSP</b> — it answers "the row with
+     * this id" and nothing more. The caller must compare the returned row's {@code pspId} against
+     * the acting session's before serving anything, exactly as {@code SummitFileExportAdmin} does;
+     * without that check an id in a query string would read another PSP's participant names and
+     * addresses. Same not-an-authorization-boundary contract the class note states for every other
+     * read here.
+     */
+    public static SummitFileExport findById(EntityManager em, Long id) {
+        if (id == null) return null;
+        return em.find(SummitFileExport.class, id);
+    }
 }
