@@ -183,6 +183,50 @@ ZZTEST001|ZZP001|ICHRA2027|20270101|600.00
 Amounts accept two decimal places. `Participant Annual Election Amount` carries the benefit amount
 even though an ICHRA is employer-funded; funding source is set on the plan template, not per record.
 
+⭐ **AMS emits this file as of S30-A (2026-09-08)** — `SummitExportServlet` at
+`/SummitExport?proposalId={id}&type=enrollment`, a fourth `type` alongside `employer`, `cdhplan` and
+`demographics`. ⚠️ **The layout is import-proven; the emitter is not.** A hand-built file in this
+order was accepted 2026-09-08, but the emitter itself is **compile-verified only — never run, never
+imported** (T196). ⚠️ **It also has no UI link** — the three existing files are linked from the Setup
+detail screen and this one is not, so the URL must be typed by hand until that is added (T196).
+
+One row per participant, from the **identical** roster query and ordering file 4 uses
+(`EmployerParticipantDAO.findByProspectId`, ordered by last name, first name, id). An empty roster
+emits a zero-row file rather than refusing, matching file 4.
+
+| Column | Source in AMS |
+|---|---|
+| `Employer TPA Custom ID` | `resolveEmployerTpaCustomId` — `{SUMMIT_TPA_ID_PREFIX}E{Prospect.id}`, the same value files 1, 2 and 4 emit |
+| `Participant TPA Custom ID` | `{SUMMIT_TPA_ID_PREFIX}-P-{employer_participant.id}`, the same composition file 4 emits |
+| `Import Plan ID` | file 2's own composition for the **ICHRA** row: `{employerTpaCustomId}-{keySegment}-{planYear}` |
+| `Effective Date` | the `plan_year_start` application answer — the same value file 2 emits as its `Effective Date` and `Plan Year Begin`, **not** `employer_participant.effective_date` (T198) |
+| `Participant Annual Election Amount` | the `hra_annual_ee` application answer ("Annual Amount per Employee", HRA package, `hra_benefit_allocation` section), two decimal places, no currency symbol, no thousands separator |
+
+⚠️ **The ICHRA plan is identified by its `keySegment` being `ICHRA`.** HRA Enrollment is for HRA plans
+only, and `SummitPlanTemplateResolver.PlanTemplate` carries no plan-kind marker, so the emitter selects
+the one configured-and-elected template whose key segment is `ICHRA` and **refuses on zero matches or
+on more than one** rather than picking. An enrollment naming the wrong plan imports successfully and
+funds the wrong benefit; there is no import-time safety net for it.
+
+⚠️ **The amount is flat per employee, and that is a structural limit, not a simplification.**
+`hra_annual_ee` has tiered siblings — `hra_annual_ee_plus_one`, `hra_annual_ee_plus_children`,
+`hra_annual_family` — which are **unreachable**: `employer_participant` carries no coverage tier, so
+nothing can select among them. Every row in an emitted file therefore carries the same amount. See
+T197. ⚠️ This also **corrects T178**, which concluded no per-participant annual amount existed anywhere
+in the model: T178 surveyed `proposal_ichra_intake`, V093's additions and `Benefit`, but **not the
+application answer set**, where an annual per-employee figure has been a required field all along.
+The uniformity concern T178 raises still stands; the "no source exists" premise does not.
+
+⚠️ **A non-numeric amount answer is refused, not normalised.** `hra_annual_ee` is a `TEXT` field.
+The emitter accepts an optional leading `$`, digits, and at most two decimal places. **A thousands
+separator is refused rather than stripped** — stripping commas reads `7,200` correctly and `7.200,00`
+as seven-point-two, and Summit accepts a wrong amount silently, so there is no later stage at which
+such a misread would surface. A refusal costs one corrected application answer.
+
+⚠️ **No `Branch Code` column.** That sentinel is Demographics-only — it exists there because column K
+is an optional field left blank on most rosters. This layout's last column is mandatory and always
+populated, so it needs none, and nothing may be appended after it either.
+
 ## ⚠️ ID ownership and uniqueness
 
 The single most important section. Four identifiers, three owned by AMS.

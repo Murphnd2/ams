@@ -30,7 +30,8 @@ import java.util.Optional;
  *   <li><b>{@code file}</b> — the {@code type} request parameter {@code SummitExportServlet}
  *       already uses to tell the three files apart: {@code employer} (file 1, Employer
  *       Demographic), {@code cdhplan} (file 2, Employer CDH Plan), {@code demographics}
- *       (file 4, Demographics). Matched case-insensitively.</li>
+ *       (file 4, Demographics), {@code enrollment} (HRA Enrollment, the proven chain's fourth file --
+ *       S30-A). Matched case-insensitively.</li>
  *   <li><b>{@code templateName}</b> — the Summit import template's own name, used verbatim as
  *       the emitted filename's prefix. Restricted to letters, digits, {@code _}, {@code -} and
  *       {@code .}: it travels inside a {@code Content-Disposition} header, so a space, a quote
@@ -40,7 +41,7 @@ import java.util.Optional;
  * A worked example. <b>The template names are placeholders</b> — they are the vendor's values,
  * read out of the installation's own Summit tenant, and are deliberately not written into source:
  * <pre>
- * SUMMIT_IMPORT_TEMPLATES=employer:ZZ_TEST_ER,cdhplan:ZZ_TEST_CDH,demographics:ZZ_TEST_DEMO
+ * SUMMIT_IMPORT_TEMPLATES=employer:ZZ_TEST_ER,cdhplan:ZZ_TEST_CDH,demographics:ZZ_TEST_DEMO,enrollment:ZZ_TEST_ENROLL
  * </pre>
  * <p>
  * <b>Parsing is tolerant and never throws.</b> This mirrors {@link SummitPlanTemplateResolver}
@@ -87,8 +88,9 @@ public final class SummitImportTemplateResolver {
     /**
      * The configured import template name for one export file.
      *
-     * @param file the {@code type} discriminator — {@code employer}, {@code cdhplan} or
-     *             {@code demographics}. Matched case-insensitively. Null or blank returns empty.
+     * @param file the {@code type} discriminator — {@code employer}, {@code cdhplan},
+     *             {@code demographics} or {@code enrollment}. Matched case-insensitively. Null
+     *             or blank returns empty.
      * @return the template name to use as the emitted filename's prefix, or
      *         {@link Optional#empty()} when {@link #CONFIG_KEY} is absent, blank, holds no
      *         well-formed entry, or holds no entry for this file. Never null.

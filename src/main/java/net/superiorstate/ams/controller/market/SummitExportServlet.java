@@ -25,6 +25,8 @@ import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -58,11 +60,15 @@ public class SummitExportServlet extends HttpServlet {
     private static final DateTimeFormatter SUMMIT_FILE_STAMP =
             DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
 
-    // S29-D -- the three values the `type` request parameter may take. Named so the request
+    // S29-D -- the values the `type` request parameter may take. Named so the request
     // contract, the dispatch and the SUMMIT_IMPORT_TEMPLATES lookup key can never drift apart.
     private static final String TYPE_EMPLOYER = "employer";
     private static final String TYPE_CDH_PLAN = "cdhplan";
     private static final String TYPE_DEMOGRAPHICS = "demographics";
+    // S30-A -- file 4 of the proven chain, HRA Enrollment. A fourth discriminator rather than a
+    // mode of an existing one: it is a separate Summit import template with its own filename
+    // prefix, so it must be separately addressable in SUMMIT_IMPORT_TEMPLATES.
+    private static final String TYPE_ENROLLMENT = "enrollment";
 
     // Application-answer field keys this export reads (S25-B). Defined in both
     // DatabaseInitializer's baseline sections and the package JSONs under
@@ -77,6 +83,13 @@ public class SummitExportServlet extends HttpServlet {
     // it is not, not a defect.
     private static final String FIELD_PLAN_YEAR_START = "plan_year_start";
     private static final String FIELD_PLAN_YEAR_END = "plan_year_end";
+    // S30-A -- `Participant Annual Election Amount`, the one enrollment column with no other
+    // source anywhere in AMS. Ships in the hra package's LOS-scoped hra_benefit_allocation
+    // section ("105 Benefit Allocation") as a REQUIRED field labelled "Annual Amount per
+    // Employee", so it is present exactly when that section is attached to the LOS being sold --
+    // the same installation-configuration dependency, and the same expected refusal, as the
+    // plan-year fields above. See writeHraEnrollment for why the tiered siblings are unusable.
+    private static final String FIELD_HRA_ANNUAL_EE = "hra_annual_ee";
 
     // S28-B/S28-D -- the key segment and label the legacy single-row fallback synthesises when
     // SUMMIT_PLAN_TEMPLATES is unset. Both were literals in the pre-S28-B row builder; the
@@ -108,9 +121,9 @@ public class SummitExportServlet extends HttpServlet {
         String type = request.getParameter("type");
         if (proposalIdParam == null || proposalIdParam.isBlank()
                 || type == null || !(type.equals(TYPE_EMPLOYER) || type.equals(TYPE_CDH_PLAN)
-                        || type.equals(TYPE_DEMOGRAPHICS))) {
+                        || type.equals(TYPE_DEMOGRAPHICS) || type.equals(TYPE_ENROLLMENT))) {
             writePlainError(response, HttpServletResponse.SC_BAD_REQUEST,
-                    "proposalId and type (employer|cdhplan|demographics) are required.");
+                    "proposalId and type (employer|cdhplan|demographics|enrollment) are required.");
             return;
         }
 
@@ -173,8 +186,10 @@ public class SummitExportServlet extends HttpServlet {
                 writeEmployerDemographic(response, prospect, answers, employerTpaCustomId);
             } else if (type.equals(TYPE_CDH_PLAN)) {
                 writeEmployerCdhPlan(response, em, proposalId, prospect, answers, employerTpaCustomId);
-            } else {
+            } else if (type.equals(TYPE_DEMOGRAPHICS)) {
                 writeDemographics(response, em, prospect, employerTpaCustomId);
+            } else {
+                writeHraEnrollment(response, em, proposalId, prospect, answers, employerTpaCustomId);
             }
         } finally {
             if (em.isOpen()) em.close();
@@ -551,6 +566,173 @@ public class SummitExportServlet extends HttpServlet {
     }
 
     /**
+     * HRA Enrollment — the <b>proven chain's fourth file</b>. Five columns, one row per participant:
+     * <pre>
+     * Employer TPA Custom ID|Participant TPA Custom ID|Import Plan ID|Effective Date|Participant Annual Election Amount
+     * 158E140952|158-P-77|158E140952-ICHRA-2026|20260101|7200.00
+     * </pre>
+     * Same template settings as the other three — delimited {@code |}, dates {@code YYYYMMDD}, no
+     * header, no footer, no body record indicator, Extraneous Data No. The layout was import-proven
+     * by hand on 2026-09-08, against both a hyphenated and an alphanumeric participant id and both
+     * {@code Import Plan ID} shapes; <b>this emitter has not itself been run or imported</b> (T196).
+     * <p>
+     * ⚠️ <b>Not the client-setup sequence's "file 5".</b> That is enrollment into the Premium Billing
+     * ICHRA <i>notice</i> plan — a different platform and a different file type
+     * ({@code docs/business/summit_data_exchange.md}, "Core (files 1–4)"). This emitter enrols into
+     * the CDH ICHRA plan {@link #writeEmployerCdhPlan} creates, and nothing else. Two numbering
+     * schemes are in play in that document; they do not describe the same file.
+     * <p>
+     * ⚠️ <b>No {@code Branch Code} column.</b> That sentinel is Demographics-only — it exists there
+     * because column K is an optional field left blank on most rosters. This layout's last column is
+     * mandatory and always populated, so it needs none. Nothing may be appended after it either.
+     * <p>
+     * <b>The participant set is exactly the set {@link #writeDemographics} emits</b> — the same
+     * {@code EmployerParticipantDAO.findByProspectId} call, the same ordering, no filter added and
+     * none removed. Summit's dependency order is employer → plans → participants → enrollments, so a
+     * row naming a participant Demographics did not create fails. An empty roster emits a zero-row
+     * file rather than refusing, matching Demographics.
+     * <p>
+     * ⚠️ <b>{@code Effective Date} is the plan year start, not {@code EmployerParticipant.effectiveDate}</b>
+     * — the same value {@link #writeEmployerCdhPlan} emits as both its {@code Effective Date} and its
+     * {@code Plan Year Begin}, so an enrollment can never open before the plan it enrols into.
+     * {@code CensusUploadServlet} applies one form-field date uniformly across a whole roster, so in
+     * practice the two agree; nothing structurally forces it, and <b>T198</b> records the divergence
+     * for the first live execution to settle.
+     * <p>
+     * ⚠️ <b>{@code Import Plan ID} must name the ICHRA plan specifically.</b> HRA Enrollment is for
+     * HRA plans; an {@code Ins125} plan enrols through the separate {@code 125 PI Elections} file
+     * type, whose field set has never been established by import (T195). {@link PlanTemplate} carries
+     * no plan-kind marker, so the ICHRA plan is identified by its {@code keySegment} matching
+     * {@link #LEGACY_ICHRA_SEGMENT} — the only such convention that exists, and the value both the
+     * legacy fallback and {@link SummitPlanTemplateResolver}'s own worked example use. <b>Zero
+     * matches or more than one is a refusal, never a pick</b>: an enrollment naming the wrong plan
+     * imports successfully and funds the wrong benefit, and there is no import-time safety net.
+     */
+    private void writeHraEnrollment(HttpServletResponse response, EntityManager em, long proposalId,
+                                     Prospect prospect, Map<String, String> answers,
+                                     String employerTpaCustomId)
+            throws IOException {
+        LocalDate planYearStart = parseAnswerDate(answers.get(FIELD_PLAN_YEAR_START));
+        if (planYearStart == null) {
+            writePlainError(response, HttpServletResponse.SC_BAD_REQUEST,
+                    "Cannot generate HRA Enrollment file: prospect " + prospect.getId()
+                            + "'s application has no usable answer for '" + FIELD_PLAN_YEAR_START
+                            + "'. The enrollment's Effective Date is the plan year start — the same"
+                            + " value file 2 emits — so it cannot be derived without it.");
+            return;
+        }
+
+        BigDecimal annualElection = parseAnnualElectionAmount(answers.get(FIELD_HRA_ANNUAL_EE));
+        if (annualElection == null) {
+            String raw = answers.get(FIELD_HRA_ANNUAL_EE);
+            writePlainError(response, HttpServletResponse.SC_BAD_REQUEST,
+                    "Cannot generate HRA Enrollment file: prospect " + prospect.getId()
+                            + "'s application has no usable answer for '" + FIELD_HRA_ANNUAL_EE
+                            + "' (Annual Amount per Employee, in the HRA package's 105 Benefit"
+                            + " Allocation section)"
+                            + ((raw == null || raw.isBlank())
+                                    ? " — the answer is absent or blank."
+                                    : " — the answer is '" + raw + "'.")
+                            + " It must be a positive amount written as digits with at most two"
+                            + " decimal places, optionally preceded by a dollar sign: 7200, 7200.00"
+                            + " or $7200.00. A thousands separator is refused rather than stripped:"
+                            + " Summit accepts a wrong amount silently and funds the benefit from"
+                            + " it, so a value this export cannot read unambiguously is corrected"
+                            + " on the application, never guessed at here.");
+            return;
+        }
+
+        // Deliberately duplicated from writeEmployerCdhPlan rather than extracted into a shared
+        // helper. That writer is import-proven and this change does not touch it; lifting a helper
+        // out of it would edit proven code to serve an unproven caller. What the two must agree on
+        // is the emitted Import Plan ID, and the guarantee of that is the identical composition
+        // below, not a shared method.
+        List<PlanTemplate> configured = SummitPlanTemplateResolver.configured();
+        List<PlanTemplate> candidates;
+        if (configured.isEmpty()) {
+            Integer templateId = parsePositiveInt(AppConfig.get("SUMMIT_ICHRA_PLAN_TEMPLATE_ID"));
+            if (templateId == null) {
+                log.error("[SUMMIT-EXPORT] SUMMIT_ICHRA_PLAN_TEMPLATE_ID is absent or non-numeric on this installation");
+                writePlainError(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+                        "Cannot generate HRA Enrollment file: " + SummitPlanTemplateResolver.CONFIG_KEY
+                                + " is unset and this installation has no valid"
+                                + " SUMMIT_ICHRA_PLAN_TEMPLATE_ID configured, so the ICHRA plan this"
+                                + " file enrols into cannot be identified. Set one of the two in"
+                                + " ssa.properties before generating this file.");
+                return;
+            }
+            candidates = java.util.Collections.singletonList(new PlanTemplate(
+                    LEGACY_UNMATCHED_SERVICE_ITEM_ID, templateId,
+                    LEGACY_ICHRA_SEGMENT, LEGACY_ICHRA_SEGMENT));
+        } else {
+            Map<Integer, String> electedServices = loadElectedServiceItems(em, proposalId);
+            candidates = new ArrayList<>();
+            for (PlanTemplate template : configured) {
+                if (electedServices.containsKey(template.getServiceItemId())) {
+                    candidates.add(template);
+                }
+            }
+        }
+
+        List<PlanTemplate> ichraMatches = new ArrayList<>();
+        for (PlanTemplate template : candidates) {
+            if (LEGACY_ICHRA_SEGMENT.equalsIgnoreCase(template.getKeySegment())) {
+                ichraMatches.add(template);
+            }
+        }
+        if (ichraMatches.size() != 1) {
+            StringBuilder candidateList = new StringBuilder();
+            for (PlanTemplate template : candidates) {
+                if (candidateList.length() > 0) candidateList.append(", ");
+                candidateList.append(template.getKeySegment()).append("=").append(template.getTemplateId());
+            }
+            writePlainError(response, HttpServletResponse.SC_BAD_REQUEST,
+                    "Cannot generate HRA Enrollment file: this file enrols participants into the"
+                            + " ICHRA plan, so exactly one plan in prospect " + prospect.getId()
+                            + "'s file 2 row-set must carry the key segment '" + LEGACY_ICHRA_SEGMENT
+                            + "'. Found " + ichraMatches.size() + ". Plans file 2 would emit"
+                            + " (keySegment=templateId): "
+                            + (candidates.isEmpty() ? "(none)" : candidateList.toString())
+                            + ". HRA Enrollment is for HRA plans only — an Ins125 plan enrols"
+                            + " through the separate '125 PI Elections' file type, which AMS does"
+                            + " not emit. Correct the key segments in "
+                            + SummitPlanTemplateResolver.CONFIG_KEY + ", then restart Tomcat.");
+            return;
+        }
+        PlanTemplate ichra = ichraMatches.get(0);
+
+        int planYear = planYearStart.getYear();
+        String importPlanId = sanitize(employerTpaCustomId + "-" + ichra.getKeySegment() + "-" + planYear);
+        String effectiveDate = planYearStart.format(SUMMIT_DATE);
+        // The parser caps the answer at two decimal places, so setScale(2) is exact here and the
+        // rounding mode is never actually exercised; toPlainString keeps a large amount out of
+        // scientific notation. Never a currency symbol, never a thousands separator.
+        String amount = annualElection.setScale(2, RoundingMode.HALF_UP).toPlainString();
+
+        List<EmployerParticipant> roster = EmployerParticipantDAO.findByProspectId(em, prospect.getId());
+        String prefix = summitTpaIdPrefix();
+
+        List<String> lines = new ArrayList<>();
+        for (EmployerParticipant participant : roster) {
+            lines.add(String.join("|",
+                    employerTpaCustomId,                        // A
+                    prefix + "-P-" + participant.getId(),       // B
+                    importPlanId,                               // C
+                    effectiveDate,                              // D
+                    amount));                                   // E  mandatory, never empty
+        }
+
+        log.info("[SUMMIT-EXPORT] proposal {} HRA Enrollment: {} participant row(s) into plan {}"
+                        + " effective {} at {} each",
+                proposalId, lines.size(), importPlanId, effectiveDate, amount);
+
+        String filename = resolveFilename(TYPE_ENROLLMENT,
+                "hra-enrollment-" + sanitizeFilename(prospect.getName())
+                        + "-" + prospect.getId() + "-" + LocalDate.now().format(SUMMIT_DATE) + ".txt");
+        writeFile(response, filename, lines);
+    }
+
+    /**
      * The raw configured Summit TPA prefix, trimmed — matching
      * {@link #resolveEmployerTpaCustomId(Prospect)}. Safe to call unvalidated wherever
      * {@code employerTpaCustomId} was already successfully resolved in the same request, since
@@ -588,6 +770,34 @@ public class SummitExportServlet extends HttpServlet {
         } catch (DateTimeParseException e) {
             return null;
         }
+    }
+
+    /**
+     * S30-A — parses the {@code hra_annual_ee} application answer into the
+     * {@code Participant Annual Election Amount} column.
+     * <p>
+     * That field is {@code TEXT} on the application form, so what arrives is whatever a human typed.
+     * <b>Accepted: an optional leading {@code $}, then digits, then at most two decimal places.</b>
+     * Everything else returns null and the caller refuses to emit.
+     * <p>
+     * ⚠️ <b>A thousands separator is refused, not stripped.</b> Stripping commas reads {@code 7,200}
+     * correctly and {@code 7.200,00} as seven-point-two — and Summit accepts a wrong amount
+     * silently, funding the benefit from it, so there is no later stage at which such a misread
+     * would surface. A refusal costs one corrected answer on the application; a misread costs a
+     * wrongly funded benefit. Only a leading {@code $} is tolerated, because it cannot change the
+     * numeric value.
+     * <p>
+     * Non-positive returns null for the same reason {@link #parsePositiveInt} rejects it: an
+     * enrollment of {@code 0.00} enrols a participant into a benefit funded with nothing, which is
+     * far more likely a placeholder answer than an intent.
+     */
+    private static BigDecimal parseAnnualElectionAmount(String raw) {
+        if (raw == null) return null;
+        String value = raw.trim();
+        if (value.startsWith("$")) value = value.substring(1).trim();
+        if (!value.matches("\\d{1,13}(\\.\\d{1,2})?")) return null;
+        BigDecimal amount = new BigDecimal(value);
+        return amount.signum() > 0 ? amount : null;
     }
 
     /**
