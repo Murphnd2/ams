@@ -1273,7 +1273,10 @@ and converts a payment glitch into a substantiation failure.
 **Confirm before.** First mid-year termination with an outstanding purse balance. Any proposal to
 load ahead of withholding.
 
-**Status.** Assumed; conservative by choice.
+**Status.** Assumed; conservative by choice. Arrears loading is one of five permitted on-ramps
+rather than the only control; see LA-36, which records the full set and the expressly-permitted
+month-ahead cadence that makes the concession unnecessary where an employee-sourced on-ramp funds
+month one.
 
 ---
 
@@ -1307,7 +1310,10 @@ is ever challenged.
 policies.
 
 **Status.** Assumed. Arrears loading is available as a no-cost hedge, since it is being built for
-the ACA bucket regardless.
+the ACA bucket regardless. The asymmetry is deliberate and is the reason the same card mechanism
+runs differently by benefit type: excepted benefits sit outside the market reforms and carry a §106
+shelter on unrecovered premium, and individual major medical has neither. See LA-36 for the funding
+paths available on the major medical side.
 
 ---
 
@@ -1685,6 +1691,83 @@ which is a new assumption requiring its own entry and a fresh look at what the d
 then has to be, not an edit to this one.
 
 **Status.** Assumed, 2026-09-07.
+
+---
+
+### LA-36 — First-month premium funding comes from an employee-sourced on-ramp; the month-ahead cadence is expressly permitted
+
+**Assumption.** A cafeteria plan may fund off-exchange individual major medical premium on a
+month-ahead cadence — each month's salary reductions funding the following month's premium,
+including the last month of a plan year funding the first month of the next — without deferring
+compensation. A twelve-month first plan year must therefore fund thirteen months of premium, and
+that one-month gap at inception is closed from employee-sourced funds. It is never closed by
+employer advance.
+
+**Basis.** The cadence carve-out — salary reduction contributions in the last month of a plan
+year used to pay accident and health insurance premiums for the first month of the following
+plan year, named in a list of practices that do not defer compensation — was read in the
+preamble to the 2007 proposed cafeteria plan regulations as published in the Federal Register,
+and restated in Internal Revenue Bulletin 2007-39. Both are agency text describing what the
+regulations provide. The operative regulation section itself was not read, so this is one tier
+short of primary text and is recorded that way deliberately. The boundary on the other side —
+that contributions for one plan year may not purchase a benefit provided in a subsequent plan
+year — appears in Prop. Treas. Reg. § 1.125-1, Q&A-7 as quoted in IRS Notice 2005-42, and
+forecloses stretching a prior-year reduction across the second and later months of the following
+year. Separately and at a lower tier: the elective PTO rules relied on by option B — no
+carryover between plan years, an ordering rule requiring nonelective PTO to be used first, and
+cash-out or forfeiture of unused elective PTO at plan year end — rest on consistent practitioner
+commentary from several independent sources, not on primary text. Agency text was read only to
+the extent of confirming that paid time off is a permitted taxable benefit and that carryover
+is barred generally as deferral.
+
+**Design choice.** Five on-ramp options for month one, all employee-sourced, selected per employer
+and in two cases per employee:
+
+- **A — Bonus or stipend at the start of the plan year.** Prospectively elected, reduced to fund
+  month one. Must be paid in the first payroll of the plan year, not the last payroll of the prior
+  year: a January-paid bonus can fund months one through three, while a December-paid one reaches
+  only January before the cross-year purchase prohibition binds.
+- **B — PTO sale.** Irrevocable election made in the prior tax year, no independent cash-out right
+  in the underlying policy. Available, not recommended — it is the most complex of the five and the
+  sizing is demanding at high family premiums.
+- **C — One heavier month.** The employee's first month of reductions carries two months' premium.
+- **D — Employee pays month one directly, post-tax, from their own funds.** Simplest available;
+  costs one month of pre-tax treatment.
+- **E — Coverage effective one payroll cycle after reductions begin.** Free; the LA-21 default, and
+  the right answer for any mid-year effective date.
+
+C and D are offered to the employee as a choice, since neither carries a compliance dimension.
+
+Employer advance with payroll recoupment is closed by decision and is not offered, negotiated per
+case, or built. Cross-year restoration of sold PTO days is likewise closed: it is deferred
+compensation under the prohibition cited above, and it restores nothing economically regardless.
+
+**Risk if wrong.** Low in the direction that matters. If the carve-out were read more narrowly than
+assumed, the fallback is option E, which is already the LA-21 default and costs one onboarding
+cycle. No employee tax position depends on the carve-out being available — it governs only whether
+a December reduction may fund January, and where it may not, coverage starts a cycle later. The
+material risk sits on option A rather than the cadence: a stipend conditioned on purchasing
+coverage is an employer payment plan regardless of payroll coding, and it also enlarges the
+employer's effective contribution, which threatens the deliberate unaffordability the waiver path
+depends on. See LA-24.
+
+**Reversal cost.** Low. Funding schedule and per-employee on-ramp selection. No schema depends on
+the choice; the sub-accounts, ledgering and monthly cadence are identical across all five options.
+
+**Confirm before.** Any proposal to fund month one from employer funds. Any stipend whose payroll
+description, plan document language or employee communication ties it to purchasing coverage. First
+January-effective group where option A is the selected on-ramp.
+
+**Status.** Assumed. Verification is deliberately tiered rather than uniform. The month-ahead
+cadence rests on agency text — Federal Register preamble and IRB 2007-39 — with the operative
+regulation section unread; the cross-year purchase prohibition rests on a proposed regulation
+quoted in an IRS notice; the elective PTO rules underpinning option B rest on secondary
+commentary only and must be read against primary text before any PTO on-ramp is used in a live
+plan. That gap is contained: options A, C, D and E do not depend on the PTO rules, and option B
+is already recorded as available rather than recommended. Two further items remain unverified
+and are not load-bearing here — the precise conditions under which increased taxable
+compensation escapes employer-payment-plan characterization, and the §4980D minimum-penalty and
+cap figures.
 
 ---
 
