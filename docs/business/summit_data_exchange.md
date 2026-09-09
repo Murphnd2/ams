@@ -53,11 +53,45 @@ existed anywhere in the repo before this document.**
   `b7:35:25:a2:08:d3:20:d2:68:12:d5:da:ae:3b:f4:81:c6:15:bb:91:54:94:33:22:93:5e:2c:56:35:3a:ff:e1`.
   A host-key fingerprint is public by design and belongs in this document — it is not a credential
   and must not be treated as one. It changes if DataPath rekeys the server, in which case the
-  connection fails closed and the pin is updated from a fresh unpinned run. Observed directory
-  structure: `/DataExchange/Superior State Administrators Inc/` — the Imports, Results and Exports
-  folders have **not** been observed yet; their location inside that directory is presumed, not
-  confirmed. ⚠️ The account directory name contains spaces — any remote path handling must
-  tolerate them.
+  connection fails closed and the pin is updated from a fresh unpinned run. ⚠️ The account directory
+  name contains spaces — any remote path handling must tolerate them.
+- **Observed directory structure, complete (2026-09-09, via the `?dir=` browse override on
+  `/SummitSftpTest`):**
+  ```
+  /DataExchange/Superior State Administrators Inc/
+      ImportFiles      empty
+      ResponseFiles    ~40 files
+      ExportFiles      2 files
+  ```
+  ⚠️ **The directory names differ from this document's own labels.** The Summit UI calls the three
+  folder configurations **Imports**, **Results**, **Exports**; the actual directories are
+  **`ImportFiles`**, **`ResponseFiles`**, **`ExportFiles`**. Results maps to `ResponseFiles`, which
+  is not guessable from either name.
+- **Direction of each folder, and the evidence for it.** `ExportFiles` holds two files Summit itself
+  wrote (naming pattern below) — nothing in AMS has ever written there — which is what fixes the
+  polarity: `ExportFiles` is Summit-to-AMS. By the same Imports/Results/Exports correspondence,
+  `ImportFiles` is AMS-to-Summit (dropping a file there is what starts processing) and
+  `ResponseFiles` is Summit-to-AMS (one result file per processed import).
+- ⭐ **The `Response_` + source-filename convention is a load-bearing finding.** A source file named
+  `ZZ_TEST_CDH_20260908101219.txt` produced a response named
+  `Response_ZZ_TEST_CDH_20260908101219.txt` — Summit's response filename is always `Response_`
+  prefixed to the exact source filename. **AMS can predict the exact name of its own result file and
+  poll for it** — no run ID, correlation table, or separate lookup is needed. Summit itself tolerates
+  spaces and punctuation in filenames; AMS should not imitate that.
+- `ResponseFiles` is readable over SFTP regardless of how the import arrived. The ~40 files observed
+  there (several stamped `20260908`) all came from imports run through the Summit web UI, not SFTP,
+  and are visible over SFTP anyway — **the results channel is usable today, independently of AMS
+  ever uploading anything.**
+- `ImportFiles` is empty, and is **swept, not merely unused** — `ResponseFiles` holds responses to
+  imports that are no longer present in `ImportFiles`, so a delivered file is consumed rather than
+  accumulated.
+- `ExportFiles` naming pattern: `{prefix}_{Type}_Export_{yyyyMMddHHmmssSSS}.{ext}` — a 17-digit
+  timestamp including milliseconds. The two files observed are dated 2025-04-23 and 2023-02-08 (one
+  `.Email`, one `.CSV`), under two distinct prefixes.
+- ⚠️ **Untested boundary — do not read past this as proven.** Every response observed to date came
+  from a file uploaded through the Summit web UI. **Nothing has ever been placed in `ImportFiles`
+  over SFTP**, and whether an SFTP-dropped file is picked up and processed the same way as a
+  UI-uploaded one is untested. See [SDX-15](#open-questions).
 
 ## How templates work
 
@@ -684,6 +718,9 @@ open-question registry (`O1`–`O52+`, tracked in `docs/swbd_ichra_build_plan.md
     applies to a participant-funded premium plan.
 14. **SDX-14** — Does DataPath intend to offer a stronger SFTP host-key algorithm than `ssh-dss`
     (currently the server's only option — see Transport)? For DataPath support, not an AMS work item.
+15. **SDX-15** — Is a file delivered to `ImportFiles` over SFTP processed the same way a file
+    uploaded through the Summit web UI is? Every response observed to date came from a UI upload.
+    **Settled by the first SFTP upload, not by asking.**
 
 ## Test artifacts
 
