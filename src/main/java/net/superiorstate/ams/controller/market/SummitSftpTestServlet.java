@@ -385,13 +385,15 @@ public class SummitSftpTestServlet extends HttpServlet {
         }
         out.println();
 
-        String filename = "ZZ_TEST_DEMO_"
-                + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"))
-                + ".txt";
+        String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
+        String filename = "ZZ_TEST_DEMO_" + timestamp + ".txt";
+        // S40-H -- the participant ID carries the same timestamp as the filename, so the content
+        // is unique per run (not just the filename) and can no longer be ignored by content
+        // dedupe. Reused, not recomputed, so file and rows correlate to the second.
         String content =
-                "ZZZ-NO-SUCH-EMPLOYER|ZZZ-P-901|Probe|Notarealperson|1 Nonexistent Way|Marinette|WI|54143|20260930|probe.notarealperson@invalid.example||AMS\n"
-              + "ZZZ-NO-SUCH-EMPLOYER|ZZZ-P-902|Probe|Notarealpersontwo|1 Nonexistent Way|Marinette|WI|54143|20260930|probe.notarealpersontwo@invalid.example||AMS\n"
-              + "ZZZ-NO-SUCH-EMPLOYER|ZZZ-P-903|Probe|Notarealpersonthree|1 Nonexistent Way|Marinette|WI|54143|20260930|probe.notarealpersonthree@invalid.example||AMS\n";
+                "ZZZ-NO-SUCH-EMPLOYER|ZZZ-P-" + timestamp + "-1|Probe|Notarealperson|1 Nonexistent Way|Marinette|WI|54143|20260930|probe.notarealperson@invalid.example||AMS\n"
+              + "ZZZ-NO-SUCH-EMPLOYER|ZZZ-P-" + timestamp + "-2|Probe|Notarealpersontwo|1 Nonexistent Way|Marinette|WI|54143|20260930|probe.notarealpersontwo@invalid.example||AMS\n"
+              + "ZZZ-NO-SUCH-EMPLOYER|ZZZ-P-" + timestamp + "-3|Probe|Notarealpersonthree|1 Nonexistent Way|Marinette|WI|54143|20260930|probe.notarealpersonthree@invalid.example||AMS\n";
 
         try {
             service.upload(importDir, filename, content.getBytes(StandardCharsets.UTF_8));
