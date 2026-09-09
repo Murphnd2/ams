@@ -839,7 +839,9 @@ public class SummitExportServlet extends HttpServlet {
      * exactly this column, never read from a spreadsheet. {@code Participant TPA Custom ID}
      * follows the same rule as {@code Employer TPA Custom ID} (S25-C, LA-29): derived here from
      * the AMS-owned, immutable primary key plus the configured prefix, and never persisted
-     * (LA-33). An empty roster emits a zero-row file rather than refusing.
+     * (LA-33).
+     * <p>
+     * ⚠️ <b>An empty roster is refused, not emitted</b> (T209) — see the guard below.
      */
     private void writeDemographics(HttpServletResponse response, EntityManager em,
                                     Prospect prospect, String employerTpaCustomId,
@@ -872,6 +874,22 @@ public class SummitExportServlet extends HttpServlet {
                     branchCode));                                           // L  mandatory sentinel
         }
 
+        // ⚠️ T209 -- a zero-row file is a defect, not an empty result. Same guard, same
+        // position and same refusal as file 2's (S31-J): an empty file uploads to Summit cleanly and
+        // creates no participants at all, so the operator's next move is to investigate a silent
+        // no-op rather than to fix the one real problem. The likely trigger is ordinary -- generating
+        // this file before the census has been uploaded. There is no drop logic on this path, so
+        // unlike file 2 there is exactly one reason and it needs no enumeration.
+        if (lines.isEmpty()) {
+            writePlainError(response, HttpServletResponse.SC_BAD_REQUEST,
+                    "Cannot generate Demographics file: prospect " + prospect.getId() + " has no"
+                            + " participants on its roster, so the file would have been empty. An"
+                            + " empty file imports as nothing at all, so it is refused rather than"
+                            + " downloaded. Upload the census on the Setup screen, then generate the"
+                            + " file again.");
+            return;
+        }
+
         String filename = resolveFilename(TYPE_DEMOGRAPHICS,
                 "demographics-" + sanitizeFilename(prospect.getName())
                         + "-" + prospect.getId() + "-" + LocalDate.now().format(SUMMIT_DATE) + ".txt");
@@ -902,8 +920,8 @@ public class SummitExportServlet extends HttpServlet {
      * <b>The participant set is exactly the set {@link #writeDemographics} emits</b> — the same
      * {@code EmployerParticipantDAO.findByProspectId} call, the same ordering, no filter added and
      * none removed. Summit's dependency order is employer → plans → participants → enrollments, so a
-     * row naming a participant Demographics did not create fails. An empty roster emits a zero-row
-     * file rather than refusing, matching Demographics.
+     * row naming a participant Demographics did not create fails. ⚠️ <b>An empty roster is refused, not
+     * emitted</b> (T209) — see the guard below, matching Demographics.
      * <p>
      * ⚠️ <b>{@code Effective Date} is the plan year start, not {@code EmployerParticipant.effectiveDate}</b>
      * — the same value {@link #writeEmployerCdhPlan} emits as both its {@code Effective Date} and its
@@ -1045,6 +1063,22 @@ public class SummitExportServlet extends HttpServlet {
         log.info("[SUMMIT-EXPORT] proposal {} HRA Enrollment: {} participant row(s) into plan {}"
                         + " effective {} at {} each",
                 proposalId, lines.size(), importPlanId, effectiveDate, amount);
+
+        // ⚠️ T209 -- a zero-row file is a defect, not an empty result. Same guard, same
+        // position and same refusal as file 2's (S31-J). A zero-row enrollment file enrols nobody,
+        // uploads cleanly and gives the operator no signal at all. Placed after the INFO above
+        // deliberately: that line reports the row count, so a refusal is preceded in the log by the
+        // zero it refused on. There is no drop logic on this path, so unlike file 2 there is exactly
+        // one reason and it needs no enumeration.
+        if (lines.isEmpty()) {
+            writePlainError(response, HttpServletResponse.SC_BAD_REQUEST,
+                    "Cannot generate HRA Enrollment file: prospect " + prospect.getId() + " has no"
+                            + " participants on its roster, so the file would have been empty. An"
+                            + " empty file imports as nothing at all, so it is refused rather than"
+                            + " downloaded. Upload the census on the Setup screen, then generate the"
+                            + " file again.");
+            return;
+        }
 
         String filename = resolveFilename(TYPE_ENROLLMENT,
                 "hra-enrollment-" + sanitizeFilename(prospect.getName())
