@@ -10,7 +10,7 @@
 ## Current State
 - **Integration branch:** `refactor/modernize-architecture` — feature branches are cut from / merged back to it, so it trails the in-flight feature by only a few commits. `main` is ~345 commits stale and is **not** the working line.
 - **In-flight branch:** none — the agency-scope-resolver work merged to trunk 2026-07-15 (`e0a62d1`); branch deleted.
-- **Latest migration:** **V094** (`employer_participant` — the AMS-owned participant roster, session 26). Updated 2026-09-07 (session 26 close); the line read V093 before that, and V085 before session 25 corrected it. ⭐ **V092, V093 and V094 are now APPLIED to Production** via release **`v0.94.00`** (session 27, 2026-09-08) — Kevin's report, corroborated for V094 by a production walk of `/SummitExport?type=demographics` returning a valid empty file, which requires the table to exist. **Production is no longer behind on any migration in this tree.** Demo, BPO and Master are **N/A** for all three — none runs the ICHRA/HSA/roster code they serve. ⚠️ **The local `beta_ssa` state is disputed and unsettled:** `migration_tracker.md` reads unapplied while the note below (and session 26's own record) says V092/V093 applied cleanly locally in S26-E. **Session 27 ran no database query and did not resolve it — settle with a `schema_version` query before trusting either.** The pre-session-27 text of this line, retained because it is what the sentence below still assumes: **V092, V093 and V094 were unapplied in Production, Demo, BPO and Master.** V092 and V093 were applied to local `beta_ssa` in session 26 (S26-E) and **both applied cleanly with no errors** — useful information for the production deployment. ⚠️ **`schema_info` reflects apply order, not the highest version applied**: locally V093 ran after V094 and won the `CREATE OR REPLACE VIEW`, so the view understates the schema. Production applies in version order via `update.sh`, so the exposure is to out-of-order or partial applies only. Always re-check `ls docs/migrations/` rather than trusting this line — it has drifted before and will again. ⚠️ **V084 and V085** (`zip_county` crosswalk, T74 ZIP intake) **are applied on Production**, shipped with release `v0.85.00` — confirmed **behaviourally**, not from a deployment log: a 2026-08-01 runtime walk showed ZIP `75482`→Hopkins, `75009`→Collin/Denton chooser, `90210`→correct miss, none of which is reachable against an empty table. V079 onward remains unapplied on every local schema.
+- **Latest migration:** ⭐ **Corrected 2026-09-09 (session 40 close) — this line was several sessions stale at V094.** Actual latest is **V096** (`summit_file_export`) — confirmed by `ls docs/migrations/` during session 40. **Production is current at V096** too (release `v0.96.00`, deployed session 37 from `b683f3b`) per `docs/analysis/migration_tracker.md`, the authoritative per-environment source — always re-check it and `ls docs/migrations/` directly rather than this line, which sessions 30–39 never updated (see the Recent Sessions gap note below). Pre-correction text retained for provenance: **V094** (`employer_participant` — the AMS-owned participant roster, session 26). Updated 2026-09-07 (session 26 close); the line read V093 before that, and V085 before session 25 corrected it. ⭐ **V092, V093 and V094 are now APPLIED to Production** via release **`v0.94.00`** (session 27, 2026-09-08) — Kevin's report, corroborated for V094 by a production walk of `/SummitExport?type=demographics` returning a valid empty file, which requires the table to exist. **Production is no longer behind on any migration in this tree.** Demo, BPO and Master are **N/A** for all three — none runs the ICHRA/HSA/roster code they serve. ⚠️ **The local `beta_ssa` state is disputed and unsettled:** `migration_tracker.md` reads unapplied while the note below (and session 26's own record) says V092/V093 applied cleanly locally in S26-E. **Session 27 ran no database query and did not resolve it — settle with a `schema_version` query before trusting either.** The pre-session-27 text of this line, retained because it is what the sentence below still assumes: **V092, V093 and V094 were unapplied in Production, Demo, BPO and Master.** V092 and V093 were applied to local `beta_ssa` in session 26 (S26-E) and **both applied cleanly with no errors** — useful information for the production deployment. ⚠️ **`schema_info` reflects apply order, not the highest version applied**: locally V093 ran after V094 and won the `CREATE OR REPLACE VIEW`, so the view understates the schema. Production applies in version order via `update.sh`, so the exposure is to out-of-order or partial applies only. Always re-check `ls docs/migrations/` rather than trusting this line — it has drifted before and will again. ⚠️ **V084 and V085** (`zip_county` crosswalk, T74 ZIP intake) **are applied on Production**, shipped with release `v0.85.00` — confirmed **behaviourally**, not from a deployment log: a 2026-08-01 runtime walk showed ZIP `75482`→Hopkins, `75009`→Collin/Denton chooser, `90210`→correct miss, none of which is reachable against an empty table. V079 onward remains unapplied on every local schema.
 - **Latest release:** superseded the 2026-07-31/08-01 entries here entirely; see `docs/session_closeout_2026-08-01_session6.md` §1 for the full `v0.85.00`–`v0.85.06` ladder. ⚠️ **`v0.85.06` is built and pushed (commit `cabbe88`) but NOT DEPLOYED.** Production runs **`v0.85.05`**, which carries a live defect: the AGE_BAND repeater force-rendered a duplicate blank first row under specific conditions, silently doubling the submitted headcount with nothing on screen explaining it (**K3-b**, fixed in `v0.85.06`). `v0.85.06` is a WAR-only release — no migrations attached, since V084/V085 already shipped with `v0.85.00`. Release tags are typed in the GitHub web UI, never pushed from local git — a local `git tag` listing is stale by design; `git fetch --tags` first or read the Releases page.
 - **ICHRA/QSEHRA admin stream active — and now BUILT.** Origin: SWBD (Forrest) quoting ICHRA through zizzl, which gated
   carriers and charged a ~$660/mo admin minimum — unbundle logic gives the admin to SSA. Target rail is
@@ -184,6 +184,47 @@
 Static resources (`/images/`, `/css/`, `/js/`, `/fonts/`, etc.) are exempted before the auth check via `isStaticResource()`. Resolves open question #17.
 
 ## Recent Sessions
+⚠️ **Gap in this log, found while closing session 40: sessions 30–39 were never added here.** This
+file's own header claims it is updated every session; it was not, for ten sessions in a row —
+those sessions' own close-outs and `docs/analysis/migration_tracker.md`/`project_backlog.md` are
+current and authoritative for that period, this log is not. Not backfilled now — that is its own
+job, not a side effect of closing session 40. Trust the live sources named throughout this file
+over any specific session-count or migration number below that predates this note.
+- **Session 40 (2026-09-09, S40-A through S40-F rev 2, no migration, no SQL):** ⭐ **The Summit
+  SFTP transport is proven end to end against the live production tenant — connect, upload,
+  Summit-side retrieval, and processing, all runtime-verified in one session.**
+  `SummitSftpService` gained `mkdir()`/`upload()` (S40-A, `d38d586`) behind a session-setup helper
+  extracted from `probe()`/`list()` with no behavioural change. `SummitSftpTestServlet` gained
+  three write actions, each its own method with its own literal confirmation token, deliberately
+  never unified: `?action=writetest` (fixed non-`ImportFiles` test directory, a hard,
+  non-config-removable refusal on any target resolving under `ImportFiles`), `?action=importdrop`
+  and `?action=importdropdemo` (two Kevin-authorized, separately-gated deliberate drops directly
+  into the live `ImportFiles` folder — one deliberately non-conforming, one filename-conforming
+  but keyed to a nonexistent employer so nothing could import under a real record) — `97adc9d`.
+  ⭐ **SDX-15 and SDX-16 settled.** An SFTP-delivered file is retrieved and processed identically
+  to a Summit web-UI upload (`ZZ_TEST_DEMO_*`'s all-`Failed` response; `ResponseFiles` 36→37; no
+  UI upload anywhere in the test), and the SFTP account has write permission on `ImportFiles`.
+  ⚠️ **Session 39's sweep claim was wrong, not merely stale** — `ImportFiles` is **not** swept
+  after processing; both probe files remained after retrieval, so what emptied the folder before
+  session 39's observation is now unestablished. Retrieval is Summit-side and pull-initiated
+  (manual "Initiate File Retrieval" or a schedule), and matches an inbound file to an import
+  template **by filename, not content** — proven directly by the two probes (matching name →
+  response; non-matching name → silently ignored, still present in `ImportFiles`). **T226 closed.**
+  ⚠️ **Addendum (S40-F rev 2), after a DataPath vendor guide surfaced post-close:**
+  `260607_SummitGuide_Processing` (content dated 2020-01-03, six years old, tenant wins on any
+  conflict) independently corroborates the `mkdir` denial — folder creation requires the MOVEit
+  administrator, contradicting DataPath support's sub-folder statement a second time — and
+  documents that **Schedule Import is only available under an External Network configuration**
+  (DataPath pulling from an SSA-hosted server); this tenant runs **DataPath Network** (AMS pushes
+  out). This raises **SDX-19, the automation fork: can retrieval ever be automated under DataPath
+  Network, or does every delivery require a manual UI click?** Not answered, not designed for, not
+  estimated in any document — Kevin's decision, gated on asking DataPath or testing the checkbox.
+  Also narrows the response-file-format finding to **Demographics only** — Premium Billing's error
+  format, per the guide, is shaped differently. **T227 filed** (a reprocessing guard, since
+  retrieval doesn't remove what it reads) but gated on SDX-17 and not built — this session shipped
+  test/probe infrastructure and live findings, not a production delivery path.
+  **Full detail:** `docs/session_closeout_2026-09-09_session40.md` (plus its S40-F addendum) and
+  `docs/business/summit_data_exchange.md` Transport / Open questions (now through SDX-20).
 - **Session 29 (2026-09-08, S29-A–K, 12 sub-runs, no migration, no SQL):** ⭐ **The Summit import
   chain is proven end to end from AMS-generated files** — see the Current State bullet above for the
   shape facts and config keys; this entry records how the session went. **Five commits:** `57487dc`
