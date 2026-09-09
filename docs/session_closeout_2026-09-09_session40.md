@@ -277,3 +277,74 @@ visible record, not a silent no-op with none). **The fourth is this addendum's o
 Initiate File Retrieval caused today's processing. It did not — the 15-minute automatic poller did,
 and the click was a coincidence of timing that this document, the vendor guide, and the reasoning
 built on both all took as causal.
+
+---
+
+## Session close (S40-J, 2026-09-09)
+
+**This section supersedes the earlier Next recommendation** (the section titled "Next," above
+Addendum 1). That recommendation — settle SDX-17 and build T227's guard before routing a real
+export file through this transport — was written before DataPath's answers arrived and is
+superseded by the reasoning below, which reflects what is now known. Nothing above this section is
+rewritten.
+
+### What session 40 established
+
+**AMS writes to Summit over SFTP, and Summit retrieves and processes what AMS writes
+automatically, on a 15-minute poll, with no human action required.** The transport work is
+complete: connect, authenticate, list, write into an existing folder, write into the live
+`ImportFiles` folder specifically, and have that write picked up and processed without anyone
+clicking anything. Eight commits carried it: `d38d586`, `5568a3d`, `97adc9d`, `e97a9f3`, `121daaa`,
+`4f3d2fe`, `d649333`, `b661158`.
+
+### What it cost
+
+Four claims were caught wrong during this session:
+
+1. Session 39's `ImportFiles`-sweep assumption.
+2. DataPath's sub-folder statement.
+3. The content-dedupe inference, which File History corrected to a Held status.
+4. The attribution of processing to Initiate File Retrieval — a button that does nothing.
+
+⚠️ **The first three share a pattern, and it is an AMS-side pattern, not a DataPath one:** each
+time, a result was read before the system had finished producing one, and a hypothesis was built
+on that early reading — an empty `ImportFiles` folder read as "swept" before retrieval was
+understood at all; a `Permission denied` read as the whole story on sub-folders before the guide
+and DataPath's own follow-up complicated it; a run of no-response clicks read as evidence about
+dedupe before File History was checked. **The two tests that actually settled things came from
+Kevin**, not from a prior AMS-side hypothesis being confirmed by more of the same kind of reading:
+the filename-template hypothesis (that matching mattered, not content) and the decision to open
+File History directly rather than infer from `ResponseFiles` alone. The fourth contradiction — the
+IFR misattribution — is the same pattern once more, corrected only because DataPath was asked
+directly.
+
+### Carried forward
+
+Three probe files remain in `ImportFiles`: `AMS_SFTP_IMPORT_PROBE_20260909134434.txt`,
+`ZZ_TEST_DEMO_20260909141133.txt`, and `ZZ_TEST_DEMO_20260909153935.txt` (the last Held and
+rejected as a duplicate, per SDX-17). Removable only through the Summit UI — a note to Kevin, not a
+work item. **T227 is now well-defined and open**: every delivery needs a unique filename and
+unique content, and a delivery ending in Summit's held-pending queue needs handling. **SDX-21, the
+`mkdir` self-contradiction, is open and blocking nothing** — every delivery path targets the
+existing `ImportFiles` folder.
+
+### Next session opens on T201
+
+`writeHraEnrollment` enrolls the full census into a funded plan, and no election state exists
+anywhere in the model — `project_backlog.md`'s own gate on that row reads: *do not run the
+enrollment export against a real group until this is resolved.*
+
+⚠️ **Session 40 changed the risk that gate was written against.** It was written when AMS had no
+way to deliver a file to Summit at all — the risk was theoretical. **AMS now delivers, and
+delivery is picked up automatically within 15 minutes, with no click, no confirmation, and no
+human checkpoint of any kind.** The gap between "the emitter is unsafe to run against a real
+group" and "a real group" is now only a matter of someone running the emitter and the file
+reaching a working transport — which this session proved works.
+
+**The opening work is a guard in front of the emitter, not building election state.** Election
+state is a design question and a materially larger piece of work — capturing who accepted or
+declined, at what tier, on what date — and is not what the next session should start with. A guard
+that stops the enrollment emitter from running against a real group's full census (or refuses
+until election state exists) is small and reversible, and it is what closes the gap this session
+opened. **A Phase A is required** — T201 touches `writeHraEnrollment` and `SummitExportServlet`,
+both existing, customer-facing code, not new files.

@@ -190,7 +190,7 @@ those sessions' own close-outs and `docs/analysis/migration_tracker.md`/`project
 current and authoritative for that period, this log is not. Not backfilled now — that is its own
 job, not a side effect of closing session 40. Trust the live sources named throughout this file
 over any specific session-count or migration number below that predates this note.
-- **Session 40 (2026-09-09, S40-A through S40-F rev 2, no migration, no SQL):** ⭐ **The Summit
+- **Session 40 (2026-09-09, S40-A through S40-J, no migration, no SQL):** ⭐ **The Summit
   SFTP transport is proven end to end against the live production tenant — connect, upload,
   Summit-side retrieval, and processing, all runtime-verified in one session.**
   `SummitSftpService` gained `mkdir()`/`upload()` (S40-A, `d38d586`) behind a session-setup helper
@@ -206,25 +206,43 @@ over any specific session-count or migration number below that predates this not
   UI upload anywhere in the test), and the SFTP account has write permission on `ImportFiles`.
   ⚠️ **Session 39's sweep claim was wrong, not merely stale** — `ImportFiles` is **not** swept
   after processing; both probe files remained after retrieval, so what emptied the folder before
-  session 39's observation is now unestablished. Retrieval is Summit-side and pull-initiated
-  (manual "Initiate File Retrieval" or a schedule), and matches an inbound file to an import
-  template **by filename, not content** — proven directly by the two probes (matching name →
-  response; non-matching name → silently ignored, still present in `ImportFiles`). **T226 closed.**
-  ⚠️ **Addendum (S40-F rev 2), after a DataPath vendor guide surfaced post-close:**
-  `260607_SummitGuide_Processing` (content dated 2020-01-03, six years old, tenant wins on any
-  conflict) independently corroborates the `mkdir` denial — folder creation requires the MOVEit
-  administrator, contradicting DataPath support's sub-folder statement a second time — and
-  documents that **Schedule Import is only available under an External Network configuration**
-  (DataPath pulling from an SSA-hosted server); this tenant runs **DataPath Network** (AMS pushes
-  out). This raises **SDX-19, the automation fork: can retrieval ever be automated under DataPath
-  Network, or does every delivery require a manual UI click?** Not answered, not designed for, not
-  estimated in any document — Kevin's decision, gated on asking DataPath or testing the checkbox.
-  Also narrows the response-file-format finding to **Demographics only** — Premium Billing's error
-  format, per the guide, is shaped differently. **T227 filed** (a reprocessing guard, since
-  retrieval doesn't remove what it reads) but gated on SDX-17 and not built — this session shipped
-  test/probe infrastructure and live findings, not a production delivery path.
-  **Full detail:** `docs/session_closeout_2026-09-09_session40.md` (plus its S40-F addendum) and
-  `docs/business/summit_data_exchange.md` Transport / Open questions (now through SDX-20).
+  session 39's observation is now unestablished. Matches an inbound file to an import template
+  **by filename, not content** — proven directly by the two probes (matching name → response;
+  non-matching name → silently ignored, still present in `ImportFiles`). **T226 closed.**
+  ⭐ **Corrected 2026-09-09 (S40-I), after DataPath Support answered case CASE-22040 directly:
+  retrieval is fully automatic, on a 15-minute poll, with no human action of any kind.** Session
+  40 initially recorded retrieval as pull-initiated by a manual "Initiate File Retrieval" click or
+  a configured schedule — **that was wrong.** DataPath Support states plainly that **both buttons
+  are non-functional**: Initiate File Retrieval "does not have a completed feature function and
+  will not process any files if pressed," and Schedule Import has no completed back end and is
+  slated for removal. **Every "clicked, then it processed" reading recorded earlier in this
+  session described a coincidence of timing with the 15-minute poller, not a causal sequence** —
+  the automation fork (SDX-19) this session raised **does not exist**: no External Network switch
+  or architecture decision is needed, because automatic polling already runs under the tenant's
+  existing DataPath Network configuration. SDX-20 (retrieval scope) is moot for the same reason.
+  **Duplicate handling, DataPath-stated and tenant-corroborated (SDX-17 resolved):** content
+  identical to an already-processed file is held pending TPA approval (observed directly —
+  `ZZ_TEST_DEMO_20260909153935.txt` sat Held, 0 records, in File History); a repeated filename is
+  rejected outright. **T227** (a delivery-dedup guard) is now well-defined — every real delivery
+  needs a unique filename *and* unique content, and must handle a Held-not-processed outcome — but
+  still not built. **SDX-21 filed**: DataPath's own follow-up on `mkdir` is self-contradictory
+  (sub-folders "can be created" *and* "the structure cannot be changed") and unresolved, but blocks
+  nothing since AMS delivers to the existing `ImportFiles` folder. Narrows the response-file-format
+  finding to **Demographics only** — Premium Billing's error format, per DataPath's vendor guide,
+  is shaped differently.
+  ⭐ **The transport work is complete.** Eight commits: `d38d586`, `5568a3d`, `97adc9d`, `e97a9f3`,
+  `121daaa`, `4f3d2fe`, `d649333`, `b661158`. **Four claims were caught wrong this session** —
+  session 39's sweep assumption, DataPath's sub-folder statement, the content-dedupe inference
+  (corrected by File History to a Held status), and the IFR misattribution above — the first three
+  sharing a pattern: a result read before the system had finished producing one. **Next session
+  opens on T201** (`writeHraEnrollment` enrolls the full census into a funded plan with no election
+  state modeled) — its "do not run against a real group" gate was written when AMS had no delivery
+  path at all; it now has one, automatic and unattended. The opening work is a small, reversible
+  guard in front of the emitter, not building election state; Phase A required (touches existing
+  customer-facing code).
+  **Full detail:** `docs/session_closeout_2026-09-09_session40.md` (both addenda plus the session
+  close section) and `docs/business/summit_data_exchange.md` Transport / Open questions (now
+  through SDX-21).
 - **Session 29 (2026-09-08, S29-A–K, 12 sub-runs, no migration, no SQL):** ⭐ **The Summit import
   chain is proven end to end from AMS-generated files** — see the Current State bullet above for the
   shape facts and config keys; this entry records how the session went. **Five commits:** `57487dc`
