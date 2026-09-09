@@ -92,6 +92,26 @@ existed anywhere in the repo before this document.**
   from a file uploaded through the Summit web UI. **Nothing has ever been placed in `ImportFiles`
   over SFTP**, and whether an SFTP-dropped file is picked up and processed the same way as a
   UI-uploaded one is untested. See [SDX-15](#open-questions).
+- ⭐ **Write permission confirmed on an existing folder, refused on directory creation — three
+  browser tests, 2026-09-09, live production tenant, PSP admin, from Kevin's workstation.**
+  (1) `?action=writetest` targeting a new sub-folder `AmsWriteTest` under the account directory
+  failed: `Write test FAILED: Permission denied.` (2) A `?dir=` listing of the account directory
+  taken immediately after showed `ExportFiles`, `ImportFiles`, `ResponseFiles` and no
+  `AmsWriteTest` — isolating the failure to directory creation, not file upload. (3)
+  `?action=writetest` retargeted at the existing `ExportFiles` succeeded:
+  `AMS_SFTP_WRITE_TEST_20260909133051.txt`, 108 bytes, confirmed present in the post-upload
+  listing. **The account can write files into an existing directory. It cannot create
+  directories.** Both halves observed, not inferred.
+- ⚠️ **Contradicts DataPath's 2026-09-09 statement above that a TPA may create its own
+  sub-folders without a MOVEit administrator.** The SFTP account's observed `mkdir` permission
+  says otherwise. Most plausibly that statement describes folder creation through the Summit web
+  UI — a different permission surface than the SFTP account — but that is **not confirmed**, and
+  this document does not assert it. Recorded as a contradiction, not a resolution.
+- **Not established by these tests:** whether `upload` would succeed into `ImportFiles` — the
+  test servlet's guard refuses to connect before an attempt is ever made, so nothing was tried
+  there, and write permission on `ExportFiles` does not prove write permission on `ImportFiles`.
+  Also not established: anything about production egress — all three tests ran from the
+  workstation, not the VPS.
 
 ## How templates work
 
@@ -720,7 +740,19 @@ open-question registry (`O1`–`O52+`, tracked in `docs/swbd_ichra_build_plan.md
     (currently the server's only option — see Transport)? For DataPath support, not an AMS work item.
 15. **SDX-15** — Is a file delivered to `ImportFiles` over SFTP processed the same way a file
     uploaded through the Summit web UI is? Every response observed to date came from a UI upload.
-    **Settled by the first SFTP upload, not by asking.**
+    ⚠️ **Amended 2026-09-09 — the staging path this question was written against no longer
+    exists.** It assumed a sub-folder created under the account directory could absorb a first
+    write test before anything touched `ImportFiles`; three live tests the same day established
+    that the SFTP account cannot create directories (see Transport) — only the three existing
+    folders (`ImportFiles`, `ResponseFiles`, `ExportFiles`) are writable at all. **The only
+    remaining way to settle this question is a deliberate write into `ImportFiles` on the live
+    production tenant.** That is not an experiment that can be run safely first and evaluated
+    afterward — it is an authorization decision. This document does not make that decision or
+    recommend one; the question stays open until someone with that authority makes it.
+16. **SDX-16** — Does the SFTP account have write permission on `ImportFiles` at all, independent
+    of what processing a write there would trigger? Unknown — `SummitSftpTestServlet`'s guard
+    refuses to connect before any write is attempted there, by design. Answered as a side effect
+    the moment SDX-15 is settled; not separately worth a dedicated test.
 
 ## Test artifacts
 
@@ -746,6 +778,11 @@ that employer.
 `{prefix}E{prospectId}`, so a re-export of that same prospect emits `158E140952` and Summit creates a
 **second** employer rather than updating this one. That is accepted — it is a cleanup record, not a
 precedent, and no real employer has ever been imported.
+
+**From the 2026-09-09 SFTP write test:** `AMS_SFTP_WRITE_TEST_20260909133051.txt` (108 bytes) is in
+`ExportFiles` on the live tenant. Removable only through the Summit UI — `SummitSftpService` has no
+delete method, by design. `ExportFiles` is never read by AMS, so the file is inert. A note, not a
+work item.
 
 ## Client setup sequence
 
