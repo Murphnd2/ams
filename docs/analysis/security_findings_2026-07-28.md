@@ -4,7 +4,7 @@
 (`docs/analysis/phase_a_ichra_enrollment_portal.md`). These findings are **unrelated to that
 feature** and stand on their own.
 
-**Status:** none remediated as of this writing.
+**Status:** 1 of 6 findings remediated — FINDING 1 closed 2026-09-08 (session 36), code-verified but **not yet deployed to production**. FINDINGS 2–6 remain open as of this writing.
 
 ---
 
@@ -20,6 +20,31 @@ production system.
 
 **Recommended:** remove the endpoint, or gate it behind an environment check that cannot be true in
 production. **Highest priority item in this document.**
+
+**STATUS — ✅ REMEDIATED 2026-09-08 (session 36), commit `16077ab`. Not yet deployed.**
+
+Closed by **removal, not by gating.** A repo-wide search across code, JSPs, docs, scripts and
+configuration found **zero callers and zero documented operational dependencies** — every reference
+was an inventory entry or this finding itself — so the endpoint was deleted outright rather than
+restricted. The `@WebServlet` annotation inside the deleted class was the **sole** declaration of the
+`/CreateBpoTestUser` mapping (`web.xml` declares no servlet mappings at all), so deleting the file
+removed endpoint and mapping together.
+
+**Path correction (this finding's own text above is left intact as the record):** the elided
+`controller/.../CreateBpoTestUser.java` resolved to
+`src/main/java/net/superiorstate/ams/controller/authentication/CreateBpoTestUser.java`.
+
+⚠️ **Code-verified only — runtime-verified: nothing.** No request was issued to the endpoint before
+or after the change, so the expected 404 is an inference from the mapping's deletion, not an
+observation. ⚠️ **Not deployed:** `superiorstate.biz` still runs the previously deployed WAR, so the
+endpoint is **open in production right now** and stays open until a build carrying this commit ships.
+
+**Two follow-ups filed in `docs/analysis/project_backlog.md`:** **T220** (LOW) removes the now-inert
+`"/CreateBpoTestUser"` string still listed in `LoginFilter.ALLOWED_ENDPOINTS`, which is cleanup
+rather than a defect since the path resolves to no servlet; **T221** (HIGH) covers the accounts this
+endpoint may already have created — `bpoadmin@test.com` (UserRole 102) and `bpouser@test.com`
+(UserRole 103) — because **removing the creator does not revoke what it created**, and both carry a
+known hard-coded credential wherever they exist.
 
 ---
 
