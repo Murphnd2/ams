@@ -16,17 +16,48 @@ existed anywhere in the repo before this document.**
 
 ## Transport
 
-- Host `ftp1.dpath.com`, port 443. Protocol (FTPS vs SFTP) is **not established** — it matters for
-  client library selection and is unresolved (see SDX-01).
+- Host `ftp1.dpath.com`, **port 22, SSH-based SFTP** — confirmed by a TCP banner probe on
+  2026-09-09 returning `SSH-2.0-MOVEit Transfer SFTP` on port 22 (ports 21, 443, 990, and 2222 all
+  closed/timeout). Not FTPS, not implicit TLS. This corrects the port-443/protocol-unresolved text
+  this section previously carried; see SDX-01.
+- **Host-key algorithm profile** (evidence: `ssh -vv` KEXINIT read, 2026-09-09): the server offers
+  `ssh-dss` as its **sole** host-key algorithm; KEX, ciphers and MACs are all current
+  (`curve25519-sha256`, AES-CTR/GCM, ChaCha20-Poly1305, HMAC-SHA2). AMS re-enables `ssh-dss` per
+  session in `SummitSftpService`, never globally. ⭐ Because 1024-bit DSA is the weakest element in
+  an otherwise modern stack, pinning `SUMMIT_SFTP_HOST_KEY` is **recommended, not merely optional**
+  — the pinned fingerprint carries the server-identity assurance the host-key algorithm no longer
+  provides on its own. Whether DataPath intends to offer a stronger host-key algorithm is
+  [SDX-14](#open-questions), for DataPath support, not an AMS work item.
 - Three separate folder configurations, each with its own credentials: **Imports**, **Results**,
   **Exports**. All are currently Folder Location = `Datapath Network`, togglable to
-  `External Network`.
+  `External Network`. Per DataPath support (2026-09-09), each TPA can create its own sub-folders
+  under these three with its own login — no MOVEit administrator is required.
 - **No credentials in this repo, ever.**
 - Current posture: Encrypted Files off, Header Password Required off, Restrict IP Addresses off.
+  Per DataPath support (2026-09-09), the encrypted-files checkbox is not widely used and DataPath's
+  own support has no configuration guidance for it, so it stays off.
 - Direction is undecided. `Datapath Network` means AMS pushes out, with no inbound exposure on the
   VPS. `External Network` means Summit pulls from a server SSA runs, which means an inbound file
   service to secure and patch. This is reversible by dropdown; **file generation and file delivery
   are separable, and phase one is generating a correct file for manual upload.**
+- **Config keys (`ssa.properties`, untracked, lives at `{catalina.base}/conf/ssa.properties` —
+  never in this repo):** `SUMMIT_SFTP_HOST`, `SUMMIT_SFTP_PORT` (defaults to 22), `SUMMIT_SFTP_USER`,
+  `SUMMIT_SFTP_PASSWORD`, `SUMMIT_SFTP_HOST_KEY` (optional pinned fingerprint), and
+  `SUMMIT_SFTP_REMOTE_DIR` (defaults to `/`). Read inline via `AppConfig.get(...)` at their call
+  sites in `SummitSftpService` — there is no constants class for these keys, matching the existing
+  `SUMMIT_TPA_ID_PREFIX` convention. This note is the only written registry of these key names.
+- **Runtime-verified 2026-09-09.** Connect, authenticate and list all succeeded against
+  `ftp1.dpath.com:22` from a PSP-admin request to `/SummitSftpTest`. Server identification
+  `SSH-2.0-MOVEit Transfer SFTP`. Host-key pinning is verified working; the SHA-256 fingerprint
+  observed on 2026-09-09 is
+  `b7:35:25:a2:08:d3:20:d2:68:12:d5:da:ae:3b:f4:81:c6:15:bb:91:54:94:33:22:93:5e:2c:56:35:3a:ff:e1`.
+  A host-key fingerprint is public by design and belongs in this document — it is not a credential
+  and must not be treated as one. It changes if DataPath rekeys the server, in which case the
+  connection fails closed and the pin is updated from a fresh unpinned run. Observed directory
+  structure: `/DataExchange/Superior State Administrators Inc/` — the Imports, Results and Exports
+  folders have **not** been observed yet; their location inside that directory is presumed, not
+  confirmed. ⚠️ The account directory name contains spaces — any remote path handling must
+  tolerate them.
 
 ## How templates work
 
@@ -617,8 +648,12 @@ Numbered `SDX-NN`, a series local to this document — distinct from the project
 open-question registry (`O1`–`O52+`, tracked in `docs/swbd_ichra_build_plan.md` /
 `docs/ichra_strategy.md` / `plus_tier_build_plan.md`). Do not confuse the two.
 
-1. **SDX-01** — FTPS or SFTP on port 443 — determines the client library when transport is
-   automated.
+1. **SDX-01** — ⭐ **RESOLVED (2026-09-09).** Port 22, SSH-based SFTP — a TCP banner probe from
+   Kevin's workstation returned `SSH-2.0-MOVEit Transfer SFTP` on port 22, with ports 21, 443, 990,
+   and 2222 all closed/timeout. Both vendor answers were wrong: DataPath support (case CASE-22040,
+   2026-09-09) said port 21, and this document previously displayed port 443 — neither reconciles
+   with the other, and the live banner is the evidence this document trusts per its own standing
+   rule that live results beat vendor statements.
 2. **SDX-02** — Do two employers supplying identical plan year dates create one global plan year or
    duplicates?
 3. **SDX-03** — Valid `Record Process Indicator` values.
@@ -647,6 +682,8 @@ open-question registry (`O1`–`O52+`, tracked in `docs/swbd_ichra_build_plan.md
 13. **SDX-13** — **Is `Employer Contribution Schedule` meaningful on a plan whose funding source is
     Participant only?** Both schedule elements are mappable on `125 PI Elections`; only one obviously
     applies to a participant-funded premium plan.
+14. **SDX-14** — Does DataPath intend to offer a stronger SFTP host-key algorithm than `ssh-dss`
+    (currently the server's only option — see Transport)? For DataPath support, not an AMS work item.
 
 ## Test artifacts
 
