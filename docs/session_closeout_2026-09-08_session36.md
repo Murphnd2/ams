@@ -84,6 +84,25 @@ went with it; `web.xml` declares no replacement mapping; the project compiles an
 freshly built WAR** — checked explicitly, because `package` without `clean` does not remove orphaned
 `.class` files.
 
+> ⚠️ **CORRECTION, 2026-09-09 (session 37) — the WAR half of the sentence above was never verified.**
+> The claim as written asserts two checks. Only one of them ran.
+>
+> **What was actually verified:** the class was absent from `target/classes`.
+>
+> **What was not:** the WAR was never inspected. The check was `&&`-chained behind an `ls` that
+> failed by design, so the shell short-circuited and the real check never executed — while the
+> command's `||` branch printed a pass. The output read as a clean two-part verification; it was a
+> silent false pass on a command that had not run at all.
+>
+> **The subsequent build run proved it false:** the WAR *did* contain the class. `package` without
+> `clean` had left the orphan in the exploded webapp directory, which the sentence above correctly
+> names as the risk and then failed to actually test for. **A clean rebuild resolved it**, and the
+> deployed `v0.96.00` artifact does not carry the class — confirmed on production, where
+> `sudo find / -name "CreateBpoTestUser.class"` returns no paths.
+>
+> **The original sentence is left in place unedited.** The defect is closed; the verification claim
+> was not true when made.
+
 **Runtime-verified: nothing.** No request was issued to the endpoint before or after the change. A
 compile is not evidence the endpoint is closed. The pre-change unauthenticated reachability was
 established by reading `LoginFilter.ALLOWED_ENDPOINTS` and the `@WebServlet` annotation, not by
@@ -129,6 +148,16 @@ and V096 remain unapplied there (D-95). Deploying this WAR does **not** apply th
 paths that expect `summit_plan_template_map` (V095) and `summit_file_export` (V096) will behave as
 they do today with those tables absent — the export recording is best-effort and logs at ERROR while
 still delivering the file. Applying V095/V096 to production is separate work, separately tracked.
+
+> ⚠️ **CORRECTION, 2026-09-09 (session 37) — the caveat above no longer holds.** The `v0.96.00`
+> deploy from `b683f3b` carried both migrations and applied them: `update.sh` logged
+> `MIGRATION APPLIED: V095__summit_plan_template_map.sql` and
+> `MIGRATION APPLIED: V096__summit_file_export.sql`, and reported
+> `DONE: Updated ssa_production from v0.94.00 to v0.96.00` at 2026-09-09 12:06:29. **Production
+> genuinely is at V096**, so for this release the version number *is* an accurate claim about schema
+> state, and applying V095/V096 was not separate work — it shipped with the release. D-95 is closed
+> on that evidence. **The original paragraph is left in place unedited** as the record of what was
+> expected at tagging time.
 
 ## Next
 

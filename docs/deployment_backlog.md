@@ -1645,6 +1645,25 @@ SUMMIT_CDH_GRACE_FIELDS=FSA:hfsa_roll_or_grace,DCAP:dcap_grace
 
 ### D-95: Apply `V096__summit_file_export.sql` — the Summit export record table
 
+> ⭐ **CORRECTED 2026-09-09 (session 37) — D-95 is DONE.** V096 **and** V095 were both applied on
+> Production by the `v0.96.00` deploy from `b683f3b`. `update.sh` logged
+> `MIGRATION APPLIED: V096__summit_file_export.sql` and
+> `MIGRATION APPLIED: V095__summit_plan_template_map.sql`, and reported
+> `DONE: Updated ssa_production from v0.94.00 to v0.96.00` at 2026-09-09 12:06:29.
+>
+> ⚠️ **A second correction — this row's central claim was already stale before it shipped.** The
+> text below reads "**Nothing reads the table yet.** … the listing screen and the same-hash warning
+> are **T212**." **T212 shipped** in `373d684` ("feat: retained Summit export listing screen with
+> re-download (T212)"), and
+> `src/main/java/net/superiorstate/ams/controller/market/SummitFileExportAdmin.java:93` calls
+> `SummitFileExportDAO.findByPspId`. That also invalidates the `Priority: MED — nothing breaks
+> without it` line below: once T212 shipped, a PSP admin opening `/SummitFileExportAdmin` against a
+> V096-less database would have got a 500. Something *did* break without the migration, and the
+> severity assessment was never revisited after the code it described changed.
+>
+> **The original text below is retained unedited as the record of what was believed.** Only the
+> `Applies to` line has been annotated, in place, with the production result.
+
 **Priority:** MED — nothing breaks without it, but every export runs unrecorded until it is applied
 **Status:** Not applied on Production. **Applied to `beta_ssa` 2026-09-08 15:53:48**, but the weekly refresh from production drops it — the local application is transient, so the local box below stays ⬜ rather than ✅. Authored S32-A (2026-09-08). **No config key, no property, no restart beyond the WAR ship** — the table is the whole deployment step.
 
@@ -1658,4 +1677,4 @@ SUMMIT_CDH_GRACE_FIELDS=FSA:hfsa_roll_or_grace,DCAP:dcap_grace
 
 ⭐ **`V095` is in the same position and is also unapplied on production.** Production is at **V094** (release `v0.94.00`). `V095__summit_plan_template_map.sql` is applied to `beta_ssa` only. ⚠️ **The weekly refresh from production drops both** — it returns the local schema to V094 — so re-apply `V095` and `V096` after any refresh.
 
-**Applies to:** Kevin's local dev / local Tomcat ⬜ — re-apply after every production refresh. Production ⬜ — apply with the WAR that carries the recording. Demo / BPO / Master — N/A, no Summit tenant.
+**Applies to:** Kevin's local dev / local Tomcat ⬜ — re-apply after every production refresh. Production ✅ **applied 2026-09-09** with release `v0.96.00` (was ⬜ — "apply with the WAR that carries the recording"; the WAR and both migrations shipped together, as this row required). Demo / BPO / Master — N/A, no Summit tenant.
