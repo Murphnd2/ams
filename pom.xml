@@ -188,6 +188,13 @@
             <artifactId>pdfbox</artifactId>
             <version>3.0.4</version>
         </dependency>
+
+        <!-- JSch (mwiede fork) – SFTP client for Summit MOVEit transport -->
+        <dependency>
+            <groupId>com.github.mwiede</groupId>
+            <artifactId>jsch</artifactId>
+            <version>0.2.17</version>
+        </dependency>
     </dependencies>
 
     <build>
