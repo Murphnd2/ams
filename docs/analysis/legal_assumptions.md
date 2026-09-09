@@ -1292,6 +1292,21 @@ premium is employer-paid coverage rather than taxable income or discharged debt.
 identical to conventional group list-bill practice, where the employer remits on the first and
 collects employee contributions during the month.
 
+**2026-09-09 addendum — the excepted-benefit characterization is no longer assumed.** It is now
+supported by primary documents: (i) TDI/SERFF approval of separate specified-disease and
+accident-only forms for Presidio HealthCare Insurance Company (NAIC 17821) under TOI H07I.002
+(Dread Disease) and H02I.000 (Health – Accident Only) — trackings PHCI-134639174,
+PHCI-134654486, PHCI-134639079, PHCI-134654162, all closed/approved 2025-08-20; (ii) an
+enumerated, individually defined 23-category condition schedule (Policy Schedule §I.B.4 of
+`TX-SERRA-SD-Freedom-2025`) with an insuring definition — *"'Sickness / Condition' means each of
+the conditions set forth in the Policy Schedule"* — limited to that schedule, rather than an open
+"any sickness" grant; (iii) a face-page recital that benefits are *"independent from and not
+coordinated with any other insurance coverage"* and paid *"on an expense incurred basis,"*
+satisfying the non-coordination conditions at 26 CFR 54.9831-1(c)(4)(ii)(B)–(C) / 45 CFR
+148.220(b)(3); and (iv) face-page notices disclaiming MEC and major-medical status (*"IS NOT
+MINIMUM ESSENTIAL COVERAGE UNDER FEDERAL LAW"*; *"SUPPLEMENTAL COVERAGE ISSUED ONLY TO SUPPLEMENT
+INSURANCE ALREADY IN FORCE"*).
+
 **Design choice.** Frame in the plan document as employer premium payment with employee
 contribution collected over the coverage period — not as an advance the employer recoups. The
 framing determines the tax result on a mid-year termination: forgiven debt is taxable, unrecovered
@@ -1303,17 +1318,35 @@ Reported salary reduction must equal what was actually withheld, not what was sc
 benefits. If that fails, the employer has been advancing money against unintegrated individual
 major medical. Fronting converts a carrier's regulatory problem into the employer's and the TPA's.
 
+**2026-09-09 addendum — residual exposure, now that the base characterization is supported.** The
+residual is a substance-over-form argument: that 23 categories approximating the whole of medicine,
+marketed as an alternative to comprehensive coverage, is not "coverage *only* for a specified
+disease or illness." That argument is aggravated by Presidio's public marketing, which describes
+the product as health insurance and prices it against ACA bronze. It is not a defect on the face of
+the form.
+
 **Reversal cost.** Low — funding schedule. But retroactive if the excepted-benefit characterization
 is ever challenged.
 
 **Confirm before.** Any challenge to the excepted-benefit characterization of the underlying
 policies.
 
+**2026-09-09 addendum.** Also confirm before relying further: which product generation and which
+bracketed condition subset the pilot actually issues, and whether the 10/17/2025 form revision
+(the text read) is the approved text — both unconfirmed with the carrier.
+
 **Status.** Assumed. Arrears loading is available as a no-cost hedge, since it is being built for
 the ACA bucket regardless. The asymmetry is deliberate and is the reason the same card mechanism
 runs differently by benefit type: excepted benefits sit outside the market reforms and carry a §106
 shelter on unrecovered premium, and individual major medical has neither. See LA-36 for the funding
 paths available on the major medical side.
+
+**2026-09-09 status update.** No longer a bare assumption. **Supported by primary documents (state
+form approval + form text), with residual exposure to (a) future tri-agency rulemaking of the 2023
+kind and (b) a substance-over-form challenge to the breadth of the condition schedule.** The forms
+read are marked *Revised 10/17/2025*, post-dating the 2025-08-20 SERFF submissions, and the issued
+condition schedule is bracketed/variable — so both the approved text and the issued subset remain
+unconfirmed with the carrier. See LA-38 for the separate question of who may pay Presidio premium.
 
 ---
 
@@ -1768,6 +1801,97 @@ is already recorded as available rather than recommended. Two further items rema
 and are not load-bearing here — the precise conditions under which increased taxable
 compensation escapes employer-payment-plan characterization, and the §4980D minimum-penalty and
 cap figures.
+
+---
+
+### LA-37 — More-than-2% S-corp shareholders, partners and sole proprietors cannot participate in a cafeteria plan; §318 attribution reaches family
+
+**Assumption.** More-than-2% S-corporation shareholders, partners in a partnership (including LLC
+members taxed as partners), and sole proprietors cannot participate in a cafeteria plan. For
+S-corporations, §318 attribution extends the exclusion to the shareholder's spouse, children,
+parents, and grandparents. Where owner-employees *can* participate (a C-corporation), §125(b)
+nondiscrimination applies, including the 25% key-employee concentration test — which a
+management-only pre-tax offering fails almost by construction.
+
+**Basis.** IRC §1372 (2% S-corp shareholders treated as partners for fringe-benefit purposes);
+§318 attribution; Prop. Reg. §1.125-1(g)(2); IRC §125(b)(2). Long-settled and non-controversial;
+the §318 family consequence is the piece worth confirming with whoever drafts the plan document.
+
+**Design choice.** Entity type and *who is buying* become qualifying questions in the sales motion
+alongside non-ALE status (LA-24). The pre-tax Presidio path is offered only where the Presidio
+buyers are §125-eligible W-2 employees and the group adopts §125 for its whole eligible
+population. Where the buyers are owners or owner-family, the post-tax path is the design, not a
+fallback.
+
+**Risk if wrong.** Overstated in the conservative direction is unlikely here; understated means
+excluded individuals took impermissible pre-tax reductions — W-2 and 941 corrections per person,
+per pay period.
+
+**Reversal cost.** None if caught at qualification. Per-employee corrections if not.
+
+**Confirm before.** Any §125 plan document naming Presidio premiums as a qualified benefit for an
+owner-employee.
+
+**Status.** Assumed, high confidence. Cross-reference LA-24 (non-ALE status) as a companion
+qualifying question asked at the same stage of the sales motion.
+
+---
+
+### LA-38 — Presidio's §V.H payer restriction requires post-tax-by-default funding and a member-name card
+
+**Assumption.** Presidio's approved policy forms restrict who may pay premium. An employer may
+facilitate payment by payroll deduction **only where the payments do not create an ERISA group
+health plan**. A §125 pre-tax salary-reduction arrangement very likely does create one, because
+pre-tax salary reduction is treated as an employer contribution and the §125 plan document naming
+the coverage is endorsement — either of which defeats the DOL voluntary-plan safe harbor. A TPA is
+not on the accepted-payer list at all. Therefore: (i) post-tax payroll facilitation is the funding
+model Presidio's own forms contemplate, and (ii) premium for every Presidio bucket must be paid by
+a **card in the member's name**, which presents as the insured, rather than by an SSA-originated
+ACH, which presents as an unauthorized third party.
+
+**Basis.** §V.H (Third Party Payments) of `TX-SERRA-SD-Freedom-2025`, `TX-SERRA-ACC-Freedom-2025`
+and `TX-SERRA-ACC-2025` — identical text in all three: *"Except as provided below, We do not
+accept Premium or cost-sharing payments from any third party. Unauthorized Premium and
+cost-sharing payments will not be credited to Your account and will be refunded to the
+unauthorized payer. Premium and cost-sharing payments will only be accepted from: 1. You or a
+member of Your family; 2. A Trust, Power of Attorney or Legal Guardian making payments on behalf
+of an Insured; or 3. An employer facilitating payment collection through payroll deduction or
+similar method for the employee (provided such payments do not create an Employee Retirement
+Income Security Act group health plan)."* DOL voluntary-plan safe harbor at 29 CFR
+2510.3-1(j); DOL Adv. Op. 1994-23A on the safe harbor's prongs; the carve-out in DOL Technical
+Release 2013-03 / IRS Notice 2013-54 for after-tax employee premiums forwarded by an employer,
+which is evidently what the clause was drafted to preserve. **State plainly:** that pre-tax §125
+salary reduction defeats the safe harbor is uniform practitioner treatment and follows
+structurally from salary-reduction dollars being employer contributions for §106 purposes, but
+there is no regulation or ruling stating it in those words.
+
+**Design choice.** Post-tax Presidio is the **default** card bucket. Pre-tax Presidio is offered
+only where two gates are both passed: §125-eligible W-2 buyers (LA-37), **and** Presidio has
+addressed §V.H in writing — preferably by an endorsement or amended form filed with TDI rather
+than a side letter, since a letter accepting payments the approved form refuses is an unfiled
+policy term. No SSA-originated ACH to Presidio in any bucket.
+
+**Risk if wrong.** This is a **contract** risk, not a tax risk. The remedy written into §V.H is
+non-crediting and refund of the premium — which runs the grace period and terminates coverage
+prospectively for non-payment, rather than rescinding to issue. Claims incurred while premium was
+credited stand. The real cost is reinstatement: re-underwriting plus a reset of the 12-month
+pre-existing-condition clock, most likely discovered at a large claim.
+
+**What this does NOT affect.** Excepted-benefit status is a property of the coverage, not of who
+pays or how; ERISA-plan status merely shifts the test from 45 CFR 148.220(b)(3) to 26 CFR
+54.9831-1(c)(4), which imposes the same conditions the form meets (see LA-22). Consequently the
+§4980D $100/day/employee exposure does not attach to the Presidio bucket whether or not the
+clause is waived or breached — the excise tax presupposes coverage that is *not* excepted. A
+waiver by Presidio therefore does not reclassify the product; it is contractual and state-filing
+housekeeping.
+
+**Reversal cost.** Low prospectively — funding character and payment instrument. High for any
+individual whose coverage lapses.
+
+**Confirm before.** Any pre-tax salary reduction for a Presidio premium; any ACH origination to
+Presidio.
+
+**Status.** Assumed on the form text; awaiting Presidio's position on §V.H.
 
 ---
 

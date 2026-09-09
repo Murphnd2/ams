@@ -2416,3 +2416,42 @@ a numbered O-item.
 LA-22): card configuration and funding schedule. No schema depends on which way it runs.
 
 **Precedence: Part 13 > Part 12 > Part 11 > Part 10 > Part 9 > Part 8 > Part 7 > Part 6 > Part 5 > Part 4 > Parts 1–3.**
+
+## D42 — the card carries three sub-accounts, not two: a Presidio post-tax bucket joins D41's pair
+
+**Decision.** The premium card carries **three** benefit types, not two.
+
+| Bucket | Tax character | Who | Funding control |
+|---|---|---|---|
+| Post-tax Presidio | After-tax wages, employer forwards under the DOL voluntary-plan safe harbor | **Default** for all Presidio buyers; **required** where the buyer is a more-than-2% S-corp shareholder, an S-corp shareholder's family by §318 attribution, a partner, or a sole proprietor | Loose — employer fronting is a non-issue for excepted benefits |
+| Pre-tax Presidio | §125 salary reduction, excepted-benefit premium | §125-eligible W-2 buyers only, in a group that adopts §125 for its whole eligible population, **and** only after Presidio has addressed §V.H in writing | Loose |
+| Pre-tax off-exchange ACA | §125 salary reduction net of the ICHRA allowance | ICHRA holders buying off-exchange individual major medical | Arrears loading; exact payroll match |
+
+**Payment instrument.** All three buckets pay by a **card in the member's name**. No SSA-originated
+ACH to Presidio in any bucket — a TPA is not on Presidio's accepted-payer list, and an unauthorized
+payment is refunded and not credited, which lapses coverage.
+
+**What it closes.** The open question carried since the Daniel call — whether the card needs one
+loose benefit type and one exact-payroll-match type. It needs three. The third bucket exists because
+Presidio's own approved forms (§V.H) contemplate post-tax payroll facilitation, and because a large
+share of the target census cannot participate in a §125 plan at all.
+
+**Relationship to D41.** D41 established two sub-accounts split by benefit type — excepted-benefit
+premium (employer advance permitted) versus off-exchange individual major medical (employer advance
+never permitted). This decision does not revise that split; it divides D41's excepted-benefit
+sub-account in two by **tax character** (post-tax default, pre-tax only where both gates below are
+passed), because a card that is only ever pre-tax cannot serve the share of the Presidio buyer
+population who cannot hold pre-tax status at all. D41's major-medical sub-account is unchanged and
+is the third row above.
+
+**Cross-references.** **LA-37** (§125 participant eligibility of owner-buyers — more-than-2% S-corp
+shareholders, §318-attributed family, partners, and sole proprietors cannot participate in a
+cafeteria plan); **LA-38** (Presidio's §V.H payer restriction, which is why post-tax is the default
+and every bucket requires a member-name card); **LA-21** (arrears loading, carried forward unchanged
+for the off-exchange ACA bucket); and **D40, D41** (the two prior decisions in this family).
+
+**Reversal cost: low** — card configuration and funding-bucket assignment. No schema depends on
+which tax character a given buyer lands in; getting the qualification question wrong at sale is the
+expensive direction (see LA-37).
+
+**Precedence: Part 13 > Part 12 > Part 11 > Part 10 > Part 9 > Part 8 > Part 7 > Part 6 > Part 5 > Part 4 > Parts 1–3.**
