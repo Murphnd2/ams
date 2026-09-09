@@ -75,7 +75,35 @@ public class SummitSftpTestServlet extends HttpServlet {
                         + " fingerprint to pin it)"));
         out.println();
 
-        String remoteDir = AppConfig.get("SUMMIT_SFTP_REMOTE_DIR", "/");
+        // S39-D -- a dir= override so browsing the remote tree costs a URL edit, not a
+        // ssa.properties edit plus a Tomcat restart per level. Precedence: dir parameter (when
+        // present and non-blank after trimming), else SUMMIT_SFTP_REMOTE_DIR, else "/". The value
+        // is passed through unmodified beyond trimming outer whitespace -- the account directory
+        // contains internal spaces, and getParameter has already URL-decoded it.
+        String dirParam = request.getParameter("dir");
+        String remoteDir;
+        String directorySource;
+        if (dirParam != null && !dirParam.trim().isEmpty()) {
+            String trimmed = dirParam.trim();
+            if (trimmed.indexOf('\r') >= 0 || trimmed.indexOf('\n') >= 0) {
+                out.println("Invalid dir parameter: carriage return or line feed not allowed."
+                        + " No connection attempted.");
+                return;
+            }
+            remoteDir = trimmed;
+            directorySource = "dir parameter";
+        } else {
+            String configuredDir = AppConfig.get("SUMMIT_SFTP_REMOTE_DIR");
+            if (configuredDir != null && !configuredDir.isBlank()) {
+                remoteDir = configuredDir;
+                directorySource = "SUMMIT_SFTP_REMOTE_DIR";
+            } else {
+                remoteDir = "/";
+                directorySource = "default (/)";
+            }
+        }
+
+        out.println("Directory source: " + directorySource);
         out.println("Listing: " + remoteDir);
         try {
             List<SftpEntry> entries = service.list(remoteDir);
