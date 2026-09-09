@@ -125,8 +125,8 @@ existed anywhere in the repo before this document.**
   retrieval may reprocess `ZZ_TEST_DEMO_20260909141133.txt` and generate another failure response.**
   A note to Kevin, not a work item. Whether a second retrieval actually reprocesses a file still
   present is not observed — see [SDX-17](#open-questions).
-- **Response file format, read verbatim from Summit (2026-09-09), the response to
-  `ZZ_TEST_DEMO_20260909141133.txt`:**
+- **Response file format for Demographics, read verbatim from Summit (2026-09-09), the response
+  to `ZZ_TEST_DEMO_20260909141133.txt`:**
   ```
   ZZZ-P-901|Failed|Invalid data for Employer TPA Custom ID.
   |ZZZ-NO-SUCH-EMPLOYER
@@ -142,6 +142,16 @@ existed anywhere in the repo before this document.**
   rendering artifact of how the file was viewed — the record shape is undetermined. And only the
   `Failed` status token has been observed; the spelling of a success status is unknown — see
   [SDX-18](#open-questions).
+- ⚠️ **Narrowed 2026-09-09 — this format is established for Demographics only, from a single
+  file, and should not be read as the general response shape.** DataPath's
+  `260607_SummitGuide_Processing` guide (vendor documentation, content dated 2020-01-03) lists
+  Premium Billing import error messages in a different, row-number form
+  (`Failed to import data at line: ...`), and none of them matches the
+  `Invalid data for Employer TPA Custom ID.` message observed above. **Response file content is
+  likely per-import-type, not one general shape** — the block above describes what a Demographics
+  response looks like, not what every Summit import template's response looks like. Treat any
+  extrapolation to another template's response format as unverified until tested against that
+  template directly.
 - ⭐ **Write permission confirmed on an existing folder, refused on directory creation — three
   browser tests, 2026-09-09, live production tenant, PSP admin, from Kevin's workstation.**
   (1) `?action=writetest` targeting a new sub-folder `AmsWriteTest` under the account directory
@@ -166,6 +176,43 @@ existed anywhere in the repo before this document.**
   the VPS. Also still not established: whether `mkdir`'s "Permission denied" reflects the SFTP
   account's own permissions or a MOVEit-side configuration choice — the two were never
   distinguished by any test.
+- ⭐ **Corroborated by DataPath's own documentation — `260607_SummitGuide_Processing` (vendor
+  guide, content dated 2020-01-03, supplied by Kevin 2026-09-09).** This is six-year-old vendor
+  documentation, not a runtime source; where it and the live tenant could ever disagree, the
+  tenant wins — DataPath's support desk has already been wrong twice on this project (port 21 vs.
+  22; the sub-folder permission). Recorded here because it corroborates the tenant where the two
+  overlap. The guide states the FTP folder must be created **by the MOVEit administrator** —
+  independently corroborating the observed `mkdir` denial above, and contradicting DataPath
+  support's 2026-09-09 sub-folder statement for a **second time**, now from DataPath's own
+  documentation rather than a second support interaction. ⚠️ **This does not settle whether the
+  denial is the SFTP account's own permission or a MOVEit-side configuration choice** — that
+  question is left exactly as open as it was above; the guide says who is supposed to create the
+  folder, not why this account specifically cannot.
+- **Network configuration, as documented in the same guide.** Imports are configured as one of two
+  modes: **DataPath Network** (the TPA pushes files to DataPath's own MOVEit server) or **External
+  Network** (DataPath pulls files from an FTP server the TPA hosts). AMS pushes to
+  `ftp1.dpath.com` — DataPath's server — so this tenant is configured **DataPath Network**, the
+  vendor's name for the direction already recorded above ("Direction is undecided... `Datapath
+  Network` means AMS pushes out"). See [SDX-19](#open-questions).
+- **Schedule Import, as documented.** The guide describes "Schedule Import" as available **only**
+  when imports are configured for **External Network**, offering Daily, Weekly or Monthly at a set
+  time — no intraday option is described anywhere in the guide. ⚠️ **The Schedule Import checkbox
+  was nonetheless visible and unchecked on this tenant's Imports/Responses screen on 2026-09-09**,
+  which is configured DataPath Network. Visibility does not establish that the checkbox functions
+  under a DataPath Network configuration — it was not tested, and the guide's own scoping of the
+  feature to External Network is the only documentation this project has on the question.
+- **Initiate File Retrieval, as documented.** The guide describes it as a manual trigger for the
+  selected import template(s), positioned as a fallback for when a scheduled retrieval fails or an
+  off-schedule import is needed, and states it follows the **same logic** as a scheduled run and
+  executes immediately. Two things follow:
+  - **Today's result is not an artifact of clicking rather than scheduling.** Manual and scheduled
+    retrieval are documented as the same underlying path — SDX-15's finding (an SFTP-delivered
+    file is retrieved and processed) is not contingent on retrieval having been triggered by hand.
+  - ⚠️ **Whether retrieval is template-scoped or folder-wide is undetermined.** The guide's own
+    wording is "selected template(s)," implying a per-template scope, but whether any template
+    checkbox was ticked before the 2026-09-09 click that picked up `ZZ_TEST_DEMO_*` was not
+    recorded. **State this as unknown — do not infer template-scoping, or its absence, from the
+    file having been picked up.** See [SDX-20](#open-questions).
 
 ## How templates work
 
@@ -813,6 +860,20 @@ open-question registry (`O1`–`O52+`, tracked in `docs/swbd_ichra_build_plan.md
     has been observed (see Transport's response-format block, from `ZZ_TEST_DEMO_*`'s all-failure
     response). No successfully-processed row has been observed on this transport to compare
     against.
+19. **SDX-19** — ⚠️ **The automation fork.** Can Summit import retrieval be automated at all under
+    this tenant's current **DataPath Network** configuration, or does every AMS delivery require a
+    manual "Initiate File Retrieval" click in the Summit UI? DataPath's `260607_SummitGuide_Processing`
+    guide (vendor documentation, content dated 2020-01-03) describes "Schedule Import" as available
+    only under **External Network** — DataPath pulling from an SSA-hosted FTP server, a genuinely
+    different architecture requiring SSA to run and secure an inbound file service, not a
+    configuration toggle with no other consequence. **This document does not recommend, design
+    for, or estimate either branch — that choice is Kevin's.** Settled by asking DataPath directly,
+    or by testing the Schedule Import checkbox on this tenant to see whether it holds a schedule
+    under DataPath Network despite the guide's scoping.
+20. **SDX-20** — Is "Initiate File Retrieval" template-scoped or folder-wide? The guide's wording
+    ("selected template(s)") implies a per-template scope; whether a specific template checkbox
+    was selected before the 2026-09-09 retrieval that picked up `ZZ_TEST_DEMO_*` was not recorded.
+    Settled by a deliberate retrieval run with a known, recorded checkbox state.
 
 ## Test artifacts
 

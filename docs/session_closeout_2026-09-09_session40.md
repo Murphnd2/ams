@@ -177,3 +177,45 @@ migration_tracker.md`'s Production-current record from session 37.
    - Highest pre-existing `T-NNN`: **T226** (confirmed by reading the file). Assigned: **T227**.
 6. **T226 closed this session**, per the row in `docs/analysis/project_backlog.md`.
 7. **Hard-stops this session:** none. Every run's preflight matched its expected dirty set.
+
+---
+
+## Addendum (S40-F, 2026-09-09) — DataPath guide findings and the automation fork
+
+Added after this close-out was written and session 40 nominally ended, when a DataPath
+documentation source surfaced. The sections above are left as written — this addendum is what
+arrived after, not a correction to them.
+
+**Source.** DataPath's Summit processing guide, `260607_SummitGuide_Processing`, content dated
+**2020-01-03**, supplied by Kevin. Six-year-old vendor documentation, not a runtime source. It
+corroborates the live tenant where the two overlap; where they could ever disagree, the tenant
+wins — DataPath's own support desk has already been wrong twice on this project (port 21 vs. 22;
+the sub-folder permission).
+
+**Findings, briefly** (full detail in `docs/business/summit_data_exchange.md` Transport and Open
+questions):
+
+- The guide states the FTP folder must be created by the MOVEit administrator — corroborates the
+  observed `mkdir` denial, and contradicts DataPath support's sub-folder statement a second time.
+  **Does not settle** whether the denial is account permission or MOVEit configuration.
+- Imports are configured as **DataPath Network** (AMS pushes to `ftp1.dpath.com`) or **External
+  Network** (DataPath pulls from an SSA-hosted server). This tenant is DataPath Network.
+- **Schedule Import** is documented as available only under External Network (Daily/Weekly/Monthly,
+  no intraday option) — yet the checkbox was visible and unchecked on this DataPath Network tenant
+  on 2026-09-09. Visibility was not tested for function.
+- **Initiate File Retrieval** is documented as a manual trigger following the same logic as a
+  scheduled run. This means session 40's result is not an artifact of clicking rather than
+  scheduling. Whether it is template-scoped or folder-wide is undetermined.
+- ⚠️ **The response-format finding S40-E recorded is narrowed to Demographics only.** The guide's
+  Premium Billing error messages use a different, row-number form and match nothing observed on
+  2026-09-09 — response content is likely per-import-type, not one general shape.
+
+**New `SDX-NN` numbers:** **SDX-19** (the automation fork — can retrieval be automated under
+DataPath Network, or does every delivery require a manual click; not recommended, designed, or
+estimated here, either branch) and **SDX-20** (is retrieval template-scoped or folder-wide).
+
+⚠️ **Why it matters, stated once:** a transport that is proven but requires a human click per
+delivery is a materially different capability from an automated one. **The build plan's
+assumptions about Summit delivery should be re-read against this before any real export file is
+routed through the SFTP transport** — SDX-19 is not a detail to settle later; it changes what "the
+transport works" is actually claiming.
