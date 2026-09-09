@@ -82,16 +82,66 @@ existed anywhere in the repo before this document.**
   there (several stamped `20260908`) all came from imports run through the Summit web UI, not SFTP,
   and are visible over SFTP anyway — **the results channel is usable today, independently of AMS
   ever uploading anything.**
-- `ImportFiles` is empty, and is **swept, not merely unused** — `ResponseFiles` holds responses to
-  imports that are no longer present in `ImportFiles`, so a delivered file is consumed rather than
-  accumulated.
+- ⚠️ **Corrected 2026-09-09 — the sweep claim below was wrong.** This document previously stated
+  `ImportFiles` was empty and **swept, not merely unused** — that `ResponseFiles` holding responses
+  to imports no longer present in `ImportFiles` meant a delivered file is consumed after
+  processing. That was session 39's inference from an empty folder, not an observation of a sweep,
+  and testing (session 40, see below) disproves it: both `AMS_SFTP_IMPORT_PROBE_20260909134434.txt`
+  and `ZZ_TEST_DEMO_20260909141133.txt` remained in `ImportFiles` after Summit retrieved and
+  processed them. **`ImportFiles` was empty on 2026-09-09 for some other, now-unestablished reason**
+  — a manual clear-out, a retention job, or something else. Retrieval reads without removing;
+  whatever emptied the folder before, it was not "processing sweeps the folder."
 - `ExportFiles` naming pattern: `{prefix}_{Type}_Export_{yyyyMMddHHmmssSSS}.{ext}` — a 17-digit
   timestamp including milliseconds. The two files observed are dated 2025-04-23 and 2023-02-08 (one
   `.Email`, one `.CSV`), under two distinct prefixes.
-- ⚠️ **Untested boundary — do not read past this as proven.** Every response observed to date came
-  from a file uploaded through the Summit web UI. **Nothing has ever been placed in `ImportFiles`
-  over SFTP**, and whether an SFTP-dropped file is picked up and processed the same way as a
-  UI-uploaded one is untested. See [SDX-15](#open-questions).
+- ⭐ **SDX-15 RESOLVED (2026-09-09).** An SFTP-delivered file is retrieved and processed the same
+  way a Summit web-UI upload is. Evidence: `ZZ_TEST_DEMO_20260909141133.txt` (436 bytes) was
+  uploaded to `ImportFiles` over SFTP only — nothing was uploaded through the web UI for this test.
+  Before Summit's retrieval ran, `ResponseFiles` held 36 files; after retrieval it held 37, the new
+  one being `Response_ZZ_TEST_DEMO_20260909141133.txt` (246 bytes). Retrieval is Summit-side and
+  pull-initiated, not automatic on upload — see "Retrieval model" below.
+- ⭐ **SDX-16 RESOLVED (2026-09-09).** The SFTP account has write permission on `ImportFiles`.
+  Proven directly by both drops landing there: `AMS_SFTP_IMPORT_PROBE_20260909134434.txt`
+  (259 bytes) and `ZZ_TEST_DEMO_20260909141133.txt` (436 bytes), both confirmed present in a
+  post-upload listing.
+- **Retrieval model (2026-09-09, from the Summit UI's Data Exchange → Imports/Responses screen,
+  Kevin's observation).** Dropping a file into `ImportFiles` over SFTP is necessary but not
+  sufficient for Summit to act on it — retrieval is a separate, Summit-side, pull-initiated step,
+  run either on demand ("Initiate File Retrieval") or on a schedule configured on that same screen.
+  For this session's tests, no schedule was configured; retrieval was run manually. This is Summit
+  configuration and belongs to Kevin's operational decisions — this document describes the
+  mechanism and does not recommend a schedule.
+- **Filename-to-template matching (2026-09-09).** Summit matches an inbound file to an import
+  template by filename, checked against the Imports/Responses screen's list of recognized import
+  templates (46 rows observed; `01_CENSUS` is Demographics). Two files were dropped in the same
+  session: `AMS_SFTP_IMPORT_PROBE_20260909134434.txt`, whose name matches no template, produced no
+  response and was ignored; `ZZ_TEST_DEMO_20260909141133.txt`, whose `ZZ_TEST_` prefix matches the
+  naming convention prior UI test uploads used, matched Demographics and produced a response.
+  Content was not the differentiator — both files' content is nonsense to a real import; only the
+  probe's had a name Summit didn't recognize at all.
+- ⚠️ **Both files are still present in `ImportFiles` after retrieval and processing.** Confirmed by
+  a listing taken after the response appeared. Retrieval reads without removing — see the sweep
+  correction above. **Until they are removed (Summit UI only — see Test artifacts), a future
+  retrieval may reprocess `ZZ_TEST_DEMO_20260909141133.txt` and generate another failure response.**
+  A note to Kevin, not a work item. Whether a second retrieval actually reprocesses a file still
+  present is not observed — see [SDX-17](#open-questions).
+- **Response file format, read verbatim from Summit (2026-09-09), the response to
+  `ZZ_TEST_DEMO_20260909141133.txt`:**
+  ```
+  ZZZ-P-901|Failed|Invalid data for Employer TPA Custom ID.
+  |ZZZ-NO-SUCH-EMPLOYER
+  ZZZ-P-902|Failed|Invalid data for Employer TPA Custom ID.
+  |ZZZ-NO-SUCH-EMPLOYER
+  ZZZ-P-903|Failed|Invalid data for Employer TPA Custom ID.
+  |ZZZ-NO-SUCH-EMPLOYER
+  ```
+  Pipe-delimited, no header row, no trailer. Field 1 is the **Participant TPA Custom ID** —
+  the correlation key back to the source row — field 2 a per-row status, field 3 a message. ⚠️
+  **Two things this is NOT established to mean:** whether the offending value (here
+  `ZZZ-NO-SUCH-EMPLOYER`) genuinely occupies its own line as a fourth field, or whether that is a
+  rendering artifact of how the file was viewed — the record shape is undetermined. And only the
+  `Failed` status token has been observed; the spelling of a success status is unknown — see
+  [SDX-18](#open-questions).
 - ⭐ **Write permission confirmed on an existing folder, refused on directory creation — three
   browser tests, 2026-09-09, live production tenant, PSP admin, from Kevin's workstation.**
   (1) `?action=writetest` targeting a new sub-folder `AmsWriteTest` under the account directory
@@ -107,11 +157,15 @@ existed anywhere in the repo before this document.**
   says otherwise. Most plausibly that statement describes folder creation through the Summit web
   UI — a different permission surface than the SFTP account — but that is **not confirmed**, and
   this document does not assert it. Recorded as a contradiction, not a resolution.
-- **Not established by these tests:** whether `upload` would succeed into `ImportFiles` — the
-  test servlet's guard refuses to connect before an attempt is ever made, so nothing was tried
-  there, and write permission on `ExportFiles` does not prove write permission on `ImportFiles`.
-  Also not established: anything about production egress — all three tests ran from the
-  workstation, not the VPS.
+- **Superseded 2026-09-09:** this bullet previously said upload into `ImportFiles` was untried
+  because the test servlet's guard refused to connect. Session 40 added two separately-gated
+  actions (`?action=importdrop`, `?action=importdropdemo`) built specifically to make that
+  attempt deliberately, and both succeeded — see SDX-15/SDX-16 above.
+- **Still not established, by any test to date:** anything about production egress from
+  `superiorstate.biz` — every SFTP test across sessions 39 and 40 ran from Kevin's workstation, not
+  the VPS. Also still not established: whether `mkdir`'s "Permission denied" reflects the SFTP
+  account's own permissions or a MOVEit-side configuration choice — the two were never
+  distinguished by any test.
 
 ## How templates work
 
@@ -738,21 +792,27 @@ open-question registry (`O1`–`O52+`, tracked in `docs/swbd_ichra_build_plan.md
     applies to a participant-funded premium plan.
 14. **SDX-14** — Does DataPath intend to offer a stronger SFTP host-key algorithm than `ssh-dss`
     (currently the server's only option — see Transport)? For DataPath support, not an AMS work item.
-15. **SDX-15** — Is a file delivered to `ImportFiles` over SFTP processed the same way a file
-    uploaded through the Summit web UI is? Every response observed to date came from a UI upload.
-    ⚠️ **Amended 2026-09-09 — the staging path this question was written against no longer
-    exists.** It assumed a sub-folder created under the account directory could absorb a first
-    write test before anything touched `ImportFiles`; three live tests the same day established
-    that the SFTP account cannot create directories (see Transport) — only the three existing
-    folders (`ImportFiles`, `ResponseFiles`, `ExportFiles`) are writable at all. **The only
-    remaining way to settle this question is a deliberate write into `ImportFiles` on the live
-    production tenant.** That is not an experiment that can be run safely first and evaluated
-    afterward — it is an authorization decision. This document does not make that decision or
-    recommend one; the question stays open until someone with that authority makes it.
-16. **SDX-16** — Does the SFTP account have write permission on `ImportFiles` at all, independent
-    of what processing a write there would trigger? Unknown — `SummitSftpTestServlet`'s guard
-    refuses to connect before any write is attempted there, by design. Answered as a side effect
-    the moment SDX-15 is settled; not separately worth a dedicated test.
+15. **SDX-15** — ⭐ **RESOLVED (2026-09-09).** Is a file delivered to `ImportFiles` over SFTP
+    processed the same way a file uploaded through the Summit web UI is? **Yes.**
+    `ZZ_TEST_DEMO_20260909141133.txt` was delivered to `ImportFiles` over SFTP only, with no web-UI
+    upload anywhere in the test; Summit's manually-initiated retrieval picked it up, matched it to
+    the Demographics template by filename, and produced `Response_ZZ_TEST_DEMO_20260909141133.txt`
+    in `ResponseFiles` (36 files before, 37 after) with a per-row `Failed` status against the
+    deliberately nonexistent employer ID. Kevin authorized the deliberate `ImportFiles` write this
+    question required after the sub-folder staging path (recorded in the prior text of this entry)
+    turned out not to exist. See Transport for the full evidence and the retrieval-model,
+    filename-matching, and response-format detail this resolution surfaced.
+16. **SDX-16** — ⭐ **RESOLVED (2026-09-09).** Does the SFTP account have write permission on
+    `ImportFiles` at all, independent of what processing a write there would trigger? **Yes** —
+    proven directly by both session-40 drops landing there (`AMS_SFTP_IMPORT_PROBE_*` and
+    `ZZ_TEST_DEMO_*`, see Transport).
+17. **SDX-17** — Does a second retrieval reprocess a file that is still present in `ImportFiles`?
+    Not observed — inferred as likely from "retrieval does not remove" (see Transport's sweep
+    correction), but no second retrieval has been run against a file left in place.
+18. **SDX-18** — What is the per-row success status token in a Summit response file? Only `Failed`
+    has been observed (see Transport's response-format block, from `ZZ_TEST_DEMO_*`'s all-failure
+    response). No successfully-processed row has been observed on this transport to compare
+    against.
 
 ## Test artifacts
 
@@ -783,6 +843,15 @@ precedent, and no real employer has ever been imported.
 `ExportFiles` on the live tenant. Removable only through the Summit UI — `SummitSftpService` has no
 delete method, by design. `ExportFiles` is never read by AMS, so the file is inert. A note, not a
 work item.
+
+**From the 2026-09-09 `ImportFiles` drop tests (SDX-15/SDX-16):**
+`AMS_SFTP_IMPORT_PROBE_20260909134434.txt` (259 bytes, ignored — matched no template) and
+`ZZ_TEST_DEMO_20260909141133.txt` (436 bytes, matched Demographics, produced an all-`Failed`
+response) both remain in `ImportFiles` on the live tenant — retrieval reads without removing (see
+Transport's sweep correction). Removable only through the Summit UI; `SummitSftpService` has no
+delete method, by design. ⚠️ **Until they are removed, a future retrieval may reprocess
+`ZZ_TEST_DEMO_20260909141133.txt` and generate another failure response** — see
+[SDX-17](#open-questions). A note to Kevin, not a work item.
 
 ## Client setup sequence
 

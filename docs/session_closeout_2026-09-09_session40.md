@@ -1,0 +1,179 @@
+# Session 40 Close-Out — 2026-09-09
+
+**Type:** Code (Summit `ImportFiles` drop actions) and documentation. No SQL.
+
+Session 40 built two explicitly-authorized, separately-gated actions that write directly into
+the live Summit `ImportFiles` folder over SFTP, ran them against the production tenant, and used
+the results to settle SDX-15 and SDX-16 — the questions session 39 closed on. In the process it
+found that a load-bearing inference session 39 made from an empty folder was wrong, that
+DataPath's stated sub-folder permission does not hold for the SFTP account, and that this
+session's own working hypothesis at its own outset was wrong in a way Kevin's follow-up
+hypothesis, not the run that produced it, corrected. T226 is closed.
+
+---
+
+## Shipped
+
+Verified against `git log`, not copied from any prompt:
+
+- **`d38d586`** — feat: Summit SFTP write path (T226, second half) -- runtime-verified.
+  `SummitSftpService` gains `mkdir()`/`upload()`, both routed through a newly extracted
+  `openSession()` helper shared with `probe()`/`list()`. `SummitSftpTestServlet` gains
+  `?action=writetest`, writing a fixed generated file to a fixed config-driven directory
+  (`SUMMIT_SFTP_TEST_DIR`) with a hard refusal on any target resolving under `ImportFiles`.
+- **`5568a3d`** — docs: record SFTP write-test findings -- mkdir denied, DataPath contradicted.
+  Records that the SFTP account can write into an existing directory (`ExportFiles`) but cannot
+  create one (`mkdir` → `Permission denied`), that this contradicts DataPath's 2026-09-09
+  sub-folder statement, amends SDX-15 to note its original sub-folder staging path no longer
+  exists, and updates the T226 row to reflect that what remained was an authorization decision,
+  not code.
+- **`97adc9d`** — feat: Summit ImportFiles drop actions (T226/SDX-15) -- runtime-verified. Adds
+  `?action=importdrop` (a deliberately non-conforming probe) and `?action=importdropdemo` (a
+  filename-conforming probe carrying content keyed to a deliberately nonexistent employer), each
+  reachable only with its own literal confirmation token, neither calling into `handleWriteTest`
+  or each other.
+
+Two more commits land alongside this file, per this run's own Task 5 — the doc corrections
+(`summit_data_exchange.md`, `project_backlog.md`) and this close-out itself. Their hashes are not
+yet assigned as this section is written and are not fabricated here; see `git log` for the final
+state.
+
+---
+
+## In flight
+
+Nothing is left mid-work by this session. `.idea/artifacts/ams_war_exploded.xml` is dirty in the
+working tree throughout — pre-existing IntelliJ noise from running the app locally, not session
+work, not staged, not part of any commit, per every run's own scope fence this session.
+
+---
+
+## Decisions made
+
+- **The `writetest` `ImportFiles` refusal is permanent and not config-removable.** It is a
+  code-level string check (`testDir.toLowerCase().contains("importfiles")`) with no override
+  anywhere — not a flag, not a config key, not bypassable by any value `SUMMIT_SFTP_TEST_DIR` is
+  ever set to.
+- **The three write actions (`writetest`, `importdrop`, `importdropdemo`) stay three separate
+  methods with three separate literal confirmation tokens, not one parameterized method.** Each
+  run's scope fence explicitly forbade unifying them, on the reasoning that no single typo,
+  refactor, or config change should be able to route a request meant for one action into another
+  — the duplication across the three is deliberate cost paid for that isolation.
+- **The `importdrop` probe was keyed to a deliberately nonexistent employer TPA custom ID
+  (`ZZZ-NO-SUCH-EMPLOYER`)** so that whatever process picked the file up, no employer or
+  participant record could be created on the live production tenant. This is what made
+  authorizing a live write into `ImportFiles` a decision Kevin could make at all.
+
+---
+
+## New assumptions
+
+- **A file sitting in `ImportFiles` between retrievals is presumed inert** — it does not itself
+  trigger anything, and only a retrieval (manual "Initiate File Retrieval" or a configured
+  schedule) causes Summit to read it. This is consistent with the pull-model DataPath's own UI
+  describes, but no test in this session isolated "sits idle untouched" from "sits idle, then gets
+  picked up by the very next retrieval" — both probe files were left in place after a retrieval
+  had already run against them once. **Reversal cost: low today** — no code depends on this belief
+  yet — but it is the assumption behind not treating the two leftover probe files as urgent to
+  remove.
+- **Filename-based template matching is presumed independent of file content**, evidenced by
+  exactly two data points: a name matching no template produced no response regardless of its
+  equally nonsense content, and a name matching Demographics produced a response despite content
+  that could not import under any real employer. **Reversal cost: moderate** — if content also
+  matters under conditions this session's two tests didn't exercise, both SDX-17 and SDX-18 and
+  any reprocessing guard built on "filename alone decides it" (T227) could be wrong in ways not
+  yet visible.
+
+---
+
+## Open questions raised, and what settles each
+
+- **SDX-17** (filed this session) — does a second retrieval reprocess a file still present in
+  `ImportFiles`? **Settled only by running a second retrieval against a file already left in
+  place**, not by inference from "retrieval reads without removing."
+- **SDX-18** (filed this session) — what is the per-row success status token in a Summit response
+  file? Only `Failed` has been observed. **Settled only by observing a response to a row that
+  actually succeeds** — nothing sent over this transport so far has been import-valid.
+
+---
+
+## Contradictions found
+
+1. **Session 39's sweep assumption, disproved.** `docs/business/summit_data_exchange.md`
+   previously stated `ImportFiles` was "swept, not merely unused," inferred from the folder being
+   empty while `ResponseFiles` held responses to imports no longer present there. Both of this
+   session's probe files remained in `ImportFiles` after Summit retrieved and processed them —
+   retrieval reads without removing. **What emptied `ImportFiles` before session 39's observation
+   is now unestablished** — a manual clear-out or a retention job are both as plausible as a sweep,
+   and neither is confirmed. Per this project's standing rule that a session's own close-out is
+   never edited afterward, session 39's close-out is left as-is; the correction lives in
+   `summit_data_exchange.md`, and this contradiction is named here rather than by rewriting that
+   file.
+2. **DataPath's 2026-09-09 statement that a TPA may create its own sub-folders, contradicted for
+   the SFTP account.** `mkdir` against a new sub-folder returned `Permission denied`; a write into
+   an existing folder succeeded. Most plausibly DataPath's statement describes folder creation
+   through the Summit web UI, a different permission surface than the SFTP account — but that is
+   **not confirmed**, and neither this session nor session 39 established the cause.
+3. ⚠️ **The S40-C prompt's own reasoning was wrong, and the correction did not come from that
+   run.** S40-C's probe (`AMS_SFTP_IMPORT_PROBE_*`) was written expecting that its fate —
+   processed or not, swept or not — would be informative about whether SFTP drops are watched at
+   all. It produced no response and sat unswept for twenty minutes, which S40-C's own instructions
+   implicitly treated as ambiguous rather than as evidence of anything specific. **The
+   template-matching finding this session actually established shows that reasoning was
+   backwards**: the probe's filename alone made it invisible to Summit's import matching,
+   independent of whether SFTP-delivered files are watched or processed at all — its silence
+   proved nothing about the SFTP question it was sent to answer. **The fix came from Kevin's
+   working hypothesis at the start of S40-D** ("the sweep is matched on filename prefix, not
+   content"), not from anything in the S40-C run that produced the flawed probe.
+
+---
+
+## Next
+
+**Recommended: settle SDX-17 and build T227's reprocessing guard before routing any real Summit
+export file through this SFTP path.** Reasoning: retrieval reads without removing, so a real
+production import left in `ImportFiles` after one retrieval could be silently reprocessed by a
+later one — and unlike this session's deliberately-poisoned probes (nonexistent employer,
+guaranteed `Failed`), a real file's second pass has unknown consequences depending on what state
+the first pass left behind. Until SDX-17 is answered, treat every live-tenant SFTP delivery as a
+one-shot action requiring manual cleanup afterward, exactly as this session did for both of its
+probe files.
+
+Separately, and unrelated to this session's work: **the three SWBD emails to Forrest remain
+unsent, now across five sessions** — nothing in session 40 changes that, and it keeps not getting
+picked up between sessions that are, like this one, focused elsewhere.
+
+---
+
+## SQL close-out audit
+
+**Session 40 produced no SQL.** Verified, not asserted: no file under `docs/migrations/` was
+created, modified, or read for any purpose beyond the version check below; none of this session's
+edits (`SummitSftpTestServlet.java`, `summit_data_exchange.md`, `project_backlog.md`, this
+close-out) contain a SQL statement or reference a schema change.
+
+Current highest migration version, read by listing `docs/migrations/`: **V096**
+(`V096__summit_file_export.sql`) — unchanged by this session, matching `docs/analysis/
+migration_tracker.md`'s Production-current record from session 37.
+
+---
+
+## Compliance statement
+
+1. **Files created or modified, by full path:**
+   - `C:\Users\kevinmurphy.SUPERIORSTATE\IdeaProjects\ams\src\main\java\net\superiorstate\ams\controller\market\SummitSftpTestServlet.java`
+   - `C:\Users\kevinmurphy.SUPERIORSTATE\IdeaProjects\ams\docs\business\summit_data_exchange.md`
+   - `C:\Users\kevinmurphy.SUPERIORSTATE\IdeaProjects\ams\docs\analysis\project_backlog.md`
+   - `C:\Users\kevinmurphy.SUPERIORSTATE\IdeaProjects\ams\docs\session_closeout_2026-09-09_session40.md`
+2. **`SummitSftpService.java` was not modified this session** — `upload()` and `list()`, both
+   built and verified in S40-A, were sufficient for both drop actions.
+3. **`.idea/artifacts/ams_war_exploded.xml` was never staged, never edited, and is not part of any
+   commit this session** — left dirty throughout as pre-existing IntelliJ noise, per every run's
+   own scope fence.
+4. **No SQL, migration, or schema change was produced** — see the audit above.
+5. **Numbers read and assigned:**
+   - Highest pre-existing `SDX-NN`: **SDX-16** (confirmed by reading the file, not assumed).
+     Assigned: **SDX-17**, **SDX-18**.
+   - Highest pre-existing `T-NNN`: **T226** (confirmed by reading the file). Assigned: **T227**.
+6. **T226 closed this session**, per the row in `docs/analysis/project_backlog.md`.
+7. **Hard-stops this session:** none. Every run's preflight matched its expected dirty set.
