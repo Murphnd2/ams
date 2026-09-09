@@ -98,19 +98,97 @@ existed anywhere in the repo before this document.**
   way a Summit web-UI upload is. Evidence: `ZZ_TEST_DEMO_20260909141133.txt` (436 bytes) was
   uploaded to `ImportFiles` over SFTP only — nothing was uploaded through the web UI for this test.
   Before Summit's retrieval ran, `ResponseFiles` held 36 files; after retrieval it held 37, the new
-  one being `Response_ZZ_TEST_DEMO_20260909141133.txt` (246 bytes). Retrieval is Summit-side and
-  pull-initiated, not automatic on upload — see "Retrieval model" below.
+  one being `Response_ZZ_TEST_DEMO_20260909141133.txt` (246 bytes). ⚠️ **This finding stands
+  unchanged; how retrieval actually works does not.** The sentence that stood here — "retrieval is
+  Summit-side and pull-initiated, not automatic on upload" — implied a manual or scheduled trigger
+  caused this. **It did not.** See the misattribution correction below.
 - ⭐ **SDX-16 RESOLVED (2026-09-09).** The SFTP account has write permission on `ImportFiles`.
   Proven directly by both drops landing there: `AMS_SFTP_IMPORT_PROBE_20260909134434.txt`
   (259 bytes) and `ZZ_TEST_DEMO_20260909141133.txt` (436 bytes), both confirmed present in a
   post-upload listing.
-- **Retrieval model (2026-09-09, from the Summit UI's Data Exchange → Imports/Responses screen,
-  Kevin's observation).** Dropping a file into `ImportFiles` over SFTP is necessary but not
-  sufficient for Summit to act on it — retrieval is a separate, Summit-side, pull-initiated step,
-  run either on demand ("Initiate File Retrieval") or on a schedule configured on that same screen.
-  For this session's tests, no schedule was configured; retrieval was run manually. This is Summit
-  configuration and belongs to Kevin's operational decisions — this document describes the
-  mechanism and does not recommend a schedule.
+- ⚠️ **CORRECTED 2026-09-09 (DataPath Support, case CASE-22040, Derrick Norton, FCS Support
+  Services) — the retrieval model recorded here until today was wrong.** It read: *"Dropping a
+  file into `ImportFiles` over SFTP is necessary but not sufficient for Summit to act on it —
+  retrieval is a separate, Summit-side, pull-initiated step, run either on demand ('Initiate File
+  Retrieval') or on a schedule configured on that same screen. For this session's tests, no
+  schedule was configured; retrieval was run manually."* **That is not how it works.** DataPath's
+  direct answer, quoted verbatim: *"Current system design is that the file process goes out and
+  looks for new files every 15 minutes."* Retrieval is **fully automatic** and has nothing to do
+  with either button on the Imports/Responses screen. ⚠️ **This is a vendor statement, dated
+  2026-09-09, not a runtime observation** — DataPath support has already been wrong twice on this
+  project (port 21 vs. 22; the sub-folder permission) — but it is consistent with every
+  processed-file observation to date, since each delivered file was in fact processed within a
+  plausible 15-minute window.
+- ⚠️ **Misattribution correction.** Two files were genuinely delivered over SFTP and genuinely
+  processed; those response files exist and their content is exactly as recorded elsewhere in this
+  section. **The observation is real. What caused it was misattributed.** Every "clicked Initiate
+  File Retrieval, then the response appeared" reading recorded today — including this section's own
+  prior "retrieval was run manually" framing and the "today's result is not an artifact of clicking
+  rather than scheduling" reasoning that stood below — described a coincidence of timing with the
+  15-minute poller, not a causal sequence. Per DataPath Support: *"To the knowledge of Support that
+  button does not have a completed feature function and will not process any files if pressed."*
+  **Any latency figure inferred today from the gap between a click and a response is void** — it
+  measured the distance to a poll that was going to happen regardless of the click. **The real,
+  DataPath-stated bound on delivery-to-pickup latency is the 15-minute poll interval**, not a
+  click-driven figure.
+- **Schedule Import — corrected 2026-09-09 (DataPath Support, CASE-22040).** The vendor guide
+  (further below) describes it as a working feature scoped to External Network. **DataPath Support
+  says it does not work at all**: the option has no completed back end, does not function under any
+  network configuration, and the product team intends to remove it as an undesired feature since no
+  other client has requested completion. Its documented External-Network scoping was therefore
+  never a real constraint on anything — the feature it scoped doesn't function either way.
+- **Initiate File Retrieval — corrected 2026-09-09 (DataPath Support, CASE-22040).** Same
+  correction: **the button does not work.** The guide (further below) describes it as a manual
+  trigger following the same logic as a scheduled run; DataPath Support instead says, to their
+  knowledge, it has no completed feature function and will not process any file if pressed. Whether
+  it is template-scoped or folder-wide is therefore **moot** — see SDX-20.
+- ⭐ **SDX-19 RESOLVED (2026-09-09, DataPath Support) — the automation fork does not exist.**
+  Retrieval is already fully automatic, every 15 minutes, under this tenant's current **DataPath
+  Network** configuration. No switch to External Network is required and no architecture decision
+  is pending — the fork this document raised assumed Schedule Import was the only path to
+  automation and that it required External Network; DataPath's answer removes both premises at
+  once. Vendor statement, not independently tested by AMS; consistent with every observation to
+  date.
+- ⭐ **SDX-20 RESOLVED AS MOOT (2026-09-09, DataPath Support).** Initiate File Retrieval does not
+  function, so whether it would have been template-scoped or folder-wide does not arise. The
+  15-minute poller covers the whole folder — every file in `ImportFiles` is picked up on its own
+  schedule, not a template's.
+- ⭐ **SDX-17 RESOLVED (2026-09-09) — duplicate handling, DataPath-stated and
+  tenant-corroborated.** DataPath Support describes three safeguards: files are retained per IT
+  storage policy; **content** identical to an already-processed file is flagged as a duplicate and
+  **held pending TPA approval** rather than processed; a **repeated filename** is rejected as a
+  duplicate outright; and further checks run against identification records created on import.
+  Reference: `https://summitguide.dpath.net/processing-process-approvals/#htoc-duplicate-checking`.
+  **The tenant corroborates the content-duplicate behaviour directly**:
+  `ZZ_TEST_DEMO_20260909153935.txt` — a new filename carrying content byte-identical to an
+  already-processed file — appeared in Summit's File History with status **Held**, 0 records,
+  sitting in Currently Processing. That is exactly DataPath's described behaviour, **observed**,
+  not merely stated. This is why S40-H made the probe payload's participant IDs vary by
+  timestamp — a repeat of the earlier fixed rows would have been held rather than processed on any
+  later run, regardless of filename.
+- ⚠️ **SDX-21 (new, 2026-09-09) — DataPath's folder-creation answer is internally inconsistent and
+  contradicts the tenant.** Asked about `mkdir`'s "Permission denied," DataPath states **both**
+  that sub-folders can be created **and** that the main directory structure cannot be changed and
+  was automated at setup in a way DataPath believes cannot be modified. Those two statements do not
+  reconcile with each other, and neither reconciles with the tenant's own observed behaviour
+  (`mkdir` against a new sub-folder denied outright, 2026-09-09). **Recorded as unresolved, not
+  guessed at** — and **not currently blocking anything**, since every AMS delivery path targets the
+  existing `ImportFiles` folder and none requires creating a new one.
+- **Operational consequence 1 — why the `writetest` `ImportFiles` refusal is permanent.** Because
+  retrieval is automatic within 15 minutes with no human checkpoint of any kind, anything written
+  to `ImportFiles` will be picked up and processed regardless of whether anyone is watching. This
+  is why `SummitSftpTestServlet.handleWriteTest`'s refusal on any target resolving under
+  `ImportFiles` is a hard code check with no config override — there is no "safe to test carefully"
+  mode for that folder; a write there is a live delivery the moment it lands, not before someone
+  reviews it.
+- **Operational consequence 2 — every delivery must vary both filename and content.** Per
+  DataPath's duplicate handling (SDX-17 above): a delivery whose **content** repeats an
+  already-processed file is held pending manual approval rather than processed or cleanly rejected;
+  a delivery whose **filename** repeats an already-used one is rejected as a duplicate outright.
+  **A real delivery mechanism built on this transport must generate a unique filename and unique
+  content on every send** — reusing either risks a delivery that neither succeeds nor fails
+  cleanly, but instead sits in a queue awaiting a human. This is a design requirement for whatever
+  eventually wires `SummitExportServlet` to this transport, not merely a test-servlet concern.
 - **Filename-to-template matching (2026-09-09).** Summit matches an inbound file to an import
   template by filename, checked against the Imports/Responses screen's list of recognized import
   templates (46 rows observed; `01_CENSUS` is Demographics). Two files were dropped in the same
@@ -166,7 +244,11 @@ existed anywhere in the repo before this document.**
   sub-folders without a MOVEit administrator.** The SFTP account's observed `mkdir` permission
   says otherwise. Most plausibly that statement describes folder creation through the Summit web
   UI — a different permission surface than the SFTP account — but that is **not confirmed**, and
-  this document does not assert it. Recorded as a contradiction, not a resolution.
+  this document does not assert it. Recorded as a contradiction, not a resolution. **DataPath's own
+  follow-up answer on this same day made it worse, not better — see [SDX-21](#open-questions):**
+  their answer to a direct follow-up both reaffirms sub-folder creation is possible and says the
+  directory structure cannot be changed, which do not reconcile with each other or with the
+  tenant.
 - **Superseded 2026-09-09:** this bullet previously said upload into `ImportFiles` was untried
   because the test servlet's guard refused to connect. Session 40 added two separately-gated
   actions (`?action=importdrop`, `?action=importdropdemo`) built specifically to make that
@@ -194,25 +276,27 @@ existed anywhere in the repo before this document.**
   `ftp1.dpath.com` — DataPath's server — so this tenant is configured **DataPath Network**, the
   vendor's name for the direction already recorded above ("Direction is undecided... `Datapath
   Network` means AMS pushes out"). See [SDX-19](#open-questions).
-- **Schedule Import, as documented.** The guide describes "Schedule Import" as available **only**
-  when imports are configured for **External Network**, offering Daily, Weekly or Monthly at a set
-  time — no intraday option is described anywhere in the guide. ⚠️ **The Schedule Import checkbox
-  was nonetheless visible and unchecked on this tenant's Imports/Responses screen on 2026-09-09**,
-  which is configured DataPath Network. Visibility does not establish that the checkbox functions
-  under a DataPath Network configuration — it was not tested, and the guide's own scoping of the
-  feature to External Network is the only documentation this project has on the question.
-- **Initiate File Retrieval, as documented.** The guide describes it as a manual trigger for the
-  selected import template(s), positioned as a fallback for when a scheduled retrieval fails or an
-  off-schedule import is needed, and states it follows the **same logic** as a scheduled run and
-  executes immediately. Two things follow:
-  - **Today's result is not an artifact of clicking rather than scheduling.** Manual and scheduled
-    retrieval are documented as the same underlying path — SDX-15's finding (an SFTP-delivered
-    file is retrieved and processed) is not contingent on retrieval having been triggered by hand.
-  - ⚠️ **Whether retrieval is template-scoped or folder-wide is undetermined.** The guide's own
-    wording is "selected template(s)," implying a per-template scope, but whether any template
-    checkbox was ticked before the 2026-09-09 click that picked up `ZZ_TEST_DEMO_*` was not
-    recorded. **State this as unknown — do not infer template-scoping, or its absence, from the
-    file having been picked up.** See [SDX-20](#open-questions).
+- ⚠️ **Schedule Import, as documented (superseded by DataPath Support's direct answer above).**
+  The guide describes "Schedule Import" as available **only** when imports are configured for
+  **External Network**, offering Daily, Weekly or Monthly at a set time — no intraday option is
+  described anywhere in the guide. The Schedule Import checkbox was visible and unchecked on this
+  DataPath-Network tenant on 2026-09-09; the guide's scoping made that visibility puzzling at the
+  time. **It no longer is** — DataPath Support's 2026-09-09 answer says the feature has no
+  completed back end and does not function under any network configuration, so a checkbox that
+  shouldn't (per the guide) even appear, and does nothing when checked (per Support), are the same
+  fact stated two ways.
+- ⚠️ **Initiate File Retrieval, as documented (superseded by DataPath Support's direct answer
+  above).** The guide describes it as a manual trigger for the selected import template(s),
+  positioned as a fallback for when a scheduled retrieval fails or an off-schedule import is
+  needed, and states it follows the **same logic** as a scheduled run and executes immediately.
+  **DataPath Support's 2026-09-09 answer supersedes this description**: to Support's knowledge the
+  button has no completed feature function and will not process any file if pressed. The reasoning
+  that once stood here — "today's result is not an artifact of clicking rather than scheduling,
+  because manual and scheduled retrieval are the same underlying path" — reached a conclusion that
+  happens to be correct (the click did not cause today's result) by an incorrect route (it assumed
+  the click did something). See the misattribution correction above for the corrected account, and
+  [SDX-20](#open-questions) for why the template-scope question this bullet used to raise is now
+  moot.
 
 ## How templates work
 
@@ -853,27 +937,33 @@ open-question registry (`O1`–`O52+`, tracked in `docs/swbd_ichra_build_plan.md
     `ImportFiles` at all, independent of what processing a write there would trigger? **Yes** —
     proven directly by both session-40 drops landing there (`AMS_SFTP_IMPORT_PROBE_*` and
     `ZZ_TEST_DEMO_*`, see Transport).
-17. **SDX-17** — Does a second retrieval reprocess a file that is still present in `ImportFiles`?
-    Not observed — inferred as likely from "retrieval does not remove" (see Transport's sweep
-    correction), but no second retrieval has been run against a file left in place.
+17. **SDX-17** — ⭐ **RESOLVED (2026-09-09).** Does a second retrieval reprocess a file that is
+    still present in `ImportFiles`? **Not by reprocessing it as new — Summit holds it as a
+    duplicate pending manual approval, per DataPath Support (CASE-22040) and corroborated directly
+    by the tenant** (`ZZ_TEST_DEMO_20260909153935.txt`, Held, 0 records). A repeated **filename**
+    is rejected outright rather than held. See Transport.
 18. **SDX-18** — What is the per-row success status token in a Summit response file? Only `Failed`
     has been observed (see Transport's response-format block, from `ZZ_TEST_DEMO_*`'s all-failure
     response). No successfully-processed row has been observed on this transport to compare
     against.
-19. **SDX-19** — ⚠️ **The automation fork.** Can Summit import retrieval be automated at all under
-    this tenant's current **DataPath Network** configuration, or does every AMS delivery require a
-    manual "Initiate File Retrieval" click in the Summit UI? DataPath's `260607_SummitGuide_Processing`
-    guide (vendor documentation, content dated 2020-01-03) describes "Schedule Import" as available
-    only under **External Network** — DataPath pulling from an SSA-hosted FTP server, a genuinely
-    different architecture requiring SSA to run and secure an inbound file service, not a
-    configuration toggle with no other consequence. **This document does not recommend, design
-    for, or estimate either branch — that choice is Kevin's.** Settled by asking DataPath directly,
-    or by testing the Schedule Import checkbox on this tenant to see whether it holds a schedule
-    under DataPath Network despite the guide's scoping.
-20. **SDX-20** — Is "Initiate File Retrieval" template-scoped or folder-wide? The guide's wording
-    ("selected template(s)") implies a per-template scope; whether a specific template checkbox
-    was selected before the 2026-09-09 retrieval that picked up `ZZ_TEST_DEMO_*` was not recorded.
-    Settled by a deliberate retrieval run with a known, recorded checkbox state.
+19. **SDX-19** — ⭐ **RESOLVED (2026-09-09, DataPath Support, CASE-22040) — the automation fork
+    does not exist.** Retrieval is fully automatic every 15 minutes under the tenant's existing
+    **DataPath Network** configuration; no switch to External Network, and no architecture
+    decision, is needed. The fork assumed Schedule Import was the only path to automation and that
+    it required External Network — DataPath's answer that Schedule Import doesn't function at all,
+    and that automatic polling runs regardless, removes both premises. Vendor statement, not
+    independently tested by AMS; consistent with every observation to date. See Transport.
+20. **SDX-20** — ⭐ **RESOLVED AS MOOT (2026-09-09, DataPath Support, CASE-22040).** Is "Initiate
+    File Retrieval" template-scoped or folder-wide? **The question does not arise — the button has
+    no completed feature function and does not process files at all**, per DataPath Support. The
+    15-minute automatic poller covers the whole folder. See Transport.
+21. **SDX-21** — ⚠️ **DataPath's folder-creation answer contradicts itself and the tenant.** Asked
+    about the observed `mkdir` denial, DataPath Support states both that sub-folders can be
+    created and that the main directory structure cannot be changed and was automated at setup in
+    a way DataPath believes cannot be modified — two statements that do not reconcile with each
+    other, and neither reconciles with the tenant's observed `Permission denied`. Unresolved.
+    **Not currently blocking anything** — every AMS delivery path targets the existing
+    `ImportFiles` folder, none requires creating one.
 
 ## Test artifacts
 

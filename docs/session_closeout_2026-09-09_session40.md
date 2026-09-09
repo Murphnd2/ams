@@ -219,3 +219,61 @@ delivery is a materially different capability from an automated one. **The build
 assumptions about Summit delivery should be re-read against this before any real export file is
 routed through the SFTP transport** — SDX-19 is not a detail to settle later; it changes what "the
 transport works" is actually claiming.
+
+---
+
+## Addendum 2 (S40-I, 2026-09-09) — DataPath's direct answers correct the retrieval model
+
+Added after the first addendum, when DataPath Support answered the open case directly. Nothing
+above this section is rewritten.
+
+**Source.** DataPath Support (Derrick Norton, FCS Support Services), case CASE-22040, answered
+2026-09-09. A vendor statement, not a runtime observation — DataPath support has now been wrong
+three times on this project (port 21 vs. 22; the sub-folder permission; and, as recorded below, the
+retrieval mechanism the first addendum's own guide-reading described). Recorded here attributed and
+dated; only marked corroborated where the tenant independently confirms it.
+
+**DataPath's answers:**
+
+1. **Retrieval is fully automatic.** Quoted verbatim: *"Current system design is that the file
+   process goes out and looks for new files every 15 minutes."* No human action causes or is
+   needed for a delivered file to be picked up.
+2. **Schedule Import does not work.** No completed back end, does not function under any network
+   configuration, and the product team intends to remove it.
+3. **Initiate File Retrieval does not work.** Quoted: *"To the knowledge of Support that button
+   does not have a completed feature function and will not process any files if pressed."*
+4. **Duplicate handling.** Content identical to an already-processed file is held pending TPA
+   approval; a repeated filename is rejected outright; further checks run on import-created
+   identification records.
+5. **Folder creation.** Sub-folders can be created, but the main directory structure cannot be
+   changed — a statement that does not reconcile with itself or with the tenant's observed `mkdir`
+   denial (filed as SDX-21, unresolved, not currently blocking anything).
+
+**⭐ SDX-19's automation fork does not exist.** Retrieval is already automatic every 15 minutes
+under the tenant's existing DataPath Network configuration. No External Network switch, and no
+architecture decision, is needed. SDX-20 (template-scoped vs. folder-wide) is resolved as moot —
+the button it asked about does not function.
+
+**⚠️ Initiate File Retrieval does nothing, and today's processing was misattributed to it.** The
+observation stands: two files were delivered over SFTP and processed, and their response files are
+real. What this document and the first addendum credited with causing that — a click on Initiate
+File Retrieval — did nothing. The 15-minute automatic poller did the work regardless of any click.
+Every "clicked, then it processed" reading recorded earlier today described a coincidence of
+timing, not a causal sequence, and any latency figure inferred from a click-to-response gap is
+void — the real bound is the 15-minute interval.
+
+**⭐ SDX-17 is resolved, and the tenant corroborates it directly.** DataPath's duplicate-handling
+answer (item 4 above) is independently confirmed: `ZZ_TEST_DEMO_20260909153935.txt` — a new
+filename, content byte-identical to an already-processed file — appeared in Summit's File History
+with status Held, 0 records. T227's guard requirement is now defined (unique filename **and**
+unique content on every delivery, plus handling for a delivery that lands in Summit's held-pending
+queue) though the guard itself is not built.
+
+**This is the fourth contradiction of a stated claim in this session.** The previous three: session
+39's `ImportFiles`-sweep assumption, disproved when both probe files remained present after
+processing; DataPath's sub-folder statement, contradicted by the observed `mkdir` denial; and the
+content-dedupe inference this session formed mid-stream, which File History corrected (Held with a
+visible record, not a silent no-op with none). **The fourth is this addendum's own subject**: that
+Initiate File Retrieval caused today's processing. It did not — the 15-minute automatic poller did,
+and the click was a coincidence of timing that this document, the vendor guide, and the reasoning
+built on both all took as causal.
