@@ -1646,7 +1646,7 @@ SUMMIT_CDH_GRACE_FIELDS=FSA:hfsa_roll_or_grace,DCAP:dcap_grace
 ### D-95: Apply `V096__summit_file_export.sql` — the Summit export record table
 
 **Priority:** MED — nothing breaks without it, but every export runs unrecorded until it is applied
-**Status:** Not applied anywhere. Authored S32-A (2026-09-08). **No config key, no property, no restart beyond the WAR ship** — the table is the whole deployment step.
+**Status:** Not applied on Production. **Applied to `beta_ssa` 2026-09-08 15:53:48**, but the weekly refresh from production drops it — the local application is transient, so the local box below stays ⬜ rather than ✅. Authored S32-A (2026-09-08). **No config key, no property, no restart beyond the WAR ship** — the table is the whole deployment step.
 
 `V096` creates `summit_file_export`: one row per file `SummitExportServlet` generates, holding the exact bytes sent, the resolved filename, row and byte counts, the acting user, and an indexed `content_sha256`. It unblocks response-file matching (T214) and makes T194's silent content-dedupe detectable before a re-send rather than after a confusing non-result (T212).
 

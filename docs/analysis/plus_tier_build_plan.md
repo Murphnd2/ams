@@ -4,9 +4,19 @@
 **Date:** 29 July 2026
 **Status:** Planning only. No code, no schema, no SQL produced.
 **Baseline:** Migration **V073**, to be re-verified against `ls docs/migrations/` before any script is written.
-**Revision 9** — O2 resolved from public documentation; four HSOne-era premises dissolved; O20
+**Revision 10** — D41, the card's two sub-accounts fund on different rules by benefit type.
+**Part 13 governs.** It files the funding asymmetry between the excepted-benefit and the
+off-exchange major-medical sub-account as a decision. It changes nothing in Parts 1–12.
+
+⚠️ **Header note, 2026-09-08.** **Part 12 shipped without a header bump** — exactly as Parts 9 and 10
+did, and exactly what the 2026-08-04 correction below exists to prevent. The block read *"Revision 9
+— Part 11 governs"* while Part 12 (D40) already existed. No revision number is assigned to Part 12
+retrospectively; **Revision 10 absorbs it.** The precedence line, not the revision number, is the
+authority on what governs.
+
+*Revision 9* — O2 resolved from public documentation; four HSOne-era premises dissolved; O20
 escalated to load-bearing.
-**Part 11 governs.** It resolves **O2** (with one residual promoted to O41), partially answers O14,
+*Part 11* resolves **O2** (with one residual promoted to O41), partially answers O14,
 sharpens O15, half-answers O16, escalates **O20**, upgrades **D20** from a decision to a requirement,
 strengthens D16 and D38, makes D17's `HS_POLICY_STATUS` rung concrete per carrier, and adds O41–O42.
 
@@ -99,7 +109,7 @@ plan display cannot be handed off), upgrades **D20** to a requirement, and adds 
 **Part 12** (7 September 2026) adds **D40** — the ICHRA+ bundle gets its own Summit plan types — and
 **O43**, whether Premium Billing plans mirror into AMS as `Benefit` rows.
 
-**Precedence: Part 12 > Part 11 > Part 10 > Part 9 > Part 8 > Part 7 > Part 6 > Part 5 > Part 4 > Parts 1–3.**
+**Precedence: Part 13 > Part 12 > Part 11 > Part 10 > Part 9 > Part 8 > Part 7 > Part 6 > Part 5 > Part 4 > Parts 1–3.**
 
 ### Provenance warning governing everything below
 
@@ -2252,7 +2262,7 @@ and it would settle **O41** and **O42** as a side effect.
 notice model are all unaffected by O2.** O2 was scoped to the HealthSherpa enrollment/status surface
 and nothing in it bears on Summit, billing, or the catalog. Parts 5–8 stand unchanged.
 
-**Precedence: Part 12 > Part 11 > Part 10 > Part 9 > Part 8 > Part 7 > Part 6 > Part 5 > Part 4 > Parts 1–3.**
+**Precedence: Part 13 > Part 12 > Part 11 > Part 10 > Part 9 > Part 8 > Part 7 > Part 6 > Part 5 > Part 4 > Parts 1–3.**
 
 ---
 ---
@@ -2354,4 +2364,55 @@ and **that work must hang off a CDH type instead**.
 `plantype` and for a mirrored `Benefit`. **Not settleable by reading AMS code**, which can only show
 what AMS does with rows it receives, never which rows Summit sends.
 
-**Precedence: Part 12 > Part 11 > Part 10 > Part 9 > Part 8 > Part 7 > Part 6 > Part 5 > Part 4 > Parts 1–3.**
+**Precedence: Part 13 > Part 12 > Part 11 > Part 10 > Part 9 > Part 8 > Part 7 > Part 6 > Part 5 > Part 4 > Parts 1–3.**
+
+---
+---
+
+# Part 13 — The card's two sub-accounts fund on different rules
+
+**Date:** 8 September 2026 (S34-A)
+**Source:** Kevin's proposal on the Presidio call, accepted by Daniel Cruz. The reasoning on both
+sides was already in [`legal_assumptions.md`](legal_assumptions.md) — LA-20, LA-21, LA-22 and LA-36.
+What had never been filed was the row recording the consequence for **card configuration**.
+
+⚠️ **Evidence grade.** No call record in `docs/` carries this exchange. The origin is Kevin's
+recollection of the call, not a document, and Daniel's acceptance is recorded nowhere in the repo.
+
+## D41 — one card, two sub-accounts, two funding rules that differ by benefit type
+
+**Decision.** A single card carries **two separately-ledgered sub-accounts whose funding rules differ
+by benefit type.**
+
+| Sub-account | Employer advance | Funding rule |
+|---|---|---|
+| **Excepted-benefit premium** | **Permitted** | The employer may pay at the start of a coverage period and collect the employee's share by salary reduction across that period |
+| **Off-exchange individual major medical** | **Never** | Funded only from salary reduction **already withheld**. The balance must never run ahead of withholding |
+
+**What it closes.** Whether the card's funding behaviour is uniform across benefit types. **It is not,
+and cannot be.** The card itself cannot distinguish them — **the sub-account configuration is what
+carries the distinction.** That is what makes separate ledgering a compliance control here rather
+than plumbing.
+
+**Why — the asymmetry is not a risk preference.** Excepted benefits sit **outside the market
+reforms** (excepted from PHSA 2711 and 2713, so there is no market reform to violate) and carry a
+**§106 shelter** on unrecovered premium, so an unrecovered balance at a mid-year termination is
+employer-paid coverage rather than forgiven debt. **Individual major medical has neither.** Employer
+money reaching an individual premium outside the ICHRA allowance is the arrangement the market
+reforms were written against, and a purse running ahead of withholding is the mechanism that
+produces it. See **LA-20** for the shared-card structure and its separate-ledgering requirement,
+**LA-22** for the excepted-benefit side, and **LA-21** and **LA-36** for the major medical side —
+LA-36 records the five employee-sourced on-ramps for month one and the **closed decision** against
+employer advance there.
+
+**Open within the decision — the confirmation mechanism on the payroll-match side.** Whether
+confirmation of amounts actually withheld arrives as a **payroll file feed** or, in Daniel's
+phrasing, a **regular email** was raised on the call and **not settled**. Both were live; neither was
+chosen. It is a mechanism question rather than a compliance one — the funding rule stands either way
+and only the evidence of withholding varies — so it is recorded here as open rather than promoted to
+a numbered O-item.
+
+**Reversal cost: low**, as the register records it on all three underlying assumptions (LA-20, LA-21,
+LA-22): card configuration and funding schedule. No schema depends on which way it runs.
+
+**Precedence: Part 13 > Part 12 > Part 11 > Part 10 > Part 9 > Part 8 > Part 7 > Part 6 > Part 5 > Part 4 > Parts 1–3.**
