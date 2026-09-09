@@ -4,19 +4,21 @@ import com.jcraft.jsch.ChannelSftp;
 import com.jcraft.jsch.HostKey;
 import com.jcraft.jsch.JSch;
 import com.jcraft.jsch.Session;
+import com.jcraft.jsch.SftpException;
 import net.superiorstate.ams.AppConfig;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.io.ByteArrayInputStream;
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * S39-A -- read-only connectivity probe and directory listing for Summit's MOVEit-hosted
- * SFTP endpoint ({@code ftp1.dpath.com:22}, confirmed SSH-based by banner probe 2026-09-09;
- * see {@code docs/summit_data_exchange.md}). Opens a connection, does one operation,
- * disconnects. No upload, no mkdir, no rename, no delete -- wiring delivery into
- * {@code SummitExportServlet} is a later increment, not this one.
+ * S39-A -- connectivity probe, directory listing, and (T226, second half) a controlled write
+ * path for Summit's MOVEit-hosted SFTP endpoint ({@code ftp1.dpath.com:22}, confirmed
+ * SSH-based by banner probe 2026-09-09; see {@code docs/business/summit_data_exchange.md}).
+ * Every method opens a connection, does one operation, disconnects. No delete, no rename --
+ * wiring delivery into {@code SummitExportServlet} is a later increment, not this one.
  * <p>
  * Config keys ({@code SUMMIT_SFTP_HOST}, {@code SUMMIT_SFTP_PORT}, {@code SUMMIT_SFTP_USER},
  * {@code SUMMIT_SFTP_PASSWORD}, {@code SUMMIT_SFTP_HOST_KEY}, {@code SUMMIT_SFTP_REMOTE_DIR})
@@ -47,23 +49,12 @@ public class SummitSftpService {
 
         Session session = null;
         try {
-            JSch jsch = new JSch();
-            session = jsch.getSession(user, host, port);
-            session.setPassword(password);
-            // No known_hosts on this installation yet -- the presented key is captured below
-            // and compared manually against SUMMIT_SFTP_HOST_KEY when one is configured.
-            session.setConfig("StrictHostKeyChecking", "no");
-            // S39-B -- DataPath's MOVEit server offers ssh-dss as its only host-key algorithm
-            // (confirmed via ssh -vv KEXINIT read, 2026-09-09); it is disabled by default in
-            // this JSch fork. Re-enabled narrowly, per session only, appended after the modern
-            // defaults so they stay preferred. KEX, cipher and MAC negotiation are unmodified.
-            session.setConfig("server_host_key", session.getConfig("server_host_key") + ",ssh-dss");
-            session.setTimeout(CONNECT_TIMEOUT_MS);
-            session.connect(CONNECT_TIMEOUT_MS);
+            SftpSession conn = openSession(host, port, user, password);
+            session = conn.session;
 
             String serverVersion = session.getServerVersion();
             HostKey hostKey = session.getHostKey();
-            String fingerprint = hostKey != null ? hostKey.getFingerPrint(jsch) : null;
+            String fingerprint = hostKey != null ? hostKey.getFingerPrint(conn.jsch) : null;
 
             if (pinned && (fingerprint == null || !fingerprint.equalsIgnoreCase(pinnedHostKey.trim()))) {
                 log.warn("[SUMMIT-SFTP] Host key fingerprint mismatch for {}:{}", host, port);
@@ -100,20 +91,12 @@ public class SummitSftpService {
         Session session = null;
         ChannelSftp channel = null;
         try {
-            JSch jsch = new JSch();
-            session = jsch.getSession(user, host, port);
-            session.setPassword(password);
-            session.setConfig("StrictHostKeyChecking", "no");
-            // S39-B -- see probe() for why: DataPath's MOVEit server offers ssh-dss as its only
-            // host-key algorithm, re-enabled narrowly per session, appended after the modern
-            // defaults. KEX, cipher and MAC negotiation are unmodified.
-            session.setConfig("server_host_key", session.getConfig("server_host_key") + ",ssh-dss");
-            session.setTimeout(CONNECT_TIMEOUT_MS);
-            session.connect(CONNECT_TIMEOUT_MS);
+            SftpSession conn = openSession(host, port, user, password);
+            session = conn.session;
 
             if (pinned) {
                 HostKey hostKey = session.getHostKey();
-                String fingerprint = hostKey != null ? hostKey.getFingerPrint(jsch) : null;
+                String fingerprint = hostKey != null ? hostKey.getFingerPrint(conn.jsch) : null;
                 if (fingerprint == null || !fingerprint.equalsIgnoreCase(pinnedHostKey.trim())) {
                     throw new SftpTransportException("Host key fingerprint mismatch. Presented: "
                             + fingerprint + " -- pinned SUMMIT_SFTP_HOST_KEY does not match.");
@@ -147,6 +130,135 @@ public class SummitSftpService {
         }
     }
 
+    /**
+     * Creates {@code remoteDir} if it does not already exist. A second run against a
+     * directory this method already created is not an error -- existence is checked with a
+     * {@code stat} before attempting the create, so no exception is thrown either way.
+     */
+    public void mkdir(String remoteDir) throws SftpTransportException {
+        String host = AppConfig.get("SUMMIT_SFTP_HOST");
+        int port = resolvePort(AppConfig.get("SUMMIT_SFTP_PORT"));
+        String user = AppConfig.get("SUMMIT_SFTP_USER");
+        String password = AppConfig.get("SUMMIT_SFTP_PASSWORD");
+        String pinnedHostKey = AppConfig.get("SUMMIT_SFTP_HOST_KEY");
+        boolean pinned = pinnedHostKey != null && !pinnedHostKey.isBlank();
+
+        Session session = null;
+        ChannelSftp channel = null;
+        try {
+            SftpSession conn = openSession(host, port, user, password);
+            session = conn.session;
+
+            if (pinned) {
+                HostKey hostKey = session.getHostKey();
+                String fingerprint = hostKey != null ? hostKey.getFingerPrint(conn.jsch) : null;
+                if (fingerprint == null || !fingerprint.equalsIgnoreCase(pinnedHostKey.trim())) {
+                    throw new SftpTransportException("Host key fingerprint mismatch. Presented: "
+                            + fingerprint + " -- pinned SUMMIT_SFTP_HOST_KEY does not match.");
+                }
+            }
+
+            channel = (ChannelSftp) session.openChannel("sftp");
+            channel.connect(CHANNEL_TIMEOUT_MS);
+
+            boolean exists;
+            try {
+                exists = channel.stat(remoteDir).isDir();
+            } catch (SftpException e) {
+                exists = false;
+            }
+            if (!exists) {
+                channel.mkdir(remoteDir);
+            }
+        } catch (SftpTransportException e) {
+            throw e;
+        } catch (Exception e) {
+            String message = scrub(e.getMessage(), password);
+            log.error("[SUMMIT-SFTP] mkdir failed for {}:{} dir={} -- {}", host, port, remoteDir, message);
+            throw new SftpTransportException(message);
+        } finally {
+            if (channel != null && channel.isConnected()) {
+                channel.disconnect();
+            }
+            if (session != null && session.isConnected()) {
+                session.disconnect();
+            }
+        }
+    }
+
+    /**
+     * Uploads {@code content} to {@code remoteDir}/{@code filename}, overwriting any existing
+     * file of that name. No delete, no rename -- removal is a manual Summit-UI action.
+     */
+    public void upload(String remoteDir, String filename, byte[] content) throws SftpTransportException {
+        String host = AppConfig.get("SUMMIT_SFTP_HOST");
+        int port = resolvePort(AppConfig.get("SUMMIT_SFTP_PORT"));
+        String user = AppConfig.get("SUMMIT_SFTP_USER");
+        String password = AppConfig.get("SUMMIT_SFTP_PASSWORD");
+        String pinnedHostKey = AppConfig.get("SUMMIT_SFTP_HOST_KEY");
+        boolean pinned = pinnedHostKey != null && !pinnedHostKey.isBlank();
+
+        Session session = null;
+        ChannelSftp channel = null;
+        try {
+            SftpSession conn = openSession(host, port, user, password);
+            session = conn.session;
+
+            if (pinned) {
+                HostKey hostKey = session.getHostKey();
+                String fingerprint = hostKey != null ? hostKey.getFingerPrint(conn.jsch) : null;
+                if (fingerprint == null || !fingerprint.equalsIgnoreCase(pinnedHostKey.trim())) {
+                    throw new SftpTransportException("Host key fingerprint mismatch. Presented: "
+                            + fingerprint + " -- pinned SUMMIT_SFTP_HOST_KEY does not match.");
+                }
+            }
+
+            channel = (ChannelSftp) session.openChannel("sftp");
+            channel.connect(CHANNEL_TIMEOUT_MS);
+
+            String remotePath = remoteDir.endsWith("/") ? remoteDir + filename : remoteDir + "/" + filename;
+            try (ByteArrayInputStream in = new ByteArrayInputStream(content)) {
+                channel.put(in, remotePath, ChannelSftp.OVERWRITE);
+            }
+        } catch (SftpTransportException e) {
+            throw e;
+        } catch (Exception e) {
+            String message = scrub(e.getMessage(), password);
+            log.error("[SUMMIT-SFTP] upload failed for {}:{} dir={} file={} -- {}",
+                    host, port, remoteDir, filename, message);
+            throw new SftpTransportException(message);
+        } finally {
+            if (channel != null && channel.isConnected()) {
+                channel.disconnect();
+            }
+            if (session != null && session.isConnected()) {
+                session.disconnect();
+            }
+        }
+    }
+
+    /**
+     * S39-A/S40-A session-setup helper -- the block that was duplicated across every method
+     * before this run. Builds a {@link JSch} instance, opens a {@link Session} to
+     * {@code host:port} as {@code user}, re-enables {@code ssh-dss} narrowly on this session
+     * only (S39-B -- DataPath's MOVEit server offers it as its sole host-key algorithm; KEX,
+     * cipher and MAC negotiation are unmodified), applies the shared connect timeout, and
+     * connects. Behaviour is unchanged from the pre-extraction duplicates in {@code probe()}
+     * and {@code list()}.
+     */
+    private SftpSession openSession(String host, int port, String user, String password) throws Exception {
+        JSch jsch = new JSch();
+        Session session = jsch.getSession(user, host, port);
+        session.setPassword(password);
+        // No known_hosts on this installation yet -- the presented key is captured by callers
+        // and compared manually against SUMMIT_SFTP_HOST_KEY when one is configured.
+        session.setConfig("StrictHostKeyChecking", "no");
+        session.setConfig("server_host_key", session.getConfig("server_host_key") + ",ssh-dss");
+        session.setTimeout(CONNECT_TIMEOUT_MS);
+        session.connect(CONNECT_TIMEOUT_MS);
+        return new SftpSession(jsch, session);
+    }
+
     private static int resolvePort(String raw) {
         if (raw == null || raw.isBlank()) return 22;
         try {
@@ -162,6 +274,17 @@ public class SummitSftpService {
             return message.replace(password, "***");
         }
         return message;
+    }
+
+    /** Dumb data carrier -- a connected session and the {@link JSch} instance that built it. */
+    private static final class SftpSession {
+        final JSch jsch;
+        final Session session;
+
+        SftpSession(JSch jsch, Session session) {
+            this.jsch = jsch;
+            this.session = session;
+        }
     }
 
     /** Dumb data carrier -- result of a connect/disconnect probe. */
@@ -223,7 +346,7 @@ public class SummitSftpService {
         public boolean isDirectory() { return directory; }
     }
 
-    /** Checked exception carrying a password-scrubbed failure message from {@link #list}. */
+    /** Checked exception carrying a password-scrubbed failure message. */
     public static final class SftpTransportException extends Exception {
         public SftpTransportException(String message) {
             super(message);
