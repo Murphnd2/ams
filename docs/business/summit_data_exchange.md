@@ -620,8 +620,17 @@ even though an ICHRA is employer-funded; funding source is set on the plan templ
 `/SummitExport?proposalId={id}&type=enrollment`, a fourth `type` alongside `employer`, `cdhplan` and
 `demographics`. ⚠️ **The layout is import-proven; the emitter is not.** A hand-built file in this
 order was accepted 2026-09-08, but the emitter itself is **compile-verified only — never run, never
-imported** (T196). ⚠️ **It also has no UI link** — the three existing files are linked from the Setup
-detail screen and this one is not, so the URL must be typed by hand until that is added (T196).
+imported** (T196). ⚠️ The UI link exists. It was added in S30-C (`detailSetup25.jsp`, fourth in the
+Setup screen's Summit export block, labelled Summit — HRA Enrollment). The earlier statement here
+that it had none was stale (corrected S41, 2026-09-10).
+
+⚠️ The emitter refuses by default — T201 guard, S41, 2026-09-10 (`721864b`). AMS stores no election
+state, and this file enrolls every roster participant into the funded plan. So `type=enrollment`
+returns a plain-text 400, stating the roster count, unless the request carries
+`confirm=ENROLL-ALL-P{proposalId}`. The Setup-screen link sends no token and always refuses.
+Runtime-verified locally. With the correct token, the request reached `writeHraEnrollment`, which
+refused on a blank `hra_annual_ee`. That is the emitter's first recorded runtime execution. No file
+has yet been produced.
 
 One row per participant, from the **identical** roster query and ordering file 4 uses
 (`EmployerParticipantDAO.findByProspectId`, ordered by last name, first name, id). An empty roster
