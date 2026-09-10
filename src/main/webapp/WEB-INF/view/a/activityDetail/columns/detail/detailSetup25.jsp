@@ -51,42 +51,7 @@
 <c:if test="${sessionScope.local.isPspAdmin()
               and not empty sessionScope.local.getCurrentActivity().getActivity().getApplication()
               and not empty sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal()}">
-  <div class="detail-section-card">
-    <div class="detail-section-body">
-      <a href="${pageContext.request.contextPath}/CensusUpload?proposalId=${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}"
-         class="btn btn-sm btn-outline-ssa w-100">
-        <i class="bi bi-people me-1"></i>Census Upload
-      </a>
-    </div>
-  </div>
-
-  <%-- Summit export (S27-C; fourth link S30-C) — same gate as Census Upload above, same proposalId
-       expression. AMS emits all four files of the proven Summit chain. The first three labels carry
-       Summit's client-setup file numbers (file 3, Premium Billing, is unproven and has no link here);
-       the fourth carries none — that sequence's "file 5" is a different file, enrollment into the
-       Premium Billing ICHRA notice plan, and its files 5-8 have no emitter. Plain links: whatever
-       SummitExportServlet's Content-Disposition does on click is what happens. --%>
-  <div class="detail-section-card">
-    <div class="detail-section-body">
-      <div class="text-muted small fw-semibold mb-1">Summit export</div>
-      <a href="${pageContext.request.contextPath}/SummitExport?proposalId=${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}&type=employer"
-         class="btn btn-sm btn-outline-ssa w-100 mb-1">
-        <i class="bi bi-download me-1"></i>Summit file 1 — Employer
-      </a>
-      <a href="${pageContext.request.contextPath}/SummitExport?proposalId=${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}&type=cdhplan"
-         class="btn btn-sm btn-outline-ssa w-100 mb-1">
-        <i class="bi bi-download me-1"></i>Summit file 2 — CDH Plan
-      </a>
-      <a href="${pageContext.request.contextPath}/SummitExport?proposalId=${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}&type=demographics"
-         class="btn btn-sm btn-outline-ssa w-100">
-        <i class="bi bi-download me-1"></i>Summit file 4 — Demographics
-      </a>
-      <a href="${pageContext.request.contextPath}/SummitExport?proposalId=${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}&type=enrollment"
-         class="btn btn-sm btn-outline-ssa w-100 mt-1">
-        <i class="bi bi-download me-1"></i>Summit — HRA Enrollment
-      </a>
-    </div>
-  </div>
+  <c:import url="/WEB-INF/view/a/activityDetail/columns/detail/detailSummitSetup25.jsp"></c:import>
 </c:if>
 
 <%-- Full list modal --%>
