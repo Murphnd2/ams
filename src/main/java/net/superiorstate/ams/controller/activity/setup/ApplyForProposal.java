@@ -91,15 +91,7 @@ public class ApplyForProposal extends HttpServlet {
                     .map(LOS::getId).collect(Collectors.toList());
 
             // Load enhancements linked to any of the proposal's LOSs
-            List<Enhancement> proposalEnhancements = new ArrayList<>();
-            if (!proposalLosIds.isEmpty()) {
-                proposalEnhancements = em.createQuery(
-                        "SELECT DISTINCT e FROM Enhancement e LEFT JOIN FETCH e.losList " +
-                                "JOIN e.losList l WHERE l.id IN :losIds AND e.suppressed = false ORDER BY e.sortOrder",
-                        Enhancement.class)
-                        .setParameter("losIds", proposalLosIds)
-                        .getResultList();
-            }
+            List<Enhancement> proposalEnhancements = loadProposalEnhancements(em, proposalLosIds);
 
             // Check if Application exists and has service selections (use em.find to bypass stale cache)
             Application application = em.find(Application.class, proposal.getId());
@@ -148,16 +140,23 @@ public class ApplyForProposal extends HttpServlet {
             }
 
             // Pass selection-related attributes to JSP
+            // s43b — the JSP-facing enhancement list excludes System Managed enhancements:
+            // they exist only to drive system-generated proposal content and must never
+            // render as a client-selectable option. The unfiltered proposalEnhancements
+            // local var above is left as-is for the auto-select branch and the section-gating
+            // logic below, neither of which changes.
+            List<Enhancement> selectableEnhancements = selectableOnly(proposalEnhancements);
             request.setAttribute("proposalLos", proposalLosList);
-            request.setAttribute("proposalEnhancements", proposalEnhancements);
+            request.setAttribute("proposalEnhancements", selectableEnhancements);
             request.setAttribute("showServiceSelection", showServiceSelection);
             request.setAttribute("selectedLosIds", application != null ? application.getSelectedLosIds() : "");
             request.setAttribute("selectedEnhancementIds", application != null ? application.getSelectedEnhancementIds() : "");
 
-            // Build enhancementLosMap JSON for cascade logic
+            // Build enhancementLosMap JSON for cascade logic (System Managed enhancements
+            // excluded so the checkbox set and the map stay in step)
             StringBuilder enhLosJson = new StringBuilder("{");
             boolean first = true;
-            for (Enhancement enh : proposalEnhancements) {
+            for (Enhancement enh : selectableEnhancements) {
                 if (!first) enhLosJson.append(",");
                 first = false;
                 enhLosJson.append("\"").append(enh.getId()).append("\":[");
@@ -340,8 +339,34 @@ public class ApplyForProposal extends HttpServlet {
 
                 // Parse selected Enhancement IDs from checkboxes
                 String[] enhIdParams = request.getParameterValues("selectedEnh");
-                String enhIdsCsv = (enhIdParams != null)
-                        ? String.join(",", enhIdParams) : "";
+
+                // s43b — sanitize posted enhancement IDs against the proposal's selectable
+                // (non-System-Managed) enhancement set before persisting. Drops any System
+                // Managed ID — those exist only to drive system-generated proposal content
+                // and must never be stored as a client selection — and any ID that isn't a
+                // member of the proposal's own enhancement list at all (closes the crafted-
+                // POST gap noted in s43a finding A3.4, for enhancements). No logger is
+                // declared in this class, so drops are not logged.
+                List<Long> proposalLosIdsForSelect = proposal.getLosList().stream()
+                        .map(LOS::getId).collect(Collectors.toList());
+                Set<Long> selectableEnhIds = selectableOnly(loadProposalEnhancements(em, proposalLosIdsForSelect))
+                        .stream().map(Enhancement::getId).collect(Collectors.toSet());
+
+                String enhIdsCsv = "";
+                if (enhIdParams != null) {
+                    enhIdsCsv = Arrays.stream(enhIdParams)
+                            .map(raw -> {
+                                try {
+                                    return Long.valueOf(raw.trim());
+                                } catch (NumberFormatException e) {
+                                    return null;
+                                }
+                            })
+                            .filter(Objects::nonNull)
+                            .filter(selectableEnhIds::contains)
+                            .map(String::valueOf)
+                            .collect(Collectors.joining(","));
+                }
 
                 // Validate: at least one LOS must be selected
                 if (losIdsCsv.isBlank()) {
@@ -450,7 +475,10 @@ public class ApplyForProposal extends HttpServlet {
             }
             for (Long enhId : enhIds) {
                 Enhancement enh = em.find(Enhancement.class, enhId);
-                if (enh != null && enh.getServiceItem() != null) {
+                // s43b — never create a setup module for a System Managed enhancement; this
+                // guards any ID already stored before this fix (or reached some other way),
+                // not just newly-posted ones.
+                if (enh != null && !enh.isSystemManaged() && enh.getServiceItem() != null) {
                     ServiceItem si = EntityLookup.getServiceItemById(em, enh.getServiceItem().getId());
                     ActivityDAO.addModule(em, freshApp, si);
                 }
@@ -480,6 +508,29 @@ public class ApplyForProposal extends HttpServlet {
     }
 
     // ======================== Shared Helpers ========================
+
+    /** Load enhancements linked to any of the given proposal LOS IDs (the proposal's full
+     *  selectable-plus-System-Managed set, before any System Managed filtering). */
+    private List<Enhancement> loadProposalEnhancements(EntityManager em, List<Long> proposalLosIds) {
+        if (proposalLosIds.isEmpty()) {
+            return new ArrayList<>();
+        }
+        return em.createQuery(
+                "SELECT DISTINCT e FROM Enhancement e LEFT JOIN FETCH e.losList " +
+                        "JOIN e.losList l WHERE l.id IN :losIds AND e.suppressed = false ORDER BY e.sortOrder",
+                Enhancement.class)
+                .setParameter("losIds", proposalLosIds)
+                .getResultList();
+    }
+
+    /** s43b — filters out enhancements flagged System Managed (Enhancement.isSystemManaged()).
+     *  Those exist only to drive system-generated proposal content and must never appear as a
+     *  client-selectable option on an application. */
+    private List<Enhancement> selectableOnly(List<Enhancement> all) {
+        return all.stream()
+                .filter(e -> !e.isSystemManaged())
+                .collect(Collectors.toList());
+    }
 
     /** Resolves the selling agency name from the proposal's prospect agent, or null if none. */
     private String resolveAgencyName(EntityManager em, Proposal proposal) {
