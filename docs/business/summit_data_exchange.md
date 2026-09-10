@@ -297,6 +297,15 @@ existed anywhere in the repo before this document.**
   the click did something). See the misattribution correction above for the corrected account, and
   [SDX-20](#open-questions) for why the template-scope question this bullet used to raise is now
   moot.
+- ⭐ **S42 (2026-09-10) — the push path is live and runtime-verified against the live tenant.**
+  1. AMS now pushes to `ImportFiles` from the Summit setup panel (T229, `4d8e7e3`).
+  2. Two filename shapes matched the `ZZ_TEST_ER` template:
+     `ZZ_TEST_ER_20260910111246.txt` was processed;
+     `ZZ_TEST_ER_P140956_20260910094702322.txt` was held as a content duplicate. This
+     corroborates matching by template-name prefix.
+  3. The content-duplicate Held behaviour (SDX-17) reproduced on the push path.
+  4. A Held file does not block the queue — #8 processed while #5 was held.
+  5. A Held file appears only in File History and Currently Processing, with no response file.
 
 ## How templates work
 
@@ -951,10 +960,15 @@ open-question registry (`O1`–`O52+`, tracked in `docs/swbd_ichra_build_plan.md
     duplicate pending manual approval, per DataPath Support (CASE-22040) and corroborated directly
     by the tenant** (`ZZ_TEST_DEMO_20260909153935.txt`, Held, 0 records). A repeated **filename**
     is rejected outright rather than held. See Transport.
-18. **SDX-18** — What is the per-row success status token in a Summit response file? Only `Failed`
-    has been observed (see Transport's response-format block, from `ZZ_TEST_DEMO_*`'s all-failure
-    response). No successfully-processed row has been observed on this transport to compare
-    against.
+18. **SDX-18** — ⭐ **RESOLVED for Employer Demographic only (2026-09-10, S42).** What is the
+    per-row success status token in a Summit response file? For Employer Demographic, the success
+    token is `Successful`, observed on `Response_ZZ_TEST_ER_20260910111246.txt`:
+    `Successful|ZZTESTCompany 9102|158E140952|Employer edited successfully` (72 bytes,
+    2026-09-10). The line shape is `Status|Employer Name|Employer TPA Custom ID|Comment` —
+    different from Demographics' `Participant TPA Custom ID|Status|Message` shape recorded in
+    Transport below, confirming the per-import-type warning already recorded there. **Success
+    tokens for `cdhplan`, `demographics` and `enrollment` remain unobserved** — each type's first
+    successful push settles its own.
 19. **SDX-19** — ⭐ **RESOLVED (2026-09-09, DataPath Support, CASE-22040) — the automation fork
     does not exist.** Retrieval is fully automatic every 15 minutes under the tenant's existing
     **DataPath Network** configuration; no switch to External Network, and no architecture
@@ -962,6 +976,13 @@ open-question registry (`O1`–`O52+`, tracked in `docs/swbd_ichra_build_plan.md
     it required External Network — DataPath's answer that Schedule Import doesn't function at all,
     and that automatic polling runs regardless, removes both premises. Vendor statement, not
     independently tested by AMS; consistent with every observation to date. See Transport.
+    ⚠️ **Corrected 2026-09-10 (S42).** DataPath (CASE-22040) described Schedule Import as
+    non-functional. Kevin observed that it gates processing: nothing in `ImportFiles` was
+    processed from about 15:54 on 2026-09-09 — including `ZZ_TEST_DEMO_20260909160108.txt`, which
+    has a correct name — until Kevin enabled the Schedule Import checkbox on the Imports/Responses
+    tab (settings shown: Daily, 12:00 PM). Processing then resumed at 11:54, and every waiting
+    file was handled. Automatic retrieval therefore depends on that checkbox, contrary to
+    DataPath's statement above. See [SDX-22](#open-questions).
 20. **SDX-20** — ⭐ **RESOLVED AS MOOT (2026-09-09, DataPath Support, CASE-22040).** Is "Initiate
     File Retrieval" template-scoped or folder-wide? **The question does not arise — the button has
     no completed feature function and does not process files at all**, per DataPath Support. The
@@ -973,6 +994,12 @@ open-question registry (`O1`–`O52+`, tracked in `docs/swbd_ichra_build_plan.md
     other, and neither reconciles with the tenant's observed `Permission denied`. Unresolved.
     **Not currently blocking anything** — every AMS delivery path targets the existing
     `ImportFiles` folder, none requires creating one.
+22. **SDX-22** — ⚠️ **Open (2026-09-10, S42).** Does Summit's Schedule Import checkbox gate the
+    ~15-minute `ImportFiles` poll? Observed once (2026-09-10): yes — see the SDX-19 correction
+    above. Confirm on the next push that processing happens within about 15 minutes, not at the
+    configured daily time. **Operational consequence: if the box is unchecked, every AMS push sits
+    unprocessed, silently** — no error, no response file, nothing in File History until the
+    checkbox is enabled or someone notices the silence.
 
 ## Test artifacts
 

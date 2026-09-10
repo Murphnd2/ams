@@ -1678,3 +1678,20 @@ SUMMIT_CDH_GRACE_FIELDS=FSA:hfsa_roll_or_grace,DCAP:dcap_grace
 ⭐ **`V095` is in the same position and is also unapplied on production.** Production is at **V094** (release `v0.94.00`). `V095__summit_plan_template_map.sql` is applied to `beta_ssa` only. ⚠️ **The weekly refresh from production drops both** — it returns the local schema to V094 — so re-apply `V095` and `V096` after any refresh.
 
 **Applies to:** Kevin's local dev / local Tomcat ⬜ — re-apply after every production refresh. Production ✅ **applied 2026-09-09** with release `v0.96.00` (was ⬜ — "apply with the WAR that carries the recording"; the WAR and both migrations shipped together, as this row required). Demo / BPO / Master — N/A, no Summit tenant.
+
+---
+
+### D-96: Enable Summit push on production
+
+**Priority:** HIGH — this is the last step between T229 (built and locally runtime-verified, S42) and a real production push
+**Status:** Not started. **Properties only, no schema, no code** — the switch is `SUMMIT_PUSH_ENABLED=true` in production `ssa.properties`, which requires a Tomcat restart to take effect, matching every other `AppConfig`-read key in this backlog.
+
+Add `SUMMIT_PUSH_ENABLED=true` to production `ssa.properties`, and restart Tomcat. Before enabling:
+
+1. Confirm VPS egress to `ftp1.dpath.com:22`. **Not yet established** — every SFTP test across sessions 39, 40 and 42 ran from Kevin's workstation, never the VPS.
+2. Confirm that `SUMMIT_SFTP_IMPORT_DIR` on production ends in `ImportFiles` — `SummitExportServlet`'s push mode refuses at request time if it does not, but confirm the key before flipping the flag rather than discovering it from a refused push.
+3. Confirm that Summit's Schedule Import checkbox is enabled (SDX-22) — if it is not, a production push will sit in `ImportFiles` unprocessed with no error and no response file, exactly as `ZZ_TEST_DEMO_20260909160108.txt` did locally from about 15:54 on 2026-09-09 until Kevin enabled the checkbox on 2026-09-10.
+
+⚠️ **Release `v0.97.00` must carry V097 first** — `SUMMIT_PUSH_ENABLED=true` with no `delivery_status` column on production is a push that records nothing about its own outcome, degrading no differently from V096's own pre-D-95 gap.
+
+**Applies to:** Kevin's local dev / local Tomcat — N/A, push is already enabled locally for testing. Production ⬜ — owner Kevin, blocked on the three confirmations above and on release `v0.97.00`. Demo / BPO / Master — N/A, no Summit tenant.
