@@ -1895,6 +1895,41 @@ Presidio.
 
 ---
 
+### LA-39 — HealthSherpa's API Use Agreement carries the business-associate terms for the enrollment rail
+
+**Assumption.** HealthSherpa's API Use Agreement contains business-associate (BAA) terms sufficient
+for the PHI exchanged on the enrollment rail. That PHI includes:
+
+- deeplink POST applicant data;
+- webhook payloads, which carry member names, DOB, plan, premium and payment status.
+
+**Basis.** Julian Ferdman, email of 2026-08-18: *"The API Use agreement should cover this."*
+
+⚠️ **Thin.** This is a vendor statement; the paper has not been seen. The role analysis has not been
+done either: whether HealthSherpa is a business associate of SSA at all, given that SSA is a business
+associate of the employer's plan.
+
+**Design choice.** Build the deeplink hand-off and the webhook receiver against staging with synthetic
+data only. No production PHI flows until the agreement is received and checked for BA terms.
+
+**Risk if wrong.** PHI is exchanged with HealthSherpa without the required BA terms in place.
+
+**What this does NOT affect.**
+
+- QuoteConnect quoting and the rating-area rate cache, which carry no PHI;
+- the Forrest demo on staging data;
+- SSA's existing agreements with employer plans.
+
+**Reversal cost.** Low. Nothing in production exchanges PHI with HealthSherpa, and production access
+is itself gated on this same agreement.
+
+**Confirm before.** The first production deeplink POST, or the first production webhook delivery,
+whichever comes first.
+
+**Status.** Open. Details sent 2026-09-10; agreement not yet received.
+
+---
+
 ## Candidates considered and not adopted
 
 Recorded so the next reader knows they were seen and declined, rather than missed. **None of these

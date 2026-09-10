@@ -1203,6 +1203,103 @@ carrier zizzl switched off for Forrest, and 18 of Hopkins' plans. **Ask about it
 Also published: *"Support for all carriers and all states is expected prior to OEP PY2027"*
 (EnrollConnect gaps are NJ and NY).
 
+## Onboarding reply and AI skill v1.1 (2026-09-10)
+
+**Sources:**
+
+- Julian Ferdman (HealthSherpa onboarding representative; KJ Sherman and Michael Levin cc'd), email
+  of 2026-08-18. It was missed on receipt and resent 2026-09-10. SSA replied 2026-09-10.
+- `healthsherpa/healthsherpa-ai-skills` `ichra_platform`, v1.1, vendored at
+  `.claude/skills/ichra-platform-integration/` (commit `c8d82c79384d6b2badc899fc3eed20f109316f9e`).
+- The skill defers to the official docs where they differ.
+
+⚠️ **Every "no reply since 2026-07-29" statement in the doc set is wrong from 2026-08-18.**
+
+### Status of the 2026-07-29 / 2026-08-05 asks
+
+| Item | HealthSherpa's answer | Status | Source |
+|---|---|---|---|
+| **O12** Onboarding rep | Julian Ferdman assigned | ✅ Closed | Email |
+| **Production access** (403) | Requires an API Use Agreement. Wanted legal entity, address, and signer name/title/email; SSA supplied them 2026-09-10 | ⏳ Awaiting the agreement | Email |
+| **Staging deeplink Basic Auth** | Credentials issued | ✅ In hand. Held by Kevin in local config, **never in the repo** | Email |
+| **O15** Webhook auth | Form supports `api_key` (sent as an `apiKey` header), `basic`, and several OAuth variants. Standard TLS only, no mTLS. The sandbox form came prefilled: off-ex, both webhooks | ◐ SSA chose `api_key`. The form goes back once the endpoint exists | Email + form |
+| **Webhook delivery semantics** | The same event may arrive more than once. Deduplicate by `transaction_id`, the unique event identifier. Respond 200 promptly and process asynchronously. No self-service registration. Missed events are re-delivered via the account manager | ◐ Retry schedule and source IP range asked 2026-09-10 | Skill |
+| **O13** BAA | *"The API Use agreement should cover this"* | ⚖️ LA-39 | Email |
+| **O16** BCBS TX policy status | Unlikely before OEP | ✅ Answered: no automated policy status from BCBS TX for 2027-01-01 effective dates | Email |
+| **CHRISTUS** policy status | Same answer as BCBS TX | ✅ Answered | Email |
+| **Rate limits** | Quoting 3,000/min; mutations 600/min; reads 1,000/min. A 429 carries `retry_after` | ✅ Closed | Email + skill |
+| **O14** Deeplink model | HealthSherpa's use-case docs describe employees queuing selections for agent review, and agents enrolling and binding in HealthSherpa's interface | ✅ Agent-completed. From public docs, not confirmed by Julian | docs.ichra.healthsherpa.com/integration-guide/use-cases |
+
+### New facts (from the skill unless noted)
+
+**Deeplink request.**
+
+- `POST /public/ichra/off_ex` requires:
+  - `_agent_id` (a HealthSherpa-assigned agent slug);
+  - `plan_hios_id`;
+  - `zip_code` and `fip_code`;
+  - an email or phone number.
+- The schema is flat. `agent_of_record_npn` is top-level.
+
+**Deeplink response.**
+
+- Returns a 302. Capture `Location` and never follow it server-side.
+- Require HTTPS and the exact origin: `https://staging.healthsherpa.com` or `https://www.healthsherpa.com`.
+- Then redirect the browser.
+
+**Linking a deeplinked enrollment back to SSA.**
+
+- The deeplink must carry the platform `x-api-key`. That ties the resulting application to SSA.
+- SSA can then read it through EnrollConnect `GET /api/v1/applications/:id`, using the
+  `application_id` from the submission webhook.
+
+**Status tracking does not need the webhook.**
+
+- `GET /api/v1/applications?updated_since=` and an `external_id` filter both work.
+- The webhook receiver is an upgrade, not a gate.
+
+**Webhook payloads carry PHI.**
+
+- They include member names, DOB, plan HIOS, gross premium, and a payment block.
+- Dates are `MM/DD/YYYY`.
+- Storing payloads is a rule-3 think-first item.
+
+**Hosts.** Not verified against AMS configuration.
+
+- QuoteConnect and EnrollConnect: `api.ichra-staging.healthsherpa.com` and `api.ichra.healthsherpa.com`.
+- Deeplink: `staging.healthsherpa.com` and `[www.healthsherpa.com](https://www.healthsherpa.com)`.
+
+**Routing flags.**
+
+- `api_enrollment` and `deeplink_enrollment` are set per plan, on `POST /quotes` and `GET /plans/:hios_id`.
+- Under the standing boundary (*no enrollment path originates in AMS*), **Deeplink is AMS's only
+  enrollment route**. A plan with `deeplink_enrollment: false` is not enrollable from AMS.
+- The skill's "prefer EnrollConnect" guidance does not apply to SSA.
+
+**Agent accounts (observed 2026-09-10).**
+
+- HealthSherpa agent signup requires an NPN, on staging and production alike.
+- SSA holds no NPN.
+
+**`tpa_slug`.**
+
+- The EnrollConnect request schema carries an optional `tpa_slug`, a HealthSherpa-assigned TPA identifier.
+- Asked 2026-09-10 whether SSA should have one, and whether it applies to Deeplink.
+
+### Technical assumptions
+
+| Assumption | Basis | Reversal cost | Settled by |
+|---|---|---|---|
+| Production deeplink allow-listing is per partner agency, keyed on `_agent_id`. So `_agent_id` and the agent NPN are per-agency/per-agent **data** in AMS, never literals | Julian: *"allowlist an Agency"*. Integration-setup docs: request your `_agent_id` be allow-listed | Low: nothing built | Julian's reply |
+| `transaction_id` is a safe idempotency key for webhook deduplication | Skill v1.1, not the official webhooks page | Low until a receiver stores rows | Official docs or Julian |
+
+### Open (asked 2026-09-10)
+
+- `tpa_slug` for SSA. Does it apply to Deeplink?
+- Staging: will HealthSherpa provision a test agency for SSA, or must a partner agency create the staging account?
+- Webhook automatic retry schedule and limits, and whether delivery comes from a fixed source IP range.
+- Which secure channel to use for returning the webhook key.
+
 ## Quoting — parameters this document had not recorded
 
 `POST /api/v1/quotes` accepts more than previously catalogued: **`household_income`**,

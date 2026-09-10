@@ -767,6 +767,8 @@ externally-gated item in the sequence, 11, is gated on an email nobody has sent.
 **Not in the sequence, by decision.** ⛔ = blocked on an external gate. ⏸ = would work, but does not
 advance §1.
 
+⚠️ **2026-09-10:** the HealthSherpa status in the *Enrollment lifecycle* row below is stale. See the §6 correction.
+
 | Item | Why | What brings it in |
 |---|---|---|
 | **Enrollment lifecycle** (B5/B7) | ⛔ O12 (rep — the tightest bottleneck), O13 (BAA), O14 (deeplink model), O15, O16. **None has moved since 2026-07-29** | A rep assigned. Nothing is testable until then |
@@ -785,6 +787,39 @@ advance §1.
 ---
 
 ## 6. External gates and their status
+
+### ⚠️ CORRECTION 2026-09-10 — HealthSherpa replied on 2026-08-18
+
+**Every HealthSherpa "❌ none" in the table below, and every "none has moved since 2026-07-29"
+elsewhere in this document, is wrong from 2026-08-18.**
+
+On that date Julian Ferdman was assigned as onboarding representative and answered every item. SSA
+missed the email and replied on 2026-09-10. Current status of each item:
+`docs/business/healthsherpa.md` → "2026-09-10" section.
+
+In brief:
+
+| Item | Status |
+|---|---|
+| O12 | Closed |
+| Production access | Now gated on an API Use Agreement; SSA sent entity and signer details on 2026-09-10 |
+| Staging deeplink Basic Auth | In hand |
+| O15 | Authentication methods received |
+| O13 | Folded into the API Use Agreement (LA-39) |
+| O16 and CHRISTUS | Answered: neither carrier turns on off-exchange policy status before OEP |
+| O14 | Answered by public docs: agent-completed |
+| Rate limits | Answered |
+
+⭐ **New gate on the enrollment rail: deeplink allow-listing needs a HealthSherpa agent account, and
+signup requires an NPN. SSA has none.**
+
+On 2026-09-10 SSA asked HealthSherpa three things:
+
+- whether SSA gets a `tpa_slug`;
+- whether HealthSherpa can provision a test agency for SSA;
+- or whether a partner agency must create the staging account.
+
+**The last answer puts SWBD on the staging deeplink path.**
 
 **Everything with human lead time.** ⚠️ **Six items were sent to HealthSherpa on 2026-07-29 with no
 recorded reply; a second round went out 2026-07-31. Four asks that gate later phases have never been
