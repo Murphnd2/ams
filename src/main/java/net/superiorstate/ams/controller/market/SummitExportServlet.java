@@ -215,6 +215,27 @@ public class SummitExportServlet extends HttpServlet {
             } else if (type.equals(TYPE_DEMOGRAPHICS)) {
                 writeDemographics(response, em, prospect, employerTpaCustomId, record);
             } else {
+                // T201 guard. The enrollment file enrols EVERY roster participant into the funded
+                // ICHRA plan at one flat amount, and AMS stores no election state, so declined
+                // participants cannot be excluded. Refuse unless the caller confirms for this
+                // specific proposal. Runs before any response write; the token is bound to
+                // proposalId so a URL for one proposal cannot be reused for another.
+                String expectedConfirm = "ENROLL-ALL-P" + proposalId;
+                if (!expectedConfirm.equals(request.getParameter("confirm"))) {
+                    List<EmployerParticipant> guardRoster =
+                            EmployerParticipantDAO.findByProspectId(em, prospect.getId());
+                    int rosterCount = (guardRoster == null) ? 0 : guardRoster.size();
+                    writePlainError(response, HttpServletResponse.SC_BAD_REQUEST,
+                            "HRA Enrollment file not generated (T201).\n\n"
+                          + "This file enrols EVERY participant on the roster for prospect "
+                          + prospect.getId() + " (" + rosterCount + " participant"
+                          + (rosterCount == 1 ? "" : "s") + ") into the funded ICHRA plan at one"
+                          + " flat annual amount. AMS stores no election state, so participants who"
+                          + " declined cannot be excluded. Do not import this file for a real group.\n\n"
+                          + "To generate it anyway, repeat this request with &confirm="
+                          + expectedConfirm);
+                    return;
+                }
                 writeHraEnrollment(response, em, proposalId, prospect, answers, employerTpaCustomId, pspId, record);
             }
         } finally {
