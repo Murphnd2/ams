@@ -1495,3 +1495,44 @@ weighed:** SSA is **not** buying access to proprietary data.
 - `docs/deployment_backlog.md` — **D-83** (county list, now not cost-constrained), **D-84**
 - `docs/migrations/V078__rate_cache_onex_lcsp.sql` — the probe numbers reproduced above
 - `docs/business/ichra_administration_scope.md` — MEC/subsidy segmentation
+
+---
+
+# 2026-09-10 — Public docs recheck and correspondence status
+
+**Source:** public docs at `docs.ichra.healthsherpa.com`, read 2026-09-10. Everything here is
+**docs-stated**, not runtime-verified.
+
+**Supported Carriers (page last updated 2026-08-24).**
+- **BCBS TX:** QuoteConnect, Deeplink, EnrollConnect, and Submission Confirmation live. Policy Status
+  is still marked coming in 2026. O16 is open and has been reframed to 2027-01-01 effective dates.
+- **CHRISTUS (LA, TX):** QuoteConnect, Deeplink, EnrollConnect, and Submission Confirmation live.
+  **No Policy Status entry**, which means not listed rather than marked as coming.
+- **Cigna, Oscar:** Policy Status live **without payment info**.
+- **Texas off-exchange carriers listed:** Ambetter, BCBS TX, CHRISTUS, Cigna, Molina, Oscar, UHC,
+  Wellpoint.
+- **EnrollConnect:** the docs state support for all carriers and states is expected before PY2027
+  open enrollment, with NJ and NY excluded from the initial launch.
+
+**Webhooks API.**
+- Configuration is still routed through the account manager or onboarding contact via a form.
+  **O12 gates this.**
+- Authentication is documented only as a variety of supported methods. **No documented** retry
+  policy, delivery guarantee, ordering, `transaction_id` idempotency, signature verification, or
+  source IP range. **O15 stays open.**
+- The off-exchange payload example carries a `payment` block that includes `payment_status`,
+  `grace_period_start_date`, and `paid_through_date`. This is relevant to monthly coverage
+  verification. **Docs-stated only; carrier-dependent.**
+
+**Contacts.**
+- ⭐ **Michael Levin** (`michael.levin@healthsherpa.com`): **SVP & General Manager, ICHRA**, per his
+  2026-09-10 email signature. Julian cc'd him on 2026-07-29. He is SSA's most senior HealthSherpa
+  contact.
+- ⚠️ **Dead addresses; do not use.** `ichra@healthsherpa.com` bounced on 2026-09-10 (550 5.1.1). It is
+  named in HealthSherpa's 2025-08-05 Policy Status API press release. `ichra_support@healthsherpa.com`
+  also bounced on 2026-09-10 (550 5.1.1). It is named in an undated agent help-center article.
+
+**Correspondence.** The last written HealthSherpa reply was Julian Ferdman on 2026-07-29. Unanswered
+SSA sends: 2026-07-29 (×2), 2026-07-30, 2026-08-05, 2026-09-10. The 2026-09-10 escalation delivered
+to Julian, KJ, and Michael. The only response was Michael's auto-reply (at ACA Summit, slow through
+2026-09-11). See `swbd_ichra_build_plan.md` §6.

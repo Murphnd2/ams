@@ -792,19 +792,47 @@ sent at all.**
 
 | Item | Owner | Asked | Reply | Gates |
 |---|---|---|---|---|
-| **Production allow-listing** — production returns 403 | HealthSherpa | 2026-07-30, chased 2026-07-31 | ❌ none | **The first client-facing number**, not the Forrest demo (S6). Still HIGH — it is the gate between a working demo and a working product |
-| **Onboarding representative** (O12) — routes credentials *and* the webhook form | HealthSherpa | 2026-07-29, chased 2026-07-31 | ❌ none | Everything on the enrollment rail. **The tightest bottleneck** |
-| **BAA** — Geozoning, Inc. DBA HealthSherpa (O13) | HealthSherpa + counsel | 2026-07-28 flagged, 2026-07-29 sent | ❌ none | Any production PHI flow. **Nothing in §3** |
-| **BCBS TX policy status: when in 2026?** (O16) | HealthSherpa | 2026-07-29 | ❌ none | *"Largely determines a 2026 versus 2027 launch"* |
-| **CHRISTUS policy status — planned at all?** | HealthSherpa | 2026-07-29 | ❌ none | Verification coverage in the launch market |
-| **Deeplink: self-service or agent-completed?** (O14) | HealthSherpa | 2026-07-29 | ❌ none | Whether B5 is an employee portal or an agent workstation. **An architectural fork** |
-| **Webhook auth methods** (O15) | HealthSherpa | 2026-07-29 | ❌ none | Whether `ApiTokenFilter` suffices |
+| **Production allow-listing** — production returns 403 | HealthSherpa | 2026-07-30, chased 2026-07-31; chased 2026-08-05, 2026-09-10 | ❌ none | **The first client-facing number**, not the Forrest demo (S6). Still HIGH — it is the gate between a working demo and a working product |
+| **Onboarding representative** (O12) — routes credentials *and* the webhook form | HealthSherpa | 2026-07-29, chased 2026-07-31; chased 2026-08-05, 2026-09-10 | ❌ none | Everything on the enrollment rail. **The tightest bottleneck** |
+| **BAA** — Geozoning, Inc. DBA HealthSherpa (O13) | HealthSherpa + counsel | 2026-07-28 flagged, 2026-07-29 sent; chased 2026-08-05, 2026-09-10 | ❌ none | Any production PHI flow. **Nothing in §3** |
+| **BCBS TX policy status: when in 2026?** (O16) | HealthSherpa | 2026-07-29; chased 2026-08-05, 2026-09-10 | ❌ none | *"Largely determines a 2026 versus 2027 launch"* |
+| **CHRISTUS policy status — planned at all?** | HealthSherpa | 2026-07-29; chased 2026-08-05, 2026-09-10 | ❌ none | Verification coverage in the launch market |
+| **Deeplink: self-service or agent-completed?** (O14) | HealthSherpa | 2026-07-29; chased 2026-08-05, 2026-09-10 | ❌ none | Whether B5 is an employee portal or an agent workstation. **An architectural fork** |
+| **Webhook auth methods** (O15) | HealthSherpa | 2026-07-29; chased 2026-08-05, 2026-09-10 | ❌ none | Whether `ApiTokenFilter` suffices |
 | **MOVEit folder creation** | DataPath | ❌ **not asked** | — | P1. ⚠️ *"Requires a MOVEit administrator: a lead-time item."* **No estimate exists anywhere.** Pure lead time — ask today |
 | **Encryption key exchange** (TPA/DP keys) | DataPath | ❌ **not asked** | — | P1 |
 | **Counsel package** — LA-10 leads, then Group 2 (LA-01/02/03) | Counsel | ❌ **not sent** | — | ⚠️ **Nothing in §3.** LA-10 leads because it attaches to the **existing book today**, not to ICHRA later |
 | **O22 book profile** + producing-agent count | SWBD | ❌ **not sent** | — | The county list (D-83), and how to size the opportunity |
 | **"Send me three groups renewing next quarter"** | SWBD | ❌ **not sent** | — | **Item 11.** An easy yes. ⭐ **Send it before item 9 starts** |
 | **O24 — the full group book** | SWBD | deliberately deferred | — | A4b. Earned by item 11, not asked cold |
+
+**2026-09-10 — HealthSherpa status.** Still no reply on any of the seven rows above. Last written
+HealthSherpa reply in the thread: **Julian Ferdman, 2026-07-29**. The staging key (issued 2026-07-30)
+arrived through a channel not in the email thread. Kevin's sends on record: 2026-07-28 (KJ),
+2026-07-29 (Julian, twice), 2026-07-30 (key request), 2026-08-05 (full list), 2026-09-10 (escalation).
+⚠️ **The 2026-07-31 chase dates in the Asked column are not in Kevin's email history as reviewed
+2026-09-10.** Left in place, unverified.
+
+The 2026-09-10 escalation went To `ichra@healthsherpa.com`, Cc Julian, KJ, and **Michael Levin**.
+It asked one question first, **who is SSA's onboarding contact**, since O12 routes staging deeplink
+credentials and the webhook form. ⚠️ **`ichra@healthsherpa.com` bounced** (550 5.1.1, address not
+found), even though HealthSherpa's own 2025-08-05 Policy Status API release names it. A forward to
+**`ichra_support@healthsherpa.com`**, named in an undated agent help-center article, **also bounced**.
+**Neither published ICHRA inbox is live; don't use either again.** The three individual cc's
+delivered.
+
+⭐ **Michael Levin is SVP & General Manager, ICHRA at HealthSherpa**, per his 2026-09-10 auto-reply
+signature. He is the most senior HealthSherpa contact SSA has. The auto-reply said he was at ACA
+Summit and slow to respond through 2026-09-11. It named no alternate contact.
+
+**O16 reframed:** from *"when in 2026?"* to *"live for 2027-01-01 effective dates?"* With 2026
+nearly over, the 2027 plan year is the question that shapes anything now.
+
+**Docs rechecked 2026-09-10:** Supported Carriers (last updated 2026-08-24) still marks BCBS TX
+Policy Status as coming in 2026, and CHRISTUS still has no Policy Status entry. The Webhooks API
+page still documents authentication only as multiple supported methods, with no retry, delivery,
+ordering, signature, or source-IP contract. **O15 stays open.** Detail: `docs/business/healthsherpa.md`,
+2026-09-10 section.
 
 ⭐ **The two SWBD emails are the cheapest de-risking available anywhere in this plan** and neither has
 been sent as of 2026-07-31. **Nobody has asked Forrest what he would want a quoting tool to do** — and
