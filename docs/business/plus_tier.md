@@ -57,6 +57,27 @@ adjudication, disbursement, notice mailing — is untouched.
 | D16 | **Off-exchange only at launch.** | On-exchange `/v1/policy-status/*` is agent-scoped and alpha; the rail requires agent licensure SSA does not hold and a Marketplace agent-account link SSA declined to make. |
 | D17 | **Verification-source ladder:** `ATTESTATION` primary at launch → `CARD_TRANSACTION` promoted once the live carrier authorization test passes → `HS_POLICY_STATUS` per carrier as the matrix fills in. No data-model change; `verification_source` already accommodates all three. | Policy Status is **carrier-gated** — Hopkins County TX: UHC live, BCBS TX planned 2026, CHRISTUS not listed — and SSA **cannot steer carrier choice** under the ERISA safe harbor, so verification method is neither knowable at proposal time nor influenceable. This independently confirms **D2**. The card's premium-payment capability is untested until the authorization test passes. `ATTESTATION` is the only source with no external gate. Subject to counsel confirming a signed attestation suffices as a reimbursement-release record (**O18** in the build plan). |
 
+D-18 — PremiumPath (ICHRA + §125) pricing structure. Supersedes D2's single-rate shape. Decided 2026-09-10, session 43.
+
+* Structure: four fees.
+   * A one-time program establishment fee.
+   * An annual renewal fee charged from year 2.
+   * A flat fee per ICHRA-eligible employee per month (eligible, not enrolled).
+   * A combined monthly minimum.
+* The per-employee fee is identical across all employee tracks, whether off-exchange ACA, on-exchange with subsidy, or supplemental. Consistent with D3, read as "price does not vary with what an employee elects." ⚠️ That reading of D3 is an interpretation, not D3's recorded text.
+* Owner and spouse card-only holders (not ICHRA- or §125-eligible) carry no separate fee.
+* Enhancements (FSA/DCAP, HSA, COBRA) are priced from their existing rate tables, not repriced for this bundle.
+* HealthSherpa agent utility is not priced. It is treated as retention and acquisition, with access controlled by the per-agency entitlement flag.
+   * The only contemplated charge is a future per-case design fee, credited against establishment if the group signs. It is not built.
+   * Any separate charge for the utility itself changes LA-09's facts and needs its own LA entry first.
+* SWBD rate table as entered 2026-09-10 (data, not code):
+   * $1,000 establishment;
+   * $750 annual renewal (year 2+);
+   * $10 per ICHRA-eligible employee per month;
+   * $50 combined monthly minimum.
+   * Enhancements: FSA $350/yr + $5 per participant per month; COBRA $200/yr + $1.25 per covered employee per month; HSA $15 application + $5 per participant per month.
+* Reversal cost: low. Amounts are rate-table data. Proposals already sent carry their quoted amounts.
+
 ---
 
 ## Requirements by stage
