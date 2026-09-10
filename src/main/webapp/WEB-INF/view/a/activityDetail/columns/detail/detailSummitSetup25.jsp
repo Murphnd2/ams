@@ -34,7 +34,7 @@
           <div class="btn-group btn-group-sm">
             <button type="button" class="btn btn-outline-secondary opacity-50" style="border-style: dashed; cursor: not-allowed;" aria-disabled="true" title="Preview — not built yet"><i class="bi bi-eye"></i></button>
             <a href="${pageContext.request.contextPath}/SummitExport?proposalId=${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}&type=employer" class="btn btn-outline-ssa" title="Download file 1"><i class="bi bi-download"></i></a>
-            <button type="button" class="btn btn-outline-secondary opacity-50" style="border-style: dashed; cursor: not-allowed;" aria-disabled="true" title="Push to DataPath — not built yet"><i class="bi bi-cloud-upload"></i></button>
+            <button type="submit" form="summitPush-employer" class="btn btn-outline-ssa" title="Push to DataPath" data-summit-push="employer" onclick="return confirm('Push the Employer file to DataPath? Summit processes it automatically within about 15 minutes. There is no undo.');"><i class="bi bi-cloud-upload"></i></button>
             <button type="button" class="btn btn-outline-secondary opacity-50" style="border-style: dashed; cursor: not-allowed;" aria-disabled="true" title="Check response — not built yet"><i class="bi bi-arrow-repeat"></i></button>
             <button type="button" class="btn btn-outline-secondary opacity-50" style="border-style: dashed; cursor: not-allowed;" aria-disabled="true" title="Mark done — not built yet"><i class="bi bi-check2-circle"></i></button>
           </div>
@@ -50,7 +50,7 @@
           <div class="btn-group btn-group-sm">
             <button type="button" class="btn btn-outline-secondary opacity-50" style="border-style: dashed; cursor: not-allowed;" aria-disabled="true" title="Preview — not built yet"><i class="bi bi-eye"></i></button>
             <a href="${pageContext.request.contextPath}/SummitExport?proposalId=${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}&type=cdhplan" class="btn btn-outline-ssa" title="Download file 2"><i class="bi bi-download"></i></a>
-            <button type="button" class="btn btn-outline-secondary opacity-50" style="border-style: dashed; cursor: not-allowed;" aria-disabled="true" title="Push to DataPath — not built yet"><i class="bi bi-cloud-upload"></i></button>
+            <button type="submit" form="summitPush-cdhplan" class="btn btn-outline-ssa" title="Push to DataPath" data-summit-push="cdhplan" onclick="return confirm('Push the Plans (CDH) file to DataPath? Summit processes it automatically within about 15 minutes. There is no undo.');"><i class="bi bi-cloud-upload"></i></button>
             <button type="button" class="btn btn-outline-secondary opacity-50" style="border-style: dashed; cursor: not-allowed;" aria-disabled="true" title="Check response — not built yet"><i class="bi bi-arrow-repeat"></i></button>
             <button type="button" class="btn btn-outline-secondary opacity-50" style="border-style: dashed; cursor: not-allowed;" aria-disabled="true" title="Mark done — not built yet"><i class="bi bi-check2-circle"></i></button>
           </div>
@@ -99,7 +99,7 @@
           <div class="btn-group btn-group-sm">
             <button type="button" class="btn btn-outline-secondary opacity-50" style="border-style: dashed; cursor: not-allowed;" aria-disabled="true" title="Preview — not built yet"><i class="bi bi-eye"></i></button>
             <a href="${pageContext.request.contextPath}/SummitExport?proposalId=${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}&type=demographics" class="btn btn-outline-ssa" title="Download file 4"><i class="bi bi-download"></i></a>
-            <button type="button" class="btn btn-outline-secondary opacity-50" style="border-style: dashed; cursor: not-allowed;" aria-disabled="true" title="Push to DataPath — not built yet"><i class="bi bi-cloud-upload"></i></button>
+            <button type="submit" form="summitPush-demographics" class="btn btn-outline-ssa" title="Push to DataPath" data-summit-push="demographics" onclick="return confirm('Push the Demographics file to DataPath? Summit processes it automatically within about 15 minutes. There is no undo.');"><i class="bi bi-cloud-upload"></i></button>
             <button type="button" class="btn btn-outline-secondary opacity-50" style="border-style: dashed; cursor: not-allowed;" aria-disabled="true" title="Check response — not built yet"><i class="bi bi-arrow-repeat"></i></button>
             <button type="button" class="btn btn-outline-secondary opacity-50" style="border-style: dashed; cursor: not-allowed;" aria-disabled="true" title="Mark done — not built yet"><i class="bi bi-check2-circle"></i></button>
           </div>
@@ -137,5 +137,23 @@
 
       </div>
     </div>
+
+    <%-- S42-B -- hidden push forms, one per pushable type. The visible push buttons above use
+         form="summitPush-{type}" to submit these; each carries no visible content of its own. --%>
+    <form id="summitPush-employer" method="post" target="_blank"
+          action="${pageContext.request.contextPath}/SummitExport">
+      <input type="hidden" name="proposalId" value="${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}"/>
+      <input type="hidden" name="type" value="employer"/>
+    </form>
+    <form id="summitPush-cdhplan" method="post" target="_blank"
+          action="${pageContext.request.contextPath}/SummitExport">
+      <input type="hidden" name="proposalId" value="${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}"/>
+      <input type="hidden" name="type" value="cdhplan"/>
+    </form>
+    <form id="summitPush-demographics" method="post" target="_blank"
+          action="${pageContext.request.contextPath}/SummitExport">
+      <input type="hidden" name="proposalId" value="${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}"/>
+      <input type="hidden" name="type" value="demographics"/>
+    </form>
   </div>
 </c:if>

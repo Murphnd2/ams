@@ -97,9 +97,10 @@
             </div>
             <div class="mt-2">
                 <span class="badge badge-dup"><i class="bi bi-files"></i> Same content</span>
-                <span class="ms-2"><strong>Summit dedupes a re-sent file on content.</strong> Rows
-                    carrying this badge share their bytes with another row listed here, so re-sending
-                    one of them would do nothing at all — no error, no results row, no import.</span>
+                <span class="ms-2"><strong>Summit does not process a file twice.</strong> Rows
+                    carrying this badge share their bytes with another row listed here. Summit holds
+                    a file whose content matches an already-processed file pending TPA approval in
+                    File History, and rejects a repeated filename outright.</span>
             </div>
         </div>
 
@@ -116,6 +117,7 @@
                         <th>Generated</th>
                         <th>Type</th>
                         <th>File name</th>
+                        <th>Delivery</th>
                         <th class="num">Rows</th>
                         <th class="num">Bytes</th>
                         <th class="num">Prospect</th>
@@ -131,6 +133,12 @@
                             <td class="mono">${e.generatedAt}</td>
                             <td><c:out value="${e.fileType}"/></td>
                             <td><c:out value="${e.fileName}"/></td>
+                            <td>
+                                <c:out value="${empty e.deliveryStatus ? 'download' : e.deliveryStatus}"/>
+                                <c:if test="${not empty e.deliveryError}">
+                                    <br/><small class="text-danger"><c:out value="${e.deliveryError}"/></small>
+                                </c:if>
+                            </td>
                             <td class="num">${e.rowCount}</td>
                             <td class="num">${e.byteCount}</td>
                             <td class="num"><c:out value="${e.prospectId}"/></td>

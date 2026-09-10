@@ -16,6 +16,8 @@ import net.superiorstate.ams.data.resolver.SummitCdhElementResolver;
 import net.superiorstate.ams.data.resolver.SummitImportTemplateResolver;
 import net.superiorstate.ams.data.resolver.SummitPlanTemplateResolver;
 import net.superiorstate.ams.data.resolver.SummitPlanTemplateResolver.PlanTemplate;
+import net.superiorstate.ams.data.service.SummitSftpService;
+import net.superiorstate.ams.data.service.SummitSftpService.SftpTransportException;
 import net.superiorstate.ams.data.AmsDataLocal;
 import net.superiorstate.ams.model.activity.checklist.sequences.support.ServiceItem;
 import net.superiorstate.ams.model.general.PSP;
@@ -44,6 +46,7 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 /**
@@ -69,6 +72,10 @@ public class SummitExportServlet extends HttpServlet {
     // filenames keep SUMMIT_DATE exactly as they had it.
     private static final DateTimeFormatter SUMMIT_FILE_STAMP =
             DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
+
+    // S42-B -- request attribute doPost sets before delegating to doGet, so the shared dispatch
+    // can tell a push from a download. Never set by a GET.
+    private static final String PUSH_ATTR = "summitExport.push";
 
     // S29-D -- the values the `type` request parameter may take. Named so the request
     // contract, the dispatch and the SUMMIT_IMPORT_TEMPLATES lookup key can never drift apart.
@@ -200,13 +207,77 @@ public class SummitExportServlet extends HttpServlet {
             // Demographics writers do not consult a plan mapping at all.
             Long pspId = resolveCurrentPspId(request);
 
+            // S42-B -- push mode checks. Run only when doPost has set PUSH_ATTR; a GET never
+            // reaches here with it set. Every refusal returns before anything is generated,
+            // the same shape the T201 guard below already uses. The T201 guard itself is not
+            // touched -- type=enrollment is refused here, before dispatch, so writeHraEnrollment
+            // is never reached in push mode at all.
+            String pushDir = null;
+            Long ackDuplicate = null;
+            if (Boolean.TRUE.equals(request.getAttribute(PUSH_ATTR))) {
+                if (!"true".equalsIgnoreCase(AppConfig.get("SUMMIT_PUSH_ENABLED"))) {
+                    writePlainError(response, HttpServletResponse.SC_FORBIDDEN,
+                            "Not pushed: push to DataPath is disabled on this installation"
+                                    + " (SUMMIT_PUSH_ENABLED).");
+                    return;
+                }
+                if (type.equals(TYPE_ENROLLMENT)) {
+                    writePlainError(response, HttpServletResponse.SC_BAD_REQUEST,
+                            "Not pushed: HRA Enrollment cannot be pushed. AMS stores no election"
+                                    + " state (T201); enrollment remains a manual upload.");
+                    return;
+                }
+                if (!(type.equals(TYPE_EMPLOYER) || type.equals(TYPE_CDH_PLAN)
+                        || type.equals(TYPE_DEMOGRAPHICS))) {
+                    writePlainError(response, HttpServletResponse.SC_BAD_REQUEST,
+                            "Not pushed: type is not pushable.");
+                    return;
+                }
+
+                // The resolved directory's final path segment must be exactly "ImportFiles",
+                // mirroring SummitSftpTestServlet's inverse guard -- checked but never echoed.
+                String importDir = AppConfig.get("SUMMIT_SFTP_IMPORT_DIR");
+                boolean importDirValid = importDir != null && !importDir.isBlank()
+                        && importDir.indexOf('\r') < 0 && importDir.indexOf('\n') < 0;
+                if (importDirValid) {
+                    String normalized = importDir.endsWith("/")
+                            ? importDir.substring(0, importDir.length() - 1) : importDir;
+                    int lastSlash = normalized.lastIndexOf('/');
+                    String finalSegment = lastSlash >= 0 ? normalized.substring(lastSlash + 1) : normalized;
+                    importDirValid = "ImportFiles".equals(finalSegment);
+                }
+                if (!importDirValid) {
+                    writePlainError(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+                            "Not pushed: SUMMIT_SFTP_IMPORT_DIR is not configured to an ImportFiles"
+                                    + " directory.");
+                    return;
+                }
+
+                if (SummitImportTemplateResolver.templateNameFor(type).isEmpty()) {
+                    writePlainError(response, HttpServletResponse.SC_BAD_REQUEST,
+                            "Not pushed: no Summit import template is configured for this type, so"
+                                    + " Summit would ignore the file.");
+                    return;
+                }
+
+                try {
+                    ackDuplicate = Long.valueOf(request.getParameter("ackDuplicate"));
+                } catch (NumberFormatException e) {
+                    ackDuplicate = null;
+                }
+
+                pushDir = importDir;
+            }
+
             // S32-A -- the identity of this export, assembled once here because doGet is the only
             // place all of it is in scope: proposalId is parsed here, pspId is resolved here, and
             // the acting user is reachable only from the session, which no writer receives. It is
             // then threaded through every writer to the single shared write path, so recording
             // happens at one point rather than at four call sites that could diverge.
+            // S42-B -- pushDir/ackDuplicate are null for a GET (download); the T229 push path
+            // sets both above.
             ExportRecord record = new ExportRecord(em, type, pspId, proposalId, prospect.getId(),
-                    resolveCurrentUserName(request));
+                    resolveCurrentUserName(request), pushDir, ackDuplicate);
 
             if (type.equals(TYPE_EMPLOYER)) {
                 writeEmployerDemographic(response, prospect, answers, employerTpaCustomId, record);
@@ -241,6 +312,18 @@ public class SummitExportServlet extends HttpServlet {
         } finally {
             if (em.isOpen()) em.close();
         }
+    }
+
+    /**
+     * S42-B — the push mode of the export flow (T229). Sets {@link #PUSH_ATTR} and delegates to
+     * {@link #doGet}, so every check and the existing type dispatch are shared with the download
+     * path; a GET can never push. See the push checks near {@code ExportRecord}'s construction.
+     */
+    @Override
+    protected void doPost(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
+        request.setAttribute(PUSH_ATTR, Boolean.TRUE);
+        doGet(request, response);
     }
 
     /**
@@ -1238,6 +1321,10 @@ public class SummitExportServlet extends HttpServlet {
         }
         String content = body.toString();
 
+        // S42-B -- push mode diverts here, before any response header or write. pushFile owns
+        // the entire response from this point; the download path below never runs for a push.
+        if (record.pushDir() != null) { pushFile(response, content, lines == null ? 0 : lines.size(), record); return; }
+
         response.setContentType("text/plain");
         response.setCharacterEncoding("UTF-8");
         response.setHeader("Content-Disposition", "attachment; filename=\"" + filename + "\"");
@@ -1256,9 +1343,15 @@ public class SummitExportServlet extends HttpServlet {
      * closes it after the writer returns, and the recording runs inside that window. Every field
      * but {@code fileType} may legitimately be null; see {@link SummitFileExport} for why
      * nullability is the correct shape for an audit row.
+     * <p>
+     * S42-B — {@code pushDir} and {@code ackDuplicate} are added for T229. {@code pushDir} is
+     * null for a download and the resolved {@code ImportFiles} directory for a push; that is the
+     * single flag {@code writeFile} and {@code recordExport} branch on. {@code ackDuplicate} is
+     * the id of a prior pushed row the caller has acknowledged is a byte-identical duplicate; null
+     * unless the caller supplied one.
      */
     private record ExportRecord(EntityManager em, String fileType, Long pspId, Long proposalId,
-                                Long prospectId, String userName) {}
+                                Long prospectId, String userName, String pushDir, Long ackDuplicate) {}
 
     /**
      * S32-A — writes one {@code summit_file_export} row for a file that has already been sent.
@@ -1272,9 +1365,18 @@ public class SummitExportServlet extends HttpServlet {
      * participant roster with no empty guard, so a prospect with an empty roster still produces a
      * zero-row file that reaches this method. That send is exactly the kind worth a record, so it
      * is written rather than skipped.
+     * <p>
+     * S42-B — <b>for a push ({@code record.pushDir() != null}), this runs before transport, not
+     * after</b>: {@code pushFile} calls this to insert the row first, and only uploads once the
+     * row exists (decision 5 — no byte reaches {@code ImportFiles} unless its row was inserted
+     * first). Push rows are additionally stamped {@code PUSHING}/{@code deliveredAt}/
+     * {@code deliveryDir} here, at insert time. The return value lets {@code pushFile} recover the
+     * inserted row's id; the download call site ignores it.
+     *
+     * @return the inserted {@link SummitFileExport}, or {@code null} on failure or a null record.
      */
-    private void recordExport(ExportRecord record, String filename, String content, int rowCount) {
-        if (record == null) return;
+    private SummitFileExport recordExport(ExportRecord record, String filename, String content, int rowCount) {
+        if (record == null) return null;
         try {
             byte[] bytes = content.getBytes(StandardCharsets.UTF_8);
             SummitFileExport row = new SummitFileExport();
@@ -1289,12 +1391,19 @@ public class SummitExportServlet extends HttpServlet {
             row.setByteCount(bytes.length);
             row.setContentSha256(sha256Hex(bytes));
             row.setContent(content);
+            if (record.pushDir() != null) {
+                row.setDeliveryStatus("PUSHING");
+                row.setDeliveredAt(LocalDateTime.now());
+                row.setDeliveryDir(record.pushDir());
+            }
             SummitFileExportDAO.insert(record.em(), row);
+            return row;
         } catch (Exception e) {
             log.error("[SUMMIT-EXPORT] file '{}' was delivered but could NOT be recorded in"
                     + " summit_file_export: {}. The file is correct and was sent; only the record"
                     + " is missing, so response-file matching and the T194 same-hash warning have"
                     + " no entry for this export.", filename, e.getMessage(), e);
+            return null;
         }
     }
 
@@ -1317,6 +1426,205 @@ public class SummitExportServlet extends HttpServlet {
         response.setContentType("text/plain");
         response.setStatus(status);
         response.getWriter().write(message);
+    }
+
+    /**
+     * S42-B — T229: pushes {@code content} to Summit's {@code ImportFiles} directory over SFTP,
+     * after recording it in {@code summit_file_export}. Reached only from {@link #writeFile} when
+     * {@code record.pushDir() != null}; owns the entire HTTP response from that point on — the
+     * download path in {@code writeFile} never runs for a push.
+     * <p>
+     * Order is load-bearing (S42-B decision 5): the row is inserted <b>before</b> the upload is
+     * attempted, so no byte ever reaches {@code ImportFiles} without a record of it existing
+     * first. The upload itself is unconditional {@code OVERWRITE} (see
+     * {@link SummitSftpService#upload}) — the uniqueness that keeps two pushes from colliding is
+     * the filename built in step 1 below, not the transport.
+     */
+    private void pushFile(HttpServletResponse response, String content, int rowCount, ExportRecord record)
+            throws IOException {
+        // Step 1 -- push filename. {template}_{yyyyMMddHHmmss}.txt -- the SAME shape and the
+        // SAME formatter (SUMMIT_FILE_STAMP) downloads already use. Summit binds by
+        // template-name prefix, and TWO shapes are observed to match the ZZ_TEST_ER template
+        // over SFTP: this one (push #8, processed 2026-09-10) and `{template}_P{id}_{17-digit}`
+        // (push #5, held as a content duplicate, not rejected). The earlier apparent non-pickup
+        // of #5 was caused by Summit's Schedule Import checkbox being disabled (SDX-22), not by
+        // its filename -- see S42's close-out for the correction. Uniqueness comes from the
+        // pushed-filename refusal in step 2 below, not from the name. doGet's push checks already
+        // refused the request if no template is configured for this type, so .get() here can
+        // never throw.
+        String pushFilename = SummitImportTemplateResolver.templateNameFor(record.fileType()).get()
+                + "_" + LocalDateTime.now().format(SUMMIT_FILE_STAMP) + ".txt";
+
+        // Step 2 -- filename collision refusal (S42-D). Same shape as a download's filename now
+        // means two pushes within the same second for the same type CAN collide, and Summit
+        // rejects a repeated filename outright (SDX-17) -- so this, not the name itself, is what
+        // keeps a push unique. No ack option: unlike the content duplicate below, there is no
+        // legitimate reason to push the identical name again, only a reason to wait a second and
+        // retry. Nothing is recorded or uploaded when this refuses.
+        if (SummitFileExportDAO.existsPushedFileName(record.em(), pushFilename)) {
+            log.info("[SUMMIT-EXPORT] push refused for proposal {} type {}: filename {} already"
+                    + " pushed", record.proposalId(), record.fileType(), pushFilename);
+            writeHtml(response, HttpServletResponse.SC_CONFLICT,
+                    "<h3>Not pushed</h3><p>A file named " + html(pushFilename) + " has already"
+                            + " been pushed. Summit rejects a repeated filename. Wait one second"
+                            + " and push again.</p>");
+            return;
+        }
+
+        // Step 3 -- hash. The same UTF-8 bytes the upload in step 6 sends, so the duplicate check
+        // below compares exactly what would be sent, not a re-derived approximation.
+        byte[] bytes = content.getBytes(StandardCharsets.UTF_8);
+        String sha = sha256Hex(bytes);
+
+        // Step 4 -- duplicate-content check. findByContentHash already scopes by fileType; the
+        // pspId filter narrows further to this PSP's own history. The query orders newest-first,
+        // so the first PUSHED/PUSHING match found is also the most recent one.
+        List<SummitFileExport> matches =
+                SummitFileExportDAO.findByContentHash(record.em(), sha, record.fileType());
+        SummitFileExport pushedMatch = null;
+        SummitFileExport downloadMatch = null;
+        for (SummitFileExport candidate : matches) {
+            if (!Objects.equals(candidate.getPspId(), record.pspId())) continue;
+            String status = candidate.getDeliveryStatus();
+            if (pushedMatch == null && ("PUSHED".equals(status) || "PUSHING".equals(status))) {
+                pushedMatch = candidate;
+            }
+            if (downloadMatch == null && status == null) {
+                downloadMatch = candidate;
+            }
+        }
+
+        if (pushedMatch != null && !Objects.equals(pushedMatch.getId(), record.ackDuplicate())) {
+            log.info("[SUMMIT-EXPORT] push refused for proposal {} type {}: content matches prior"
+                    + " push #{}, not acknowledged", record.proposalId(), record.fileType(),
+                    pushedMatch.getId());
+            writeDuplicateWarningHtml(response, record, pushedMatch);
+            return;
+        }
+
+        // Step 5 -- record. No byte reaches ImportFiles unless this succeeds.
+        SummitFileExport row = recordExport(record, pushFilename, content, rowCount);
+        if (row == null || row.getId() == null) {
+            log.error("[SUMMIT-EXPORT] push for proposal {} type {} NOT sent: AMS could not"
+                    + " record the file", record.proposalId(), record.fileType());
+            writeHtml(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+                    "<h3>Not pushed</h3><p>AMS could not record the file, so it was not sent.</p>");
+            return;
+        }
+
+        // Step 6 -- upload. Constructed the way SummitSftpTestServlet constructs it.
+        SummitSftpService service = new SummitSftpService();
+        try {
+            service.upload(record.pushDir(), pushFilename, content.getBytes(StandardCharsets.UTF_8));
+        } catch (SftpTransportException e) {
+            try {
+                SummitFileExportDAO.updateDelivery(record.em(), row.getId(), "PUSH_FAILED", e.getMessage());
+            } catch (Exception updateFailure) {
+                log.error("[SUMMIT-EXPORT] push #{} FAILED and its PUSH_FAILED status could not be"
+                        + " recorded: {}", row.getId(), updateFailure.getMessage(), updateFailure);
+            }
+            log.error("[SUMMIT-EXPORT] push #{} ({}) for proposal {} type {} FAILED: {}",
+                    row.getId(), pushFilename, record.proposalId(), record.fileType(), e.getMessage());
+            writeHtml(response, HttpServletResponse.SC_BAD_GATEWAY,
+                    "<h3>Not pushed</h3><p>The upload to DataPath failed: " + html(e.getMessage())
+                            + "</p><p>Record #" + row.getId() + ", filename " + html(pushFilename)
+                            + ".</p>");
+            return;
+        }
+
+        // Step 7 -- mark pushed.
+        String pushingNote = "";
+        try {
+            SummitFileExportDAO.updateDelivery(record.em(), row.getId(), "PUSHED", null);
+        } catch (Exception e) {
+            log.error("[SUMMIT-EXPORT] push #{} succeeded but could not be marked PUSHED: {}",
+                    row.getId(), e.getMessage(), e);
+            pushingNote = "<p><strong>The file was sent, but its row is still marked PUSHING.</strong></p>";
+        }
+
+        log.info("[SUMMIT-EXPORT] push #{} ({}) for proposal {} type {} succeeded, {} row(s), dir {}",
+                row.getId(), pushFilename, record.proposalId(), record.fileType(), rowCount, record.pushDir());
+
+        // Step 8 -- success page.
+        StringBuilder body = new StringBuilder();
+        body.append("<h3>Pushed ").append(html(pushFilename)).append(" to DataPath.</h3>");
+        body.append("<p>Record #").append(row.getId()).append(", delivered ")
+                .append(html(formatPushTimestamp(row.getDeliveredAt()))).append(" to ")
+                .append(html(record.pushDir())).append(".</p>");
+        body.append("<p>Summit polls ImportFiles about every 15 minutes and processes the file"
+                + " automatically. Its response will be named Response_").append(html(pushFilename))
+                .append(" in ResponseFiles. If no response appears, check Summit's File History"
+                + " — a file held as a duplicate produces no response.</p>");
+        if (downloadMatch != null) {
+            body.append("<p>Note: this content also matches download #").append(downloadMatch.getId())
+                    .append(" (").append(html(downloadMatch.getFileName())).append("). If that"
+                    + " downloaded file was uploaded to Summit by hand, this push will be held"
+                    + " pending TPA approval.</p>");
+        }
+        body.append(pushingNote);
+        writeHtml(response, HttpServletResponse.SC_OK, body.toString());
+    }
+
+    /**
+     * S42-B — the T227/SDX-17 duplicate refusal (HTTP 409): content byte-identical to a prior
+     * push that has not been acknowledged for this specific request. Nothing is recorded or
+     * uploaded when this runs.
+     * <p>
+     * The form's action is a bare relative path, not an absolute one built from
+     * {@code request.getContextPath()} — {@code pushFile}'s mandated signature carries only
+     * {@code ExportRecord}, not the request. This page is rendered as the direct response to a
+     * POST to {@code {contextPath}/SummitExport}, so the browser's document base URI already
+     * carries the context path; a relative {@code action="SummitExport"} resolves against that
+     * base to the same URL an absolute one built from {@code getContextPath()} would.
+     */
+    private void writeDuplicateWarningHtml(HttpServletResponse response, ExportRecord record,
+                                            SummitFileExport pushedMatch) throws IOException {
+        StringBuilder body = new StringBuilder();
+        body.append("<h3>Not pushed — duplicate content</h3>");
+        body.append("<p>This content is byte-identical to push #").append(pushedMatch.getId())
+                .append(", file ").append(html(pushedMatch.getFileName())).append(", delivered ")
+                .append(html(formatPushTimestamp(pushedMatch.getDeliveredAt()))).append(".</p>");
+        body.append("<p>Summit will hold a repeat of this content pending TPA approval in File"
+                + " History, rather than processing it.</p>");
+        body.append("<form method=\"post\" action=\"SummitExport\" target=\"_blank\">");
+        body.append("<input type=\"hidden\" name=\"proposalId\" value=\"")
+                .append(record.proposalId()).append("\">");
+        body.append("<input type=\"hidden\" name=\"type\" value=\"")
+                .append(html(record.fileType())).append("\">");
+        body.append("<input type=\"hidden\" name=\"ackDuplicate\" value=\"")
+                .append(pushedMatch.getId()).append("\">");
+        body.append("<button type=\"submit\" onclick=\"return confirm('Push anyway? Summit will"
+                + " hold this as a duplicate pending TPA approval.');\">Push anyway</button>");
+        body.append("</form>");
+        writeHtml(response, HttpServletResponse.SC_CONFLICT, body.toString());
+    }
+
+    /**
+     * S42-B — writes a minimal, self-contained HTML push-outcome response. No includes; no
+     * {@code AppConfig} value appears in any body passed here except {@code record.pushDir()},
+     * which callers above include only on the success page.
+     */
+    private void writeHtml(HttpServletResponse response, int status, String bodyHtml) throws IOException {
+        response.setContentType("text/html; charset=UTF-8");
+        response.setStatus(status);
+        response.getWriter().write("<!DOCTYPE html><html><head><meta charset=\"UTF-8\"></head><body>"
+                + bodyHtml + "</body></html>");
+    }
+
+    /** Escapes {@code & < > " '} for safe inclusion in the push HTML responses above. */
+    private static String html(String s) {
+        if (s == null) return "";
+        return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+                .replace("\"", "&quot;").replace("'", "&#39;");
+    }
+
+    /** S42-D — timestamp format for a push page's rendered delivery times. */
+    private static final DateTimeFormatter PUSH_PAGE_TIMESTAMP =
+            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
+    /** Formats {@code timestamp} for push-page HTML, or {@code ""} when null. */
+    private static String formatPushTimestamp(LocalDateTime timestamp) {
+        return timestamp == null ? "" : timestamp.format(PUSH_PAGE_TIMESTAMP);
     }
 
     /**

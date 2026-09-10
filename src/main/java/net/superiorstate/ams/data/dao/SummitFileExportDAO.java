@@ -43,6 +43,19 @@ public abstract class SummitFileExportDAO {
             "ORDER BY e.generatedAt DESC, e.id DESC";
 
     /**
+     * S42-D — T227/T229: has a PUSHING or PUSHED row already used this exact filename? Summit
+     * rejects a repeated filename outright regardless of content (SDX-17), and the push filename
+     * (S42-D) is now the same shape a download already uses, carrying no per-push uniqueness of
+     * its own -- this is the check that supplies it instead.
+     * <p>
+     * No PSP filter, deliberately: one installation has one Summit {@code ImportFiles} folder, so
+     * filenames collide across PSPs, not only within one.
+     */
+    private static final String JPQL_COUNT_BY_PUSHED_FILENAME =
+            "SELECT COUNT(e) FROM SummitFileExport e " +
+            "WHERE e.fileName = :fileName AND e.deliveryStatus IN ('PUSHING','PUSHED')";
+
+    /**
      * Persists one export record in its own transaction.
      * <p>
      * ⚠️ <b>This method throws; the caller must not let that reach the user.</b> The governing rule
@@ -63,6 +76,32 @@ public abstract class SummitFileExportDAO {
         } catch (Exception e) {
             if (em.getTransaction().isActive()) em.getTransaction().rollback();
             throw new RuntimeException("Failed to record Summit file export: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * V097 — updates one row's delivery outcome after a push attempt (PUSHING/PUSHED/PUSH_FAILED).
+     * <p>
+     * Same transaction pattern as {@link #insert}, including rollback and throwing after it; the
+     * caller decides whether a failure here may reach the user, exactly as {@code insert}'s
+     * javadoc describes for the recording path.
+     *
+     * @param error the failure message, truncated to 500 characters when non-null; null clears it.
+     * @throws RuntimeException wrapping whatever failed, after rolling back.
+     */
+    public static void updateDelivery(EntityManager em, Long id, String status, String error) {
+        try {
+            em.getTransaction().begin();
+            SummitFileExport export = em.find(SummitFileExport.class, id);
+            if (export != null) {
+                export.setDeliveryStatus(status);
+                export.setDeliveryError(error == null ? null
+                        : (error.length() > 500 ? error.substring(0, 500) : error));
+            }
+            em.getTransaction().commit();
+        } catch (Exception e) {
+            if (em.getTransaction().isActive()) em.getTransaction().rollback();
+            throw new RuntimeException("Failed to update Summit file export delivery: " + e.getMessage(), e);
         }
     }
 
@@ -103,6 +142,20 @@ public abstract class SummitFileExportDAO {
                 .setParameter("sha", sha)
                 .setParameter("fileType", fileType)
                 .getResultList();
+    }
+
+    /**
+     * S42-D — true when a PUSHING or PUSHED row already carries {@code fileName}. See
+     * {@link #JPQL_COUNT_BY_PUSHED_FILENAME}.
+     *
+     * @return false when {@code fileName} is null. Never null.
+     */
+    public static boolean existsPushedFileName(EntityManager em, String fileName) {
+        if (fileName == null) return false;
+        Long count = em.createQuery(JPQL_COUNT_BY_PUSHED_FILENAME, Long.class)
+                .setParameter("fileName", fileName)
+                .getSingleResult();
+        return count != null && count > 0;
     }
 
     /**

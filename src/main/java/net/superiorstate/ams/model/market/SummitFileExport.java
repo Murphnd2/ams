@@ -93,6 +93,22 @@ public class SummitFileExport {
     @Column(name = "content_sha256", nullable = false)
     private String contentSha256;
 
+    /** V097 — null means download only; else PUSHING, PUSHED or PUSH_FAILED. */
+    @Column(name = "delivery_status", length = 20)
+    private String deliveryStatus;
+
+    /** V097 — when the push was attempted, set alongside {@link #deliveryStatus} PUSHING. */
+    @Column(name = "delivered_at")
+    private LocalDateTime deliveredAt;
+
+    /** V097 — the remote directory the file was (or would be) pushed to, i.e. ImportFiles. */
+    @Column(name = "delivery_dir", length = 255)
+    private String deliveryDir;
+
+    /** V097 — the scrubbed failure message when {@link #deliveryStatus} is PUSH_FAILED. */
+    @Column(name = "delivery_error", length = 500)
+    private String deliveryError;
+
     /** The file's bytes as text. MEDIUMTEXT; files are kilobytes. See the PII note on the class. */
     @Lob
     @Column(name = "content")
@@ -132,6 +148,18 @@ public class SummitFileExport {
 
     public String getContentSha256() { return contentSha256; }
     public void setContentSha256(String contentSha256) { this.contentSha256 = contentSha256; }
+
+    public String getDeliveryStatus() { return deliveryStatus; }
+    public void setDeliveryStatus(String deliveryStatus) { this.deliveryStatus = deliveryStatus; }
+
+    public LocalDateTime getDeliveredAt() { return deliveredAt; }
+    public void setDeliveredAt(LocalDateTime deliveredAt) { this.deliveredAt = deliveredAt; }
+
+    public String getDeliveryDir() { return deliveryDir; }
+    public void setDeliveryDir(String deliveryDir) { this.deliveryDir = deliveryDir; }
+
+    public String getDeliveryError() { return deliveryError; }
+    public void setDeliveryError(String deliveryError) { this.deliveryError = deliveryError; }
 
     public String getContent() { return content; }
     public void setContent(String content) { this.content = content; }
