@@ -359,7 +359,7 @@ public class SummitExportServlet extends HttpServlet {
      * surface in a results file rather than at configuration time. Rejecting every
      * non-alphanumeric subsumes the pipe and whitespace checks it replaces.
      */
-    private static String resolveEmployerTpaCustomId(Prospect prospect) {
+    public static String resolveEmployerTpaCustomId(Prospect prospect) {
         String rawPrefix = AppConfig.get("SUMMIT_TPA_ID_PREFIX");
         if (rawPrefix == null) return null;
         String prefix = rawPrefix.trim();

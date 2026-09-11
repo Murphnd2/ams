@@ -31,6 +31,7 @@
             <div class="fw-semibold">Employer</div>
             <div class="text-muted" style="font-size: 0.72rem;">File 1 · creates or updates the employer</div>
             <jsp:include page="/SummitSetupStatus"><jsp:param name="proposalId" value="${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}"/><jsp:param name="step" value="employer"/></jsp:include>
+            <jsp:include page="/SummitEmployerLink"><jsp:param name="proposalId" value="${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}"/></jsp:include>
           </div>
           <div class="btn-group btn-group-sm">
             <button type="button" class="btn btn-outline-secondary opacity-50" style="border-style: dashed; cursor: not-allowed;" aria-disabled="true" title="Preview — not built yet"><i class="bi bi-eye"></i></button>
@@ -48,6 +49,7 @@
             <div class="fw-semibold">Plans (CDH)</div>
             <div class="text-muted" style="font-size: 0.72rem;">File 2 · CDH plans elected on the application</div>
             <jsp:include page="/SummitSetupStatus"><jsp:param name="proposalId" value="${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}"/><jsp:param name="step" value="cdhplan"/></jsp:include>
+            <jsp:include page="/SummitEmployerLink"><jsp:param name="proposalId" value="${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}"/><jsp:param name="tab" value="BenefitPlans"/><jsp:param name="label" value="Open Benefit Plans ↗"/></jsp:include>
           </div>
           <div class="btn-group btn-group-sm">
             <button type="button" class="btn btn-outline-secondary opacity-50" style="border-style: dashed; cursor: not-allowed;" aria-disabled="true" title="Preview — not built yet"><i class="bi bi-eye"></i></button>
