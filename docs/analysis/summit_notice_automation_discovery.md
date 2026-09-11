@@ -211,6 +211,34 @@ hand-enter status changes. Record which fields are missing; that list is the pro
 
 ---
 
+## 2026-09-10 — prior QSEHRA test recovered; superseded for flat-amount groups
+
+### Recovered from a prior chat (`CHAT-RECORD`, 2026-07-16)
+
+The test was framed as **QSEHRA**, on demo employer "Q Demo QSEHRA".
+
+- **The amount travelled on the coverage tier name, not a rate.** Tier text such as
+  `Family -- $200/month:`, with the annual amount in the tier's Amount field, which Summit appends. It
+  rendered as `Family -- $200/month: $2,400.00/year`.
+- **Mid-year notice.** Adding coverage fired an "initial" notice. A status change fired
+  `PB_Employer_Status_Change_Notice`, whose Coverages region printed `CoverageTier` plus the effective
+  date.
+- **Annual notice.** A repurposed `QB_Rate_Change_Notice`, fired by a rate change, exposed
+  `PlanYearStartDate`/`PlanYearEndDate` and `TierName`. Kevin's verdict: "ok, works."
+- **No standalone amount or effective-date token existed** in either context.
+- The exact status-change action/reason code, and the event-to-template binding: not recorded.
+- Everything was done manually in the UI. Nothing was imported.
+
+### Status
+
+For **flat-amount groups**, this notional-COBRA-benefit mechanism is **superseded** by the custom-event
+design proven 2026-09-10 (see `docs/business/summit_data_exchange.md`, "Custom-event notices and
+scheduled exports — tested 2026-09-10", and D43 in `plus_tier_build_plan.md`). It remains the
+**fallback for amounts that vary by participant**, where the tier-name trick is the only
+per-participant amount carrier found.
+
+---
+
 ## Notes
 
 - **No SQL is produced by this discovery process.** Any finding implying an AMS schema change

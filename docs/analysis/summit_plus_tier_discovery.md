@@ -145,6 +145,11 @@ someone tidying notice settings could switch them on.
 | S-19 | Do **Retiree or Direct Bill** sub-LOS plans generate status-change notices with configurable content? | Med | Every awkwardness in the notional-COBRA mechanism stems from the vehicle being COBRA *specifically*. Direct Billing is conceptually closer to paying premiums for individual coverage |
 | S-20 | Do **imported** status changes trigger letter generation the same way manual ones do? | High | Everything downstream rests on this. See `summit_notice_automation_discovery.md`, Phase 3 |
 
+**2026-09-10 note on S-20.** Moot for the custom-event notice path proven this date (see
+`summit_data_exchange.md`, "Custom-event notices and scheduled exports — tested 2026-09-10") — that
+path uses no imported status change at all. **Still open** for the notional-benefit fallback used
+where amounts vary by participant.
+
 ---
 
 ## Notes

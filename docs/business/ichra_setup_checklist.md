@@ -305,6 +305,19 @@ obligation surfaces nowhere.
 - **Basis:** **Settled** — `plus_tier_build_plan.md` Part 7 item 4
 - **Why it matters more than it looks:** participants not seeing the notional benefit is **configured, not inherent**. Portal Mobile displays the communication on the Participant Portal and Push As Alert notifies at next login. Anyone tidying notice settings later could switch them on.
 
+**2026-09-10 note (S46).** Tasks 12 and 14 are **superseded for flat-amount groups** by D43 in
+`docs/analysis/plus_tier_build_plan.md` — the notional COBRA notice benefit is replaced by a Summit
+custom event on a CDH-only employer. Not removed: D43's mechanism remains the fallback for amounts
+that vary by participant, and this checklist should follow whichever path the group's plan design
+needs. The Decision A setup steps for a flat-amount group are:
+
+1. Confirm the employer is CDH-only.
+2. Set *Employer Plan Name* to the allowance text.
+3. Add the employer to the participant-list audit export.
+4. Run On Demand *All* for ICHRA Notice.
+
+Offboarding: remove the employer from the audit export. Don't delete tasks 12 and 14.
+
 ---
 
 ## Group E — Annual compliance

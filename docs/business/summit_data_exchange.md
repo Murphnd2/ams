@@ -93,7 +93,9 @@ existed anywhere in the repo before this document.**
   whatever emptied the folder before, it was not "processing sweeps the folder."
 - `ExportFiles` naming pattern: `{prefix}_{Type}_Export_{yyyyMMddHHmmssSSS}.{ext}` — a 17-digit
   timestamp including milliseconds. The two files observed are dated 2025-04-23 and 2023-02-08 (one
-  `.Email`, one `.CSV`), under two distinct prefixes.
+  `.Email`, one `.CSV`), under two distinct prefixes. **2026-09-11 note: superseded — see "Runtime
+  results" in the section below.** The `{Type}` segment does not exist; the export's template name
+  is the whole prefix.
 - ⭐ **SDX-15 RESOLVED (2026-09-09).** An SFTP-delivered file is retrieved and processed the same
   way a Summit web-UI upload is. Evidence: `ZZ_TEST_DEMO_20260909141133.txt` (436 bytes) was
   uploaded to `ImportFiles` over SFTP only — nothing was uploaded through the web UI for this test.
@@ -803,6 +805,113 @@ controls, backed by `SummitResponseService`, `SummitResponseServlet` (`/SummitRe
 Both are read inline via `AppConfig.get` in `SummitResponseService`, matching the existing
 `SUMMIT_SFTP_*`/`SUMMIT_CDH_*` convention of no dedicated constants class for these keys.
 
+## Custom-event notices and scheduled exports — tested 2026-09-10
+
+### Custom events and On Demand Processing — TEST
+
+- **The test event.** A custom event, "ICHRA Notice TEST", was created with its own merge document.
+- **How it is run.** Processing → On Demand Processing → Process Type *Event Notifications* →
+  Employer → Event. The run has an *Exclude terminated participants* checkbox, and three participant
+  choices: *All*, *Just These*, or *Not These* (a picker shows name [Summit participant ID]).
+- **Approval.** With *Approval Required* on, the item landed in Process Approvals as *Awaiting
+  Approval*, and Preview rendered the merged document.
+- **Merge results in a custom-event context:**
+  - **Resolved:** employer name, the TPA/service-provider block, the date, and participant name and
+    address.
+  - **Printed literally:** the coverage table tokens (`«TableStart:CvgTier»`, `«CoverageName»`,
+    `«CoverageTierName»`, `«CoverageTierPremium»`). A custom event has no coverage context.
+  - This is consistent with the Summit guide: custom-event templates merge only TPA, Employer and
+    Participant data.
+- **`EmployerPlanName` merges.** It is populated from the employer Demographics tab field *Employer
+  Plan Name*. The value `ICHRA allowance: $50.00/month ($600.00/year)` rendered in place of the plan
+  name on:
+  - **Q Demo**, a COBRA-flagged employer;
+  - **ZZ CDH Only Test**, an employer hand-created with **only CDH** checked and no Premium Billing
+    flags.
+- ⭐ **Custom events fire for a CDH-only employer.** No COBRA flag, notice benefit, status change or
+  Premium Billing import is required for a custom-event notice.
+- ⚠️ **`EmployerPlanName` collision.** The default COBRA general notice also uses `EmployerPlanName` as
+  "the Plan" name. On a group that also has real COBRA administration, allowance text in that field
+  would appear in its COBRA notices. Other letters may use the field too; that is unknown.
+
+### Premium Billing notification settings and employer flags — KEVIN-UI
+
+- **Send Initial Notification** fires on an employee add when **both** of these hold:
+  1. the employer is flagged COBRA under Premium Billing;
+  2. the employer's COBRA template (*Cobra Default1*, *Allow editing at the Employer Level* on) has
+     **Send Initial Notice** checked.
+
+  The event holds up to three documents per language. The default document is the legal COBRA initial
+  notice. *Approval Required* is checked on this tenant.
+- **Event documents can be set per employer only through the web UI**, not by the Employer Demographic
+  import or any plan import.
+- ⚠️ **Premium Billing employer flags (COBRA, Retiree, Direct Bill) cannot be turned off once on.**
+  They can be added later.
+- **The Employer Demographic import template offers four Boolean elements:** *Enable CDH
+  Administration*, *Enable COBRA Administration*, *Enable Retiree Billing Administration*, and *Enable
+  Direct Bill Administration*. AMS's file 1 emits none of them, so the flags come from the import
+  template's defaults. ZZTESTCompany 9102 (`158E140952`) carries all four, now permanently.
+- ⚠️ **Production-push blocker.** See D-97 in `docs/deployment_backlog.md`.
+
+### Scheduled exports — TEST (headers observed 2026-09-10)
+
+- **Exports go to an FTP destination on a schedule.** Filters are: employers, LOS, events, a start/end
+  date rule, *By Mailed Date*, and *By Participant*. Destinations are File History, FTP, and TPA Report
+  Repository. There are also *Show blank report when there is no activity* and *Notify when processed
+  with no activity* options.
+- **PB Mailing - Detail Report header, verbatim:**
+  `StartDate,EndDate,FirstName,LastName,SSN,DOB,ERCustomID,EmployerName,Organization_ID,EmployerOrganizationID,EventTypeID,EventName,Mailed`
+  - Events are identified by `EventTypeID`.
+  - `ERCustomID` is AMS's employer key.
+  - **The only participant identifier is SSN.** `Organization_ID` equals `EmployerOrganizationID` on
+    participant rows (see below), so it is an employer or organization key, not a participant key.
+- **Participant list export header, verbatim:**
+  `Employer_ID,SetupCompletionDate,EmployerCustomID,Organization_ID,EmployerName,EmployerOrganizationID,Participant_ID,User_ID,FirstName,LastName,ParticipantCustomID,UserStatus,Email,Address1,Address2,City,State,ZipCode,MobilePhone,HomePhone,WorkPhone,IsRegisterdToPortal,FailedLoginCount,LastLoginDate`
+  - ⭐ **`ParticipantCustomID` is populated for every AMS-loaded participant** (`158-P-77` through
+    `158-P-82` on ZZTESTCompany 9102) and **blank for a participant added in the Summit UI**.
+  - `EmployerCustomID` is likewise blank for an employer created in the UI.
+  - `Participant_ID` is Summit's participant key, the same ID the On Demand picker shows.
+  - **There is no hire, eligibility or added date.**
+  - The export carries email, address and phone numbers.
+- **Summit's UI accepted a synthetic `900`-prefixed SSN** (`900009001`) on a test participant. The
+  idea was set aside because the blank-`ParticipantCustomID` marker makes it unnecessary.
+
+### New open questions
+
+Continuing the `SDX-NN` series from SDX-22:
+
+23. **SDX-23** — Does a custom event appear in PB Mailing - Detail Report once DataPath-fulfilled, and
+    what does `Mailed` contain?
+24. **SDX-24** — Can the Employer Demographic import set *Employer Plan Name*? Is it in the element
+    list?
+25. **SDX-25** — On the Employer Demographic import, does a **blank** flag element leave the Summit
+    setting unchanged?
+26. **SDX-26** — Will the Employer CDH Plan import accept a plan template whose Lines of Service
+    include both CDH and COBRA (a dual benefit), and create a plan carrying both?
+
+### Runtime results — 2026-09-11 (T237 phase 1)
+
+- **Export filename pattern observed:** `{Template Name}_Export_{yyyyMMddHHmmssSSS}.{ext}`, for
+  example `ZZ_AMS_AUDIT_PARTICIPANTS_Export_20260911064833074.CSV`. The template name is the
+  prefix — there is no `{Type}` segment. This supersedes the older
+  `{prefix}_{Type}_Export_…` line above.
+- **The filename timestamp is Summit's local time,** which matched Kevin's clock (Summit's UI
+  shows CST). If the production server runs UTC (unverified), the audit check computes an
+  export's age as roughly 5–6 hours older than it actually is. That is the safe direction — the
+  staleness alarm fires early, never late.
+- **Summit accepted `158-S-30051` as a Participant Custom ID.** After coding and re-exporting,
+  the audit finding cleared.
+- **Config registry for the audit check:**
+
+  | Key | Where | Default / note |
+  |---|---|---|
+  | `SUMMIT_AUDIT_PARTICIPANT_EXPORT_PREFIX` | `ssa.properties` | unset → `NOT_CONFIGURED` |
+  | `SUMMIT_AUDIT_EXPORT_MAX_AGE_HOURS` | `ssa.properties` | default 36 |
+  | `SUMMIT_AUDIT_EXPORT_MAX_BYTES` | `ssa.properties` | default 16777216 |
+  | `AUDIT_SCHEDULER_ENABLED` | DB constant | absent → scheduler off |
+
+  All are read inline, in `IchraUncodedParticipantsCheck` and `EmfListener`.
+
 ## Plan types and the ICHRA template
 
 **ICHRA is a selectable Plan Type in Summit.** Vendor AI said this was not documented and likely used
@@ -1090,6 +1199,12 @@ Transport's sweep correction). Removable only through the Summit UI; `SummitSftp
 delete method, by design. ⚠️ **Until they are removed, a future retrieval may reprocess
 `ZZ_TEST_DEMO_20260909141133.txt` and generate another failure response** — see
 [SDX-17](#open-questions). A note to Kevin, not a work item.
+
+**From the 2026-09-10 custom-event notice testing (S46):** employer **ZZ CDH Only Test**
+(Employer_ID 1393, Organization_ID 1408), CDH only; participant `Participant_ID` 30051, SSN set to
+`900009001`; custom event **ICHRA Notice TEST**; Q Demo's *Employer Plan Name* populated; ZZTESTCompany
+9102 now permanently flagged COBRA, Retiree and Direct Bill; declined test items in Process Approvals;
+export templates created by Kevin. All disposable, none reflecting a real employer or participant.
 
 ## Client setup sequence
 

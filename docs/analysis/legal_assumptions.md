@@ -543,6 +543,15 @@ counsel is asked the residual question rather than the whole one.
 
 **Status.** **Open — no basis.** 2026-07-31.
 
+**2026-09-10 note (S46).** The custom-event notice design (D43, `plus_tier_build_plan.md`) depends on
+the new-hire notice deadline. The working understanding is that it falls **no later than the date the
+HRA may first take effect for that participant**, and that the notice must state the participant's
+maximum amount and the self-only amount used for affordability. **Both are unverified**
+(`REASONING`, from general knowledge of 26 CFR §54.9802-4(c)(6)) — this note does not resolve item 1
+above; it records the working assumption the design currently runs on. Design choice made against
+this working assumption: a **daily** participant-export cadence (see D43). The ICHRA notice
+document's content is **not yet written**.
+
 ---
 
 ### LA-09 — Agent-facing market reference data is not producer activity
@@ -1927,6 +1936,43 @@ is itself gated on this same agreement.
 whichever comes first.
 
 **Status.** Open. Details sent 2026-09-10; agreement not yet received.
+
+---
+
+### LA-40 — AMS may read Summit exports that contain SSN and other personal data
+
+**Assumption.** AMS may read Summit exports that contain SSN and other personal data — specifically
+the PB Mailing - Detail Report and the participant list export, both observed 2026-09-10 (see
+`docs/business/summit_data_exchange.md`, "Custom-event notices and scheduled exports — tested
+2026-09-10").
+
+**Basis.** The column headers observed on 2026-09-10:
+
+- PB Mailing - Detail Report: `StartDate,EndDate,FirstName,LastName,SSN,DOB,ERCustomID,EmployerName,Organization_ID,EmployerOrganizationID,EventTypeID,EventName,Mailed`
+- Participant list export: `Employer_ID,SetupCompletionDate,EmployerCustomID,Organization_ID,EmployerName,EmployerOrganizationID,Participant_ID,User_ID,FirstName,LastName,ParticipantCustomID,UserStatus,Email,Address1,Address2,City,State,ZipCode,MobilePhone,HomePhone,WorkPhone,IsRegisterdToPortal,FailedLoginCount,LastLoginDate`
+
+**Design choice.**
+
+- Locate columns by header, not by position.
+- Keep only the key and status columns needed per check: employer custom ID, `Participant_ID`,
+  `ParticipantCustomID`, `UserStatus`, `EventTypeID`, `Mailed`, dates, and a display name in-request
+  only.
+- Never read the SSN value.
+- Persist nothing but counts; log no row content.
+
+**Risk if wrong.** An extension of the no-SSN boundary (LA-35) to a file AMS handles in memory.
+
+**Reversal cost.** Low. It is a code change to the reader, and no data is stored.
+
+**Confirm before.** Any audit check persists anything beyond counts.
+
+**Status.** Assumed, 2026-09-10.
+
+**2026-09-11 note (S46).** Implemented as designed in T237 phase 1, `3ebf5da`
+(`IchraUncodedParticipantsCheck`): columns are located by exact header name, only the key and
+status columns are kept, SSN is never read, and `AuditRun`/`audit_run` (V099) persists only
+counts and scrubbed one-line messages — no row content. Runtime-verified against the live Summit
+tenant, 2026-09-11.
 
 ---
 

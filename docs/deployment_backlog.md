@@ -1695,3 +1695,46 @@ Add `SUMMIT_PUSH_ENABLED=true` to production `ssa.properties`, and restart Tomca
 ⚠️ **Release `v0.97.00` must carry V097 first** — `SUMMIT_PUSH_ENABLED=true` with no `delivery_status` column on production is a push that records nothing about its own outcome, degrading no differently from V096's own pre-D-95 gap.
 
 **Applies to:** Kevin's local dev / local Tomcat — N/A, push is already enabled locally for testing. Production ⬜ — owner Kevin, blocked on the three confirmations above and on release `v0.97.00`. Demo / BPO / Master — N/A, no Summit tenant.
+
+### D-97: Summit employer import template defaults must be CDH-only before the first real employer push
+
+**Priority:** HIGH — blocks the first production push of a real employer, alongside D-96.
+**Status:** Not started.
+
+**The problem.** Premium Billing employer flags (COBRA, Retiree Billing, Direct Bill) cannot be
+turned off once on in Summit — only added later. The Employer Demographic import template offers four
+Boolean elements — *Enable CDH Administration*, *Enable COBRA Administration*, *Enable Retiree
+Billing Administration*, *Enable Direct Bill Administration* — and AMS's file 1
+(`SummitExportServlet`) emits none of them, so whichever flags the import template defaults to apply
+to every pushed employer. On 2026-09-10 testing, ZZTESTCompany 9102 (`158E140952`) received all four
+flags and now carries them permanently, as a test artifact.
+
+**Before the first real employer push:** confirm the live import template's Boolean-element defaults
+in Summit, and set them to CDH-only unless a specific employer needs otherwise. See
+`docs/business/summit_data_exchange.md`, "Custom-event notices and scheduled exports — tested
+2026-09-10", and `docs/analysis/plus_tier_build_plan.md` D43/D44.
+
+**Owner:** Kevin (Summit configuration).
+
+**Applies to:** Production ⬜ — owner Kevin, blocked on confirming and correcting the import
+template's defaults before any real employer is pushed. Demo / BPO / Master — N/A, no Summit tenant.
+
+### D-98: Production enablement of the ICHRA audit check (T237)
+
+**Priority:** MED — no urgency until the first real ICHRA employer is live.
+**Status:** Not started. Depends on V099 being deployed.
+
+**Steps:**
+
+1. In Summit, create the production participant-list export: a real template name (not `ZZ_`),
+   destination FTP, scheduled daily, with each ICHRA employer added at setup.
+2. Set `SUMMIT_AUDIT_PARTICIPANT_EXPORT_PREFIX` in production `ssa.properties` to that template
+   name, then restart Tomcat.
+3. Add the DB constant `AUDIT_SCHEDULER_ENABLED=true`. Constant rows are deployment items, never
+   migrations.
+4. Depends on V099 being deployed.
+
+**Owner:** Kevin.
+
+**Applies to:** Production ⬜ — owner Kevin, blocked on V099 and the three steps above. Demo / BPO
+/ Master — N/A, no Summit tenant.

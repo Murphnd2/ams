@@ -2455,3 +2455,59 @@ which tax character a given buyer lands in; getting the qualification question w
 expensive direction (see LA-37).
 
 **Precedence: Part 13 > Part 12 > Part 11 > Part 10 > Part 9 > Part 8 > Part 7 > Part 6 > Part 5 > Part 4 > Parts 1–3.**
+
+---
+---
+
+# Part 14 — Custom-event ICHRA/QSEHRA notices, and Summit flags derived from elected items
+
+**Date:** 10 September 2026 (S46)
+**Source:** Kevin's Summit UI testing 2026-09-10, recorded in `docs/business/summit_data_exchange.md`,
+"Custom-event notices and scheduled exports — tested 2026-09-10", and a QSEHRA test recovered from a
+prior chat, recorded in `summit_notice_automation_discovery.md`.
+
+## D43 — ICHRA/QSEHRA notices use a Summit custom event, not a notional COBRA benefit (flat-amount groups)
+
+| Stage | What happens |
+|---|---|
+| **Setup** | The employer is CDH-only. The allowance text goes in *Employer Plan Name* (entered by hand until the SDX question on importing it is answered). The employer is added to the participant-list audit export. On Demand *All* sends the initial notices. |
+| **Ongoing** | A scheduled participant export goes to `ExportFiles`. AMS lists Active rows with a blank `ParticipantCustomID` for ICHRA employers. The operator sends On Demand *Just These*, **then** codes the person `{prefix}-S-{Participant_ID}` in Summit, so they drop off the list. Coding without sending is the unsafe failure. **Never push Demographics for these people** — with no custom ID it would create duplicates. |
+| **Renewal** | Update *Employer Plan Name* if the amount changes, then On Demand *All* before the notice deadline. |
+| **Proof of mailing** | PB Mailing - Detail Report under DataPath fulfillment. Whether it includes custom events is an open SDX question (SDX-23). |
+
+**Rationale:** proven on a CDH-only employer (`ZZ CDH Only Test`, Employer_ID 1393). It eliminates:
+- the COBRA flag, which cannot be undone;
+- the COBRA initial-notice trap;
+- the notice benefit and its tiers;
+- both unproven Premium Billing file types (setup-sequence files 3 and 5).
+
+**Limits:**
+- the `EmployerPlanName` collision on groups with real COBRA administration (the default COBRA
+  general notice also reads `EmployerPlanName` as "the Plan" name);
+- one amount per group;
+- no hire date in the export, so timeliness depends on how often the export runs (daily chosen).
+
+**Reversal cost:** low. It is Summit configuration plus one AMS review surface.
+
+**Superseded, not deleted.** The Premium Billing notice path (setup-sequence files 3 and 5,
+`I_NOTICE`, plan template 1033 — see `docs/business/summit_data_exchange.md`, "Summit objects created
+for the ICHRA+ bundle") is superseded for flat-amount groups by this decision. It remains the fallback
+for amounts that vary by participant, per the recovered QSEHRA test's tier-name mechanism (see
+`summit_notice_automation_discovery.md`, "2026-09-10 — prior QSEHRA test recovered"). Tasks 12 and 14
+of `docs/business/ichra_setup_checklist.md` are annotated accordingly, not removed.
+
+## D44 — Summit administration flags and paired plan templates, derived from elected items (design; gated)
+
+- **Each elected ServiceItem maps to a set of Summit administration types.** For example, HFSA → CDH;
+  COBRA → COBRA; HSA → none. The employer's flags are the **union** across everything elected.
+- **The employer file emits `true` or blank, never `false`**, because Premium Billing flags cannot be
+  turned off and a re-export must never disable a setting administered outside AMS.
+- **Plan templates prefer a paired mapping.** When a paired companion is also elected, the paired
+  mapping (e.g. HFSA + COBRA → an HFSA dual template) replaces the single mapping. COBRA alone emits
+  no CDH row.
+- **Keyed on ServiceItem id**, extending V095 `summit_plan_template_map`, with no literal IDs.
+- **Gated on two SDX tests:** SDX-25 (that a blank flag leaves the setting unchanged) and SDX-26 (that
+  the CDH Plan import accepts dual templates).
+- **With the custom-event notice design (D43), ICHRA maps to CDH only.**
+
+**Precedence: Part 14 > Part 13 > Part 12 > Part 11 > Part 10 > Part 9 > Part 8 > Part 7 > Part 6 > Part 5 > Part 4 > Parts 1–3.**
