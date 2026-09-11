@@ -2587,4 +2587,63 @@ marker exists on Setup ServiceItems (`ServiceItem.code` is null there — s47b Q
 `summit_plan_template_map` + `SummitPlanTemplateAdmin` pattern). **With D43, ICHRA maps to CDH
 only** (D44's line stands).
 
+## D47 — File 1 (Employer Demographic) column sources (s48, 2026-09-11; code `add58f9131f7397259304d780f75ec0adf23ab1d`)
+
+File 1 now carries 11 columns, in this order:
+
+- the 6 mandatory columns;
+- Employer Plan Name;
+- four flags: CDH, COBRA, Retiree Billing, Direct Bill. Each is an explicit `true`/`false` (D46),
+  through `SummitCdhElementResolver.bool`.
+
+- **(a) Employer Name.**
+  - Source: the `company_legal_name` answer. It is in `packages/general.json`, `required`, and
+    attached to every LOS and enhancement.
+  - Blank → `Prospect.name`, with a WARN. Both blank → refuse.
+  - The legal name is preferred per Kevin: the agent usually enters `Prospect.name`.
+  - Supersedes the S25-C Javadoc rationale for `Prospect.name`.
+  - The filename stays on `Prospect.name`, because Summit names result files `Response_` + the
+    source filename.
+- **(b) Flags.**
+  - Source: the `SummitEmployerFlagResolver` union over `loadElectedServiceItems`, the same
+    election source file 2 uses.
+  - Refuse when no flag is true. There are three distinct messages: no PSP in session (500 +
+    `log.error`); no mapped rows (400); rows exist but all are false (400).
+  - Unmapped elected items are logged at INFO only. Kevin's model: a line-of-service item such as
+    FSA maps to nothing, and its enhancements carry the templates and flags.
+- **(c) Employer Plan Name.**
+  - Text: `{keySegment} allowance: $M/month ($A/year)`.
+  - Emitted only when exactly one elected template's key segment is in
+    `SUMMIT_ALLOWANCE_KEY_SEGMENTS`. That setting is in `ssa.properties`, comma-separated,
+    case-insensitive; absent means `ICHRA`.
+  - Zero matches → empty. More than one → empty + WARN.
+  - Legacy path (no template config) → `ICHRA`, if listed.
+  - Amount: `hra_annual_ee`, from the shared "105 Benefit Allocation" section used by every HRA
+    type. Absent or unparseable → empty + WARN.
+  - Monthly is annual ÷ 12, `HALF_UP`, 2 dp, no thousands separators.
+  - This supersedes s48b's ICHRA-only rule.
+- **(d) COBRA suppression.** When the COBRA flag is true, Employer Plan Name is empty (INFO),
+  because the default COBRA general notice merges it as "the Plan."
+  - Conditional reversal: delete the condition once both of these are true:
+    - the COBRA general notice no longer merges `EmployerPlanName`. Kevin intends to reword that
+      paragraph to drop the plan name;
+    - other letters that use the field have been checked.
+  - Cost while it stays: a group with both COBRA and an HRA gets no allowance text in its custom
+    notice.
+- **(e) The key segment now has three roles.** It is:
+  1. the `Import Plan ID` upsert segment, immutable after the first push;
+  2. file 4's ICHRA selector, the literal `ICHRA`;
+  3. the notice label.
+
+  Role 3 is new coupling. Reversal: a label source separate from the segment.
+
+**Reversal cost:** every rule above is a one-condition or one-string edit in `SummitExportServlet`.
+
+**Verification:**
+
+- Runtime-verified locally 2026-09-11: ICHRA-less sale → empty Plan Name; QSEHRA label;
+  legal-name fallback; no-rows refusal; COBRA suppression; unparseable amount.
+- Code-verified only: the WARN when more than one template matches; the all-false-rows refusal;
+  the no-PSP refusal; the ICHRA-positive path, since local has no ICHRA template.
+
 **Precedence: Part 14 > Part 13 > Part 12 > Part 11 > Part 10 > Part 9 > Part 8 > Part 7 > Part 6 > Part 5 > Part 4 > Parts 1–3.**

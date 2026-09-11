@@ -807,6 +807,28 @@ build-now scope.** Amended 2026-09-11; decision 2026-09-11.
 *NGS* and *Korioth* holdings were read from CourtListener and Justia excerpts and from *Snyder*'s
 characterization. **Neither opinion was read end to end.**
 
+**Decision superseded — 2026-09-11 (Kevin, S48).**
+
+- Kevin will approach licensing when sales volume warrants.
+- In the interim, no service is excluded or withheld from Texas employers, including QSEHRA+ and
+  other non-ERISA business.
+- No design safeguard is enforced or planned.
+- The Option A trigger is sales volume only; the proposal-stage trigger is withdrawn. Option B's
+  sales constraint ("QSEHRA+ is not offered to Texas employers") is withdrawn.
+
+**Risk if wrong:** non-ERISA Texas business carries ch. 4151 exposure with no *NGS American*
+defense, potentially retroactive.
+
+**Status:** accepted risk.
+
+**Still open:**
+
+- non-ERISA Texas participants in the existing book;
+- whether SSA collects Presidio premiums from Texas residents.
+
+**Contradiction closed:** the withdrawn constraint would have removed the staff-QSEHRA leg of the
+model discussed with Forrest on 2026-07-14.
+
 ---
 
 ### LA-11 — Design census stays at minimum scope

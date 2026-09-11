@@ -887,7 +887,8 @@ Continuing the `SDX-NN` series from SDX-22:
     what does `Mailed` contain?
 24. **SDX-24** — Can the Employer Demographic import set *Employer Plan Name*? Is it in the element
     list? **2026-09-11, KEVIN-UI: Employer Plan Name is an available element on the Employer
-    Demographic import. A value-import test is pending.**
+    Demographic import. A value-import test is pending.** → **CLOSED 2026-09-11 (S48), see
+    "Runtime results — 2026-09-11 (S48)".**
 25. **SDX-25** — On the Employer Demographic import, does a **blank** flag element leave the Summit
     setting unchanged? *(Moot under D46, 2026-09-11 — flags are emitted as explicit `true`/`false`;
     see SDX-27.)*
@@ -896,10 +897,15 @@ Continuing the `SDX-NN` series from SDX-22:
 27. **SDX-27** — (D46, 2026-09-11) Forcing all four flags (CDH, COBRA, Direct Bill, Retiree) as
     explicit `true` or `false` on the Employer Demographic import: is `false` honored on create?
     What does `false` do on update of a flag already on? Test on a throwaway employer. Owner: Kevin.
+    → **CLOSED 2026-09-11 (S48), see "Runtime results — 2026-09-11 (S48)".**
 28. **SDX-28** — (2026-09-11) Does the Employer CDH Plan import load a **COBRA-only** plan from a
     COBRA template id when the employer is COBRA-flagged first? If yes, COBRA gets its own mapping
     row and key segment and the paired-template question (SDX-26, T238) may not need answering.
     Owner: Kevin.
+29. **SDX-29** — (S48, 2026-09-11) On an Employer Demographic update, does an empty Employer Plan
+    Name leave the field unchanged? No — it clears it (KEVIN-UI, ZZTESTCompany 9102).
+    Consequence: every file 1 push that carries an empty column 7 erases a hand-typed value. See
+    `D47`(d).
 
 ### Runtime results — 2026-09-11 (T237 phase 1)
 
@@ -923,6 +929,41 @@ Continuing the `SDX-NN` series from SDX-22:
   | `AUDIT_SCHEDULER_ENABLED` | DB constant | absent → scheduler off |
 
   All are read inline, in `IchraUncodedParticipantsCheck` and `EmfListener`.
+
+### Runtime results — 2026-09-11 (S48)
+
+**Import template.** The Employer Demographic Body Format now has 11 elements, A–K:
+
+- A–F are unchanged;
+- G is Employer Plan Name (AlphaNumeric, Optional);
+- H–K are the four Boolean flags: CDH, COBRA, Retiree Billing, Direct Bill. Each is Optional, with
+  the default unchecked.
+
+This supersedes the six-column description of file 1 above; column sources are in `D47`.
+
+**SDX-24 — CLOSED.** A create import of throwaway employer `ZZSDX27A` (Summit system id 1394,
+inert) stored the 46-character value `ICHRA allowance: $500.00/month ($6000.00/year)` in full.
+⚠️ 47+ characters are untested; the QSEHRA label at $500/month is 47. The only length evidence
+in-tree is AMS's `varchar(45)` mirror of the COBRA QB export, which does not bind this field.
+
+**SDX-27 — CLOSED.**
+
+- Create: `true` turned CDH on, and the three `false` flags came out off. A `false` that was
+  honored cannot be told apart from the unchecked default, which is harmless while the template
+  defaults stay unchecked.
+- Update (ZZTESTCompany 9102, `158E140952`): `false` against COBRA, Retiree Billing and Direct
+  Bill, all already on, was ignored, and the row was accepted.
+- AMS's explicit flags can add administration but never remove it.
+
+**SDX-29 — new, resolved.** An empty Employer Plan Name on update clears the field.
+
+**Observation — COBRA general notice.**
+
+- Existing COBRA general notices have been going out with `EmployerPlanName` empty. The IntraEdge
+  notice reads "covered under (the "Plan")" with a double space.
+- Kevin intends to reword that paragraph to need no plan name, for example: "…covered under one or
+  more group health plans subject to COBRA (each, the "Plan") sponsored by «EmployerName»."
+- This is what gates `D47`(d)'s reversal.
 
 ## Plan types and the ICHRA template
 

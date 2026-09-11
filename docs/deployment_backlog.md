@@ -1719,6 +1719,16 @@ in Summit, and set them to CDH-only unless a specific employer needs otherwise. 
 **Applies to:** Production ⬜ — owner Kevin, blocked on confirming and correcting the import
 template's defaults before any real employer is pushed. Demo / BPO / Master — N/A, no Summit tenant.
 
+**Update 2026-09-11 (S48).** The premise is superseded: file 1 now emits all four flags explicitly
+(`D47`, code `add58f9131f7397259304d780f75ec0adf23ab1d`), and the live template's Boolean defaults
+are unchecked. SDX-27 closed: an explicit `false` is ignored against a flag that is already on, so
+AMS can only add administration flags. What remains open:
+
+1. Before the first real push, review every `summit_service_item_flags` row on the production
+   PSP. A wrong COBRA, Retiree Billing or Direct Bill `true` becomes permanent on every employer
+   that elects that item.
+2. Keep the template's Boolean defaults unchecked.
+
 ### D-98: Production enablement of the ICHRA audit check (T237)
 
 **Priority:** MED — no urgency until the first real ICHRA employer is live.
@@ -1738,3 +1748,21 @@ template's defaults before any real employer is pushed. Demo / BPO / Master — 
 
 **Applies to:** Production ⬜ — owner Kevin, blocked on V099 and the three steps above. Demo / BPO
 / Master — N/A, no Summit tenant.
+
+### D-99: Production data for file 1 (s48)
+
+**Priority:** HIGH — blocks the first production push of a real employer, alongside D-96/D-97.
+**Status:** Not started.
+
+- **(a)** `SUMMIT_ALLOWANCE_KEY_SEGMENTS` in production `ssa.properties`, for example
+  `ICHRA,QSEHRA`. If absent, the behavior is `ICHRA` only.
+- **(b)** `summit_plan_template_map` rows via `/SummitPlanTemplateAdmin`.
+  - Adding any row stops `SUMMIT_PLAN_TEMPLATES` being read, so add all rows together.
+  - Key segments are immutable after the first push (they are upsert keys).
+  - Local precedent: HFSA 123054 → `FSA`, DCAP 123057 → `DCAP`, QSEHRA 135541 → `QSEHRA`.
+- **(c)** Flag rows — see D-97.
+
+⚠️ **Release-order caution.** The Summit Employer Demographic template was changed to 11 columns on
+2026-09-11. Until the release carrying `add58f9131f7397259304d780f75ec0adf23ab1d` is deployed,
+production AMS emits 6 columns against it, and the behavior of that is untested. Do not push file 1
+from production before that release.
