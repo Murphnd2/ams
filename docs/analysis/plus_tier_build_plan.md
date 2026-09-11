@@ -2535,7 +2535,41 @@ kept as the fallback. Decisions a–f verbatim:
 **D30 is not reversed** by (a): no raw file is kept, and the staged rows are the same data class the
 roster already holds — see LA-41. Build 1 (a–d) shipped s47c as V100, `CensusRequestServlet`,
 `CensusDropServlet`, `CensusRequestStatusServlet`, `CensusIntakeService` and
-`CensusParseService.parseLenient`; build 2 (e–f) is pending.
+`CensusParseService.parseLenient`; build 2 (e–f) shipped s47f as `CensusReviewServlet`, additions to
+`CensusIntakeService`/`CensusSubmissionDAO`, and a guard block in `CensusUploadServlet.handleClear`.
+
+**Build 2 design notes (2026-09-11).**
+
+- **Three calls made for the build, recorded as design notes rather than asked of Kevin.**
+  (1) `ActivityStatus`/`ReasonCreated` ids are system rows seeded identically by
+  `DatabaseInitializer` on every installation (:276-278, :322-329) — not PSP-scoped reference rows
+  an admin creates — so rule 4's cross-installation risk does not apply; `SendProposal` and
+  `AddNoteToActivity25` already depend on the same ids, and the new code names them as constants in
+  one place (`CensusIntakeService`) rather than scattering literals. (2) The inbound entry uses
+  `ReasonCreated` 4 ("Received Email"), the nearest inbound type that already exists; its detail
+  text says plainly that it was a census upload. (3) Branding stays as build 1 built it — the
+  upload page resolves its agency the same way the request email does (`OriginatingAgencyResolver`),
+  which differs from `/apply/*`'s rule; that divergence is recorded (checklist Open questions), not
+  changed. The link host (the admin's, never `agency.landing_host`) is pre-existing behavior shared
+  with `SendProposal`, also left on the checklist for Kevin.
+- **Review diff key.** `lower(trim(first)) | lower(trim(last)) | first five digits of postal code`,
+  computed over the staged upload and the current `employer_participant` roster, to bucket rows as
+  New / Matching / Missing. No uniqueness exists on the roster table (s47e Q9); this key is a
+  review aid only, not a database constraint.
+- **Load into an empty roster is always allowed.** The demographics-settled guard and the
+  replace-confirmation checkbox apply only when a roster already exists — a first load has nothing
+  to replace and nothing to orphan.
+- **Load is retry-safe after a failed insert.** If a replacement's `deleteByProspectId` succeeds but
+  `insertAll` then fails, the submission is left `PENDING` with its rows intact rather than being
+  closed — the operator can run Load again without another client upload. The clear that already
+  happened is not undone.
+- **Reject keeps the token and extends the expiry.** The request stays `OPEN` on the same token;
+  `expires_at` resets to now + `EXPIRY_DAYS` so the client can upload a corrected file at the same
+  link rather than needing a new one.
+
+**Amended by walk, 2026-09-11 (s47g):** the upload entry's status follows the outcome. A clean
+upload is Waiting on Us; an upload with issues, or an unreadable one, is Waiting on Them. All three
+log a Received Email entry and offer Review.
 
 ## D46 — Employer flags: all four explicit (Kevin, 2026-09-11)
 
