@@ -19,6 +19,9 @@ public class Employer {
     @Column(name="er_key")
     private int erKey;
 
+    @Column(name="custom_id")
+    private String customId;
+
     @Column(name="phone")
     private String phone;
 
@@ -106,6 +109,14 @@ public class Employer {
 
     public void setErKey(int erKey) {
         this.erKey = erKey;
+    }
+
+    public String getCustomId() {
+        return customId;
+    }
+
+    public void setCustomId(String customId) {
+        this.customId = customId;
     }
 
     public String getPhone() {

@@ -315,6 +315,10 @@ public class SummitImportService {
                 if (!Objects.equals(phone, blankToNull(existing.getPhone()))) { existing.setPhone(phone); changed = true; }
                 if (!Objects.equals(primaryContact, blankToNull(existing.getContactName()))) { existing.setContactName(primaryContact); changed = true; }
                 if (employerId > 0 && existing.getAltId() != employerId) { existing.setAltId(employerId); changed = true; }
+                if (!customId.isEmpty()) {
+                    String normalizedCustomId = normalizeCustomId(customId);
+                    if (!Objects.equals(existing.getCustomId(), normalizedCustomId)) { existing.setCustomId(normalizedCustomId); changed = true; }
+                }
 
                 if (changed) {
                     em.getTransaction().begin();
@@ -332,6 +336,7 @@ public class SummitImportService {
                 er.setEmployerName(employerName);
                 er.setAltId(employerId);
                 er.setErKey(parseIntSafe(customId));
+                er.setCustomId(normalizeCustomId(customId));
                 er.setEmail(email);
                 er.setPhone(phone);
                 er.setContactName(primaryContact);
@@ -348,6 +353,20 @@ public class SummitImportService {
         }
 
         return result;
+    }
+
+    /**
+     * T241 -- normalizes a raw J1 {@code CustomID} cell for storage in {@code employer.custom_id}.
+     * Blank (after trim) and Summit's literal {@code n/a} (case-insensitive) both mean "no custom
+     * id" and normalize to null; anything else is stored trimmed and otherwise verbatim, unlike
+     * {@code er_key} (T242), which is parsed as an int and silently mangles a composed key such as
+     * {@code 158E140952}.
+     */
+    private static String normalizeCustomId(String raw) {
+        if (raw == null) return null;
+        String trimmed = raw.trim();
+        if (trimmed.isEmpty() || trimmed.equalsIgnoreCase("n/a")) return null;
+        return trimmed;
     }
 
     // ═══════════════════════════════════════════════════════════════
