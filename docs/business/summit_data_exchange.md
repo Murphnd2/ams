@@ -398,6 +398,11 @@ Columns: `Employer Name`, `Employer TPA Custom ID`, `Mailing Address`, `Mailing 
 SSA ICHRA Test Employer A|ZZTEST001|100 Main Street|Marinette|WI|54143
 ```
 
+⚠️ **Employer Name source, D47(a)/N1' (T239).** The rule — prefer the application's
+`company_legal_name` answer, falling back to `Prospect.name` with a WARN — now lives in exactly
+one place, `EmployerDisplayNameResolver.resolve`, shared by this file's emitter and the Setup
+activity's stored name. File 1's output is unchanged. Commit `0222bd1`; walk passed 2026-09-11.
+
 Everything else in the Employer Demographic element list is genuinely optional. Note that
 `Enable COBRA Administration` is the flag that enables **Premium Billing** — the platform ICHRA
 mailings ride on. Premium Billing covers COBRA, Retiree Billing and Direct Bill; ICHRA needs the COBRA
