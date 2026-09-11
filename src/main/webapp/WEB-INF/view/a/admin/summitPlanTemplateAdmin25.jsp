@@ -65,6 +65,7 @@
         <h1 class="t-title m-0">
             <i class="bi bi-diagram-2 me-1"></i>Summit Plan Templates
         </h1>
+        <a class="ms-auto small" href="${pageContext.request.contextPath}/SummitEmployerFlagAdmin">Summit Employer Flags &rarr;</a>
     </div>
 
     <div class="rc-body">
