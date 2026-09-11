@@ -12,7 +12,9 @@ import jakarta.servlet.http.Part;
 import net.superiorstate.ams.data.AmsDataLocal;
 import net.superiorstate.ams.data.dao.EmployerParticipantDAO;
 import net.superiorstate.ams.data.resolver.IchraAccessResolver;
+import net.superiorstate.ams.data.service.CensusIntakeService;
 import net.superiorstate.ams.data.service.CensusParseService;
+import net.superiorstate.ams.model.general.PSP;
 import net.superiorstate.ams.model.market.EmployerParticipant;
 import net.superiorstate.ams.model.sales.agency.Proposal;
 import net.superiorstate.ams.model.sales.agency.Prospect;
@@ -302,6 +304,21 @@ public class CensusUploadServlet extends HttpServlet {
             return;
         }
 
+        // S47-F, D45 f -- the roster can be replaced until Demographics is pushed to Summit or
+        // marked done for this setup; past that point participant ids are Summit identities and
+        // clearing them would orphan those records (LA-33/LA-34). Same guard CensusIntakeService.load
+        // applies to a review-page replacement.
+        Long pspId = resolveCurrentPspId(request);
+        if (CensusIntakeService.demographicsSettled(em, pspId, resolved.proposalId)) {
+            renderForm(request, response, em, resolved,
+                    List.of(new CensusParseService.RowError(0, null,
+                            "The roster can't be cleared: Demographics has been pushed to Summit"
+                                    + " or marked done for this setup. Participant ids are Summit"
+                                    + " identities from that point.")),
+                    null);
+            return;
+        }
+
         int removed;
         try {
             removed = EmployerParticipantDAO.deleteByProspectId(em, resolved.prospect.getId());
@@ -337,6 +354,19 @@ public class CensusUploadServlet extends HttpServlet {
 
         // EM stays open through the forward — the JSP walks the participant list.
         request.getRequestDispatcher(VIEW).forward(request, response);
+    }
+
+    /**
+     * S47-F — same pattern as {@code SummitResponseServlet.resolveCurrentPspId}, copied here for
+     * the D45 f Clear guard ({@code CensusIntakeService.demographicsSettled} needs a {@code pspId}
+     * to check a pushed export).
+     */
+    private static Long resolveCurrentPspId(HttpServletRequest request) {
+        Object attribute = request.getSession().getAttribute("local");
+        if (!(attribute instanceof AmsDataLocal local)) return null;
+        if (local.getCurrentPerson() == null) return null;
+        PSP psp = local.getCurrentPerson().getPsp();
+        return psp == null ? null : psp.getId();
     }
 
     /** Best-effort attribution for {@code created_by}; never fails the upload. */

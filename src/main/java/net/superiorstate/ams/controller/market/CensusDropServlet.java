@@ -128,6 +128,7 @@ public class CensusDropServlet extends HttpServlet {
 
             // The parse result for the page (issues by row number and reason only -- never a value).
             // The submission is re-read from its JSON so the page shows exactly what was staged.
+            logUpload(em, censusRequest, submission);
             notifyRequester(em, censusRequest, submission);
             render(request, response, em, censusRequest, submission, null);
         } finally {
@@ -227,6 +228,41 @@ public class CensusDropServlet extends HttpServlet {
         request.setAttribute("accentColor", accentColor);
         request.setAttribute("pspName", pspName == null ? "" : pspName);
         request.setAttribute("agencyName", agencyName);
+    }
+
+    // ── Inbound activity entry (S47-F, T231 build 2) ─────────────────────
+
+    /**
+     * Logs the upload to the setup activity as an inbound note — Received Email (the nearest
+     * inbound {@code ReasonCreated} that already exists; see {@code CensusIntakeService}'s
+     * constants note). S47-G, Kevin's 2026-09-11 walk: the status follows the outcome rather than
+     * always being Waiting on Us — a submission that can't be loaded as-is (issues, or unreadable)
+     * leaves the ball with the client, so it's Waiting on Them; only a clean, zero-issue upload
+     * puts it back on the PSP admin. The detail never includes a value or a filename.
+     * {@code logToSetup} never throws, so an upload can't fail on logging.
+     */
+    private void logUpload(EntityManager em, CensusRequest censusRequest, CensusSubmission submission) {
+        Person author = censusRequest.getRequestedBy() == null
+                ? null : em.find(Person.class, censusRequest.getRequestedBy());
+
+        int statusId;
+        String detail;
+        if (CensusSubmission.STATE_UNREADABLE.equals(submission.getState())) {
+            statusId = CensusIntakeService.STATUS_WAITING_ON_THEM;
+            detail = "Census upload received via secure link: unreadable — required columns missing."
+                    + " Waiting on a corrected file.";
+        } else if (submission.getIssueCount() > 0) {
+            statusId = CensusIntakeService.STATUS_WAITING_ON_THEM;
+            detail = "Census upload received via secure link: " + submission.getRowCount() + " rows, "
+                    + submission.getIssueCount() + " issues. Waiting on a corrected file.";
+        } else {
+            statusId = CensusIntakeService.STATUS_WAITING_ON_US;
+            detail = "Census upload received via secure link: " + submission.getRowCount() + " rows, "
+                    + submission.getIssueCount() + " issues. Awaiting review.";
+        }
+
+        CensusIntakeService.logToSetup(em, censusRequest.getProposalId(), author,
+                statusId, CensusIntakeService.REASON_RECEIVED_EMAIL, detail);
     }
 
     // ── Requester notification ──────────────────────────────────────────
@@ -332,13 +368,33 @@ public class CensusDropServlet extends HttpServlet {
                 if (!row.has("issues")) continue;
                 int rowNumber = row.has("rowNumber") ? row.get("rowNumber").getAsInt() : 0;
                 for (com.google.gson.JsonElement issue : row.getAsJsonArray("issues")) {
-                    lines.add("Row " + rowNumber + " — " + issue.getAsString());
+                    lines.add("Row " + rowNumber + " — " + labelIssue(issue.getAsString()));
                 }
             }
         } catch (RuntimeException ignored) {
             // As above: a malformed staging row renders nothing rather than failing the page.
         }
         return lines;
+    }
+
+    /**
+     * S47-F — {@code "field: reason"} (the shape staged by {@code CensusParseService.interpretLenient})
+     * to {@code "Label: reason"}. Storage keeps field names; this is a render-time substitution
+     * only. Falls back to the original string unchanged when there is no {@code ": "} separator or
+     * the prefix is not one of the eight whitelisted fields — never guesses at an unknown shape.
+     */
+    private static String labelIssue(String issue) {
+        int sep = issue.indexOf(": ");
+        if (sep <= 0) return issue;
+        String field = issue.substring(0, sep);
+        String reason = issue.substring(sep + 2);
+        for (String known : List.of(CensusParseService.F_FIRST_NAME, CensusParseService.F_LAST_NAME,
+                CensusParseService.F_ADDRESS_LINE1, CensusParseService.F_ADDRESS_LINE2,
+                CensusParseService.F_CITY, CensusParseService.F_STATE,
+                CensusParseService.F_POSTAL_CODE, CensusParseService.F_EMAIL)) {
+            if (known.equals(field)) return CensusParseService.labelFor(field) + ": " + reason;
+        }
+        return issue;
     }
 
     // ── Helpers ─────────────────────────────────────────────────────────

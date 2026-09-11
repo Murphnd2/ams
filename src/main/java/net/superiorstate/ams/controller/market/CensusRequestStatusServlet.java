@@ -93,6 +93,15 @@ public class CensusRequestStatusServlet extends HttpServlet {
                     }
                 }
 
+                // S47-F -- a Review link appears only while there is something to review: the
+                // request is OPEN and its latest submission is still PENDING/UNREADABLE (the
+                // same "reviewable" definition CensusIntakeService.reviewable uses).
+                if (status.isOpen()
+                        && CensusIntakeService.reviewable(em, proposalId).isPresent()) {
+                    request.setAttribute("censusReviewUrl",
+                            request.getContextPath() + "/CensusReview?proposalId=" + proposalId);
+                }
+
                 request.setAttribute("censusStatusLine", line);
                 // The JSP is the one place the line is rendered; forwarding from inside an include
                 // is not allowed, so this is an include of the fragment view.

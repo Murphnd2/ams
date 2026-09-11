@@ -3,6 +3,7 @@ package net.superiorstate.ams.data.dao;
 import jakarta.persistence.EntityManager;
 import net.superiorstate.ams.model.market.CensusSubmission;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -37,6 +38,30 @@ public abstract class CensusSubmissionDAO {
     public static CensusSubmission findLatestByRequestId(EntityManager em, Long requestId) {
         if (requestId == null) return null;
         List<CensusSubmission> results = em.createQuery(JPQL_BY_REQUEST, CensusSubmission.class)
+                .setParameter("requestId", requestId)
+                .setMaxResults(1)
+                .getResultList();
+        return results.isEmpty() ? null : results.get(0);
+    }
+
+    /** One submission by id, or {@code null}. */
+    public static CensusSubmission findById(EntityManager em, Long id) {
+        if (id == null) return null;
+        return em.find(CensusSubmission.class, id);
+    }
+
+    /**
+     * S47-F — the newest submission for a request that is still awaiting a PSP-admin decision:
+     * {@code PENDING} (readable, ready to Load) or {@code UNREADABLE} (ready to Reject only). Same
+     * "open" definition {@link #JPQL_OPEN_BY_REQUEST} uses for {@link #supersedeOpen}, but ordered
+     * newest-first and capped to one row, since only the latest open submission is ever actionable
+     * — {@code supersedeOpen} guarantees at most one open row exists per request at a time.
+     */
+    public static CensusSubmission findLatestReviewable(EntityManager em, Long requestId) {
+        if (requestId == null) return null;
+        List<CensusSubmission> results = em.createQuery(
+                        JPQL_OPEN_BY_REQUEST + " ORDER BY s.submittedAt DESC, s.id DESC",
+                        CensusSubmission.class)
                 .setParameter("requestId", requestId)
                 .setMaxResults(1)
                 .getResultList();
@@ -85,6 +110,34 @@ public abstract class CensusSubmissionDAO {
         } catch (Exception e) {
             if (em.getTransaction().isActive()) em.getTransaction().rollback();
             throw new RuntimeException("Failed to supersede census submissions: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * S47-F — closes a submission with a PSP-admin decision: {@code state} is
+     * {@link CensusSubmission#STATE_LOADED} or {@link CensusSubmission#STATE_REJECTED}. NULLs
+     * {@code rows_json} the same way {@link #supersedeOpen} does — the decision is recorded, the
+     * staged personal data is not kept past it (LA-41) — and stamps {@code reviewed_by}/
+     * {@code reviewed_at}/{@code review_note}. Same find-then-mutate transaction pattern as
+     * {@link SummitSetupStepDAO#markDone}.
+     *
+     * @throws RuntimeException wrapping whatever failed, after rolling back.
+     */
+    public static void close(EntityManager em, Long id, String state, Long reviewerId, String note) {
+        try {
+            em.getTransaction().begin();
+            CensusSubmission submission = em.find(CensusSubmission.class, id);
+            if (submission != null) {
+                submission.setState(state);
+                submission.setRowsJson(null);
+                submission.setReviewedBy(reviewerId);
+                submission.setReviewedAt(LocalDateTime.now());
+                submission.setReviewNote(note);
+            }
+            em.getTransaction().commit();
+        } catch (Exception e) {
+            if (em.getTransaction().isActive()) em.getTransaction().rollback();
+            throw new RuntimeException("Failed to close census submission: " + e.getMessage(), e);
         }
     }
 }

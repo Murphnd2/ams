@@ -9,7 +9,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Census upload — ${not empty agencyName ? agencyName : pspName}</title>
+    <title>Census upload<c:if test="${not empty agencyName or not empty pspName}"> — ${not empty agencyName ? agencyName : pspName}</c:if></title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     <style>
@@ -145,7 +145,7 @@
                 <p class="mb-0">&copy; <c:out value="${agencyName}"/></p>
             </c:when>
             <c:otherwise>
-                <p class="mb-0">&copy; <c:out value="${pspName}"/> &middot; Benefits Administration Services</p>
+                <p class="mb-0">&copy; <c:if test="${not empty pspName}"><c:out value="${pspName}"/> &middot; </c:if>Benefits Administration Services</p>
             </c:otherwise>
         </c:choose>
     </div>
