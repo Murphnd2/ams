@@ -10,7 +10,9 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.ByteArrayInputStream;
+import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -225,6 +227,76 @@ public class SummitSftpService {
         } catch (Exception e) {
             String message = scrub(e.getMessage(), password);
             log.error("[SUMMIT-SFTP] upload failed for {}:{} dir={} file={} -- {}",
+                    host, port, remoteDir, filename, message);
+            throw new SftpTransportException(message);
+        } finally {
+            if (channel != null && channel.isConnected()) {
+                channel.disconnect();
+            }
+            if (session != null && session.isConnected()) {
+                session.disconnect();
+            }
+        }
+    }
+
+    /**
+     * S45-B -- T230: downloads {@code remoteDir}/{@code filename} and returns its bytes. Read-only
+     * -- mirrors {@link #upload}'s connection handling exactly (config reads, {@link #openSession},
+     * host-key pin check, remote-path composition, exception wrapping via {@link #scrub}, and
+     * session close in {@code finally}), with a GET in place of the PUT.
+     * <p>
+     * Reads at most {@code maxBytes + 1} bytes into a fixed buffer -- never the whole remote file
+     * into unbounded memory. When the remote file is larger than {@code maxBytes}, that extra byte
+     * is read successfully and the method throws {@link SftpTransportException} naming the cap
+     * rather than returning a silently truncated result.
+     * <p>
+     * No delete, no rename, no write of any kind -- this method only ever reads.
+     */
+    public byte[] read(String remoteDir, String filename, int maxBytes) throws SftpTransportException {
+        String host = AppConfig.get("SUMMIT_SFTP_HOST");
+        int port = resolvePort(AppConfig.get("SUMMIT_SFTP_PORT"));
+        String user = AppConfig.get("SUMMIT_SFTP_USER");
+        String password = AppConfig.get("SUMMIT_SFTP_PASSWORD");
+        String pinnedHostKey = AppConfig.get("SUMMIT_SFTP_HOST_KEY");
+        boolean pinned = pinnedHostKey != null && !pinnedHostKey.isBlank();
+
+        Session session = null;
+        ChannelSftp channel = null;
+        try {
+            SftpSession conn = openSession(host, port, user, password);
+            session = conn.session;
+
+            if (pinned) {
+                HostKey hostKey = session.getHostKey();
+                String fingerprint = hostKey != null ? hostKey.getFingerPrint(conn.jsch) : null;
+                if (fingerprint == null || !fingerprint.equalsIgnoreCase(pinnedHostKey.trim())) {
+                    throw new SftpTransportException("Host key fingerprint mismatch. Presented: "
+                            + fingerprint + " -- pinned SUMMIT_SFTP_HOST_KEY does not match.");
+                }
+            }
+
+            channel = (ChannelSftp) session.openChannel("sftp");
+            channel.connect(CHANNEL_TIMEOUT_MS);
+
+            String remotePath = remoteDir.endsWith("/") ? remoteDir + filename : remoteDir + "/" + filename;
+            byte[] limitBuffer = new byte[maxBytes + 1];
+            int totalRead = 0;
+            try (InputStream in = channel.get(remotePath)) {
+                int n;
+                while (totalRead < limitBuffer.length
+                        && (n = in.read(limitBuffer, totalRead, limitBuffer.length - totalRead)) != -1) {
+                    totalRead += n;
+                }
+            }
+            if (totalRead > maxBytes) {
+                throw new SftpTransportException("Response exceeds display cap of " + maxBytes + " bytes");
+            }
+            return Arrays.copyOf(limitBuffer, totalRead);
+        } catch (SftpTransportException e) {
+            throw e;
+        } catch (Exception e) {
+            String message = scrub(e.getMessage(), password);
+            log.error("[SUMMIT-SFTP] read failed for {}:{} dir={} file={} -- {}",
                     host, port, remoteDir, filename, message);
             throw new SftpTransportException(message);
         } finally {

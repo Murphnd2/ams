@@ -30,13 +30,14 @@
           <div class="flex-grow-1 lh-sm">
             <div class="fw-semibold">Employer</div>
             <div class="text-muted" style="font-size: 0.72rem;">File 1 · creates or updates the employer</div>
+            <jsp:include page="/SummitSetupStatus"><jsp:param name="proposalId" value="${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}"/><jsp:param name="step" value="employer"/></jsp:include>
           </div>
           <div class="btn-group btn-group-sm">
             <button type="button" class="btn btn-outline-secondary opacity-50" style="border-style: dashed; cursor: not-allowed;" aria-disabled="true" title="Preview — not built yet"><i class="bi bi-eye"></i></button>
             <a href="${pageContext.request.contextPath}/SummitExport?proposalId=${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}&type=employer" class="btn btn-outline-ssa" title="Download file 1"><i class="bi bi-download"></i></a>
             <button type="submit" form="summitPush-employer" class="btn btn-outline-ssa" title="Push to DataPath" data-summit-push="employer" onclick="return confirm('Push the Employer file to DataPath? Summit processes it automatically within about 15 minutes. There is no undo.');"><i class="bi bi-cloud-upload"></i></button>
-            <button type="button" class="btn btn-outline-secondary opacity-50" style="border-style: dashed; cursor: not-allowed;" aria-disabled="true" title="Check response — not built yet"><i class="bi bi-arrow-repeat"></i></button>
-            <button type="button" class="btn btn-outline-secondary opacity-50" style="border-style: dashed; cursor: not-allowed;" aria-disabled="true" title="Mark done — not built yet"><i class="bi bi-check2-circle"></i></button>
+            <a href="${pageContext.request.contextPath}/SummitResponse?proposalId=${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}&step=employer" class="btn btn-outline-ssa" title="Check response"><i class="bi bi-arrow-repeat"></i></a>
+            <button type="submit" form="summitDone-employer" class="btn btn-outline-ssa" title="Mark done (manual)" onclick="return confirm('Mark Employer done without a response review? Use this for a group already set up in Summit or entered by hand.');"><i class="bi bi-check2-circle"></i></button>
           </div>
         </div>
 
@@ -46,13 +47,14 @@
           <div class="flex-grow-1 lh-sm">
             <div class="fw-semibold">Plans (CDH)</div>
             <div class="text-muted" style="font-size: 0.72rem;">File 2 · CDH plans elected on the application</div>
+            <jsp:include page="/SummitSetupStatus"><jsp:param name="proposalId" value="${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}"/><jsp:param name="step" value="cdhplan"/></jsp:include>
           </div>
           <div class="btn-group btn-group-sm">
             <button type="button" class="btn btn-outline-secondary opacity-50" style="border-style: dashed; cursor: not-allowed;" aria-disabled="true" title="Preview — not built yet"><i class="bi bi-eye"></i></button>
             <a href="${pageContext.request.contextPath}/SummitExport?proposalId=${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}&type=cdhplan" class="btn btn-outline-ssa" title="Download file 2"><i class="bi bi-download"></i></a>
             <button type="submit" form="summitPush-cdhplan" class="btn btn-outline-ssa" title="Push to DataPath" data-summit-push="cdhplan" onclick="return confirm('Push the Plans (CDH) file to DataPath? Summit processes it automatically within about 15 minutes. There is no undo.');"><i class="bi bi-cloud-upload"></i></button>
-            <button type="button" class="btn btn-outline-secondary opacity-50" style="border-style: dashed; cursor: not-allowed;" aria-disabled="true" title="Check response — not built yet"><i class="bi bi-arrow-repeat"></i></button>
-            <button type="button" class="btn btn-outline-secondary opacity-50" style="border-style: dashed; cursor: not-allowed;" aria-disabled="true" title="Mark done — not built yet"><i class="bi bi-check2-circle"></i></button>
+            <a href="${pageContext.request.contextPath}/SummitResponse?proposalId=${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}&step=cdhplan" class="btn btn-outline-ssa" title="Check response"><i class="bi bi-arrow-repeat"></i></a>
+            <button type="submit" form="summitDone-cdhplan" class="btn btn-outline-ssa" title="Mark done (manual)" onclick="return confirm('Mark Plans (CDH) done without a response review? Use this for a group already set up in Summit or entered by hand.');"><i class="bi bi-check2-circle"></i></button>
           </div>
         </div>
         <div class="d-flex align-items-center gap-2 pb-1 border-bottom" style="padding-left: 2rem;">
@@ -61,7 +63,7 @@
             <div class="text-muted" style="font-size: 0.72rem;">Created by hand in Summit before any election file</div>
           </div>
           <div class="btn-group btn-group-sm">
-            <button type="button" class="btn btn-outline-secondary opacity-50" style="border-style: dashed; cursor: not-allowed;" aria-disabled="true" title="Mark done — not built yet"><i class="bi bi-check2-circle"></i></button>
+            <button type="submit" form="summitDone-schedules" class="btn btn-outline-ssa" title="Mark done (manual)" onclick="return confirm('Mark Contribution schedules done without a response review? Use this for a group already set up in Summit or entered by hand.');"><i class="bi bi-check2-circle"></i></button>
           </div>
         </div>
 
@@ -95,13 +97,14 @@
           <div class="flex-grow-1 lh-sm">
             <div class="fw-semibold">Demographics</div>
             <div class="text-muted" style="font-size: 0.72rem;">File 4 · creates or updates participants</div>
+            <jsp:include page="/SummitSetupStatus"><jsp:param name="proposalId" value="${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}"/><jsp:param name="step" value="demographics"/></jsp:include>
           </div>
           <div class="btn-group btn-group-sm">
             <button type="button" class="btn btn-outline-secondary opacity-50" style="border-style: dashed; cursor: not-allowed;" aria-disabled="true" title="Preview — not built yet"><i class="bi bi-eye"></i></button>
             <a href="${pageContext.request.contextPath}/SummitExport?proposalId=${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}&type=demographics" class="btn btn-outline-ssa" title="Download file 4"><i class="bi bi-download"></i></a>
             <button type="submit" form="summitPush-demographics" class="btn btn-outline-ssa" title="Push to DataPath" data-summit-push="demographics" onclick="return confirm('Push the Demographics file to DataPath? Summit processes it automatically within about 15 minutes. There is no undo.');"><i class="bi bi-cloud-upload"></i></button>
-            <button type="button" class="btn btn-outline-secondary opacity-50" style="border-style: dashed; cursor: not-allowed;" aria-disabled="true" title="Check response — not built yet"><i class="bi bi-arrow-repeat"></i></button>
-            <button type="button" class="btn btn-outline-secondary opacity-50" style="border-style: dashed; cursor: not-allowed;" aria-disabled="true" title="Mark done — not built yet"><i class="bi bi-check2-circle"></i></button>
+            <a href="${pageContext.request.contextPath}/SummitResponse?proposalId=${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}&step=demographics" class="btn btn-outline-ssa" title="Check response"><i class="bi bi-arrow-repeat"></i></a>
+            <button type="submit" form="summitDone-demographics" class="btn btn-outline-ssa" title="Mark done (manual)" onclick="return confirm('Mark Demographics done without a response review? Use this for a group already set up in Summit or entered by hand.');"><i class="bi bi-check2-circle"></i></button>
           </div>
         </div>
 
@@ -154,6 +157,35 @@
           action="${pageContext.request.contextPath}/SummitExport">
       <input type="hidden" name="proposalId" value="${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}"/>
       <input type="hidden" name="type" value="demographics"/>
+    </form>
+
+    <%-- S45-B -- hidden manual "Mark done" forms, one per T230 phase-1 step. The visible dashed
+         Mark done buttons above use form="summitDone-{step}" to submit these. Each records basis
+         MANUAL with no exportId -- the panel itself never reviews a response; that happens on
+         /SummitResponse, reached via the "Check response" links above. --%>
+    <form id="summitDone-employer" method="post" target="_blank"
+          action="${pageContext.request.contextPath}/SummitResponse">
+      <input type="hidden" name="proposalId" value="${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}"/>
+      <input type="hidden" name="step" value="employer"/>
+      <input type="hidden" name="action" value="markdone"/>
+    </form>
+    <form id="summitDone-cdhplan" method="post" target="_blank"
+          action="${pageContext.request.contextPath}/SummitResponse">
+      <input type="hidden" name="proposalId" value="${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}"/>
+      <input type="hidden" name="step" value="cdhplan"/>
+      <input type="hidden" name="action" value="markdone"/>
+    </form>
+    <form id="summitDone-schedules" method="post" target="_blank"
+          action="${pageContext.request.contextPath}/SummitResponse">
+      <input type="hidden" name="proposalId" value="${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}"/>
+      <input type="hidden" name="step" value="schedules"/>
+      <input type="hidden" name="action" value="markdone"/>
+    </form>
+    <form id="summitDone-demographics" method="post" target="_blank"
+          action="${pageContext.request.contextPath}/SummitResponse">
+      <input type="hidden" name="proposalId" value="${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}"/>
+      <input type="hidden" name="step" value="demographics"/>
+      <input type="hidden" name="action" value="markdone"/>
     </form>
   </div>
 </c:if>
