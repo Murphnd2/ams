@@ -473,7 +473,9 @@ leaves file 2 byte-identical to what it emitted before S31-H.
 
 ⚠️ **`ZZ_TEST_CDH` currently maps NO optional elements.** Until they are added on the Summit side, any
 file carrying a non-empty optional block **will not import**. Configuring the AMS side first is
-harmless but achieves nothing on its own.
+harmless but achieves nothing on its own. ⭐ **SUPERSEDED (2026-09-10).** Kevin confirmed the
+template maps the eight optional elements in the emitted order, and a 16-column file imported
+successfully.
 
 **The three tiers, settled 2026-09-08:**
 
@@ -570,13 +572,17 @@ by hand must get the amount from the employer.
 they see a file with fewer rows than they expected and no explanation. Surfacing them is filed as a
 backlog item.
 
-##### Boolean representation is unproven
+##### Boolean representation is proven
 
-⚠️ **Nothing establishes how Summit wants a Boolean in a delimited file.** The element list says only
-"Boolean" — `true`/`false`, `1`/`0` and `Y`/`N` are all plausible and none has been imported. Rather
-than guess, both sides are config: `SUMMIT_CDH_BOOL_TRUE` and `SUMMIT_CDH_BOOL_FALSE`, defaulting to
-`true` and `false`. **One import settles it**, the way every other Summit question in this document was
-settled, and the fix is then a properties edit rather than a build.
+⭐ **RESOLVED (2026-09-10, S45).** `true`/`false` imports correctly **in both directions**, verified
+in the Summit UI against plan `158E140952-DCAP` (an AMS-pushed `ZZ_TEST_CDH` file):
+
+- grace enabled = Grace;
+- grace by-date `true` → Grace Period = Date, and Grace Date = 12/15/2027;
+- run-out enabled, with run-out by-date `false` → Days, 90;
+- terminated run-out → "Number of days after termination", 90.
+
+`SUMMIT_CDH_BOOL_TRUE`/`SUMMIT_CDH_BOOL_FALSE` stand at their defaults, `true` and `false`.
 
 ### 3. Demographics — creates the participant
 
@@ -759,6 +765,43 @@ on row number, not on the echoed key.**
 
 Always map `Record Comment` into the results template. `Record Processing Status` alone yields a bare
 "Failed" with no reason.
+
+## Response check (T230)
+
+Shipped 2026-09-10 (S45, phase 1: `employer`, `cdhplan`, `schedules`, `demographics` — `enrollment`
+is priority 2 and is not part of this). The Summit setup panel's "Check response" and "Mark done"
+controls, backed by `SummitResponseService`, `SummitResponseServlet` (`/SummitResponse`) and
+`SummitSetupStatusServlet` (`/SummitSetupStatus`, an include-only panel fragment).
+
+**Design:**
+
+- **Predict, don't correlate.** The response for a pushed file is `Response_` + that row's exact
+  pushed filename, in the `ResponseFiles` directory sibling to that row's exact `delivery_dir`
+  (`ImportFiles`). Both are stored verbatim on the `summit_file_export` row, so nothing here ever
+  reconstructs or guesses either.
+- **Fetch on demand.** The response is listed and read over SFTP fresh on every check-page request
+  (a new `SummitSftpService.read`, size-capped at 1 MiB) — never cached, never pre-fetched.
+- **Classify on the first field.** Success/failure tokens are matched against the trimmed first
+  field only, case-insensitively — never by an echoed key, since the response line shape differs
+  by file type (see Results files above, and SDX-18). A status matching neither token list is
+  `UNKNOWN`, never counted as success.
+- **Persist nothing from a response.** A response line can carry personal data — Demographics
+  echoes participant names, and a rejection comment has echoed a full street address (Results
+  files above). The response is fetched, parsed and rendered in one request, then discarded.
+- **Step state lives in `summit_setup_step` (V098)**, a separate entity from `summit_file_export`,
+  not an extension of it — Mark done must work with no pushed file at all (the manual override for
+  a group already set up in Summit, or entered by hand). One row per `(proposal_id, step_key)`:
+  `state` (DONE/OPEN), `basis` (REVIEWED, from the check page with an export id, or MANUAL, from
+  the panel), `export_id` (set only for REVIEWED). No auto-completion — every DONE is an explicit
+  PSP-admin action.
+
+**Config keys — this section is their only written registry:**
+
+- `SUMMIT_RESPONSE_OK_TOKENS` — comma-separated success tokens, default `Successful`.
+- `SUMMIT_RESPONSE_FAIL_TOKENS` — comma-separated failure tokens, default `Failed`.
+
+Both are read inline via `AppConfig.get` in `SummitResponseService`, matching the existing
+`SUMMIT_SFTP_*`/`SUMMIT_CDH_*` convention of no dedicated constants class for these keys.
 
 ## Plan types and the ICHRA template
 
@@ -968,7 +1011,12 @@ open-question registry (`O1`–`O52+`, tracked in `docs/swbd_ichra_build_plan.md
     different from Demographics' `Participant TPA Custom ID|Status|Message` shape recorded in
     Transport below, confirming the per-import-type warning already recorded there. **Success
     tokens for `cdhplan`, `demographics` and `enrollment` remain unobserved** — each type's first
-    successful push settles its own.
+    successful push settles its own. ⭐ **2026-09-10 (S45) — resolved for Employer CDH Plan.** The
+    success token is `Successful`. The response line shape is
+    `Status|Employer TPA Custom ID|Plan Name|Comment`, observed as
+    `Successful|158E140952|Dependent Care FSA|Employer Plan created successfully`, from a file
+    pushed by AMS over SFTP. Demographics and HRA Enrollment remain unobserved as AMS-pushed
+    responses.
 19. **SDX-19** — ⭐ **RESOLVED (2026-09-09, DataPath Support, CASE-22040) — the automation fork
     does not exist.** Retrieval is fully automatic every 15 minutes under the tenant's existing
     **DataPath Network** configuration; no switch to External Network, and no architecture
@@ -999,7 +1047,10 @@ open-question registry (`O1`–`O52+`, tracked in `docs/swbd_ichra_build_plan.md
     above. Confirm on the next push that processing happens within about 15 minutes, not at the
     configured daily time. **Operational consequence: if the box is unchecked, every AMS push sits
     unprocessed, silently** — no error, no response file, nothing in File History until the
-    checkbox is enabled or someone notices the silence.
+    checkbox is enabled or someone notices the silence. **2026-09-10 (S45):** an AMS-pushed
+    `ZZ_TEST_CDH` file received its response within roughly 8 minutes (pushed 20:05:45, marked
+    reviewed 20:13). Whether the Schedule Import checkbox is scoped per template is still
+    unproven.
 
 ## Test artifacts
 
