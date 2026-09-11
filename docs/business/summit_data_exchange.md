@@ -403,6 +403,9 @@ Everything else in the Employer Demographic element list is genuinely optional. 
 mailings ride on. Premium Billing covers COBRA, Retiree Billing and Direct Bill; ICHRA needs the COBRA
 leg. AMS will set this true on employers with no COBRA, so it is not later read as a defect.
 
+⚠️ Superseded 2026-09-11 by D43/D44/D46: ICHRA employers are CDH-only; the COBRA flag is set only
+when a COBRA ServiceItem is elected. File 4 has no COBRA dependency in code (s47b).
+
 ### 2. Employer CDH Plan — creates the benefit plan for that employer
 
 Columns: `Plan Template ID`, `Plan Name`, `Import Plan ID`, `Plan Description`, `Effective Date`,
@@ -883,11 +886,20 @@ Continuing the `SDX-NN` series from SDX-22:
 23. **SDX-23** — Does a custom event appear in PB Mailing - Detail Report once DataPath-fulfilled, and
     what does `Mailed` contain?
 24. **SDX-24** — Can the Employer Demographic import set *Employer Plan Name*? Is it in the element
-    list?
+    list? **2026-09-11, KEVIN-UI: Employer Plan Name is an available element on the Employer
+    Demographic import. A value-import test is pending.**
 25. **SDX-25** — On the Employer Demographic import, does a **blank** flag element leave the Summit
-    setting unchanged?
+    setting unchanged? *(Moot under D46, 2026-09-11 — flags are emitted as explicit `true`/`false`;
+    see SDX-27.)*
 26. **SDX-26** — Will the Employer CDH Plan import accept a plan template whose Lines of Service
     include both CDH and COBRA (a dual benefit), and create a plan carrying both?
+27. **SDX-27** — (D46, 2026-09-11) Forcing all four flags (CDH, COBRA, Direct Bill, Retiree) as
+    explicit `true` or `false` on the Employer Demographic import: is `false` honored on create?
+    What does `false` do on update of a flag already on? Test on a throwaway employer. Owner: Kevin.
+28. **SDX-28** — (2026-09-11) Does the Employer CDH Plan import load a **COBRA-only** plan from a
+    COBRA template id when the employer is COBRA-flagged first? If yes, COBRA gets its own mapping
+    row and key segment and the paired-template question (SDX-26, T238) may not need answering.
+    Owner: Kevin.
 
 ### Runtime results — 2026-09-11 (T237 phase 1)
 
@@ -1125,7 +1137,8 @@ open-question registry (`O1`–`O52+`, tracked in `docs/swbd_ichra_build_plan.md
     `Status|Employer TPA Custom ID|Plan Name|Comment`, observed as
     `Successful|158E140952|Dependent Care FSA|Employer Plan created successfully`, from a file
     pushed by AMS over SFTP. Demographics and HRA Enrollment remain unobserved as AMS-pushed
-    responses.
+    responses. **2026-09-11: `cdhplan`'s success token was observed as `Successful` in S45;
+    `demographics` and `enrollment` remain unobserved.**
 19. **SDX-19** — ⭐ **RESOLVED (2026-09-09, DataPath Support, CASE-22040) — the automation fork
     does not exist.** Retrieval is fully automatic every 15 minutes under the tenant's existing
     **DataPath Network** configuration; no switch to External Network, and no architecture
@@ -1241,6 +1254,9 @@ carry the same custom ID, so the linkage established here is what makes every la
 possible. **`Enable COBRA Administration`
 must be set true here** — it is the flag that enables Premium Billing, which file 4 depends on. AMS
 sets this true on employers with no COBRA of their own, so it should not later be read as a defect.
+
+⚠️ Superseded 2026-09-11 by D43/D44/D46: ICHRA employers are CDH-only; the COBRA flag is set only
+when a COBRA ServiceItem is elected. File 4 has no COBRA dependency in code (s47b).
 
 **File 2 — Employer CDH Plan.** ⚠️ **One file, multiple rows** — one row per plan, each with its own
 `Plan Template ID` and `Import Plan ID`, all sharing the employer key. This is not one import per

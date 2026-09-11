@@ -2510,4 +2510,47 @@ of `docs/business/ichra_setup_checklist.md` are annotated accordingly, not remov
   the CDH Plan import accepts dual templates).
 - **With the custom-event notice design (D43), ICHRA maps to CDH only.**
 
+## D45 — Census intake (Kevin, 2026-09-11)
+
+Settles the census chain's stages 1–4 (s47a Phase A). Supersedes D29's "increment two" framing —
+the one-time GUID drop is built now (build 1, s47c), with D29 option 1 (PSP-staff Census Upload)
+kept as the fallback. Decisions a–f verbatim:
+
+- **a. Rows, not files.** The client's file is parsed in memory; only whitelisted columns are staged
+  and the raw file is never stored. If the client's headers miss a required field, the upload is kept
+  as *unreadable* with header names only. The fallback remains Census Upload (D29 Option 1 stays).
+- **b. Lenient parse for client uploads only.** Incomplete rows are staged with their issues rather
+  than rejected wholesale. Census Upload keeps all-or-nothing.
+- **c. Token.** One request row with a UUID and a 30-day expiry. Unlimited uploads, the newest
+  superseding the rest. It closes on load or revoke.
+- **d. Request email.** SendProposal's compose pattern, sent to the primary contact. The default body
+  carries the link, the required columns, and "leave out SSN, DOB and pay." It is logged to the
+  activity. Step 3 shows its status, and the requester is emailed on each upload.
+- **e. Review.** Shows the mapping, the rows and each row's issues, plus a diff against the current
+  roster (new, matching, missing). **Load** requires zero issues. **Reject** reopens the link.
+- **f. Replace until pushed.** The roster can be replaced until Demographics is pushed or marked
+  done, then it's refused, and the same guard applies to the existing Clear action. Changes after
+  that are ongoing administration, not setup, so there is no stale flag.
+
+**D30 is not reversed** by (a): no raw file is kept, and the staged rows are the same data class the
+roster already holds — see LA-41. Build 1 (a–d) shipped s47c as V100, `CensusRequestServlet`,
+`CensusDropServlet`, `CensusRequestStatusServlet`, `CensusIntakeService` and
+`CensusParseService.parseLenient`; build 2 (e–f) is pending.
+
+## D46 — Employer flags: all four explicit (Kevin, 2026-09-11)
+
+*Amends D44's "true or blank only."* File 1 emits CDH, COBRA, Direct Bill and Retiree as explicit
+`true`/`false`, derived from elected ServiceItems. Kevin's view is that this settles the other
+employer questions (SDX-25 becomes moot, and D-97's defaults no longer apply). **Pending test
+SDX-27** — that `false` is honored on create, and what `false` does on update of a flag already on.
+
+**Design note (s47b, 2026-09-11).** File 1 has no optional columns today, and the rule that an
+optional element must never be last applies to it (`summit_data_exchange.md`, trailing-column
+rule). Column order is therefore the six mandatory columns, then *Employer Plan Name* (optional),
+then the four flags. The flags are never blank under D46, so the file always ends on a populated
+column. The flag derivation needs a new ServiceItem → administration-type config, because no kind
+marker exists on Setup ServiceItems (`ServiceItem.code` is null there — s47b Q10; copy the V095
+`summit_plan_template_map` + `SummitPlanTemplateAdmin` pattern). **With D43, ICHRA maps to CDH
+only** (D44's line stands).
+
 **Precedence: Part 14 > Part 13 > Part 12 > Part 11 > Part 10 > Part 9 > Part 8 > Part 7 > Part 6 > Part 5 > Part 4 > Parts 1–3.**

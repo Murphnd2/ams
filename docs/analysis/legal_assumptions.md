@@ -1683,6 +1683,12 @@ parsing and refuses by name when it is non-zero. The clear action is POST-only, 
 requires an explicit confirmation parameter; the confirmation text states the orphaning consequence
 in the operator's own terms rather than in schema terms.
 
+> **Corrected 2026-09-11 (s47a):** the count happens before parsing; the refusal happens after
+> parsing (post-parse refusal, per the S26 close-out §9). The operator sees the submitted file's
+> mapping report before learning the insert is refused (`CensusUploadServlet.handleUpload`).
+> **D45 decision f (2026-09-11)** further amends this assumption for build 2: the roster becomes
+> replaceable until Demographics is pushed or marked done, and the same guard then applies to Clear.
+
 **Risk if wrong.** The cost is operator friction on a legitimate mid-year census correction — an
 employer adds three employees and the whole roster must be cleared and reloaded, reassigning ids for
 everyone including the unchanged majority. That is a real cost, and it is the reason a merge path is
@@ -1973,6 +1979,47 @@ the PB Mailing - Detail Report and the participant list export, both observed 20
 status columns are kept, SSN is never read, and `AuditRun`/`audit_run` (V099) persists only
 counts and scrubbed one-line messages — no row content. Runtime-verified against the live Summit
 tenant, 2026-09-11.
+
+### LA-41 — Staged census rows and retained Summit file text are the roster's data class; D30 is not reversed
+
+**Assumption.** Staging parsed, whitelisted census rows (name, address, email; never SSN, DOB or
+pay) received through a public one-time link (`census_submission.rows_json`, V100), and retaining
+the generated Summit file text in `summit_file_export.content` (V096), are the same data class the
+roster (`employer_participant`, V094) already holds. They need no protection beyond the roster's,
+and D30 ("parse in memory → never persist the raw file") is **not** reversed, because no raw file is
+kept — the client's upload is read from the multipart stream, parsed by
+`CensusParseService.parseLenient`, and discarded.
+
+**Basis.** **Code and operational experience, not counsel.** D30 was written against an SSN-bearing
+Plus-tier census staged to `plus_census_stage` with `ssn_hash`; the census AMS actually collects is
+bounded by LA-35 at the parser, so nothing an unrecognised column carries can reach `rows_json`. The
+roster already holds exactly these fields in the same database; a staging copy that is NULLed the
+moment it stops being pending adds a bounded window, not a new class of data. s47a (2026-09-11)
+found the alternative — the existing document store — unsuitable: Wasabi objects are PSP-scoped,
+not encrypted by AMS, and readable by anyone holding a `ShowFileUpload` GUID.
+
+**Design choice.**
+
+- Rows only. `mapping_json` carries header names and field matches; `rows_json` carries the eight
+  whitelisted fields, a row number and issue text. Neither ever carries a value from an ignored column.
+- `rows_json` is NULLed when a submission leaves `PENDING` (`CensusSubmissionDAO.supersedeOpen`;
+  build 2's Load and Reject follow the same rule).
+- The link (`census_request.token`) expires 30 days after its last send and closes on load or revoke;
+  the public page answers unknown, expired, revoked and loaded tokens with one inactive state.
+- The public page never echoes a cell value — issues render as row number and reason only.
+- `summit_file_export.content` keeps the exact bytes sent so a response can be correlated by row;
+  the SHA-256 alongside it is what dedupe actually needs.
+
+**Risk if wrong.** A stored-PII exposure in the database — the staged rows or the retained export
+text read by someone with database access but no business need.
+
+**Reversal cost.** **Low.** NULL `rows_json` and `summit_file_export.content` (keep the SHA), or
+shorten the expiry. Neither touches the roster or any Summit-side record.
+
+**Confirm before.** First production use with a real employer, or counsel engagement.
+
+**Status.** Implemented as designed (s47c, 2026-09-11) — V100, `CensusIntakeService`,
+`CensusDropServlet`; compile-verified, not yet runtime-verified.
 
 ---
 
