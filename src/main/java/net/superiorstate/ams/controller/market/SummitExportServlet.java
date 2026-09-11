@@ -11,6 +11,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import net.superiorstate.ams.AppConfig;
 import net.superiorstate.ams.data.dao.EmployerParticipantDAO;
 import net.superiorstate.ams.data.dao.SummitFileExportDAO;
+import net.superiorstate.ams.data.resolver.EmployerDisplayNameResolver;
 import net.superiorstate.ams.data.resolver.IchraAccessResolver;
 import net.superiorstate.ams.data.resolver.SummitCdhElementResolver;
 import net.superiorstate.ams.data.resolver.SummitEmployerFlagResolver;
@@ -488,16 +489,8 @@ public class SummitExportServlet extends HttpServlet {
             throws IOException {
         // N1' (Kevin, s48b3) -- prefer the application's legal name; a blank answer falls back to
         // the prospect name with a WARN, not a refusal. Only both being blank refuses.
-        String legalNameAnswer = answers.get(FIELD_COMPANY_LEGAL_NAME);
-        String employerName;
-        if (legalNameAnswer != null && !legalNameAnswer.trim().isEmpty()) {
-            employerName = legalNameAnswer.trim();
-        } else if (prospect.getName() != null && !prospect.getName().trim().isEmpty()) {
-            employerName = prospect.getName();
-            log.warn("[SUMMIT-EXPORT] Employer Demographic for prospect {}: Employer Name fell back"
-                            + " to the prospect name because 'company_legal_name' is blank",
-                    prospect.getId());
-        } else {
+        String employerName = EmployerDisplayNameResolver.resolve(answers, prospect);
+        if (employerName == null) {
             writePlainError(response, HttpServletResponse.SC_BAD_REQUEST,
                     "Cannot generate Employer Demographic file: prospect " + prospect.getId()
                             + " has neither a 'company_legal_name' answer nor a prospect name.");

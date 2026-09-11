@@ -14,6 +14,7 @@ import net.superiorstate.ams.data.dao.ApplicationTaskDAO;
 import net.superiorstate.ams.data.dao.StorageDAO;
 import net.superiorstate.ams.data.service.BpoTaskPushService;
 import net.superiorstate.ams.data.service.SetupPromotionService;
+import net.superiorstate.ams.data.resolver.EmployerDisplayNameResolver;
 import net.superiorstate.ams.data.resolver.EntityLookup;
 import net.superiorstate.ams.model.Activity25;
 import net.superiorstate.ams.model.Activity25u;
@@ -316,8 +317,15 @@ public class ReviewApplication extends HttpServlet {
 
                     // Create Setup activity
                     Prospect prospect = proposal.getProspect();
-                    CheckList checkList = createChecklist(em, prospect.getName(), currentPerson);
-                    Setup setup = createSetup(em, prospect, application, checkList, currentPerson);
+                    // T239 -- D47(a)/N1': the setup's (and its checklist's) stored name prefers
+                    // the application's legal name, falling back to the prospect name. Stored once
+                    // here, at creation (Option A on drift, Kevin) -- a later legal-name edit never
+                    // updates it.
+                    Map<String, String> answers = loadAnswers(em, proposalId);
+                    String displayName = EmployerDisplayNameResolver.resolve(answers, prospect);
+                    if (displayName == null) displayName = prospect.getName();
+                    CheckList checkList = createChecklist(em, displayName, currentPerson);
+                    Setup setup = createSetup(em, prospect, application, checkList, currentPerson, displayName);
                     fillToDoList(em, setup, currentPerson);
                     updateActivityCache(request, em, setup);
 
@@ -386,6 +394,27 @@ public class ReviewApplication extends HttpServlet {
         }
     }
 
+    /**
+     * T239 -- fieldKey -> fieldValue for this proposal's application, the plain shape
+     * {@code EmployerDisplayNameResolver.resolve} needs. Deliberately its own query rather than a
+     * shared one with {@code doGet}'s: {@code doGet} additionally {@code JOIN FETCH}es
+     * {@code af.applicationSection} for its own display purposes, which this helper does not need.
+     */
+    private Map<String, String> loadAnswers(EntityManager em, long proposalId) {
+        Query fvq = em.createQuery(
+                "SELECT fv FROM ApplicationFieldValue fv " +
+                        "JOIN FETCH fv.applicationField af " +
+                        "WHERE fv.application.proposal.id = :pid");
+        fvq.setParameter("pid", proposalId);
+        List<ApplicationFieldValue> fieldValues = fvq.getResultList();
+
+        Map<String, String> valueMap = new LinkedHashMap<>();
+        for (ApplicationFieldValue fv : fieldValues) {
+            valueMap.put(fv.getApplicationField().getFieldKey(), fv.getFieldValue());
+        }
+        return valueMap;
+    }
+
     // ======================== Setup Creation (mirrors GenerateProp25) ========================
 
     private CheckList createChecklist(EntityManager em, String erName, Person currentPerson) {
@@ -416,13 +445,13 @@ public class ReviewApplication extends HttpServlet {
     }
 
     private Setup createSetup(EntityManager em, Prospect prospect, Application application,
-                              CheckList checkList, Person currentPerson) {
+                              CheckList checkList, Person currentPerson, String displayName) {
         em.getTransaction().begin();
         Setup setup = new Setup();
         setup.setApplication(application);
         setup.setPrimaryContactSetup(prospect.getContact());
         setup.setComplete(false);
-        setup.setFullName(prospect.getName());
+        setup.setFullName(displayName);
         setup.setLoggedBy(currentPerson);
         setup.setAssignedTo(currentPerson);
         setup.setDueDate(Date.valueOf(LocalDate.now().plusWeeks(2)));
