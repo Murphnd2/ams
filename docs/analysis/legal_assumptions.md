@@ -109,7 +109,7 @@ spent deliberately rather than drifted across.
 | **LA-07** | QSEHRA notice runway is 45 days for a non-January effective date | Config change (date arithmetic) | First non-January QSEHRA effective date | Assumed |
 | **LA-08** | ICHRA notice rules are **not known** to follow the QSEHRA analysis | Unknown — cannot price | Any ICHRA sale with a short runway | **Open — no basis** |
 | **LA-09** | Agent-facing market data with no AMS enrollment path is not producer activity | Code change → **rebuild** if a display goes prospect-facing | Any non-agent audience; multi-state | Assumed — **thin** |
-| **LA-10** | Texas TPA licensing (ch. 4151) is unresolved and may already apply | Unknown — potentially **licensure, not code** | Scaling past pilot; each new state | **Open — material** |
+| **LA-10** | Texas TPA licensing (ch. 4151): prong 1 is met by COBRA premium collection; the ERISA slice has *NGS American* (5th Cir.); the non-ERISA slice (QSEHRA, DCAP, governmental/church) has no defense | Unknown — potentially **licensure, not code** | First non-ERISA Texas participant; scaling past pilot; each new state | **Open — material** |
 | **LA-11** | Design census stays at minimum scope | Config change | Any field added to the design census | Assumed |
 | **LA-12** | Affordability is computed for the employer, not presented to the employee | Display edit — but **gated on T44 correctness** | Any employee-facing affordability figure | Assumed |
 | **LA-13** | This register is internal work product and is not disclosed to partner agencies through SSA-built tools | ⭐ **Low, one direction only** — restoring disclosure is a data edit; a disclosure already made cannot be withdrawn | Any disclosure of SSA's regulatory status or the review state of its positions to a partner | Assumed |
@@ -679,6 +679,105 @@ disposition is defensible for demo-stage work and indefensible past it.
 **Status.** **Open — material — not blocking demo-stage work.** 2026-07-31. Escalates
 `swbd_premiumpath.md`'s *"parked, revisit pre-scale"* and O21's *"parked, pre-scale"* by noting that
 the residence key means the clock is already running on the existing book.
+
+#### Amendment — 2026-09-11: facts clarified, exemptions read, controlling case found
+
+**Facts clarified by Kevin (2026-09-11).**
+
+1. SSA is never the plan administrator of an ERISA plan. **The client holds final authority on
+   claim denials and appeals.** This confirms the Basis above ("initial adjudication with the
+   employer as final decision-maker"); it does not change it.
+2. **SSA does not hold employer funds.** It facilitates payment in some instances, and for the
+   debit card it **advances its own funds and recoups them from the employer.**
+3. ⚠️ **SSA collects COBRA premiums from COBRA beneficiaries and remits them to the employer.**
+
+**Contradiction corrected.** The Basis above says *"SSA never holds participant funds, which
+defeats the first prong only."* **Fact 3 means the first prong is not defeated.** Collecting COBRA
+premiums from qualified beneficiaries who reside in Texas is collecting premiums from residents of
+this state under §4151.001(1). **Prong 1 is met on its own** — independent of prong 2 and of any
+argument about discretionary decisions. The reassuring half of the doc set's reasoning was wrong,
+not merely incomplete.
+
+On Fact 2: advance-and-recoup does not cleanly escape prong 1 either. §4151.002(11) exempts a
+company that *advances and collects* a premium only if it is a credit-card company acting in its
+debtor-creditor relationship **and does not adjust or settle claims** — neither fits SSA. That the
+legislature needed an exemption suggests advancing-and-collecting is otherwise inside the
+definition. **Thin inference — do not rely on it in either direction.**
+
+**Exemptions read (2025 statute text via Justia, not the official capitol site).**
+
+- **§4151.0021** — workers'-compensation pharmacy processing agents. **Does not apply.**
+- **§4151.0022** — health care sharing ministries under ch. 1681. **Does not apply.**
+- **§4151.002(14)** — technical, advisory, utilization-review, precertification or consulting
+  services, **but only where the person makes no management or discretionary decisions.** Fact 1
+  helps but does not satisfy it: an initial claim determination is a discretionary decision even
+  when final authority sits with the client. **It does not reach COBRA premium collection at all.**
+
+**No listed exemption fits. The "highest-value hour" this entry recommended is now spent, and it
+did not dispose of the question.**
+
+**Controlling case not previously recorded.** *NGS American, Inc. v. Barnes*, 805 F. Supp. 462
+(W.D. Tex. 1992), aff'd, 998 F.2d 296 (5th Cir. 1993).
+
+- **Facts: nearly SSA's own.** A Michigan TPA of self-funded ERISA plans with Texas participants.
+  TDI threatened discipline for acting as an administrator without a certificate of authority
+  (the TDI letter is recited in the companion case, 782 F. Supp. 1198 (E.D. Mich. 1992)).
+- **Holding.** Art. 21.07-6 — ch. 4151's predecessor — **insofar as it relates to administrators of
+  ERISA-governed plans, is preempted.** The Fifth Circuit also rejected the savings-clause argument:
+  regulating administrators was held not to be regulating the business of insurance.
+- **The limit.** *Self-Insurance Institute of America v. Korioth*, 53 F.3d 694 (5th Cir. 1995),
+  reads *NGS* as capacity-specific — Texas may still enforce against a TPA **in its capacity as
+  administrator of non-ERISA plans.**
+
+**Why it is not a resolution.**
+
+- It dates from 1993 and predates *Travelers* (1995), which narrowed "relate to." *SIIA v. Snyder*
+  (6th Cir. 2014) distinguished *NGS* as turning on art. 21.07-6's plan-term, claims-timing and
+  solvency-reporting provisions.
+- The statute was recodified as ch. 4151 (2003) and amended (HB 472, 2007). **No decision applying
+  *NGS* to ch. 4151 has been found.**
+- TDI's current rules still assert jurisdiction over administration for a "plan sponsor."
+- It is capacity-specific by its own terms, so it cannot cover a mixed book.
+
+**Resulting exposure map (Texas only).**
+
+| Slice | Prong met | Preemption defense | Exposure |
+|---|---|---|---|
+| **ERISA plans** — private-employer health FSA, HRA/ICHRA, COBRA for private-employer group health plans (insured or self-funded) | Prong 2; prong 1 for COBRA | ***NGS American*** — same fact pattern, binding circuit | **Low–moderate** — turns on *NGS* surviving recodification and *Travelers* |
+| **Non-ERISA** — QSEHRA, dependent-care FSA, governmental and church employer plans (including PHSA continuation for governmental employers) | Prong 2; prong 1 for continuation premiums | **None** | ⚠️ **Material** — ch. 4151 applies on its terms |
+| **Insurer products** (Presidio excepted benefits) where SSA collects or handles for the insurer | Prong 1 if SSA collects | **None** | **Material** if SSA touches premiums |
+
+**Proposed design choice — Kevin to confirm.** Pursue a **Texas nonresident certificate of
+authority before the first non-ERISA Texas participant is administered** — in practice, the first
+Texas QSEHRA+ participant.
+
+- **It is the only disposition that covers the non-ERISA slice**, and QSEHRA+ for small Texas
+  employers is SWBD's target market.
+- **It is the cheap-to-reverse option.** Surrendering a certificate is an administrative act. Being
+  wrong about *NGS* is retroactive and scales with participant-months.
+- **The alternative** is to rely on *NGS* and decline non-ERISA Texas business. That removes QSEHRA+
+  from Texas.
+- **Thin:** holding a certificate is assumed not to waive the *NGS* defense for ERISA business.
+  Unverified.
+- **Known cost:** $1,000 application fee; fidelity bond ($10,000 floor, §4151.055); $200 annual
+  report; §§4151.101–.102 written agreements; §§4151.106–.109 fiduciary-account rules on funds
+  received. The fiduciary-account rules touch money movement — Kevin's domain, not analyzed here.
+
+**Money transmission (Tex. Fin. Code ch. 152) — noted, not analyzed.** Fact 2 takes the card out of
+the receive-for-transmission pattern. COBRA collection is the one flow where SSA receives
+third-party money for delivery. The 2026-09-11 research report's recommendation to restructure
+money flows is **withdrawn** — it was outside scope.
+
+**Reversal cost.** Unchanged in kind: **licensure, not code.**
+
+**Confirm before.** The first non-ERISA Texas participant is administered; before *NGS* is relied
+on in any written position; each new state (the residence key above still governs).
+
+**Status.** **Open — material — not blocking the build-now scope.** Amended 2026-09-11.
+
+**Source note.** §§4151.002, .0021 and .0022 were read from Justia's 2025 Texas statutes text. The
+*NGS* and *Korioth* holdings were read from CourtListener and Justia excerpts and from *Snyder*'s
+characterization. **Neither opinion was read end to end.**
 
 ---
 
@@ -2080,7 +2179,7 @@ the engagement can be scoped rather than open-ended.
 
 | Entry | Question | Why it leads |
 |---|---|---|
-| **LA-10** | Does Tex. Ins. Code ch. 4151 require a certificate of authority for what SSA does **today**, and in which states? | The exposure is **retroactive across the existing book** and grows with participant-months, not with what is built. Delay is the expensive variable. **Read §4151.0021 and §4151.0022 first — it may not need counsel at all.** A TDI determination letter may be cheaper and more useful than an opinion. |
+| **LA-10** | Does Tex. Ins. Code ch. 4151 require a certificate of authority for what SSA does **today**, and in which states? | The exposure is **retroactive across the existing book** and grows with participant-months, not with what is built. Delay is the expensive variable. **§4151.0021 and §4151.0022 were read 2026-09-11 and neither applies.** The residual question for counsel is narrow: does *NGS American* (5th Cir. 1993) survive recodification as ch. 4151? It is irrelevant to the non-ERISA slice, which has no defense either way. A TDI determination letter may still be cheaper than an opinion. |
 
 ### Group 2 — Before the first real reimbursement *(the LA-01 package — one engagement, three questions)*
 
@@ -2110,7 +2209,7 @@ the engagement can be scoped rather than open-ended.
 - **LA-08** — read 26 CFR §54.9802-4(c)(6) and the 84 Fed. Reg. 28888 preamble. May resolve the ICHRA
   notice-timing half at zero cost, and would let the O17 question go to counsel as a residual rather
   than as a whole.
-- **LA-10** — read §4151.0021 and §4151.0022 before anything else in Group 1.
+- **LA-10** — §4151.0021 and §4151.0022 read 2026-09-11; neither applies. See the LA-10 amendment.
 - **LA-09** — the agency-license sub-question.
 - **Every citation in this document** — verify against primary text before any of it is quoted to
   counsel or into a plan document.
