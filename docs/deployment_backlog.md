@@ -1766,3 +1766,21 @@ AMS can only add administration flags. What remains open:
 2026-09-11. Until the release carrying `add58f9131f7397259304d780f75ec0adf23ab1d` is deployed,
 production AMS emits 6 columns against it, and the behavior of that is untested. Do not push file 1
 from production before that release.
+
+### D-100: Post-deploy J1 employer import + Summit constants check (T241)
+
+**Priority:** MEDIUM — required for the Summit employer link (T241) to show anything but "Not yet
+in Summit employer data" on production.
+**Status:** ⬜
+
+- **What:** after the release carrying V102 (`employer.custom_id`) deploys, run a J1 employer
+  import on production so `employer.custom_id` populates. Until then, every setup's Employer step
+  shows "Not yet in Summit employer data", and the step 2 Benefit Plans tab link stays hidden
+  (it only renders on a match).
+- **Also:** confirm that the `SUMMIT_TPA_GUID` and `SUMMIT_PATH` constant rows exist on
+  production. D-77 records `SUMMIT_TPA_GUID` as inserted 2026-07-17, which is a doc claim and is
+  unverified live. If either row is missing, the link renders "link not configured (SUMMIT_PATH /
+  SUMMIT_TPA_GUID)."
+
+**Applies to:** Production ⬜ — pending the release carrying V102. Demo / BPO / Master — N/A, no
+Summit tenant push planned.

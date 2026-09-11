@@ -1442,3 +1442,106 @@ mapping layer above. The two are easy to conflate.
 Three inbound sources with three different mechanisms — employer upload, Presidio (SFTP likely),
 HealthSherpa (existing process). **None is needed to prove the chain.** Manual upload works for all
 three initially. Building all three transports on spec is explicitly not the plan.
+
+## Employer object and the Summit employer link (T241)
+
+### The J1 employer export
+
+Header, observed 2026-09-11:
+
+```
+OrganizationID,EmployerOrganizationID,EmployerID,EmployerName,CustomID,CreatedDate,CreatedByUser,CreatedUser,SetUpCompletionDate,SetUpComplete,IsSetupCompleted,TaxID,ImplementationLeadUserID,ImplementationLead,OrganizationStatusID,Status,PrimaryContact,PhoneNumber,Phone,Email,Setup
+```
+
+`SummitImportService.importEmployers` (the J1 importer) maps three of those columns onto
+`Employer` (`model/summit/archive/Employer.java`, table `employer`):
+
+- `OrganizationID` → `Employer.id` (`organization_id`, the `@Id`/primary key).
+- `EmployerID` → `Employer.altId` (`employer_id`) — this is Summit's `EmployerID`, the value the
+  `EditEmployer.aspx` URL's `employerId` parameter expects. **Not** `OrganizationID`, and not
+  `EmployerOrganizationID`.
+- `CustomID` → two columns as of V102:
+  - `Employer.erKey` (`er_key INT`) — set on insert only, via `parseIntSafe`. **Lossy for a
+    composed key** (T242): an AMS-composed Employer TPA Custom ID such as `158E140952`
+    (`resolveEmployerTpaCustomId`'s `{prefix}E{id}` shape) is not an integer, so `parseIntSafe`
+    falls through to `Double.parseDouble`, reads it as scientific notation, and the `(int)` cast
+    saturates every such value to `2147483647`.
+  - `Employer.customId` (`custom_id VARCHAR(64)`, V102, T241) — set on **both** insert and update,
+    string-faithful: trimmed, and Summit's literal `n/a` (case-insensitive) normalizes to `NULL`.
+    An empty cell (column present, value blank) leaves a previously-stored value alone rather than
+    clearing it; only an explicit `n/a` clears it.
+
+⚠️ **`OrganizationID` and `EmployerID` are different numbering spaces and overlap numerically.**
+Sample row: `63,63,61,Abadie-Williams LLC,1773,...` — this employer's `OrganizationID` is 63 but its
+`EmployerID` (the URL's `employerId`) is 61. Reading the wrong column silently opens the wrong
+employer in Summit. (Kevin's example URL uses `employerId=61` for this same row.)
+
+### Correction to prior assumptions
+
+The Summit UI host and TPA GUID are **DB constants**, `SUMMIT_PATH` and `SUMMIT_TPA_GUID`, read
+through `AmsDataGlobal.getSummitPath()` / `getSummitTpaGuid()` — **not** `ssa.properties` keys.
+`SUMMIT_TPA_GUID` is not seeded anywhere in code (no `DatabaseInitializer` call, unlike
+`SUMMIT_PATH`); its presence on an installation is D-77, a doc claim recorded as done on production
+2026-07-17 but not independently reverified here.
+
+### The employer link (T241)
+
+PSP-admin only, rendered as a line in the Summit setup panel's Employer step
+(`detailSummitSetup25.jsp`), via a new include-only fragment `SummitEmployerLinkServlet`
+(`/SummitEmployerLink`). Composes the setup's expected Employer TPA Custom ID with the existing
+`resolveEmployerTpaCustomId(Prospect)` (now `public` on `SummitExportServlet`), then looks up
+`Employer` rows whose `customId` equals it exactly (`SummitEmployerLookupDAO.findByCustomId`).
+Read-only: no capture, no write, no new table beyond `employer.custom_id`.
+
+Render states:
+
+- Key not composable (`SUMMIT_TPA_ID_PREFIX` unset/invalid) → "Summit link unavailable —
+  SUMMIT_TPA_ID_PREFIX not configured."
+- No `Employer` row matches the key → "Not yet in Summit employer data ({key})."
+- Rows match but none carries a positive `altId` → "Found {key} but no Summit employer id."
+- Exactly one distinct `altId` matches, URL configured → "Open in Summit ↗" link to
+  `{SUMMIT_PATH}/EmployerModule/EditEmployer.aspx?tpaGuid={SUMMIT_TPA_GUID}&employerId={altId}`
+  (`SummitEmployerLinkResolver`, GUID URL-encoded), plus the employer id.
+- Exactly one distinct `altId` matches, but `SUMMIT_PATH`/`SUMMIT_TPA_GUID` unset → "Summit
+  employer {altId} — link not configured (SUMMIT_PATH / SUMMIT_TPA_GUID)."
+- More than one distinct `altId` shares the key → "Ambiguous — Summit employer ids {a, b, …} share
+  {key}; no link." (no link rendered)
+
+**A `tab`-parameterized include renders only the success state** (T241b) — a bare anchor, no
+wrapping status line, no "· employer N" suffix. Every other state (unmatched, ambiguous, not
+configured, etc.) renders nothing, because step 1's own include already reports match status and
+repeating it elsewhere on the panel would be noise. The optional `label` include parameter
+(HTML-escaped) sets the anchor text; it defaults to "Open in Summit ↗" when absent.
+
+**The `tab` parameter (T241b).** `SummitEmployerLinkResolver.buildEditEmployerUrl` takes an
+optional third argument appending `&tab=` + the URL-encoded value, validated against
+`^[A-Za-z]+$` (any other value refuses — returns null, no link). `&tab=BenefitPlans` opens the
+Benefit Plans tab (Kevin, 2026-09-11) — wired to a second include on step 2 (Plans (CDH)), which
+renders "Open Benefit Plans ↗" linking to the same employer's Benefit Plans tab. The other visible
+Summit tab names — Demographics, Division, Schedules, Cards, Health Plans, Premium Billing,
+Notes — are **not verified** as `tab` values.
+
+**TA-d (technical assumption) — runtime-confirmed 2026-09-11 (KEVIN-UI).** The J1 employer
+export's `CustomID` column carries an AMS-composed `{prefix}E{id}` key verbatim once an employer
+has actually been set up in Summit through the file 1 (Employer Demographic) push. Evidence: a J1
+import stored `custom_id` = `158E140952` for the row that came back with `organization_id` 1407,
+`employer_id` 1392, `er_key` `2147483647` (T242's saturation, confirmed live) — and the Employer
+step link built from that row opened Summit's Edit Employer page for ZZTESTCompany 9102, which
+showed System ID 1392 and Custom ID `158E140952`.
+
+**EditEmployer `employerId` = `EmployerID` (`altId`) is runtime-confirmed**, from the same walk:
+the link built with `employerId=1392` (this row's `altId`) opened the correct employer in Summit,
+which displayed System ID 1392 on the page.
+
+Walk passed 2026-09-11 (KEVIN-UI), including the direct-URL non-PSP request returning blank.
+Commits `e1af003`, `0e5e513`.
+
+### The J1 import remains manual
+
+`/SummitImport` (`SummitImportWizard`, multipart upload) is the only path that calls
+`SummitImportService.importEmployers(EntityManager, File, ImportProvider)`. No SFTP sweep of
+`ExportFiles` populates `employer` — the only existing `ExportFiles` reader,
+`IchraUncodedParticipantsCheck` (T237 audit), lists and reads files there but persists nothing to
+`employer`. A scheduled sweep, if built, would call `importEmployers` unchanged and register the
+same way `AUDIT_SCHEDULER_ENABLED` does in `EmfListener` (construct the service, publish it to the
+servlet context, gate its scheduled start on an `AppConstantDAO` constant) — not built here.
