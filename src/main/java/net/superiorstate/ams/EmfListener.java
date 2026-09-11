@@ -12,6 +12,7 @@ import net.superiorstate.ams.model.Constant;
 
 import net.superiorstate.ams.data.dao.AppConstantDAO;
 import net.superiorstate.ams.data.service.RateCacheWarmService;
+import net.superiorstate.ams.data.service.audit.AuditService;
 import net.superiorstate.ams.service.InstallationHealthScheduler;
 
 import java.io.IOException;
@@ -29,6 +30,7 @@ public class EmfListener implements ServletContextListener, HttpSessionListener,
     private InstallationHealthScheduler healthScheduler;
     private ExecutorService billingExecutor;
     private RateCacheWarmService rateCacheWarmService;
+    private AuditService auditService;
 
     public EmfListener() {}
 
@@ -107,6 +109,23 @@ public class EmfListener implements ServletContextListener, HttpSessionListener,
                         rateCacheWarmService.start();
                         sce.getServletContext().setAttribute("rateCacheWarmService", rateCacheWarmService);
                     }
+
+                    // T237 -- audit framework. Always constructed and published so the navbar
+                    // badge (EL, applicationScope.auditService) always resolves; only the
+                    // scheduled run is gated, same as the rate-cache job above, so "Run now"
+                    // still works with the scheduler off. Installation PSP obtained the same way
+                    // the health scheduler above is handed it -- same in-scope `global`.
+                    try {
+                        Long auditPspId = global.getPsp() != null ? global.getPsp().getId() : null;
+                        auditService = new AuditService(emf, auditPspId);
+                        sce.getServletContext().setAttribute("auditService", auditService);
+                        String auditSchedulerEnabled = AppConstantDAO.getConstantValue(em, "AUDIT_SCHEDULER_ENABLED");
+                        if ("true".equalsIgnoreCase(auditSchedulerEnabled)) {
+                            auditService.start();
+                        }
+                    } catch (Throwable t) {
+                        System.out.println("⚠️ Audit framework failed to initialize: " + t.getMessage());
+                    }
                 }
             } finally {
                 if (em != null && em.isOpen()) {
@@ -156,6 +175,10 @@ public class EmfListener implements ServletContextListener, HttpSessionListener,
 
         if (rateCacheWarmService != null) {
             rateCacheWarmService.stop();
+        }
+
+        if (auditService != null) {
+            auditService.stop();
         }
 
         if (billingExecutor != null) {

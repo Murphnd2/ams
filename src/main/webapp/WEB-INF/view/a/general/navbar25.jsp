@@ -258,6 +258,7 @@
               <li><a class="dropdown-item" href="InteractiveImport"><i class="bi bi-cloud-upload me-2"></i>Interactive Import</a></li>
               <li><a class="dropdown-item" href="ImportHistory"><i class="bi bi-clock-history me-2"></i>Import History</a></li>
               <li><a class="dropdown-item" href="MonthlyBillingLauncher"><i class="bi bi-calculator me-2"></i>Monthly Billing</a></li>
+              <li><a class="dropdown-item" href="AuditHub"><i class="bi bi-bell me-2"></i>Audit Hub</a></li>
 
               <%-- ── SETTINGS / ABOUT ── --%>
               <li><hr class="dropdown-divider"></li>
@@ -266,6 +267,16 @@
 
             </ul>
           </div>
+
+          <%-- Audit framework badge (T237) -- reads the latest stored run only; never
+               evaluates a check on render. --%>
+          <c:if test="${applicationScope.auditService.actionCount > 0 || applicationScope.auditService.errorCount > 0}">
+            <a class="nav-ghost" href="AuditHub" title="Audit findings">
+              <i class="bi bi-bell-fill"></i>
+              <c:if test="${applicationScope.auditService.actionCount > 0}"><span class="badge rounded-pill bg-danger ms-1" style="font-size: 0.62rem; vertical-align: top;">${applicationScope.auditService.actionCount}</span></c:if>
+              <c:if test="${applicationScope.auditService.errorCount > 0}"><span class="badge rounded-pill bg-warning text-dark ms-1" style="font-size: 0.62rem; vertical-align: top;">!</span></c:if>
+            </a>
+          </c:if>
 
           <%-- Super Dashboard link (master installations only) --%>
           <c:if test="${applicationScope.isMasterSystem}">
