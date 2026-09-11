@@ -13,6 +13,7 @@ import net.superiorstate.ams.data.dao.EmployerParticipantDAO;
 import net.superiorstate.ams.data.dao.SummitFileExportDAO;
 import net.superiorstate.ams.data.resolver.IchraAccessResolver;
 import net.superiorstate.ams.data.resolver.SummitCdhElementResolver;
+import net.superiorstate.ams.data.resolver.SummitEmployerFlagResolver;
 import net.superiorstate.ams.data.resolver.SummitImportTemplateResolver;
 import net.superiorstate.ams.data.resolver.SummitPlanTemplateResolver;
 import net.superiorstate.ams.data.resolver.SummitPlanTemplateResolver.PlanTemplate;
@@ -94,6 +95,9 @@ public class SummitExportServlet extends HttpServlet {
     private static final String FIELD_ADDRESS_CITY = "address_city";
     private static final String FIELD_ADDRESS_STATE = "address_state";
     private static final String FIELD_ADDRESS_ZIP = "address_zip";
+    // T238 part 2 / N1 (s48) -- Employer Name source. Lives in the "general" package (attached to
+    // every application, unlike the LOS-scoped fields below), so it is present on every setup.
+    private static final String FIELD_COMPANY_LEGAL_NAME = "company_legal_name";
     // plan_year_start / plan_year_end ship in the s125_fsa package's LOS-scoped
     // plan_year_eligibility section, so they are only present when that section is attached
     // to the LOS being sold -- a refusal below is expected behaviour on an installation where
@@ -203,8 +207,10 @@ public class SummitExportServlet extends HttpServlet {
             // the session is reachable from doGet and from nowhere further in. Null is a
             // supported answer, not an error: SummitPlanTemplateResolver skips the V095 table
             // and uses the SUMMIT_PLAN_TEMPLATES property, which is exactly the pre-V095
-            // behaviour. Only the two plan-emitting writers take it; the employer and
-            // Demographics writers do not consult a plan mapping at all.
+            // behaviour. The two plan-emitting writers take it directly; the employer writer
+            // (T238 part 2) now also takes it, to tell whether the sale elected ICHRA, and it
+            // separately consults the flag config -- the Demographics writer alone still consults
+            // no plan mapping.
             Long pspId = resolveCurrentPspId(request);
 
             // S42-B -- push mode checks. Run only when doPost has set PUSH_ATTR; a GET never
@@ -280,7 +286,8 @@ public class SummitExportServlet extends HttpServlet {
                     resolveCurrentUserName(request), pushDir, ackDuplicate);
 
             if (type.equals(TYPE_EMPLOYER)) {
-                writeEmployerDemographic(response, prospect, answers, employerTpaCustomId, record);
+                writeEmployerDemographic(response, prospect, answers, employerTpaCustomId, record,
+                        em, proposalId, pspId);
             } else if (type.equals(TYPE_CDH_PLAN)) {
                 writeEmployerCdhPlan(response, em, proposalId, prospect, answers, employerTpaCustomId, pspId, record);
             } else if (type.equals(TYPE_DEMOGRAPHICS)) {
@@ -457,19 +464,46 @@ public class SummitExportServlet extends HttpServlet {
     }
 
     /**
-     * Employer Demographic — six columns, {@code Employer TPA Custom ID} = the configured
-     * installation prefix plus {@code Prospect.id} (S25-C, LA-29). The upsert key must never
-     * change for a given employer, so it is built from the AMS-owned, immutable primary key
-     * plus a config-driven prefix rather than any Summit- or user-editable value.
+     * Employer Demographic — eleven columns (T238 part 2 / D46, s48). {@code Employer TPA Custom
+     * ID} stays the configured installation prefix plus {@code Prospect.id} (S25-C, LA-29).
      * <p>
-     * Employer name stays {@code Prospect.name} — always populated — rather than the
-     * {@code company_legal_name} answer, which may be blank. A fallback chain between the two
-     * would reintroduce the silent-variance failure this whole change exists to remove.
+     * <b>N1′ (Kevin, s48b3, supersedes N1's no-fallback rule) — Employer Name prefers the
+     * {@code company_legal_name} answer; a blank answer falls back to {@code Prospect.name} with
+     * a WARN, never a refusal, unless both are blank.</b> The filename still stays on
+     * {@code Prospect.name}.
+     * <p>
+     * Columns 8–11 are the four Summit administration flags, unioned across elected
+     * {@code ServiceItem}s by {@link SummitEmployerFlagResolver} and emitted as explicit
+     * {@code true}/{@code false} via {@link SummitCdhElementResolver#bool}; refused when none is
+     * true. Column 7, Employer Plan Name, is populated when exactly one elected plan's key segment
+     * is in {@code SUMMIT_ALLOWANCE_KEY_SEGMENTS} (comma-separated, default {@code ICHRA} — N7′,
+     * s48b2) and the COBRA flag is false (N5) — see {@link #allowanceSegment} and
+     * {@link #employerPlanName}. It may be empty; that is legal only because the four
+     * always-populated flag columns follow it.
      */
     private void writeEmployerDemographic(HttpServletResponse response, Prospect prospect,
                                            Map<String, String> answers, String employerTpaCustomId,
-                                           ExportRecord record)
+                                           ExportRecord record, EntityManager em, long proposalId,
+                                           Long pspId)
             throws IOException {
+        // N1' (Kevin, s48b3) -- prefer the application's legal name; a blank answer falls back to
+        // the prospect name with a WARN, not a refusal. Only both being blank refuses.
+        String legalNameAnswer = answers.get(FIELD_COMPANY_LEGAL_NAME);
+        String employerName;
+        if (legalNameAnswer != null && !legalNameAnswer.trim().isEmpty()) {
+            employerName = legalNameAnswer.trim();
+        } else if (prospect.getName() != null && !prospect.getName().trim().isEmpty()) {
+            employerName = prospect.getName();
+            log.warn("[SUMMIT-EXPORT] Employer Demographic for prospect {}: Employer Name fell back"
+                            + " to the prospect name because 'company_legal_name' is blank",
+                    prospect.getId());
+        } else {
+            writePlainError(response, HttpServletResponse.SC_BAD_REQUEST,
+                    "Cannot generate Employer Demographic file: prospect " + prospect.getId()
+                            + " has neither a 'company_legal_name' answer nor a prospect name.");
+            return;
+        }
+
         String address1 = answers.get(FIELD_ADDRESS_STREET1);
         String city = answers.get(FIELD_ADDRESS_CITY);
         String state = answers.get(FIELD_ADDRESS_STATE);
@@ -489,18 +523,191 @@ public class SummitExportServlet extends HttpServlet {
             return;
         }
 
+        // T238 part 2 / N2 -- the four Summit administration flags, unioned across elected
+        // ServiceItems. Three distinguishable refusals: no resolvable PSP, no elected item mapped
+        // at all, or mapped rows that are all false. Each one lists every elected item as
+        // "id = description", the same shape writeEmployerCdhPlan's own refusal uses.
+        Map<Integer, String> electedServices = loadElectedServiceItems(em, proposalId);
+        if (pspId == null) {
+            log.error("[SUMMIT-EXPORT] Employer Demographic for proposal {}: no PSP resolved for"
+                            + " the current session, so no Summit administration flags can be"
+                            + " looked up", proposalId);
+            writePlainError(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+                    "Cannot generate Employer Demographic file: no PSP is resolved for the current"
+                            + " session, so the Summit administration flags (Enable CDH/COBRA/"
+                            + "Retiree Billing/Direct Bill Administration) cannot be looked up.");
+            return;
+        }
+
+        SummitEmployerFlagResolver.EmployerFlags flags =
+                SummitEmployerFlagResolver.flagsFor(em, pspId, electedServices.keySet());
+        boolean anyFlagTrue = flags.isCdh() || flags.isCobra() || flags.isRetireeBilling()
+                || flags.isDirectBill();
+        if (!anyFlagTrue) {
+            StringBuilder electedList = new StringBuilder();
+            for (Map.Entry<Integer, String> service : electedServices.entrySet()) {
+                if (electedList.length() > 0) electedList.append(", ");
+                electedList.append(service.getKey()).append("=").append(service.getValue());
+                if (flags.getUnmappedServiceItemIds().contains(service.getKey())) {
+                    electedList.append(" (unmapped)");
+                }
+            }
+            writePlainError(response, HttpServletResponse.SC_BAD_REQUEST,
+                    "Cannot generate Employer Demographic file: no Summit administration flag is"
+                            + " true for prospect " + prospect.getId() + "'s elected services, so no"
+                            + " file would be written that turns on any administration in Summit."
+                            + " Elected services (ServiceItem id = description): "
+                            + (electedServices.isEmpty() ? "(none)" : electedList.toString())
+                            + (flags.getMappedCount() == 0
+                                    ? ". None of them has a Summit flag mapping."
+                                    : ". Every mapped item has all four flags false.")
+                            + " Configure at least one flag for at least one elected item on"
+                            + " /SummitEmployerFlagAdmin, then retry.");
+            return;
+        }
+        if (!flags.getUnmappedServiceItemIds().isEmpty()) {
+            // N3 -- an elected item with no flag mapping (e.g. a line-of-service item like FSA,
+            // which maps to nothing by design) does not refuse and does not warn; a single INFO
+            // line is enough to explain a missing flag contribution without becoming noise on
+            // every setup.
+            StringBuilder unmappedList = new StringBuilder();
+            for (Integer id : flags.getUnmappedServiceItemIds()) {
+                if (unmappedList.length() > 0) unmappedList.append(", ");
+                unmappedList.append(id).append("=").append(electedServices.get(id));
+            }
+            log.info("[SUMMIT-EXPORT] Employer Demographic for proposal {}: elected ServiceItem(s)"
+                            + " with no Summit flag mapping, contributing no flags (ServiceItem id ="
+                            + " description): {}",
+                    proposalId, unmappedList);
+        }
+
+        String allowanceSegment = allowanceSegment(em, pspId, electedServices, prospect.getId());
+        String employerPlanName = employerPlanName(answers, flags, allowanceSegment, prospect.getId());
+
         String line = String.join("|",
-                sanitize(prospect.getName()),
+                sanitize(employerName),
                 employerTpaCustomId,
                 sanitize(address1),
                 sanitize(city),
                 sanitize(state),
-                sanitize(zip));
+                sanitize(zip),
+                sanitize(employerPlanName),
+                SummitCdhElementResolver.bool(flags.isCdh()),
+                SummitCdhElementResolver.bool(flags.isCobra()),
+                SummitCdhElementResolver.bool(flags.isRetireeBilling()),
+                SummitCdhElementResolver.bool(flags.isDirectBill()));
 
         String filename = resolveFilename(TYPE_EMPLOYER,
                 "employer-demographic-" + sanitizeFilename(prospect.getName())
                         + "-" + prospect.getId() + "-" + LocalDate.now().format(SUMMIT_DATE) + ".txt");
         writeFile(response, filename, line, record);
+    }
+
+    // T238 part 2 / N4 (amended s48b2, N7') -- the Employer Plan Name template. One place, so the
+    // observed hand-typed shape ("ICHRA allowance: $50.00/month ($600.00/year)") is visible rather
+    // than assembled from scattered literals. The label is now the matched key segment, not always
+    // "ICHRA" -- see allowanceSegment.
+    private static final String EMPLOYER_PLAN_NAME_FORMAT = "%s allowance: $%s/month ($%s/year)";
+
+    /**
+     * T238 part 2 / N7′ (s48b2, supersedes N7) — the single Summit plan key segment this sale's
+     * Employer Plan Name should be labelled with, or {@code null} for zero or more than one match.
+     * Configured segments come from {@code SUMMIT_ALLOWANCE_KEY_SEGMENTS} (comma-separated,
+     * trimmed, case-insensitive), defaulting to {@code LEGACY_ICHRA_SEGMENT} alone when unset or
+     * blank. Mirrors {@link #writeEmployerCdhPlan}'s own plan resolution: when
+     * {@link SummitPlanTemplateResolver#configured} has no rows for this PSP, the legacy
+     * single-plan fallback applies, and its synthetic template always carries the
+     * {@code ICHRA} key segment ({@code LEGACY_ICHRA_SEGMENT}) — so the legacy path matches only
+     * when {@code ICHRA} is configured. Otherwise, every configured template that both matches an
+     * elected ServiceItem and carries a configured key segment is a candidate, de-duplicated by
+     * upper-cased segment; more than one candidate is ambiguous — there is one Employer Plan Name
+     * field and one {@code hra_annual_ee} — so it logs a WARN naming the prospect and the matched
+     * segments, and returns {@code null}.
+     */
+    private static String allowanceSegment(EntityManager em, Long pspId,
+                                            Map<Integer, String> electedServices, long prospectId) {
+        Set<String> configuredSegments = new HashSet<>();
+        String raw = AppConfig.get("SUMMIT_ALLOWANCE_KEY_SEGMENTS", LEGACY_ICHRA_SEGMENT);
+        if (raw != null) {
+            for (String entry : raw.split(",")) {
+                String trimmed = entry.trim();
+                if (!trimmed.isEmpty()) {
+                    configuredSegments.add(trimmed.toUpperCase());
+                }
+            }
+        }
+        if (configuredSegments.isEmpty()) {
+            configuredSegments.add(LEGACY_ICHRA_SEGMENT.toUpperCase());
+        }
+
+        // upper-cased segment -> the segment's own case, as configured on the template. LinkedHashMap
+        // so a >1 WARN lists matches in a stable, encounter order rather than hash order.
+        Map<String, String> matched = new LinkedHashMap<>();
+        List<PlanTemplate> configured = SummitPlanTemplateResolver.configured(em, pspId);
+        if (configured.isEmpty()) {
+            if (configuredSegments.contains(LEGACY_ICHRA_SEGMENT.toUpperCase())) {
+                matched.put(LEGACY_ICHRA_SEGMENT.toUpperCase(), LEGACY_ICHRA_SEGMENT);
+            }
+        } else {
+            for (PlanTemplate template : configured) {
+                if (!electedServices.containsKey(template.getServiceItemId())) continue;
+                String segment = template.getKeySegment();
+                if (segment == null) continue;
+                String upper = segment.toUpperCase();
+                if (configuredSegments.contains(upper)) {
+                    matched.putIfAbsent(upper, segment);
+                }
+            }
+        }
+
+        if (matched.isEmpty()) {
+            return null;
+        }
+        if (matched.size() > 1) {
+            log.warn("[SUMMIT-EXPORT] Employer Demographic for prospect {}: Employer Plan Name"
+                            + " ambiguous -- {} configured allowance key segments matched elected"
+                            + " services ({}), and there is one Employer Plan Name field and one"
+                            + " hra_annual_ee, so no single label can be chosen. Column left empty.",
+                    prospectId, matched.size(), String.join(", ", matched.values()));
+            return null;
+        }
+        return matched.values().iterator().next();
+    }
+
+    /**
+     * T238 part 2 / N4–N6 (s48), segment param amended N7′ (s48b2) — column 7, Employer Plan Name.
+     * Non-empty only when all three hold: {@code allowanceSegment} is non-null (exactly one
+     * configured key segment matched), the COBRA flag is false (N5 — the default COBRA general
+     * notice merges this same column as "the Plan" name, so populating it on a COBRA-administered
+     * employer would leak allowance text into COBRA notices), and {@code hra_annual_ee} parses via
+     * the existing {@link #parseAnnualElectionAmount}. A missing or unparseable amount is not a
+     * refusal (N6) — Plan Name is optional, and a sale with no matching segment must still produce
+     * this file — it logs at WARN and the column comes back empty.
+     */
+    private static String employerPlanName(Map<String, String> answers,
+                                            SummitEmployerFlagResolver.EmployerFlags flags,
+                                            String allowanceSegment, long prospectId) {
+        if (allowanceSegment == null) {
+            return "";
+        }
+        if (flags.isCobra()) {
+            log.info("[SUMMIT-EXPORT] Employer Demographic for prospect {}: Employer Plan Name"
+                    + " suppressed -- COBRA flag is true and the default COBRA general notice"
+                    + " merges this same column as the plan name", prospectId);
+            return "";
+        }
+        BigDecimal annual = parseAnnualElectionAmount(answers.get(FIELD_HRA_ANNUAL_EE));
+        if (annual == null) {
+            log.warn("[SUMMIT-EXPORT] Employer Demographic for prospect {}: '{}' is absent or"
+                            + " unparseable, so Employer Plan Name is left empty", prospectId,
+                    FIELD_HRA_ANNUAL_EE);
+            return "";
+        }
+        BigDecimal monthly = annual.divide(BigDecimal.valueOf(12), 2, RoundingMode.HALF_UP);
+        return String.format(EMPLOYER_PLAN_NAME_FORMAT,
+                allowanceSegment,
+                monthly.setScale(2, RoundingMode.HALF_UP).toPlainString(),
+                annual.setScale(2, RoundingMode.HALF_UP).toPlainString());
     }
 
     /**
