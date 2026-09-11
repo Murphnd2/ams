@@ -109,7 +109,7 @@ spent deliberately rather than drifted across.
 | **LA-07** | QSEHRA notice runway is 45 days for a non-January effective date | Config change (date arithmetic) | First non-January QSEHRA effective date | Assumed |
 | **LA-08** | ICHRA notice rules are **not known** to follow the QSEHRA analysis | Unknown — cannot price | Any ICHRA sale with a short runway | **Open — no basis** |
 | **LA-09** | Agent-facing market data with no AMS enrollment path is not producer activity | Code change → **rebuild** if a display goes prospect-facing | Any non-agent audience; multi-state | Assumed — **thin** |
-| **LA-10** | Texas TPA licensing (ch. 4151): prong 1 is met by COBRA premium collection; the ERISA slice has *NGS American* (5th Cir.); the non-ERISA slice (QSEHRA, DCAP, governmental/church) has no defense | Unknown — potentially **licensure, not code** | First non-ERISA Texas participant; scaling past pilot; each new state | **Open — material** |
+| **LA-10** | Texas TPA licensing (ch. 4151): prong 1 is met by COBRA premium collection; the ERISA slice has *NGS American* (5th Cir.); the non-ERISA slice (QSEHRA, DCAP, governmental/church) has no defense | Unknown — potentially **licensure, not code** | Non-ERISA Texas opportunity reaches proposal stage; scaling past pilot; each new state | **Decided — Option B interim; Option A on trigger** |
 | **LA-11** | Design census stays at minimum scope | Config change | Any field added to the design census | Assumed |
 | **LA-12** | Affordability is computed for the employer, not presented to the employee | Display edit — but **gated on T44 correctness** | Any employee-facing affordability figure | Assumed |
 | **LA-13** | This register is internal work product and is not disclosed to partner agencies through SSA-built tools | ⭐ **Low, one direction only** — restoring disclosure is a data edit; a disclosure already made cannot be withdrawn | Any disclosure of SSA's regulatory status or the review state of its positions to a partner | Assumed |
@@ -773,7 +773,35 @@ money flows is **withdrawn** — it was outside scope.
 **Confirm before.** The first non-ERISA Texas participant is administered; before *NGS* is relied
 on in any written position; each new state (the residence key above still governs).
 
-**Status.** **Open — material — not blocking the build-now scope.** Amended 2026-09-11.
+**Decision — 2026-09-11 (Kevin): Option B, interim.**
+
+- **What B is.** SSA relies on *NGS American* for administering ERISA plans with Texas
+  participants. It **does not take on non-ERISA Texas business** — QSEHRA, dependent-care FSA,
+  governmental or church employer plans — until Texas business justifies the capital for a
+  certificate. **ICHRA+ for private Texas employers proceeds.**
+- **Why.** Capital discipline before revenue. The cost of a certificate is fixed and front-loaded,
+  and the Texas market is not yet proven. **Kevin's stated intent is to move to Option A once there
+  is real opportunity.**
+- **The switch to Option A** happens at whichever of these comes first:
+  - a non-ERISA Texas opportunity reaches **proposal stage** with genuine intent to buy;
+  - Texas business volume justifies the certificate.
+
+  **The trigger is set at the proposal, not at the first participant, on purpose.** The
+  application needs fingerprints, a bond, and TDI review, and TDI publishes no timeline. Waiting for
+  the first participant means the participant arrives before the certificate does.
+- **What B does not cover — risk accepted, not resolved.**
+  - **Non-ERISA Texas participants already in the existing book**, if there are any. This has not
+    been checked.
+  - **Insurer-product premiums collected from Texas residents**, if SSA collects them for the
+    insurer.
+  - ***NGS* failing against ch. 4151.** That exposure would be retroactive across the ERISA book as
+    well.
+- **Sales constraint.** Under B, **QSEHRA+ is not offered to Texas employers.** This is enforced in
+  the sales conversation only — **no code gate exists or is built.** Nothing in AMS currently stops
+  a Texas QSEHRA+ proposal.
+
+**Status.** **Decided — Option B interim; Option A on trigger. Open — material. Not blocking the
+build-now scope.** Amended 2026-09-11; decision 2026-09-11.
 
 **Source note.** §§4151.002, .0021 and .0022 were read from Justia's 2025 Texas statutes text. The
 *NGS* and *Korioth* holdings were read from CourtListener and Justia excerpts and from *Snyder*'s
