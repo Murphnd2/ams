@@ -73,9 +73,10 @@
           <div class="flex-grow-1 lh-sm">
             <div class="fw-semibold">Request census</div>
             <div class="text-muted" style="font-size: 0.72rem;">Secure link for the client · upload held for review</div>
+            <jsp:include page="/CensusRequestStatus"><jsp:param name="proposalId" value="${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}"/></jsp:include>
           </div>
           <div class="btn-group btn-group-sm">
-            <button type="button" class="btn btn-outline-secondary opacity-50" style="border-style: dashed; cursor: not-allowed;" aria-disabled="true" title="Send census request — not built yet"><i class="bi bi-envelope"></i></button>
+            <a href="${pageContext.request.contextPath}/CensusRequest?proposalId=${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}" class="btn btn-outline-ssa" title="Request census from client"><i class="bi bi-envelope"></i></a>
           </div>
         </div>
 

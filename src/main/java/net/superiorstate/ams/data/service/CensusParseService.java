@@ -603,4 +603,267 @@ public abstract class CensusParseService {
         if (header == null) return "";
         return NON_ALPHANUMERIC.matcher(header.toLowerCase()).replaceAll("");
     }
+
+    // ── Lenient parse (S47-C, D45 decision b) — client uploads only ──────
+    //
+    // Everything below is ADDITIVE. The strict parse() above, its Result, and every helper it calls
+    // are untouched; parseLenient reuses them by calling them. The single behavioural difference is
+    // that a data row the strict parse would reject is KEPT here, with its reasons attached, so a
+    // PSP admin can review an employer's file as submitted rather than seeing only "rejected".
+    // Census Upload (the PSP's own path) keeps all-or-nothing and never calls this.
+
+    /**
+     * One staged row from a client upload. {@code values} is keyed by the parser's own canonical
+     * field names ({@link #F_FIRST_NAME} …) and <b>can only ever hold the eight whitelisted
+     * fields</b> — an unrecognised column never reaches it, so SSN, date of birth and pay cannot
+     * appear (LA-35). {@code issues} is empty for a row the strict parse would have accepted.
+     */
+    public static class StagedRow {
+        private final int rowNumber;
+        private final Map<String, String> values;
+        private final List<String> issues;
+
+        StagedRow(int rowNumber, Map<String, String> values, List<String> issues) {
+            this.rowNumber = rowNumber;
+            this.values = values;
+            this.issues = issues;
+        }
+
+        /** Same 1-based source-line numbering {@link RowError#getRowNumber()} uses. */
+        public int getRowNumber() { return rowNumber; }
+        /** Canonical field name → normalised value. Absent or blank fields are omitted. */
+        public Map<String, String> getValues() { return values; }
+        /** {@code "field: reason"} lines, reason text identical to the strict parse's. */
+        public List<String> getIssues() { return issues; }
+    }
+
+    /**
+     * The lenient parse's outcome. {@code readable} is false when a required column is missing
+     * (or the file could not be read at all), in which case {@code rows} is empty and only the
+     * mapping report — header names, never values — is available.
+     */
+    public static class LenientResult {
+        private final MappingReport mapping;
+        private final boolean readable;
+        private final List<StagedRow> rows;
+        private final int issueCount;
+        private final String fileError;
+
+        LenientResult(MappingReport mapping, boolean readable, List<StagedRow> rows,
+                      int issueCount, String fileError) {
+            this.mapping = mapping == null ? MappingReport.empty() : mapping;
+            this.readable = readable;
+            this.rows = rows;
+            this.issueCount = issueCount;
+            this.fileError = fileError;
+        }
+
+        /** Never null. */
+        public MappingReport getMapping() { return mapping; }
+        /** False when {@link MappingReport#getUnmatchedRequiredFields()} is non-empty or the file was unreadable. */
+        public boolean isReadable() { return readable; }
+        /** Empty when {@link #isReadable()} is false. */
+        public List<StagedRow> getRows() { return rows; }
+        /** Total issues across all rows. */
+        public int getIssueCount() { return issueCount; }
+        /** A file-level reason when the file could not be read at all (bad type, empty, duplicate header, too many rows); null otherwise. */
+        public String getFileError() { return fileError; }
+    }
+
+    /** Plain-language label for a canonical field name, e.g. {@code first_name} → {@code First name}. */
+    public static String labelFor(String field) {
+        String label = FIELD_LABELS.get(field);
+        return label == null ? field : label;
+    }
+
+    /** The required canonical field names, in reading order. */
+    public static List<String> requiredFields() {
+        return REQUIRED_FIELDS;
+    }
+
+    /** The optional canonical field names, in reading order. */
+    public static List<String> optionalFields() {
+        List<String> optional = new ArrayList<>();
+        for (String field : DISPLAY_ORDER) {
+            if (!REQUIRED_FIELDS.contains(field)) optional.add(field);
+        }
+        return List.copyOf(optional);
+    }
+
+    /**
+     * Parses a census leniently: same readers, same header synonyms, same value normalisation and
+     * same per-row rules as {@link #parse}, but a row that fails validation is staged with its
+     * reasons instead of failing the file. Blank rows are skipped and unrecognised columns dropped
+     * exactly as the strict parse does. File-level failures (unsupported type, empty file, duplicate
+     * header, missing required column, more than {@link #MAX_DATA_ROWS} rows) still make the result
+     * unreadable — there is no row to keep in those cases.
+     *
+     * @param in       the file's bytes; never written anywhere
+     * @param filename used only to choose a reader by extension; never used as a path
+     */
+    public static LenientResult parseLenient(InputStream in, String filename) {
+        if (in == null) {
+            return new LenientResult(MappingReport.empty(), false, List.of(), 0, "No file was received.");
+        }
+        String ext = extensionOf(filename);
+        try {
+            List<List<Cellv>> grid;
+            if ("csv".equals(ext) || "txt".equals(ext)) {
+                grid = readDelimited(in);
+            } else if ("xlsx".equals(ext) || "xls".equals(ext)) {
+                grid = readSpreadsheet(in, "xls".equals(ext));
+            } else {
+                return new LenientResult(MappingReport.empty(), false, List.of(), 0,
+                        "Unsupported file type '" + (ext == null ? "(none)" : ext)
+                                + "'. Upload a .csv, .txt, .xlsx or .xls file.");
+            }
+            return interpretLenient(grid);
+        } catch (Exception e) {
+            return new LenientResult(MappingReport.empty(), false, List.of(), 0,
+                    "Could not read the file: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Mirrors {@link #interpret} step for step — header location, ignored-column pass, duplicate
+     * refusal, required-column check, blank-row skip, row cap — then stages every data row instead
+     * of failing on the first bad one. The header logic is repeated rather than shared because
+     * {@link #interpret} returns a {@link Result} from inside its loop and cannot be reused without
+     * changing it; the rules are identical by construction (same {@link #HEADER_SYNONYMS}, same
+     * {@link #normaliseHeader}, same {@link #REQUIRED_FIELDS}, same {@link #report}).
+     */
+    private static LenientResult interpretLenient(List<List<Cellv>> grid) {
+        int headerIndex = -1;
+        for (int i = 0; i < grid.size(); i++) {
+            if (!isBlankRow(grid.get(i))) { headerIndex = i; break; }
+        }
+        if (headerIndex < 0) {
+            return new LenientResult(MappingReport.empty(), false, List.of(), 0, "The file is empty.");
+        }
+
+        List<Cellv> header = grid.get(headerIndex);
+
+        List<String> ignoredColumns = new ArrayList<>();
+        for (Cellv cell : header) {
+            String raw = cell.text;
+            String normalised = normaliseHeader(raw);
+            if (normalised.isEmpty()) continue;
+            if (HEADER_SYNONYMS.get(normalised) == null) ignoredColumns.add(raw.trim());
+        }
+
+        Map<String, Integer> fieldColumns = new LinkedHashMap<>();
+        Map<String, String> fieldHeaderText = new LinkedHashMap<>();
+        for (int c = 0; c < header.size(); c++) {
+            String raw = header.get(c).text;
+            String normalised = normaliseHeader(raw);
+            if (normalised.isEmpty()) continue;
+            String field = HEADER_SYNONYMS.get(normalised);
+            if (field == null) continue;
+            if (fieldColumns.containsKey(field)) {
+                return new LenientResult(report(fieldHeaderText, ignoredColumns, 0, 0), false, List.of(), 0,
+                        "Two columns both map to '" + field + "': '"
+                                + fieldHeaderText.get(field).trim() + "' and '" + raw.trim()
+                                + "'. Remove or rename one so only a single column supplies it.");
+            }
+            fieldColumns.put(field, c);
+            fieldHeaderText.put(field, raw);
+        }
+
+        boolean missingRequired = false;
+        for (String required : REQUIRED_FIELDS) {
+            if (!fieldColumns.containsKey(required)) { missingRequired = true; break; }
+        }
+        if (missingRequired) {
+            // Unreadable: header names only. report() lists which required fields are unmatched.
+            return new LenientResult(report(fieldHeaderText, ignoredColumns, 0, 0), false, List.of(), 0, null);
+        }
+
+        List<StagedRow> staged = new ArrayList<>();
+        int issueCount = 0;
+        int dataRows = 0;
+        int skippedBlankRows = 0;
+
+        for (int i = headerIndex + 1; i < grid.size(); i++) {
+            List<Cellv> raw = grid.get(i);
+            if (isBlankRow(raw)) {
+                skippedBlankRows++;
+                continue;
+            }
+            dataRows++;
+            if (dataRows > MAX_DATA_ROWS) {
+                return new LenientResult(report(fieldHeaderText, ignoredColumns, skippedBlankRows, dataRows),
+                        false, List.of(), 0,
+                        "The file has more than " + MAX_DATA_ROWS + " employees. Split it and"
+                                + " upload the parts separately.");
+            }
+            // The strict validator, called per row with throwaway lists: it either yields one
+            // CensusRow (clean) or one or more RowErrors (issues). Same rules, same reason text.
+            List<CensusRow> oneRow = new ArrayList<>(1);
+            List<RowError> rowErrors = new ArrayList<>();
+            validateRow(i + 1, raw, fieldColumns, oneRow, rowErrors);
+
+            Map<String, String> values;
+            List<String> issues;
+            if (rowErrors.isEmpty() && oneRow.size() == 1) {
+                values = valuesOf(oneRow.get(0));
+                issues = List.of();
+            } else {
+                values = stagedValues(raw, fieldColumns);
+                List<String> lines = new ArrayList<>(rowErrors.size());
+                for (RowError e : rowErrors) {
+                    lines.add((e.getColumn() == null ? "" : e.getColumn() + ": ") + e.getReason());
+                }
+                issues = List.copyOf(lines);
+                issueCount += lines.size();
+            }
+            staged.add(new StagedRow(i + 1, values, issues));
+        }
+
+        MappingReport mapping = report(fieldHeaderText, ignoredColumns, skippedBlankRows, dataRows);
+        return new LenientResult(mapping, true, List.copyOf(staged), issueCount, null);
+    }
+
+    /** The whitelisted fields of a clean row, exactly as the strict parse normalised them. */
+    private static Map<String, String> valuesOf(CensusRow row) {
+        Map<String, String> values = new LinkedHashMap<>();
+        putIfPresent(values, F_FIRST_NAME, row.getFirstName());
+        putIfPresent(values, F_LAST_NAME, row.getLastName());
+        putIfPresent(values, F_ADDRESS_LINE1, row.getAddressLine1());
+        putIfPresent(values, F_ADDRESS_LINE2, row.getAddressLine2());
+        putIfPresent(values, F_CITY, row.getCity());
+        putIfPresent(values, F_STATE, row.getState());
+        putIfPresent(values, F_POSTAL_CODE, row.getPostalCode());
+        putIfPresent(values, F_EMAIL, row.getEmail());
+        return Map.copyOf(values);
+    }
+
+    /**
+     * The whitelisted fields of a row that failed validation, normalised the same way
+     * {@link #validateRow} normalises them (trim; state upper-cased; postal whitespace removed with
+     * the numeric-cell leading-zero recovery) so a reviewer sees the value the strict parse judged.
+     * Only the eight canonical fields are ever read — {@code cols} contains nothing else.
+     */
+    private static Map<String, String> stagedValues(List<Cellv> raw, Map<String, Integer> cols) {
+        Map<String, String> values = new LinkedHashMap<>();
+        for (String field : DISPLAY_ORDER) {
+            String value = blankToNull(cellAt(raw, cols.get(field)));
+            if (value == null) continue;
+            if (F_STATE.equals(field)) {
+                value = value.trim().toUpperCase();
+            } else if (F_POSTAL_CODE.equals(field)) {
+                value = value.replaceAll("\\s", "");
+                if (isNumericSourceCell(raw, cols.get(field)) && FOUR_DIGITS.matcher(value).matches()) {
+                    value = "0" + value;
+                }
+            } else {
+                value = value.trim();
+            }
+            putIfPresent(values, field, value);
+        }
+        return Map.copyOf(values);
+    }
+
+    private static void putIfPresent(Map<String, String> values, String field, String value) {
+        if (value != null && !value.isBlank()) values.put(field, value);
+    }
 }
