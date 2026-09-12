@@ -427,6 +427,14 @@ is ever re-sent on an existing employer, or emitted only on create, is an open d
 backlog T248. Read "Re-import behaviour" below with this in mind: "updates in place" is true, and
 it includes updating to blank.
 
+⭐ **W2 (`9963fd9`, verified 2026-09-12) — columns L–N are emitted only when
+`SUMMIT_EMPLOYER_OPTIONAL_ELEMENTS=CONTACT_TITLE,CONTACT_NAME,CONTACT_EMAIL` is set** (unset → the
+eleven columns above, byte-identical). Dev export diffed 11 → 14 with the first 11 unchanged, imported,
+employer `158E141452` shows Title/Name/Email. ⚠️ **F12:** on an installation whose application fields
+came only from `DatabaseInitializer`'s legacy baseline (`contact_name`, no first/last) `CONTACT_NAME`
+resolves empty — and empty **clears** (F3). Do not enable the tokens there. Detail:
+`docs/analysis/summit_import_templates_reference.md` §1.
+
 ⚠️ **Employer Name source, D47(a)/N1' (T239).** The rule — prefer the application's
 `company_legal_name` answer, falling back to `Prospect.name` with a WARN — now lives in exactly
 one place, `EmployerDisplayNameResolver.resolve`, shared by this file's emitter and the Setup
@@ -462,8 +470,20 @@ No sentinel; I–P empty imports fine. Full table: `docs/analysis/summit_import_
 ⚠️ **The shipped emitter's column count is configuration-dependent and unverified against
 production.** `buildCdhPlanRow` emits A–H plus one column per `SUMMIT_CDH_OPTIONAL_ELEMENTS` entry in
 configured order — 8 with nothing configured, 16 with the eight I–P elements configured. Column
-count is validated whole-file, so the configured list must match the production template exactly,
-and **nobody has verified what production's template defines** — backlog T247. No code change.
+count is validated whole-file, so the configured list must match the production template exactly.
+⭐ **Dev verified 2026-09-12 (T247 closed):** dev emits 16 (CDH) and 14 (Employer Demographic, W2),
+matching `ZZ_TEST_CDH` / `ZZ_TEST_ER`. ⚠️ **Production is not verified**, and V103 is applied to
+neither dev_ssa nor production. No code change.
+
+⭐ **W4 (`5982c26`) — one CDH row per active mapping row, columns E/G/H per row.** G = D +
+`plan_year_offset_years`; **H = the `plan_year_end` answer shifted by the same offset** (F8 — H never
+came from `planYearBegin`; shifting, not recomputing begin+1y−1d, keeps a short first plan year
+intact); E by rule — `PLAN_YEAR_START` = this row's G, `offset_months` not applied;
+`MOST_RECENT_PAST_MONTHDAY` = most recent occurrence strictly before today of the month/day of
+(D + `offset_months`), Feb 29 clamping to Feb 28, `today` taken once per export. E outside its plan
+year is intended (F5). Rules, verified six-plan output and the PremiumPath structure:
+`docs/analysis/premiumpath_summit_plan_structure.md`; per-column detail:
+`docs/analysis/summit_import_templates_reference.md` §2.
 
 ⭐ **F5 — an effective date outside the plan year is accepted and stored verbatim.** The proven row
 above (effective `20251001`, plan year 2026) was created with the date intact — not coerced to the

@@ -103,6 +103,25 @@ employer, or emitted only on create, is **undecided** (backlog T248). The "AMS e
 state, re-sending is safe" principle recorded for this file type is true only in the sense that
 Summit accepts the re-send; it is not safe for data Summit holds that AMS does not.
 
+### W2 — how AMS emits columns L–N (shipped `9963fd9`, verified 2026-09-12)
+
+`writeEmployerDemographic` emits the eleven fixed columns A–K, then **one column per token in
+`SUMMIT_EMPLOYER_OPTIONAL_ELEMENTS`** (`SummitEmployerElementResolver`; tokens `CONTACT_TITLE`,
+`CONTACT_NAME`, `CONTACT_EMAIL`, config order = column order, unknown or duplicate token refuses with
+a 500). Unset → 11 columns, byte-identical to before W2. For this template:
+`SUMMIT_EMPLOYER_OPTIONAL_ELEMENTS=CONTACT_TITLE,CONTACT_NAME,CONTACT_EMAIL` → 14.
+Sources: `contact_title`, `contact_first_name` + `" "` + `contact_last_name` (either alone if the
+other is blank), `contact_email`, from the `general` package's `primary_contact` section.
+**Verified on dev:** export diff 11 → 14 fields with the first 11 byte-identical; imported; employer
+`158E141452` shows Title / Name / Email in Summit.
+
+⚠️ **F12 — baseline hazard. Do not enable these tokens on an installation whose application fields
+came only from `DatabaseInitializer`'s legacy baseline.** That baseline (`DatabaseInitializer:1856`)
+seeds a single `contact_name` and no `contact_first_name`/`contact_last_name`, so `CONTACT_NAME`
+resolves **empty** there — and on this template **empty clears** (F3). The only signal is one WARN
+line per empty configured element. The package-driven field set (`packages/general.json`) has all
+four keys.
+
 ## 2. ZZ_TEST_CDH — Employer CDH Plan
 
 Creates the benefit plan for that employer. **Column layout read off the picker 2026-09-12 — sixteen
@@ -144,8 +163,32 @@ Proven row (2026-09-12):
   TERM_RUNOUT_TYPE, TERM_RUNOUT_DAYS`). With nothing configured it emits **exactly 8** and would be
   rejected by this 16-column template; with the eight I–P elements configured in this order it emits
   16. Summit validates column count whole-file, so **the configured element list must match the
-  target template's column count exactly**, and nobody has verified what production's template
-  defines (backlog T247). Do not change code on this note.
+  target template's column count exactly**. ⭐ **Dev verified 2026-09-12 (T247 closed):** dev's
+  `SUMMIT_CDH_OPTIONAL_ELEMENTS` carries the eight I–P tokens → 16 columns, matching `ZZ_TEST_CDH`;
+  dev's `SUMMIT_EMPLOYER_OPTIONAL_ELEMENTS` carries the three contact tokens → 14, matching
+  `ZZ_TEST_ER`. ⚠️ **Production is not verified**, and V103 is applied to neither dev_ssa nor
+  production. Do not change code on this note.
+- ⭐ **W4 (shipped `5982c26`) — columns E, G and H are per row.** One CDH row is emitted per active
+  `summit_plan_template_map` row for each elected service item (order `sort_order`, then `seq`);
+  each row's dates come from `SummitPlanDateRuleResolver` and the row's `effective_date_rule` /
+  `offset_months` / `plan_year_offset_years` (V103):
+  - **G Plan Year Begin** = D (the `plan_year_start` answer) + `plan_year_offset_years`.
+  - **H Plan Year End** = the **`plan_year_end` answer** + the same offset. ⚠️ **F8:** H never came
+    from `planYearBegin` — it comes from the answer, so it is *shifted*, not recomputed as
+    begin+1y−1d. For a short first plan year (D 2026-07-01, answer end 2026-12-31) the shift keeps
+    2026-12-31; a recompute would have produced 2027-06-30 and silently extended the plan year.
+  - **E Effective Date** — `PLAN_YEAR_START`: this row's own G; `offset_months` is **not** applied.
+    `MOST_RECENT_PAST_MONTHDAY`: month/day of (D + `offset_months`), then the most recent occurrence
+    of that month/day **strictly** before `today` (today 2026-09-21, D 2027-01-01, −3 → 2025-10-01;
+    today 2026-10-01 → still 2025-10-01; today 2026-10-03 → 2026-10-01). Feb 29 clamps to Feb 28 in
+    a non-leap year. `today` is taken **once per export**, so every row in one file sees the same
+    date. ⭐ E outside [G, H] is valid and intended (F5) — no guard exists and none should be added.
+  - A seq 0 / `PLAN_YEAR_START` / 0 / 0 row — every pre-V103 row, every property entry — emits
+    exactly what it did before W4 (verified: single-row export byte-identical).
+  - Two rows in one file sharing a Plan Name are refused (results correlate on it, no row number);
+    the admin screen (W5) now prevents that and duplicate key segments at save time.
+  - **Verified fan-out**, employer `158E141452`, D = 2027-01-01, run 2026-09-12 — six rows imported,
+    six plans created: see `docs/analysis/premiumpath_summit_plan_structure.md`.
 - ⭐ **An effective date outside the plan year is accepted and stored verbatim** (F5). The proven row
   above — effective `20251001` against plan year 2026 — was created with the date **intact, not
   coerced** to the plan-year start, confirmed on the Edit Benefit Plan screen. This is what makes the
@@ -381,8 +424,9 @@ looking at the row.
 - **Template `Default Value`** firing on a blank field — untested (Test 6).
 - **Card issuance timing** — assumed next-day-prospective, backlog item, cannot test until issuance.
 - **Whether Card Enabled, Pro-Rate, or tiers are editable on an active plan.**
-- **Production `Employer CDH Plan` template column count** vs what `buildCdhPlanRow` emits under
-  production's `SUMMIT_CDH_OPTIONAL_ELEMENTS` — unverified (T247).
+- **Production `Employer CDH Plan` and `Employer Demographic` template column counts** vs what the
+  emitters produce under production's `SUMMIT_CDH_OPTIONAL_ELEMENTS` / `SUMMIT_EMPLOYER_OPTIONAL_ELEMENTS`
+  — **dev verified (16 and 14), production not** (T247 closed on dev; production check stands).
 - **File 1 re-send semantics** — whether Employer Demographic is ever re-sent on an existing employer,
   given that an empty cell clears the stored value (T248).
 - **Which templates tolerate a trailing empty optional** and what decides it — `ZZ_TEST_CDH` and

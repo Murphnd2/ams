@@ -378,6 +378,27 @@ implementation-year plan year only.
 | PostTaxPlan | 1/1/26 | 1/1/26 – 12/31/26 |
 | ICHRA | 1/1/27 | 1/1/27 – 12/31/27 |
 
+⭐ **Built and verified 2026-09-12 (W3 V103 · W4 `5982c26` · W5 `a889263`).** The table above is now
+produced by AMS: one `summit_plan_template_map` row per plan, each with `effective_date_rule` /
+`offset_months` / `plan_year_offset_years`, evaluated per row by `SummitPlanDateRuleResolver` when
+file 2 is generated. Verified output for employer `158E141452`, D = 2027-01-01, run 2026-09-12 — six
+rows imported, six plans created, plan type coming from the Summit template not the file:
+
+| Label (row) | Template | Rule / offsets | Effective | Plan year |
+|---|---|---|---|---|
+| PremiumPath Card Issuer | 1037 (`125+Setup`) | `MOST_RECENT_PAST_MONTHDAY`, −3, −1 | **2025-10-01** | 2026-01-01 – 2026-12-31 |
+| PremiumPath Excepted | 1031 | `PLAN_YEAR_START`, 0, −1 | 2026-01-01 | 2026-01-01 – 2026-12-31 |
+| PremiumPath Off Exchange | 1032 | `PLAN_YEAR_START`, 0, −1 | 2026-01-01 | 2026-01-01 – 2026-12-31 |
+| PremiumPath Post Tax | 1036 | `PLAN_YEAR_START`, 0, −1 | 2026-01-01 | 2026-01-01 – 2026-12-31 |
+| PremiumPath ICHRA | 1030 | `PLAN_YEAR_START`, 0, 0 | 2027-01-01 | 2027-01-01 – 2027-12-31 |
+| QSEHRA (separate service item) | 1034 | `PLAN_YEAR_START`, 0, 0 | 2027-01-01 | 2027-01-01 – 2027-12-31 |
+
+⚠️ The generic plan's effective date is **run-date dependent**: the table's 10/1/26 is what the
+rule yields once the export runs on or after 2026-10-02; run on 2026-09-12 it yielded 2025-10-01
+(the most recent 10-01 strictly in the past). Both are valid — Summit stores an effective date
+outside the plan year verbatim (F5). Rules in full, and the reasons each plan exists:
+`docs/analysis/premiumpath_summit_plan_structure.md`.
+
 ### Concerns with the sequence
 
 - ⚠️ **Card production timing was never tested.** Whether Summit initiates a card at record creation or
