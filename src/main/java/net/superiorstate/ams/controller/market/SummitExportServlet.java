@@ -14,6 +14,7 @@ import net.superiorstate.ams.data.dao.SummitFileExportDAO;
 import net.superiorstate.ams.data.resolver.EmployerDisplayNameResolver;
 import net.superiorstate.ams.data.resolver.IchraAccessResolver;
 import net.superiorstate.ams.data.resolver.SummitCdhElementResolver;
+import net.superiorstate.ams.data.resolver.SummitEmployerElementResolver;
 import net.superiorstate.ams.data.resolver.SummitEmployerFlagResolver;
 import net.superiorstate.ams.data.resolver.SummitImportTemplateResolver;
 import net.superiorstate.ams.data.resolver.SummitPlanTemplateResolver;
@@ -597,7 +598,22 @@ public class SummitExportServlet extends HttpServlet {
         }
         String employerPlanName = employerPlanName(answers, flags, allowanceSegment, prospect.getId());
 
-        String line = String.join("|",
+        // W2 -- the optional element block, appended after the eleven fixed columns, mirroring
+        // file 2's SUMMIT_CDH_OPTIONAL_ELEMENTS. Unset means an empty list, which appends nothing
+        // and leaves this file byte-identical to what it emitted before W2. That is the default and
+        // it must stay the default: a column count that does not match the installation's template
+        // rejects the whole file.
+        SummitEmployerElementResolver.Parsed optional = SummitEmployerElementResolver.configured();
+        if (optional.isRejected()) {
+            log.error("[SUMMIT-EXPORT] {}", optional.getRejection());
+            writePlainError(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+                    "Cannot generate Employer Demographic file: " + optional.getRejection());
+            return;
+        }
+        Map<SummitEmployerElementResolver.Element, String> optionalValues =
+                SummitEmployerElementResolver.values(optional.getElements(), answers, prospect.getId());
+
+        List<String> columns = new ArrayList<>(List.of(
                 sanitize(employerName),
                 employerTpaCustomId,
                 sanitize(address1),
@@ -608,7 +624,15 @@ public class SummitExportServlet extends HttpServlet {
                 SummitCdhElementResolver.bool(flags.isCdh()),
                 SummitCdhElementResolver.bool(flags.isCobra()),
                 SummitCdhElementResolver.bool(flags.isRetireeBilling()),
-                SummitCdhElementResolver.bool(flags.isDirectBill()));
+                SummitCdhElementResolver.bool(flags.isDirectBill())));
+        // Every configured element resolves to a value (possibly empty) rather than being omitted:
+        // Summit binds optional elements positionally, so a missing one would shift every element
+        // after it.
+        for (SummitEmployerElementResolver.Element element : optional.getElements()) {
+            String value = optionalValues.get(element);
+            columns.add(sanitize(value == null ? "" : value));
+        }
+        String line = String.join("|", columns);
 
         String filename = resolveFilename(TYPE_EMPLOYER,
                 "employer-demographic-" + sanitizeFilename(prospect.getName())
