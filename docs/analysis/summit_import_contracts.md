@@ -145,6 +145,31 @@ built from these findings — this file remains the record of how the behaviour 
   `Tier Name`.
 - A separate `Enrollment` file type exists that looks identical. Purpose unknown.
 
+**Session 51 addendum (2026-09-12) — HRA Enrollment by import, `ZZ_TEST_HRA_ENROLL` (A–H: Employer
+TPA Custom ID, Participant TPA Custom ID, Import Plan ID, Effective Date, Tier ID, Employer
+Contribution Schedule, Participant Contribution Schedule, Filler):**
+
+- **Single Fund with `Tier ID` omitted → `Successful`** by import. `158-P-S27-15` on `ZZSDX27AICHRASF`
+  (tier `EEONLY`): Annual Election `$0.00`, Elected Amount `0.00`, Contribution Amount `0.00`,
+  **Employer Funding `$6,000.00`** — nothing in the file supplied an amount. The earlier
+  `ZZ_TEST_HRA_ENROLL_singlefund2` attempt (2026-09-11) returned what looked like the input echoed;
+  the likeliest cause is the template-level `Produce Results File` setting (see
+  `summit_import_templates_reference.md`), not the row.
+- **Contribution Schedule with `EE0` in E and both schedule columns blank → `Successful`** on
+  `ZZSDX27AICHRA`. Schedule columns are not required *where the employer carries a default
+  schedule* (`S27 Default` is flagged Default); whether they are required with no default is untested.
+- **Enrollment dated before the plan year opens fails `Plan Not Found`.** 20261201 on `ZZSDX27AICHRA`
+  (PY 2027) failed; 20270101 in the same file succeeded. ⚠️ A wrong `Import Plan ID` returns the
+  identical string — indistinguishable from the results file.
+- **Funds are live at record creation, not at the effective date.** `-15` showed $6,000 available and
+  disbursable on 9/12 against a 10/1/2026 effective date. Card issuance is a separate, untested
+  trigger (TA-e, T245).
+- **Results line shape varies by template:** HRA Enrollment returns three fields
+  (`…|Status|Message`); Demographics four (`…|Status|Message|Employer TPA Custom ID`).
+- On `ZZ_TEST_125_CONTRIB` (picker read 2026-09-12): **no `Employer Contribution Amount` element
+  exists**; `Import for Process Approval` is a template-level checkbox, not a column; the flag
+  `Update Participant Annual Election` sits at **F** with `Plan Effective Date` at E.
+
 ## Plan configuration facts that govern the above
 
 - The template's `Funding source(s)` controls which schedule fields render on the plan.
@@ -162,9 +187,12 @@ built from these findings — this file remains the record of how the behaviour 
   - Under **Contribution Schedule** with a 2027 plan year, the same $6,000 tier produced **$0.00**
     — correct, since no run date has arrived, but it means there is no readable expected-annual
     until money posts.
-  - ⭐ **Single Fund is the stronger fit for PremiumPath ICHRA**: the tier is the source of truth,
+  - ~~⭐ **Single Fund is the stronger fit for PremiumPath ICHRA**~~: the tier is the source of truth,
     schedule vintage drops out of the calculation, and frequency stops being a tier dimension
-    (no tier-per-payroll-frequency combinatorics).
+    (no tier-per-payroll-frequency combinatorics). **Superseded by decision 2026-09-12 (session
+    51): ICHRA/QSEHRA will be Contribution Schedule funded with monthly stipends; Single Fund is
+    not the standard.** The observation stands; the recommendation does not. See
+    `summit_import_spec.md` §6 and §9 #11.
 - Under Contribution Schedule + `Employer Funding By: Contribution Schedule`, the tier box is a
   per-contribution figure multiplied by the schedule's period count; under `Annual Amount` it is
   the year's total.

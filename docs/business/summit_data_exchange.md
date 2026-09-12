@@ -648,8 +648,19 @@ Columns: `Employer TPA Custom ID`, `Participant TPA Custom ID`, `Import Plan ID`
 ZZTEST001|ZZP001|ICHRA2027|20270101|600.00
 ```
 
-Amounts accept two decimal places. `Participant Annual Election Amount` carries the benefit amount
-even though an ICHRA is employer-funded; funding source is set on the plan template, not per record.
+Amounts accept two decimal places. ~~`Participant Annual Election Amount` carries the benefit amount
+even though an ICHRA is employer-funded~~; funding source is set on the plan template, not per record.
+
+⚠️ **Superseded 2026-09-12 (session 51) — on a tier-funded employer plan the amount column does not
+carry the benefit amount.** Participant `158-P-S27-15` enrolled on `ZZSDX27AICHRASF` (Single Fund,
+tier `EEONLY`) shows Annual Election `$0.00`, Elected Amount `0.00`, Contribution Amount `0.00` and
+Employer Funding **`$6,000.00`** — an amount nothing in the file supplied. **Funding comes from the
+plan tier, not from the file** (agrees with `docs/analysis/summit_import_contracts.md` "HRA
+Enrollment": no employer-amount element; Annual Election stays $0.00 on an employer-funded plan).
+Scope of the correction: proven for a *tiered* employer-funded plan on the `ZZ_TEST_HRA_ENROLL`
+template. Whether the amount column funds anything on a **non-tiered** employer plan — the 2026-09-08
+template-1030 chain this five-column layout was proven against, and what `writeHraEnrollment` still
+emits — is **untested**. Current column layout: `docs/analysis/summit_import_templates_reference.md` §6.
 
 ⭐ **AMS emits this file as of S30-A (2026-09-08)** — `SummitExportServlet` at
 `/SummitExport?proposalId={id}&type=enrollment`, a fourth `type` alongside `employer`, `cdhplan` and
@@ -669,13 +680,16 @@ has yet been produced.
 
 One row per participant, from the **identical** roster query and ordering file 4 uses
 (`EmployerParticipantDAO.findByProspectId`, ordered by last name, first name, id). An empty roster
-emits a zero-row file rather than refusing, matching file 4.
+is **refused with a plain-text 400, not emitted** — T209, shipped `85cfaaa` (S35-A), the same guard
+file 4 carries; `writeHraEnrollment`'s `lines.isEmpty()` check sits after the row-count log line.
+(This sentence previously said "emits a zero-row file rather than refusing, matching file 4"; that
+described the pre-T209 defect as intended behaviour and was corrected 2026-09-12, session 51.)
 
 | Column | Source in AMS |
 |---|---|
 | `Employer TPA Custom ID` | `resolveEmployerTpaCustomId` — `{SUMMIT_TPA_ID_PREFIX}E{Prospect.id}`, the same value files 1, 2 and 4 emit |
 | `Participant TPA Custom ID` | `{SUMMIT_TPA_ID_PREFIX}-P-{employer_participant.id}`, the same composition file 4 emits |
-| `Import Plan ID` | file 2's own composition for the **ICHRA** row: `{employerTpaCustomId}-{keySegment}` — **no plan year** (S31-J) |
+| `Import Plan ID` | file 2's own composition for the **ICHRA** row: `sanitize(employerTpaCustomId + keySegment)` — straight concatenation, **no separator** (S50 dropped the hyphen; `125 PI Contributions` rejects any non-alphanumeric character), **no plan year** (S31-J). The `{employerTpaCustomId}-{keySegment}` notation used until 2026-09-12 read as a literal hyphen; it never was one in shipped code after S50 |
 | `Effective Date` | the `plan_year_start` application answer — the same value file 2 emits as its `Effective Date` and `Plan Year Begin`, **not** `employer_participant.effective_date` (T198) |
 | `Participant Annual Election Amount` | the `hra_annual_ee` application answer ("Annual Amount per Employee", HRA package, `hra_benefit_allocation` section), two decimal places, no currency symbol, no thousands separator |
 
@@ -712,7 +726,7 @@ The single most important section. Four identifiers, three owned by AMS.
 |---|---|---|---|
 | `Employer TPA Custom ID` | **AMS** | Per installation | **Upsert key.** Must be stable for the life of the employer — changing it orphans the old record and creates a new one. Derive from something immutable, never from a name or tax ID. ⚠️ **Must be alphanumeric** — no hyphen, no underscore (import-established 2026-09-08; see below). AMS composes `{prefix}E{prospectId}`. |
 | `Participant TPA Custom ID` | **AMS** | ⚠️ **GLOBALLY UNIQUE across all employers** | See the warning below. **Hyphens are accepted** — `158-P-9001` imported *and enrolled* successfully 2026-09-08. AMS composes `{prefix}-P-{participantId}`, unchanged. |
-| `Import Plan ID` | **AMS** | Per-employer accepted — **treat as suspect** | Two employers took `ICHRA2027` and enrollment resolved correctly. But this is the same evidence pattern that misled on participants. Namespace by employer unless a test proves otherwise. ⚠️ **Hyphen acceptance is per-file-type, not universal.** `158140952-PROBEA-2026` imported successfully to `Employer CDH Plan` 2026-09-08, but `125 PI Contributions` rejects any non-alphanumeric character in this field, proven 2026-09-12. **The shape CHANGED in S31-J: it is now `{employerKey}-{keySegment}` with NO plan year**, because a Summit plan persists across plan years and a year in the upsert key would create a duplicate plan every renewal. T185 is retired. ⚠️ **The hyphen itself was then dropped in S50**: the shipped form is `{employerKey}{keySegment}`, strictly alphanumeric, so one form satisfies every file type. |
+| `Import Plan ID` | **AMS** | Per-employer accepted — **treat as suspect** | Two employers took `ICHRA2027` and enrollment resolved correctly. But this is the same evidence pattern that misled on participants. Namespace by employer unless a test proves otherwise. ⚠️ **Hyphen acceptance is per-file-type, not universal.** `158140952-PROBEA-2026` imported successfully to `Employer CDH Plan` 2026-09-08, but `125 PI Contributions` rejects any non-alphanumeric character in this field, proven 2026-09-12. **The shape CHANGED in S31-J (no plan year) and again in S50 (no hyphen): it is now `sanitize(employerTpaCustomId + keySegment)` — straight concatenation, alphanumeric only, NO plan year**, because a Summit plan persists across plan years and a year in the upsert key would create a duplicate plan every renewal. T185 is retired. ⚠️ **The hyphen itself was then dropped in S50**: the shipped form is `{employerKey}{keySegment}`, strictly alphanumeric, so one form satisfies every file type. |
 | `Plan Template ID` | **Summit** | — | The **only** Summit-assigned foreign reference the emitter needs. Config, resolved at runtime, **never hardcoded** — it differs per installation, same reasoning as the project's reference-row rule. |
 
 **Write this warning in full, it cost a wrong conclusion:**
@@ -1174,13 +1188,22 @@ open-question registry (`O1`–`O52+`, tracked in `docs/swbd_ichra_build_plan.md
     succeeds and the collision surfaces somewhere else later. **If TPA-wide, per-employer schedule
     names must be derived from something immutable, not typed.** Testable cheaply: two employers, same
     schedule name.
-12. **SDX-12** — **What is `125 PI Elections`' true required field set?** Never imported. Three columns
-    show Mandatory in the picker; the rest show Optional. Discovered by importing and reading the
-    results file, never by reading the picker — this document's standing rule that **"Optional" does
-    not mean optional**.
-13. **SDX-13** — **Is `Employer Contribution Schedule` meaningful on a plan whose funding source is
-    Participant only?** Both schedule elements are mappable on `125 PI Elections`; only one obviously
-    applies to a participant-funded premium plan.
+12. **SDX-12** — ⭐ **RESOLVED (2026-09-11/12, session 50).** **What is `125 PI Elections`' true
+    required field set?** ~~Never imported.~~ Imported repeatedly against employer `ZZSDX27A`
+    (System ID 1394): the required set is exactly the three picker-Mandatory columns —
+    `Employer TPA Custom ID`, `Participant TPA Custom ID`, `Import Plan ID` — and everything else,
+    `Effective Date` included, is genuinely optional. A no-schedule row is accepted as an
+    expectation-only election. Field-level contract: `docs/analysis/summit_import_spec.md` §2;
+    evidence: `docs/analysis/summit_import_contracts.md` "125 PI Elections". The text that stood here
+    ("Three columns show Mandatory in the picker; the rest show Optional. Discovered by importing and
+    reading the results file, never by reading the picker") was the plan; the standing rule that
+    **"Optional" does not mean optional** was applied and, on this file type, the picker was right.
+13. **SDX-13** — ⭐ **RESOLVED (2026-09-12, session 50).** **Is `Employer Contribution Schedule`
+    meaningful on a plan whose funding source is Participant only?** **No.** The template's
+    `Funding source(s)` controls which schedule fields render on the plan; `Ins125+ Excepted Benefit`
+    (1031) is Participant-only, so no employer schedule field exists on the plan and employer-only
+    schedules are filtered out of its dropdown — the element has nowhere to land. AMS never emits it
+    on a 125 row. `docs/analysis/summit_import_spec.md` §2 (column J) and §6.
 14. **SDX-14** — Does DataPath intend to offer a stronger SFTP host-key algorithm than `ssh-dss`
     (currently the server's only option — see Transport)? For DataPath support, not an AMS work item.
 15. **SDX-15** — ⭐ **RESOLVED (2026-09-09).** Is a file delivered to `ImportFiles` over SFTP
@@ -1264,8 +1287,8 @@ templates prefixed `ZZ_TEST_` exist in the live Summit environment and should be
 - Plans `158140952-PROBEA-2026` and `158140952PROBEB2026`
 
 ⚠️ **Every plan in the live tenant whose `Import Plan ID` ends in a year carries the SUPERSEDED shape**
-(S31-J dropped the plan year from the key). A re-export **will not update them** — it emits
-`{employerKey}-{keySegment}`, which Summit reads as a new plan, so the year-suffixed plans will be
+(S31-J dropped the plan year from the key; S50 dropped the hyphen). A re-export **will not update them** — it emits
+`sanitize(employerTpaCustomId + keySegment)` (no separator), which Summit reads as a new plan, so the year-suffixed plans will be
 **joined by** a new plan rather than replaced. They are test artifacts and disposable, but they must be
 deleted rather than left to look like current records, and **no real employer should be left holding a
 year-suffixed plan** — if one exists, it needs deleting in Summit before the corrected export runs for
@@ -1373,10 +1396,18 @@ imported successfully twice into the live tenant.
 including employees who will opt out, because the opt-out only exists relative to an offer. This
 enrolls the full census, not a subset.
 
-### ⚠️ `125 PI Elections` — the file type the tested chain never touched
+### `125 PI Elections` — ~~the file type the tested chain never touched~~ proven 2026-09-11/12
+
+> ⭐ **Superseded 2026-09-12 (session 51).** The evidence class below ("Summit vendor AI, not
+> test-verified — never imported") was true when written on 2026-09-07. `125 PI Elections` was
+> imported repeatedly on 2026-09-11/12 against employer `ZZSDX27A`; its required field set,
+> amount model, schedule rules and non-idempotence are now established. **The current contract is
+> `docs/analysis/summit_import_spec.md` §2** (column layout A–K, `docs/analysis/summit_import_templates_reference.md` §4);
+> the evidence record is `docs/analysis/summit_import_contracts.md`. The paragraphs below are kept
+> as the record of what the vendor AI said and are not the contract.
 
 > **Evidence class: Summit vendor AI, 2026-09-07. Not test-verified — this file type has never been
-> imported.** Recorded as unproven, on the same footing as file 3.
+> imported.** Recorded as unproven, on the same footing as file 3. *(Superseded — see above.)*
 
 **A `125 PI Elections` import file type exists.** Per Summit's vendor AI it is **the correct file type
 for enrolling participants into an `Ins125` plan with per-participant premium amounts**, and **HRA
@@ -1393,9 +1424,11 @@ Available **optional** elements: `Participant Annual Election Amount`, `Effectiv
 Date`, `Coverage End Date`, `Participant Per Contribution Amount`, `Plan Status`, `Participant
 Contribution Schedule`, `Employer Contribution Schedule`, and a run of `Filler` elements.
 
-⚠️ **The true required field set is unproven.** The standing rule of this document applies in full:
-**"Optional" does not mean optional** — requirements are discovered by importing a file and reading
-the results file, never by reading the element picker. See [SDX-12](#open-questions).
+~~⚠️ **The true required field set is unproven.**~~ **Proven 2026-09-11/12: the required set is the
+three Mandatory columns and nothing else** — see [SDX-12](#open-questions), resolved. The standing rule
+of this document still applies in full: **"Optional" does not mean optional** — requirements are
+discovered by importing a file and reading the results file, never by reading the element picker;
+here that was done, and the picker held.
 
 ### ⚠️ Contribution schedules are a setup prerequisite — before any election file
 
@@ -1434,14 +1467,14 @@ available, entered by hand.
 > ⚠️ **Correction, 2026-09-07.** This was written against **HRA Enrollment**, which is **wrong for the
 > `Ins125` leg**. File 6 splits across **two** file types: the off-exchange `Ins125` enrollment goes
 > through **`125 PI Elections`**, and only the `ICHRA` leg goes through **HRA Enrollment**. See the
-> `125 PI Elections` section above. Its required field set is unproven.
+> `125 PI Elections` section above. ~~Its required field set is unproven.~~ Field set proven 2026-09-11/12 — `docs/analysis/summit_import_spec.md` §2.
 
 **File 7 — Presidio enrollments**, sourced from Presidio where available. Enrolls into the Presidio
 `Ins125` plan based on elections. Underwriting means the enrolled set is not the applied-for set.
 
 > ⚠️ **Correction, 2026-09-07.** This was written against **HRA Enrollment**. File 7 enrolls into an
 > `Ins125` plan only, so it goes through **`125 PI Elections`** in full — HRA Enrollment does not
-> apply to it at all. See the `125 PI Elections` section above. Its required field set is unproven.
+> apply to it at all. See the `125 PI Elections` section above. ~~Its required field set is unproven.~~ Field set proven 2026-09-11/12 — `docs/analysis/summit_import_spec.md` §2.
 
 **File 8 — FSA and DCA elections**, where the employer supplies them in a usable form.
 
@@ -1572,6 +1605,30 @@ which displayed System ID 1392 on the page.
 
 Walk passed 2026-09-11 (KEVIN-UI), including the direct-URL non-PSP request returning blank.
 Commits `e1af003`, `0e5e513`.
+
+**TA-e (technical assumption) — card issuance effective dating. Assumed 2026-09-12 (session 51).**
+
+- **Assumption.** A participant enrolled in a card-enabled benefit is issued a card on the effective
+  date of coverage, provided coverage is prospective.
+- **Design choice.** For any enrollment whose purpose is card issuance, AMS emits a *calculated*
+  effective date. Starting rule: **next day** — a push on 9/12/2026 emits effective 9/13/2026, $1 to
+  the generic card-enabled benefit (`docs/analysis/summit_import_spec.md` §7 step 2).
+- **Reversal cost.** Low — one date calculation in one emitter.
+- **Status.** Assumed. **Untestable until SSA is ready to issue cards** — backlog T245.
+- ⚠️ **Not implied by existing evidence.** Test 1 (2026-09-12) showed **funds live at record creation**:
+  participant `158-P-S27-15` on `ZZSDX27AICHRASF` had $6,000 available and disbursable on 9/12 against
+  a 10/01/2026 effective date. Funding and card production are separate triggers; this assumption
+  deliberately takes the conservative case for the card.
+- **Sub-questions, unsolved and non-blocking:** which clock — "next day" against Summit's CST, not
+  AMS's UTC, since a late-evening run could emit a date Summit reads as two days out; whether a
+  next-day date is caught by that night's batch or the following one; weekends and holidays; whether
+  one day of lead is enough.
+
+**Decision, 2026-09-12 (Kevin, session 51) — recorded as decided, do not relitigate.** ICHRA and
+QSEHRA will be **Contribution Schedule** funded with monthly stipends in almost all cases. **Single
+Fund is therefore not the ICHRA standard** (`summit_import_spec.md` §6, §9 #11). Consequences: AMS
+*does* emit `Tier ID` on `HRA Enrollment` rows, and the open question of how AMS learns a plan's
+employer funding method (`summit_import_spec.md` §4) stays live rather than evaporating.
 
 ### The J1 import remains manual
 

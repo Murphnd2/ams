@@ -1973,6 +1973,12 @@ the choice; the sub-accounts, ledgering and monthly cadence are identical across
 description, plan document language or employee communication ties it to purchasing coverage. First
 January-effective group where option A is the selected on-ramp.
 
+*Cross-reference (added 2026-09-12, session 51; no change to substance).* The Summit onboarding
+sequence in `summit_import_spec.md` §7 depends on this entry: step 1 opens every §125 benefit in a
+plan year one payroll cycle before implementation, and step 4 posts the December deduction of
+January premium into that prior plan year — the month-ahead cadence this entry records. That spec's
+§7 concerns and §9 #13 previously asked whether a new `LA-NN` was needed; they now point here.
+
 **Status.** Assumed. Verification is deliberately tiered rather than uniform. The month-ahead
 cadence rests on agency text — Federal Register preamble and IRB 2007-39 — with the operative
 regulation section unread; the cross-year purchase prohibition rests on a proposed regulation

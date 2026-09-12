@@ -2,6 +2,8 @@
 
 **Status:** established empirically 2026-09-11/12 against demo employer `ZZSDX27A` (System ID 1394).
 Behavioural evidence is in `summit_import_contracts.md`; this file is the emitter contract.
+Per-template column layouts, template-level settings and the 2026-09-12 picker reads are in
+`summit_import_templates_reference.md` — the working reference for all six templates.
 
 ⚠️ Everything here is observed unless explicitly marked untested. Anything marked untested must not be
 relied on without a test.
@@ -37,9 +39,17 @@ Set identically on every AMS-facing template:
 - ⚠️ **De-duplication is on content hash, not filename.** A byte-identical re-send is silently held.
   The emitter must guarantee content variance, not just a unique filename.
 
-**Results file format (all types):** `Participant TPA Custom ID|Status|Message`, pipe-delimited, no
-header. Success tokens: `Successful|Success` for Elections and HRA Enrollment;
-`Successful|Contribution Import completed successfully` for Contributions.
+**Results file format:** pipe-delimited, no header. Success tokens: `Successful|Success` for Elections
+and HRA Enrollment; `Successful|Contribution Import completed successfully` for Contributions.
+⚠️ **The line shape is not constant across templates** (corrected 2026-09-12, session 51 — this
+line previously read "all types: `Participant TPA Custom ID|Status|Message`"). Observed 2026-09-12:
+HRA Enrollment returns **three** fields (`…|Status|Message`); Demographics returns **four**, with a
+trailing `Employer TPA Custom ID` (`…|Status|Message|Employer TPA Custom ID`). Employer Demographic
+and Employer CDH Plan put `Status` **first** (`docs/business/summit_data_exchange.md` SDX-18). A parser
+written to one assumed shape is unsafe. ⚠️ **Implication for code, not changed here:**
+`SummitResponseService.check` classifies every line on `fields[0]`; on any template whose first
+field is the participant key rather than `Status`, every line classifies `UNKNOWN`. Per-template
+detail: `summit_import_templates_reference.md`, "Rules that apply to every file".
 
 ---
 
@@ -139,7 +149,16 @@ Posts money to an existing election. Distinct from Elections; does not create en
 | F | Update Participant Annual Election | Boolean | optional | see below |
 | G | Filler | AlphaNumeric | **set Mandatory** | constant `X` |
 
-Offered but unmapped: `Employer Contribution Amount` (Numeric — the employer-money path, untested).
+~~Offered but unmapped: `Employer Contribution Amount` (Numeric — the employer-money path, untested).~~
+**Superseded 2026-09-12 (session 51):** the picker read on `ZZ_TEST_125_CONTRIB` on 2026-09-12 found
+**no `Employer Contribution Amount` element on this template** — it is participant-money only (§9 #9
+closed; `summit_import_templates_reference.md` §5). The earlier "offered but unmapped" reading is
+retained struck through as the record of what session 50 believed.
+
+⚠️ **Column position of the flag (F).** The additive test recorded the flag one column earlier; the
+2026-09-12 picker read puts `Plan Effective Date` at E and `Update Participant Annual Election` at
+F, as this table shows. **Build against F and re-check the picker before any emitter run** — a file
+built to the old position writes `Y` into a Numeric date field.
 
 ### Field semantics
 
@@ -175,10 +194,12 @@ total and must be accounted for.
 
 - ⭐ **A contribution posts to an election with no funding schedule.** This is the mechanism the whole
   implementation sequence depends on and it is proven.
-- ⚠️ `Import for Process Approval` exists on this file type only. Purpose unverified; left unchecked in
-  testing. It presumably routes the import to Process Approvals rather than posting on arrival — **this
-  needs a deliberate production decision**, since it is the difference between money posting
-  automatically and money waiting for a human.
+- ⚠️ `Import for Process Approval` exists on this file type only. **It is a template-level checkbox,
+  not a column** (confirmed on the 2026-09-12 picker read; currently unchecked on
+  `ZZ_TEST_125_CONTRIB`) — so it never appears in the file and cannot be set per row. Purpose
+  unverified by test; left unchecked in testing. It presumably routes the import to Process Approvals
+  rather than posting on arrival — **this needs a deliberate production decision**, since it is the
+  difference between money posting automatically and money waiting for a human.
 - Plan history records `Method` as `Contribution Import` vs `Plan Import`, so the two are
   distinguishable in the audit trail.
 
@@ -289,10 +310,17 @@ payroll frequency covers 125 and ICHRA alike** — the global list does not need
 every employer. ⚠️ Global names are installation-specific — AMS needs a config-mapped
 payroll-frequency → schedule-name registry, never literal strings in code.
 
-⭐ **Single Fund is the stronger fit for PremiumPath ICHRA**, pending Kevin's confirmation: the tier
+~~⭐ **Single Fund is the stronger fit for PremiumPath ICHRA**, pending Kevin's confirmation:~~ the tier
 becomes the source of truth, schedule vintage drops out of the calculation, and payroll frequency stops
 being a tier dimension — avoiding tier-per-frequency combinatorics
 (`EEOBIWEEKLY` / `EEOWEEKLY` / `FAMBIWEEKLY` / `FAMWEEKLY`) on any group with mixed payroll.
+
+⭐ **Decided 2026-09-12 (Kevin, session 51) — Single Fund is NOT the ICHRA standard.** ICHRA and
+QSEHRA will be **Contribution Schedule** funded with monthly stipends in almost all cases. The
+Single Fund case above is retained as the analysis that was considered; it is not the design.
+Consequences: AMS **does** emit `Tier ID` on HRA Enrollment rows; the tier-per-frequency question
+is live again; and the open question of how AMS learns a plan's employer funding method (§4) stays
+open rather than evaporating. Recorded as decided — do not relitigate.
 
 ---
 
@@ -324,7 +352,7 @@ implementation-year plan year only.
 |---|---|---|---|
 | 1 | **Generic** card-enabled benefit, effective implementation-minus-three-months, plan year 2026 | Something the whole census can enroll in immediately. ⭐ The −3 month effective date also drives the renewal prompt: **AMS reads renewal timing off effective date and prompts one month ahead**, so a 10/1 effective date fires the prompt on 9/1, giving the ICHRA notice cycle a mechanism to act on before 1/1. | Supported |
 | 2 | Enroll the entire census at **$1 annual**, effective 12/1/2026, on an auto-processing schedule | Initiates card production without needing plan or premium detail. Future effective date means **nothing back-posts** — no spendable money on a placeholder. | **Proven** — future effective date posts $0.00 |
-| 3 | As each person's real coverage and premium arrive, enroll them in the correct benefit, effective 12/1/2026, **with no schedule** | The election exists as an expectation; nothing posts. Decouples *when we learn* a premium from *when it is deducted*. | **Proven** — no-schedule election accepted, $0.00 disbursable |
+| 3 | As each person's real coverage and premium arrive, enroll them in the correct benefit, effective 12/1/2026 for the §125 benefits, **with no schedule**. ⚠️ **The ICHRA leg enrolls on or after its plan-year start (1/1/2027), never 12/1/2026** — corrected 2026-09-12, see concerns | The election exists as an expectation; nothing posts. Decouples *when we learn* a premium from *when it is deducted*. | **Proven** (§125) — no-schedule election accepted, $0.00 disbursable. **ICHRA at 12/1/2026: proven to FAIL** `Plan Not Found` (2026-09-12); same row at 1/1/2027 succeeded |
 | 4 | `125 PI Contributions` posts the correct month's deduction | Puts the right money on the right election at the right time, regardless of when the information arrived. | **Proven** — contributions post to a no-schedule election |
 | 5 | Manually **renew** each 2026-plan-year benefit into a 2027 plan year | Moves the benefits into the implementation year. | **Proven** — renewal is additive; prior year's election and balances survive intact as a second Active record |
 | 6 | `125 PI Elections` with real per-person schedule assignments | Becomes the ongoing enrollment. | **Proven** — the new plan year unlocks re-enrollment that otherwise fails `Plan Already Enrolled` |
@@ -345,7 +373,13 @@ implementation-year plan year only.
   at the effective date is unknown, and step 2's entire rationale depends on it. If production keys off
   the effective date, the generic benefit's value collapses to the renewal hook alone.
 - ⚠️ **The ICHRA does not fit step 3 as written** — its plan year starts 1/1/27, but step 3 enrolls at
-  12/1/2026, before the plan year opens. Untested; `Plan Not Found` is the plausible outcome.
+  12/1/2026, before the plan year opens. ~~Untested; `Plan Not Found` is the plausible outcome.~~
+  ⭐ **Proven 2026-09-12 (session 51): it fails.** An `HRA Enrollment` row on `ZZSDX27AICHRA` (PY
+  2027) effective 20261201 returned `Plan Not Found`; the same row effective 20270101, in the same
+  file, returned `Successful`. **The plan year is binding: the ICHRA leg enrolls on or after
+  plan-year start.** Step 3 is corrected above. ⚠️ `Plan Not Found` is **also** what a wrong
+  `Import Plan ID` returns — the two causes are indistinguishable from the results file; check the
+  plan id before blaming the date, and vice versa.
 - ⚠️ **Every benefit needs its schedule allowed set populated by hand before any election file touches
   it**, including the generic one.
 - ⚠️ **The generic benefit's funding method must be right at creation** — `Participant funding method`
@@ -353,8 +387,15 @@ implementation-year plan year only.
   is likely correct**, not `Contribution Schedule`.
 - ⚠️ **Deducting January 2027 premium under a 2026 cafeteria plan year runs near the §125 deferred-
   compensation prohibition.** Advance premium payment is ordinary and this is probably fine, but the
-  design carries real weight on it. Cheap to register as an `LA-NN` entry now; expensive to unwind after
-  plan documents are drafted around it.
+  design carries real weight on it. ~~Cheap to register as an `LA-NN` entry now; expensive to unwind
+  after plan documents are drafted around it.~~ ⭐ **Already registered — `LA-36` in
+  `legal_assumptions.md`** ("First-month premium funding comes from an employee-sourced on-ramp; the
+  month-ahead cadence is expressly permitted"): the last month of a plan year funding the first month
+  of the next is the carve-out LA-36 rests on (Federal Register preamble to the 2007 proposed
+  cafeteria-plan regulations; IRB 2007-39), and the cross-year purchase prohibition (Prop. Treas. Reg.
+  §1.125-1 Q&A-7) is the boundary it records. Status there: *Assumed*, operative regulation section
+  unread. This sequence — step 1's 2026 plan year and step 4's December deduction of January premium —
+  depends on LA-36 holding; cross-referenced 2026-09-12 (session 51).
 
 ---
 
@@ -382,16 +423,16 @@ implementation-year plan year only.
 
 | # | Question | Settles it |
 |---|---|---|
-| 1 | Card production trigger — record creation or effective date? | Test; highest value, step 2 depends on it |
-| 2 | Does an ICHRA enrollment dated before its plan year opens fail? | Test |
-| 3 | Multi-tier Single Fund — how is a tier resolved when the file supplies none? Default flag? | Test |
+| 1 | Card production trigger — record creation or effective date? **Untestable until SSA issues cards.** Funds are live at record creation (`-15`: $6,000 disbursable on 9/12 against a 10/1/2026 effective date); card issuance is assumed separate — see TA-e in `docs/business/summit_data_exchange.md` and the parked backlog item | Test when issuance is live; highest value, step 2 depends on it |
+| 2 | ~~Does an ICHRA enrollment dated before its plan year opens fail?~~ ⭐ **Answered 2026-09-12: yes, `Plan Not Found`** — §7 step 3 corrected | ~~Test~~ Done |
+| 3 | Multi-tier Single Fund — how is a tier resolved when the file supplies none? Default flag? **Parked** — needs a second tier on the SF plan (backlog) | Test |
 | 4 | `Plan Status` numeric code set on Elections | Test / DataPath |
-| 5 | Does a template `Default Value` fire on a blank file field? | Test |
-| 6 | What `Import for Process Approval` does | Test / DataPath |
+| 5 | Does a template `Default Value` fire on a blank file field? **Parked** — needs a Default Value set then cleared (backlog) | Test |
+| 6 | What `Import for Process Approval` does. ⭐ **Partly answered 2026-09-12:** it is a template-level checkbox, not a column (§3); its effect when checked is still untested | Test / DataPath |
 | 7 | What the separate `Enrollment` file type is for | DataPath |
-| 8 | `Pro-Rate Employer Amount` = prorate on effective date, mid-year behaviour | Test |
-| 9 | `Employer Contribution Amount` on the Contributions file | Test |
+| 8 | `Pro-Rate Employer Amount` = prorate on effective date, mid-year behaviour. **Parked** — needs an SF plan with Pro-Rate=prorate (backlog); the proration formula is unrecorded | Test |
+| 9 | ~~`Employer Contribution Amount` on the Contributions file~~ ⭐ **Closed 2026-09-12: no such element exists on the template** (§3) | ~~Test~~ Done |
 | 10 | Scope of `Undo Last Change` on an election | Test |
-| 11 | Is Single Fund confirmed as the ICHRA standard? | **Kevin** |
+| 11 | ~~Is Single Fund confirmed as the ICHRA standard?~~ ⭐ **Decided 2026-09-12: no.** ICHRA and QSEHRA will be Contribution Schedule funded with monthly stipends in almost all cases. Consequences: AMS **does** emit `Tier ID`; how AMS learns a plan's employer funding method stays a live question (§4). Do not relitigate | **Decided** |
 | 12 | Effective-date policy for elections | **Kevin** |
-| 13 | §125 plan-year-boundary deduction — register as `LA-NN`? | **Kevin or counsel** |
+| 13 | ~~§125 plan-year-boundary deduction — register as `LA-NN`?~~ ⭐ **Closed 2026-09-12: `LA-36` already covers it** (§7 concerns, cross-referenced). Whether LA-36's *Assumed* status suffices before plan documents are drafted is the residual question | ~~Kevin or counsel~~ Counsel, on LA-36's own "Confirm before" terms |
