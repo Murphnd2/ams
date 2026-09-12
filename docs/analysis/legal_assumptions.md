@@ -1483,6 +1483,15 @@ disease or illness." That argument is aggravated by Presidio's public marketing,
 the product as health insurance and prices it against ACA bronze. It is not a defect on the face of
 the form.
 
+**2026-09-12 addendum — forward reclassification risk.** The 23-category schedule's breadth is
+itself the target: a future tri-agency rule narrowing what counts as a "specified disease"
+excepted benefit (as attempted in 2023) would fall hardest on a schedule this broad. This is a
+forward risk, not a present defect — nothing pending forces it today.
+
+**2026-09-12 addendum — corroboration from the second Presidio call.** The expense-incurred
+specified-disease reading above was presented to Presidio's chief legal officer on that call and
+accepted; Presidio's own prior internal read of the product had been fixed indemnity.
+
 **Reversal cost.** Low — funding schedule. But retroactive if the excepted-benefit characterization
 is ever challenged.
 
@@ -1999,6 +2008,11 @@ owner-employee.
 **Status.** Assumed, high confidence. Cross-reference LA-24 (non-ALE status) as a companion
 qualifying question asked at the same stage of the sales motion.
 
+**2026-09-12 note — inference, not stated on the call.** The SWBD setup-fee tiers agreed on the
+second Presidio call make ≤5-life groups the expected volume case, which raises the practical
+frequency of this exclusion; this is an inference from the fee-tier structure, not anything
+Presidio or SWBD said about ownership composition.
+
 ---
 
 ### LA-38 — Presidio's §V.H payer restriction requires post-tax-by-default funding and a member-name card
@@ -2053,9 +2067,11 @@ housekeeping.
 individual whose coverage lapses.
 
 **Confirm before.** Any pre-tax salary reduction for a Presidio premium; any ACH origination to
-Presidio.
+Presidio; treating §V.H as resolved — that requires an approved amended form or endorsement on
+file with TDI, not Presidio's verbal position alone.
 
-**Status.** Assumed on the form text; awaiting Presidio's position on §V.H.
+**Status.** Assumed on the form text; Presidio has stated a verbal position and identified the
+vehicle — amendments already on file with TDI — awaiting an approved amended form.
 
 ---
 
