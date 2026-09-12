@@ -188,3 +188,18 @@ Both close spec §8 (`docs/analysis/spec_card_issuer_seed_election.md`), Kevin's
 - SQL produced, run, or connected to: none this pass.
 - Git mutations run: none (read-only `git log`, `git status`, `git diff --stat`, `git diff --cached`).
 - `.idea/artifacts/ams_war_exploded.xml`: not touched.
+
+## Commit hash (recorded post-hoc, session 52b)
+
+The "Shipped (commits)" section above is correct as of its own writing — nothing was committed at the
+time. The chain was subsequently committed as a single commit rather than the two originally planned:
+
+| Hash | Subject |
+|---|---|
+| `dd70a21` | feat: Card Issuer $1 seed election export (type=cardseed), V104 |
+
+Session 52b verified this commit's file list against the 15 files this chain produced, confirmed the
+tree compiles at that commit, and confirmed its push state to `origin/refactor/modernize-architecture`.
+All 15 files were present and none were extra; the tree compiled clean (`.\mvnw.cmd -q -DskipTests
+compile`, exit 0); and the commit was already pushed and in sync with the remote (0 ahead, 0 behind) —
+this run pushed nothing.
