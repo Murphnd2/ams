@@ -32,9 +32,10 @@ built from these findings — this file remains the record of how the behaviour 
   filename.
 - `Validate Import Format` (Import Setup) validates a file without processing it. Fast loop for
   format questions; reports per row.
-- Optional elements must never be the last mapped column. `125 PI Elections` and `HRA Enrollment`
-  have no mandatory element available as a trailing sentinel, so **map a `Filler` last and set it
-  Mandatory**.
+- Optional elements must never be the last mapped column — **on `125 PI Elections` and
+  `HRA Enrollment`** (and Demographics, per `Branch Code`). Neither has a mandatory element available
+  as a trailing sentinel, so **map a `Filler` last and set it Mandatory**. ⚠️ Not universal — see
+  "Contradictions" below (2026-09-12): `ZZ_TEST_CDH` and `ZZ_TEST_ER` import with trailing empties.
 - Template-level `Default Value` exists per element. Whether it fires on a blank file field is
   **untested** — assume it does; leave all Default Values empty.
 
@@ -236,5 +237,18 @@ at the effective date is **unknown**, and the early-enrollment rationale depends
   "AMS emits full current state, re-sending is safe" principle recorded elsewhere for other file
   types (Employer Demographic, CDH Plan, Demographics). Both are true for their own file types;
   no doc should state the principle unqualified across all Summit file types.
+  ⚠️ **Further qualified 2026-09-12 (session 51, later pass):** on Employer Demographic the re-send
+  is accepted but **an empty cell clears the stored value** — Email and `Employer Plan Name` were
+  both wiped by a row that left them blank. Demographics does the opposite (empty leaves the value;
+  literal `n/a` clears). "Re-sending is safe" on file 1 means no duplication, not no data loss.
+- **The trailing-empty-optional rule is template-specific, not universal** (2026-09-12, later
+  pass): `ZZ_TEST_CDH` (16 columns, I–P optional) imported with I–P all empty; `ZZ_TEST_ER`
+  (14 columns, all Optional) tolerated a blank trailing N. Demographics, Elections and HRA
+  Enrollment still require their sentinel. The "Cross-cutting" bullet above stating the rule for
+  Elections and HRA Enrollment stands for those templates.
+- **Two layouts written into `summit_import_templates_reference.md` earlier on 2026-09-12 — `ZZ_TEST_ER`
+  as 6 columns and `ZZ_TEST_CDH` as 8 — were wrong** (14 and 16 on the picker). Both were documented
+  from prose, not from the picker; an 8-field CDH file was rejected whole on column count. Corrected
+  the same day.
 - Content-hash de-duplication means a byte-identical re-send is silently swallowed at the transport
   layer, regardless of what the import type itself would have done with it.

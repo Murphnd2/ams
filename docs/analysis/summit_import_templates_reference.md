@@ -15,19 +15,30 @@ System ID 1394. Older examples in the source docs use `ZZTEST001` and `158E14095
 - **Amounts** two decimals, no currency symbol, no thousands separator. A thousands separator is
   refused rather than stripped — deliberately, since `7,200` and `7.200,00` read differently and
   Summit accepts a wrong amount silently.
-- ⚠️ **A trailing empty optional field breaks the parse.** Every template that has optional columns
-  therefore ends in a mandatory sentinel that is always populated — `Branch Code` on Demographics,
-  `Filler` on Elections and HRA Enrollment. **Nothing may be appended after the sentinel**, and a
-  new optional column goes before it.
+- ⚠️ **A trailing empty optional field breaks the parse — on some templates, not all.** Corrected
+  2026-09-12 (later the same day): this was written as a platform-wide rule and is **template-specific**.
+  `ZZ_TEST_CDH` (§2) ends on eight optional columns and imports with all of them empty;
+  `ZZ_TEST_ER` (§1) tolerates a blank trailing column N. Demographics, Elections and HRA Enrollment
+  still need their mandatory sentinel (`Branch Code`, `Filler`, `Filler`) — proven on those templates
+  and to be kept. What decides it is unknown; until it is, **test each template rather than assume
+  either way**, and on the sentinel templates **nothing may be appended after the sentinel** — a new
+  optional column goes before it.
 - **Filename = template prefix + timestamp**, e.g. `ZZ_TEST_DEMO_20260912142336.txt`. Summit matches
   the file to its template **by filename prefix**.
 - ⚠️ **A repeated filename comes back Held, 0 records.** Always a fresh timestamp.
 - **The response is `Response_` + your exact source filename.** You can predict it and poll for it —
   no run ID or correlation table. **Check the byte size differs from what you uploaded**; a
   same-size response is the echo symptom seen on 2026-09-11.
-- ⚠️ **Results line shape is not constant across templates.** Demographics returns four fields
-  (`…|Status|Message|Employer TPA Custom ID`), HRA Enrollment three (`…|Status|Message`). Don't write
-  one parser to a single assumed shape. Success token is `Successful`.
+- ⚠️ **Results line shape is not constant across templates — three variants observed.** Employer
+  Demographic: `Status|Employer Name|Employer TPA Custom ID|Message` (**Status first**, 4 fields).
+  Demographics: `Participant TPA Custom ID|Status|Message|Employer TPA Custom ID` (4 fields, status
+  second). HRA Enrollment: `Participant TPA Custom ID|Status|Message` (3 fields, status second).
+  **A fixed-position parser is unsafe** — `SummitResponseService` classifies on `fields[0]`, which is
+  right for Employer Demographic and wrong for the two participant-keyed shapes (code not changed;
+  implication recorded). Success token is `Successful`.
+- ⚠️ **Empty-cell semantics differ by template.** Employer Demographic **clears** a stored value when
+  the cell is empty (§1, F3); Demographics leaves it alone and clears only on a literal `n/a`. Nothing
+  in the picker says which applies.
 - **Elections and enrollments do not upsert.** Re-running against a consumed participant does not
   overwrite. Use fresh participants.
 
@@ -37,48 +48,114 @@ System ID 1394. Older examples in the source docs use `ZZTEST001` and `158E14095
 
 ## 1. ZZ_TEST_ER — Employer Demographic
 
-Creates or updates the employer.
+Creates or updates the employer. **Column layout read off the picker 2026-09-12 — fourteen columns,
+all Optional.** ⚠️ This section was first written earlier on 2026-09-12 as six columns from prose,
+not from the picker; that layout was wrong and is replaced here, not appended to.
 
-| | Column |
-|---|---|
-| A | Employer Name |
-| B | Employer TPA Custom ID |
-| C | Mailing Address |
-| D | Mailing City |
-| E | Mailing State |
-| F | Mailing Zip |
+| | Column | Type | |
+|---|---|---|---|
+| A | Employer Name | AlphaNumeric | Optional |
+| B | Employer TPA Custom ID | AlphaNumeric | Optional |
+| C | Mailing Address | AlphaNumeric | Optional |
+| D | Mailing City | AlphaNumeric | Optional |
+| E | Mailing State | **Alpha** | Optional |
+| F | Mailing Zip | **Numeric** | Optional |
+| G | Employer Plan Name | AlphaNumeric | Optional |
+| H | Enable CDH Administration | Boolean | Optional |
+| I | Enable COBRA Administration | Boolean | Optional |
+| J | Enable Retiree Billing Administration | Boolean | Optional |
+| K | Enable Direct Bill Administration | Boolean | Optional |
+| L | Primary Contact Title | AlphaNumeric | Optional |
+| M | Primary Contact Name | AlphaNumeric | Optional |
+| N | Primary Contact Email | AlphaNumeric | Optional |
 
-```
-SSA ICHRA Test Employer A|ZZTEST001|100 Main Street|Marinette|WI|54143
-```
-
-Every other element in the Employer Demographic picker is genuinely optional.
-
+- ⚠️ **There is no mandatory field on this template at all — including the upsert key.** A row with
+  column B blank is not rejected by the template; what Summit then does with it is untested.
+- L, M and N were **added to the template on 2026-09-12** for the W2 work item. Boolean token `true`
+  accepted in column H.
+- **A blank trailing column N is tolerated** — this template needs no sentinel.
+- Elements available but unmapped: Employer System ID, Primary Contact Phone, Status, Mailing
+  Address 2, Corp Address 1/2, Corp City/State/Zip, Website, Shipping Contact / email / phone, Total
+  Employee Count, Tax ID, SIC Code. `Primary Contact Phone` was deliberately **not** added — the
+  application does not collect it.
 - `Employer TPA Custom ID` is the upsert key and AMS owns it — `{SUMMIT_TPA_ID_PREFIX}E{Prospect.id}`.
 - `Enable COBRA Administration` is the flag that turns on **Premium Billing**, which is what platform
   ICHRA mailings ride on. Set only when a COBRA ServiceItem is elected (D43/D44/D46) — ICHRA
   employers are CDH-only.
+- **Results line:** `Status|Employer Name|Employer TPA Custom ID|Message` — **Status first** (the
+  third observed shape; see the rules above).
 
-⚠️ Column letters here are inferred from the documented element order, not read off the picker.
+### ⚠️ F3 — an empty cell CLEARS the stored value (data-loss behaviour)
+
+**Proven 2026-09-12.** Two rows uploaded against the same employer: row 1 with `kevin@example.com` in
+N, row 2 identical but with N blank. Result: the employer's Email is **empty**. Column G was blank on
+both rows and `Employer Plan Name` — previously `ICHRA allowance: $500.00/mon` — was **also cleared**.
+
+**This is the opposite of Demographics**, where an empty cell leaves the stored value alone and only a
+literal `n/a` clears it (recorded against `Employer.customId`, V102). Same platform, same file
+family, opposite behaviour, and nothing in the picker reveals which applies.
+
+**Emitter consequence — open design decision, not yet made:** whatever file 1 sends is the whole
+truth. Omitting a value deletes it, so **re-sending file 1 against an existing employer silently
+wipes any field a human set in Summit that AMS does not populate** — every unmapped element above,
+and every mapped one AMS leaves blank. Whether file 1 should ever be re-sent on an existing
+employer, or emitted only on create, is **undecided** (backlog T248). The "AMS emits full current
+state, re-sending is safe" principle recorded for this file type is true only in the sense that
+Summit accepts the re-send; it is not safe for data Summit holds that AMS does not.
 
 ## 2. ZZ_TEST_CDH — Employer CDH Plan
 
-Creates the benefit plan for that employer.
+Creates the benefit plan for that employer. **Column layout read off the picker 2026-09-12 — sixteen
+columns.** ⚠️ This section was first written earlier on 2026-09-12 as eight columns from prose, not
+from the picker; an 8-field file is rejected outright — *"The validated file contains 8 columns. The
+file template defines 16 columns."* That layout was wrong and is replaced here, not appended to.
 
-| | Column |
-|---|---|
-| A | Plan Template ID |
-| B | Plan Name |
-| C | Import Plan ID |
-| D | Plan Description |
-| E | Effective Date |
-| F | Employer TPA Custom ID |
-| G | Plan Year Begin |
-| H | Plan Year End |
+| | Column | Type | |
+|---|---|---|---|
+| A | Plan Template ID | Numeric | Mandatory |
+| B | Plan Name | AlphaNumeric | Mandatory |
+| C | Import Plan ID | AlphaNumeric | Mandatory |
+| D | Plan Description | AlphaNumeric | Mandatory |
+| E | Effective Date | **AlphaNumeric** | Mandatory |
+| F | Employer TPA Custom ID | AlphaNumeric | Mandatory |
+| G | Plan Year Begin | AlphaNumeric | Optional |
+| H | Plan Year End | AlphaNumeric | Optional |
+| I | Grace Period Enabled | Boolean | Optional |
+| J | Grace Period Calculation (by date) | Boolean | Optional |
+| K | Grace Period Date | AlphaNumeric | Optional |
+| L | Run-out Enabled | Boolean | Optional |
+| M | Run-out Calculation (by date) | Boolean | Optional |
+| N | Run-out # Days | Numeric | Optional |
+| O | Terminated Run-out Type | Numeric | Optional |
+| P | Terminated Run-out # Days | Numeric | Optional |
 
+Proven row (2026-09-12):
 ```
-1029|ICHRA 2027|ICHRA2027|ICHRA Plan 2027|20270101|ZZTEST001|20270101|20271231
+1035|W1 Out Of Year|ZZSDX27AW1OOPY|W1 Out Of Year|20251001|ZZSDX27A|20260101|20261231||||||||
 ```
+
+- ⚠️ **`Effective Date` is AlphaNumeric here but Numeric on HRA Enrollment.**
+- **No trailing sentinel; the template ends on an optional column, and a row with I–P empty imports
+  fine.** The trailing-empty-optional rule is template-specific (see the rules above).
+- ⚠️ **The shipped emitter's column count is configuration-dependent and unverified against any
+  production template.** `buildCdhPlanRow` emits the eight mandatory-block columns A–H **plus one
+  column per element listed in `SUMMIT_CDH_OPTIONAL_ELEMENTS`**, in configured order (tokens
+  `GRACE_ENABLED, GRACE_BY_DATE, GRACE_DATE, GRACE_DAYS, RUNOUT_ENABLED, RUNOUT_BY_DATE, RUNOUT_DAYS,
+  TERM_RUNOUT_TYPE, TERM_RUNOUT_DAYS`). With nothing configured it emits **exactly 8** and would be
+  rejected by this 16-column template; with the eight I–P elements configured in this order it emits
+  16. Summit validates column count whole-file, so **the configured element list must match the
+  target template's column count exactly**, and nobody has verified what production's template
+  defines (backlog T247). Do not change code on this note.
+- ⭐ **An effective date outside the plan year is accepted and stored verbatim** (F5). The proven row
+  above — effective `20251001` against plan year 2026 — was created with the date **intact, not
+  coerced** to the plan-year start, confirmed on the Edit Benefit Plan screen. This is what makes the
+  PremiumPath generic-card-plan date rule (implementation-minus-three-months, prior plan year;
+  `summit_import_spec.md` §7 step 1) viable.
+- **The plan template, not the row, sets the plan's nature.** From the same screen: template 1035 is
+  `ICHRA Notice`, plan type `CARD_NOTICE`, Plan Structure `Annual Renewal`; **Funding tax treatment,
+  Funding source and Participant funding method come from the template.** The five PremiumPath plans
+  therefore differ **by Plan Template ID**, not by anything the CDH row carries. `+ Assign Plan Year`
+  on that screen is the manual renewal step.
 
 ⚠️ **`Import Plan ID` must be alphanumeric only — no special characters.** Known Summit behaviour on
 **some** import types but not all, so a key that works on one template can fail on another. No other
@@ -304,3 +381,11 @@ looking at the row.
 - **Template `Default Value`** firing on a blank field — untested (Test 6).
 - **Card issuance timing** — assumed next-day-prospective, backlog item, cannot test until issuance.
 - **Whether Card Enabled, Pro-Rate, or tiers are editable on an active plan.**
+- **Production `Employer CDH Plan` template column count** vs what `buildCdhPlanRow` emits under
+  production's `SUMMIT_CDH_OPTIONAL_ELEMENTS` — unverified (T247).
+- **File 1 re-send semantics** — whether Employer Demographic is ever re-sent on an existing employer,
+  given that an empty cell clears the stored value (T248).
+- **Which templates tolerate a trailing empty optional** and what decides it — `ZZ_TEST_CDH` and
+  `ZZ_TEST_ER` do; Demographics, Elections and HRA Enrollment need a sentinel.
+- **What Employer Demographic does with a blank upsert key** (column B), now that no column on it is
+  mandatory.

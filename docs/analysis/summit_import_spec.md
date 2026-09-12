@@ -28,9 +28,13 @@ Set identically on every AMS-facing template:
 
 **Rules that follow from the platform, not from preference:**
 
-- ⚠️ **A `Filler` element must be mapped last and set Mandatory.** Optional elements cannot safely be
-  the final column, and neither `125 PI Elections` nor `HRA Enrollment` has a mandatory element
-  available to serve as a trailing sentinel. AMS populates it with a constant (`X`).
+- ⚠️ **A `Filler` element must be mapped last and set Mandatory on `125 PI Elections` and
+  `HRA Enrollment`.** Optional elements cannot safely be the final column *on those templates*, and
+  neither has a mandatory element available to serve as a trailing sentinel. AMS populates it with a
+  constant (`X`). ⚠️ Narrowed 2026-09-12: this is **not** a platform-wide rule — `ZZ_TEST_CDH` ends on
+  eight optional columns and imports with all of them empty, and `ZZ_TEST_ER` tolerates a blank
+  trailing column. Keep the sentinel where it is proven necessary; test any new template rather than
+  assume (`summit_import_templates_reference.md`, rules).
 - ⚠️ **Leave every `Default Value` empty.** Whether a template default fires on a blank file field is
   **untested**; a default would be invisible in the file and would make blank fields uninterpretable.
 - ⚠️ **Column count is validated whole-file, before processing.** One malformed row rejects the entire
@@ -43,10 +47,13 @@ Set identically on every AMS-facing template:
 and HRA Enrollment; `Successful|Contribution Import completed successfully` for Contributions.
 ⚠️ **The line shape is not constant across templates** (corrected 2026-09-12, session 51 — this
 line previously read "all types: `Participant TPA Custom ID|Status|Message`"). Observed 2026-09-12:
-HRA Enrollment returns **three** fields (`…|Status|Message`); Demographics returns **four**, with a
-trailing `Employer TPA Custom ID` (`…|Status|Message|Employer TPA Custom ID`). Employer Demographic
-and Employer CDH Plan put `Status` **first** (`docs/business/summit_data_exchange.md` SDX-18). A parser
-written to one assumed shape is unsafe. ⚠️ **Implication for code, not changed here:**
+**three variants** —
+(1) Employer Demographic: `Status|Employer Name|Employer TPA Custom ID|Message`, **Status first**,
+4 fields (re-observed on `ZZ_TEST_ER` 2026-09-12; Employer CDH Plan is also status-first per
+`docs/business/summit_data_exchange.md` SDX-18); (2) Demographics:
+`Participant TPA Custom ID|Status|Message|Employer TPA Custom ID`, 4 fields, status **second**;
+(3) HRA Enrollment: `Participant TPA Custom ID|Status|Message`, 3 fields, status second. **The
+status field is not in a fixed position; a fixed-position parser is unsafe.** ⚠️ **Implication for code, not changed here:**
 `SummitResponseService.check` classifies every line on `fields[0]`; on any template whose first
 field is the participant key rather than `Status`, every line classifies `UNKNOWN`. Per-template
 detail: `summit_import_templates_reference.md`, "Rules that apply to every file".
@@ -115,6 +122,9 @@ employer-only schedules are filtered out of the plan's dropdown. **Never emit on
 - ⚠️ **Not idempotent.** A second election for an enrolled participant fails `Plan Already Enrolled`.
   A re-sent mixed file partially succeeds. This contradicts the general "AMS emits full current state,
   re-sending is safe" principle that holds for Employer Demographic, CDH Plan and Demographics.
+  (⚠️ Qualified 2026-09-12: on Employer Demographic a re-send is *accepted* but **an empty cell
+  clears the stored value** — F3, `summit_import_templates_reference.md` §1 — so "safe" there means
+  no duplication, not no data loss.)
   **The emitter needs an operator gate** — same shape as the existing `confirm=ENROLL-ALL-P{id}` token.
 - ⚠️ **A backdated effective date creates immediately spendable money.** Observed: effective 1/1/2026 on
   a 52-date schedule posted **$853.88 disbursable** at enrollment. On a card-funded plan that is live
@@ -299,7 +309,8 @@ AMS does not control these, but what it must emit depends on them.
 | `Pro-Rate Employer Amount` | Single Fund only. `None` (full allowance regardless of entry date, observed) or prorate on effective date (untested). |
 | Plan-level schedule allowed sets | Multi-select, filtered by funding source. **Not importable.** Hand step per plan. |
 | Tier grid | `Tier ID` and `Default` columns only render once a second tier exists. |
-| Plan `Effective Date` vs plan year | Effective date is a floor on the earliest coverage date; **the plan year is the binding constraint.** |
+| Plan `Effective Date` vs plan year | Effective date is a floor on the earliest coverage date; **the plan year is the binding constraint.** ⭐ An effective date *before* the plan year is accepted by import and stored verbatim (F5, 2026-09-12) — not coerced. |
+| Plan template vs CDH row | **Funding tax treatment, Funding source and Participant funding method are set by the plan template, not the import row** (Edit Benefit Plan screen, 2026-09-12). The five PremiumPath plans differ by `Plan Template ID`, not by anything the CDH row carries. `+ Assign Plan Year` on that screen is the manual renewal step (§7 step 5). |
 
 **Schedule naming.** Names are unique within {global list} ∪ {that one employer's list}. Two employers
 may each hold the same name; an employer schedule may **not** take a global's name. A both-funded
@@ -350,7 +361,7 @@ implementation-year plan year only.
 
 | # | Step | Why | Status |
 |---|---|---|---|
-| 1 | **Generic** card-enabled benefit, effective implementation-minus-three-months, plan year 2026 | Something the whole census can enroll in immediately. ⭐ The −3 month effective date also drives the renewal prompt: **AMS reads renewal timing off effective date and prompts one month ahead**, so a 10/1 effective date fires the prompt on 9/1, giving the ICHRA notice cycle a mechanism to act on before 1/1. | Supported |
+| 1 | **Generic** card-enabled benefit, effective implementation-minus-three-months, plan year 2026 | Something the whole census can enroll in immediately. ⭐ The −3 month effective date also drives the renewal prompt: **AMS reads renewal timing off effective date and prompts one month ahead**, so a 10/1 effective date fires the prompt on 9/1, giving the ICHRA notice cycle a mechanism to act on before 1/1. | **Proven 2026-09-12 (F5)** — a CDH plan imported effective `20251001` against plan year 1/1/2026–12/31/2026 was created with the date **stored verbatim, not coerced** to the plan-year start (`ZZSDX27AW1OOPY`, template 1035 `ICHRA Notice` / `CARD_NOTICE`). The out-of-year effective date the generic card plan needs is accepted |
 | 2 | Enroll the entire census at **$1 annual**, effective 12/1/2026, on an auto-processing schedule | Initiates card production without needing plan or premium detail. Future effective date means **nothing back-posts** — no spendable money on a placeholder. | **Proven** — future effective date posts $0.00 |
 | 3 | As each person's real coverage and premium arrive, enroll them in the correct benefit, effective 12/1/2026 for the §125 benefits, **with no schedule**. ⚠️ **The ICHRA leg enrolls on or after its plan-year start (1/1/2027), never 12/1/2026** — corrected 2026-09-12, see concerns | The election exists as an expectation; nothing posts. Decouples *when we learn* a premium from *when it is deducted*. | **Proven** (§125) — no-schedule election accepted, $0.00 disbursable. **ICHRA at 12/1/2026: proven to FAIL** `Plan Not Found` (2026-09-12); same row at 1/1/2027 succeeded |
 | 4 | `125 PI Contributions` posts the correct month's deduction | Puts the right money on the right election at the right time, regardless of when the information arrived. | **Proven** — contributions post to a no-schedule election |

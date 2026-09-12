@@ -351,6 +351,14 @@ Not from vendor documentation, and not verified by any automated test in this re
 > guaranteed to carry data on every row. This governs both the template's Body Format and the emitted
 > file, and the two must agree.
 
+⚠️ **Narrowed 2026-09-12 (session 51, later pass): this is template-specific, not platform-wide.**
+`ZZ_TEST_CDH` (sixteen columns, ending on eight optional elements I–P) imported with all eight
+empty; `ZZ_TEST_ER` (fourteen columns, all Optional) tolerated a blank trailing column N. The
+sentinel is still required — and proven — on Demographics (`Branch Code`), `125 PI Elections` and
+`HRA Enrollment` (`Filler`). What distinguishes the two groups is unknown. Keep every existing
+sentinel; do not assume a new template needs one or does not — test it. Layouts:
+`docs/analysis/summit_import_templates_reference.md`.
+
 The resulting column order for **file 4 (Demographics)** — twelve columns, A–L, as
 `SummitExportServlet.writeDemographics` emits them:
 
@@ -391,12 +399,33 @@ no footer, no body record indicator.
 
 ### 1. Employer Demographic — creates or updates the employer
 
-Columns: `Employer Name`, `Employer TPA Custom ID`, `Mailing Address`, `Mailing City`,
-`Mailing State`, `Mailing Zip`
+~~Columns: `Employer Name`, `Employer TPA Custom ID`, `Mailing Address`, `Mailing City`,
+`Mailing State`, `Mailing Zip`~~
 
 ```
 SSA ICHRA Test Employer A|ZZTEST001|100 Main Street|Marinette|WI|54143
 ```
+
+⚠️ **Superseded 2026-09-12 (session 51): the six-column layout above is wrong.** The live
+`ZZ_TEST_ER` template, read off the picker on 2026-09-12, has **fourteen columns, every one
+Optional** — including the upsert key: A Employer Name · B Employer TPA Custom ID · C Mailing
+Address · D Mailing City · E Mailing State (Alpha) · F Mailing Zip (Numeric) · G Employer Plan Name ·
+H–K the four `Enable … Administration` Booleans (CDH, COBRA, Retiree Billing, Direct Bill) · L Primary
+Contact Title · M Primary Contact Name · N Primary Contact Email (L–N added 2026-09-12 for W2). No
+sentinel needed; a blank trailing N is tolerated. Full table and evidence:
+`docs/analysis/summit_import_templates_reference.md` §1. The six-column row stayed importable only
+because the earlier template mapped six elements; it is not the current layout.
+
+⚠️ **F3 — an empty cell CLEARS the stored value. Data-loss behaviour, proven 2026-09-12.** Two rows
+against the same employer, row 2 with `Primary Contact Email` blank → the employer's Email came back
+**empty**; column G blank on both rows → `Employer Plan Name`, previously
+`ICHRA allowance: $500.00/mon`, **also cleared**. This is the **opposite of Demographics**, where an
+empty cell leaves the stored value alone and only a literal `n/a` clears it (V102). **Emitter
+consequence, undecided:** whatever file 1 sends is the whole truth, so a re-send against an existing
+employer silently wipes every field a human set in Summit that AMS does not populate. Whether file 1
+is ever re-sent on an existing employer, or emitted only on create, is an open design decision —
+backlog T248. Read "Re-import behaviour" below with this in mind: "updates in place" is true, and
+it includes updating to blank.
 
 ⚠️ **Employer Name source, D47(a)/N1' (T239).** The rule — prefer the application's
 `company_legal_name` answer, falling back to `Prospect.name` with a WARN — now lives in exactly
@@ -413,12 +442,37 @@ when a COBRA ServiceItem is elected. File 4 has no COBRA dependency in code (s47
 
 ### 2. Employer CDH Plan — creates the benefit plan for that employer
 
-Columns: `Plan Template ID`, `Plan Name`, `Import Plan ID`, `Plan Description`, `Effective Date`,
-`Employer TPA Custom ID`, `Plan Year Begin`, `Plan Year End`
+~~Columns: `Plan Template ID`, `Plan Name`, `Import Plan ID`, `Plan Description`, `Effective Date`,
+`Employer TPA Custom ID`, `Plan Year Begin`, `Plan Year End`~~
 
 ```
 1029|ICHRA 2027|ICHRA2027|ICHRA Plan 2027|20270101|ZZTEST001|20270101|20271231
 ```
+
+⚠️ **Superseded 2026-09-12 (session 51): the eight-column layout above is wrong for the live
+template.** `ZZ_TEST_CDH`, read off the picker on 2026-09-12, defines **sixteen columns** — the eight
+above (A–H; A–F Mandatory, G–H Optional; `Effective Date` is **AlphaNumeric** here, Numeric on HRA
+Enrollment) followed by I Grace Period Enabled · J Grace Period Calculation (by date) · K Grace
+Period Date · L Run-out Enabled · M Run-out Calculation (by date) · N Run-out # Days · O Terminated
+Run-out Type · P Terminated Run-out # Days, all Optional. An 8-field file is rejected whole:
+*"The validated file contains 8 columns. The file template defines 16 columns."* Proven row:
+`1035|W1 Out Of Year|ZZSDX27AW1OOPY|W1 Out Of Year|20251001|ZZSDX27A|20260101|20261231||||||||`.
+No sentinel; I–P empty imports fine. Full table: `docs/analysis/summit_import_templates_reference.md` §2.
+
+⚠️ **The shipped emitter's column count is configuration-dependent and unverified against
+production.** `buildCdhPlanRow` emits A–H plus one column per `SUMMIT_CDH_OPTIONAL_ELEMENTS` entry in
+configured order — 8 with nothing configured, 16 with the eight I–P elements configured. Column
+count is validated whole-file, so the configured list must match the production template exactly,
+and **nobody has verified what production's template defines** — backlog T247. No code change.
+
+⭐ **F5 — an effective date outside the plan year is accepted and stored verbatim.** The proven row
+above (effective `20251001`, plan year 2026) was created with the date intact — not coerced to the
+plan-year start — confirmed on the Edit Benefit Plan screen. This is what makes the generic
+card-plan date rule in `docs/analysis/summit_import_spec.md` §7 step 1 viable. Also from that
+screen: template 1035 is `ICHRA Notice`, plan type `CARD_NOTICE`, Plan Structure `Annual Renewal`;
+**Funding tax treatment, Funding source and Participant funding method are set by the plan
+template, not the import row** — the five PremiumPath plans differ by Plan Template ID, not by
+anything the CDH row carries; `+ Assign Plan Year` on that screen is the manual renewal step.
 
 Plan year is mandatory because the plan template's funding structure is Annual renewal. Two routes
 exist — an existing global `Plan Year ID`, or `Plan Year Begin`/`Plan Year End` to define one inline.
@@ -775,7 +829,12 @@ needed for create or update.**
 Consequence: **AMS emits full current state, not deltas.** No sent-state tracking, no create-vs-update
 branch, no reconciliation table. ⚠️ **This "regenerate and re-send is safe" property is per-file-type,
 not universal.** It holds for Employer Demographic, Employer CDH Plan and Demographics — a
-byte-identical re-import edits in place with no duplication. It is **false for `125 PI Elections`**:
+byte-identical re-import edits in place with no duplication. ⚠️ **But "safe" means Summit accepts the
+re-send, not that nothing is lost — F3, 2026-09-12:** on Employer Demographic **an empty cell clears
+the stored value** (Email and `Employer Plan Name` both wiped by a re-send that left them blank), so
+a re-sent file 1 silently overwrites every Summit-held field AMS does not populate. Whether file 1 is
+ever re-sent on an existing employer is an open design decision (T248; "1. Employer Demographic"
+above). Demographics behaves the opposite way — empty leaves the value, `n/a` clears it. It is **false for `125 PI Elections`**:
 a second election submission for a participant already enrolled returns `Plan Already Enrolled`, so
 regenerating and resending that file after a prior successful run is not safe on its own. Separately,
 `summit_file_export`'s content-hash de-duplication (V096) is an independent mechanism at the
@@ -840,7 +899,12 @@ controls, backed by `SummitResponseService`, `SummitResponseServlet` (`/SummitRe
 - **Classify on the first field.** Success/failure tokens are matched against the trimmed first
   field only, case-insensitively — never by an echoed key, since the response line shape differs
   by file type (see Results files above, and SDX-18). A status matching neither token list is
-  `UNKNOWN`, never counted as success.
+  `UNKNOWN`, never counted as success. ⚠️ **Known defect, recorded 2026-09-12 (session 51), code
+  not changed:** the first field is `Status` only on the employer-keyed templates (Employer
+  Demographic `Status|Employer Name|Employer TPA Custom ID|Message`, Employer CDH Plan). On
+  Demographics (`Participant TPA Custom ID|Status|Message|Employer TPA Custom ID`) and HRA
+  Enrollment (`Participant TPA Custom ID|Status|Message`) the first field is the participant key,
+  so every line classifies `UNKNOWN`. Three shapes observed so far; a fixed-position parser is unsafe.
 - **Persist nothing from a response.** A response line can carry personal data — Demographics
   echoes participant names, and a rejection comment has echoed a full street address (Results
   files above). The response is fetched, parsed and rendered in one request, then discarded.
