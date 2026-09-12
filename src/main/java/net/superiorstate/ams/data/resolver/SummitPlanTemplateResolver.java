@@ -123,15 +123,19 @@ public final class SummitPlanTemplateResolver {
         private final String effectiveDateRule;
         private final int offsetMonths;
         private final int planYearOffsetYears;
+        // V104 -- marks this row as the card-issuer placeholder plan the $1 seed election
+        // (type=cardseed) enrols into. false for every property entry (the property has no slot
+        // for it and never will) and for the legacy single-ICHRA synthetic template.
+        private final boolean cardIssuer;
 
         public PlanTemplate(int serviceItemId, int templateId, String keySegment, String label) {
             this(serviceItemId, templateId, keySegment, label,
-                    0, SummitPlanDateRuleResolver.RULE_PLAN_YEAR_START, 0, 0);
+                    0, SummitPlanDateRuleResolver.RULE_PLAN_YEAR_START, 0, 0, false);
         }
 
         public PlanTemplate(int serviceItemId, int templateId, String keySegment, String label,
                             int seq, String effectiveDateRule, int offsetMonths,
-                            int planYearOffsetYears) {
+                            int planYearOffsetYears, boolean cardIssuer) {
             this.serviceItemId = serviceItemId;
             this.templateId = templateId;
             this.keySegment = keySegment;
@@ -140,6 +144,7 @@ public final class SummitPlanTemplateResolver {
             this.effectiveDateRule = effectiveDateRule;
             this.offsetMonths = offsetMonths;
             this.planYearOffsetYears = planYearOffsetYears;
+            this.cardIssuer = cardIssuer;
         }
 
         /** V103 ordinal within the service item; 0 for every property entry and every pre-V103 row. */
@@ -183,6 +188,15 @@ public final class SummitPlanTemplateResolver {
         /** Human-facing name used in {@code Plan Name} and {@code Plan Description}. Never blank. */
         public String getLabel() {
             return label;
+        }
+
+        /**
+         * V104 — true when this row is flagged as the card-issuer placeholder plan. Always false
+         * on a property-sourced or legacy-synthetic template; only a {@code summit_plan_template_map}
+         * row can carry it.
+         */
+        public boolean isCardIssuer() {
+            return cardIssuer;
         }
 
         @Override
@@ -427,7 +441,7 @@ public final class SummitPlanTemplateResolver {
             // property has no fan-out shape and stays 1:1 by design.
             templates.add(new PlanTemplate(serviceItemId, templateId, keySegment, label,
                     row.getSeq(), row.getEffectiveDateRule(), row.getOffsetMonths(),
-                    row.getPlanYearOffsetYears()));
+                    row.getPlanYearOffsetYears(), row.isCardIssuer()));
         }
 
         if (templates.isEmpty()) {

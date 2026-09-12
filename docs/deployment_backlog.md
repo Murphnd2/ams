@@ -1784,3 +1784,45 @@ in Summit employer data" on production.
 
 **Applies to:** Production ⬜ — pending the release carrying V102. Demo / BPO / Master — N/A, no
 Summit tenant push planned.
+
+### D-101: `SUMMIT_IMPORT_TEMPLATES` needs a fifth entry, `cardseed:<templateName>`
+
+**Priority:** MEDIUM — nothing is broken today; without it the `cardseed` download keeps its legacy
+descriptive filename (`card-issuer-seed-…`), which **no Summit import template will bind to**, and a
+push is refused outright before it is ever attempted.
+**Status:** Not started on Production. **Set and runtime-verified on Kevin's local dev** —
+`cardseed:ZZ_TEST_125_ELECTIONS`, added 2026-09-12 (session 53).
+
+**No new config key** — this is a fifth entry inside the existing `SUMMIT_IMPORT_TEMPLATES` key from
+[D-91](#d-91-ssaproperties-needs-summit_import_templates-plus-a-tomcat-restart), and everything D-91
+says about format, prefix collisions, tolerant parsing and the Tomcat restart applies unchanged.
+`SummitExportServlet`'s `cardseed` writer runs through the same `SummitImportTemplateResolver
+.templateNameFor()` call every other type uses — confirmed by code reading, session 53's filename
+investigation — so **no resolver code change was needed and none was made** for this entry either.
+
+```
+SUMMIT_IMPORT_TEMPLATES=employer:<erName>,cdhplan:<cdhName>,demographics:<demoName>,cardseed:<cardseedName>
+```
+
+⚠️ **`enrollment` (D-93) is still missing everywhere, including on Kevin's local dev.** Adding
+`cardseed` does not close D-93; the two are independent entries in the same key, one now set locally
+and one still unset anywhere.
+
+⚠️ **Absence is a supported state.** With no `cardseed` entry the file still downloads, under
+`card-issuer-seed-{employer}-{prospectId}-{yyyyMMdd}.txt`; a push is refused with "no Summit import
+template is configured for this type" before any byte is generated — the same state `enrollment` was
+in, and still is, before D-93.
+
+⚠️ **Check the new filename against the prefix-collision rule** in D-91 before setting it on
+Production. `SummitImportTemplateResolver` logs a `WARN` on collision and still serves — grep
+`catalina.out` for `[SUMMIT-EXPORT] SUMMIT_IMPORT_TEMPLATES prefix collision:` after the restart.
+
+⚠️ **V104 (`summit_plan_template_map.is_card_issuer`) must be applied and the Card Issuer row
+flagged before this config entry does anything useful** — see the V104 row in
+`docs/analysis/migration_tracker.md`. Without an exactly-one flagged row among a sale's elected
+services, the `cardseed` writer refuses regardless of what this key holds.
+
+**Applies to:** Kevin's local dev database / local Tomcat ✅ — set to `ZZ_TEST_125_ELECTIONS` and
+runtime-verified 2026-09-12 (`docs/analysis/spec_card_issuer_seed_election.md` §9). Production ⬜ —
+needed before any `cardseed` file is uploaded from Production, and blocked on V104 reaching
+Production first. Demo / BPO / Master — N/A, no Summit tenant.

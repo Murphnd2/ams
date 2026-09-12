@@ -199,6 +199,11 @@ public class SummitPlanTemplateAdmin extends HttpServlet {
         String label = trimToEmpty(request.getParameter("label"));
         Integer sortOrder = parseIntOrNull(request.getParameter("sortOrder"));
         boolean active = request.getParameter("active") != null;
+        // V104 -- the card-issuer flag, same checkbox idiom as `active` above. No uniqueness check
+        // here: more than one flagged row (or zero) is valid to save, because the constraint that
+        // matters -- exactly one flagged row among a sale's ELECTED service items -- can only be
+        // evaluated at export time, by the cardseed writer, against a specific proposal's elections.
+        boolean cardIssuer = request.getParameter("cardIssuer") != null;
         // W5 (V103) -- the fan-out discriminator and date rules. seq blank on add = next free
         // ordinal for the service item (see below); the offsets default to 0.
         Integer seq = parseIntOrNull(request.getParameter("seq"));
@@ -354,6 +359,7 @@ public class SummitPlanTemplateAdmin extends HttpServlet {
         mapping.setLabel(label.isEmpty() ? null : label);
         mapping.setSortOrder(sortOrder);
         mapping.setActive(active);
+        mapping.setCardIssuer(cardIssuer);
         mapping.setSeq((short) (int) seq);
         mapping.setEffectiveDateRule(effectiveDateRule);
         mapping.setOffsetMonths(offsetMonths);

@@ -11,6 +11,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import net.superiorstate.ams.AppConfig;
 import net.superiorstate.ams.data.dao.EmployerParticipantDAO;
 import net.superiorstate.ams.data.dao.SummitFileExportDAO;
+import net.superiorstate.ams.data.dao.SummitSetupStepDAO;
 import net.superiorstate.ams.data.resolver.EmployerDisplayNameResolver;
 import net.superiorstate.ams.data.resolver.IchraAccessResolver;
 import net.superiorstate.ams.data.resolver.SummitCdhElementResolver;
@@ -90,6 +91,10 @@ public class SummitExportServlet extends HttpServlet {
     // mode of an existing one: it is a separate Summit import template with its own filename
     // prefix, so it must be separately addressable in SUMMIT_IMPORT_TEMPLATES.
     private static final String TYPE_ENROLLMENT = "enrollment";
+    // V104 -- the $1 card-issuer seed election, a `125 PI Elections` file. A fifth discriminator,
+    // not a mode of writeHraEnrollment: different Summit import template (125 PI Elections, not
+    // HRA Enrollment), different layout, different plan (the card-issuer row, not the ICHRA row).
+    private static final String TYPE_CARD_SEED = "cardseed";
 
     // Application-answer field keys this export reads (S25-B). Defined in both
     // DatabaseInitializer's baseline sections and the package JSONs under
@@ -145,9 +150,10 @@ public class SummitExportServlet extends HttpServlet {
         String type = request.getParameter("type");
         if (proposalIdParam == null || proposalIdParam.isBlank()
                 || type == null || !(type.equals(TYPE_EMPLOYER) || type.equals(TYPE_CDH_PLAN)
-                        || type.equals(TYPE_DEMOGRAPHICS) || type.equals(TYPE_ENROLLMENT))) {
+                        || type.equals(TYPE_DEMOGRAPHICS) || type.equals(TYPE_ENROLLMENT)
+                        || type.equals(TYPE_CARD_SEED))) {
             writePlainError(response, HttpServletResponse.SC_BAD_REQUEST,
-                    "proposalId and type (employer|cdhplan|demographics|enrollment) are required.");
+                    "proposalId and type (employer|cdhplan|demographics|enrollment|cardseed) are required.");
             return;
         }
 
@@ -237,7 +243,7 @@ public class SummitExportServlet extends HttpServlet {
                     return;
                 }
                 if (!(type.equals(TYPE_EMPLOYER) || type.equals(TYPE_CDH_PLAN)
-                        || type.equals(TYPE_DEMOGRAPHICS))) {
+                        || type.equals(TYPE_DEMOGRAPHICS) || type.equals(TYPE_CARD_SEED))) {
                     writePlainError(response, HttpServletResponse.SC_BAD_REQUEST,
                             "Not pushed: type is not pushable.");
                     return;
@@ -295,6 +301,52 @@ public class SummitExportServlet extends HttpServlet {
                 writeEmployerCdhPlan(response, em, proposalId, prospect, answers, employerTpaCustomId, pspId, record);
             } else if (type.equals(TYPE_DEMOGRAPHICS)) {
                 writeDemographics(response, em, prospect, employerTpaCustomId, record);
+            } else if (type.equals(TYPE_CARD_SEED)) {
+                // V104 -- confirm gate (T201 shape) plus an operator-editable effective date. TA-e
+                // (docs/business/summit_data_exchange.md) records run-date + 1 as the default, but
+                // card issuance timing is untestable until SSA issues cards (T245), so the field is
+                // editable rather than fixed -- reversible without a deploy. Runs before any
+                // response write, mirroring the enrollment guard below exactly.
+                String expectedConfirm = "CARDSEED-P" + proposalId;
+                LocalDate cardSeedToday = LocalDate.now();
+                LocalDate defaultEffectiveDate = cardSeedToday.plusDays(1);
+                LocalDate submittedEffectiveDate = parseAnswerDate(request.getParameter("effectiveDate"));
+                boolean confirmMatches = expectedConfirm.equals(request.getParameter("confirm"));
+                String dateError = null;
+                if (confirmMatches) {
+                    if (submittedEffectiveDate == null) {
+                        dateError = "The effective date could not be read. Enter a date and try again.";
+                    } else if (submittedEffectiveDate.isBefore(cardSeedToday)) {
+                        dateError = "The effective date " + submittedEffectiveDate + " is in the"
+                                + " past. A past effective date on an election file back-posts every"
+                                + " elapsed contribution run date immediately -- choose today or later.";
+                    }
+                }
+                if (!confirmMatches || dateError != null) {
+                    writeCardSeedConfirmPage(response, em, prospect, proposalId,
+                            record.pushDir() != null, defaultEffectiveDate, dateError);
+                    return;
+                }
+
+                // V104 -- prior-push guard. AMS records nothing per participant (Elections is
+                // neither additive nor a replacement -- a duplicate row fails per row, "Plan
+                // Already Enrolled"), so a second run re-emits every roster row. Refuse unless the
+                // caller acknowledges the specific prior push.
+                Long ackPrior;
+                try {
+                    ackPrior = Long.valueOf(request.getParameter("ackPrior"));
+                } catch (NumberFormatException e) {
+                    ackPrior = null;
+                }
+                SummitFileExport priorCardSeedPush =
+                        SummitSetupStepDAO.findLatestPushed(em, pspId, proposalId, TYPE_CARD_SEED);
+                if (priorCardSeedPush != null && !Objects.equals(priorCardSeedPush.getId(), ackPrior)) {
+                    writeCardSeedPriorPushRefusal(response, record, priorCardSeedPush, submittedEffectiveDate);
+                    return;
+                }
+
+                writeCardSeedElection(response, em, proposalId, prospect, answers,
+                        employerTpaCustomId, pspId, record, submittedEffectiveDate);
             } else {
                 // T201 guard. The enrollment file enrols EVERY roster participant into the funded
                 // ICHRA plan at one flat amount, and AMS stores no election state, so declined
@@ -1507,6 +1559,277 @@ public class SummitExportServlet extends HttpServlet {
 
         String filename = resolveFilename(TYPE_ENROLLMENT,
                 "hra-enrollment-" + sanitizeFilename(prospect.getName())
+                        + "-" + prospect.getId() + "-" + LocalDate.now().format(SUMMIT_DATE) + ".txt");
+        writeFile(response, filename, lines, record);
+    }
+
+    /**
+     * V104 — the confirm-gate screen for {@link #TYPE_CARD_SEED}, shown whenever the request has
+     * not yet supplied both a matching {@code confirm} token and a non-past {@code effectiveDate}.
+     * Same shape as the plain-text T201 guard above, widened to an HTML form because the effective
+     * date must be operator-editable (TA-e's run-date+1 is a default, not a fixed rule — card
+     * issuance timing is untestable until SSA issues cards, T245). The form re-submits {@code
+     * proposalId}, {@code type} and the (already-satisfied) {@code confirm} token as hidden fields,
+     * so only the date itself is ever something the operator changes.
+     */
+    private void writeCardSeedConfirmPage(HttpServletResponse response, EntityManager em,
+                                          Prospect prospect, long proposalId, boolean push,
+                                          LocalDate defaultEffectiveDate, String dateError)
+            throws IOException {
+        List<EmployerParticipant> guardRoster =
+                EmployerParticipantDAO.findByProspectId(em, prospect.getId());
+        int rosterCount = (guardRoster == null) ? 0 : guardRoster.size();
+        String expectedConfirm = "CARDSEED-P" + proposalId;
+
+        StringBuilder body = new StringBuilder();
+        body.append("<h3>$1 card-issuer seed election</h3>");
+        body.append("<p>This file enrols EVERY participant on the roster for prospect ")
+                .append(prospect.getId()).append(" (").append(rosterCount).append(" participant")
+                .append(rosterCount == 1 ? "" : "s").append(") into the card-issuer placeholder"
+                        + " plan at a flat $1.00 annual election. Files 1 (Employer), 2 (Plans) and"
+                        + " 4 (Demographics) must already be processed in Summit, or this file"
+                        + " fails or produces nothing meaningful. Summit rejects a participant"
+                        + " already enrolled in this plan.</p>");
+        if (dateError != null) {
+            body.append("<p style=\"color:#b00020;\"><strong>").append(html(dateError)).append("</strong></p>");
+        }
+        body.append("<form method=\"").append(push ? "post" : "get")
+                .append("\" action=\"SummitExport\"").append(push ? " target=\"_blank\"" : "").append(">");
+        body.append("<input type=\"hidden\" name=\"proposalId\" value=\"").append(proposalId).append("\">");
+        body.append("<input type=\"hidden\" name=\"type\" value=\"").append(TYPE_CARD_SEED).append("\">");
+        body.append("<input type=\"hidden\" name=\"confirm\" value=\"").append(html(expectedConfirm)).append("\">");
+        body.append("<label>Effective date: <input type=\"date\" name=\"effectiveDate\" value=\"")
+                .append(defaultEffectiveDate).append("\" required></label> ");
+        body.append("<button type=\"submit\" onclick=\"return confirm('")
+                .append(push ? "Push" : "Generate")
+                .append(" the $1 card-issuer seed election for every participant on the roster?"
+                        + " Files 1, 2 and 4 must already be processed in Summit. Summit rejects a"
+                        + " participant already enrolled in this plan. There is no undo.');\">")
+                .append(push ? "Push" : "Generate").append("</button>");
+        body.append("</form>");
+        writeHtml(response, HttpServletResponse.SC_BAD_REQUEST, body.toString());
+    }
+
+    /**
+     * V104 — the T227-shaped prior-push refusal for {@link #TYPE_CARD_SEED}: content-hash dedupe
+     * ({@code pushFile}'s own duplicate check) only catches a re-push on the same calendar day,
+     * because column D changes daily by default — and the operator-editable date (above) means it
+     * can differ even sooner. This is the proposal-level backstop: any prior successful push at all
+     * is a reason to stop and ask, because AMS records nothing per participant and a second run
+     * re-emits every roster row. Only the exact prior push's id, supplied as {@code ackPrior},
+     * unlocks it. A download (GET) gets the same refusal as plain text, no form — matching the
+     * spec's distinction between the two request kinds.
+     *
+     * @param effectiveDate the already-validated (non-past) date the operator just confirmed —
+     *                       carried through into the "Push anyway" form's hidden field rather than
+     *                       a freshly computed default, so acknowledging does not silently change
+     *                       the date the operator chose.
+     */
+    private void writeCardSeedPriorPushRefusal(HttpServletResponse response, ExportRecord record,
+                                                SummitFileExport priorPush, LocalDate effectiveDate)
+            throws IOException {
+        if (record.pushDir() == null) {
+            writePlainError(response, HttpServletResponse.SC_CONFLICT,
+                    "$1 card-issuer seed election not generated: a prior push already exists for"
+                            + " this proposal (push #" + priorPush.getId() + ", "
+                            + priorPush.getFileName() + ", delivered "
+                            + formatPushTimestamp(priorPush.getDeliveredAt()) + "). AMS records"
+                            + " nothing per participant, so re-emitting re-attempts every"
+                            + " participant, including those Summit already enrolled. To generate"
+                            + " anyway, repeat this request with &ackPrior=" + priorPush.getId() + ".");
+            return;
+        }
+        StringBuilder body = new StringBuilder();
+        body.append("<h3>Not pushed — a prior seed election exists</h3>");
+        body.append("<p>Push #").append(priorPush.getId()).append(", file ")
+                .append(html(priorPush.getFileName())).append(", delivered ")
+                .append(html(formatPushTimestamp(priorPush.getDeliveredAt())))
+                .append(", already pushed the $1 card-issuer seed election for this proposal.</p>");
+        body.append("<p>AMS records nothing per participant, so re-emitting re-attempts every"
+                + " participant — Summit rejects the already-enrolled ones per row, harmlessly, and"
+                + " enrols anyone added to the roster since. Push again only for that reason.</p>");
+        body.append("<form method=\"post\" action=\"SummitExport\" target=\"_blank\">");
+        body.append("<input type=\"hidden\" name=\"proposalId\" value=\"")
+                .append(record.proposalId()).append("\">");
+        body.append("<input type=\"hidden\" name=\"type\" value=\"")
+                .append(html(record.fileType())).append("\">");
+        body.append("<input type=\"hidden\" name=\"confirm\" value=\"CARDSEED-P")
+                .append(record.proposalId()).append("\">");
+        body.append("<input type=\"hidden\" name=\"effectiveDate\" value=\"")
+                .append(effectiveDate).append("\">");
+        body.append("<input type=\"hidden\" name=\"ackPrior\" value=\"").append(priorPush.getId()).append("\">");
+        body.append("<button type=\"submit\" onclick=\"return confirm('Push anyway? This re-attempts"
+                + " every participant on the roster.');\">Push anyway</button>");
+        body.append("</form>");
+        writeHtml(response, HttpServletResponse.SC_CONFLICT, body.toString());
+    }
+
+    /**
+     * V104 — the $1 card-issuer seed election, a {@code 125 PI Elections} file (spec
+     * {@code docs/analysis/spec_card_issuer_seed_election.md} §2). One row per census participant,
+     * each a flat {@code $1.00} annual election against the one {@code summit_plan_template_map}
+     * row flagged {@code is_card_issuer} among this sale's elected services.
+     * <p>
+     * Deliberately not built on {@link #writeHraEnrollment} or {@link #writeEmployerCdhPlan} by
+     * extraction — both are import-proven and this method is not; see the same deliberate-duplicate
+     * reasoning at {@link #writeHraEnrollment}'s own composition comment.
+     * <p>
+     * <b>Column layout, eleven fields, always:</b> A Employer TPA Custom ID, B Participant TPA
+     * Custom ID, C Import Plan ID, D Effective Date, E Plan Start Date (never — a cross-check, not a
+     * selector; a wrong value returns {@code Plan Not Found}), F Coverage End Date (never —
+     * termination only), G Participant Annual Election Amount ({@code 1.00}, always), H Per
+     * Contribution Amount (never — if both G and H are supplied, H is ignored and the record shows
+     * two numbers), I Participant Contribution Schedule (never in this build — omitting it produces
+     * the proven expectation-only election: annual recorded, {@code $0.00} posted, {@code $0.00}
+     * disbursable), J Employer Contribution Schedule (never — structurally meaningless on
+     * {@code Ins125+}), K Filler (mandatory trailing sentinel, constant {@code X}).
+     *
+     * @param effectiveDate the operator-submitted, already-validated (non-past) effective date —
+     *                       never computed here. Column D and nothing else depends on it.
+     */
+    private void writeCardSeedElection(HttpServletResponse response, EntityManager em, long proposalId,
+                                        Prospect prospect, Map<String, String> answers,
+                                        String employerTpaCustomId, Long pspId, ExportRecord record,
+                                        LocalDate effectiveDate)
+            throws IOException {
+        LocalDate planYearStart = parseAnswerDate(answers.get(FIELD_PLAN_YEAR_START));
+        if (planYearStart == null) {
+            writePlainError(response, HttpServletResponse.SC_BAD_REQUEST,
+                    "Cannot generate $1 card-issuer seed election: prospect " + prospect.getId()
+                            + "'s application has no usable answer for '" + FIELD_PLAN_YEAR_START
+                            + "'. The Card Issuer plan's own plan year is derived from it and the"
+                            + " effective date must fall inside that plan year.");
+            return;
+        }
+        LocalDate planYearEnd = parseAnswerDate(answers.get(FIELD_PLAN_YEAR_END));
+        if (planYearEnd == null) {
+            writePlainError(response, HttpServletResponse.SC_BAD_REQUEST,
+                    "Cannot generate $1 card-issuer seed election: prospect " + prospect.getId()
+                            + "'s application has no usable answer for '" + FIELD_PLAN_YEAR_END + "'.");
+            return;
+        }
+
+        // Deliberately duplicated from writeEmployerCdhPlan / writeHraEnrollment rather than
+        // extracted into a shared helper -- see the javadoc above.
+        List<PlanTemplate> configured;
+        try {
+            configured = SummitPlanTemplateResolver.configuredOrThrow(em, pspId);
+        } catch (SummitPlanTemplateResolver.KeySegmentRejectedException e) {
+            writePlainError(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+                    "Cannot generate $1 card-issuer seed election: " + e.getMessage()
+                            + ". Fix the Summit Plan Templates mapping (SummitPlanTemplateAdmin) or"
+                            + " the SUMMIT_PLAN_TEMPLATES property, then retry.");
+            return;
+        }
+        // The legacy SUMMIT_PLAN_TEMPLATES property has no slot for the card-issuer flag and never
+        // will (rule 4 -- it is a per-row marker, not a per-installation setting); an empty
+        // configured list is therefore always a refusal here, unlike the sibling writers' legacy
+        // single-ICHRA fallback.
+        if (configured.isEmpty()) {
+            writePlainError(response, HttpServletResponse.SC_BAD_REQUEST,
+                    "Cannot generate $1 card-issuer seed election: no Summit Plan Templates mapping"
+                            + " rows are configured for your PSP. The legacy SUMMIT_PLAN_TEMPLATES"
+                            + " property carries no Card Issuer flag, so this file needs at least"
+                            + " one summit_plan_template_map row with Card Issuer checked. Configure"
+                            + " it on the Summit Plan Templates admin screen.");
+            return;
+        }
+
+        Map<Integer, String> electedServices = loadElectedServiceItems(em, proposalId);
+        List<PlanTemplate> candidates = new ArrayList<>();
+        for (PlanTemplate template : configured) {
+            if (electedServices.containsKey(template.getServiceItemId())) {
+                candidates.add(template);
+            }
+        }
+        List<PlanTemplate> matches = new ArrayList<>();
+        for (PlanTemplate template : candidates) {
+            if (template.isCardIssuer()) matches.add(template);
+        }
+        if (matches.size() != 1) {
+            StringBuilder candidateList = new StringBuilder();
+            for (PlanTemplate template : candidates) {
+                if (candidateList.length() > 0) candidateList.append(", ");
+                candidateList.append(template.getKeySegment()).append("=").append(template.getTemplateId())
+                        .append(template.isCardIssuer() ? " [Card Issuer]" : "");
+            }
+            writePlainError(response, HttpServletResponse.SC_BAD_REQUEST,
+                    "Cannot generate $1 card-issuer seed election: exactly one plan in prospect "
+                            + prospect.getId() + "'s file 2 row-set must be flagged Card Issuer among"
+                            + " the elected services. Found " + matches.size() + ". Plans file 2"
+                            + " would emit (keySegment=templateId): "
+                            + (candidates.isEmpty() ? "(none)" : candidateList.toString())
+                            + ". Flag exactly one row Card Issuer on the Summit Plan Templates admin"
+                            + " screen, then retry.");
+            return;
+        }
+        PlanTemplate cardIssuer = matches.get(0);
+
+        // The Card Issuer row's own plan year, same call file 2 makes (SummitPlanDateRuleResolver),
+        // used here only to bound the operator-submitted effective date -- not to compute one.
+        SummitPlanDateRuleResolver.Resolved resolved = SummitPlanDateRuleResolver.resolve(
+                planYearStart, planYearEnd, cardIssuer.getEffectiveDateRule(),
+                cardIssuer.getOffsetMonths(), cardIssuer.getPlanYearOffsetYears(), LocalDate.now(),
+                "plan '" + cardIssuer.getLabel() + "' (ServiceItem " + cardIssuer.getServiceItemId()
+                        + ", template " + cardIssuer.getTemplateId() + ", seq " + cardIssuer.getSeq() + ")");
+        if (resolved.isRejected()) {
+            writePlainError(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+                    "Cannot generate $1 card-issuer seed election: " + resolved.getRejection());
+            return;
+        }
+        SummitPlanDateRuleResolver.PlanDates dates = resolved.getDates();
+        if (effectiveDate.isBefore(dates.getPlanYearBegin()) || effectiveDate.isAfter(dates.getPlanYearEnd())) {
+            writePlainError(response, HttpServletResponse.SC_BAD_REQUEST,
+                    "Cannot generate $1 card-issuer seed election: the effective date "
+                            + effectiveDate + " falls outside the Card Issuer plan's own plan year ("
+                            + dates.getPlanYearBegin() + " to " + dates.getPlanYearEnd() + "). Summit"
+                            + " returns 'Plan Not Found' for an election dated outside the plan it"
+                            + " enrols into. Choose a date inside that range.");
+            return;
+        }
+
+        // S31-J/S50 composition, byte-identical to writeEmployerCdhPlan and writeHraEnrollment's own
+        // Import Plan ID: sanitize(employerTpaCustomId + keySegment), strictly alphanumeric, no
+        // plan year in the key.
+        String importPlanId = sanitize(employerTpaCustomId + cardIssuer.getKeySegment());
+        String effectiveDateStr = effectiveDate.format(SUMMIT_DATE);
+
+        List<EmployerParticipant> roster = EmployerParticipantDAO.findByProspectId(em, prospect.getId());
+        // ⚠️ T209 shape -- a zero-row file is a defect, not an empty result. Same guard, same
+        // position and same refusal as Demographics' and HRA Enrollment's own.
+        if (roster.isEmpty()) {
+            writePlainError(response, HttpServletResponse.SC_BAD_REQUEST,
+                    "Cannot generate $1 card-issuer seed election: prospect " + prospect.getId()
+                            + " has no participants on its roster, so the file would have been"
+                            + " empty. An empty file imports as nothing at all, so it is refused"
+                            + " rather than downloaded. Upload the census on the Setup screen, then"
+                            + " generate the file again.");
+            return;
+        }
+
+        String prefix = summitTpaIdPrefix();
+        List<String> lines = new ArrayList<>();
+        for (EmployerParticipant participant : roster) {
+            lines.add(String.join("|",
+                    employerTpaCustomId,                        // A
+                    prefix + "-P-" + participant.getId(),       // B
+                    importPlanId,                               // C
+                    effectiveDateStr,                           // D
+                    "",                                         // E Plan Start Date -- never
+                    "",                                         // F Coverage End Date -- never
+                    "1.00",                                     // G Annual Election Amount
+                    "",                                         // H Per Contribution Amount -- never
+                    "",                                         // I Contribution Schedule -- never in this build
+                    "",                                         // J Employer Contribution Schedule -- never
+                    "X"));                                       // K Filler -- mandatory sentinel
+        }
+
+        log.info("[SUMMIT-EXPORT] proposal {} $1 card-issuer seed election: {} participant row(s)"
+                        + " into plan {} effective {} at $1.00 each",
+                proposalId, lines.size(), importPlanId, effectiveDateStr);
+
+        String filename = resolveFilename(TYPE_CARD_SEED,
+                "card-issuer-seed-" + sanitizeFilename(prospect.getName())
                         + "-" + prospect.getId() + "-" + LocalDate.now().format(SUMMIT_DATE) + ".txt");
         writeFile(response, filename, lines, record);
     }

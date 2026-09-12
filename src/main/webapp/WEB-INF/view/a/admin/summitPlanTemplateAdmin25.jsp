@@ -142,6 +142,7 @@
                         <th>Offset months</th>
                         <th>Plan year offset</th>
                         <th>Active</th>
+                        <th>Card Issuer</th>
                         <th></th>
                     </tr>
                     </thead>
@@ -170,6 +171,9 @@
                                     <c:when test="${m.active}"><span class="badge badge-on">Active</span></c:when>
                                     <c:otherwise><span class="badge badge-off">Inactive</span></c:otherwise>
                                 </c:choose>
+                            </td>
+                            <td>
+                                <c:if test="${m.cardIssuer}"><span class="badge badge-on">Card Issuer</span></c:if>
                             </td>
                             <td class="text-end">
                                 <a class="btn btn-sm btn-outline-secondary py-0 px-2"
@@ -250,6 +254,17 @@
                             <input class="form-check-input" type="checkbox" id="active" name="active"
                                    <c:if test="${empty editing or editing.active}">checked</c:if>>
                             <label class="form-check-label" for="active" style="text-transform:none;">Active</label>
+                        </div>
+                    </div>
+                    <div class="col-md-2 d-flex align-items-end">
+                        <div class="form-check mb-1">
+                            <%-- V104 -- marks this row as the card-issuer placeholder plan the $1 seed
+                                 election (type=cardseed) enrols into. No uniqueness enforced here; the
+                                 cardseed writer refuses at export time unless exactly one elected row
+                                 carries it. --%>
+                            <input class="form-check-input" type="checkbox" id="cardIssuer" name="cardIssuer"
+                                   <c:if test="${not empty editing and editing.cardIssuer}">checked</c:if>>
+                            <label class="form-check-label" for="cardIssuer" style="text-transform:none;">Card Issuer</label>
                         </div>
                     </div>
                 </div>

@@ -106,6 +106,20 @@ public class SummitPlanTemplateMap {
     @Column(name = "is_active", nullable = false)
     private boolean active = true;
 
+    /**
+     * V104 — marks the one mapping row per sale that is the card-issuer placeholder plan the $1
+     * seed election ({@code type=cardseed}) enrols into. Several rows can share a
+     * {@code serviceItemId} (PremiumPath's five-plan fan-out, W3/W4), and nothing else on this row —
+     * not {@code templateId} (per tenant), not {@code effectiveDateRule} (a date rule, not a
+     * meaning), not {@code label} or {@code keySegment} (both admin-editable free text) — carries
+     * that meaning. Exactly one active flagged row among a sale's elected service items is expected;
+     * enforced by the {@code cardseed} writer at export time, not by a database constraint, the same
+     * way {@code LEGACY_ICHRA_SEGMENT} enforces the ICHRA plan's uniqueness in
+     * {@code writeHraEnrollment}.
+     */
+    @Column(name = "is_card_issuer", nullable = false)
+    private boolean cardIssuer = false;
+
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
@@ -149,6 +163,9 @@ public class SummitPlanTemplateMap {
 
     public boolean isActive() { return active; }
     public void setActive(boolean active) { this.active = active; }
+
+    public boolean isCardIssuer() { return cardIssuer; }
+    public void setCardIssuer(boolean cardIssuer) { this.cardIssuer = cardIssuer; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }

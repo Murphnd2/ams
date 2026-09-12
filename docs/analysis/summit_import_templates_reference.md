@@ -253,7 +253,11 @@ ZZSDX27A|158-P-S27-15|R15|Testcase|100 Main Street|Marinette|WI|54143|20260101||
 
 ## 4. ZZ_TEST_125_ELECTIONS — 125 PI Elections
 
-The §125 leg. Proven 2026-09-11/12.
+The §125 leg. Proven 2026-09-11/12. ⭐ **The A–K layout below is now proven by import from a real
+emitter, not only from a hand-built test file** — `SummitExportServlet`'s `cardseed` writer
+(V104, session 53) produced and pushed this exact 11-column shape 2026-09-12 against
+`ZZ_TEST_125_ELECTIONS`; the row imported clean and posted a disbursable $1.00 with column I
+(Participant Contribution Schedule) empty. Detail: `spec_card_issuer_seed_election.md` §9.
 
 | | Column | | AMS emits |
 |---|---|---|---|
@@ -409,12 +413,38 @@ file is exactly what an unset results file would look like from the outside. Tes
 results file on 2026-09-12, so the setting is on now — but if the symptom returns, look here before
 looking at the row.
 
+Observed on `ZZ_TEST_125_ELECTIONS`, read off the live picker 2026-09-12 (session 53) — the second
+of the six templates read:
+
+| Setting | Value | Why it matters |
+|---|---|---|
+| File Format | Delimited | — |
+| Delimiter | `\|` | — |
+| Date Format | `YYYYMMDD` | Same as every other template read so far. |
+| Extraneous Data | **No** | Extra columns are not tolerated. |
+| **File Category** | **Plan** | A field not present on `ZZ_TEST_125_CONTRIB`'s own settings screen (or not recorded there) — not yet cross-checked against the other five. |
+| Include Header | unchecked | — |
+| Include Footer | unchecked | — |
+| Include Body Record Indicator | unchecked | — |
+| **Produce Results File** | **checked (ON)** | — |
+| Errors Only | unchecked | — |
+
+**Results file:** Delimited, `\|`, dates `YYYYMMDD`. Body layout is three columns: Participant TPA
+Custom ID, Record Processing Status, Record Comment. **Positionally the same shape as HRA
+Enrollment's** (3 fields, status second) — the labels differ (`Record Processing Status`/
+`Record Comment` here vs `Status`/`Message` there) but the field order that matters for parsing is
+identical. `SummitResponseService.check`'s `fields[0]`-only classification (noted above) is wrong
+for this template for the same reason it is wrong for HRA Enrollment and Demographics: `fields[0]`
+is the participant key, not the status.
+
 ## What is still not known
 
 - **The Boolean token for Contributions F** — `Y` confirmed; `true` untested.
 - **Whether the flag sits at E or F** — recorded as a template change: E at test time, F on the
   2026-09-12 picker. Re-check before emitting.
-- **Template-level settings on the other five templates** — only `ZZ_TEST_125_CONTRIB` has been read.
+- **Template-level settings on the other four templates** — `ZZ_TEST_125_CONTRIB` and, as of
+  2026-09-12 (session 53), `ZZ_TEST_125_ELECTIONS` have been read; `ZZ_TEST_ER`, `ZZ_TEST_CDH`,
+  `ZZ_TEST_DEMO` and `ZZ_TEST_HRA_ENROLL` have not.
 - **Field length limits** on everything except `Mailing Address Line 1`.
 - **`Plan Status` code set** on Elections — importable, but no candidate codes exist anywhere.
 - **Whether F/G schedules are required** where no default schedule exists on the employer.

@@ -118,6 +118,22 @@
             <div class="fw-semibold">Enrollment</div>
           </div>
         </div>
+        <%-- V104 -- the $1 card-issuer seed election. No file number (T196's precedent): it is not
+             one of the four core setup files, and the setup-sequence numbering above has no slot
+             for it. Both controls always lead to a confirmation screen with an editable effective
+             date (T201 shape, widened) -- the JSP itself never carries confirm or effectiveDate. --%>
+        <div class="d-flex align-items-center gap-2 py-1" style="padding-left: 2rem;">
+          <div class="flex-grow-1 lh-sm">
+            <div>$1 card-issuer seed election</div>
+            <div class="text-muted" style="font-size: 0.72rem;">125 PI Elections · $1.00 annual to the Card Issuer plan · requires confirm</div>
+            <jsp:include page="/SummitSetupStatus"><jsp:param name="proposalId" value="${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}"/><jsp:param name="step" value="cardseed"/></jsp:include>
+          </div>
+          <div class="btn-group btn-group-sm">
+            <button type="button" class="btn btn-outline-secondary opacity-50" style="border-style: dashed; cursor: not-allowed;" aria-disabled="true" title="Preview — not built yet"><i class="bi bi-eye"></i></button>
+            <a href="${pageContext.request.contextPath}/SummitExport?proposalId=${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}&type=cardseed" class="btn btn-outline-ssa" title="Generate (opens a confirmation screen)"><i class="bi bi-download"></i></a>
+            <button type="submit" form="summitPush-cardseed" class="btn btn-outline-ssa" title="Push to DataPath (opens a confirmation screen)"><i class="bi bi-cloud-upload"></i></button>
+          </div>
+        </div>
         <div class="d-flex align-items-center gap-2 py-1" style="padding-left: 2rem;">
           <div class="flex-grow-1 lh-sm">
             <div>125 PI Elections</div>
@@ -160,6 +176,13 @@
           action="${pageContext.request.contextPath}/SummitExport">
       <input type="hidden" name="proposalId" value="${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}"/>
       <input type="hidden" name="type" value="demographics"/>
+    </form>
+    <%-- V104 -- carries no confirm/effectiveDate; the servlet always renders the confirmation
+         screen first, which carries its own onclick confirm() and posts back here with both. --%>
+    <form id="summitPush-cardseed" method="post" target="_blank"
+          action="${pageContext.request.contextPath}/SummitExport">
+      <input type="hidden" name="proposalId" value="${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}"/>
+      <input type="hidden" name="type" value="cardseed"/>
     </form>
 
     <%-- S45-B -- hidden manual "Mark done" forms, one per T230 phase-1 step. The visible dashed

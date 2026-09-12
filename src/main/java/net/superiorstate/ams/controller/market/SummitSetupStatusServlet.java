@@ -40,7 +40,12 @@ public class SummitSetupStatusServlet extends HttpServlet {
     private static final Map<String, String> STEP_FILE_TYPES = Map.of(
             "employer", "employer",
             "cdhplan", "cdhplan",
-            "demographics", "demographics"
+            "demographics", "demographics",
+            // V104 -- the $1 card-issuer seed election. No summit_setup_step row is ever written
+            // for this step (no "Mark done" control exists for it), so findByProposalAndStep above
+            // always returns null and this fragment falls straight through to the delivery-attempt
+            // line -- "PUSHED · time" once a push has succeeded, nothing before that.
+            "cardseed", "cardseed"
             // "schedules" deliberately absent -- no pushed file, so no delivery-attempt fallback line.
     );
 
