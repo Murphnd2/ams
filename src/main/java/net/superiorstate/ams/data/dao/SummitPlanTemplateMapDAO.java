@@ -20,22 +20,31 @@ public abstract class SummitPlanTemplateMapDAO {
      * Active mappings in emit order. {@code id} breaks a {@code sort_order} tie so two rows sharing
      * an order still emit deterministically — the property path's config order is total, and this
      * keeps the table path's order total too rather than leaving it to the database.
+     * V103 (W3) adds {@code seq} between them: for a service item with several rows, the resolver's
+     * first-wins dedupe now picks the lowest {@code seq} within a shared {@code sort_order} rather
+     * than whichever row was inserted first. A single-row service item is unaffected.
      */
     private static final String JPQL_ACTIVE_BY_PSP =
             "SELECT m FROM SummitPlanTemplateMap m " +
             "WHERE m.pspId = :pspId AND m.active = true " +
-            "ORDER BY m.sortOrder, m.id";
+            "ORDER BY m.sortOrder, m.seq, m.id";
 
     /** S31-F — the admin screen's listing: active and inactive, same ordering as the emit read. */
     private static final String JPQL_ALL_BY_PSP =
             "SELECT m FROM SummitPlanTemplateMap m " +
             "WHERE m.pspId = :pspId " +
-            "ORDER BY m.sortOrder, m.id";
+            "ORDER BY m.sortOrder, m.seq, m.id";
 
-    /** S31-F — the constraint pre-check. Deliberately ignores is_active, because the constraint does. */
+    /**
+     * S31-F — the constraint pre-check. Deliberately ignores is_active, because the constraint does.
+     * V103 (W3): the constraint is now per {@code seq}, so this may return several rows; ordered by
+     * {@code seq} so the caller's {@code get(0)} is the {@code seq 0} row. The admin screen still
+     * treats any hit as "already mapped" — widening that is W5.
+     */
     private static final String JPQL_BY_PSP_AND_SERVICE_ITEM =
             "SELECT m FROM SummitPlanTemplateMap m " +
-            "WHERE m.pspId = :pspId AND m.serviceItemId = :serviceItemId";
+            "WHERE m.pspId = :pspId AND m.serviceItemId = :serviceItemId " +
+            "ORDER BY m.seq, m.id";
 
     /**
      * The active plan template mappings for one PSP, in emit order.

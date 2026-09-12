@@ -33,10 +33,14 @@ import java.time.LocalDateTime;
  * the table path and the property path apply one implementation of it. Do not materialise the
  * default into this column — a stored copy would drift the first time a key segment is renamed.
  * <p>
- * ⚠️ <b>One active mapping per (PSP, ServiceItem)</b>, enforced by the named unique constraint
- * {@code uq_summit_plan_template_map_psp_service} rather than by the primary key, so the 1:1 rule
- * can be dropped by index name if fan-out is ever wanted. {@code isActive} deliberately does not
- * participate in that constraint: retiring a row does not free the pair for a second one.
+ * ⚠️ <b>One mapping per (PSP, ServiceItem, seq)</b> since V103 (W3) — the unique constraint is
+ * {@code uq_summit_plan_template_map_psp_service_seq}, replacing V095's 1:1
+ * {@code uq_summit_plan_template_map_psp_service}, so one service item can fan out to several Summit
+ * plans distinguished by {@link #seq}. ⚠️ <b>Nothing consumes the fan-out yet:</b>
+ * {@code SummitPlanTemplateResolver} still takes the first active row per service item (lowest
+ * {@code sortOrder}, then {@code seq}, then {@code id}) and the admin screen still refuses a second
+ * row — W4 and W5 respectively. {@code isActive} deliberately does not participate in the
+ * constraint: retiring a row does not free its slot for a second one.
  */
 @Entity
 @Table(name = "summit_plan_template_map")
@@ -52,6 +56,32 @@ public class SummitPlanTemplateMap {
 
     @Column(name = "service_item_id", nullable = false)
     private Integer serviceItemId;
+
+    /**
+     * V103 (W3) — ordinal within one {@code (pspId, serviceItemId)}, so one elected service item can
+     * map to several Summit plans. <b>Not a display order</b> ({@link #sortOrder} is) and <b>not an
+     * identifier</b> — it exists only so the unique key {@code (psp_id, service_item_id, seq)} can
+     * hold more than one row per service item. Every pre-V103 row is {@code 0}. Named {@code seq},
+     * not {@code sequence}: {@code SEQUENCE} is reserved on MariaDB and a keyword in several dialects.
+     */
+    @Column(name = "seq", nullable = false)
+    private short seq = 0;
+
+    /**
+     * V103 (W3) — how W4 derives this plan's {@code Effective Date} from the sale's plan-year start:
+     * {@code PLAN_YEAR_START} or {@code MOST_RECENT_PAST_MONTHDAY}. A string, validated by AMS when
+     * W4 evaluates it; nothing evaluates it yet.
+     */
+    @Column(name = "effective_date_rule", nullable = false)
+    private String effectiveDateRule = "PLAN_YEAR_START";
+
+    /** V103 (W3) — signed month offset applied to the plan-year start before the rule is evaluated. */
+    @Column(name = "offset_months", nullable = false)
+    private int offsetMonths = 0;
+
+    /** V103 (W3) — signed year offset for the plan year this plan is created in; {@code 0} = the sale's own. */
+    @Column(name = "plan_year_offset_years", nullable = false)
+    private int planYearOffsetYears = 0;
 
     /** The Summit-assigned Plan Template ID. Per-installation; never hardcoded (build rule 4). */
     @Column(name = "template_id", nullable = false)
@@ -92,6 +122,18 @@ public class SummitPlanTemplateMap {
 
     public Integer getServiceItemId() { return serviceItemId; }
     public void setServiceItemId(Integer serviceItemId) { this.serviceItemId = serviceItemId; }
+
+    public short getSeq() { return seq; }
+    public void setSeq(short seq) { this.seq = seq; }
+
+    public String getEffectiveDateRule() { return effectiveDateRule; }
+    public void setEffectiveDateRule(String effectiveDateRule) { this.effectiveDateRule = effectiveDateRule; }
+
+    public int getOffsetMonths() { return offsetMonths; }
+    public void setOffsetMonths(int offsetMonths) { this.offsetMonths = offsetMonths; }
+
+    public int getPlanYearOffsetYears() { return planYearOffsetYears; }
+    public void setPlanYearOffsetYears(int planYearOffsetYears) { this.planYearOffsetYears = planYearOffsetYears; }
 
     public Integer getTemplateId() { return templateId; }
     public void setTemplateId(Integer templateId) { this.templateId = templateId; }
