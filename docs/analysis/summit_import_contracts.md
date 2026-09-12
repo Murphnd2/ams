@@ -10,6 +10,9 @@ raw empirical record from the 2026-09-11/12 test session. Reconciling the two (f
 facts into the spec, flagging where the spec's existing text is contradicted) is follow-up work,
 not done here.
 
+**Emitter specification:** `docs/analysis/summit_import_spec.md` is the field-level emitter contract
+built from these findings — this file remains the record of how the behaviour was established.
+
 **Related:** `docs/business/summit_data_exchange.md` · `docs/analysis/legal_assumptions.md`
 (LA-22, LA-38) · `docs/business/swbd_premiumpath.md`
 
