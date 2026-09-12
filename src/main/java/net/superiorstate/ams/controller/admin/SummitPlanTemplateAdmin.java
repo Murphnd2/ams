@@ -11,6 +11,7 @@ import jakarta.servlet.http.HttpSession;
 import net.superiorstate.ams.AppConfig;
 import net.superiorstate.ams.data.AmsDataLocal;
 import net.superiorstate.ams.data.dao.SummitPlanTemplateMapDAO;
+import net.superiorstate.ams.data.resolver.SummitPlanDateRuleResolver;
 import net.superiorstate.ams.data.resolver.SummitPlanTemplateResolver;
 import net.superiorstate.ams.model.activity.checklist.sequences.support.ServiceItem;
 import net.superiorstate.ams.model.general.PSP;
@@ -40,10 +41,20 @@ import java.util.List;
  * add / edit / delete of mapping rows, deleting rather than deactivating).
  * <p>
  * ⚠️ <b>The listing includes inactive rows, deliberately.</b>
- * {@code uq_summit_plan_template_map_psp_service} does not consider {@code is_active}, so an
- * inactive row still occupies its (PSP, ServiceItem) pair and blocks a new one. Hiding inactive
- * rows would leave an admin staring at an empty list while every add failed — precisely the trap
- * T202 was filed against.
+ * {@code uq_summit_plan_template_map_psp_service_seq} (V103) does not consider {@code is_active},
+ * so an inactive row still occupies its (PSP, ServiceItem, seq) slot, and the W5 uniqueness rules
+ * on key segment and label count inactive rows too. Hiding them would leave an admin staring at an
+ * empty list while an add failed — precisely the trap T202 was filed against.
+ * <p>
+ * <b>W5 (V103): several rows per service item are the fan-out</b> — one Summit plan per row, each
+ * with its own {@code seq}, effective-date rule and offsets, which {@code SummitExportServlet}'s
+ * file 2 writer evaluates through {@code SummitPlanDateRuleResolver} (W4). The old "one mapping per
+ * service item" pre-check is replaced by three validations in {@link #save}: the rule must be one
+ * the resolver supports (V1); the key segment must be unique within the PSP (V2 — it composes
+ * Import Plan ID, Summit's upsert key, so a duplicate silently overwrites a plan); and the emitted
+ * Plan Name must be unique within the PSP (V3 — file 2's results correlate on it with no row
+ * number). Pre-existing violations are never auto-fixed; an edit that does not touch the offending
+ * field is allowed through.
  * <p>
  * ⚠️ <b>The {@code ServiceItem} picker shows the id, not just the description.</b>
  * {@code ServiceItem.code} is null on every real installation (T189) and {@code description} is a
@@ -59,6 +70,15 @@ public class SummitPlanTemplateAdmin extends HttpServlet {
     /** Flash attribute names, following {@code RateCacheAdmin}'s {@code rateCacheMessage}/{@code rateCacheError}. */
     private static final String FLASH_MESSAGE = "summitPlanTemplateMessage";
     private static final String FLASH_ERROR = "summitPlanTemplateError";
+
+    /**
+     * W5 -- the {@code effective_date_rule} values the form offers and {@link #save} accepts:
+     * exactly the set {@link SummitPlanDateRuleResolver} evaluates, referenced not restated, so a
+     * rule the emitter would refuse can never be saved here.
+     */
+    private static final List<String> RULE_OPTIONS = List.of(
+            SummitPlanDateRuleResolver.RULE_PLAN_YEAR_START,
+            SummitPlanDateRuleResolver.RULE_MOST_RECENT_PAST_MONTHDAY);
 
     /**
      * Setup-category service items are the ones a sale elects, and the ones the export matches
@@ -108,6 +128,10 @@ public class SummitPlanTemplateAdmin extends HttpServlet {
 
             request.setAttribute("mappings", mappings);
             request.setAttribute("serviceItems", loadSetupServiceItems(em, pspId));
+            // W5 -- the rule select is populated from the emitter's own supported set, so the
+            // screen can never offer a value the date resolver would refuse.
+            request.setAttribute("ruleOptions", RULE_OPTIONS);
+            request.setAttribute("defaultRule", SummitPlanDateRuleResolver.RULE_PLAN_YEAR_START);
 
             // Resolved here rather than in EL. A JSP-side "editId + 0" coercion throws on a
             // non-numeric parameter, and with no JSP precompiler in this build (T199) that would
@@ -154,7 +178,7 @@ public class SummitPlanTemplateAdmin extends HttpServlet {
                 delete(request, session, em, pspId);
             }
         } catch (RuntimeException e) {
-            // Never swallowed. The pre-check in save() handles the ordinary duplicate case with a
+            // Never swallowed. The seq-slot pre-check in save() handles the ordinary duplicate case with a
             // better message, but it cannot close the race between two admins, and a constraint
             // violation must reach the operator rather than a log nobody reads.
             session.setAttribute(FLASH_ERROR, "The change was not saved: " + e.getMessage());
@@ -175,6 +199,12 @@ public class SummitPlanTemplateAdmin extends HttpServlet {
         String label = trimToEmpty(request.getParameter("label"));
         Integer sortOrder = parseIntOrNull(request.getParameter("sortOrder"));
         boolean active = request.getParameter("active") != null;
+        // W5 (V103) -- the fan-out discriminator and date rules. seq blank on add = next free
+        // ordinal for the service item (see below); the offsets default to 0.
+        Integer seq = parseIntOrNull(request.getParameter("seq"));
+        String effectiveDateRule = trimToEmpty(request.getParameter("effectiveDateRule")).toUpperCase();
+        Integer offsetMonths = parseIntOrNull(request.getParameter("offsetMonths"));
+        Integer planYearOffsetYears = parseIntOrNull(request.getParameter("planYearOffsetYears"));
 
         if (serviceItemId == null || serviceItemId <= 0) {
             session.setAttribute(FLASH_ERROR, "Choose a service item.");
@@ -194,6 +224,17 @@ public class SummitPlanTemplateAdmin extends HttpServlet {
             return;
         }
         if (sortOrder == null) sortOrder = 0;
+        if (offsetMonths == null) offsetMonths = 0;
+        if (planYearOffsetYears == null) planYearOffsetYears = 0;
+        // V1 -- the rule must be one the emitter evaluates. The form is a select over the same
+        // list, so this fires only on a hand-crafted POST; the emitter's 500 must never be the
+        // first place a bad value surfaces.
+        if (!RULE_OPTIONS.contains(effectiveDateRule)) {
+            session.setAttribute(FLASH_ERROR, "Effective date rule '" + effectiveDateRule
+                    + "' is not supported. Supported values are: "
+                    + SummitPlanDateRuleResolver.SUPPORTED_RULES + ".");
+            return;
+        }
 
         // The service item must belong to this PSP. Without this an admin could map another
         // installation's item by typing its id, and the export would then emit a plan for a
@@ -208,21 +249,9 @@ public class SummitPlanTemplateAdmin extends HttpServlet {
 
         SummitPlanTemplateMap mapping;
         if (id == null) {
-            // ⚠️ Pre-check the unique constraint so the rejection can be explained in words. The
-            // constraint ignores is_active, so an INACTIVE row blocks a new one just as firmly --
-            // which is exactly the case an admin cannot guess at. Nothing is deleted to make room.
-            SummitPlanTemplateMap existing =
-                    SummitPlanTemplateMapDAO.findByPspAndServiceItem(em, pspId, serviceItemId);
-            if (existing != null) {
-                session.setAttribute(FLASH_ERROR, "Service item " + serviceItemId
-                        + " is already mapped by row " + existing.getId() + " (template "
-                        + existing.getTemplateId() + ", key segment '" + existing.getKeySegment()
-                        + "', currently " + (existing.isActive() ? "ACTIVE" : "INACTIVE")
-                        + "). One Summit plan per service item is enforced by the database and does"
-                        + " not consider the active flag, so an inactive row still holds the slot."
-                        + " Edit that row rather than adding a second one.");
-                return;
-            }
+            // W5 (V103) -- several rows per service item are now the fan-out, so the "one mapping
+            // per service item" pre-check that stood here is gone. Its replacements (V2/V3 and the
+            // seq slot check) run below, on add and edit alike.
             mapping = new SummitPlanTemplateMap();
             mapping.setPspId(pspId);
             mapping.setCreatedAt(LocalDateTime.now());
@@ -236,12 +265,99 @@ public class SummitPlanTemplateAdmin extends HttpServlet {
             }
         }
 
+        // Every other row of this PSP -- active AND inactive, since an inactive row still holds
+        // its slot and can be reactivated. One list serves the seq slot check, V2 and V3.
+        List<SummitPlanTemplateMap> others = new ArrayList<>();
+        for (SummitPlanTemplateMap other : SummitPlanTemplateMapDAO.findAllByPspId(em, pspId)) {
+            if (id == null || !id.equals(other.getId())) others.add(other);
+        }
+
+        // seq: blank on add = next free ordinal for this service item (max + 1, or 0 when it has
+        // none) -- the convenience Kevin asked for, applied only when the field is left empty.
+        if (seq == null) {
+            int max = -1;
+            for (SummitPlanTemplateMap other : others) {
+                if (serviceItemId.equals(other.getServiceItemId()) && other.getSeq() > max) {
+                    max = other.getSeq();
+                }
+            }
+            seq = id == null ? max + 1 : (int) mapping.getSeq();
+        }
+        if (seq < 0 || seq > Short.MAX_VALUE) {
+            session.setAttribute(FLASH_ERROR, "Seq must be between 0 and " + Short.MAX_VALUE + ".");
+            return;
+        }
+        // (psp, service item, seq) is the unique key. Pre-checked so the rejection reads in words
+        // rather than as a constraint violation.
+        for (SummitPlanTemplateMap other : others) {
+            if (serviceItemId.equals(other.getServiceItemId()) && other.getSeq() == seq) {
+                session.setAttribute(FLASH_ERROR, "Service item " + serviceItemId + " already has a"
+                        + " mapping at seq " + seq + " (row " + other.getId() + ", template "
+                        + other.getTemplateId() + ", key segment '" + other.getKeySegment() + "',"
+                        + (other.isActive() ? " ACTIVE" : " INACTIVE") + "). Seq is the ordinal"
+                        + " within a service item and must be unique there; leave it blank to take"
+                        + " the next free one, or edit that row instead.");
+                return;
+            }
+        }
+
+        // V2 -- key segment unique within the PSP, across every service item, inactive rows
+        // included. Import Plan ID is sanitize(employerTpaCustomId + keySegment) and is Summit's
+        // upsert key: two rows sharing a segment compose the SAME key, so the second plan silently
+        // overwrites the first in Summit -- no error, wrong plan funded -- and the ICHRA
+        // size() != 1 refusals trip as well. Case-insensitive, the conservative reading of an
+        // upsert key whose case handling is unestablished. On edit, checked only when the segment
+        // is being changed, so a row already in violation under the pre-V103 key can still be
+        // saved for an unrelated edit rather than trapping the operator (no auto-fix, no migration).
+        boolean keySegmentChanged = id == null || !keySegment.equals(mapping.getKeySegment());
+        if (keySegmentChanged) {
+            for (SummitPlanTemplateMap other : others) {
+                if (keySegment.equalsIgnoreCase(other.getKeySegment())) {
+                    session.setAttribute(FLASH_ERROR, "Key segment '" + keySegment + "' would collide:"
+                            + " row " + other.getId() + " (service item " + other.getServiceItemId()
+                            + ", seq " + other.getSeq() + ", label '" + effectiveLabel(other) + "',"
+                            + (other.isActive() ? " ACTIVE" : " INACTIVE") + ") already holds it."
+                            + " Both rows would compose the same Import Plan ID -- Summit's upsert"
+                            + " key -- so the second plan would silently overwrite the first in"
+                            + " Summit. Key segments must be unique within your PSP, inactive rows"
+                            + " included.");
+                    return;
+                }
+            }
+        }
+
+        // V3 -- the emitted Plan Name (label, falling back to key segment) unique within the PSP.
+        // File 2's results correlate on Plan Name with no row number, so duplicates make result
+        // lines unattributable; the emitter refuses at export time and this makes that
+        // unreachable. Same edit-only-when-changed rule as V2.
+        String newEffectiveLabel = label.isEmpty() ? keySegment : label;
+        boolean labelChanged = id == null || !newEffectiveLabel.equals(effectiveLabel(mapping));
+        if (labelChanged) {
+            for (SummitPlanTemplateMap other : others) {
+                if (newEffectiveLabel.equalsIgnoreCase(effectiveLabel(other))) {
+                    session.setAttribute(FLASH_ERROR, "Plan Name '" + newEffectiveLabel + "' is"
+                            + " already used by row " + other.getId() + " (service item "
+                            + other.getServiceItemId() + ", seq " + other.getSeq() + ", key segment '"
+                            + other.getKeySegment() + "'," + (other.isActive() ? " ACTIVE" : " INACTIVE")
+                            + "). Summit's results file for this template correlates on Plan Name"
+                            + " and carries no row number, so two plans sharing one could not be"
+                            + " told apart. Labels (or the key segment a blank label falls back to)"
+                            + " must be unique within your PSP.");
+                    return;
+                }
+            }
+        }
+
         mapping.setServiceItemId(serviceItemId);
         mapping.setTemplateId(templateId);
         mapping.setKeySegment(keySegment);
         mapping.setLabel(label.isEmpty() ? null : label);
         mapping.setSortOrder(sortOrder);
         mapping.setActive(active);
+        mapping.setSeq((short) (int) seq);
+        mapping.setEffectiveDateRule(effectiveDateRule);
+        mapping.setOffsetMonths(offsetMonths);
+        mapping.setPlanYearOffsetYears(planYearOffsetYears);
 
         if (id == null) {
             SummitPlanTemplateMapDAO.insert(em, mapping);
@@ -348,6 +464,12 @@ public class SummitPlanTemplateAdmin extends HttpServlet {
         request.setAttribute("pageTitle", "Summit Plan Templates");
         request.setAttribute("pageIcon", "bi-diagram-2");
         request.getRequestDispatcher(VIEW).forward(request, response);
+    }
+
+    /** The Plan Name a row emits: its label, or its key segment when the label is blank (the resolver's rule). */
+    private static String effectiveLabel(SummitPlanTemplateMap row) {
+        String label = row.getLabel() == null ? "" : row.getLabel().trim();
+        return label.isEmpty() ? (row.getKeySegment() == null ? "" : row.getKeySegment().trim()) : label;
     }
 
     private static String trimToEmpty(String value) {

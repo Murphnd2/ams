@@ -118,7 +118,9 @@
         </div>
 
         <%-- Inactive rows are listed deliberately: the unique constraint ignores is_active, so an
-             inactive row still holds its (PSP, service item) slot and blocks a new one. --%>
+             inactive row still holds its (PSP, service item, seq) slot, and the key-segment and
+             label uniqueness rules count inactive rows too (W5). Rows are in emit order:
+             sort_order, then seq -- the order the file comes out. --%>
         <c:choose>
             <c:when test="${empty mappings}">
                 <div class="empty-state">
@@ -131,10 +133,14 @@
                     <thead>
                     <tr>
                         <th>Order</th>
+                        <th>Seq</th>
                         <th>Service item</th>
                         <th>Plan Template ID</th>
                         <th>Key segment</th>
                         <th>Label</th>
+                        <th>Effective date rule</th>
+                        <th>Offset months</th>
+                        <th>Plan year offset</th>
                         <th>Active</th>
                         <th></th>
                     </tr>
@@ -143,6 +149,7 @@
                     <c:forEach var="m" items="${mappings}">
                         <tr class="${m.active ? '' : 'row-inactive'}">
                             <td><c:out value="${m.sortOrder}"/></td>
+                            <td class="mono"><c:out value="${m.seq}"/></td>
                             <td class="mono"><c:out value="${m.serviceItemId}"/></td>
                             <td class="mono"><c:out value="${m.templateId}"/></td>
                             <td class="mono"><c:out value="${m.keySegment}"/></td>
@@ -155,6 +162,9 @@
                                     <c:otherwise><c:out value="${m.label}"/></c:otherwise>
                                 </c:choose>
                             </td>
+                            <td class="mono"><c:out value="${m.effectiveDateRule}"/></td>
+                            <td class="mono"><c:out value="${m.offsetMonths}"/></td>
+                            <td class="mono"><c:out value="${m.planYearOffsetYears}"/></td>
                             <td>
                                 <c:choose>
                                     <c:when test="${m.active}"><span class="badge badge-on">Active</span></c:when>
@@ -244,13 +254,66 @@
                     </div>
                 </div>
 
+                <%-- W5 (V103) -- the fan-out fields. One Summit plan per row; a service item may
+                     hold several rows, each on its own computed effective date and plan year. --%>
+                <div class="row g-2 mt-1">
+                    <div class="col-md-2">
+                        <label for="seq">Seq (ordinal within service item)</label>
+                        <input type="number" min="0" step="1" class="form-control form-control-sm mono"
+                               id="seq" name="seq"
+                               placeholder="${empty editing ? 'next free' : ''}"
+                               value="${not empty editing ? editing.seq : ''}">
+                    </div>
+                    <div class="col-md-4">
+                        <label for="effectiveDateRule">Effective date rule</label>
+                        <select class="form-select form-select-sm mono" id="effectiveDateRule" name="effectiveDateRule" required>
+                            <c:forEach var="rule" items="${ruleOptions}">
+                                <option value="${rule}"
+                                        <c:if test="${(not empty editing and editing.effectiveDateRule eq rule) or (empty editing and rule eq defaultRule)}">selected</c:if>>
+                                    <c:out value="${rule}"/>
+                                </option>
+                            </c:forEach>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label for="offsetMonths">Offset months</label>
+                        <input type="number" step="1" class="form-control form-control-sm mono"
+                               id="offsetMonths" name="offsetMonths"
+                               value="${not empty editing ? editing.offsetMonths : 0}">
+                    </div>
+                    <div class="col-md-2">
+                        <label for="planYearOffsetYears">Plan year offset (years)</label>
+                        <input type="number" step="1" class="form-control form-control-sm mono"
+                               id="planYearOffsetYears" name="planYearOffsetYears"
+                               value="${not empty editing ? editing.planYearOffsetYears : 0}">
+                    </div>
+                </div>
+
                 <div class="text-muted mt-2" style="font-size:0.75rem;">
                     <i class="bi bi-info-circle me-1"></i>Key segment travels inside
                     <span class="mono">Import Plan ID</span>, which is an upsert key in a pipe-delimited
                     file — letters and digits only, no pipe, no spaces, no hyphen. Label falls back to
                     the key segment when left blank.
-                    One mapping per service item: the database rejects a second one even if the first
-                    is inactive.
+                    <b>What must be unique:</b> (service item, seq) — one row per slot; the key segment
+                    within your PSP — two rows sharing one would compose the same Import Plan ID and the
+                    second plan would silently overwrite the first in Summit; and the Plan Name (label,
+                    or the key segment it falls back to) within your PSP — Summit's results file
+                    correlates on it with no row number. Inactive rows count for all three.
+                </div>
+                <div class="text-muted mt-1" style="font-size:0.75rem;">
+                    <i class="bi bi-calendar3 me-1"></i><b>Date rules.</b>
+                    <span class="mono">Seq</span> is the ordinal within a service item, not a display
+                    order (<span class="mono">Order</span> is) — leave it blank on add to take the next
+                    free one.
+                    <span class="mono">PLAN_YEAR_START</span> — effective date is this row's own plan
+                    year begin; <span class="mono">Offset months</span> is <b>not</b> applied.
+                    <span class="mono">MOST_RECENT_PAST_MONTHDAY</span> — takes the month and day of
+                    (plan year start + <span class="mono">Offset months</span>), then the most recent
+                    occurrence of that month/day strictly in the past.
+                    <span class="mono">Plan year offset</span> is signed: 0 is the sale's own plan year,
+                    −1 the prior year.
+                    ⭐ An effective date outside its own plan year is valid and intended — Summit stores
+                    it verbatim. It is not a mistake to be corrected.
                 </div>
 
                 <div class="mt-2">
