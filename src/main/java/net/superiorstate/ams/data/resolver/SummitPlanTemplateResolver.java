@@ -115,12 +115,51 @@ public final class SummitPlanTemplateResolver {
         private final int templateId;
         private final String keySegment;
         private final String label;
+        // W4 (V103) -- the fan-out discriminator and date rules. The 4-arg constructor below fixes
+        // them at seq 0 / PLAN_YEAR_START / 0 / 0, which is "one plan, on the plan-year start, in
+        // the sale's own plan year" -- exactly what every property entry and the legacy synthetic
+        // template emitted before W4, so those paths are byte-identical without touching them.
+        private final int seq;
+        private final String effectiveDateRule;
+        private final int offsetMonths;
+        private final int planYearOffsetYears;
 
         public PlanTemplate(int serviceItemId, int templateId, String keySegment, String label) {
+            this(serviceItemId, templateId, keySegment, label,
+                    0, SummitPlanDateRuleResolver.RULE_PLAN_YEAR_START, 0, 0);
+        }
+
+        public PlanTemplate(int serviceItemId, int templateId, String keySegment, String label,
+                            int seq, String effectiveDateRule, int offsetMonths,
+                            int planYearOffsetYears) {
             this.serviceItemId = serviceItemId;
             this.templateId = templateId;
             this.keySegment = keySegment;
             this.label = label;
+            this.seq = seq;
+            this.effectiveDateRule = effectiveDateRule;
+            this.offsetMonths = offsetMonths;
+            this.planYearOffsetYears = planYearOffsetYears;
+        }
+
+        /** V103 ordinal within the service item; 0 for every property entry and every pre-V103 row. */
+        public int getSeq() {
+            return seq;
+        }
+
+        /** V103 {@code effective_date_rule}, evaluated by {@link SummitPlanDateRuleResolver}. Not validated here. */
+        public String getEffectiveDateRule() {
+            return effectiveDateRule;
+        }
+
+        /** V103 {@code offset_months}. */
+        public int getOffsetMonths() {
+            return offsetMonths;
+        }
+
+        /** V103 {@code plan_year_offset_years}. */
+        public int getPlanYearOffsetYears() {
+            return planYearOffsetYears;
         }
 
         /**
@@ -260,8 +299,11 @@ public final class SummitPlanTemplateResolver {
      * byte-identical for a mapping expressed either way. That is the property this whole change
      * rests on.
      * <p>
-     * ⚠️ <b>Both sources are validated by the same rules</b> — {@link #keySegmentRejection} and the
-     * duplicate-{@code serviceItemId} first-wins rejection are shared, not reimplemented. A table
+     * ⚠️ <b>Both sources are validated by the same key-segment rule</b> — {@link #keySegmentRejection}
+     * is shared, not reimplemented. ⚠️ W4 (V103): they <b>differ</b> on several rows per service
+     * item — the table returns every active row (the fan-out, ordered {@code sort_order, seq, id});
+     * the property keeps its first-entry-wins skip and stays 1:1, because it has no fan-out shape
+     * and is a legacy fallback the admin table supersedes. A table
      * row carrying a pipe or whitespace in {@code key_segment} is skipped with a {@code WARN}
      * exactly as a malformed property entry is, because a bad row must cost one plan rather than
      * corrupting a pipe-delimited file.
@@ -344,7 +386,6 @@ public final class SummitPlanTemplateResolver {
         if (rows == null || rows.isEmpty()) return Collections.emptyList();
 
         List<PlanTemplate> templates = new ArrayList<>();
-        Set<Integer> seenServiceItemIds = new HashSet<>();
 
         for (SummitPlanTemplateMap row : rows) {
             String rowRef = "id " + row.getId();
@@ -380,16 +421,13 @@ public final class SummitPlanTemplateResolver {
                 label = row.getLabel().trim();
             }
 
-            // The unique constraint makes this unreachable through the admin screen; it is kept so
-            // the two sources are validated identically and so a hand-edited row cannot behave
-            // differently from a hand-edited property entry.
-            if (!seenServiceItemIds.add(serviceItemId)) {
-                log.warn("[SUMMIT-EXPORT] {} skipped: service item id {} is already mapped earlier"
-                        + " for this PSP; the first row wins", rowRef, serviceItemId);
-                continue;
-            }
-
-            templates.add(new PlanTemplate(serviceItemId, templateId, keySegment, label));
+            // W4 (V103) -- several rows per service item are now the fan-out, not a defect: every
+            // active row is returned, in the DAO's (sort_order, seq, id) order. The first-row-wins
+            // skip that stood here until W4 is gone; the property path keeps its own, because the
+            // property has no fan-out shape and stays 1:1 by design.
+            templates.add(new PlanTemplate(serviceItemId, templateId, keySegment, label,
+                    row.getSeq(), row.getEffectiveDateRule(), row.getOffsetMonths(),
+                    row.getPlanYearOffsetYears()));
         }
 
         if (templates.isEmpty()) {

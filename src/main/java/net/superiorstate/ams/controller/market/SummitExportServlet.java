@@ -17,6 +17,7 @@ import net.superiorstate.ams.data.resolver.SummitCdhElementResolver;
 import net.superiorstate.ams.data.resolver.SummitEmployerElementResolver;
 import net.superiorstate.ams.data.resolver.SummitEmployerFlagResolver;
 import net.superiorstate.ams.data.resolver.SummitImportTemplateResolver;
+import net.superiorstate.ams.data.resolver.SummitPlanDateRuleResolver;
 import net.superiorstate.ams.data.resolver.SummitPlanTemplateResolver;
 import net.superiorstate.ams.data.resolver.SummitPlanTemplateResolver.PlanTemplate;
 import net.superiorstate.ams.data.service.SummitSftpService;
@@ -915,8 +916,12 @@ public class SummitExportServlet extends HttpServlet {
                     proposalId, electedServices.keySet(), matchedTemplateIds);
         }
 
-        String planYearBegin = planYearStart.format(SUMMIT_DATE);
-        String planYearEndStr = planYearEnd.format(SUMMIT_DATE);
+        // W4 (V103) -- columns E/G/H are now per row, evaluated by SummitPlanDateRuleResolver from
+        // the sale's plan year and the mapping row's rule/offsets. A seq 0 / PLAN_YEAR_START / 0 / 0
+        // row -- every pre-V103 row, every property entry, the legacy synthetic -- resolves to
+        // exactly the pair of answers that used to be formatted here, so its line is unchanged.
+        // `today` is taken once per export so every row in one file sees the same calendar date.
+        LocalDate today = LocalDate.now();
         // S31-J -- planYear is deliberately no longer computed here. A plan's identity and its
         // names carry no year; the year travels in Plan Year Begin / Plan Year End alone.
 
@@ -933,7 +938,37 @@ public class SummitExportServlet extends HttpServlet {
         Map<String, String> graceFields = SummitCdhElementResolver.graceFields();
 
         List<String> lines = new ArrayList<>();
+        // W4 -- file 2's results correlate on Plan Name (no row number), so two rows sharing a
+        // label produce unattributable result lines. Refused, naming the duplicate. Keyed on the
+        // exact emitted label; first occurrence remembered for the message.
+        Map<String, PlanTemplate> labelsSeen = new LinkedHashMap<>();
         for (PlanTemplate template : emit) {
+            SummitPlanDateRuleResolver.Resolved resolved = SummitPlanDateRuleResolver.resolve(
+                    planYearStart, planYearEnd, template.getEffectiveDateRule(),
+                    template.getOffsetMonths(), template.getPlanYearOffsetYears(), today,
+                    "plan '" + template.getLabel() + "' (ServiceItem " + template.getServiceItemId()
+                            + ", template " + template.getTemplateId() + ", seq " + template.getSeq() + ")");
+            if (resolved.isRejected()) {
+                log.error("[SUMMIT-EXPORT] {}", resolved.getRejection());
+                writePlainError(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+                        "Cannot generate Employer CDH Plan file: " + resolved.getRejection());
+                return;
+            }
+            PlanTemplate sameLabel = labelsSeen.putIfAbsent(template.getLabel(), template);
+            if (sameLabel != null) {
+                writePlainError(response, HttpServletResponse.SC_BAD_REQUEST,
+                        "Cannot generate Employer CDH Plan file: two plan rows would carry the same"
+                                + " Plan Name '" + template.getLabel() + "' -- ServiceItem "
+                                + sameLabel.getServiceItemId() + " seq " + sameLabel.getSeq()
+                                + " (template " + sameLabel.getTemplateId() + ") and ServiceItem "
+                                + template.getServiceItemId() + " seq " + template.getSeq()
+                                + " (template " + template.getTemplateId() + "). Summit's results"
+                                + " file for this template correlates on Plan Name and carries no"
+                                + " row number, so the two rows' outcomes could not be told apart."
+                                + " Give each mapping row a distinct Label on the Summit Plan"
+                                + " Templates admin screen, then retry.");
+                return;
+            }
             // ⚠️ Grace is per sale and per plan. A key segment absent from SUMMIT_CDH_GRACE_FIELDS
             // means the plan has no grace concept -- ICHRA's path -- and its grace columns emit
             // empty. A key segment that IS listed must produce a readable answer.
@@ -1001,12 +1036,17 @@ public class SummitExportServlet extends HttpServlet {
 
             // With no optional elements configured, no values are built and none are appended --
             // the row is the eight mandatory columns, byte for byte as before S31-H.
+            // W4 -- the grace date derives from THIS row's plan-year end, not the sale's: a
+            // prior-year row's grace period belongs to the prior plan year.
+            SummitPlanDateRuleResolver.PlanDates dates = resolved.getDates();
             Map<SummitCdhElementResolver.Element, String> optionalValues =
                     optional.getElements().isEmpty()
                             ? java.util.Collections.emptyMap()
-                            : buildOptionalValues(grace, planYearEnd);
+                            : buildOptionalValues(grace, dates.getPlanYearEnd());
             lines.add(buildCdhPlanRow(template, employerTpaCustomId,
-                    planYearBegin, planYearEndStr,
+                    dates.getEffectiveDate().format(SUMMIT_DATE),
+                    dates.getPlanYearBegin().format(SUMMIT_DATE),
+                    dates.getPlanYearEnd().format(SUMMIT_DATE),
                     optional.getElements(), optionalValues));
         }
 
@@ -1060,11 +1100,15 @@ public class SummitExportServlet extends HttpServlet {
      * id, plan name, import plan id and description now come from the configured
      * {@link PlanTemplate} instead of being hardcoded to ICHRA.
      * <p>
-     * {@code Effective Date} (column 5) and {@code Plan Year Begin} (column 7) are deliberately
-     * the same value, as they were before — the plan takes effect when its plan year opens.
+     * W4 (V103): {@code Effective Date} (column E) and {@code Plan Year Begin} (column G) are
+     * <b>no longer necessarily equal</b>. Each arrives pre-computed by
+     * {@link SummitPlanDateRuleResolver} from the mapping row's rule and offsets; under
+     * {@code PLAN_YEAR_START} with zero offsets they are the same value they always were. ⭐ An
+     * effective date outside its own plan year is valid — Summit stores it verbatim (2026-09-12) —
+     * so this builder applies no guard between them.
      */
     private String buildCdhPlanRow(PlanTemplate t, String employerTpaCustomId,
-                                   String planYearBegin, String planYearEnd,
+                                   String effectiveDate, String planYearBegin, String planYearEnd,
                                    List<SummitCdhElementResolver.Element> optionalElements,
                                    Map<SummitCdhElementResolver.Element, String> optionalValues) {
         List<String> columns = new ArrayList<>(List.of(
@@ -1093,10 +1137,10 @@ public class SummitExportServlet extends HttpServlet {
                 // agree.
                 sanitize(employerTpaCustomId + t.getKeySegment()),
                 sanitize(t.getLabel()),
-                planYearBegin,
+                effectiveDate,                              // E  (W4: per row)
                 employerTpaCustomId,
-                planYearBegin,
-                planYearEnd));
+                planYearBegin,                              // G  (W4: per row)
+                planYearEnd));                              // H  (W4: per row)
 
         // S31-H -- the optional block, appended in configured order. With no elements configured
         // this loop runs zero times and the joined result is the eight mandatory columns exactly as
