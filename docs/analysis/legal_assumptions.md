@@ -1611,7 +1611,11 @@ in place of the original `Employer created successfully`; a byte-identical recor
 rather than skipped. See `docs/business/summit_data_exchange.md`.
 
 **Design choice.** No sent-state store, no create-vs-update branch, no reconciliation table. AMS
-emits full current state each run.
+emits full current state each run. ⚠️ **Caveat added 2026-09-12 (S50), scoped to file type**: this
+holds for Employer Demographic, Employer CDH Plan and Demographics, but not for `125 PI Elections`,
+where a second election submission for an already-enrolled participant returns `Plan Already
+Enrolled` rather than updating in place — regenerating and resending that file is not safe on its
+own.
 
 **Risk if wrong.** Silent duplicate employers.
 
@@ -1694,7 +1698,12 @@ a configured installation prefix (`SUMMIT_TPA_ID_PREFIX`) plus `Prospect.id`, ra
 from per-installation to cross-installation — `Prospect.id` alone is only unique within one AMS
 database, and the platform's multi-installation ambition means two installations could someday feed
 the same Summit TPA account. The prefix must never change once any employer has been imported under
-it, for the same reversal-cost reason `Prospect.id` itself must not.
+it, for the same reversal-cost reason `Prospect.id` itself must not. **Updated 2026-09-08 (S29-G2):**
+the prefix and `Prospect.id` are joined by a literal `E`, not a hyphen — `158-140952` and
+`158_140952` were both rejected with `Invalid data for Employer TPA Custom ID.` before field
+binding, while `158140952` was accepted, proving `Employer TPA Custom ID` must be alphanumeric only.
+`resolveEmployerTpaCustomId` composes `{prefix}E{prospectId}` and refuses to emit (returns `null`)
+rather than fall back if the configured prefix itself is not alphanumeric.
 
 ---
 
@@ -2185,6 +2194,35 @@ shorten the expiry. Neither touches the roster or any Summit-side record.
 
 **Status.** Implemented as designed (s47c, 2026-09-11) — V100, `CensusIntakeService`,
 `CensusDropServlet`; compile-verified, not yet runtime-verified.
+
+---
+
+### LA-42 — The Import Plan ID form
+
+**Assumption.** `Import Plan ID` is composed as `{SUMMIT_TPA_ID_PREFIX}E{Prospect.id}{keySegment}`,
+strictly alphanumeric, carrying no plan year, and is Summit's upsert key for a benefit plan.
+
+**Basis.** Test-verified 2026-09-12. `125 PI Contributions` rejects any non-alphanumeric character
+in this field (`ABC123` passes and resolves to nothing; `ZZSDX27A-INS125A` fails), while
+`Employer CDH Plan` and `HRA Enrollment` accept hyphens. Plan-year exclusion established S31-J: a
+renewal attaches a plan year to the existing plan rather than creating a new one.
+
+**Design choice.** Two composition sites in `SummitExportServlet` compose the value identically;
+`keySegment` is validated `[A-Za-z0-9]+` at both the resolver and the admin save path, and a
+rejection refuses the export rather than skipping the plan.
+
+**Risk if wrong.** A non-alphanumeric ID produces a plan that can never be funded by contribution
+import. A changed composition orphans plans already created under the prior key and causes the next
+export to create duplicates.
+
+**Reversal cost.** ⚠️ Rising sharply. Cheap now — no SSA plan currently receives imports. After real
+plans exist, each needs its `Import Plan ID` hand-edited in Summit (proven editable on an active
+plan) or it is orphaned.
+
+**Confirm before.** Any change to the composition, the prefix, or the key-segment rule, once real
+plans exist in a production Summit installation.
+
+**Status.** Confirmed by test, 2026-09-12.
 
 ---
 

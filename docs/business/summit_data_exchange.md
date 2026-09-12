@@ -431,17 +431,27 @@ carrying a second Summit-assigned reference that changes annually.
 **same** plan and attaches another plan year to it; a plan carries multiple plan years over time, and
 elections separate by plan year. That is the fact everything below turns on.
 
-`Import Plan ID` is the **upsert key**. So with a year in it:
+`Import Plan ID` is the **upsert key**. The shipped form carries no year, so a renewal emits the
+identical id every time:
 
-- year one emits `158E140952-DCAP-2026` and Summit creates the plan;
-- year two emits `158E140952-DCAP-2027`, which Summit reads as a **different** plan and **creates a
-  second one** rather than attaching a plan year to the first;
-- and so on, **every year, indefinitely** — a growing set of near-duplicate plans with elections split
-  across them, indistinguishable in the UI except by a key nobody reads.
+- year one emits `158E140952DCAP` and Summit creates the plan;
+- year two emits the same `158E140952DCAP`, which Summit reads as the **same** plan and **attaches**
+  the new plan year to it rather than creating a second one.
 
-**The shipped form is `{employerTpaCustomId}-{keySegment}`.** The plan year travels in
-`Plan Year Begin` / `Plan Year End`, which file 2 already emits inline and which is the mechanism
-Summit provides for exactly this.
+Had the year travelled in the key instead — `158E140952DCAP2026` in year one, `158E140952DCAP2027`
+in year two — Summit would read those as **different** plans and **create a second one** rather than
+attaching a plan year to the first, and so on, **every year, indefinitely** — a growing set of
+near-duplicate plans with elections split across them, indistinguishable in the UI except by a key
+nobody reads.
+
+**The shipped form is `{employerTpaCustomId}{keySegment}`, with no separator between them.** ⚠️
+**S50, 2026-09-12** — this dropped the hyphen carried until then. `Validate Import Format` proved
+`125 PI Contributions` rejects any non-alphanumeric character in `Import Plan ID`:
+`ZZSDX27A-INS125A` and `ZZSDX27A_INS125A` failed, while `ZZSDX27AINS125A`, `INS125A`, `1394` and
+`ABC123` all passed — `ABC123` passing proves this is a character check, not a lookup. Every plan
+AMS had been creating carried a hyphen and so could never receive a contribution import. The plan
+year travels in `Plan Year Begin` / `Plan Year End`, which file 2 already emits inline and which is
+the mechanism Summit provides for exactly this.
 
 ⚠️ **The superseded form was `{employerTpaCustomId}-{keySegment}-{planYear}`.** T185 recorded a
 deliberate do-not-touch on it, reasoning that keeping the year was the recoverable error (a spare plan
@@ -702,7 +712,7 @@ The single most important section. Four identifiers, three owned by AMS.
 |---|---|---|---|
 | `Employer TPA Custom ID` | **AMS** | Per installation | **Upsert key.** Must be stable for the life of the employer — changing it orphans the old record and creates a new one. Derive from something immutable, never from a name or tax ID. ⚠️ **Must be alphanumeric** — no hyphen, no underscore (import-established 2026-09-08; see below). AMS composes `{prefix}E{prospectId}`. |
 | `Participant TPA Custom ID` | **AMS** | ⚠️ **GLOBALLY UNIQUE across all employers** | See the warning below. **Hyphens are accepted** — `158-P-9001` imported *and enrolled* successfully 2026-09-08. AMS composes `{prefix}-P-{participantId}`, unchanged. |
-| `Import Plan ID` | **AMS** | Per-employer accepted — **treat as suspect** | Two employers took `ICHRA2027` and enrollment resolved correctly. But this is the same evidence pattern that misled on participants. Namespace by employer unless a test proves otherwise. **Hyphens are accepted** — `158140952-PROBEA-2026` imported successfully 2026-09-08. ⚠️ **The shape CHANGED in S31-J: it is now `{employerKey}-{keySegment}` with NO plan year**, because a Summit plan persists across plan years and a year in the upsert key would create a duplicate plan every renewal. T185 is retired. |
+| `Import Plan ID` | **AMS** | Per-employer accepted — **treat as suspect** | Two employers took `ICHRA2027` and enrollment resolved correctly. But this is the same evidence pattern that misled on participants. Namespace by employer unless a test proves otherwise. ⚠️ **Hyphen acceptance is per-file-type, not universal.** `158140952-PROBEA-2026` imported successfully to `Employer CDH Plan` 2026-09-08, but `125 PI Contributions` rejects any non-alphanumeric character in this field, proven 2026-09-12. **The shape CHANGED in S31-J: it is now `{employerKey}-{keySegment}` with NO plan year**, because a Summit plan persists across plan years and a year in the upsert key would create a duplicate plan every renewal. T185 is retired. ⚠️ **The hyphen itself was then dropped in S50**: the shipped form is `{employerKey}{keySegment}`, strictly alphanumeric, so one form satisfies every file type. |
 | `Plan Template ID` | **Summit** | — | The **only** Summit-assigned foreign reference the emitter needs. Config, resolved at runtime, **never hardcoded** — it differs per installation, same reasoning as the project's reference-row rule. |
 
 **Write this warning in full, it cost a wrong conclusion:**
@@ -722,12 +732,21 @@ The single most important section. Four identifiers, three owned by AMS.
 `Invalid data for Employer TPA Custom ID.` before field binding; `158140952` and `ZZTEST001` were
 accepted. AMS therefore composes `{prefix}E{prospectId}`.
 
-**The constraint does not generalise.** The same import round tested the other two AMS-assigned
-identifiers and both accept hyphens: `Import Plan ID` as `158140952-PROBEA-2026`, and
-`Participant TPA Custom ID` as `158-P-9001`. The participant value was then **enrolled
-successfully** — clearing the stage at which the known duplicate-ID failure surfaces, so this is not
-another accept-now-fail-later case. Three identifiers, three different validations. Do not infer one
-field's rules from another's.
+**The constraint does not generalise — and it is per-field *and* per-file-type, not just per-field.**
+The same import round tested the other two AMS-assigned identifiers and both accept hyphens:
+`Import Plan ID` as `158140952-PROBEA-2026`, and `Participant TPA Custom ID` as `158-P-9001`. The
+participant value was then **enrolled successfully** — clearing the stage at which the known
+duplicate-ID failure surfaces, so this is not another accept-now-fail-later case. Three identifiers,
+three different validations. Do not infer one field's rules from another's.
+
+⚠️ **S50, 2026-09-12 — `158140952-PROBEA-2026` is not universally accepted either.** It was
+accepted by `Employer CDH Plan` and `HRA Enrollment`, and **rejected** by `125 PI Contributions`,
+which returns `Invalid data for Import Plan ID` for any non-alphanumeric character in that column.
+⭐ The counterpart holds, proven the same day: `Participant TPA Custom ID` as `158-P-S27-01` **was**
+accepted by `125 PI Contributions` (`Successful|Contribution Import completed successfully`) — so
+the character check is specific to `Import Plan ID` on that file type and does not extend to
+column B. The rule is per-field *and* per-file-type; AMS now composes `Import Plan ID` strictly
+alphanumeric everywhere so one shipped form satisfies every file type.
 
 ⭐ The full chain — Employer Demographic → Employer CDH Plan → Demographics → HRA Enrollment — was
 proven end to end in this round against plan template `1030` (`ICHRA+`).
@@ -740,7 +759,14 @@ byte-identical record is rewritten rather than skipped. **No `Record Process Ind
 needed for create or update.**
 
 Consequence: **AMS emits full current state, not deltas.** No sent-state tracking, no create-vs-update
-branch, no reconciliation table. Regenerating and re-sending is safe.
+branch, no reconciliation table. ⚠️ **This "regenerate and re-send is safe" property is per-file-type,
+not universal.** It holds for Employer Demographic, Employer CDH Plan and Demographics — a
+byte-identical re-import edits in place with no duplication. It is **false for `125 PI Elections`**:
+a second election submission for a participant already enrolled returns `Plan Already Enrolled`, so
+regenerating and resending that file after a prior successful run is not safe on its own. Separately,
+`summit_file_export`'s content-hash de-duplication (V096) is an independent mechanism at the
+transport layer — it detects a byte-identical re-generation before delivery, but does not change what
+Summit itself does with a file that is actually sent again.
 
 ⭐ **Demographics upserts on `Participant TPA Custom ID`** the same way Employer Demographic upserts on
 `Employer TPA Custom ID`. Observed 2026-09-08: a re-import of five existing participants returned
@@ -772,6 +798,12 @@ a **row number** — the row number gives reliable positional correlation.
 Key echo **depends on how far validation got**, not on pass or fail: a record rejected before field
 binding returns empty key fields, while one rejected after binding echoes them. **AMS should correlate
 on row number, not on the echoed key.**
+
+⚠️ **This guidance does not hold for every file type.** "2. Employer CDH Plan" above already carves
+out file 2, which correlates on `Plan Name` because it carries no row number. The three file types
+tested 2026-09-12 — `125 PI Elections`, `125 PI Contributions` and `HRA Enrollment` — return
+`Participant TPA Custom ID` and no row number either, so for those types correlation is on the
+participant id, not on row number.
 
 Always map `Record Comment` into the results template. `Record Processing Status` alone yields a bare
 "Failed" with no reason.

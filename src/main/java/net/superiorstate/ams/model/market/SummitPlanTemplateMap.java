@@ -57,7 +57,11 @@ public class SummitPlanTemplateMap {
     @Column(name = "template_id", nullable = false)
     private Integer templateId;
 
-    /** The segment placed inside {@code Import Plan ID}. May carry no pipe and no whitespace. */
+    /**
+     * The segment placed inside {@code Import Plan ID}. Must be letters and digits only — no pipe,
+     * whitespace, or other punctuation — because {@code 125 PI Contributions} rejects any
+     * non-alphanumeric character in that field (proven 2026-09-12).
+     */
     @Column(name = "key_segment", nullable = false)
     private String keySegment;
 

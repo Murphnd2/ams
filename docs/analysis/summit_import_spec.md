@@ -157,6 +157,11 @@ Offered but unmapped: `Employer Contribution Amount` (Numeric — the employer-m
 
 `ABC123` passing proves this is a **character check, not a lookup**. See §5.
 
+⚠️ **The restriction is column C only.** `Participant TPA Custom ID` (column B) as `158-P-S27-01`
+was accepted by this same file type on 2026-09-12, returning
+`Successful|Contribution Import completed successfully`. The character check does not extend to
+column B — it is specific to `Import Plan ID` on `125 PI Contributions`.
+
 **D — Participant Contribution Amount.** Posts as of processing; there is no posting-date element.
 ⚠️ Contributions **stack** on scheduled postings ($150 back-post + $100 file = $250) and increment
 `Number of Contributions`. Nothing observed caps the total at the annual election.

@@ -355,6 +355,14 @@ public class SummitExportServlet extends HttpServlet {
      * successfully, clearing the stage where a bad participant key surfaces as
      * {@code Employer ID Conflict}. Three identifiers, three different validations.
      * <p>
+     * ⚠️ <b>S50 — that {@code Import Plan ID} observation is per-file-type, not universal.</b>
+     * {@code 158140952-PROBEA-2026} was accepted by {@code Employer CDH Plan} and
+     * {@code HRA Enrollment}. It is rejected by {@code 125 PI Contributions}, which returns
+     * {@code Invalid data for Import Plan ID} for any non-alphanumeric character in that field —
+     * proven 2026-09-12 by {@code Validate Import Format}. The rule is per-field and per-file-type;
+     * AMS now composes {@code Import Plan ID} strictly alphanumeric everywhere so one shipped form
+     * satisfies every file type.
+     * <p>
      * The prefix check is widened to match the field it feeds: a prefix carrying a hyphen or
      * underscore ({@code SSA-158}) would compose an ID Summit refuses, and that failure would
      * surface in a results file rather than at configuration time. Rejecting every
@@ -574,7 +582,19 @@ public class SummitExportServlet extends HttpServlet {
                     proposalId, unmappedList);
         }
 
-        String allowanceSegment = allowanceSegment(em, pspId, electedServices, prospect.getId());
+        String allowanceSegment;
+        try {
+            allowanceSegment = allowanceSegment(em, pspId, electedServices, prospect.getId());
+        } catch (SummitPlanTemplateResolver.KeySegmentRejectedException e) {
+            // ⚠️ S50 -- refuse rather than leave Employer Plan Name unmatched. A key segment bad
+            // enough to break file 2's Import Plan ID composition is bad configuration for this PSP
+            // full stop, not a problem scoped to the file that composes an id from it.
+            writePlainError(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+                    "Cannot generate Employer Demographic file: " + e.getMessage()
+                            + ". Fix the Summit Plan Templates mapping (SummitPlanTemplateAdmin) or"
+                            + " the SUMMIT_PLAN_TEMPLATES property, then retry.");
+            return;
+        }
         String employerPlanName = employerPlanName(answers, flags, allowanceSegment, prospect.getId());
 
         String line = String.join("|",
@@ -608,7 +628,7 @@ public class SummitExportServlet extends HttpServlet {
      * Configured segments come from {@code SUMMIT_ALLOWANCE_KEY_SEGMENTS} (comma-separated,
      * trimmed, case-insensitive), defaulting to {@code LEGACY_ICHRA_SEGMENT} alone when unset or
      * blank. Mirrors {@link #writeEmployerCdhPlan}'s own plan resolution: when
-     * {@link SummitPlanTemplateResolver#configured} has no rows for this PSP, the legacy
+     * {@link SummitPlanTemplateResolver#configuredOrThrow} has no rows for this PSP, the legacy
      * single-plan fallback applies, and its synthetic template always carries the
      * {@code ICHRA} key segment ({@code LEGACY_ICHRA_SEGMENT}) — so the legacy path matches only
      * when {@code ICHRA} is configured. Otherwise, every configured template that both matches an
@@ -636,7 +656,10 @@ public class SummitExportServlet extends HttpServlet {
         // upper-cased segment -> the segment's own case, as configured on the template. LinkedHashMap
         // so a >1 WARN lists matches in a stable, encounter order rather than hash order.
         Map<String, String> matched = new LinkedHashMap<>();
-        List<PlanTemplate> configured = SummitPlanTemplateResolver.configured(em, pspId);
+        // ⚠️ S50 -- throws SummitPlanTemplateResolver.KeySegmentRejectedException (unchecked) on a
+        // rejected key segment, propagating up to writeEmployerDemographic's catch, so a
+        // misconfigured mapping refuses this file too rather than only leaving this label unmatched.
+        List<PlanTemplate> configured = SummitPlanTemplateResolver.configuredOrThrow(em, pspId);
         if (configured.isEmpty()) {
             if (configuredSegments.contains(LEGACY_ICHRA_SEGMENT.toUpperCase())) {
                 matched.put(LEGACY_ICHRA_SEGMENT.toUpperCase(), LEGACY_ICHRA_SEGMENT);
@@ -765,7 +788,19 @@ public class SummitExportServlet extends HttpServlet {
         // -- how many OTHER plans survived -- is not knowable until the loop has finished.
         List<String> carryoverWarnings = new ArrayList<>();
 
-        List<PlanTemplate> configured = SummitPlanTemplateResolver.configured(em, pspId);
+        List<PlanTemplate> configured;
+        try {
+            configured = SummitPlanTemplateResolver.configuredOrThrow(em, pspId);
+        } catch (SummitPlanTemplateResolver.KeySegmentRejectedException e) {
+            // ⚠️ S50 -- refuse rather than skip the plan. A skipped plan is a plan silently missing
+            // from this employer's Summit setup, discovered later when someone cannot enroll into
+            // it -- the accept-now-fail-later shape this project keeps getting caught by.
+            writePlainError(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+                    "Cannot generate Employer CDH Plan file: " + e.getMessage()
+                            + ". Fix the Summit Plan Templates mapping (SummitPlanTemplateAdmin) or"
+                            + " the SUMMIT_PLAN_TEMPLATES property, then retry.");
+            return;
+        }
         List<PlanTemplate> emit;
         if (configured.isEmpty()) {
             // LEGACY PATH -- byte-identical to what production emitted at v0.94.00.
@@ -1024,7 +1059,15 @@ public class SummitExportServlet extends HttpServlet {
                 // are indistinguishable in the UI except by a key nobody reads. The superseded form
                 // was {employerKey}-{keySegment}-{planYear}; T185's do-not-touch protected that
                 // shape and is retired, because its premise was wrong.
-                sanitize(employerTpaCustomId + "-" + t.getKeySegment()),
+                // ⚠️ S50 -- THE HYPHEN IS ALSO GONE. `125 PI Contributions` rejects any
+                // non-alphanumeric character in Import Plan ID, proven by Validate Import Format on
+                // 2026-09-12: `ZZSDX27A-INS125A` and `ZZSDX27A_INS125A` failed, while
+                // `ZZSDX27AINS125A`, `INS125A`, `1394` and `ABC123` all passed -- `ABC123` passing
+                // proves this is a character check, not a lookup. The shipped form is now
+                // {employerTpaCustomId}{keySegment}, strictly alphanumeric. This site and the HRA
+                // Enrollment writer's composition (S31-J's note above still applies) must always
+                // agree.
+                sanitize(employerTpaCustomId + t.getKeySegment()),
                 sanitize(t.getLabel()),
                 planYearBegin,
                 employerTpaCustomId,
@@ -1204,7 +1247,7 @@ public class SummitExportServlet extends HttpServlet {
      * HRA Enrollment — the <b>proven chain's fourth file</b>. Five columns, one row per participant:
      * <pre>
      * Employer TPA Custom ID|Participant TPA Custom ID|Import Plan ID|Effective Date|Participant Annual Election Amount
-     * 158E140952|158-P-77|158E140952-ICHRA-2026|20260101|7200.00
+     * 158E140952|158-P-77|158E140952ICHRA|20260101|7200.00
      * </pre>
      * Same template settings as the other three — delimited {@code |}, dates {@code YYYYMMDD}, no
      * header, no footer, no body record indicator, Extraneous Data No. The layout was import-proven
@@ -1285,7 +1328,17 @@ public class SummitExportServlet extends HttpServlet {
         // out of it would edit proven code to serve an unproven caller. What the two must agree on
         // is the emitted Import Plan ID, and the guarantee of that is the identical composition
         // below, not a shared method.
-        List<PlanTemplate> configured = SummitPlanTemplateResolver.configured(em, pspId);
+        List<PlanTemplate> configured;
+        try {
+            configured = SummitPlanTemplateResolver.configuredOrThrow(em, pspId);
+        } catch (SummitPlanTemplateResolver.KeySegmentRejectedException e) {
+            // ⚠️ S50 -- refuse rather than skip the plan, same reasoning as writeEmployerCdhPlan.
+            writePlainError(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+                    "Cannot generate HRA Enrollment file: " + e.getMessage()
+                            + ". Fix the Summit Plan Templates mapping (SummitPlanTemplateAdmin) or"
+                            + " the SUMMIT_PLAN_TEMPLATES property, then retry.");
+            return;
+        }
         List<PlanTemplate> candidates;
         if (configured.isEmpty()) {
             Integer templateId = parsePositiveInt(AppConfig.get("SUMMIT_ICHRA_PLAN_TEMPLATE_ID"));
@@ -1344,7 +1397,7 @@ public class SummitExportServlet extends HttpServlet {
         // this does not, every enrollment row points at a plan id that does not exist and the import
         // fails in a way nobody expects. Composition only -- this writer's roster, amount and
         // refusals are untouched by S31-J.
-        String importPlanId = sanitize(employerTpaCustomId + "-" + ichra.getKeySegment());
+        String importPlanId = sanitize(employerTpaCustomId + ichra.getKeySegment());
         String effectiveDate = planYearStart.format(SUMMIT_DATE);
         // The parser caps the answer at two decimal places, so setScale(2) is exact here and the
         // rounding mode is never actually exercised; toPlainString keeps a large amount out of

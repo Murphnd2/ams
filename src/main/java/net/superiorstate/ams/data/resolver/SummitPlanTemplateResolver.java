@@ -33,9 +33,11 @@ import java.util.Set;
  *   <li><b>{@code serviceItemId}</b> — the {@code ServiceItem}'s own primary key, matched
  *       against the modules the employer actually elected. Positive integer.</li>
  *   <li><b>{@code templateId}</b> — the Summit-assigned Plan Template ID. Positive integer.</li>
- *   <li><b>{@code keySegment}</b> — the segment placed inside {@code Import Plan ID}. May not
- *       contain a pipe or any whitespace, because {@code Import Plan ID} is an upsert key that
- *       travels through a pipe-delimited file.</li>
+ *   <li><b>{@code keySegment}</b> — the segment placed inside {@code Import Plan ID}. Must be
+ *       letters and digits only — no pipe, whitespace, or other punctuation. {@code Import Plan ID}
+ *       is an upsert key that travels through a pipe-delimited file, and {@code 125 PI
+ *       Contributions} additionally rejects any non-alphanumeric character in that field (proven
+ *       2026-09-12).</li>
  *   <li><b>{@code label}</b> — optional, human-facing, used in {@code Plan Name} and
  *       {@code Plan Description}. <b>Defaults to {@code keySegment}</b> when absent or blank.
  *       May contain spaces. It cannot contain a colon (that would split into a fifth field and
@@ -152,12 +154,29 @@ public final class SummitPlanTemplateResolver {
 
     /**
      * The configured plan templates, in config order.
+     * <p>
+     * ⚠️ <b>S50 — a malformed key segment is skipped with a WARN here, not refused.</b> This is the
+     * method the {@code SummitPlanTemplateAdmin} screen calls to display how many property entries
+     * currently parse, on every page load — it must never throw. {@link #configuredOrThrow(EntityManager, Long)}
+     * is the sibling Summit export actually calls, and it refuses instead of skipping.
      *
      * @return an unmodifiable list in config order — which is emit order. Empty when
      *         {@link #CONFIG_KEY} is absent, blank, or contains no well-formed entry.
      *         Never null.
      */
     public static List<PlanTemplate> configured() {
+        return configured(false);
+    }
+
+    /**
+     * The property path's actual implementation, shared by {@link #configured()} (strict = false,
+     * skip-with-WARN) and {@link #configuredOrThrow(EntityManager, Long)} (strict = true, refuse).
+     * Only the key-segment check's outcome differs by {@code strict}; every other skip reason
+     * (malformed entry shape, non-positive id, duplicate service item id) is unaffected — those stay
+     * skip-with-WARN either way, because S50's refusal is scoped to the three
+     * {@link #keySegmentRejection} reasons a bad key segment produces a rejected Import Plan ID.
+     */
+    private static List<PlanTemplate> configured(boolean strict) {
         String raw = AppConfig.get(CONFIG_KEY);
         if (raw == null || raw.isBlank()) {
             return Collections.emptyList();
@@ -196,6 +215,12 @@ public final class SummitPlanTemplateResolver {
             String keySegmentRejection = keySegmentRejection(keySegment);
             if (keySegmentRejection != null) {
                 warnSkip(trimmedEntry, keySegmentRejection);
+                // ⚠️ S50 -- strict callers refuse the whole export rather than silently missing a
+                // plan. The WARN above still fires either way; this is on top of it, not instead.
+                if (strict) {
+                    throw new KeySegmentRejectedException(
+                            CONFIG_KEY + " entry '" + trimmedEntry + "': " + keySegmentRejection);
+                }
                 continue;
             }
 
@@ -244,6 +269,10 @@ public final class SummitPlanTemplateResolver {
      * <b>A database failure is not allowed to break the export.</b> Any exception from the read is
      * logged and treated as "no rows", which falls through to the property — the same tolerance the
      * parser applies to a malformed entry, one layer out.
+     * <p>
+     * ⚠️ <b>S50 — a malformed key segment is skipped with a WARN here, not refused.</b>
+     * {@link #configuredOrThrow(EntityManager, Long)} is the sibling that refuses instead; this
+     * method's behaviour and contract are otherwise unchanged.
      *
      * @param em     an open {@code EntityManager}. Null skips the table and goes straight to the
      *               property.
@@ -253,11 +282,11 @@ public final class SummitPlanTemplateResolver {
      *         entry. Never null.
      */
     public static List<PlanTemplate> configured(EntityManager em, Long pspId) {
-        List<PlanTemplate> fromTable = fromDatabase(em, pspId);
+        List<PlanTemplate> fromTable = fromDatabase(em, pspId, false);
         if (!fromTable.isEmpty()) {
             return fromTable;
         }
-        List<PlanTemplate> fromProperty = configured();
+        List<PlanTemplate> fromProperty = configured(false);
         log.info("[SUMMIT-EXPORT] no active {} rows for PSP {}; falling back to the {} property"
                         + " ({} entries)",
                 TABLE_NAME, pspId, CONFIG_KEY, fromProperty.size());
@@ -265,10 +294,43 @@ public final class SummitPlanTemplateResolver {
     }
 
     /**
-     * The V095 table's contribution, or an empty list. Never throws: a read failure is logged and
-     * reported as empty so the caller falls back to the property.
+     * S50 — {@link #configured(EntityManager, Long)}'s throwing counterpart, for the Summit export
+     * writers that must refuse an export rather than silently missing a plan. A key segment that
+     * fails {@link #keySegmentRejection} costs nothing under {@link #configured(EntityManager, Long)}
+     * except a WARN and a skipped plan — exactly the accept-now-fail-later shape this project keeps
+     * getting caught by, so Summit export calls this method instead and refuses.
+     * <p>
+     * ⚠️ <b>Every other caller of {@link #configured()} / {@link #configured(EntityManager, Long)} is
+     * unaffected.</b> As of S50 that is only {@code SummitPlanTemplateAdmin}'s property-entry-count
+     * display, which must keep skipping with a WARN rather than throwing on page load — it is not a
+     * Summit export path and this method is not wired into it.
+     * <p>
+     * Same resolution order and same tolerance for a database read failure as
+     * {@link #configured(EntityManager, Long)}; only the key-segment outcome differs.
+     *
+     * @throws KeySegmentRejectedException if the source actually used (the table, when it has active
+     *         rows for this PSP, else the property) contains an entry whose key segment fails
+     *         {@link #keySegmentRejection}. The message is exactly that method's rejection reason.
      */
-    private static List<PlanTemplate> fromDatabase(EntityManager em, Long pspId) {
+    public static List<PlanTemplate> configuredOrThrow(EntityManager em, Long pspId) {
+        List<PlanTemplate> fromTable = fromDatabase(em, pspId, true);
+        if (!fromTable.isEmpty()) {
+            return fromTable;
+        }
+        List<PlanTemplate> fromProperty = configured(true);
+        log.info("[SUMMIT-EXPORT] no active {} rows for PSP {}; falling back to the {} property"
+                        + " ({} entries)",
+                TABLE_NAME, pspId, CONFIG_KEY, fromProperty.size());
+        return fromProperty;
+    }
+
+    /**
+     * The V095 table's contribution, or an empty list. Never throws for a database read failure: that
+     * is logged and reported as empty so the caller falls back to the property. {@code strict}
+     * governs only the key-segment outcome, mirroring {@link #configured(boolean)} — see
+     * {@link #configuredOrThrow(EntityManager, Long)}.
+     */
+    private static List<PlanTemplate> fromDatabase(EntityManager em, Long pspId, boolean strict) {
         if (em == null || pspId == null) return Collections.emptyList();
 
         List<SummitPlanTemplateMap> rows;
@@ -303,6 +365,11 @@ public final class SummitPlanTemplateResolver {
             String rejection = keySegmentRejection(keySegment);
             if (rejection != null) {
                 warnSkip(TABLE_NAME, rowRef, rejection);
+                // ⚠️ S50 -- strict callers refuse the whole export rather than silently missing a
+                // plan. The WARN above still fires either way; this is on top of it, not instead.
+                if (strict) {
+                    throw new KeySegmentRejectedException(TABLE_NAME + " " + rowRef + ": " + rejection);
+                }
                 continue;
             }
 
@@ -350,6 +417,10 @@ public final class SummitPlanTemplateResolver {
         if (keySegment.contains("|") || keySegment.chars().anyMatch(Character::isWhitespace)) {
             return "key segment '" + keySegment + "' contains a pipe or whitespace";
         }
+        if (!keySegment.matches("[A-Za-z0-9]+")) {
+            return "key segment '" + keySegment + "' must be letters and digits only — it composes the "
+                    + "Import Plan ID, and the 125 PI Contributions import rejects any other character";
+        }
         return null;
     }
 
@@ -378,6 +449,19 @@ public final class SummitPlanTemplateResolver {
             return value > 0 ? value : null;
         } catch (NumberFormatException e) {
             return null;
+        }
+    }
+
+    /**
+     * S50 — thrown only by {@link #configuredOrThrow(EntityManager, Long)} when a key segment fails
+     * {@link #keySegmentRejection}. Unchecked, so the Summit export writers that already refuse and
+     * return via {@code writePlainError} on other validation failures can do the same here with a
+     * try/catch around the call, without a new checked {@code throws} on every method in the call
+     * chain up to the servlet.
+     */
+    public static final class KeySegmentRejectedException extends RuntimeException {
+        public KeySegmentRejectedException(String message) {
+            super(message);
         }
     }
 }

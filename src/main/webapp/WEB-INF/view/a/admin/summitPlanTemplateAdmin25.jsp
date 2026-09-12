@@ -220,7 +220,7 @@
                     <div class="col-md-2">
                         <label for="keySegment">Key segment</label>
                         <input type="text" class="form-control form-control-sm mono"
-                               id="keySegment" name="keySegment" required
+                               id="keySegment" name="keySegment" required pattern="[A-Za-z0-9]+"
                                value="<c:out value="${not empty editing ? editing.keySegment : ''}"/>">
                     </div>
                     <div class="col-md-2">
@@ -247,7 +247,8 @@
                 <div class="text-muted mt-2" style="font-size:0.75rem;">
                     <i class="bi bi-info-circle me-1"></i>Key segment travels inside
                     <span class="mono">Import Plan ID</span>, which is an upsert key in a pipe-delimited
-                    file — no pipe, no spaces. Label falls back to the key segment when left blank.
+                    file — letters and digits only, no pipe, no spaces, no hyphen. Label falls back to
+                    the key segment when left blank.
                     One mapping per service item: the database rejects a second one even if the first
                     is inactive.
                 </div>

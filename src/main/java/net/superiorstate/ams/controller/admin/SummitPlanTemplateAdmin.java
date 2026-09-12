@@ -189,7 +189,8 @@ public class SummitPlanTemplateAdmin extends HttpServlet {
         if (rejection != null) {
             session.setAttribute(FLASH_ERROR, "Key segment rejected: " + rejection
                     + ". It travels inside Import Plan ID, which is an upsert key in a"
-                    + " pipe-delimited file, so it may not contain a pipe or any whitespace.");
+                    + " pipe-delimited file, so it must be letters and digits only — no pipe,"
+                    + " whitespace, hyphen or other punctuation.");
             return;
         }
         if (sortOrder == null) sortOrder = 0;
@@ -334,6 +335,10 @@ public class SummitPlanTemplateAdmin extends HttpServlet {
         }
         if (keySegment.contains("|") || keySegment.chars().anyMatch(Character::isWhitespace)) {
             return "key segment '" + keySegment + "' contains a pipe or whitespace";
+        }
+        if (!keySegment.matches("[A-Za-z0-9]+")) {
+            return "key segment '" + keySegment + "' must be letters and digits only — it composes the "
+                    + "Import Plan ID, and the 125 PI Contributions import rejects any other character";
         }
         return null;
     }
