@@ -325,6 +325,29 @@
                             </c:forEach>
                         </select>
                     </div>
+                    <%-- V108 (s56b) -- which Summit import file this plan's enrollment rows go into.
+                         Blank persists as NULL (unassigned); the export refuses an unassigned leg by
+                         name rather than defaulting it, so the first option is deliberately empty and
+                         is what a row shows until an operator picks one. --%>
+                    <div class="col-md-3">
+                        <label for="importFileType">Enrollment import file</label>
+                        <select class="form-select form-select-sm" id="importFileType" name="importFileType">
+                            <option value=""
+                                    <c:if test="${empty editing or empty editing.importFileType}">selected</c:if>>
+                                — unassigned —
+                            </option>
+                            <c:forEach var="ft" items="${importFileTypeOptions}">
+                                <option value="${ft}"
+                                        <c:if test="${not empty editing and editing.importFileType eq ft}">selected</c:if>>
+                                    <c:choose>
+                                        <c:when test="${ft eq 'enrollment'}">HRA Enrollment (ICHRA, HRA, MERP)</c:when>
+                                        <c:when test="${ft eq 'elections'}">125 PI Elections (PremiumPath, FSA, DCA)</c:when>
+                                        <c:otherwise><c:out value="${ft}"/></c:otherwise>
+                                    </c:choose>
+                                </option>
+                            </c:forEach>
+                        </select>
+                    </div>
                     <div class="col-md-2">
                         <label for="taxTreatment">Tax treatment</label>
                         <select class="form-select form-select-sm" id="taxTreatment" name="taxTreatment">

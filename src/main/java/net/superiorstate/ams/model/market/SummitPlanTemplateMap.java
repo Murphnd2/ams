@@ -143,6 +143,21 @@ public class SummitPlanTemplateMap {
     @Column(name = "tax_treatment", nullable = false)
     private String taxTreatment = "POST";
 
+    /**
+     * V108 (s56b) — which Summit import file this leg's enrollment rows belong in:
+     * {@code enrollment} (HRA Enrollment — ICHRA, HRA, MERP) or {@code elections}
+     * (125 PI Elections — PremiumPath, FSA, DCA). <b>{@code null} means unassigned</b>, which the
+     * enrollment export treats as a refusal naming the leg, never as a default — an unassigned
+     * leg must stay distinguishable from an assigned one, so no value is defaulted here or in the
+     * column. Not derived from {@link #enrollmentAmountMode}: that says what input a matrix cell
+     * accepts, not which template the row imports into, and the two do not line up for an
+     * amount-based HRA or MERP leg. Code-validated by the admin screen against a fixed option
+     * list of AMS-owned file-type strings, not a database {@code ENUM} — same reasoning
+     * {@link #effectiveDateRule} documents for itself.
+     */
+    @Column(name = "import_file_type")
+    private String importFileType;
+
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
@@ -198,6 +213,9 @@ public class SummitPlanTemplateMap {
 
     public String getTaxTreatment() { return taxTreatment; }
     public void setTaxTreatment(String taxTreatment) { this.taxTreatment = taxTreatment; }
+
+    public String getImportFileType() { return importFileType; }
+    public void setImportFileType(String importFileType) { this.importFileType = importFileType; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }

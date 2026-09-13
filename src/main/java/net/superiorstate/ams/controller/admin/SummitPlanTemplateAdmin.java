@@ -95,6 +95,20 @@ public class SummitPlanTemplateAdmin extends HttpServlet {
     private static final List<String> TAX_TREATMENT_OPTIONS = List.of("PRE", "POST");
 
     /**
+     * V108 (s56b) -- the {@code import_file_type} values the form offers and {@link #save}
+     * accepts, same idiom as {@link #AMOUNT_MODE_OPTIONS}: {@code enrollment} (HRA Enrollment)
+     * and {@code elections} (125 PI Elections). These are AMS-owned file-type strings, the same
+     * kind of thing as {@code SummitExportServlet}'s {@code TYPE_} constants -- not PSP-scoped
+     * reference rows -- so a fixed list is correct here. The unassigned choice is
+     * {@link #IMPORT_FILE_TYPE_UNASSIGNED}, offered first and persisted as NULL: an unassigned
+     * leg must stay distinguishable from an assigned one, so it is never defaulted to a member.
+     */
+    private static final List<String> IMPORT_FILE_TYPE_OPTIONS = List.of("enrollment", "elections");
+
+    /** V108 -- the form value that persists as NULL {@code import_file_type}. Never stored. */
+    private static final String IMPORT_FILE_TYPE_UNASSIGNED = "";
+
+    /**
      * Setup-category service items are the ones a sale elects, and the ones the export matches
      * against — {@code ActivityCategory} 2, the same category {@code AmsDataLocal}'s own
      * Setup-module listing filters on. Renewal-category items can never appear in an
@@ -147,6 +161,7 @@ public class SummitPlanTemplateAdmin extends HttpServlet {
             request.setAttribute("ruleOptions", RULE_OPTIONS);
             request.setAttribute("amountModeOptions", AMOUNT_MODE_OPTIONS);
             request.setAttribute("taxTreatmentOptions", TAX_TREATMENT_OPTIONS);
+            request.setAttribute("importFileTypeOptions", IMPORT_FILE_TYPE_OPTIONS);
             request.setAttribute("defaultRule", SummitPlanDateRuleResolver.RULE_PLAN_YEAR_START);
 
             // Resolved here rather than in EL. A JSP-side "editId + 0" coercion throws on a
@@ -225,6 +240,11 @@ public class SummitPlanTemplateAdmin extends HttpServlet {
         String enrollmentAmountMode = trimToEmpty(request.getParameter("enrollmentAmountMode")).toUpperCase();
         boolean affectsPayroll = request.getParameter("affectsPayroll") != null;
         String taxTreatment = trimToEmpty(request.getParameter("taxTreatment")).toUpperCase();
+        // V108 (s56b) -- which Summit import file the leg's enrollment rows go into. Lower-cased,
+        // not upper-cased like the two above: the members are file-type strings matching
+        // SummitExportServlet's TYPE_ constants, which are lower-case. Blank is the unassigned
+        // choice and persists as NULL (see IMPORT_FILE_TYPE_UNASSIGNED).
+        String importFileType = trimToEmpty(request.getParameter("importFileType")).toLowerCase();
         // W5 (V103) -- the fan-out discriminator and date rules. seq blank on add = next free
         // ordinal for the service item (see below); the offsets default to 0.
         Integer seq = parseIntOrNull(request.getParameter("seq"));
@@ -265,6 +285,15 @@ public class SummitPlanTemplateAdmin extends HttpServlet {
         if (!AMOUNT_MODE_OPTIONS.contains(enrollmentAmountMode)) {
             session.setAttribute(FLASH_ERROR, "Enrollment amount mode '" + enrollmentAmountMode
                     + "' is not supported. Supported values are: " + AMOUNT_MODE_OPTIONS + ".");
+            return;
+        }
+        // V108 -- same idiom; blank (unassigned) is accepted and stored as NULL, anything else
+        // must be a listed member.
+        if (!IMPORT_FILE_TYPE_UNASSIGNED.equals(importFileType)
+                && !IMPORT_FILE_TYPE_OPTIONS.contains(importFileType)) {
+            session.setAttribute(FLASH_ERROR, "Enrollment import file '" + importFileType
+                    + "' is not supported. Supported values are: " + IMPORT_FILE_TYPE_OPTIONS
+                    + ", or leave it unassigned.");
             return;
         }
         if (!TAX_TREATMENT_OPTIONS.contains(taxTreatment)) {
@@ -395,6 +424,7 @@ public class SummitPlanTemplateAdmin extends HttpServlet {
         mapping.setEnrollmentAmountMode(enrollmentAmountMode);
         mapping.setAffectsPayroll(affectsPayroll);
         mapping.setTaxTreatment(taxTreatment);
+        mapping.setImportFileType(IMPORT_FILE_TYPE_UNASSIGNED.equals(importFileType) ? null : importFileType);
         mapping.setSeq((short) (int) seq);
         mapping.setEffectiveDateRule(effectiveDateRule);
         mapping.setOffsetMonths(offsetMonths);
