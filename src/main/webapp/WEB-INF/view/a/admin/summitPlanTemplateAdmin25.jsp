@@ -304,6 +304,47 @@
                     </div>
                 </div>
 
+                <%-- V105 (amended s52i) -- enrollment matrix fields. Grouped visibly and
+                     separately from the Summit fan-out fields above: this row is one enrollment
+                     leg, and these three columns describe how it behaves in the matrix / payroll
+                     deduction report, not how it exports to Summit. NONE (the default) means this
+                     row gets no tab -- e.g. the card-issuer row above. No consumer reads any of
+                     these yet. --%>
+                <div class="fw-semibold mt-3 mb-1" style="color: var(--ssa, #0d5681); font-size:0.8rem;">
+                    <i class="bi bi-grid-3x3-gap me-1"></i>Enrollment matrix
+                </div>
+                <div class="row g-2 align-items-end">
+                    <div class="col-md-3">
+                        <label for="enrollmentAmountMode">Amount mode</label>
+                        <select class="form-select form-select-sm" id="enrollmentAmountMode" name="enrollmentAmountMode">
+                            <c:forEach var="mode" items="${amountModeOptions}">
+                                <option value="${mode}"
+                                        <c:if test="${(empty editing and mode eq 'NONE') or (not empty editing and editing.enrollmentAmountMode eq mode)}">selected</c:if>>
+                                    <c:out value="${mode}"/>
+                                </option>
+                            </c:forEach>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label for="taxTreatment">Tax treatment</label>
+                        <select class="form-select form-select-sm" id="taxTreatment" name="taxTreatment">
+                            <c:forEach var="opt" items="${taxTreatmentOptions}">
+                                <option value="${opt}"
+                                        <c:if test="${(empty editing and opt eq 'POST') or (not empty editing and editing.taxTreatment eq opt)}">selected</c:if>>
+                                    <c:out value="${opt}"/>
+                                </option>
+                            </c:forEach>
+                        </select>
+                    </div>
+                    <div class="col-md-2 d-flex align-items-end">
+                        <div class="form-check mb-1">
+                            <input class="form-check-input" type="checkbox" id="affectsPayroll" name="affectsPayroll"
+                                   <c:if test="${not empty editing and editing.affectsPayroll}">checked</c:if>>
+                            <label class="form-check-label" for="affectsPayroll" style="text-transform:none;">Affects payroll</label>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="text-muted mt-2" style="font-size:0.75rem;">
                     <i class="bi bi-info-circle me-1"></i>Key segment travels inside
                     <span class="mono">Import Plan ID</span>, which is an upsert key in a pipe-delimited

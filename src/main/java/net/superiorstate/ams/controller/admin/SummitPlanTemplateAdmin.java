@@ -81,6 +81,20 @@ public class SummitPlanTemplateAdmin extends HttpServlet {
             SummitPlanDateRuleResolver.RULE_MOST_RECENT_PAST_MONTHDAY);
 
     /**
+     * V105 (amended s52i) -- the {@code enrollment_amount_mode} values the form offers and
+     * {@link #save} accepts, same validate-not-DB-ENUM idiom as {@link #RULE_OPTIONS}. {@code NONE}
+     * is deliberately first and the default -- not every row is an enrollment leg.
+     */
+    private static final List<String> AMOUNT_MODE_OPTIONS = List.of(
+            "NONE", "ANNUAL_ELECTION", "MONTHLY_PREMIUM", "TIER");
+
+    /**
+     * V105 -- the {@code tax_treatment} values the form offers and {@link #save} accepts, same
+     * idiom as {@link #AMOUNT_MODE_OPTIONS}.
+     */
+    private static final List<String> TAX_TREATMENT_OPTIONS = List.of("PRE", "POST");
+
+    /**
      * Setup-category service items are the ones a sale elects, and the ones the export matches
      * against — {@code ActivityCategory} 2, the same category {@code AmsDataLocal}'s own
      * Setup-module listing filters on. Renewal-category items can never appear in an
@@ -131,6 +145,8 @@ public class SummitPlanTemplateAdmin extends HttpServlet {
             // W5 -- the rule select is populated from the emitter's own supported set, so the
             // screen can never offer a value the date resolver would refuse.
             request.setAttribute("ruleOptions", RULE_OPTIONS);
+            request.setAttribute("amountModeOptions", AMOUNT_MODE_OPTIONS);
+            request.setAttribute("taxTreatmentOptions", TAX_TREATMENT_OPTIONS);
             request.setAttribute("defaultRule", SummitPlanDateRuleResolver.RULE_PLAN_YEAR_START);
 
             // Resolved here rather than in EL. A JSP-side "editId + 0" coercion throws on a
@@ -204,6 +220,11 @@ public class SummitPlanTemplateAdmin extends HttpServlet {
         // matters -- exactly one flagged row among a sale's ELECTED service items -- can only be
         // evaluated at export time, by the cardseed writer, against a specific proposal's elections.
         boolean cardIssuer = request.getParameter("cardIssuer") != null;
+        // V105 (amended s52i) -- the three enrollment-matrix columns, same read idiom as
+        // cardIssuer/effectiveDateRule above. No consumer reads any of these yet.
+        String enrollmentAmountMode = trimToEmpty(request.getParameter("enrollmentAmountMode")).toUpperCase();
+        boolean affectsPayroll = request.getParameter("affectsPayroll") != null;
+        String taxTreatment = trimToEmpty(request.getParameter("taxTreatment")).toUpperCase();
         // W5 (V103) -- the fan-out discriminator and date rules. seq blank on add = next free
         // ordinal for the service item (see below); the offsets default to 0.
         Integer seq = parseIntOrNull(request.getParameter("seq"));
@@ -238,6 +259,17 @@ public class SummitPlanTemplateAdmin extends HttpServlet {
             session.setAttribute(FLASH_ERROR, "Effective date rule '" + effectiveDateRule
                     + "' is not supported. Supported values are: "
                     + SummitPlanDateRuleResolver.SUPPORTED_RULES + ".");
+            return;
+        }
+        // V105 -- same not-a-DB-ENUM validation idiom as effectiveDateRule above.
+        if (!AMOUNT_MODE_OPTIONS.contains(enrollmentAmountMode)) {
+            session.setAttribute(FLASH_ERROR, "Enrollment amount mode '" + enrollmentAmountMode
+                    + "' is not supported. Supported values are: " + AMOUNT_MODE_OPTIONS + ".");
+            return;
+        }
+        if (!TAX_TREATMENT_OPTIONS.contains(taxTreatment)) {
+            session.setAttribute(FLASH_ERROR, "Tax treatment '" + taxTreatment
+                    + "' is not supported. Supported values are: " + TAX_TREATMENT_OPTIONS + ".");
             return;
         }
 
@@ -360,6 +392,9 @@ public class SummitPlanTemplateAdmin extends HttpServlet {
         mapping.setSortOrder(sortOrder);
         mapping.setActive(active);
         mapping.setCardIssuer(cardIssuer);
+        mapping.setEnrollmentAmountMode(enrollmentAmountMode);
+        mapping.setAffectsPayroll(affectsPayroll);
+        mapping.setTaxTreatment(taxTreatment);
         mapping.setSeq((short) (int) seq);
         mapping.setEffectiveDateRule(effectiveDateRule);
         mapping.setOffsetMonths(offsetMonths);

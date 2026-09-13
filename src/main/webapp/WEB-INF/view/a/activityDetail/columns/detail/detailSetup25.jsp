@@ -54,6 +54,21 @@
   <c:import url="/WEB-INF/view/a/activityDetail/columns/detail/detailSummitSetup25.jsp"></c:import>
 </c:if>
 
+<%-- s52m -- link to the enrollment matrix, URL-only screen (no nav entry). Same PSP-admin gate
+     and same Application/Proposal preconditions as the Census Upload block above, copied
+     verbatim: EnrollmentMatrixServlet needs a proposal to resolve the sale's elected legs, the
+     same way that flow does, and a non-PSP-admin must not see a link to a page they cannot open. --%>
+<c:if test="${sessionScope.local.isPspAdmin()
+              and not empty sessionScope.local.getCurrentActivity().getActivity().getApplication()
+              and not empty sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal()}">
+  <div class="mt-2">
+    <a class="btn btn-sm btn-outline-ssa"
+       href="${pageContext.request.contextPath}/EnrollmentMatrix?setupId=${sessionScope.local.getCurrentActivity().getActivity().getId()}">
+      <i class="bi bi-grid-3x3-gap me-1"></i>Enrollment Matrix
+    </a>
+  </div>
+</c:if>
+
 <%-- Full list modal --%>
 <div class="modal fade" id="setupFullModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-lg modal-fullscreen-sm-down">

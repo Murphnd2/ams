@@ -120,6 +120,29 @@ public class SummitPlanTemplateMap {
     @Column(name = "is_card_issuer", nullable = false)
     private boolean cardIssuer = false;
 
+    /**
+     * V105 (amended s52i) — which enrollment-matrix tab, if any, this leg gets: {@code NONE}
+     * (no tab — e.g. {@link #cardIssuer} rows), {@code ANNUAL_ELECTION}, {@code MONTHLY_PREMIUM},
+     * or {@code TIER}. Code-validated by the admin screen, not a database {@code ENUM} — same
+     * reasoning {@link #effectiveDateRule} documents for itself. {@code NONE} is the deliberate
+     * default: not every row here is an enrollment leg, so a new row is inert in the matrix until
+     * Kevin says otherwise. No consumer reads this yet.
+     */
+    @Column(name = "enrollment_amount_mode", nullable = false)
+    private String enrollmentAmountMode = "NONE";
+
+    /** V105 — enrollment matrix / payroll deduction report: this leg affects payroll. */
+    @Column(name = "affects_payroll", nullable = false)
+    private boolean affectsPayroll = false;
+
+    /**
+     * V105 — {@code PRE} or {@code POST}, only meaningful when {@link #affectsPayroll} is true,
+     * validated by the admin screen, not a database {@code ENUM} — same reasoning
+     * {@link #effectiveDateRule} documents for itself.
+     */
+    @Column(name = "tax_treatment", nullable = false)
+    private String taxTreatment = "POST";
+
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
@@ -166,6 +189,15 @@ public class SummitPlanTemplateMap {
 
     public boolean isCardIssuer() { return cardIssuer; }
     public void setCardIssuer(boolean cardIssuer) { this.cardIssuer = cardIssuer; }
+
+    public String getEnrollmentAmountMode() { return enrollmentAmountMode; }
+    public void setEnrollmentAmountMode(String enrollmentAmountMode) { this.enrollmentAmountMode = enrollmentAmountMode; }
+
+    public boolean isAffectsPayroll() { return affectsPayroll; }
+    public void setAffectsPayroll(boolean affectsPayroll) { this.affectsPayroll = affectsPayroll; }
+
+    public String getTaxTreatment() { return taxTreatment; }
+    public void setTaxTreatment(String taxTreatment) { this.taxTreatment = taxTreatment; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }

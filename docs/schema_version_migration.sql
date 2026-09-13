@@ -124,4 +124,6 @@ INSERT IGNORE INTO schema_version (version, description, script_name) VALUES
 ('V101', 'Summit employer administration flags per elected ServiceItem (summit_service_item_flags): PSP-scoped CDH/COBRA/Retiree/Direct Bill flag mapping, derivation for file 1 (D46), not yet read by any export writer, blocked on SDX-27 (T238 part 1)', 'V101__summit_service_item_flags.sql'),
 ('V102', 'employer.custom_id: string-faithful CustomID storage from J1 import, set on insert and update, distinct from lossy int er_key (T241/T242)', 'V102__employer_custom_id.sql'),
 ('V103', 'summit_plan_template_map: seq discriminator + effective_date_rule/offset_months/plan_year_offset_years; unique key widened to (psp, service item, seq) for plan fan-out (W3)', 'V103__plan_template_map_sequence_and_date_rules.sql'),
-('V104', 'summit_plan_template_map.is_card_issuer: marks the card-issuer placeholder plan for the $1 seed election export (type=cardseed)', 'V104__plan_template_map_card_issuer.sql');
+('V104', 'summit_plan_template_map.is_card_issuer: marks the card-issuer placeholder plan for the $1 seed election export (type=cardseed)', 'V104__plan_template_map_card_issuer.sql'),
+('V105', 'summit_plan_template_map enrollment-matrix columns: enrollment_amount_mode (NONE/ANNUAL_ELECTION/MONTHLY_PREMIUM/TIER, default NONE)/affects_payroll/tax_treatment -- amended s52i from an earlier 7-column draft, no consumer yet', 'V105__plan_template_map_enrollment_fields.sql'),
+('V106', 'Enrollment matrix storage: matrix/participant/entry tables', 'V106__enrollment_matrix.sql');
