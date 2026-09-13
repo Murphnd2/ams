@@ -137,11 +137,11 @@
                     <div class="matrix-layout">
                         <div class="matrix-sidebar" id="participantList">
                             <c:forEach var="p" items="${roster}" varStatus="vs">
-                                <c:set var="header" value="${headersByParticipant[p.id]}"/>
+                                <c:set var="mp" value="${headersByParticipant[p.id]}"/>
                                 <button type="button" class="participant-item${vs.first ? ' active' : ''}"
                                         data-target="detail-${p.id}" onclick="ammSelect(${p.id})">
                                     <c:out value="${p.lastName}"/>, <c:out value="${p.firstName}"/>
-                                    <c:if test="${not empty header and header.entryLocked}">
+                                    <c:if test="${not empty mp and mp.entryLocked}">
                                         <span class="locked-badge"><i class="bi bi-lock-fill"></i></span>
                                     </c:if>
                                 </button>
@@ -150,8 +150,8 @@
 
                         <div class="matrix-detail-wrap">
                             <c:forEach var="p" items="${roster}" varStatus="vs">
-                                <c:set var="header" value="${headersByParticipant[p.id]}"/>
-                                <c:set var="isLocked" value="${not empty header and header.entryLocked}"/>
+                                <c:set var="mp" value="${headersByParticipant[p.id]}"/>
+                                <c:set var="isLocked" value="${not empty mp and mp.entryLocked}"/>
                                 <c:set var="disableInputs" value="${isLocked or matrix.pushed}"/>
 
                                 <div class="matrix-detail-panel" id="detail-${p.id}" ${vs.first ? '' : 'hidden'}>
@@ -162,10 +162,10 @@
                                     <c:if test="${isLocked}">
                                         <div class="lock-banner">
                                             <i class="bi bi-lock-fill me-1"></i>Locked
-                                            <c:if test="${not empty header.lockedBy}"> by <c:out value="${header.lockedBy}"/></c:if>
-                                            <c:if test="${not empty header.lockedAt}"> at <c:out value="${header.lockedAt}"/></c:if>.
+                                            <c:if test="${not empty mp.lockedBy}"> by <c:out value="${mp.lockedBy}"/></c:if>
+                                            <c:if test="${not empty mp.lockedAt}"> at <c:out value="${mp.lockedAt}"/></c:if>.
                                             <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 ms-2"
-                                                    onclick="ammUnlock(${header.id})" ${matrix.pushed ? 'disabled' : ''}>Unlock</button>
+                                                    onclick="ammUnlock(${mp.id})" ${matrix.pushed ? 'disabled' : ''}>Unlock</button>
                                         </div>
                                     </c:if>
 
@@ -176,7 +176,7 @@
                                                     name="payrollFrequency_${p.id}" onchange="ammFrequencyChanged(${p.id})"
                                                     ${disableInputs ? 'disabled' : ''}>
                                                 <c:set var="ammSelectedFreq"
-                                                        value="${not empty header and not empty header.payrollFrequency ? header.payrollFrequency : defaultPayrollFrequency}"/>
+                                                        value="${not empty mp and not empty mp.payrollFrequency ? mp.payrollFrequency : defaultPayrollFrequency}"/>
                                                 <option value="" ${empty ammSelectedFreq ? 'selected' : ''}>&mdash; choose &mdash;</option>
                                                 <c:forEach var="opt" items="${payrollFrequencyOptions}">
                                                     <option value="${opt.key}" ${ammSelectedFreq eq opt.key ? 'selected' : ''}>
@@ -192,11 +192,11 @@
                                                  -- nothing is persisted by this. --%>
                                         </div>
                                         <div class="col-md-4" id="customScheduleWrap_${p.id}"
-                                             ${not empty header and header.payrollFrequency eq otherCustom ? '' : 'style="display:none;"'}>
+                                             ${not empty mp and mp.payrollFrequency eq otherCustom ? '' : 'style="display:none;"'}>
                                             <label class="field-label" for="customScheduleName_${p.id}">Custom schedule name</label>
                                             <input type="text" class="form-control form-control-sm"
                                                    id="customScheduleName_${p.id}" name="customScheduleName_${p.id}"
-                                                   value="<c:out value="${header.customScheduleName}"/>"
+                                                   value="<c:out value="${mp.customScheduleName}"/>"
                                                    ${disableInputs ? 'disabled' : ''}>
                                         </div>
                                         <c:if test="${not disableInputs}">
@@ -233,8 +233,8 @@
                                             </ul>
                                             <div class="tab-content">
                                                 <c:forEach var="leg" items="${legs}" varStatus="lvs">
-                                                    <c:set var="entryKey" value="${header.id}_${leg.id}"/>
-                                                    <c:set var="entry" value="${not empty header ? entriesByParticipantAndLeg[entryKey] : null}"/>
+                                                    <c:set var="entryKey" value="${mp.id}_${leg.id}"/>
+                                                    <c:set var="entry" value="${not empty mp ? entriesByParticipantAndLeg[entryKey] : null}"/>
                                                     <div class="tab-pane fade${lvs.first ? ' show active' : ''}"
                                                          id="legPanel-${p.id}-${leg.id}" role="tabpanel">
                                                         <div class="row g-2 align-items-end">
