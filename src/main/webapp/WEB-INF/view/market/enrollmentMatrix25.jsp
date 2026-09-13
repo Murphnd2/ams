@@ -175,16 +175,21 @@
                                             <select class="form-select form-select-sm" id="payrollFrequency_${p.id}"
                                                     name="payrollFrequency_${p.id}" onchange="ammFrequencyChanged(${p.id})"
                                                     ${disableInputs ? 'disabled' : ''}>
-                                                <option value="" ${empty header.payrollFrequency ? 'selected' : ''}>&mdash; choose &mdash;</option>
+                                                <c:set var="ammSelectedFreq"
+                                                        value="${not empty header and not empty header.payrollFrequency ? header.payrollFrequency : defaultPayrollFrequency}"/>
+                                                <option value="" ${empty ammSelectedFreq ? 'selected' : ''}>&mdash; choose &mdash;</option>
                                                 <c:forEach var="opt" items="${payrollFrequencyOptions}">
-                                                    <option value="${opt}" ${not empty header and header.payrollFrequency eq opt ? 'selected' : ''}>
-                                                        <c:out value="${opt}"/>
+                                                    <option value="${opt.key}" ${ammSelectedFreq eq opt.key ? 'selected' : ''}>
+                                                        <c:out value="${opt.value}"/>
                                                     </option>
                                                 </c:forEach>
                                             </select>
-                                            <%-- ⚠️ Only OTHER_CUSTOM and OTHER_NOT_IMPORTABLE exist. The curated
-                                                 enrollment-approved global list is not yet designated -- this
-                                                 select is deliberately not built out further. --%>
+                                            <%-- s53d: options come from PayrollFrequencyDAO.findEnrollmentApproved()
+                                                 plus any inactive stored code plus the two OTHER_* sentinels
+                                                 (EnrollmentMatrixServlet#buildPayrollFrequencyOptions). A row with
+                                                 no stored value preselects defaultPayrollFrequency, resolved at
+                                                 render time only from the application's paycycle_frequency answer
+                                                 -- nothing is persisted by this. --%>
                                         </div>
                                         <div class="col-md-4" id="customScheduleWrap_${p.id}"
                                              ${not empty header and header.payrollFrequency eq otherCustom ? '' : 'style="display:none;"'}>

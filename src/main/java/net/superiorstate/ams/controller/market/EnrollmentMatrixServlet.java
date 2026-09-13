@@ -14,6 +14,7 @@ import net.superiorstate.ams.data.dao.EmployerParticipantDAO;
 import net.superiorstate.ams.data.dao.EnrollmentMatrixDAO;
 import net.superiorstate.ams.data.dao.EnrollmentMatrixEntryDAO;
 import net.superiorstate.ams.data.dao.EnrollmentMatrixParticipantDAO;
+import net.superiorstate.ams.data.dao.PayrollFrequencyDAO;
 import net.superiorstate.ams.data.dao.SummitPlanTemplateMapDAO;
 import net.superiorstate.ams.model.activity.checklist.sequences.support.ServiceItem;
 import net.superiorstate.ams.model.activity.ticket.setup.Setup;
@@ -22,6 +23,7 @@ import net.superiorstate.ams.model.market.EmployerParticipant;
 import net.superiorstate.ams.model.market.EnrollmentMatrix;
 import net.superiorstate.ams.model.market.EnrollmentMatrixEntry;
 import net.superiorstate.ams.model.market.EnrollmentMatrixParticipant;
+import net.superiorstate.ams.model.market.PayrollFrequency;
 import net.superiorstate.ams.model.market.SummitPlanTemplateMap;
 import net.superiorstate.ams.model.sales.agency.Prospect;
 import net.superiorstate.ams.model.sales.application.Application;
@@ -79,10 +81,15 @@ import java.util.Set;
  * against a {@code MONTHLY_PREMIUM} leg, is stored as submitted. Validation is a later decision
  * (per this build's instructions) and guessing it now would be schema-shaped.
  * <p>
- * ⚠️ <b>No payroll-frequency value list is built or enforced here.</b> The select offers only a
- * blank option, {@code OTHER_CUSTOM}, and {@code OTHER_NOT_IMPORTABLE} — the curated
- * enrollment-approved global list is Kevin's to designate later. A hand-crafted POST with any
- * other string is still stored verbatim; the column is code-validated later, not here.
+ * <b>s53d — the payroll-frequency select is now built from {@link PayrollFrequencyDAO}</b>
+ * ({@code findEnrollmentApproved()}, s53c/V107), plus any stored value already on a row in this
+ * matrix that is no longer enrollment-approved (so un-approving a frequency never silently blanks
+ * a row that already holds it), plus the two sentinels {@code OTHER_CUSTOM} and
+ * {@code OTHER_NOT_IMPORTABLE}. A row with no stored value defaults, at render time only, to the
+ * application's {@code paycycle_frequency} answer mapped through
+ * {@code PayrollFrequencyDAO.findByApplicationValue}; nothing is persisted by rendering, and a
+ * stored value is never overridden by the default. A hand-crafted POST with any other string is
+ * still stored verbatim; the column is code-validated later, not here.
  * <p>
  * <b>Push lock.</b> If {@link EnrollmentMatrix#isPushed()}, the whole table renders read-only and
  * {@link #save} refuses with a flash error before touching any row. No exporter sets this column
@@ -99,14 +106,13 @@ public class EnrollmentMatrixServlet extends HttpServlet {
     private static final String FLASH_ERROR = "enrollmentMatrixError";
 
     /**
-     * s52k — the {@code payroll_frequency} values this screen's select offers. Deliberately just
-     * these two named members plus the blank default — the curated global list is not yet
-     * designated (Kevin's call), so nothing else is built or guessed here. A later change extends
-     * this one list; nothing else in this file or the JSP needs to change to add to it.
+     * s53d — the {@code ApplicationField} key whose answer defaults the matrix dropdown at
+     * render time (s53b). Referenced by name, not retyped at each call site.
      */
-    private static final List<String> PAYROLL_FREQUENCY_OPTIONS = List.of("OTHER_CUSTOM", "OTHER_NOT_IMPORTABLE");
+    private static final String FIELD_PAYCYCLE_FREQUENCY = "paycycle_frequency";
 
-    private static final String OTHER_CUSTOM = "OTHER_CUSTOM";
+    /** Referenced from {@link PayrollFrequency}, never retyped as a literal (s53d). */
+    private static final String OTHER_CUSTOM = PayrollFrequency.OTHER_CUSTOM;
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
@@ -194,10 +200,19 @@ public class EnrollmentMatrixServlet extends HttpServlet {
             request.setAttribute("legs", legs);
             request.setAttribute("headersByParticipant", headersByParticipant);
             request.setAttribute("entriesByParticipantAndLeg", entriesByParticipantAndLeg);
-            request.setAttribute("payrollFrequencyOptions", PAYROLL_FREQUENCY_OPTIONS);
+            request.setAttribute("payrollFrequencyOptions",
+                    buildPayrollFrequencyOptions(em, headersByParticipant));
             request.setAttribute("otherCustom", OTHER_CUSTOM);
             request.setAttribute("mostRecentCustomScheduleName",
                     EnrollmentMatrixParticipantDAO.findMostRecentCustomScheduleName(em, matrix.getId()));
+
+            // s53d -- render-time default only. Nothing here writes to any row; the resolved
+            // code becomes real only when the operator submits the form (see #save, which reads
+            // payrollFrequency_<id> straight off the request and never consults this attribute).
+            String paycycleAnswer = resolveApplicationPaycycleFrequency(em, proposalId);
+            PayrollFrequency defaultFrequency = PayrollFrequencyDAO.findByApplicationValue(em, paycycleAnswer);
+            request.setAttribute("defaultPayrollFrequency",
+                    defaultFrequency == null ? null : defaultFrequency.getCode());
 
             forward(request, response);
         } finally {
@@ -419,6 +434,57 @@ public class EnrollmentMatrixServlet extends HttpServlet {
             if (serviceItem != null) ids.add(serviceItem.getId());
         }
         return ids;
+    }
+
+    /**
+     * s53d — the payroll-frequency select's option map, code → display label, in order:
+     * (1) every {@link PayrollFrequencyDAO#findEnrollmentApproved} row, (2) any code already
+     * stored on a header row in this matrix that is not enrollment-approved (so un-approving a
+     * frequency never silently blanks a row that already holds it), (3)
+     * {@link PayrollFrequency#OTHER_CUSTOM}, (4) {@link PayrollFrequency#OTHER_NOT_IMPORTABLE}.
+     * A {@code LinkedHashMap}, not a record or POJO list — the JSP's EL resolves {@code getCode()}
+     * and {@code getLabel()}, which a record does not generate, and the map keeps both the JSP
+     * change and the ordering explicit.
+     */
+    private LinkedHashMap<String, String> buildPayrollFrequencyOptions(
+            EntityManager em, Map<Long, EnrollmentMatrixParticipant> headersByParticipant) {
+        LinkedHashMap<String, String> options = new LinkedHashMap<>();
+        for (PayrollFrequency approved : PayrollFrequencyDAO.findEnrollmentApproved(em)) {
+            options.put(approved.getCode(), approved.getLabel());
+        }
+        for (EnrollmentMatrixParticipant header : headersByParticipant.values()) {
+            String stored = header.getPayrollFrequency();
+            if (stored == null || stored.isBlank()) continue;
+            if (options.containsKey(stored)) continue;
+            if (PayrollFrequency.OTHER_CUSTOM.equals(stored)
+                    || PayrollFrequency.OTHER_NOT_IMPORTABLE.equals(stored)) continue;
+            options.put(stored, stored + " (inactive)");
+        }
+        options.put(PayrollFrequency.OTHER_CUSTOM, "Other — custom Summit schedule");
+        options.put(PayrollFrequency.OTHER_NOT_IMPORTABLE, "Other — not importable");
+        return options;
+    }
+
+    /**
+     * ⚠️ <b>TA-2 shape.</b> A third, narrow copy of the "{@code ApplicationFieldValue} by
+     * {@code fieldKey}" query pattern — {@code SummitExportServlet.loadApplicationAnswers}
+     * (private to that file) and {@code AgentSetupSnapshotLoader.load} (a different loader with
+     * a different job, and it loads every field rather than one) both already carry the same
+     * shape. No shared {@code ApplicationFieldValueDAO} exists to call instead (s53d Step 2
+     * finding); registered here rather than adding a fourth divergent copy of the same query.
+     *
+     * @return the application's {@code paycycle_frequency} answer, or null when the application
+     * has no saved answer for that key — the ordinary state until the field is filled in.
+     */
+    private String resolveApplicationPaycycleFrequency(EntityManager em, long proposalId) {
+        Query q = em.createQuery(
+                "SELECT fv.fieldValue FROM ApplicationFieldValue fv " +
+                "WHERE fv.application.proposal.id = :pid AND fv.applicationField.fieldKey = :fieldKey");
+        q.setParameter("pid", proposalId);
+        q.setParameter("fieldKey", FIELD_PAYCYCLE_FREQUENCY);
+        @SuppressWarnings("unchecked")
+        List<String> found = (List<String>) q.getResultList();
+        return found.isEmpty() ? null : found.get(0);
     }
 
     // ── Helpers ───────────────────────────────────────────────────────

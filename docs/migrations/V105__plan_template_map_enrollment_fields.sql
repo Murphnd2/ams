@@ -79,4 +79,4 @@ CREATE OR REPLACE VIEW schema_info AS
 SELECT 'V105' AS version, '2026-09-12' AS updated;
 
 INSERT IGNORE INTO schema_version (version, description, script_name, applied_on)
-VALUES ('V105', 'summit_plan_template_map enrollment-matrix columns: enrollment_amount_mode (NONE/ANNUAL_ELECTION/MONTHLY_PREMIUM/TIER, default NONE)/affects_payroll/tax_treatment -- amended s52i from an earlier 7-column draft, no consumer yet', 'V105__plan_template_map_enrollment_fields.sql', NOW());
+VALUES ('V105', 'summit_plan_template_map: enrollment_amount_mode, affects_payroll, tax_treatment', 'V105__plan_template_map_enrollment_fields.sql', NOW());

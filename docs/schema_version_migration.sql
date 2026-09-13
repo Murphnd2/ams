@@ -126,4 +126,5 @@ INSERT IGNORE INTO schema_version (version, description, script_name) VALUES
 ('V103', 'summit_plan_template_map: seq discriminator + effective_date_rule/offset_months/plan_year_offset_years; unique key widened to (psp, service item, seq) for plan fan-out (W3)', 'V103__plan_template_map_sequence_and_date_rules.sql'),
 ('V104', 'summit_plan_template_map.is_card_issuer: marks the card-issuer placeholder plan for the $1 seed election export (type=cardseed)', 'V104__plan_template_map_card_issuer.sql'),
 ('V105', 'summit_plan_template_map enrollment-matrix columns: enrollment_amount_mode (NONE/ANNUAL_ELECTION/MONTHLY_PREMIUM/TIER, default NONE)/affects_payroll/tax_treatment -- amended s52i from an earlier 7-column draft, no consumer yet', 'V105__plan_template_map_enrollment_fields.sql'),
-('V106', 'Enrollment matrix storage: matrix/participant/entry tables', 'V106__enrollment_matrix.sql');
+('V106', 'Enrollment matrix storage: matrix/participant/entry tables', 'V106__enrollment_matrix.sql'),
+('V107', 'payroll_frequency reference table', 'V107__payroll_frequency.sql');
