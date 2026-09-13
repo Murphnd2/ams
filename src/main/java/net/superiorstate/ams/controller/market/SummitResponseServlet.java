@@ -37,7 +37,8 @@ import java.util.Objects;
 /**
  * S45-B -- T230 phase 1. Setup-panel "Check response" and "Mark done" for the three pushable
  * steps ({@code employer}, {@code cdhplan}, {@code demographics}) plus the hand-built
- * {@code schedules} checkpoint. {@code enrollment} is priority 2 and is not in the whitelist here.
+ * {@code schedules} checkpoint. S56-C added the two matrix-sourced enrollment files
+ * ({@code enrollment}, {@code elections}) so their pushed files can be checked the same way.
  * <p>
  * Gated exactly as {@link SummitExportServlet} is -- PSP-admin session attribute, then
  * {@link IchraAccessResolver#isAvailable}, same order, same resolver -- so this surface can never
@@ -65,6 +66,10 @@ public class SummitResponseServlet extends HttpServlet {
     private static final String STEP_CDHPLAN = "cdhplan";
     private static final String STEP_SCHEDULES = "schedules";
     private static final String STEP_DEMOGRAPHICS = "demographics";
+    // S56-C -- the two matrix-sourced enrollment files. Own literals here, the same way every
+    // other STEP_* constant is (SummitExportServlet's TYPE_ constants are private to it).
+    private static final String STEP_ENROLLMENT = "enrollment";
+    private static final String STEP_ELECTIONS = "elections";
 
     /** S45c -- matches SummitSetupStatusServlet.DISPLAY_FORMAT; raw LocalDateTime renders as
      *  an ISO instant (e.g. 2026-09-10T11:12:46) on the check page, so every LocalDateTime this
@@ -75,14 +80,18 @@ public class SummitResponseServlet extends HttpServlet {
             STEP_EMPLOYER, "Employer (file 1)",
             STEP_CDHPLAN, "Plans — Employer CDH Plan (file 2)",
             STEP_SCHEDULES, "Contribution schedules (hand-built in Summit)",
-            STEP_DEMOGRAPHICS, "Demographics — participants"
+            STEP_DEMOGRAPHICS, "Demographics — participants",
+            STEP_ENROLLMENT, "HRA Enrollment — matrix-sourced",
+            STEP_ELECTIONS, "125 PI Elections — matrix-sourced"
     );
 
     /** File type per step. {@code schedules} is deliberately absent -- it has no pushed file. */
     private static final Map<String, String> STEP_FILE_TYPES = Map.of(
             STEP_EMPLOYER, "employer",
             STEP_CDHPLAN, "cdhplan",
-            STEP_DEMOGRAPHICS, "demographics"
+            STEP_DEMOGRAPHICS, "demographics",
+            STEP_ENROLLMENT, "enrollment",
+            STEP_ELECTIONS, "elections"
     );
 
     @Override
@@ -100,7 +109,7 @@ public class SummitResponseServlet extends HttpServlet {
         if (proposalIdParam == null || proposalIdParam.isBlank()
                 || step == null || !STEP_LABELS.containsKey(step)) {
             writePlainError(response, HttpServletResponse.SC_BAD_REQUEST,
-                    "proposalId and step (employer|cdhplan|schedules|demographics) are required.");
+                    "proposalId and step (employer|cdhplan|schedules|demographics|enrollment|elections) are required.");
             return;
         }
 
@@ -224,7 +233,7 @@ public class SummitResponseServlet extends HttpServlet {
                 || step == null || !STEP_LABELS.containsKey(step)
                 || action == null || !(action.equals("markdone") || action.equals("reopen"))) {
             writePlainError(response, HttpServletResponse.SC_BAD_REQUEST,
-                    "proposalId, step (employer|cdhplan|schedules|demographics) and action"
+                    "proposalId, step (employer|cdhplan|schedules|demographics|enrollment|elections) and action"
                             + " (markdone|reopen) are required.");
             return;
         }

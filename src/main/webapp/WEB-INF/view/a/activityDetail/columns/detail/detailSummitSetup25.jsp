@@ -134,26 +134,40 @@
             <button type="submit" form="summitPush-cardseed" class="btn btn-outline-ssa" title="Push to DataPath (opens a confirmation screen)"><i class="bi bi-cloud-upload"></i></button>
           </div>
         </div>
+        <%-- S56-C -- the two matrix-sourced enrollment files. Both read the Enrollment Matrix
+             (V106) and route each plan's rows by its 'Enrollment import file' (V108): HRA
+             Enrollment for ICHRA/HRA/MERP, 125 PI Elections for PremiumPath/FSA/DCA. The servlet
+             refuses either file while the matrix is incomplete (every cell an election or a
+             waiver -- one matrix, one state, both files or neither) or while any plan with
+             elections has no import file assigned; both refusals name what to fix. Confirm
+             tokens are ENROLL-ALL-P{proposalId} / ELECT-ALL-P{proposalId}: the download links
+             carry none (first click shows the plain-text refusal naming the retry URL, the
+             established T201 friction); the push forms pre-fill them, since a POST has no URL to
+             retype, gated by the buttons' own onclick confirm(). --%>
         <div class="d-flex align-items-center gap-2 py-1" style="padding-left: 2rem;">
           <div class="flex-grow-1 lh-sm">
             <div>125 PI Elections</div>
-            <div class="text-muted" style="font-size: 0.72rem;">Section 125 plans: premium, FSA, DCA, PRA</div>
+            <div class="text-muted" style="font-size: 0.72rem;">Section 125 plans: PremiumPath, FSA, DCA · from the Enrollment Matrix · requires confirm</div>
+            <jsp:include page="/SummitSetupStatus"><jsp:param name="proposalId" value="${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}"/><jsp:param name="step" value="elections"/></jsp:include>
           </div>
           <div class="btn-group btn-group-sm">
             <button type="button" class="btn btn-outline-secondary opacity-50" style="border-style: dashed; cursor: not-allowed;" aria-disabled="true" title="Preview — not built yet"><i class="bi bi-eye"></i></button>
-            <button type="button" class="btn btn-outline-secondary opacity-50" style="border-style: dashed; cursor: not-allowed;" aria-disabled="true" title="Download — not built yet"><i class="bi bi-download"></i></button>
-            <button type="button" class="btn btn-outline-secondary opacity-50" style="border-style: dashed; cursor: not-allowed;" aria-disabled="true" title="Push to DataPath — not built yet"><i class="bi bi-cloud-upload"></i></button>
+            <a href="${pageContext.request.contextPath}/SummitExport?proposalId=${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}&type=elections" class="btn btn-outline-ssa" title="Download 125 PI Elections (refuses without confirm)"><i class="bi bi-download"></i></a>
+            <button type="submit" form="summitPush-elections" class="btn btn-outline-ssa" title="Push to DataPath" data-summit-push="elections" onclick="return confirm('Push the 125 PI Elections file to DataPath? This sends every non-declined Section 125 election recorded on the Enrollment Matrix. Summit processes it automatically within about 15 minutes. There is no undo.');"><i class="bi bi-cloud-upload"></i></button>
+            <a href="${pageContext.request.contextPath}/SummitResponse?proposalId=${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}&step=elections" class="btn btn-outline-ssa" title="Check response"><i class="bi bi-arrow-repeat"></i></a>
           </div>
         </div>
         <div class="d-flex align-items-center gap-2 py-1" style="padding-left: 2rem;">
           <div class="flex-grow-1 lh-sm">
             <div>HRA Enrollment</div>
-            <div class="text-muted" style="font-size: 0.72rem;">HRA plans: ICHRA, QSEHRA, HRA, MERP · requires T201 confirm</div>
+            <div class="text-muted" style="font-size: 0.72rem;">HRA plans: ICHRA, QSEHRA, HRA, MERP · from the Enrollment Matrix · requires confirm</div>
+            <jsp:include page="/SummitSetupStatus"><jsp:param name="proposalId" value="${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}"/><jsp:param name="step" value="enrollment"/></jsp:include>
           </div>
           <div class="btn-group btn-group-sm">
             <button type="button" class="btn btn-outline-secondary opacity-50" style="border-style: dashed; cursor: not-allowed;" aria-disabled="true" title="Preview — not built yet"><i class="bi bi-eye"></i></button>
-            <a href="${pageContext.request.contextPath}/SummitExport?proposalId=${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}&type=enrollment" class="btn btn-outline-ssa" title="Download HRA Enrollment (refuses without T201 confirm)"><i class="bi bi-download"></i></a>
-            <button type="button" class="btn btn-outline-secondary opacity-50" style="border-style: dashed; cursor: not-allowed;" aria-disabled="true" title="Push to DataPath — not built yet"><i class="bi bi-cloud-upload"></i></button>
+            <a href="${pageContext.request.contextPath}/SummitExport?proposalId=${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}&type=enrollment" class="btn btn-outline-ssa" title="Download HRA Enrollment (refuses without confirm)"><i class="bi bi-download"></i></a>
+            <button type="submit" form="summitPush-enrollment" class="btn btn-outline-ssa" title="Push to DataPath" data-summit-push="enrollment" onclick="return confirm('Push the HRA Enrollment file to DataPath? This sends every non-declined HRA election recorded on the Enrollment Matrix. Summit processes it automatically within about 15 minutes. There is no undo.');"><i class="bi bi-cloud-upload"></i></button>
+            <a href="${pageContext.request.contextPath}/SummitResponse?proposalId=${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}&step=enrollment" class="btn btn-outline-ssa" title="Check response"><i class="bi bi-arrow-repeat"></i></a>
           </div>
         </div>
 
@@ -183,6 +197,22 @@
           action="${pageContext.request.contextPath}/SummitExport">
       <input type="hidden" name="proposalId" value="${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}"/>
       <input type="hidden" name="type" value="cardseed"/>
+    </form>
+    <%-- S56-C -- the two matrix-sourced enrollment files pre-fill their confirm tokens: there is
+         no HTML confirm screen for either and no URL a POST lets the operator retype, so the
+         token is supplied here, gated by each button's own onclick confirm(). Keyed on
+         proposalId like every sibling token. --%>
+    <form id="summitPush-elections" method="post" target="_blank"
+          action="${pageContext.request.contextPath}/SummitExport">
+      <input type="hidden" name="proposalId" value="${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}"/>
+      <input type="hidden" name="type" value="elections"/>
+      <input type="hidden" name="confirm" value="ELECT-ALL-P${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}"/>
+    </form>
+    <form id="summitPush-enrollment" method="post" target="_blank"
+          action="${pageContext.request.contextPath}/SummitExport">
+      <input type="hidden" name="proposalId" value="${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}"/>
+      <input type="hidden" name="type" value="enrollment"/>
+      <input type="hidden" name="confirm" value="ENROLL-ALL-P${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}"/>
     </form>
 
     <%-- S45-B -- hidden manual "Mark done" forms, one per T230 phase-1 step. The visible dashed

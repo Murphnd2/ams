@@ -45,7 +45,13 @@ public class SummitSetupStatusServlet extends HttpServlet {
             // for this step (no "Mark done" control exists for it), so findByProposalAndStep above
             // always returns null and this fragment falls straight through to the delivery-attempt
             // line -- "PUSHED · time" once a push has succeeded, nothing before that.
-            "cardseed", "cardseed"
+            "cardseed", "cardseed",
+            // S56-C -- the two matrix-sourced enrollment files (HRA Enrollment and 125 PI
+            // Elections). Same shape as cardseed above: no "Mark done" control exists for
+            // either, so this line is reached the same way. The interim "enrollmatrix" entry
+            // (S55-B) is gone with that type.
+            "enrollment", "enrollment",
+            "elections", "elections"
             // "schedules" deliberately absent -- no pushed file, so no delivery-attempt fallback line.
     );
 

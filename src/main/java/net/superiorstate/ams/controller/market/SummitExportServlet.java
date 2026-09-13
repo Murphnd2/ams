@@ -10,7 +10,12 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import net.superiorstate.ams.AppConfig;
 import net.superiorstate.ams.data.dao.EmployerParticipantDAO;
+import net.superiorstate.ams.data.dao.EnrollmentMatrixDAO;
+import net.superiorstate.ams.data.dao.EnrollmentMatrixEntryDAO;
+import net.superiorstate.ams.data.dao.EnrollmentMatrixParticipantDAO;
+import net.superiorstate.ams.data.dao.PayrollFrequencyDAO;
 import net.superiorstate.ams.data.dao.SummitFileExportDAO;
+import net.superiorstate.ams.data.dao.SummitPlanTemplateMapDAO;
 import net.superiorstate.ams.data.dao.SummitSetupStepDAO;
 import net.superiorstate.ams.data.resolver.EmployerDisplayNameResolver;
 import net.superiorstate.ams.data.resolver.IchraAccessResolver;
@@ -25,9 +30,15 @@ import net.superiorstate.ams.data.service.SummitSftpService;
 import net.superiorstate.ams.data.service.SummitSftpService.SftpTransportException;
 import net.superiorstate.ams.data.AmsDataLocal;
 import net.superiorstate.ams.model.activity.checklist.sequences.support.ServiceItem;
+import net.superiorstate.ams.model.activity.ticket.setup.Setup;
 import net.superiorstate.ams.model.general.PSP;
 import net.superiorstate.ams.model.market.EmployerParticipant;
+import net.superiorstate.ams.model.market.EnrollmentMatrix;
+import net.superiorstate.ams.model.market.EnrollmentMatrixEntry;
+import net.superiorstate.ams.model.market.EnrollmentMatrixParticipant;
+import net.superiorstate.ams.model.market.PayrollFrequency;
 import net.superiorstate.ams.model.market.SummitFileExport;
+import net.superiorstate.ams.model.market.SummitPlanTemplateMap;
 import net.superiorstate.ams.model.sales.agency.Proposal;
 import net.superiorstate.ams.model.sales.agency.Prospect;
 import net.superiorstate.ams.model.sales.application.ApplicationFieldValue;
@@ -87,14 +98,22 @@ public class SummitExportServlet extends HttpServlet {
     private static final String TYPE_EMPLOYER = "employer";
     private static final String TYPE_CDH_PLAN = "cdhplan";
     private static final String TYPE_DEMOGRAPHICS = "demographics";
-    // S30-A -- file 4 of the proven chain, HRA Enrollment. A fourth discriminator rather than a
+    // S30-A -- HRA Enrollment, template ZZ_TEST_HRA_ENROLL. A fourth discriminator rather than a
     // mode of an existing one: it is a separate Summit import template with its own filename
     // prefix, so it must be separately addressable in SUMMIT_IMPORT_TEMPLATES.
+    // S56-C -- matrix-sourced: one row per non-declined enrollment_matrix_entry (V106) whose leg
+    // carries import_file_type = 'enrollment' (V108). The pre-S56-C flat-answer body is gone.
     private static final String TYPE_ENROLLMENT = "enrollment";
     // V104 -- the $1 card-issuer seed election, a `125 PI Elections` file. A fifth discriminator,
     // not a mode of writeHraEnrollment: different Summit import template (125 PI Elections, not
     // HRA Enrollment), different layout, different plan (the card-issuer row, not the ICHRA row).
     private static final String TYPE_CARD_SEED = "cardseed";
+    // S56-C -- 125 PI Elections, template ZZ_TEST_125_ELECTIONS, matrix-sourced: one row per
+    // non-declined enrollment_matrix_entry whose leg carries import_file_type = 'elections'.
+    // Same eleven-column layout writeCardSeedElection emits, real amounts instead of $1.00.
+    // The interim sixth type "enrollmatrix" (S55-B/S55-C) is deleted; its loader is now the
+    // shared engine behind this type and TYPE_ENROLLMENT (see exportMatrixFile).
+    private static final String TYPE_ELECTIONS = "elections";
 
     // Application-answer field keys this export reads (S25-B). Defined in both
     // DatabaseInitializer's baseline sections and the package JSONs under
@@ -112,12 +131,12 @@ public class SummitExportServlet extends HttpServlet {
     // it is not, not a defect.
     private static final String FIELD_PLAN_YEAR_START = "plan_year_start";
     private static final String FIELD_PLAN_YEAR_END = "plan_year_end";
-    // S30-A -- `Participant Annual Election Amount`, the one enrollment column with no other
-    // source anywhere in AMS. Ships in the hra package's LOS-scoped hra_benefit_allocation
-    // section ("105 Benefit Allocation") as a REQUIRED field labelled "Annual Amount per
-    // Employee", so it is present exactly when that section is attached to the LOS being sold --
-    // the same installation-configuration dependency, and the same expected refusal, as the
-    // plan-year fields above. See writeHraEnrollment for why the tiered siblings are unusable.
+    // S30-A -- the flat "Annual Amount per Employee" answer. Ships in the hra package's LOS-scoped
+    // hra_benefit_allocation section ("105 Benefit Allocation") as a REQUIRED field, so it is
+    // present exactly when that section is attached to the LOS being sold -- the same
+    // installation-configuration dependency, and the same expected refusal, as the plan-year
+    // fields above. S56-C: read only by file 2's allowance plan-name composition now; the
+    // enrollment files take their amounts from the matrix, not from this answer.
     private static final String FIELD_HRA_ANNUAL_EE = "hra_annual_ee";
 
     // S28-B/S28-D -- the key segment and label the legacy single-row fallback synthesises when
@@ -151,9 +170,9 @@ public class SummitExportServlet extends HttpServlet {
         if (proposalIdParam == null || proposalIdParam.isBlank()
                 || type == null || !(type.equals(TYPE_EMPLOYER) || type.equals(TYPE_CDH_PLAN)
                         || type.equals(TYPE_DEMOGRAPHICS) || type.equals(TYPE_ENROLLMENT)
-                        || type.equals(TYPE_CARD_SEED))) {
+                        || type.equals(TYPE_CARD_SEED) || type.equals(TYPE_ELECTIONS))) {
             writePlainError(response, HttpServletResponse.SC_BAD_REQUEST,
-                    "proposalId and type (employer|cdhplan|demographics|enrollment|cardseed) are required.");
+                    "proposalId and type (employer|cdhplan|demographics|enrollment|cardseed|elections) are required.");
             return;
         }
 
@@ -224,9 +243,10 @@ public class SummitExportServlet extends HttpServlet {
 
             // S42-B -- push mode checks. Run only when doPost has set PUSH_ATTR; a GET never
             // reaches here with it set. Every refusal returns before anything is generated,
-            // the same shape the T201 guard below already uses. The T201 guard itself is not
-            // touched -- type=enrollment is refused here, before dispatch, so writeHraEnrollment
-            // is never reached in push mode at all.
+            // the same shape the confirm guards in the dispatch below use. S56-C -- the T201
+            // "enrollment cannot be pushed" refusal that used to sit here is gone: AMS now stores
+            // election state (the enrollment matrix, V106), so both matrix-sourced files push
+            // through the same checks as every other type.
             String pushDir = null;
             Long ackDuplicate = null;
             if (Boolean.TRUE.equals(request.getAttribute(PUSH_ATTR))) {
@@ -236,14 +256,9 @@ public class SummitExportServlet extends HttpServlet {
                                     + " (SUMMIT_PUSH_ENABLED).");
                     return;
                 }
-                if (type.equals(TYPE_ENROLLMENT)) {
-                    writePlainError(response, HttpServletResponse.SC_BAD_REQUEST,
-                            "Not pushed: HRA Enrollment cannot be pushed. AMS stores no election"
-                                    + " state (T201); enrollment remains a manual upload.");
-                    return;
-                }
                 if (!(type.equals(TYPE_EMPLOYER) || type.equals(TYPE_CDH_PLAN)
-                        || type.equals(TYPE_DEMOGRAPHICS) || type.equals(TYPE_CARD_SEED))) {
+                        || type.equals(TYPE_DEMOGRAPHICS) || type.equals(TYPE_CARD_SEED)
+                        || type.equals(TYPE_ENROLLMENT) || type.equals(TYPE_ELECTIONS))) {
                     writePlainError(response, HttpServletResponse.SC_BAD_REQUEST,
                             "Not pushed: type is not pushable.");
                     return;
@@ -347,29 +362,17 @@ public class SummitExportServlet extends HttpServlet {
 
                 writeCardSeedElection(response, em, proposalId, prospect, answers,
                         employerTpaCustomId, pspId, record, submittedEffectiveDate);
+            } else if (type.equals(TYPE_ENROLLMENT) || type.equals(TYPE_ELECTIONS)) {
+                // S56-C -- both matrix-sourced enrollment files share one front door: setup
+                // resolution, the whole-matrix completeness gate, the unassigned-route refusal,
+                // the confirm token (ENROLL-ALL-P / ELECT-ALL-P, keyed on proposalId like every
+                // sibling) and then the parameterised writer. See exportMatrixFile.
+                exportMatrixFile(request, response, em, proposalId, prospect, answers,
+                        employerTpaCustomId, record, type);
             } else {
-                // T201 guard. The enrollment file enrols EVERY roster participant into the funded
-                // ICHRA plan at one flat amount, and AMS stores no election state, so declined
-                // participants cannot be excluded. Refuse unless the caller confirms for this
-                // specific proposal. Runs before any response write; the token is bound to
-                // proposalId so a URL for one proposal cannot be reused for another.
-                String expectedConfirm = "ENROLL-ALL-P" + proposalId;
-                if (!expectedConfirm.equals(request.getParameter("confirm"))) {
-                    List<EmployerParticipant> guardRoster =
-                            EmployerParticipantDAO.findByProspectId(em, prospect.getId());
-                    int rosterCount = (guardRoster == null) ? 0 : guardRoster.size();
-                    writePlainError(response, HttpServletResponse.SC_BAD_REQUEST,
-                            "HRA Enrollment file not generated (T201).\n\n"
-                          + "This file enrols EVERY participant on the roster for prospect "
-                          + prospect.getId() + " (" + rosterCount + " participant"
-                          + (rosterCount == 1 ? "" : "s") + ") into the funded ICHRA plan at one"
-                          + " flat annual amount. AMS stores no election state, so participants who"
-                          + " declined cannot be excluded. Do not import this file for a real group.\n\n"
-                          + "To generate it anyway, repeat this request with &confirm="
-                          + expectedConfirm);
-                    return;
-                }
-                writeHraEnrollment(response, em, proposalId, prospect, answers, employerTpaCustomId, pspId, record);
+                // Unreachable: the type whitelist above admits nothing else. Kept as a plain
+                // refusal rather than a fall-through into any writer.
+                writePlainError(response, HttpServletResponse.SC_BAD_REQUEST, "Unsupported type.");
             }
         } finally {
             if (em.isOpen()) em.close();
@@ -1364,201 +1367,459 @@ public class SummitExportServlet extends HttpServlet {
     }
 
     /**
-     * HRA Enrollment — the <b>proven chain's fourth file</b>. Five columns, one row per participant:
-     * <pre>
-     * Employer TPA Custom ID|Participant TPA Custom ID|Import Plan ID|Effective Date|Participant Annual Election Amount
-     * 158E140952|158-P-77|158E140952ICHRA|20260101|7200.00
-     * </pre>
-     * Same template settings as the other three — delimited {@code |}, dates {@code YYYYMMDD}, no
-     * header, no footer, no body record indicator, Extraneous Data No. The layout was import-proven
-     * by hand on 2026-09-08, against both a hyphenated and an alphanumeric participant id and both
-     * {@code Import Plan ID} shapes; <b>this emitter has not itself been run or imported</b> (T196).
-     * <p>
-     * ⚠️ <b>Not the client-setup sequence's "file 5".</b> That is enrollment into the Premium Billing
-     * ICHRA <i>notice</i> plan — a different platform and a different file type
-     * ({@code docs/business/summit_data_exchange.md}, "Core (files 1–4)"). This emitter enrols into
-     * the CDH ICHRA plan {@link #writeEmployerCdhPlan} creates, and nothing else. Two numbering
-     * schemes are in play in that document; they do not describe the same file.
-     * <p>
-     * ⚠️ <b>No {@code Branch Code} column.</b> That sentinel is Demographics-only — it exists there
-     * because column K is an optional field left blank on most rosters. This layout's last column is
-     * mandatory and always populated, so it needs none. Nothing may be appended after it either.
-     * <p>
-     * <b>The participant set is exactly the set {@link #writeDemographics} emits</b> — the same
-     * {@code EmployerParticipantDAO.findByProspectId} call, the same ordering, no filter added and
-     * none removed. Summit's dependency order is employer → plans → participants → enrollments, so a
-     * row naming a participant Demographics did not create fails. ⚠️ <b>An empty roster is refused, not
-     * emitted</b> (T209) — see the guard below, matching Demographics.
-     * <p>
-     * ⚠️ <b>{@code Effective Date} is the plan year start, not {@code EmployerParticipant.effectiveDate}</b>
-     * — the same value {@link #writeEmployerCdhPlan} emits as both its {@code Effective Date} and its
-     * {@code Plan Year Begin}, so an enrollment can never open before the plan it enrols into.
-     * {@code CensusUploadServlet} applies one form-field date uniformly across a whole roster, so in
-     * practice the two agree; nothing structurally forces it, and <b>T198</b> records the divergence
-     * for the first live execution to settle.
-     * <p>
-     * ⚠️ <b>{@code Import Plan ID} must name the ICHRA plan specifically.</b> HRA Enrollment is for
-     * HRA plans; an {@code Ins125} plan enrols through the separate {@code 125 PI Elections} file
-     * type, whose field set has never been established by import (T195). {@link PlanTemplate} carries
-     * no plan-kind marker, so the ICHRA plan is identified by its {@code keySegment} matching
-     * {@link #LEGACY_ICHRA_SEGMENT} — the only such convention that exists, and the value both the
-     * legacy fallback and {@link SummitPlanTemplateResolver}'s own worked example use. <b>Zero
-     * matches or more than one is a refusal, never a pick</b>: an enrollment naming the wrong plan
-     * imports successfully and funds the wrong benefit, and there is no import-time safety net.
+     * S55-B — the Setup whose application's proposal is {@code proposalId}, or null. Same chain
+     * {@code GoActivityDetail25} and {@code CensusRequestServlet.findSetup} /
+     * {@code CensusIntakeService} both already walk; duplicated here rather than shared because
+     * none of those classes is in this build's scope fence.
      */
-    private void writeHraEnrollment(HttpServletResponse response, EntityManager em, long proposalId,
-                                     Prospect prospect, Map<String, String> answers,
-                                     String employerTpaCustomId, Long pspId, ExportRecord record)
+    private static Setup findSetupByProposalId(EntityManager em, long proposalId) {
+        Query q = em.createQuery("SELECT s FROM Setup s WHERE s.application.proposal.id = :pid");
+        q.setParameter("pid", proposalId);
+        q.setMaxResults(1);
+        @SuppressWarnings("unchecked")
+        List<Setup> setups = (List<Setup>) q.getResultList();
+        return setups.isEmpty() ? null : setups.get(0);
+    }
+
+    /**
+     * S55-B / S56-C — one {@code enrollment_matrix_entry} (V106) joined out to its participant and
+     * leg. A carrier only. Since S56-C the loader returns <b>every</b> entry row, declined
+     * included, because the completeness gate has to see a declined cell as satisfied — the
+     * emit-time filters ({@link #isEmittable}) run on top of this list, never inside the loader.
+     */
+    private record EnrollmentMatrixExportRow(EmployerParticipant participant, EnrollmentMatrixParticipant header,
+                                              SummitPlanTemplateMap leg, EnrollmentMatrixEntry entry) {}
+
+    /**
+     * S55-B / S56-C — every entry row in one setup's Enrollment Matrix, in participant-then-leg
+     * order, for every participant <b>except</b> those on the {@code OTHER_NOT_IMPORTABLE}
+     * sentinel. Never null; empty when no matrix exists yet for {@code setupId}, when it exists but
+     * has no header rows, or when every header is excluded.
+     * <p>
+     * <b>Participant order</b> is {@link EmployerParticipantDAO#findByProspectId}'s own roster
+     * order (last name, first name, id) — the same order {@code writeDemographics} emits in.
+     * <b>Leg order</b> within a participant is {@link SummitPlanTemplateMap#getSortOrder()}, then
+     * {@code plan_template_map_id} as a tiebreaker (V095/V103 carry no second ordering column).
+     * <p>
+     * ⚠️ <b>{@code OTHER_NOT_IMPORTABLE} excludes the whole participant</b> — V106's own migration
+     * comment records the meaning ("none of that participant's entries go in the FTP export") and
+     * it is the ONLY participant-level exclusion anywhere on this path. Enforced at the header
+     * level, before entries are looked at.
+     * <p>
+     * ⚠️ <b>Declined entries are returned, not dropped</b> (S56-C). The completeness gate needs
+     * them: a declined cell is the waiver that satisfies the gate. Row selection for the file is
+     * {@link #isEmittable}'s job.
+     * <p>
+     * ⚠️ <b>The leg is resolved with {@code computeIfAbsent} in the emit loop, not only inside the
+     * sort comparator</b> (S55-C). {@code List.sort} invokes its comparator zero times for a list
+     * shorter than two elements, so a participant with exactly one entry left the leg cache
+     * unpopulated and a plain {@code get()} silently dropped a real row. Do not revert this to a
+     * comparator-populated cache. A leg id that no longer exists at all is logged and the row is
+     * dropped — fabricating an Import Plan ID for a leg AMS can no longer identify would be worse.
+     */
+    private List<EnrollmentMatrixExportRow> loadEnrollmentMatrixExportRows(EntityManager em, Long setupId,
+                                                                            Prospect prospect) {
+        EnrollmentMatrix matrix = EnrollmentMatrixDAO.findBySetupId(em, setupId);
+        if (matrix == null) return List.of();
+
+        Map<Long, EnrollmentMatrixParticipant> headersById = new LinkedHashMap<>();
+        for (EnrollmentMatrixParticipant header : EnrollmentMatrixParticipantDAO.findByMatrixId(em, matrix.getId())) {
+            if (!PayrollFrequency.OTHER_NOT_IMPORTABLE.equals(header.getPayrollFrequency())) {
+                headersById.put(header.getId(), header);
+            }
+        }
+        if (headersById.isEmpty()) return List.of();
+
+        Map<Long, EnrollmentMatrixParticipant> headerByParticipantId = new LinkedHashMap<>();
+        for (EnrollmentMatrixParticipant header : headersById.values()) {
+            headerByParticipantId.put(header.getParticipantId(), header);
+        }
+
+        List<EmployerParticipant> roster = prospect == null
+                ? List.of() : EmployerParticipantDAO.findByProspectId(em, prospect.getId());
+
+        Map<Long, List<EnrollmentMatrixEntry>> entriesByHeaderId = new LinkedHashMap<>();
+        for (EnrollmentMatrixEntry entry : EnrollmentMatrixEntryDAO.findByMatrixId(em, matrix.getId())) {
+            if (!headersById.containsKey(entry.getMatrixParticipantId())) continue; // OTHER_NOT_IMPORTABLE
+            entriesByHeaderId.computeIfAbsent(entry.getMatrixParticipantId(), k -> new ArrayList<>()).add(entry);
+        }
+
+        Map<Long, SummitPlanTemplateMap> legsById = new LinkedHashMap<>();
+        List<EnrollmentMatrixExportRow> rows = new ArrayList<>();
+        for (EmployerParticipant participant : roster) {
+            EnrollmentMatrixParticipant header = headerByParticipantId.get(participant.getId());
+            if (header == null) continue;
+            List<EnrollmentMatrixEntry> entries = entriesByHeaderId.get(header.getId());
+            if (entries == null || entries.isEmpty()) continue;
+
+            entries.sort((a, b) -> {
+                SummitPlanTemplateMap legA = legsById.computeIfAbsent(a.getPlanTemplateMapId(),
+                        id -> SummitPlanTemplateMapDAO.findById(em, id));
+                SummitPlanTemplateMap legB = legsById.computeIfAbsent(b.getPlanTemplateMapId(),
+                        id -> SummitPlanTemplateMapDAO.findById(em, id));
+                int sortA = legA == null ? Integer.MAX_VALUE : legA.getSortOrder();
+                int sortB = legB == null ? Integer.MAX_VALUE : legB.getSortOrder();
+                if (sortA != sortB) return Integer.compare(sortA, sortB);
+                return Long.compare(a.getPlanTemplateMapId(), b.getPlanTemplateMapId());
+            });
+
+            for (EnrollmentMatrixEntry entry : entries) {
+                // S55-C -- computeIfAbsent here too, not just in the comparator above; see the
+                // javadoc. This is what keeps a single-entry participant in the file.
+                SummitPlanTemplateMap leg = legsById.computeIfAbsent(entry.getPlanTemplateMapId(),
+                        id -> SummitPlanTemplateMapDAO.findById(em, id));
+                if (leg == null) {
+                    log.error("[SUMMIT-EXPORT] enrollment matrix entry {} for setup {} references"
+                                    + " plan_template_map_id {} which no longer exists -- row skipped",
+                            entry.getId(), setupId, entry.getPlanTemplateMapId());
+                    continue;
+                }
+                rows.add(new EnrollmentMatrixExportRow(participant, header, leg, entry));
+            }
+        }
+        return rows;
+    }
+
+    /**
+     * S56-C — whether an entry carries its leg's mode value: {@code TIER} → {@code tier_name}
+     * non-blank; {@code ANNUAL_ELECTION} or {@code MONTHLY_PREMIUM} → {@code amount} non-null.
+     * Any other mode (there should be none — {@code NONE} legs never reach the matrix,
+     * {@code EnrollmentMatrixServlet:171}) is treated as not populated, never as satisfied.
+     * This is the one predicate both the completeness gate and {@link #isEmittable} use.
+     */
+    private static boolean isModeValuePopulated(SummitPlanTemplateMap leg, EnrollmentMatrixEntry entry) {
+        String mode = leg.getEnrollmentAmountMode();
+        if ("TIER".equals(mode)) return trimToNull(entry.getTierName()) != null;
+        if ("ANNUAL_ELECTION".equals(mode) || "MONTHLY_PREMIUM".equals(mode)) return entry.getAmount() != null;
+        return false;
+    }
+
+    /**
+     * S56-C — row selection for a file: not declined, mode value populated (defensive — redundant
+     * once the gate has passed, and it stays), and the leg routed to {@code targetFileType}. The
+     * participant-level {@code OTHER_NOT_IMPORTABLE} exclusion already happened in the loader.
+     * A NULL {@code import_file_type} never matches any target — the unassigned-route refusal in
+     * {@link #exportMatrixFile} has named it before this is ever asked.
+     */
+    private static boolean isEmittable(EnrollmentMatrixExportRow row, String targetFileType) {
+        if (row.entry().isDeclined()) return false;
+        if (!isModeValuePopulated(row.leg(), row.entry())) return false;
+        return targetFileType.equals(row.leg().getImportFileType());
+    }
+
+    /** S56-C — "Last, First — leg label", for the refusal pages. */
+    private static String matrixCellLabel(EnrollmentMatrixExportRow row) {
+        String legLabel = trimToNull(row.leg().getLabel());
+        if (legLabel == null) legLabel = row.leg().getKeySegment();
+        return row.participant().getLastName() + ", " + row.participant().getFirstName()
+                + " (participant " + row.participant().getId() + ") — " + legLabel;
+    }
+
+    /** S56-C — leg label for the unassigned-route refusal: "label (key segment KEYSEG, row N)". */
+    private static String legLabel(SummitPlanTemplateMap leg) {
+        String label = trimToNull(leg.getLabel());
+        return (label == null ? leg.getKeySegment() : label)
+                + " (key segment " + leg.getKeySegment() + ", mapping row " + leg.getId() + ")";
+    }
+
+    /**
+     * S55-B / S56-C — the contribution schedule name for one participant, or null.
+     * {@code custom_schedule_name} (the {@code OTHER_CUSTOM} override) wins over the curated
+     * {@code payroll_frequency.summit_schedule_name} for the stored code; a stored code that no
+     * longer resolves to a row, or resolves to one whose schedule name is NULL, yields null —
+     * which every caller emits as an <b>empty column, never a dropped row</b> (TA-13). The
+     * column it lands in differs by template: F (Employer) on HRA Enrollment, I (Participant) on
+     * 125 PI Elections.
+     */
+    private static String resolveScheduleName(EntityManager em, EnrollmentMatrixParticipant header) {
+        String schedule = trimToNull(header.getCustomScheduleName());
+        if (schedule != null) return schedule;
+        String storedCode = header.getPayrollFrequency();
+        if (storedCode == null || PayrollFrequency.OTHER_CUSTOM.equals(storedCode)
+                || PayrollFrequency.OTHER_NOT_IMPORTABLE.equals(storedCode)) {
+            return null;
+        }
+        PayrollFrequency frequency = PayrollFrequencyDAO.findByCode(em, storedCode);
+        return frequency == null ? null : trimToNull(frequency.getSummitScheduleName());
+    }
+
+    /**
+     * S56-C — the shared front door for both matrix-sourced enrollment files ({@link #TYPE_ENROLLMENT}
+     * and {@link #TYPE_ELECTIONS}). Runs, in this order, before any byte is generated:
+     * <ol>
+     *   <li><b>Setup resolution</b> — {@code enrollment_matrix} keys off {@code setup_id} (V106), so
+     *       the Setup behind {@code proposalId} is looked up first. Same request parameter every
+     *       sibling form sends; no new one.</li>
+     *   <li><b>Completeness gate — whole matrix, both files or neither.</b> Every entry row of every
+     *       non-{@code OTHER_NOT_IMPORTABLE} participant must be declined (the waiver) or carry its
+     *       leg's mode value ({@link #isModeValuePopulated}). Requesting the HRA file with the 125
+     *       legs half-filled is refused. The refusal names every offending cell (participant + leg)
+     *       and links to the matrix. Enforced here at export only — saving a partly-filled matrix
+     *       stays legal. Fires before the confirm token, for download and push alike.</li>
+     *   <li><b>Unassigned-route refusal</b> — separately: any leg with at least one emittable entry
+     *       and a NULL {@code import_file_type} (V108) is named and the request refused. Nothing is
+     *       routed by default and nothing is skipped silently.</li>
+     *   <li><b>Mode/template mismatch refusal</b> — a {@code TIER}-mode leg routed to
+     *       {@link #TYPE_ELECTIONS}: the 125 PI Elections template has no Tier column and TA-12
+     *       defines column G only for the two amount modes, so there is no honest value to emit.
+     *       Named and refused rather than sent with a blank amount.</li>
+     *   <li><b>Confirm token</b> — {@code ENROLL-ALL-P{proposalId}} / {@code ELECT-ALL-P{proposalId}},
+     *       keyed on the proposal like every sibling. The refusal states the row count this file
+     *       would carry, computed from the same rows the writer then receives.</li>
+     * </ol>
+     * The writer refuses again on zero rows (T209 shape) — a backstop, not a duplicate: the matrix
+     * can change between the refusal being shown and the request being replayed.
+     */
+    private void exportMatrixFile(HttpServletRequest request, HttpServletResponse response, EntityManager em,
+                                  long proposalId, Prospect prospect, Map<String, String> answers,
+                                  String employerTpaCustomId, ExportRecord record, String targetFileType)
             throws IOException {
+        boolean isElections = TYPE_ELECTIONS.equals(targetFileType);
+        String fileLabel = isElections ? "125 PI Elections" : "HRA Enrollment";
+
+        Setup setup = findSetupByProposalId(em, proposalId);
+        if (setup == null) {
+            writePlainError(response, HttpServletResponse.SC_NOT_FOUND,
+                    "Cannot generate " + fileLabel + ": no Setup activity is linked to proposal "
+                            + proposalId + ". The enrollment matrix keys off the setup, not the"
+                            + " proposal, and this proposal has no linked setup.");
+            return;
+        }
+        String matrixUrl = "/EnrollmentMatrix?setupId=" + setup.getId();
+
+        List<EnrollmentMatrixExportRow> rows = loadEnrollmentMatrixExportRows(em, setup.getId(), prospect);
+
+        // 2. Completeness gate -- whole matrix.
+        List<String> incomplete = new ArrayList<>();
+        for (EnrollmentMatrixExportRow row : rows) {
+            if (row.entry().isDeclined()) continue;
+            if (isModeValuePopulated(row.leg(), row.entry())) continue;
+            incomplete.add(matrixCellLabel(row) + " -- needs "
+                    + ("TIER".equals(row.leg().getEnrollmentAmountMode()) ? "a tier" : "an amount")
+                    + " or Declined");
+        }
+        if (!incomplete.isEmpty()) {
+            StringBuilder body = new StringBuilder();
+            body.append(fileLabel).append(" not generated: the Enrollment Matrix for setup ")
+                .append(setup.getId()).append(" is incomplete.\n\n")
+                .append("Every cell must hold an election or a waiver before either enrollment file")
+                .append(" can be produced -- one matrix, one state, both files or neither. ")
+                .append(incomplete.size()).append(" cell").append(incomplete.size() == 1 ? "" : "s")
+                .append(" still in limbo:\n");
+            for (String cell : incomplete) body.append("  - ").append(cell).append("\n");
+            body.append("\nComplete them at ").append(matrixUrl).append(" then generate the file again.");
+            writePlainError(response, HttpServletResponse.SC_BAD_REQUEST, body.toString());
+            return;
+        }
+
+        // 3. Unassigned-route refusal -- any leg with an emittable entry and no import_file_type.
+        Map<Long, SummitPlanTemplateMap> unassignedLegs = new LinkedHashMap<>();
+        // 4. TIER-mode leg routed to the 125 template -- no honest column G exists.
+        Map<Long, SummitPlanTemplateMap> tierOn125 = new LinkedHashMap<>();
+        for (EnrollmentMatrixExportRow row : rows) {
+            if (row.entry().isDeclined() || !isModeValuePopulated(row.leg(), row.entry())) continue;
+            SummitPlanTemplateMap leg = row.leg();
+            if (trimToNull(leg.getImportFileType()) == null) {
+                unassignedLegs.putIfAbsent(leg.getId(), leg);
+            } else if (TYPE_ELECTIONS.equals(leg.getImportFileType())
+                    && "TIER".equals(leg.getEnrollmentAmountMode())) {
+                tierOn125.putIfAbsent(leg.getId(), leg);
+            }
+        }
+        if (!unassignedLegs.isEmpty()) {
+            StringBuilder body = new StringBuilder();
+            body.append(fileLabel).append(" not generated: ").append(unassignedLegs.size())
+                .append(" plan").append(unassignedLegs.size() == 1 ? "" : "s")
+                .append(" with recorded elections ").append(unassignedLegs.size() == 1 ? "has" : "have")
+                .append(" no Summit import file assigned, so AMS cannot tell which file")
+                .append(" those rows belong in and will not guess:\n");
+            for (SummitPlanTemplateMap leg : unassignedLegs.values()) body.append("  - ").append(legLabel(leg)).append("\n");
+            body.append("\nSet 'Enrollment import file' on each of these rows at /SummitPlanTemplateAdmin")
+                .append(" (HRA Enrollment for ICHRA/HRA/MERP, 125 PI Elections for PremiumPath/FSA/DCA),")
+                .append(" then generate the file again.");
+            writePlainError(response, HttpServletResponse.SC_BAD_REQUEST, body.toString());
+            return;
+        }
+        if (!tierOn125.isEmpty()) {
+            StringBuilder body = new StringBuilder();
+            body.append(fileLabel).append(" not generated: ").append(tierOn125.size())
+                .append(" plan").append(tierOn125.size() == 1 ? "" : "s")
+                .append(" routed to 125 PI Elections ").append(tierOn125.size() == 1 ? "uses" : "use")
+                .append(" the TIER amount mode. That template carries no Tier column and its Annual")
+                .append(" Election Amount is defined only for ANNUAL_ELECTION and MONTHLY_PREMIUM,")
+                .append(" so there is no honest value to emit:\n");
+            for (SummitPlanTemplateMap leg : tierOn125.values()) body.append("  - ").append(legLabel(leg)).append("\n");
+            body.append("\nChange the amount mode or the import file on each row at /SummitPlanTemplateAdmin,")
+                .append(" then generate the file again.");
+            writePlainError(response, HttpServletResponse.SC_BAD_REQUEST, body.toString());
+            return;
+        }
+
+        // 5. Confirm token -- keyed on proposalId, matching every sibling.
+        int emittable = 0;
+        for (EnrollmentMatrixExportRow row : rows) if (isEmittable(row, targetFileType)) emittable++;
+        String expectedConfirm = (isElections ? "ELECT-ALL-P" : "ENROLL-ALL-P") + proposalId;
+        if (!expectedConfirm.equals(request.getParameter("confirm"))) {
+            writePlainError(response, HttpServletResponse.SC_BAD_REQUEST,
+                    fileLabel + " file not generated.\n\n"
+                  + "This file sends every non-declined " + fileLabel + " entry recorded in the"
+                  + " Enrollment Matrix for setup " + setup.getId() + " (" + emittable + " row"
+                  + (emittable == 1 ? "" : "s") + ") to Summit. Review the matrix at " + matrixUrl
+                  + " before sending it.\n\n"
+                  + "To generate it anyway, repeat this request with &confirm=" + expectedConfirm);
+            return;
+        }
+
+        if (isElections) {
+            writeElections(response, em, prospect, answers, employerTpaCustomId, setup.getId(), record, rows);
+        } else {
+            writeHraEnrollment(response, em, prospect, answers, employerTpaCustomId, setup.getId(), record, rows);
+        }
+    }
+
+    /**
+     * HRA Enrollment ({@link #TYPE_ENROLLMENT}) — <b>matrix-sourced since S56-C.</b> Eight columns,
+     * one row per non-declined {@code enrollment_matrix_entry} whose leg is routed
+     * {@code import_file_type = 'enrollment'}, template {@code ZZ_TEST_HRA_ENROLL}
+     * ({@code docs/analysis/summit_import_templates_reference.md} §6):
+     * <pre>
+     * Employer TPA Custom ID|Participant TPA Custom ID|Import Plan ID|Effective Date|Tier ID|
+     * Employer Contribution Schedule|Participant Contribution Schedule|Filler
+     * 158E140952|158-P-77|158E140952ICHRA|20260101|EE0|||X
+     * </pre>
+     * The pre-S56-C body (five columns, one flat {@code hra_annual_ee} answer for every roster
+     * participant, template 1030) is gone — Kevin confirmed 2026-09-12 neither legacy download was
+     * functional, so this type was rewired rather than preserved. The name is kept so the sibling
+     * writers' composition notes still point somewhere true: the Import Plan ID composition is
+     * unchanged, {@code sanitize(employerTpaCustomId + keySegment)}.
+     */
+    private void writeHraEnrollment(HttpServletResponse response, EntityManager em, Prospect prospect,
+                                    Map<String, String> answers, String employerTpaCustomId,
+                                    Long setupId, ExportRecord record, List<EnrollmentMatrixExportRow> rows)
+            throws IOException {
+        writeMatrixEnrollmentFile(response, em, prospect, answers, employerTpaCustomId, setupId, record,
+                rows, TYPE_ENROLLMENT);
+    }
+
+    /**
+     * 125 PI Elections ({@link #TYPE_ELECTIONS}) — matrix-sourced (S56-C). Eleven columns, the
+     * shape {@link #writeCardSeedElection} emits, one row per non-declined
+     * {@code enrollment_matrix_entry} whose leg is routed {@code import_file_type = 'elections'};
+     * column G is the recorded amount (annualised for {@code MONTHLY_PREMIUM}, TA-12) and column I
+     * the participant's resolved contribution schedule (TA-13). Layout detail on
+     * {@link #writeMatrixEnrollmentFile}.
+     */
+    private void writeElections(HttpServletResponse response, EntityManager em, Prospect prospect,
+                                Map<String, String> answers, String employerTpaCustomId,
+                                Long setupId, ExportRecord record, List<EnrollmentMatrixExportRow> rows)
+            throws IOException {
+        writeMatrixEnrollmentFile(response, em, prospect, answers, employerTpaCustomId, setupId, record,
+                rows, TYPE_ELECTIONS);
+    }
+
+    /**
+     * S56-C — the shared engine behind {@link #writeHraEnrollment} and {@link #TYPE_ELECTIONS},
+     * parameterised by target file type. One row per {@link #isEmittable} entry, in the loader's
+     * order. Layout by template:
+     * <ul>
+     *   <li>{@link #TYPE_ENROLLMENT}, 8 columns: A Employer TPA Custom ID, B Participant TPA Custom
+     *       ID, C Import Plan ID, D Effective Date, E Tier ID ({@code tier_name} verbatim), F
+     *       <b>Employer</b> Contribution Schedule (resolved name), G Participant Contribution Schedule
+     *       (always empty), H {@code X}.</li>
+     *   <li>{@link #TYPE_ELECTIONS}, 11 columns, byte-for-byte the shape {@link #writeCardSeedElection}
+     *       emits: A–D as above, E Plan Start Date (empty), F Coverage End Date (empty), G Annual
+     *       Election Amount (TA-12: {@code ANNUAL_ELECTION} → {@code amount}; {@code MONTHLY_PREMIUM}
+     *       → {@code amount × 12}; scale 2, HALF_UP, {@code BigDecimal} only), H Per Contribution
+     *       Amount (empty), I <b>Participant</b> Contribution Schedule (resolved name), J Employer
+     *       Contribution Schedule (empty), K {@code X}.</li>
+     * </ul>
+     * TA-13: the schedule name lands in F on HRA (employer-funded) and I on 125 (employee salary
+     * reduction). Resolution order is unchanged from S55-B ({@link #resolveScheduleName}); a
+     * missing name is an empty column, never a dropped row. {@code Effective Date} is the
+     * {@code plan_year_start} answer for both, as file 2 emits it. Column B is
+     * {@code prefix + "-P-" + participant.getId()}, unchanged since S30-A.
+     */
+    private void writeMatrixEnrollmentFile(HttpServletResponse response, EntityManager em, Prospect prospect,
+                                           Map<String, String> answers, String employerTpaCustomId,
+                                           Long setupId, ExportRecord record,
+                                           List<EnrollmentMatrixExportRow> rows, String targetFileType)
+            throws IOException {
+        boolean isElections = TYPE_ELECTIONS.equals(targetFileType);
+        String fileLabel = isElections ? "125 PI Elections" : "HRA Enrollment";
+
         LocalDate planYearStart = parseAnswerDate(answers.get(FIELD_PLAN_YEAR_START));
         if (planYearStart == null) {
             writePlainError(response, HttpServletResponse.SC_BAD_REQUEST,
-                    "Cannot generate HRA Enrollment file: prospect " + prospect.getId()
+                    "Cannot generate " + fileLabel + ": prospect " + prospect.getId()
                             + "'s application has no usable answer for '" + FIELD_PLAN_YEAR_START
-                            + "'. The enrollment's Effective Date is the plan year start — the same"
-                            + " value file 2 emits — so it cannot be derived without it.");
+                            + "'. Effective Date is the plan year start, the same value file 2"
+                            + " emits, so it cannot be derived without it.");
             return;
         }
-
-        BigDecimal annualElection = parseAnnualElectionAmount(answers.get(FIELD_HRA_ANNUAL_EE));
-        if (annualElection == null) {
-            String raw = answers.get(FIELD_HRA_ANNUAL_EE);
-            writePlainError(response, HttpServletResponse.SC_BAD_REQUEST,
-                    "Cannot generate HRA Enrollment file: prospect " + prospect.getId()
-                            + "'s application has no usable answer for '" + FIELD_HRA_ANNUAL_EE
-                            + "' (Annual Amount per Employee, in the HRA package's 105 Benefit"
-                            + " Allocation section)"
-                            + ((raw == null || raw.isBlank())
-                                    ? " — the answer is absent or blank."
-                                    : " — the answer is '" + raw + "'.")
-                            + " It must be a positive amount written as digits with at most two"
-                            + " decimal places, optionally preceded by a dollar sign: 7200, 7200.00"
-                            + " or $7200.00. A thousands separator is refused rather than stripped:"
-                            + " Summit accepts a wrong amount silently and funds the benefit from"
-                            + " it, so a value this export cannot read unambiguously is never"
-                            + " guessed at here. Correcting it is not possible from this screen:"
-                            + " the amount is read from the application, and an application locks"
-                            + " when it converts to a Setup — which this export always runs"
-                            + " against.");
-            return;
-        }
-
-        // Deliberately duplicated from writeEmployerCdhPlan rather than extracted into a shared
-        // helper. That writer is import-proven and this change does not touch it; lifting a helper
-        // out of it would edit proven code to serve an unproven caller. What the two must agree on
-        // is the emitted Import Plan ID, and the guarantee of that is the identical composition
-        // below, not a shared method.
-        List<PlanTemplate> configured;
-        try {
-            configured = SummitPlanTemplateResolver.configuredOrThrow(em, pspId);
-        } catch (SummitPlanTemplateResolver.KeySegmentRejectedException e) {
-            // ⚠️ S50 -- refuse rather than skip the plan, same reasoning as writeEmployerCdhPlan.
-            writePlainError(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
-                    "Cannot generate HRA Enrollment file: " + e.getMessage()
-                            + ". Fix the Summit Plan Templates mapping (SummitPlanTemplateAdmin) or"
-                            + " the SUMMIT_PLAN_TEMPLATES property, then retry.");
-            return;
-        }
-        List<PlanTemplate> candidates;
-        if (configured.isEmpty()) {
-            Integer templateId = parsePositiveInt(AppConfig.get("SUMMIT_ICHRA_PLAN_TEMPLATE_ID"));
-            if (templateId == null) {
-                log.error("[SUMMIT-EXPORT] SUMMIT_ICHRA_PLAN_TEMPLATE_ID is absent or non-numeric on this installation");
-                writePlainError(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
-                        "Cannot generate HRA Enrollment file: " + SummitPlanTemplateResolver.CONFIG_KEY
-                                + " is unset and this installation has no valid"
-                                + " SUMMIT_ICHRA_PLAN_TEMPLATE_ID configured, so the ICHRA plan this"
-                                + " file enrols into cannot be identified. Set one of the two in"
-                                + " ssa.properties before generating this file.");
-                return;
-            }
-            candidates = java.util.Collections.singletonList(new PlanTemplate(
-                    LEGACY_UNMATCHED_SERVICE_ITEM_ID, templateId,
-                    LEGACY_ICHRA_SEGMENT, LEGACY_ICHRA_SEGMENT));
-        } else {
-            Map<Integer, String> electedServices = loadElectedServiceItems(em, proposalId);
-            candidates = new ArrayList<>();
-            for (PlanTemplate template : configured) {
-                if (electedServices.containsKey(template.getServiceItemId())) {
-                    candidates.add(template);
-                }
-            }
-        }
-
-        List<PlanTemplate> ichraMatches = new ArrayList<>();
-        for (PlanTemplate template : candidates) {
-            if (LEGACY_ICHRA_SEGMENT.equalsIgnoreCase(template.getKeySegment())) {
-                ichraMatches.add(template);
-            }
-        }
-        if (ichraMatches.size() != 1) {
-            StringBuilder candidateList = new StringBuilder();
-            for (PlanTemplate template : candidates) {
-                if (candidateList.length() > 0) candidateList.append(", ");
-                candidateList.append(template.getKeySegment()).append("=").append(template.getTemplateId());
-            }
-            writePlainError(response, HttpServletResponse.SC_BAD_REQUEST,
-                    "Cannot generate HRA Enrollment file: this file enrols participants into the"
-                            + " ICHRA plan, so exactly one plan in prospect " + prospect.getId()
-                            + "'s file 2 row-set must carry the key segment '" + LEGACY_ICHRA_SEGMENT
-                            + "'. Found " + ichraMatches.size() + ". Plans file 2 would emit"
-                            + " (keySegment=templateId): "
-                            + (candidates.isEmpty() ? "(none)" : candidateList.toString())
-                            + ". HRA Enrollment is for HRA plans only — an Ins125 plan enrols"
-                            + " through the separate '125 PI Elections' file type, which AMS does"
-                            + " not emit. Correct the key segments in "
-                            + SummitPlanTemplateResolver.CONFIG_KEY + ", then restart Tomcat.");
-            return;
-        }
-        PlanTemplate ichra = ichraMatches.get(0);
-
-        // ⚠️ S31-J -- the SECOND of the two Import Plan ID composition sites. S30-A duplicated this
-        // rather than extracting it, so both must change together: if file 2 drops the plan year and
-        // this does not, every enrollment row points at a plan id that does not exist and the import
-        // fails in a way nobody expects. Composition only -- this writer's roster, amount and
-        // refusals are untouched by S31-J.
-        String importPlanId = sanitize(employerTpaCustomId + ichra.getKeySegment());
         String effectiveDate = planYearStart.format(SUMMIT_DATE);
-        // The parser caps the answer at two decimal places, so setScale(2) is exact here and the
-        // rounding mode is never actually exercised; toPlainString keeps a large amount out of
-        // scientific notation. Never a currency symbol, never a thousands separator.
-        String amount = annualElection.setScale(2, RoundingMode.HALF_UP).toPlainString();
-
-        List<EmployerParticipant> roster = EmployerParticipantDAO.findByProspectId(em, prospect.getId());
         String prefix = summitTpaIdPrefix();
 
         List<String> lines = new ArrayList<>();
-        for (EmployerParticipant participant : roster) {
-            lines.add(String.join("|",
-                    employerTpaCustomId,                        // A
-                    prefix + "-P-" + participant.getId(),       // B
-                    importPlanId,                               // C
-                    effectiveDate,                              // D
-                    amount));                                   // E  mandatory, never empty
+        for (EnrollmentMatrixExportRow row : rows) {
+            if (!isEmittable(row, targetFileType)) continue;
+            SummitPlanTemplateMap leg = row.leg();
+
+            // ⚠️ S31-J -- the SAME Import Plan ID composition writeEmployerCdhPlan and
+            // writeCardSeedElection use, deliberately duplicated rather than extracted.
+            String importPlanId = sanitize(employerTpaCustomId + leg.getKeySegment());
+            String participantId = prefix + "-P-" + row.participant().getId();
+            String schedule = sanitize(resolveScheduleName(em, row.header()));
+
+            if (isElections) {
+                // TA-12 -- column G by mode. The gate guarantees amount is non-null here and the
+                // TIER-on-125 refusal guarantees the mode is one of the two below.
+                BigDecimal amount = row.entry().getAmount();
+                if ("MONTHLY_PREMIUM".equals(leg.getEnrollmentAmountMode())) {
+                    amount = amount.multiply(BigDecimal.valueOf(12));
+                }
+                String annualElection = amount.setScale(2, RoundingMode.HALF_UP).toPlainString();
+                lines.add(String.join("|",
+                        employerTpaCustomId,     // A
+                        participantId,           // B
+                        importPlanId,            // C
+                        effectiveDate,           // D
+                        "",                      // E Plan Start Date -- never
+                        "",                      // F Coverage End Date -- never
+                        annualElection,          // G Annual Election Amount (TA-12)
+                        "",                      // H Per Contribution Amount -- never
+                        schedule,                // I Participant Contribution Schedule (TA-13)
+                        "",                      // J Employer Contribution Schedule -- never
+                        "X"));                   // K Filler -- mandatory sentinel
+            } else {
+                lines.add(String.join("|",
+                        employerTpaCustomId,                              // A
+                        participantId,                                    // B
+                        importPlanId,                                     // C
+                        effectiveDate,                                    // D
+                        sanitize(row.entry().getTierName()),              // E Tier ID
+                        schedule,                                         // F Employer Contribution Schedule (TA-13)
+                        "",                                               // G Participant Contribution Schedule -- always empty
+                        "X"));                                            // H Filler -- mandatory
+            }
         }
 
-        log.info("[SUMMIT-EXPORT] proposal {} HRA Enrollment: {} participant row(s) into plan {}"
-                        + " effective {} at {} each",
-                proposalId, lines.size(), importPlanId, effectiveDate, amount);
+        log.info("[SUMMIT-EXPORT] setup {} {} (matrix-sourced): {} row(s) effective {}",
+                setupId, fileLabel, lines.size(), effectiveDate);
 
-        // ⚠️ T209 -- a zero-row file is a defect, not an empty result. Same guard, same
-        // position and same refusal as file 2's (S31-J). A zero-row enrollment file enrols nobody,
-        // uploads cleanly and gives the operator no signal at all. Placed after the INFO above
-        // deliberately: that line reports the row count, so a refusal is preceded in the log by the
-        // zero it refused on. There is no drop logic on this path, so unlike file 2 there is exactly
-        // one reason and it needs no enumeration.
+        // T209 shape -- an empty file imports as nothing at all, so it is refused rather than
+        // downloaded. Backstop behind exportMatrixFile's own count, not a duplicate of it.
         if (lines.isEmpty()) {
             writePlainError(response, HttpServletResponse.SC_BAD_REQUEST,
-                    "Cannot generate HRA Enrollment file: prospect " + prospect.getId() + " has no"
-                            + " participants on its roster, so the file would have been empty. An"
-                            + " empty file imports as nothing at all, so it is refused rather than"
-                            + " downloaded. Upload the census on the Setup screen, then generate the"
-                            + " file again.");
+                    "Cannot generate " + fileLabel + ": setup " + setupId + " has no non-declined"
+                            + " entry routed to this file in its Enrollment Matrix, so the file"
+                            + " would have been empty. Record elections at /EnrollmentMatrix?setupId="
+                            + setupId + " (and check each plan's 'Enrollment import file' on"
+                            + " /SummitPlanTemplateAdmin), then generate the file again.");
             return;
         }
 
-        String filename = resolveFilename(TYPE_ENROLLMENT,
-                "hra-enrollment-" + sanitizeFilename(prospect.getName())
+        String filename = resolveFilename(targetFileType,
+                (isElections ? "pi-elections-" : "hra-enrollment-") + sanitizeFilename(prospect.getName())
                         + "-" + prospect.getId() + "-" + LocalDate.now().format(SUMMIT_DATE) + ".txt");
         writeFile(response, filename, lines, record);
     }
@@ -2284,6 +2545,13 @@ public class SummitExportServlet extends HttpServlet {
     private static String sanitizeFilename(String name) {
         if (name == null) return "unknown";
         return name.replaceAll("[^a-zA-Z0-9_\\-]", "_").toLowerCase();
+    }
+
+    /** S55-B — null/blank-safe trim, following {@code EnrollmentMatrixServlet}'s own helper of the same name. */
+    private static String trimToNull(String value) {
+        if (value == null) return null;
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 
     private static Integer parsePositiveInt(String raw) {

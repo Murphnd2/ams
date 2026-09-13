@@ -2,6 +2,7 @@ package net.superiorstate.ams.data.dao;
 
 import jakarta.persistence.EntityManager;
 import net.superiorstate.ams.model.market.EnrollmentMatrixEntry;
+import net.superiorstate.ams.model.market.EnrollmentMatrixParticipant;
 
 import java.util.List;
 
@@ -22,6 +23,18 @@ public abstract class EnrollmentMatrixEntryDAO {
             "SELECT e FROM EnrollmentMatrixEntry e " +
             "WHERE e.matrixParticipantId = :matrixParticipantId AND e.planTemplateMapId = :planTemplateMapId";
 
+    /**
+     * S55-B — every detail row belonging to any header row of one matrix, in one query. This
+     * entity carries no {@code matrix_id} column of its own (only {@code matrix_participant_id}),
+     * so the join to the matrix is expressed as a subquery over
+     * {@link EnrollmentMatrixParticipant#getMatrixId()} rather than a direct equality — added for
+     * the enrollment-matrix exporter (build s55b), which needs every entry in a matrix at once
+     * rather than one {@link #findByMatrixParticipantId} call per header row.
+     */
+    private static final String JPQL_BY_MATRIX =
+            "SELECT e FROM EnrollmentMatrixEntry e WHERE e.matrixParticipantId IN (" +
+            "SELECT p.id FROM EnrollmentMatrixParticipant p WHERE p.matrixId = :matrixId)";
+
     /** One detail row by primary key, or null. */
     public static EnrollmentMatrixEntry findById(EntityManager em, Long id) {
         if (id == null) return null;
@@ -33,6 +46,19 @@ public abstract class EnrollmentMatrixEntryDAO {
         if (matrixParticipantId == null) return List.of();
         return em.createQuery(JPQL_BY_PARTICIPANT, EnrollmentMatrixEntry.class)
                 .setParameter("matrixParticipantId", matrixParticipantId)
+                .getResultList();
+    }
+
+    /**
+     * S55-B — every detail row in one matrix, across every header row, in a single query. Never
+     * null; empty when {@code matrixId} is null or the matrix has no entries yet. Declined rows
+     * are included — filtering those out is the caller's job, the same way this DAO leaves every
+     * other selection decision to its callers.
+     */
+    public static List<EnrollmentMatrixEntry> findByMatrixId(EntityManager em, Long matrixId) {
+        if (matrixId == null) return List.of();
+        return em.createQuery(JPQL_BY_MATRIX, EnrollmentMatrixEntry.class)
+                .setParameter("matrixId", matrixId)
                 .getResultList();
     }
 
