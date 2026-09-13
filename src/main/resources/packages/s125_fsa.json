@@ -36,7 +36,7 @@
       "scope": "LOS",
       "sortOrder": 1530,
       "fields": [
-        { "fieldKey": "paycycle_frequency", "label": "Pay Frequency", "fieldType": "SELECT", "required": true, "sortOrder": 100, "helpText": null, "selectOptions": "Weekly|Bi-Weekly|Semi-Monthly|Monthly" },
+        { "fieldKey": "paycycle_frequency", "label": "Pay Frequency", "fieldType": "SELECT", "required": true, "sortOrder": 100, "helpText": null, "selectOptions": "Weekly|Bi-Weekly|Semi-Monthly 1st/15th|Semi-Monthly 15th/Last|Monthly|Other" },
         { "fieldKey": "paycycle_first_paydate", "label": "First Paydate In Plan Year", "fieldType": "DATE", "required": true, "sortOrder": 200, "helpText": "Enter the 1st date of pay after your plan year begins.", "selectOptions": null },
         { "fieldKey": "paycycle_other_have", "label": "Any Other Pay cycles", "fieldType": "RADIO", "required": true, "sortOrder": 500, "helpText": "Do you have any other pay cycles besides the one listed above.", "selectOptions": "Yes|No" },
         { "fieldKey": "paycycle_other_describe", "label": "Describe Other Pay Cycle(s)", "fieldType": "TEXTAREA", "required": false, "sortOrder": 600, "helpText": "If other paycycles, describe below", "selectOptions": null }

@@ -16,6 +16,7 @@ import net.superiorstate.ams.data.dao.EnrollmentMatrixEntryDAO;
 import net.superiorstate.ams.data.dao.EnrollmentMatrixParticipantDAO;
 import net.superiorstate.ams.data.dao.CoverageTierDAO;
 import net.superiorstate.ams.data.dao.PayrollFrequencyDAO;
+import net.superiorstate.ams.data.dao.PaycycleFrequencyAliasDAO;
 import net.superiorstate.ams.data.dao.SummitPlanTemplateMapDAO;
 import net.superiorstate.ams.model.activity.checklist.sequences.support.ServiceItem;
 import net.superiorstate.ams.model.activity.ticket.setup.Setup;
@@ -26,6 +27,7 @@ import net.superiorstate.ams.model.market.EnrollmentMatrixEntry;
 import net.superiorstate.ams.model.market.EnrollmentMatrixParticipant;
 import net.superiorstate.ams.model.market.CoverageTier;
 import net.superiorstate.ams.model.market.PayrollFrequency;
+import net.superiorstate.ams.model.market.PaycycleFrequencyAlias;
 import net.superiorstate.ams.model.market.SummitPlanTemplateMap;
 import net.superiorstate.ams.model.sales.agency.Prospect;
 import net.superiorstate.ams.model.sales.application.Application;
@@ -33,7 +35,10 @@ import net.superiorstate.ams.model.sales.application.ApplicationModule;
 
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeParseException;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -114,6 +119,10 @@ public class EnrollmentMatrixServlet extends HttpServlet {
      * render time (s53b). Referenced by name, not retyped at each call site.
      */
     private static final String FIELD_PAYCYCLE_FREQUENCY = "paycycle_frequency";
+
+    /** S57-P6/TA-15 — the other two answers the schedule-suggestion filter reads. */
+    private static final String FIELD_PAYCYCLE_FIRST_PAYDATE = "paycycle_first_paydate";
+    private static final String FIELD_PAYCYCLE_OTHER_HAVE = "paycycle_other_have";
 
     /** Referenced from {@link PayrollFrequency}, never retyped as a literal (s53d). */
     private static final String OTHER_CUSTOM = PayrollFrequency.OTHER_CUSTOM;
@@ -207,6 +216,18 @@ public class EnrollmentMatrixServlet extends HttpServlet {
             request.setAttribute("payrollFrequencyOptions",
                     buildPayrollFrequencyOptions(em, headersByParticipant));
             request.setAttribute("otherCustom", OTHER_CUSTOM);
+
+            // S57-P6/TA-15 -- schedule suggestion from the setup's application answers. Empty
+            // map (any unrecognised/missing/unparseable answer) renders no optgroup at all --
+            // see filterSuggestedSchedules.
+            String paycycleFrequencyAnswer = resolveApplicationAnswer(em, proposalId, FIELD_PAYCYCLE_FREQUENCY);
+            String paycycleFirstPaydateAnswer = resolveApplicationAnswer(em, proposalId, FIELD_PAYCYCLE_FIRST_PAYDATE);
+            String paycycleOtherHaveAnswer = resolveApplicationAnswer(em, proposalId, FIELD_PAYCYCLE_OTHER_HAVE);
+            request.setAttribute("suggestedPayrollFrequencies",
+                    buildSuggestedPayrollFrequencies(em, paycycleFrequencyAnswer, paycycleFirstPaydateAnswer, paycycleOtherHaveAnswer));
+            request.setAttribute("suggestedPayrollFrequency",
+                    resolveSuggestedPayrollFrequency(filterSuggestedSchedules(
+                            em, paycycleFrequencyAnswer, paycycleFirstPaydateAnswer, paycycleOtherHaveAnswer)));
             request.setAttribute("coverageTierOptions",
                     buildCoverageTierOptions(em, entriesByParticipantAndLeg));
             request.setAttribute("mostRecentCustomScheduleName",
@@ -462,6 +483,129 @@ public class EnrollmentMatrixServlet extends HttpServlet {
     }
 
     /**
+     * S57-P6/TA-15 — the day-of-week / recurrence / bi-weekly-parity filter behind both the
+     * "Suggested from application" optgroup ({@link #buildSuggestedPayrollFrequencies}) and the
+     * single-preferred-survivor caption ({@link #resolveSuggestedPayrollFrequency}). Returns an
+     * empty list — never a partial or guessed filter — when {@code freqAnswer} is null or
+     * blank, when no active {@link PaycycleFrequencyAlias} matches it
+     * ({@link PaycycleFrequencyAliasDAO#findByNormalizedKey}), or when {@code paydateAnswer}
+     * fails strict ISO parsing ({@link #parseStrictIsoDate}).
+     * <p>
+     * Rows come from {@link PayrollFrequencyDAO#findEnrollmentApproved} only, so sentinels and
+     * inactive/unapproved rows never reach this filter. Order: (1) day rule, always — a row
+     * with a non-null {@code payDow} not matching the parsed paydate's day of week is dropped;
+     * (2) if {@code otherHaveAnswer} is {@code Yes} (trimmed, case-insensitive), stop here — the
+     * day rule is the whole filter; (3) otherwise the alias's recurrence token narrows further
+     * (a {@code WEEKLY} answer keeps same-day {@code BIWEEKLY} rows too; {@code SEMIMONTHLY}
+     * requires a matching {@code semimonthlyVariant}); (4) any surviving {@code BIWEEKLY} row is
+     * kept only if its {@code anchorDate} is non-null and
+     * {@code Math.floorMod(daysBetween(paydate, anchorDate), 14) == 0} — {@code floorMod}, not
+     * {@code %}, since the first paydate preceding the anchor is the normal case (every V110
+     * anchor is September 2026) and {@code %} would silently match nothing on a negative
+     * difference.
+     */
+    private List<PayrollFrequency> filterSuggestedSchedules(
+            EntityManager em, String freqAnswer, String paydateAnswer, String otherHaveAnswer) {
+        if (freqAnswer == null || freqAnswer.isBlank()) return List.of();
+
+        PaycycleFrequencyAlias alias = PaycycleFrequencyAliasDAO.findByNormalizedKey(em, freqAnswer);
+        if (alias == null) return List.of();
+
+        LocalDate paydate = parseStrictIsoDate(paydateAnswer);
+        if (paydate == null) return List.of();
+
+        List<PayrollFrequency> dayFiltered = new ArrayList<>();
+        for (PayrollFrequency candidate : PayrollFrequencyDAO.findEnrollmentApproved(em)) {
+            String payDow = candidate.getPayDow();
+            if (payDow != null && !payDow.equals(paydate.getDayOfWeek().name())) continue;
+            dayFiltered.add(candidate);
+        }
+
+        if ("YES".equalsIgnoreCase(trimToNull(otherHaveAnswer))) {
+            return dayFiltered;
+        }
+
+        String recurrence = alias.getRecurrence();
+        List<PayrollFrequency> recurrenceFiltered = new ArrayList<>();
+        for (PayrollFrequency candidate : dayFiltered) {
+            String candidateRecurrence = candidate.getRecurrence();
+            if ("BIWEEKLY".equals(recurrence)) {
+                if ("BIWEEKLY".equals(candidateRecurrence)) recurrenceFiltered.add(candidate);
+            } else if ("WEEKLY".equals(recurrence)) {
+                if ("WEEKLY".equals(candidateRecurrence) || "BIWEEKLY".equals(candidateRecurrence)) {
+                    recurrenceFiltered.add(candidate);
+                }
+            } else if ("SEMIMONTHLY".equals(recurrence)) {
+                if ("SEMIMONTHLY".equals(candidateRecurrence)
+                        && java.util.Objects.equals(candidate.getSemimonthlyVariant(), alias.getSemimonthlyVariant())) {
+                    recurrenceFiltered.add(candidate);
+                }
+            } else if ("MONTHLY".equals(recurrence)) {
+                if ("MONTHLY".equals(candidateRecurrence)) recurrenceFiltered.add(candidate);
+            }
+        }
+
+        List<PayrollFrequency> result = new ArrayList<>();
+        for (PayrollFrequency candidate : recurrenceFiltered) {
+            if ("BIWEEKLY".equals(candidate.getRecurrence())) {
+                LocalDate anchor = candidate.getAnchorDate();
+                if (anchor == null) continue;
+                if (Math.floorMod(ChronoUnit.DAYS.between(paydate, anchor), 14) != 0) continue;
+            }
+            result.add(candidate);
+        }
+        return result;
+    }
+
+    /**
+     * S57-P6/TA-15 — the "Suggested from application" optgroup's option map, code → display
+     * label, built from {@link #filterSuggestedSchedules}. <b>Empty map ⇒ flat list, never
+     * partial</b> — the JSP renders no {@code <optgroup>} at all when this is empty.
+     */
+    private LinkedHashMap<String, String> buildSuggestedPayrollFrequencies(
+            EntityManager em, String freqAnswer, String paydateAnswer, String otherHaveAnswer) {
+        LinkedHashMap<String, String> options = new LinkedHashMap<>();
+        for (PayrollFrequency suggested : filterSuggestedSchedules(em, freqAnswer, paydateAnswer, otherHaveAnswer)) {
+            options.put(suggested.getCode(), suggested.getLabel());
+        }
+        return options;
+    }
+
+    /**
+     * S57-P6/TA-15 — the one schedule named in the caption, never preselected (a hidden
+     * participant panel's {@code <select>} still submits on Save, so a {@code selected}
+     * suggestion would silently persist onto every unlocked row the operator never opened): the
+     * single survivor with {@code preferred = true} when exactly one exists among
+     * {@code survivors}, else null.
+     */
+    private String resolveSuggestedPayrollFrequency(List<PayrollFrequency> survivors) {
+        String preselect = null;
+        int preferredCount = 0;
+        for (PayrollFrequency candidate : survivors) {
+            if (candidate.isPreferred()) {
+                preferredCount++;
+                preselect = candidate.getCode();
+            }
+        }
+        return preferredCount == 1 ? preselect : null;
+    }
+
+    /**
+     * Copied from {@code SummitExportServlet.parseAnswerDate} (private to that file, which this
+     * build may not touch) — an HTML {@code <input type="date">} submits ISO {@code yyyy-MM-dd}.
+     * Returns null if the value is absent, blank, or unparseable; callers refuse to filter
+     * rather than guess.
+     */
+    private static LocalDate parseStrictIsoDate(String raw) {
+        if (raw == null || raw.isBlank()) return null;
+        try {
+            return LocalDate.parse(raw.trim());
+        } catch (DateTimeParseException e) {
+            return null;
+        }
+    }
+
+    /**
      * s53d — the payroll-frequency select's option map, code → display label, in order:
      * (1) every {@link PayrollFrequencyDAO#findEnrollmentApproved} row, (2) any code already
      * stored on a header row in this matrix that is not enrollment-approved (so un-approving a
@@ -497,16 +641,18 @@ public class EnrollmentMatrixServlet extends HttpServlet {
      * a different job, and it loads every field rather than one) both already carry the same
      * shape. No shared {@code ApplicationFieldValueDAO} exists to call instead (s53d Step 2
      * finding); registered here rather than adding a fourth divergent copy of the same query.
+     * Generalised (S57-P6) from a single {@code paycycle_frequency}-only lookup to any field key,
+     * so the TA-15 suggestion filter's three answers share one query shape.
      *
-     * @return the application's {@code paycycle_frequency} answer, or null when the application
-     * has no saved answer for that key — the ordinary state until the field is filled in.
+     * @return the application's answer for {@code fieldKey}, or null when the application has no
+     * saved answer for that key — the ordinary state until the field is filled in.
      */
-    private String resolveApplicationPaycycleFrequency(EntityManager em, long proposalId) {
+    private String resolveApplicationAnswer(EntityManager em, long proposalId, String fieldKey) {
         Query q = em.createQuery(
                 "SELECT fv.fieldValue FROM ApplicationFieldValue fv " +
                 "WHERE fv.application.proposal.id = :pid AND fv.applicationField.fieldKey = :fieldKey");
         q.setParameter("pid", proposalId);
-        q.setParameter("fieldKey", FIELD_PAYCYCLE_FREQUENCY);
+        q.setParameter("fieldKey", fieldKey);
         @SuppressWarnings("unchecked")
         List<String> found = (List<String>) q.getResultList();
         return found.isEmpty() ? null : found.get(0);

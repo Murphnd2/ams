@@ -178,15 +178,37 @@
                                                 <c:set var="ammSelectedFreq"
                                                         value="${not empty mp ? mp.payrollFrequency : ''}"/>
                                                 <option value="" ${empty ammSelectedFreq ? 'selected' : ''}>&mdash; choose &mdash;</option>
+                                                <c:if test="${not empty suggestedPayrollFrequencies}">
+                                                    <optgroup label="Suggested from application">
+                                                        <c:forEach var="opt" items="${suggestedPayrollFrequencies}">
+                                                            <option value="${opt.key}" ${ammSelectedFreq eq opt.key ? 'selected' : ''}>
+                                                                <c:out value="${opt.value}"/>
+                                                            </option>
+                                                        </c:forEach>
+                                                    </optgroup>
+                                                    <optgroup label="All schedules">
+                                                </c:if>
                                                 <c:forEach var="opt" items="${payrollFrequencyOptions}">
-                                                    <option value="${opt.key}" ${ammSelectedFreq eq opt.key ? 'selected' : ''}>
-                                                        <c:out value="${opt.value}"/>
-                                                    </option>
+                                                    <c:if test="${not suggestedPayrollFrequencies.containsKey(opt.key)}">
+                                                        <option value="${opt.key}" ${ammSelectedFreq eq opt.key ? 'selected' : ''}>
+                                                            <c:out value="${opt.value}"/>
+                                                        </option>
+                                                    </c:if>
                                                 </c:forEach>
+                                                <c:if test="${not empty suggestedPayrollFrequencies}">
+                                                    </optgroup>
+                                                </c:if>
                                             </select>
-                                            <%-- s53d: options come from PayrollFrequencyDAO.findEnrollmentApproved()
+                                            <%-- s53d/S57-P6: options come from PayrollFrequencyDAO.findEnrollmentApproved()
                                                  plus any inactive stored code plus the two OTHER_* sentinels
-                                                 (EnrollmentMatrixServlet#buildPayrollFrequencyOptions). --%>
+                                                 (EnrollmentMatrixServlet#buildPayrollFrequencyOptions), grouped into
+                                                 suggestedPayrollFrequencies (TA-15/TA-17) first when the setup's
+                                                 application answers yield a narrowing, then all remaining schedules --
+                                                 a suggestion is never preselected (suggestedPayrollFrequency names it
+                                                 in the caption below only), surfaced solely via the optgroup order. --%>
+                                            <c:if test="${not empty suggestedPayrollFrequency and empty ammSelectedFreq}">
+                                                <div class="form-text">Suggested: <c:out value="${suggestedPayrollFrequencies[suggestedPayrollFrequency]}"/></div>
+                                            </c:if>
                                         </div>
                                         <div class="col-md-4" id="customScheduleWrap_${p.id}"
                                              ${not empty mp and mp.payrollFrequency eq otherCustom ? '' : 'style="display:none;"'}>
