@@ -7,6 +7,8 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
+import java.time.LocalDate;
+
 /**
  * V107 — the curated payroll-frequency reference registry the enrollment matrix dropdown
  * ({@code EnrollmentMatrixParticipant#getPayrollFrequency()}) reads from.
@@ -36,12 +38,6 @@ import jakarta.persistence.Table;
  * A new row defaults to not-approved, so entering test data cannot silently open the matrix
  * to a value Kevin has not designated. Approval and the Summit-flagged first-4-of-5 /
  * first-2-of-3 distinction are administered here, not built or guessed by this run.
- * <p>
- * <b>{@code applicationValue}</b> is a plain string, deliberately not a foreign key to
- * {@code applicationfield} — it maps this row from a {@code paycycle_frequency} answer
- * string, for defaulting the matrix dropdown from the application, and is looked up by
- * value ({@link net.superiorstate.ams.data.dao.PayrollFrequencyDAO#findByApplicationValue}),
- * never by id.
  * <p>
  * <b>The table ships empty.</b> No row is seeded by V107, {@code DatabaseInitializer}, or
  * {@code ReferenceDataSeeder} — rows are Kevin's, created through
@@ -79,9 +75,6 @@ public class PayrollFrequency {
     @Column(name = "summit_schedule_name")
     private String summitScheduleName;
 
-    @Column(name = "application_value")
-    private String applicationValue;
-
     @Column(name = "enrollment_approved", nullable = false)
     private boolean enrollmentApproved = false;
 
@@ -90,6 +83,27 @@ public class PayrollFrequency {
 
     @Column(name = "sort_order", nullable = false)
     private int sortOrder = 0;
+
+    /**
+     * V110 — filter metadata. No reader yet; the matrix dropdown filter is a separate task.
+     */
+    @Column(name = "recurrence")
+    private String recurrence;
+
+    @Column(name = "semimonthly_variant")
+    private String semimonthlyVariant;
+
+    @Column(name = "pay_dow")
+    private String payDow;
+
+    @Column(name = "anchor_date")
+    private LocalDate anchorDate;
+
+    @Column(name = "deduction_count")
+    private Integer deductionCount;
+
+    @Column(name = "preferred", nullable = false)
+    private boolean preferred = false;
 
     public PayrollFrequency() {}
 
@@ -108,9 +122,6 @@ public class PayrollFrequency {
     public String getSummitScheduleName() { return summitScheduleName; }
     public void setSummitScheduleName(String summitScheduleName) { this.summitScheduleName = summitScheduleName; }
 
-    public String getApplicationValue() { return applicationValue; }
-    public void setApplicationValue(String applicationValue) { this.applicationValue = applicationValue; }
-
     public boolean isEnrollmentApproved() { return enrollmentApproved; }
     public void setEnrollmentApproved(boolean enrollmentApproved) { this.enrollmentApproved = enrollmentApproved; }
 
@@ -119,4 +130,22 @@ public class PayrollFrequency {
 
     public int getSortOrder() { return sortOrder; }
     public void setSortOrder(int sortOrder) { this.sortOrder = sortOrder; }
+
+    public String getRecurrence() { return recurrence; }
+    public void setRecurrence(String recurrence) { this.recurrence = recurrence; }
+
+    public String getSemimonthlyVariant() { return semimonthlyVariant; }
+    public void setSemimonthlyVariant(String semimonthlyVariant) { this.semimonthlyVariant = semimonthlyVariant; }
+
+    public String getPayDow() { return payDow; }
+    public void setPayDow(String payDow) { this.payDow = payDow; }
+
+    public LocalDate getAnchorDate() { return anchorDate; }
+    public void setAnchorDate(LocalDate anchorDate) { this.anchorDate = anchorDate; }
+
+    public Integer getDeductionCount() { return deductionCount; }
+    public void setDeductionCount(Integer deductionCount) { this.deductionCount = deductionCount; }
+
+    public boolean isPreferred() { return preferred; }
+    public void setPreferred(boolean preferred) { this.preferred = preferred; }
 }

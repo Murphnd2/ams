@@ -113,7 +113,6 @@
                         <th>Label</th>
                         <th>Periods / Year</th>
                         <th>Summit Schedule Name</th>
-                        <th>Application Value</th>
                         <th>Enrollment Approved</th>
                         <th>Active</th>
                         <th></th>
@@ -127,7 +126,6 @@
                             <td><c:out value="${r.label}"/></td>
                             <td class="mono"><c:out value="${r.periodsPerYear}"/></td>
                             <td class="mono"><c:out value="${r.summitScheduleName}"/></td>
-                            <td class="mono"><c:out value="${r.applicationValue}"/></td>
                             <td>
                                 <c:choose>
                                     <c:when test="${r.enrollmentApproved}"><span class="badge badge-approved">Approved</span></c:when>
@@ -220,12 +218,6 @@
                         <input type="text" class="form-control form-control-sm"
                                id="summitScheduleName" name="summitScheduleName"
                                value="<c:out value="${not empty editing ? editing.summitScheduleName : ''}"/>">
-                    </div>
-                    <div class="col-md-4">
-                        <label for="applicationValue">Application Value</label>
-                        <input type="text" class="form-control form-control-sm"
-                               id="applicationValue" name="applicationValue"
-                               value="<c:out value="${not empty editing ? editing.applicationValue : ''}"/>">
                     </div>
                     <div class="col-md-4 d-flex align-items-end">
                         <button type="submit" class="btn btn-sm btn-primary">

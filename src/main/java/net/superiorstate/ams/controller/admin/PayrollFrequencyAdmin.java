@@ -126,7 +126,6 @@ public class PayrollFrequencyAdmin extends HttpServlet {
         String label = trimToEmpty(request.getParameter("label"));
         Integer periodsPerYear = parseIntOrNull(request.getParameter("periodsPerYear"));
         String summitScheduleName = trimToEmpty(request.getParameter("summitScheduleName"));
-        String applicationValue = trimToEmpty(request.getParameter("applicationValue"));
         boolean enrollmentApproved = request.getParameter("enrollmentApproved") != null;
         boolean active = request.getParameter("active") != null;
         Integer sortOrder = parseIntOrNull(request.getParameter("sortOrder"));
@@ -168,7 +167,6 @@ public class PayrollFrequencyAdmin extends HttpServlet {
         row.setLabel(label);
         row.setPeriodsPerYear(periodsPerYear);
         row.setSummitScheduleName(summitScheduleName.isEmpty() ? null : summitScheduleName);
-        row.setApplicationValue(applicationValue.isEmpty() ? null : applicationValue);
         row.setEnrollmentApproved(enrollmentApproved);
         row.setActive(active);
         row.setSortOrder(sortOrder == null ? 0 : sortOrder);

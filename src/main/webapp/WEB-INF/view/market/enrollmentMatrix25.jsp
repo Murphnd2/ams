@@ -176,7 +176,7 @@
                                                     name="payrollFrequency_${p.id}" onchange="ammFrequencyChanged(${p.id})"
                                                     ${disableInputs ? 'disabled' : ''}>
                                                 <c:set var="ammSelectedFreq"
-                                                        value="${not empty mp and not empty mp.payrollFrequency ? mp.payrollFrequency : defaultPayrollFrequency}"/>
+                                                        value="${not empty mp ? mp.payrollFrequency : ''}"/>
                                                 <option value="" ${empty ammSelectedFreq ? 'selected' : ''}>&mdash; choose &mdash;</option>
                                                 <c:forEach var="opt" items="${payrollFrequencyOptions}">
                                                     <option value="${opt.key}" ${ammSelectedFreq eq opt.key ? 'selected' : ''}>
@@ -186,10 +186,7 @@
                                             </select>
                                             <%-- s53d: options come from PayrollFrequencyDAO.findEnrollmentApproved()
                                                  plus any inactive stored code plus the two OTHER_* sentinels
-                                                 (EnrollmentMatrixServlet#buildPayrollFrequencyOptions). A row with
-                                                 no stored value preselects defaultPayrollFrequency, resolved at
-                                                 render time only from the application's paycycle_frequency answer
-                                                 -- nothing is persisted by this. --%>
+                                                 (EnrollmentMatrixServlet#buildPayrollFrequencyOptions). --%>
                                         </div>
                                         <div class="col-md-4" id="customScheduleWrap_${p.id}"
                                              ${not empty mp and mp.payrollFrequency eq otherCustom ? '' : 'style="display:none;"'}>
@@ -254,9 +251,17 @@
                                                             <c:if test="${leg.enrollmentAmountMode eq 'TIER'}">
                                                                 <div class="col-md-4">
                                                                     <label class="field-label" for="tier_${p.id}_${leg.id}">Tier</label>
-                                                                    <input type="text" class="form-control form-control-sm"
-                                                                           id="tier_${p.id}_${leg.id}" name="tier_${p.id}_${leg.id}"
-                                                                           value="<c:out value="${entry.tierName}"/>" ${disableInputs ? 'disabled' : ''}>
+                                                                    <c:set var="ammSelectedTier" value="${entry.tierName}"/>
+                                                                    <select class="form-select form-select-sm"
+                                                                            id="tier_${p.id}_${leg.id}" name="tier_${p.id}_${leg.id}"
+                                                                            ${disableInputs ? 'disabled' : ''}>
+                                                                        <option value="" ${empty ammSelectedTier ? 'selected' : ''}>&mdash; choose &mdash;</option>
+                                                                        <c:forEach var="opt" items="${coverageTierOptions}">
+                                                                            <option value="${opt.key}" ${ammSelectedTier eq opt.key ? 'selected' : ''}>
+                                                                                <c:out value="${opt.value}"/>
+                                                                            </option>
+                                                                        </c:forEach>
+                                                                    </select>
                                                                     <%-- No amount box under TIER -- the HRA setup already carries the
                                                                          amount against the tier; the enrollment file resolves it by
                                                                          tier-name match. --%>

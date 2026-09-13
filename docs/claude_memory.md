@@ -8,6 +8,7 @@
 > For full project architecture, see `CLAUDE.md` in the project root.
 
 ## Current State
+- ⭐ **Corrected 2026-09-13 (session S57-P5 close) — latest migration is now V111**, not whatever the older "Latest migration" paragraph below says (that paragraph is stale from session 40 and pre-dates V097–V111 entirely). `docs/analysis/migration_tracker.md` is the always-current per-environment source — **Production remains at V104**; V105–V111 are all authored and unapplied anywhere. New this session: **V109** (`coverage_tier` — DataPath "Tier Structure 3" reference table, 4-row seed, feeds a new matrix tier `<select>` replacing a free-text Tier ID input, S57-P1/P2), **V110** (`payroll_frequency` 14-row Summit `PP-` Contribution Schedule seed closing TA-10, six filter-metadata columns, new `paycycle_frequency_alias` table — S57-P3, alias seed corrected 7→5 rows in S57-P3b once the real application-field options were confirmed), **V111** (drops `payroll_frequency.application_value`, superseded by the alias table, TA-16 — S57-P4). New register `docs/analysis/technical_assumptions.md` created this session (TA-9–13 migrated from a session close-out doc, TA-14–16 new). **Nothing added this session reads the new filter-metadata columns or the alias table yet** — the TA-15 matrix dropdown filter (day-of-week/parity-based) is a separate, future build. No dedicated close-out doc written for S57 yet.
 - **Integration branch:** `refactor/modernize-architecture` — feature branches are cut from / merged back to it, so it trails the in-flight feature by only a few commits. `main` is ~345 commits stale and is **not** the working line.
 - **In-flight branch:** none — the agency-scope-resolver work merged to trunk 2026-07-15 (`e0a62d1`); branch deleted.
 - **Latest migration:** ⭐ **Corrected 2026-09-09 (session 40 close) — this line was several sessions stale at V094.** Actual latest is **V096** (`summit_file_export`) — confirmed by `ls docs/migrations/` during session 40. **Production is current at V096** too (release `v0.96.00`, deployed session 37 from `b683f3b`) per `docs/analysis/migration_tracker.md`, the authoritative per-environment source — always re-check it and `ls docs/migrations/` directly rather than this line, which sessions 30–39 never updated (see the Recent Sessions gap note below). Pre-correction text retained for provenance: **V094** (`employer_participant` — the AMS-owned participant roster, session 26). Updated 2026-09-07 (session 26 close); the line read V093 before that, and V085 before session 25 corrected it. ⭐ **V092, V093 and V094 are now APPLIED to Production** via release **`v0.94.00`** (session 27, 2026-09-08) — Kevin's report, corroborated for V094 by a production walk of `/SummitExport?type=demographics` returning a valid empty file, which requires the table to exist. **Production is no longer behind on any migration in this tree.** Demo, BPO and Master are **N/A** for all three — none runs the ICHRA/HSA/roster code they serve. ⚠️ **The local `beta_ssa` state is disputed and unsettled:** `migration_tracker.md` reads unapplied while the note below (and session 26's own record) says V092/V093 applied cleanly locally in S26-E. **Session 27 ran no database query and did not resolve it — settle with a `schema_version` query before trusting either.** The pre-session-27 text of this line, retained because it is what the sentence below still assumes: **V092, V093 and V094 were unapplied in Production, Demo, BPO and Master.** V092 and V093 were applied to local `beta_ssa` in session 26 (S26-E) and **both applied cleanly with no errors** — useful information for the production deployment. ⚠️ **`schema_info` reflects apply order, not the highest version applied**: locally V093 ran after V094 and won the `CREATE OR REPLACE VIEW`, so the view understates the schema. Production applies in version order via `update.sh`, so the exposure is to out-of-order or partial applies only. Always re-check `ls docs/migrations/` rather than trusting this line — it has drifted before and will again. ⚠️ **V084 and V085** (`zip_county` crosswalk, T74 ZIP intake) **are applied on Production**, shipped with release `v0.85.00` — confirmed **behaviourally**, not from a deployment log: a 2026-08-01 runtime walk showed ZIP `75482`→Hopkins, `75009`→Collin/Denton chooser, `90210`→correct miss, none of which is reachable against an empty table. V079 onward remains unapplied on every local schema.
@@ -186,6 +187,33 @@
 Static resources (`/images/`, `/css/`, `/js/`, `/fonts/`, etc.) are exempted before the auth check via `isStaticResource()`. Resolves open question #17.
 
 ## Recent Sessions
+- **Session S57 (2026-09-13, P1–P5, three migrations V109–V111, no SQL executed by Claude Code):**
+  P1 added `coverage_tier` (DataPath "Tier Structure 3", 4 seeded rows: `EE/Only`/`EE/SP`/`EE/CN`/
+  `EE/FAM`) plus its entity/DAO. P2 replaced the enrollment matrix's free-text Summit Tier ID input
+  with a `<select>` sourced from it (`EnrollmentMatrixServlet.buildCoverageTierOptions`), copying
+  the existing payroll-frequency dropdown's blank-option-first + inactive-value-passthrough pattern
+  so a stored tier not in the active list is never silently blanked or overwritten on save — the
+  same defect class as the `header`-shadowing render bug from the two-file-export session (`70c0e0e`).
+  P3 seeded `payroll_frequency` with 14 Summit `PP-` Contribution Schedules (closing TA-10 — the
+  table had held zero rows since V107) and added six filter-metadata columns
+  (`recurrence`/`semimonthly_variant`/`pay_dow`/`anchor_date`/`deduction_count`/`preferred`) plus a
+  new `paycycle_frequency_alias` table mapping the `paycycle_frequency` application answer to a
+  recurrence token; P3b corrected the alias seed from 7 rows to 5 once the field's actual Select
+  Options were confirmed (`Weekly`/`Bi-Weekly`/`Semi-Monthly 1st/15th`/`Semi-Monthly 15th/Last`/
+  `Monthly`/`Other`, the last intentionally aliasless). P4 retired `payroll_frequency.
+  application_value` (V107) in favor of the alias table (TA-16): its one runtime reader was a
+  render-time preselection path returning the first match by sort order, wrong for three of every
+  four bi-weekly employers since one answer legitimately matches Thursday/Friday × cycle A/B; V111
+  drops the column and five files (`PayrollFrequency`, `PayrollFrequencyDAO`,
+  `PayrollFrequencyAdmin` + its JSP, `EnrollmentMatrixServlet` + its JSP) lost their touchpoints.
+  P5 corrected three stale doc figures (a superseded 7-vs-5 alias row count and cross-check
+  discussion) left behind by P3's now-obsolete comments. **New register
+  `docs/analysis/technical_assumptions.md` created this session** (TA-9 through TA-13 migrated
+  verbatim from a session close-out doc where they were first recorded; TA-14, TA-15, TA-16 new).
+  ⚠️ **Nothing added this session reads the new filter-metadata columns or the alias table yet** —
+  the TA-15 matrix dropdown filter (day-of-week + bi-weekly-parity narrowing) is a separate, future
+  build. No environment has taken V109, V110, or V111; Production remains at V104. No dedicated
+  close-out document written for this session as of this commit.
 ⚠️ **Gap in this log, found while closing session 40: sessions 30–39 were never added here.** This
 file's own header claims it is updated every session; it was not, for ten sessions in a row —
 those sessions' own close-outs and `docs/analysis/migration_tracker.md`/`project_backlog.md` are

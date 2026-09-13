@@ -128,4 +128,7 @@ INSERT IGNORE INTO schema_version (version, description, script_name) VALUES
 ('V105', 'summit_plan_template_map enrollment-matrix columns: enrollment_amount_mode (NONE/ANNUAL_ELECTION/MONTHLY_PREMIUM/TIER, default NONE)/affects_payroll/tax_treatment -- amended s52i from an earlier 7-column draft, no consumer yet', 'V105__plan_template_map_enrollment_fields.sql'),
 ('V106', 'Enrollment matrix storage: matrix/participant/entry tables', 'V106__enrollment_matrix.sql'),
 ('V107', 'payroll_frequency reference table', 'V107__payroll_frequency.sql'),
-('V108', 'summit_plan_template_map.import_file_type enrollment|elections, NULL=unassigned', 'V108__summit_plan_template_map_import_file_type.sql');
+('V108', 'summit_plan_template_map.import_file_type enrollment|elections, NULL=unassigned', 'V108__summit_plan_template_map_import_file_type.sql'),
+('V109', 'coverage_tier reference table (DataPath Tier Structure 3), seeded EE/Only, EE/SP, EE/CN, EE/FAM, no consumer yet', 'V109__coverage_tier_reference.sql'),
+('V110', 'payroll_frequency seed (14 PP- rows, closes TA-10) + filter metadata columns; new paycycle_frequency_alias table, no consumer yet', 'V110__payroll_frequency_seed_and_filter_metadata.sql'),
+('V111', 'Drop payroll_frequency.application_value, superseded by paycycle_frequency_alias (TA-16)', 'V111__drop_payroll_frequency_application_value.sql');

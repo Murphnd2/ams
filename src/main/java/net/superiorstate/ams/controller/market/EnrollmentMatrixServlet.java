@@ -14,6 +14,7 @@ import net.superiorstate.ams.data.dao.EmployerParticipantDAO;
 import net.superiorstate.ams.data.dao.EnrollmentMatrixDAO;
 import net.superiorstate.ams.data.dao.EnrollmentMatrixEntryDAO;
 import net.superiorstate.ams.data.dao.EnrollmentMatrixParticipantDAO;
+import net.superiorstate.ams.data.dao.CoverageTierDAO;
 import net.superiorstate.ams.data.dao.PayrollFrequencyDAO;
 import net.superiorstate.ams.data.dao.SummitPlanTemplateMapDAO;
 import net.superiorstate.ams.model.activity.checklist.sequences.support.ServiceItem;
@@ -23,6 +24,7 @@ import net.superiorstate.ams.model.market.EmployerParticipant;
 import net.superiorstate.ams.model.market.EnrollmentMatrix;
 import net.superiorstate.ams.model.market.EnrollmentMatrixEntry;
 import net.superiorstate.ams.model.market.EnrollmentMatrixParticipant;
+import net.superiorstate.ams.model.market.CoverageTier;
 import net.superiorstate.ams.model.market.PayrollFrequency;
 import net.superiorstate.ams.model.market.SummitPlanTemplateMap;
 import net.superiorstate.ams.model.sales.agency.Prospect;
@@ -85,11 +87,13 @@ import java.util.Set;
  * ({@code findEnrollmentApproved()}, s53c/V107), plus any stored value already on a row in this
  * matrix that is no longer enrollment-approved (so un-approving a frequency never silently blanks
  * a row that already holds it), plus the two sentinels {@code OTHER_CUSTOM} and
- * {@code OTHER_NOT_IMPORTABLE}. A row with no stored value defaults, at render time only, to the
- * application's {@code paycycle_frequency} answer mapped through
- * {@code PayrollFrequencyDAO.findByApplicationValue}; nothing is persisted by rendering, and a
- * stored value is never overridden by the default. A hand-crafted POST with any other string is
- * still stored verbatim; the column is code-validated later, not here.
+ * {@code OTHER_NOT_IMPORTABLE}. A hand-crafted POST with any other string is still stored
+ * verbatim; the column is code-validated later, not here.
+ * <p>
+ * <b>S57-P4 — no render-time payroll-frequency default.</b> The V107 column this used to
+ * default from was retired (TA-16) in favor of {@code PaycycleFrequencyAliasDAO} (V110); a
+ * row with no stored value now renders with no preselection until the TA-15 matrix filter
+ * ships.
  * <p>
  * <b>Push lock.</b> If {@link EnrollmentMatrix#isPushed()}, the whole table renders read-only and
  * {@link #save} refuses with a flash error before touching any row. No exporter sets this column
@@ -203,16 +207,10 @@ public class EnrollmentMatrixServlet extends HttpServlet {
             request.setAttribute("payrollFrequencyOptions",
                     buildPayrollFrequencyOptions(em, headersByParticipant));
             request.setAttribute("otherCustom", OTHER_CUSTOM);
+            request.setAttribute("coverageTierOptions",
+                    buildCoverageTierOptions(em, entriesByParticipantAndLeg));
             request.setAttribute("mostRecentCustomScheduleName",
                     EnrollmentMatrixParticipantDAO.findMostRecentCustomScheduleName(em, matrix.getId()));
-
-            // s53d -- render-time default only. Nothing here writes to any row; the resolved
-            // code becomes real only when the operator submits the form (see #save, which reads
-            // payrollFrequency_<id> straight off the request and never consults this attribute).
-            String paycycleAnswer = resolveApplicationPaycycleFrequency(em, proposalId);
-            PayrollFrequency defaultFrequency = PayrollFrequencyDAO.findByApplicationValue(em, paycycleAnswer);
-            request.setAttribute("defaultPayrollFrequency",
-                    defaultFrequency == null ? null : defaultFrequency.getCode());
 
             forward(request, response);
         } finally {
@@ -434,6 +432,33 @@ public class EnrollmentMatrixServlet extends HttpServlet {
             if (serviceItem != null) ids.add(serviceItem.getId());
         }
         return ids;
+    }
+
+    /**
+     * S57-P2 — the tier select's option map, keyed on {@link CoverageTier#getSummitTierId()},
+     * not on {@code code} and never on the primary key: the map key is the exact string that
+     * {@link EnrollmentMatrixEntry#setTierName} stores and {@code SummitExportServlet} later
+     * emits verbatim into column E of the HRA Enrollment file (V109, TA-14). The value is a
+     * display-only label, in order: (1) every {@link CoverageTierDAO#findActive} row, (2) any
+     * {@code tier_name} already stored on an entry in this matrix that is not in the active list
+     * (so deactivating a tier never silently blanks a cell that already holds it). No sentinels
+     * — {@code OTHER_CUSTOM}/{@code OTHER_NOT_IMPORTABLE} are payroll-frequency concepts with no
+     * tier equivalent. The save path does not validate against this table, so a hand-crafted
+     * POST is still stored verbatim, same as payroll frequency.
+     */
+    private LinkedHashMap<String, String> buildCoverageTierOptions(
+            EntityManager em, Map<String, EnrollmentMatrixEntry> entries) {
+        LinkedHashMap<String, String> options = new LinkedHashMap<>();
+        for (CoverageTier tier : CoverageTierDAO.findActive(em)) {
+            options.put(tier.getSummitTierId(), tier.getLabel());
+        }
+        for (EnrollmentMatrixEntry entry : entries.values()) {
+            String stored = trimToNull(entry.getTierName());
+            if (stored == null) continue;
+            if (options.containsKey(stored)) continue;
+            options.put(stored, stored + " (inactive)");
+        }
+        return options;
     }
 
     /**

@@ -1,0 +1,25 @@
+# Technical Assumptions Register
+
+Numbered `TA-NN` entries recording an assumption made in the absence of a validated fact —
+usually because the real-world source (a Summit screen, an actual import result, a live
+config) has not been checked against what the code assumes. Each entry states the assumption
+and its reversal cost, so a wrong guess can be found and priced later without re-deriving it.
+
+**Entries are appended, never edited in place.** A superseded or resolved assumption gets a
+status line noting what changed and when — the original entry stays as written, for
+provenance. Numbering is sequential and never reused.
+
+This register did not exist before 2026-09-13 (S57-P2 Phase A finding); TA-9 through TA-13
+below are copied verbatim from `docs/session_closeout_2026-09-13_two_file_export.md`, where
+they were first recorded.
+
+## Entries
+
+- **TA-9 — `enrollment_matrix_entry.amount` is not emitted on the HRA file.** The 8-column contract has no amount column. **Reversal: low.**
+- **TA-10 — column F / I's populated path has never been exercised.** `payroll_frequency`'s `summit_schedule_name` has been NULL on every row to date, so every export has taken the empty-string fallback. **Reversal: low to test.**
+- **TA-11 — the column contracts are `[DOC]`,** read off the Summit picker, never validated by an actual import. **Reversal: low now, high later.**
+- **TA-12 — `MONTHLY_PREMIUM` → column G annualized (× 12), column H empty, schedule in column I. `ANNUAL_ELECTION` → column G verbatim.** `BigDecimal`, scale 2, HALF_UP. The 125 template has Annual Election Amount and Per Contribution Amount and a monthly premium is neither; this is Claude's call, not Kevin's. **Reversal: two lines** — and it produces wrong dollars in Summit if wrong, so it is the first thing to check against a real import.
+- **TA-13 — the schedule name lands in different columns per template:** F (Employer Contribution Schedule) on HRA, I (Participant Contribution Schedule) on 125, on the reasoning that HRA is employer-funded and 125 is employee salary reduction. **Reversal: low.**
+- **TA-14 — SSA's standard HRA tier set is DataPath's "Tier Structure 3":** `EE/Only`, `EE/SP`, `EE/CN`, `EE/FAM`, seeded in V109. Adopted because Summit stamps these into the benefit plan's Coverage Levels/Tiers grid from the Tier Group dropdown, so neither side types the string. All HRA plans carry all four tiers even when the contribution does not vary by tier — a flat ICHRA is configured with the same amount on each row. The Tier ID strings are read off the Summit UI, not off an import results file, so the match is unvalidated. `summit_tier_id` carries no unique constraint; two active rows sharing a value would collapse to one option in the picker. **Reversal cost: low** — four seeded rows and one `<select>`'s option list.
+- **TA-15 — The matrix schedule dropdown will be filtered from two application answers**, `paycycle_frequency` (free-text dropdown) and `paycycle_first_paydate` (date), widened by `paycycle_other_have`. Day-of-week is treated as the strong signal: a Thursday employer hides all Friday schedules and vice versa. Bi-weekly hides all weekly; weekly keeps same-day bi-weekly. Bi-weekly parity is computed as `daysBetween(first_paydate, anchor_date) mod 14` — `0` is cycle A, `7` is cycle B. Semi-monthly resolves entirely from the answer text, with no date arithmetic. `paycycle_other_have = Yes` drops the cadence and parity rules and keeps only the day rule. An unrecognised or missing answer results in **no filtering**, never partial filtering. **Not yet implemented and not yet validated against real application data.** **Reversal cost: low** — the filter is one query predicate; the metadata columns are additive.
+- **TA-16 — `payroll_frequency.application_value` (V107) is retired in favour of `paycycle_frequency_alias` (V110).** The column mapped a `paycycle_frequency` answer to a schedule at per-schedule grain and was read by one preselection path that returned the first match by sort order — wrong for three of four bi-weekly employers, since one answer legitimately matches Thursday/Friday × cycle A/B. The alias table maps answer text to a recurrence token at per-answer grain, and V110's `pay_dow` / `anchor_date` / `semimonthly_variant` columns carry the discrimination the column could not express. Payroll preselection is intentionally absent until the TA-15 filter ships. **Reversal cost: low** — one guarded `ADD COLUMN` and roughly 25 lines restored across five files; no data to restore.
