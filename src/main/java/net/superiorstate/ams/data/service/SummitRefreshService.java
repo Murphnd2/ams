@@ -39,11 +39,18 @@ import java.util.regex.Pattern;
  * <p>
  * <b>Fetch</b> mirrors {@code IchraUncodedParticipantsCheck}: the {@code ExportFiles} directory is
  * derived from {@code SUMMIT_SFTP_IMPORT_DIR}; the newest file whose name starts with the
- * configured prefix and ends in Summit's 17-digit timestamp is selected; a file older than the
- * max-age guard, or no matching file at all, is a <b>normal no-op</b> recorded as {@code OK}, not
- * an error. Bytes are read under the same byte cap that check uses, BOM-stripped, written to a
- * temp file under {@code java.io.tmpdir} (never the repo, never {@code AMS_UPLOAD_DIR}), imported,
- * and the temp file deleted in a {@code finally}.
+ * configured prefix is selected. A file older than the max-age guard, no matching file at all, or a
+ * file that matched the prefix but whose trailing timestamp didn't parse are each a <b>normal
+ * no-op</b> recorded as {@code OK}, not an error, with a summary naming which of the three it was.
+ * Bytes are read under the same byte cap that check uses, BOM-stripped, written to a temp file under
+ * {@code java.io.tmpdir} (never the repo, never {@code AMS_UPLOAD_DIR}), imported, and the temp file
+ * deleted in a {@code finally}.
+ * <p>
+ * <b>S61-P12 -- Summit's export timestamp is not a fixed width.</b> A real {@code ZZ_J1_Employer}
+ * export landed with a 16-digit timestamp where {@code IchraUncodedParticipantsCheck}'s own
+ * participant export (and every other export observed to that point) carried 17 -- see
+ * {@link #TIMESTAMPED_NAME}. This service's copy of the pattern now accepts 14 to 17 digits; that
+ * check's copy is untouched and must stay 17-only, since its export has always been that width.
  * <p>
  * <b>S61-P9 -- skip-if-already-imported.</b> Kevin runs the Summit-side J1 export four times a day
  * (7/9/11/1); between the 1pm run and the next morning's 7am run the newest file is legitimately
@@ -115,10 +122,22 @@ public class SummitRefreshService {
     private static final long DEFAULT_MAX_BYTES = 16_777_216L;
     private static final long INITIAL_DELAY_MINUTES = 10;
 
-    /** Same shape {@code IchraUncodedParticipantsCheck} parses:
-     *  {@code {anything}_{17-digit yyyyMMddHHmmssSSS}.{extension}}. */
-    private static final Pattern TIMESTAMPED_NAME = Pattern.compile("^.+_(\\d{17})\\.[A-Za-z0-9]+$");
-    private static final DateTimeFormatter TIMESTAMP_FMT = DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS");
+    /**
+     * S61-P12 -- widened from {@code IchraUncodedParticipantsCheck}'s fixed
+     * {@code {anything}_{17-digit yyyyMMddHHmmssSSS}.{extension}} shape after a real
+     * {@code ZZ_J1_Employer} export landed with a 16-digit timestamp and was silently excluded (the
+     * prefix matched; this pattern didn't). Group 1 is always exactly the leading 14 digits --
+     * {@code yyyyMMddHHmmss}, second precision -- and group 2 is whatever's left, 0 to 3 digits.
+     * <b>What that fractional group means is not known.</b> Summit may be emitting a
+     * zero-stripped millisecond value (so a 2-digit fragment would want a leading zero restored) or
+     * a hundredths-of-a-second value (so it would want a trailing zero appended) -- there is no way
+     * to tell from one observed filename, and guessing a padding direction into the code would assert
+     * something not established. Ordering therefore never treats the fragment as a number of
+     * milliseconds or hundredths; see {@link #rightPadFraction} for the one place it's used at all.
+     */
+    private static final Pattern TIMESTAMPED_NAME = Pattern.compile("^.+_(\\d{14})(\\d{0,3})\\.[A-Za-z0-9]+$");
+    /** Parses group 1 only -- second precision, deliberately ignoring the fractional group 2. */
+    private static final DateTimeFormatter TIMESTAMP_FMT = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
 
     /** S61-P9 -- leading marker on a successful-import {@code summary}, so
      *  {@link #parseImportedFilename} can tell a real import apart from a no-op/skip/error summary
@@ -295,44 +314,66 @@ public class SummitRefreshService {
             return;
         }
 
+        // S61-P12 -- primary key is the leading 14 digits (fixed-width, so String.compareTo is
+        // numeric compare); a tie on that breaks on the fractional group, right-padded so unequal
+        // widths (e.g. "21" vs "210") still compare -- see rightPadFraction for why right, not left.
         String newestName = null;
-        long newestTimestamp = -1;
+        String newestLeading14 = null;
+        String newestFraction = null;
+        int prefixMatchCount = 0;
+        String unparseableExample = null;
         for (SummitSftpService.SftpEntry entry : entries) {
             if (entry.isDirectory()) continue;
             String name = entry.getName();
             if (name == null || !name.startsWith(prefix)) continue;
+            prefixMatchCount++;
             Matcher m = TIMESTAMPED_NAME.matcher(name);
-            if (!m.matches()) continue;
-            long ts;
-            try {
-                ts = Long.parseLong(m.group(1));
-            } catch (NumberFormatException ignored) {
+            if (!m.matches()) {
+                if (unparseableExample == null) unparseableExample = name;
                 continue;
             }
-            if (ts > newestTimestamp) {
-                newestTimestamp = ts;
+            String leading14 = m.group(1);
+            String fraction = rightPadFraction(m.group(2));
+            boolean isNewer = newestLeading14 == null
+                    || leading14.compareTo(newestLeading14) > 0
+                    || (leading14.equals(newestLeading14) && fraction.compareTo(newestFraction) > 0);
+            if (isNewer) {
+                newestLeading14 = leading14;
+                newestFraction = fraction;
                 newestName = name;
             }
         }
 
-        // 3. No file is a normal no-op.
-        if (newestName == null) {
+        // 3. No file matching the prefix at all is a normal no-op.
+        if (prefixMatchCount == 0) {
             record(trigger, STATUS_OK, "No-op — no export matching prefix '" + prefix + "' in " + exportDir + ".",
                     null, elapsed(start));
             return;
         }
 
-        // 3a. S61-P9 -- skip when this exact file was already imported successfully. force
+        // 3b. S61-P12 -- at least one file matched the prefix, but none had a parseable timestamp.
+        // This is the failure that cost real time on 2026-09-14: a 16-digit Summit timestamp was
+        // silently excluded by what was then a 17-digit-only pattern. Distinguished from "nothing
+        // matched the prefix" above so it can't happen silently again.
+        if (newestName == null) {
+            record(trigger, STATUS_OK, "No-op — " + prefixMatchCount + " file(s) matched prefix '" + prefix
+                    + "' but none parsed as {prefix}_..._{14-17 digit timestamp}.{ext}; e.g. '"
+                    + unparseableExample + "'.", null, elapsed(start));
+            return;
+        }
+
+        // 3c. S61-P9 -- skip when this exact file was already imported successfully. force
         // (manual trigger only) bypasses this check; it never bypasses the age guard below.
         if (!force && newestName.equals(lastImportedFilename)) {
             record(trigger, STATUS_SKIPPED, "Skipped — " + newestName + " was already imported.", null, elapsed(start));
             return;
         }
 
-        // 4. A stale file (genuinely abandoned export) is also a normal no-op.
+        // 4. A stale file (genuinely abandoned export) is also a normal no-op. Second precision only
+        // -- the fractional group played no part in selecting this file and plays none here either.
         LocalDateTime fileTimestamp;
         try {
-            fileTimestamp = LocalDateTime.parse(String.valueOf(newestTimestamp), TIMESTAMP_FMT);
+            fileTimestamp = LocalDateTime.parse(newestLeading14, TIMESTAMP_FMT);
         } catch (Exception e) {
             record(trigger, STATUS_ERROR, null,
                     "Export filename '" + newestName + "' carries an unparsable timestamp.", elapsed(start));
@@ -487,6 +528,21 @@ public class SummitRefreshService {
     }
 
     // ── Helpers ──────────────────────────────────────────────────────
+
+    /**
+     * S61-P12 -- pads a 0-to-3-digit fractional timestamp fragment to a fixed 3 characters by
+     * appending {@code '0'} on the right, so fragments of different lengths (a bare {@code "21"}
+     * against a full {@code "210"}) remain comparable as same-width strings for tie-breaking only.
+     * This is <b>not</b> a claim about what the fragment means -- whether it is hundredths of a
+     * second or a millisecond value with a leading zero stripped is unknown (see
+     * {@link #TIMESTAMPED_NAME}'s Javadoc), and left-padding instead would assert the latter.
+     * Right-padding needs no such assertion: it only orders same-second files consistently, and two
+     * exports inside one second (harmless either way, since the import is idempotent) is the only
+     * thing that depends on it.
+     */
+    private static String rightPadFraction(String fraction) {
+        return (fraction + "000").substring(0, 3);
+    }
 
     private static long parseLongOrDefault(String raw, long fallback) {
         if (raw == null || raw.isBlank()) return fallback;
