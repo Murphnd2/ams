@@ -1826,3 +1826,55 @@ services, the `cardseed` writer refuses regardless of what this key holds.
 runtime-verified 2026-09-12 (`docs/analysis/spec_card_issuer_seed_election.md` §9). Production ⬜ —
 needed before any `cardseed` file is uploaded from Production, and blocked on V104 reaching
 Production first. Demo / BPO / Master — N/A, no Summit tenant.
+
+### D-102: `constant` row `SUMMIT_REFRESH_ENABLED` — gates the scheduled Summit J1 employer refresh (S61-P6)
+
+**Priority:** LOW — absent means off, which is today's behaviour exactly; nothing degrades without it
+**Status:** Not set anywhere. **No migration and no seeded row** — this is a plain `constant` row read once at startup, the same mechanism as `AUDIT_SCHEDULER_ENABLED` (D-98).
+
+S61-P6 added `SummitRefreshService`: on a timer it fetches the newest `ZZ_J1_Employer_*` export from the tenant's SFTP `ExportFiles` directory and feeds it to `SummitImportService.importEmployers` unchanged (J1 only — no J2/J3/J4/J5/J7, no employer inactivation). `EmfListener` always constructs and publishes the service so `/SummitRefresh` (PSP-admin only, URL-only, no nav entry) can render status and **Run now**; only the **scheduled** start is gated:
+
+```
+SUMMIT_REFRESH_ENABLED = true
+```
+
+⚠️ **The scheduler is off until this constant is `true` and Tomcat is restarted.** "Run now" from `/SummitRefresh` works regardless of this flag. Run records land in `audit_run` under `check_key = SUMMIT_REFRESH_J1`. ⚠️ A `SUMMIT_REFRESH_J1` row with status `ERROR` is counted by the existing audit navbar badge (`AuditService.getErrorCount()` iterates every latest row for the PSP, not only its registered checks) — a failed refresh therefore lights the audit badge; noted, not changed.
+
+⚠️ **Inert until Summit is configured to export J1 to `ExportFiles` under the `ZZ_J1_Employer` prefix** (TA-52) — that is Summit configuration, not an AMS deployment step. A tick with no matching file is a recorded no-op (`OK`, summary "No-op — …"), not an error.
+
+**Applies to:** Kevin's local dev ⬜. Production ⬜ — only once the Summit-side export exists. Demo / BPO / Master — N/A, no Summit tenant.
+
+### D-103: `ssa.properties` may set `SUMMIT_REFRESH_J1_PREFIX` — optional, defaults to `ZZ_J1_Employer`
+
+**Priority:** LOW — defaults safely
+**Status:** Not set anywhere. Read through `AppConfig.get`, the same mechanism as `SUMMIT_AUDIT_PARTICIPANT_EXPORT_PREFIX` (D-98); **Tomcat must be restarted** to pick it up.
+
+The filename prefix `SummitRefreshService` matches with `startsWith` against `ExportFiles`. The newest-file selector is the same one `IchraUncodedParticipantsCheck` uses — `^.+_(\d{17})\.[A-Za-z0-9]+$` — and Summit's observed export naming is `{Template Name}_Export_{yyyyMMddHHmmssSSS}.{ext}`, so with the default prefix the expected file is, concretely:
+
+```
+ZZ_J1_Employer_Export_20260914081530123.CSV
+```
+
+Set this key only if the Summit-side template is named something other than `ZZ_J1_Employer`. ⚠️ **Prefix-collision rule (D-91) applies:** the value must not be a prefix of, nor prefixed by, any other `ZZ_`-named export or import template on the tenant. It does not collide with any legacy `I{n}_` billing-loader prefix, and the fetched file never enters `AMS_UPLOAD_DIR`.
+
+**Reused, not duplicated:** the export directory comes from the existing `SUMMIT_SFTP_IMPORT_DIR` (its `ExportFiles` sibling, D-96) and the byte cap from the existing `SUMMIT_AUDIT_EXPORT_MAX_BYTES` (D-98, default 16 MiB). No new key for either.
+
+**Applies to:** all installations with a Summit tenant ⬜ — optional; Demo / BPO / Master — N/A.
+
+### D-104: `ssa.properties` may set `SUMMIT_REFRESH_MAX_AGE_HOURS` — optional, defaults to `2`
+
+**Priority:** LOW — defaults safely
+**Status:** Not set anywhere. Read through `AppConfig.get`; Tomcat restart to pick up.
+
+A J1 export whose filename timestamp is older than this many hours is ignored — recorded as a no-op, not imported, not an error. Deliberately **not** the existing `SUMMIT_AUDIT_EXPORT_MAX_AGE_HOURS` (D-98, default 36): that key is named for the audit check and its 36-hour default is the wrong shape for an hourly refresh, so the two are kept separate. ⚠️ The filename timestamp is Summit's local time (CST); if the server runs UTC the computed age reads 5–6 hours too old — the safe direction, but a 2-hour guard on a UTC server would reject every file. Raise this value on a UTC host, or confirm the server clock, before enabling the scheduler.
+
+**Applies to:** all installations with a Summit tenant ⬜ — optional; Demo / BPO / Master — N/A.
+
+### D-105: `ssa.properties` may set `SUMMIT_REFRESH_INTERVAL_MINUTES` — optional, defaults to `60`
+
+**Priority:** LOW — defaults safely
+**Status:** Not set anywhere. Read through `AppConfig.get` at `start()` time; Tomcat restart to pick up.
+
+Tick interval for the scheduled refresh; first tick 10 minutes after startup. No existing scheduler in the tree reads its interval from config (`AuditService`, `RateCacheWarmService`, `InstallationHealthScheduler` all hardcode theirs), so there was no neighbour mechanism to mirror; `ssa.properties` was chosen because every other per-installation tunable for the SFTP fetch lives there. Overlapping ticks never queue — a tick that finds a run in progress records `SKIPPED` and returns. Meaningful only when D-102 is on.
+
+**Applies to:** all installations with a Summit tenant ⬜ — optional; Demo / BPO / Master — N/A.

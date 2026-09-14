@@ -12,6 +12,7 @@ import net.superiorstate.ams.model.Constant;
 
 import net.superiorstate.ams.data.dao.AppConstantDAO;
 import net.superiorstate.ams.data.service.RateCacheWarmService;
+import net.superiorstate.ams.data.service.SummitRefreshService;
 import net.superiorstate.ams.data.service.audit.AuditService;
 import net.superiorstate.ams.service.InstallationHealthScheduler;
 
@@ -31,6 +32,7 @@ public class EmfListener implements ServletContextListener, HttpSessionListener,
     private ExecutorService billingExecutor;
     private RateCacheWarmService rateCacheWarmService;
     private AuditService auditService;
+    private SummitRefreshService summitRefreshService;
 
     public EmfListener() {}
 
@@ -126,6 +128,23 @@ public class EmfListener implements ServletContextListener, HttpSessionListener,
                     } catch (Throwable t) {
                         System.out.println("⚠️ Audit framework failed to initialize: " + t.getMessage());
                     }
+
+                    // S61-P6 -- scheduled Summit J1 employer refresh. Same shape as the audit
+                    // framework above: always constructed and published so /SummitRefresh can
+                    // render status and "Run now"; only the scheduled start is gated, on its own
+                    // DB constant. Absent constant = off. Handed the same in-scope `global` so a
+                    // refresh can reload the employer cache the way the wizard does.
+                    try {
+                        Long refreshPspId = global.getPsp() != null ? global.getPsp().getId() : null;
+                        summitRefreshService = new SummitRefreshService(emf, global, refreshPspId);
+                        sce.getServletContext().setAttribute("summitRefreshService", summitRefreshService);
+                        String summitRefreshEnabled = AppConstantDAO.getConstantValue(em, "SUMMIT_REFRESH_ENABLED");
+                        if ("true".equalsIgnoreCase(summitRefreshEnabled)) {
+                            summitRefreshService.start();
+                        }
+                    } catch (Throwable t) {
+                        System.out.println("⚠️ Summit refresh failed to initialize: " + t.getMessage());
+                    }
                 }
             } finally {
                 if (em != null && em.isOpen()) {
@@ -179,6 +198,10 @@ public class EmfListener implements ServletContextListener, HttpSessionListener,
 
         if (auditService != null) {
             auditService.stop();
+        }
+
+        if (summitRefreshService != null) {
+            summitRefreshService.stop();
         }
 
         if (billingExecutor != null) {
