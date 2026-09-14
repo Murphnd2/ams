@@ -5,7 +5,10 @@ import com.opencsv.CSVReaderBuilder;
 import jakarta.persistence.EntityManager;
 import net.superiorstate.ams.controller.market.SummitExportServlet;
 import net.superiorstate.ams.data.dao.EmployerParticipantDAO;
+import net.superiorstate.ams.data.dao.SummitSetupStepDAO;
 import net.superiorstate.ams.model.market.EmployerParticipant;
+import net.superiorstate.ams.model.market.SummitFileExport;
+import net.superiorstate.ams.model.market.SummitSetupStep;
 import net.superiorstate.ams.model.sales.agency.Prospect;
 
 import java.io.ByteArrayInputStream;
@@ -29,10 +32,31 @@ import java.util.Map;
  * this step (its classifier reads {@code fields[0]}, which on this response shape is the
  * participant key, not a status), so the panel has no working signal here today.
  * <p>
+ * <b>S62-P4 -- the compare alone cannot distinguish "never pushed" from "pushed and missing."</b>
+ * A proposal with no recorded delivery attempt reports every expected participant {@code MISSING}
+ * with no way to tell that reading apart from a genuine push failure. {@link Verdict} adds that
+ * distinction using {@code SummitSetupStepDAO}'s existing read methods (see the DAO Javadoc on
+ * {@link #verify} below) -- the compare logic itself (the per-participant loop) is unchanged.
+ * <p>
+ * ⚠️ <b>TA-56 -- the export itself is filtered Summit-side to employers on PremiumPath or a regular
+ * ICHRA.</b> The filter is employer-level, not participant-level, so the per-participant compare
+ * stays sound for an in-scope employer -- but {@link Verdict#EMPLOYER_KEY_ABSENT} now has two
+ * live causes this class cannot tell apart: the employer is out of scope for this export, or the
+ * composed key genuinely does not match. Both are true "zero rows" outcomes; neither is asserted
+ * over the other. See TA-56 in {@code docs/analysis/technical_assumptions.md}.
+ * <p>
+ * <b>S62-P5 -- {@code pspId} comes from the caller (the servlet's session), not an inference.</b>
+ * S62-P4 derived it from {@code proposal.getRate().getPsp()} and documented that as an unproven
+ * invariant. {@code SummitDemographicsVerifyServlet} now resolves it the same way
+ * {@code SummitSetupStatusServlet.java:123-129} does and passes it in; this class no longer loads
+ * a {@code Proposal} or reasons about {@code Rate} at all.
+ * <p>
  * <b>Persists nothing (LA-40).</b> Every row this class reads lives only in the returned
  * {@link Result} for one request's render; no {@code EntityManager} write happens anywhere in this
- * class, no {@code audit_run} row, no cache. The one {@link EntityManager} parameter is read-only
- * ({@code em.find(Prospect.class, ...)} and {@link EmployerParticipantDAO#findByProspectId}).
+ * class, no {@code audit_run} row, no cache. Every {@link EntityManager} call is a read
+ * ({@code em.find}, {@link EmployerParticipantDAO#findByProspectId},
+ * {@link SummitSetupStepDAO#findByProposalAndStep}, {@link SummitSetupStepDAO#findLatestDeliveryAttempt}
+ * -- all three confirmed by inspection to contain no {@code persist}/{@code merge}/transaction call).
  */
 public final class SummitDemographicsVerifyService {
 
@@ -44,6 +68,11 @@ public final class SummitDemographicsVerifyService {
     private static final String H_PARTICIPANT_CUSTOM_ID = "ParticipantCustomID";
     private static final String H_EMPLOYER_CUSTOM_ID = "EmployerCustomID";
     private static final String H_USER_STATUS = "UserStatus";
+
+    /** The {@code step}/{@code fileType} token for Demographics -- identical string in both
+     *  {@code SummitSetupStatusServlet.STEP_FILE_TYPES} and {@code SummitResponseServlet.STEP_FILE_TYPES}
+     *  (both map {@code "demographics"} to itself), so one constant serves both DAO parameters. */
+    private static final String STEP_DEMOGRAPHICS = "demographics";
 
     /**
      * ⚠️ <b>All three headers are required here</b>, unlike {@code IchraUncodedParticipantsCheck}
@@ -77,6 +106,37 @@ public final class SummitDemographicsVerifyService {
 
     public enum ParticipantState { FOUND, FOUND_WRONG_EMPLOYER, MISSING }
 
+    /**
+     * S62-P4 -- the single banner-worthy reading of an {@link Outcome#OK} result. Populated only
+     * when {@code outcome == OK}; null for every other {@link Outcome}, since those short-circuit
+     * before a compare ever runs (there is nothing to distinguish "never pushed" from "pushed and
+     * missing" when there is no export, no headers, or no configuration to run the compare at all).
+     * <p>
+     * <b>Evaluated in this order inside {@link #verify}; first match wins</b> ({@code NO_EXPORT_FOUND}
+     * and {@code HEADER_MISSING} are steps 1-2 of that ordering conceptually, but they are
+     * {@link Outcome} values reached before this enum is ever consulted -- listed here only so the
+     * full priority is legible in one place):
+     * <ol>
+     *   <li>{@code NO_EXPORT_FOUND} -- {@link Outcome#NO_EXPORT_FOUND}, returned before this enum runs.</li>
+     *   <li>{@code HEADER_MISSING} -- {@link Outcome#MISSING_HEADERS}, returned before this enum runs.</li>
+     *   <li>{@link #NO_PUSH_RECORDED} -- checked first among the values on this enum. A proposal
+     *       with no delivery attempt must never reach {@link #EMPLOYER_KEY_ABSENT},
+     *       {@link #ALL_CONFIRMED} or {@link #PARTICIPANTS_UNCONFIRMED}: with nothing pushed, the
+     *       compare's {@code MISSING} rows are an expectation, not a finding.</li>
+     *   <li>{@code EXPORT_PREDATES_PUSH} -- <b>not implemented, deliberately.</b> See {@link #verify}'s
+     *       comment on timestamp zones (D-104's documented several-hour clock skew between Summit's
+     *       export-filename clock and this server's {@code LocalDateTime.now()}). A wrong staleness
+     *       verdict is worse than none, so this step is skipped entirely rather than guessed.</li>
+     *   <li>{@link #EMPLOYER_KEY_ABSENT} -- checked before the per-participant tally: zero export
+     *       rows carry this employer's key at all, which is an employer-leg or key-composition
+     *       problem, not evidence about any specific participant.</li>
+     *   <li>{@link #ALL_CONFIRMED} / {@link #PARTICIPANTS_UNCONFIRMED} -- reached only once a push
+     *       is recorded and the employer's key is present in the export; the only two verdicts that
+     *       are genuinely about individual participants.</li>
+     * </ol>
+     */
+    public enum Verdict { NO_PUSH_RECORDED, EXPORT_PREDATES_PUSH, EMPLOYER_KEY_ABSENT, ALL_CONFIRMED, PARTICIPANTS_UNCONFIRMED }
+
     /** One expected participant's outcome. {@code userStatus} is null when {@code state} is
      *  {@link ParticipantState#MISSING} -- there is no export row to read it from. */
     public record ParticipantCheck(Long employerParticipantId, String firstName, String lastName,
@@ -87,39 +147,51 @@ public final class SummitDemographicsVerifyService {
      * The compare's full outcome. {@code participants} and every count are empty/zero unless
      * {@code outcome} is {@link Outcome#OK}. {@code missingHeaderNames} is populated only for
      * {@link Outcome#MISSING_HEADERS}; {@code errorMessage} only for {@link Outcome#TRANSPORT_ERROR}.
+     * {@code verdict}, {@code expectedEmployerKey}, {@code totalDataRows},
+     * {@code employerMatchingRowCount}, {@code lastPushTimestamp} and {@code manualMarkDoneOnly} are
+     * populated only for {@link Outcome#OK} -- see {@link Verdict}'s own Javadoc.
      */
     public record Result(Outcome outcome, String fileName, LocalDateTime fileTimestamp,
                           List<String> missingHeaderNames, String errorMessage,
+                          Verdict verdict, String expectedEmployerKey,
+                          int totalDataRows, int employerMatchingRowCount,
+                          LocalDateTime lastPushTimestamp, boolean manualMarkDoneOnly,
                           int expectedCount, int foundCount, int wrongEmployerCount,
                           int missingCount, int unkeyedCount, List<ParticipantCheck> participants) {
 
         static Result notFound() {
             return new Result(Outcome.NO_EXPORT_FOUND, null, null, List.of(), null,
+                    null, null, 0, 0, null, false,
                     0, 0, 0, 0, 0, List.of());
         }
 
         static Result missingHeaders(String fileName, LocalDateTime fileTimestamp, List<String> missing) {
             return new Result(Outcome.MISSING_HEADERS, fileName, fileTimestamp, missing, null,
+                    null, null, 0, 0, null, false,
                     0, 0, 0, 0, 0, List.of());
         }
 
         static Result prefixNotConfigured() {
             return new Result(Outcome.PREFIX_NOT_CONFIGURED, null, null, List.of(), null,
+                    null, null, 0, 0, null, false,
                     0, 0, 0, 0, 0, List.of());
         }
 
         static Result prospectNotFound() {
             return new Result(Outcome.PROSPECT_NOT_FOUND, null, null, List.of(), null,
+                    null, null, 0, 0, null, false,
                     0, 0, 0, 0, 0, List.of());
         }
 
         static Result exportDirNotConfigured() {
             return new Result(Outcome.EXPORT_DIR_NOT_CONFIGURED, null, null, List.of(), null,
+                    null, null, 0, 0, null, false,
                     0, 0, 0, 0, 0, List.of());
         }
 
         static Result transportError(String message) {
             return new Result(Outcome.TRANSPORT_ERROR, null, null, List.of(), message,
+                    null, null, 0, 0, null, false,
                     0, 0, 0, 0, 0, List.of());
         }
     }
@@ -128,8 +200,19 @@ public final class SummitDemographicsVerifyService {
      * Runs the compare for one setup. Reads only -- see the class Javadoc. Never throws; every
      * failure path (missing config, missing prospect, transport failure, missing headers) returns
      * a populated {@link Result} rather than propagating an exception.
+     * <p>
+     * S62-P4 added {@code proposalId}: it feeds {@code SummitSetupStepDAO.findByProposalAndStep}
+     * (proposal + step, {@code SummitSetupStatusServlet.java:93}) and
+     * {@code SummitSetupStepDAO.findLatestDeliveryAttempt} (PSP + proposal + file type,
+     * {@code SummitSetupStatusServlet.java:103}) -- both confirmed by inspection to run one
+     * {@code em.createQuery(...).getResultList()} each, no write, no transaction.
+     * <p>
+     * S62-P5 added {@code pspId}, supplied by the caller -- see the class Javadoc. May be null
+     * (an unresolvable session); {@code findLatestDeliveryAttempt} returns null for a null
+     * {@code pspId} exactly as it does for "no delivery attempt," so a null session PSP falls
+     * through to {@link Verdict#NO_PUSH_RECORDED} rather than a special case.
      */
-    public static Result verify(EntityManager em, long prospectId) {
+    public static Result verify(EntityManager em, long proposalId, Long pspId, long prospectId) {
         Prospect prospect = em.find(Prospect.class, prospectId);
         if (prospect == null) {
             return Result.prospectNotFound();
@@ -203,10 +286,21 @@ public final class SummitDemographicsVerifyService {
         // finding the warning describes, not a reason to key differently here.
         Map<String, String[]> byParticipantCustomId = new LinkedHashMap<>();
         int unkeyedCount = 0;
+        // S62-P4 -- totalDataRows/employerMatchingRowCount feed Verdict.EMPLOYER_KEY_ABSENT and the
+        // JSP's "Source export" block. employerMatchingRowCount counts every row under this
+        // employer, keyed or not (unlike unkeyedCount, which counts only the blank-ParticipantCustomID
+        // subset) -- a nonzero unkeyedCount does not by itself prove the employer's key appears at
+        // all if every one of those rows happened to be unkeyed, so this is tracked independently.
+        int totalDataRows = 0;
+        int employerMatchingRowCount = 0;
         for (int r = 1; r < lines.size(); r++) {
             String[] row = lines.get(r);
+            totalDataRows++;
             String participantCustomId = cellOf(row, index, H_PARTICIPANT_CUSTOM_ID);
             String rowEmployerCustomId = cellOf(row, index, H_EMPLOYER_CUSTOM_ID);
+            if (employerTpaCustomId.equals(rowEmployerCustomId)) {
+                employerMatchingRowCount++;
+            }
             if (participantCustomId.isEmpty()) {
                 if (employerTpaCustomId.equals(rowEmployerCustomId)) {
                     unkeyedCount++;
@@ -248,7 +342,53 @@ public final class SummitDemographicsVerifyService {
                     participant.getLastName(), expectedKey, state, userStatus));
         }
 
+        // S62-P4 -- delivery-attempt / step-state lookup, both read-only DAO calls (see the class
+        // Javadoc and this method's own Javadoc for the file:line each was found at).
+        //
+        // pspId is the caller-supplied parameter (S62-P5) -- see this method's own Javadoc.
+        // SummitSetupStepDAO.findByProposalAndStep does not filter by pspId at all (its own class
+        // Javadoc: "Deliberately not filtered by pspId"), so a null pspId is safe there regardless.
+        // findLatestDeliveryAttempt DOES filter by pspId and returns null immediately when it is
+        // null -- a null (unresolvable session) pspId therefore falls through to
+        // Verdict.NO_PUSH_RECORDED below, exactly as this method's own Javadoc states.
+        SummitSetupStep stepState = SummitSetupStepDAO.findByProposalAndStep(em, pspId, proposalId, STEP_DEMOGRAPHICS);
+        SummitFileExport latestAttempt =
+                SummitSetupStepDAO.findLatestDeliveryAttempt(em, pspId, proposalId, STEP_DEMOGRAPHICS);
+        LocalDateTime lastPushTimestamp = latestAttempt == null ? null : latestAttempt.getDeliveredAt();
+        boolean manualMarkDoneOnly = latestAttempt == null
+                && stepState != null && "DONE".equals(stepState.getState()) && "MANUAL".equals(stepState.getBasis());
+
+        // EXPORT_PREDATES_PUSH (step 4 of Verdict's ordering) is deliberately not implemented here.
+        // It would compare fetched.fileTimestamp() -- parsed from the export filename's digits via
+        // DateTimeFormatter.ofPattern("yyyyMMddHHmmss"), i.e. Summit's own SFTP-side clock, whatever
+        // zone that is -- against lastPushTimestamp above, which is LocalDateTime.now() taken on
+        // this AMS application server's JVM default zone (SummitExportServlet.java:2301). Neither
+        // value carries zone information (both are bare LocalDateTime, not Instant/ZonedDateTime),
+        // and D-104 (docs/deployment_backlog.md) already documents an unresolved multi-hour clock
+        // skew between these two systems on this exact export family. Comparing them as if they
+        // shared a zone could produce a wrong "predates"/"postdates" verdict in either direction,
+        // and per this build's own instruction a wrong staleness verdict is worse than none -- so
+        // this step is skipped entirely and a proposal with a push always continues on to
+        // EMPLOYER_KEY_ABSENT / ALL_CONFIRMED / PARTICIPANTS_UNCONFIRMED below, regardless of how
+        // old the selected export is.
+
+        // Verdict, first match wins -- see Verdict's own Javadoc for the full seven-step ordering
+        // (steps 1-2, NO_EXPORT_FOUND/HEADER_MISSING, already returned above as Outcome values;
+        // step 4, EXPORT_PREDATES_PUSH, is the paragraph immediately above).
+        Verdict verdict;
+        if (latestAttempt == null) {
+            verdict = Verdict.NO_PUSH_RECORDED;
+        } else if (employerMatchingRowCount == 0) {
+            verdict = Verdict.EMPLOYER_KEY_ABSENT;
+        } else if (missingCount == 0 && wrongEmployerCount == 0) {
+            verdict = Verdict.ALL_CONFIRMED;
+        } else {
+            verdict = Verdict.PARTICIPANTS_UNCONFIRMED;
+        }
+
         return new Result(Outcome.OK, fetched.fileName(), fetched.fileTimestamp(), List.of(), null,
+                verdict, employerTpaCustomId, totalDataRows, employerMatchingRowCount,
+                lastPushTimestamp, manualMarkDoneOnly,
                 roster.size(), foundCount, wrongEmployerCount, missingCount, unkeyedCount, checks);
     }
 

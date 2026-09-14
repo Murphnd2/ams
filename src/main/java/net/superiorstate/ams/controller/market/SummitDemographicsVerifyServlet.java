@@ -12,6 +12,7 @@ import net.superiorstate.ams.data.resolver.IchraAccessResolver;
 import net.superiorstate.ams.data.service.SummitDemographicsVerifyService;
 import net.superiorstate.ams.model.activity.Activity;
 import net.superiorstate.ams.model.activity.ticket.setup.Setup;
+import net.superiorstate.ams.model.general.PSP;
 import net.superiorstate.ams.model.sales.agency.Proposal;
 import net.superiorstate.ams.model.sales.agency.Prospect;
 import net.superiorstate.ams.model.sales.application.Application;
@@ -88,8 +89,12 @@ public class SummitDemographicsVerifyServlet extends HttpServlet {
                 return;
             }
 
+            // S62-P5 -- pspId from the session, matching SummitSetupStatusServlet.java:123-129
+            // exactly, rather than S62-P4's proposal.getRate().getPsp() inference (removed).
+            Long pspId = resolveCurrentPspId(request);
+
             SummitDemographicsVerifyService.Result result =
-                    SummitDemographicsVerifyService.verify(em, prospect.getId());
+                    SummitDemographicsVerifyService.verify(em, proposalId, pspId, prospect.getId());
 
             // The JSP never touches SummitDemographicsVerifyService's records directly -- matching
             // SummitResponseServlet.java:174-177's own reasoning verbatim: EL property resolution
@@ -103,6 +108,15 @@ public class SummitDemographicsVerifyServlet extends HttpServlet {
                     result.fileTimestamp() == null ? null : DISPLAY_FORMAT.format(result.fileTimestamp()));
             request.setAttribute("missingHeaderNames", result.missingHeaderNames());
             request.setAttribute("errorMessage", result.errorMessage());
+            // S62-P4 -- verdict is null except for Outcome.OK; .name() would NPE, so this stays a
+            // plain conditional rather than the ternary style used for fileTimestampDisplay above.
+            request.setAttribute("verdict", result.verdict() == null ? null : result.verdict().name());
+            request.setAttribute("expectedEmployerKey", result.expectedEmployerKey());
+            request.setAttribute("totalDataRows", result.totalDataRows());
+            request.setAttribute("employerMatchingRowCount", result.employerMatchingRowCount());
+            request.setAttribute("lastPushTimestampDisplay",
+                    result.lastPushTimestamp() == null ? null : DISPLAY_FORMAT.format(result.lastPushTimestamp()));
+            request.setAttribute("manualMarkDoneOnly", result.manualMarkDoneOnly());
             request.setAttribute("expectedCount", result.expectedCount());
             request.setAttribute("foundCount", result.foundCount());
             request.setAttribute("wrongEmployerCount", result.wrongEmployerCount());
@@ -156,6 +170,21 @@ public class SummitDemographicsVerifyServlet extends HttpServlet {
         } catch (RuntimeException e) {
             return false;
         }
+    }
+
+    /**
+     * S62-P5 -- copied from {@code SummitSetupStatusServlet.java:123-129} rather than shared,
+     * matching this codebase's own T254 precedent (three fragment servlets each independently
+     * copying this exact method). Session-based, not proposal-derived -- replaces S62-P4's
+     * {@code proposal.getRate().getPsp()} inference, which this run removed as an unproven
+     * invariant now that the session is available here.
+     */
+    private static Long resolveCurrentPspId(HttpServletRequest request) {
+        Object attribute = request.getSession().getAttribute("local");
+        if (!(attribute instanceof AmsDataLocal local)) return null;
+        if (local.getCurrentPerson() == null) return null;
+        PSP psp = local.getCurrentPerson().getPsp();
+        return psp == null ? null : psp.getId();
     }
 
     private void writePlainError(HttpServletResponse response, int status, String message) throws IOException {

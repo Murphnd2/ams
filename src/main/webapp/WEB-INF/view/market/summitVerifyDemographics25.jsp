@@ -9,6 +9,18 @@
   participant-list export can carry names, addresses and phone numbers (summit_data_exchange.md's
   observed header). Do not add a server-side cache or a hidden field that resubmits raw export
   content; if this page is refreshed, it re-fetches.
+
+  S62-P4 -- added the verdict banner (NO_PUSH_RECORDED / EXPORT_PREDATES_PUSH / EMPLOYER_KEY_ABSENT
+  / ALL_CONFIRMED / PARTICIPANTS_UNCONFIRMED), which distinguishes "never pushed" from "pushed and
+  missing" -- the prior unconditional warning collapsed both into the same red banner. The compare
+  logic itself is unchanged; this is a display and classification change only.
+
+  S62-P5 -- the export itself is Summit-side filtered to employers on PremiumPath or a regular
+  ICHRA (TA-56), so EMPLOYER_KEY_ABSENT now names both live causes (out of scope, or a genuine key
+  mismatch) rather than implying only the latter; added the export-scope sentence to "Source
+  export"; added a stale-export caveat to EMPLOYER_KEY_ABSENT/PARTICIPANTS_UNCONFIRMED (no
+  timestamp comparison in code -- EXPORT_PREDATES_PUSH stays unimplemented, D-104); and neutralized
+  the Missing badge everywhere except PARTICIPANTS_UNCONFIRMED.
 --%>
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
 <%@ page pageEncoding="UTF-8" %>
@@ -59,6 +71,17 @@
         .badge-missing { background: #dc3545; color: #fff; }
         .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
         .num { text-align: right; }
+        /* S62-P4 -- verdict banner, styled by severity. Distinct from .status-card's neutral
+           white/grey so the one verdict that matters most on the page cannot be missed or, just as
+           important, cannot be mistaken for a severity it isn't. */
+        .verdict-banner {
+            border-radius: 6px; padding: 0.9rem 1.1rem; margin-bottom: 0.9rem;
+            font-size: 0.85rem; border: 1px solid transparent;
+        }
+        .verdict-neutral { background: #eef1f5; border-color: #dee2e6; color: #495057; }
+        .verdict-amber { background: #fff8e1; border-color: #ffe69c; color: #7a5c00; }
+        .verdict-success { background: #d1e7dd; border-color: #a3cfbb; color: #0f5132; }
+        .verdict-red { background: #fdecea; border-color: #f5b8b1; color: #842029; }
     </style>
 </head>
 <body>
@@ -84,11 +107,109 @@
 
         <c:choose>
             <c:when test="${outcome == 'OK'}">
+                <%-- S62-P4 -- the verdict banner. Replaces the prior unconditional
+                     "wrongEmployerCount > 0 or missingCount > 0" warning, which could not tell
+                     "never pushed" apart from "pushed and missing" and so read a proposal with no
+                     recorded push the same as a genuine push failure. --%>
+                <c:choose>
+                    <c:when test="${verdict == 'NO_PUSH_RECORDED'}">
+                        <div class="verdict-banner verdict-neutral">
+                            <div class="fw-semibold mb-1"><i class="bi bi-info-circle"></i> Nothing to verify yet</div>
+                            <div>
+                                No demographics push has been recorded for this proposal, so there is
+                                nothing yet for the export to confirm or contradict. The participants
+                                below are what AMS would expect to find <em>after</em> a push — not a
+                                report that anything failed.
+                            </div>
+                            <c:if test="${manualMarkDoneOnly}">
+                                <div class="mt-1">
+                                    This step was marked done by hand (a manual override for a group
+                                    already set up in Summit), which is not a push and confirms
+                                    nothing here.
+                                </div>
+                            </c:if>
+                        </div>
+                    </c:when>
+                    <c:when test="${verdict == 'EXPORT_PREDATES_PUSH'}">
+                        <div class="verdict-banner verdict-amber">
+                            <div class="fw-semibold mb-1"><i class="bi bi-exclamation-triangle"></i> Export predates the push</div>
+                            <div>
+                                This export was taken at <c:out value="${fileTimestampDisplay}"/>; the
+                                most recent push was at <c:out value="${lastPushTimestampDisplay}"/>.
+                                The result below is inconclusive — a newer export is needed to
+                                confirm this push actually landed.
+                            </div>
+                        </div>
+                    </c:when>
+                    <c:when test="${verdict == 'EMPLOYER_KEY_ABSENT'}">
+                        <div class="verdict-banner verdict-amber">
+                            <div class="fw-semibold mb-1"><i class="bi bi-exclamation-triangle"></i> Employer key not present in this export</div>
+                            <div>
+                                No row in this export carries this employer's expected key,
+                                <span class="mono"><c:out value="${expectedEmployerKey}"/></span> —
+                                out of <c:out value="${totalDataRows}"/> total data row(s) in the
+                                export. This could mean either that the employer is not on
+                                PremiumPath or a regular ICHRA in Summit — this export covers only
+                                those — or that the composed key does not match what Summit holds.
+                                Neither is more likely than the other from this page alone.
+                            </div>
+                            <%-- S62-P5c -- shown only when a push is recorded, since that is the
+                                 case where "the export just predates the push" is a live, unruled-out
+                                 explanation. Both timestamps are already shown elsewhere on this
+                                 page; this sentence does not compare them. --%>
+                            <c:if test="${not empty lastPushTimestampDisplay}">
+                                <div class="mt-1">
+                                    This export's age relative to the push cannot be established —
+                                    an export taken before the push would produce this same result.
+                                </div>
+                            </c:if>
+                        </div>
+                    </c:when>
+                    <c:when test="${verdict == 'ALL_CONFIRMED'}">
+                        <div class="verdict-banner verdict-success">
+                            <div class="fw-semibold mb-1"><i class="bi bi-check-circle"></i> All confirmed</div>
+                            <div>
+                                Every expected participant was found in this export under this
+                                employer's key.
+                            </div>
+                        </div>
+                    </c:when>
+                    <c:otherwise>
+                        <div class="verdict-banner verdict-red">
+                            <div class="fw-semibold mb-1"><i class="bi bi-exclamation-triangle"></i> Participants did not confirm cleanly</div>
+                            <div>
+                                A push is recorded and this employer's key appears in the export, but
+                                one or more expected participants are missing or under a different
+                                employer. Review the table below.
+                            </div>
+                            <div class="mt-1">
+                                This export's age relative to the push cannot be established — an
+                                export taken before the push would produce this same result.
+                            </div>
+                        </div>
+                    </c:otherwise>
+                </c:choose>
+
                 <div class="status-card">
                     <div class="fw-semibold mb-1">Source export</div>
                     <div><c:out value="${fileName}"/></div>
                     <div class="text-muted" style="font-size: 0.78rem;">
                         <c:out value="${fileTimestampDisplay}"/>
+                    </div>
+                    <div class="text-muted mt-2" style="font-size: 0.78rem;">
+                        This export covers only employers on PremiumPath or a regular ICHRA in Summit.
+                    </div>
+                    <div class="text-muted mt-2" style="font-size: 0.78rem;">
+                        Expected employer key: <span class="mono"><c:out value="${expectedEmployerKey}"/></span><br/>
+                        <c:out value="${totalDataRows}"/> total data row(s) in the export,
+                        <c:out value="${employerMatchingRowCount}"/> under this employer's key<br/>
+                        Most recent push:
+                        <c:choose>
+                            <c:when test="${not empty lastPushTimestampDisplay}">
+                                <c:out value="${lastPushTimestampDisplay}"/>
+                            </c:when>
+                            <c:otherwise>no push recorded</c:otherwise>
+                        </c:choose>
                     </div>
                 </div>
 
@@ -97,7 +218,11 @@
                     <div class="mb-2">
                         <span class="badge badge-found"><c:out value="${foundCount}"/> Found</span>
                         <span class="badge badge-wrong"><c:out value="${wrongEmployerCount}"/> Wrong employer</span>
-                        <span class="badge badge-missing"><c:out value="${missingCount}"/> Missing</span>
+                        <%-- S62-P5d -- Missing is only styled as an error under PARTICIPANTS_UNCONFIRMED,
+                             the one verdict that is actually a participant-level finding. Under
+                             NO_PUSH_RECORDED / EMPLOYER_KEY_ABSENT / ALL_CONFIRMED a Missing count is
+                             an expectation, not a fault -- text unchanged, styling neutral. --%>
+                        <span class="badge ${verdict == 'PARTICIPANTS_UNCONFIRMED' ? 'badge-missing' : 'bg-secondary'}"><c:out value="${missingCount}"/> Missing</span>
                         <span class="badge bg-secondary"><c:out value="${unkeyedCount}"/> Unkeyed (Summit-added)</span>
                     </div>
                     <div class="text-muted" style="font-size: 0.78rem;">
@@ -108,13 +233,12 @@
                     </div>
                 </div>
 
-                <c:if test="${wrongEmployerCount > 0 or missingCount > 0}">
-                    <div class="text-danger mb-2" style="font-size: 0.85rem;">
-                        <i class="bi bi-exclamation-triangle"></i>
-                        One or more participants did not confirm cleanly. Review the table below.
-                    </div>
-                </c:if>
-
+                <%-- S62-P4 -- row styling reflects the verdict, not the raw per-participant state:
+                     a MISSING row is only an error (row-missing/row-wrong) when the verdict is
+                     PARTICIPANTS_UNCONFIRMED, the only verdict that is actually a participant-level
+                     finding. In every other verdict a MISSING row is an expectation (no push yet,
+                     employer key absent, or genuinely all confirmed), so it renders with no error
+                     styling. Badge text is unchanged either way. --%>
                 <table class="resp-table">
                     <thead>
                     <tr>
@@ -126,7 +250,7 @@
                     </thead>
                     <tbody>
                     <c:forEach var="p" items="${participants}">
-                        <tr class="${p.state == 'MISSING' ? 'row-missing' : (p.state == 'FOUND_WRONG_EMPLOYER' ? 'row-wrong' : '')}">
+                        <tr class="${verdict == 'PARTICIPANTS_UNCONFIRMED' ? (p.state == 'MISSING' ? 'row-missing' : (p.state == 'FOUND_WRONG_EMPLOYER' ? 'row-wrong' : '')) : ''}">
                             <td><c:out value="${p.firstName}"/> <c:out value="${p.lastName}"/></td>
                             <td class="mono"><c:out value="${p.expectedKey}"/></td>
                             <td>
@@ -138,7 +262,7 @@
                                         <span class="badge badge-wrong">Wrong employer</span>
                                     </c:when>
                                     <c:otherwise>
-                                        <span class="badge badge-missing">Missing</span>
+                                        <span class="badge ${verdict == 'PARTICIPANTS_UNCONFIRMED' ? 'badge-missing' : 'bg-secondary'}">Missing</span>
                                     </c:otherwise>
                                 </c:choose>
                             </td>
