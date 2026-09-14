@@ -336,3 +336,84 @@ asserted:
   `audit_run`'s existing columns hold every value this session writes without alteration.
 
 **No SQL was produced, executed, or proposed by this session.**
+
+## Addendum — first runtime-verified refresh (post-close-out)
+
+A fifth commit landed after this close-out was written and pushed: **`b6f1864`** — "Summit refresh:
+accept variable-width export timestamps (S61)". Verified via `git show --stat`: **2 files changed,
+79 insertions(+), 22 deletions(-)**: `src/main/java/net/superiorstate/ams/data/service/SummitRefreshService.java`,
+`docs/analysis/technical_assumptions.md`. Files TA-54.
+
+⚠️ **This addendum supersedes one specific claim from "Open questions raised" above: "Nothing in the
+refresh path has been runtime-tested."** That statement is no longer true. It is left in the body
+unedited — the addendum's job is to say what has changed, not to make the original read as if it had
+already known this.
+
+**What happened, in sequence:**
+
+1. Kevin created the Summit export template `ZZ_J1_Employer` and ran `/SummitRefresh` → Run now.
+   Result: `STATUS_OK`, 867 ms, summary "No-op — no export matching prefix 'ZZ_J1_Employer' in
+   /DataExchange/Superior State Administrators Inc/ExportFiles." **The file was in fact present.**
+   The refusal's own wording was misleading: it said nothing had matched the prefix, when the prefix
+   had matched fine — the timestamp filter was what rejected the file. A code-read could not have
+   surfaced this; the first real tick did, in one click.
+2. Cause, found by comparing the SFTP listing against the selector: the export's timestamp was 16
+   digits (`ZZ_J1_Employer_Export_2026091410080821.CSV`) where the participant audit export's is 17,
+   and the pattern in place at the time required exactly 17.
+3. `b6f1864` widened the pattern to 14–17 digits, dropped ordering and the age check to second
+   precision, and split the no-op message into distinct causes (no prefix match vs. prefix matched
+   but unparseable vs. stale) so this specific failure shape is now named rather than folded into a
+   generic "no-op." TA-54 filed.
+4. Redeployed, Run now again. **It imported.** `STATUS_OK`, 8336 ms, summary: "Imported
+   ZZ_J1_Employer_Export_2026091410080821.CSV (2026-09-14T10:08:08) — **5 inserted, 641 updated, 47
+   unchanged, 0 errors**." `5 + 641 + 47 = 693` — exactly the row count of the export Kevin pulled by
+   hand. The whole file was consumed; nothing was silently dropped.
+
+**What these counts do and do not prove.** They prove the file was found, fetched, parsed, and fully
+consumed with zero errors — the fetch/select/read/import pipeline works end to end against a real
+export, for the first time. They do **not** prove much about *change*: `641 updated` is not evidence
+that 641 employers actually changed — `SummitImportService.importEmployers` re-`merge`s any row whose
+email/phone/contact is blank on every run regardless of whether anything differs (established S61-P5,
+restated on the `/SummitRefresh` status page itself). `5 inserted` does mean something concrete: five
+employers were new to AMS and did not exist before this import.
+
+**Two consequences of this import that have not been verified, and are recorded here as unconfirmed
+rather than assumed:**
+
+- **Rows 1400 and 1401** should now hold the correct `employer_id`, since `importEmployers`'s update
+  path overwrites `altId` from the file's `EmployerID` column under an `employerId > 0` guard
+  (`SummitImportService.java:317`). If so, the pending repair this close-out's "Open questions" and
+  "Next" sections both flag closes with no SQL at all. **Unconfirmed — no one has looked at those
+  rows**, and this run did not query the database to check them, per its own scope fence.
+- **Org 1402's `custom_id`** should now hold whatever the file carried (`S1387`, per Kevin's earlier
+  manual pull) in place of the AMS-composed `158E136748`. That is T268 exactly as accepted — but the
+  practical effect, not previously observed, is that `/SummitLink` will stop finding that employer by
+  its composed key until a setup push writes the composed key back over it. **Unconfirmed.**
+- The cheap way to test both without SQL: click a `/SummitLink` page for a legacy-created employer
+  (to check 1400/1401's `altId`), and for org 1402 (to check whether `/SummitLink` still resolves it
+  or now reports "not yet in Summit employer data").
+
+**TA-51 remains read, not runtime-verified — do not upgrade it.** The import ran successfully, but
+whether it actually wrote the *correct* `altId` into the previously-wrong rows (1400/1401 specifically)
+is exactly the thing nobody has checked yet. A successful import proves the mechanism runs; it does
+not by itself prove the mechanism repaired those two rows.
+
+**TA-52 is confirmed in part, not in full.** The export now exists, lands in the export directory
+under the `ZZ_J1_Employer` prefix, and the service found and imported it — the "inert until
+configured" condition is discharged for the **manual** trigger. The **scheduled** path remains
+completely unexercised: `SUMMIT_REFRESH_ENABLED` still does not exist as a `constant` row (unchanged
+by this addendum, not queried, not inserted), so no scheduled tick has ever fired. Every observation
+above came from clicking "Run now" twice. Keep that distinction sharp — TA-52's own entry has been
+updated in place to say exactly this, not more.
+
+**Revised Next**, replacing nothing above but narrowing what's actually still open:
+
+- **The scheduled tick is still completely unexercised.** Everything observed so far is the manual
+  trigger. Arming `SUMMIT_REFRESH_ENABLED` and watching a scheduled tick fire is still undone.
+- **The two unconfirmed consequences above** — rows 1400/1401's `altId`, and org 1402's `custom_id` —
+  are the cheapest possible next check: two `/SummitLink` clicks, no SQL.
+- **The identity-skip guard (`ae2e196`) has never been observed.** Every tick so far has been a fresh
+  import against a file not previously imported. A second Run now against the same
+  `ZZ_J1_Employer_Export_2026091410080821.CSV` — unless a newer export has since landed — should now
+  report `STATUS_SKIPPED`, "Skipped — … was already imported." One click confirms the whole `ae2e196`
+  design that has, until now, only been reasoned about from code.

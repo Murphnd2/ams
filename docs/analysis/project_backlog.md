@@ -400,3 +400,4 @@ Built and functional. Client-side JS filtering. Placeholder cards for Agent Pipe
 - V038: Applied to Demo/BPO.
 - V039–V053: Code-complete as of this row's original writing (not re-verified against Demo/BPO/Master in this pass).
 - Production is at **V073** per a live `schema_version` probe reconciled 2026-07-30 (see `docs/analysis/migration_tracker.md`) — the earlier "intentionally isolated at V024" framing predates that reconciliation and no longer describes current state.
+| T276 | `/SummitRefresh`'s status page still describes the Expected filename as 17-digit only | LOW | 📋 Open | `SummitRefreshServlet`'s status page renders "prefix, then Summit's own `_Export_` + 17-digit timestamp + extension". `b6f1864` widened the service's accepted pattern to 14–17 digits, so the rendered text is now wrong and would mislead anyone diagnosing a rejected file — the exact failure it just cost time on. One display edit in `SummitRefreshServlet`. Ships alone. Filed S61-P13. |
