@@ -61,4 +61,31 @@ public final class SummitEmployerLinkResolver {
         return path + "/EmployerModule/EditEmployer.aspx?tpaGuid=" + encodedGuid
                 + "&employerId=" + employerAltId + tabParam;
     }
+
+    /**
+     * S60-P2 -- builds the hop-2 URL for a {@code CONTEXT_THEN_PATH} Summit page: {@code
+     * SUMMIT_PATH} joined with a literal {@code pathAndQuery} (e.g. {@code
+     * /Reimbursement/ReimbursementDefaults.aspx?isEmpTab=true&tab=Banking/Checking}). Carries no
+     * tpaGuid and no employerId -- this leg relies on Summit's server-side employer context
+     * already having been set by hop 1 ({@link #buildEditEmployerUrl(ServletContext, int)}).
+     * {@code pathAndQuery} is used verbatim, never re-encoded -- the caller owns its correctness.
+     *
+     * @return the joined URL, or null if {@code pathAndQuery} doesn't start with {@code /}, or
+     * {@code SUMMIT_PATH} is unset.
+     */
+    public static String buildContextPageUrl(ServletContext context, String pathAndQuery) {
+        if (pathAndQuery == null || !pathAndQuery.startsWith("/")) return null;
+
+        AmsDataGlobal global = (AmsDataGlobal) context.getAttribute("global");
+        if (global == null) return null;
+
+        String summitPath = global.getSummitPath();
+        if (summitPath == null || summitPath.isBlank()) return null;
+
+        String path = summitPath.endsWith("/")
+                ? summitPath.substring(0, summitPath.length() - 1)
+                : summitPath;
+
+        return path + pathAndQuery;
+    }
 }
