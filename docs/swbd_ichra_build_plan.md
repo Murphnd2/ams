@@ -441,6 +441,8 @@ in, six named compliance gaps recorded rather than invented.
 **Detail:** `plus_tier_build_plan.md` Part 7, "The ICHRA setup checklist now has real content" ·
 `ichra_administration_scope.md` Phases 2–5 · `legal_assumptions.md` LA-07, LA-08.
 
+**Note (2026-09-14, S60):** employer-specific Summit deep links now exist (`/SummitLink?page=...`, resolved from `Employer.altId` at click time) and are reachable as a task's GoTo URL once that URL is absolute (`docs/analysis/project_backlog.md` T259). Not wired into any of this section's 19 tasks yet — see `docs/analysis/technical_assumptions.md` TA-45–TA-50.
+
 ---
 
 ### 11 — ~~A4a: sample group-to-ICHRA conversion analysis~~ ✅ Done 2026-07-31, `7db188d`
