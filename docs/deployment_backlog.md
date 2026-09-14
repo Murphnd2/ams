@@ -1582,15 +1582,17 @@ The emitted filename becomes `{templateName}_{yyyyMMddHHmmss}.txt`. The timestam
 
 **Applies to:** Kevin's local dev database / local Tomcat ⬜ — no AMS change needed; the `ZZ_TEST_DEMO` template already carries the mapping as of the 2026-09-08 hand-built import. Production ⬜ — the production Demographics template must map `Branch Code` last before any file 4 is uploaded. Demo PSP, BPO, Master: not running the Summit export; apply only if/when one of them does.
 
-### D-93: `SUMMIT_IMPORT_TEMPLATES` needs a fourth entry, `enrollment:<templateName>`
+### D-93: `SUMMIT_IMPORT_TEMPLATES` needs two more entries, `enrollment:<templateName>` and `elections:<templateName>`
 
-**Priority:** MEDIUM — nothing is broken today; without it the HRA Enrollment download keeps its legacy descriptive filename (`hra-enrollment-…`), which **no Summit import template will bind to**
-**Status:** Not started anywhere. **No new config key** — this is a fourth entry inside the existing `SUMMIT_IMPORT_TEMPLATES` key from [D-91](#d-91-ssaproperties-needs-summit_import_templates-plus-a-tomcat-restart), and everything D-91 says about format, prefix collisions, tolerant parsing and the Tomcat restart applies unchanged.
+**Priority:** MEDIUM — nothing is broken today; without them the HRA Enrollment and 125 PI Elections downloads keep their legacy descriptive filenames (`hra-enrollment-…`, `pi-elections-…`), which **no Summit import template will bind to**
+**Status:** Not started anywhere. **No new config key** — these are two more entries inside the existing `SUMMIT_IMPORT_TEMPLATES` key from [D-91](#d-91-ssaproperties-needs-summit_import_templates-plus-a-tomcat-restart), and everything D-91 says about format, prefix collisions, tolerant parsing and the Tomcat restart applies unchanged.
 
-S30-A added `type=enrollment` to `SummitExportServlet` — the proven chain's fourth file, HRA Enrollment. Filename resolution runs through the same `SummitImportTemplateResolver.templateNameFor()` call the other three use, and the resolver deliberately does not whitelist the discriminator vocabulary, so **no resolver code change was needed and none was made**. The only deployment action is the extra entry:
+⚠️ **Corrected 2026-09-14 (S62-P2):** this row originally named only `enrollment:`. S56-C (`docs/session_closeout_2026-09-13_two_file_export.md:52`) split the matrix-sourced enrollment export into two separate file types — `enrollment` → `ZZ_TEST_HRA_ENROLL` (8 columns) and `elections` → `ZZ_TEST_125_ELECTIONS` (11 columns) — so there are two missing entries, not one. Text corrected here; no status change.
+
+S30-A added `type=enrollment` to `SummitExportServlet` — the proven chain's fourth file, HRA Enrollment. S56-C added `type=elections`, 125 PI Elections, matrix-sourced like `enrollment`. Filename resolution for both runs through the same `SummitImportTemplateResolver.templateNameFor()` call the other three types use, and the resolver deliberately does not whitelist the discriminator vocabulary, so **no resolver code change was needed and none was made** for either. The only deployment action is the two extra entries:
 
 ```
-SUMMIT_IMPORT_TEMPLATES=employer:<erName>,cdhplan:<cdhName>,demographics:<demoName>,enrollment:<enrollName>
+SUMMIT_IMPORT_TEMPLATES=employer:<erName>,cdhplan:<cdhName>,demographics:<demoName>,enrollment:<enrollName>,elections:<electionsName>
 ```
 
 ⚠️ **A Summit-side HRA Enrollment import template must exist on the tenant** with the five columns in this order — `Employer TPA Custom ID`, `Participant TPA Custom ID`, `Import Plan ID`, `Effective Date`, `Participant Annual Election Amount` — delimited `|`, dates `YYYYMMDD`, no header, no footer, no body record indicator, Extraneous Data No. That template is Summit configuration, not an AMS deployment step. The layout was import-proven by a hand-built file on 2026-09-08; **the emitter that produces it has never been run** (T196).
