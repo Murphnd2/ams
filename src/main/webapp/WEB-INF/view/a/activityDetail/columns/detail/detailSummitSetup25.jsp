@@ -106,48 +106,71 @@
           </div>
         </div>
 
-        <%-- 3. Request census --%>
-        <div class="d-flex align-items-center gap-2 py-1 border-bottom">
-          <div class="flex-grow-1 lh-sm">
-            <div class="fw-semibold">Request census<button type="button" class="btn btn-sm btn-link text-muted p-0 ms-1" style="line-height: 1;" data-bs-toggle="collapse" data-bs-target="#summitHelp-censusrequest" aria-expanded="false" aria-controls="summitHelp-censusrequest" aria-label="Show details for Request census" title="Show details for Request census"><i class="bi bi-info-circle" style="font-size: 0.75rem;"></i></button></div>
-            <div class="collapse" id="summitHelp-censusrequest">
-            <div class="text-muted" style="font-size: 0.72rem;">Secure link for the client · upload held for review</div>
-            <jsp:include page="/CensusRequestStatus"><jsp:param name="proposalId" value="${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}"/></jsp:include>
-            </div>
-          </div>
-          <div class="btn-group btn-group-sm">
-            <a href="${pageContext.request.contextPath}/CensusRequest?proposalId=${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}" class="btn btn-outline-ssa" title="Request census from client"><i class="bi bi-envelope"></i></a>
-          </div>
-        </div>
-
-        <%-- 4. Census --%>
+        <%-- 3. Census (S59-P6rev) -- merges the former Request census / Census / Demographics
+             rows into one state-driven row. CensusLifecycleService returns one of eight tokens;
+             the button group below renders only the actions that state allows. The three
+             description lines and both status includes are unconditional -- they always execute
+             and always render inside the toggle, regardless of state. INDETERMINATE (and any
+             unrecognized token) falls to <c:otherwise>, which renders the full legacy action set
+             from all three former rows -- a lookup failure must never hide a control. --%>
+        <c:import var="censusState" url="/CensusLifecycle">
+          <c:param name="proposalId" value="${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}"/>
+        </c:import>
+        <c:set var="censusState" value="${fn:trim(censusState)}"/>
         <div class="d-flex align-items-center gap-2 py-1 border-bottom">
           <div class="flex-grow-1 lh-sm">
             <div class="fw-semibold">Census<button type="button" class="btn btn-sm btn-link text-muted p-0 ms-1" style="line-height: 1;" data-bs-toggle="collapse" data-bs-target="#summitHelp-census" aria-expanded="false" aria-controls="summitHelp-census" aria-label="Show details for Census" title="Show details for Census"><i class="bi bi-info-circle" style="font-size: 0.75rem;"></i></button></div>
             <div class="collapse" id="summitHelp-census">
+            <div class="text-muted" style="font-size: 0.72rem;">Secure link for the client · upload held for review</div>
             <div class="text-muted" style="font-size: 0.72rem;">Upload and review the roster</div>
-            </div>
-          </div>
-          <div class="btn-group btn-group-sm">
-            <a href="${pageContext.request.contextPath}/CensusUpload?proposalId=${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}" class="btn btn-outline-ssa" title="Census upload"><i class="bi bi-people"></i></a>
-          </div>
-        </div>
-
-        <%-- 5. Demographics --%>
-        <div class="d-flex align-items-center gap-2 py-1 border-bottom">
-          <div class="flex-grow-1 lh-sm">
-            <div class="fw-semibold">Demographics<button type="button" class="btn btn-sm btn-link text-muted p-0 ms-1" style="line-height: 1;" data-bs-toggle="collapse" data-bs-target="#summitHelp-demographics" aria-expanded="false" aria-controls="summitHelp-demographics" aria-label="Show details for Demographics" title="Show details for Demographics"><i class="bi bi-info-circle" style="font-size: 0.75rem;"></i></button></div>
-            <div class="collapse" id="summitHelp-demographics">
             <div class="text-muted" style="font-size: 0.72rem;">File 4 · creates or updates participants</div>
+            <jsp:include page="/CensusRequestStatus"><jsp:param name="proposalId" value="${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}"/></jsp:include>
             <jsp:include page="/SummitSetupStatus"><jsp:param name="proposalId" value="${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}"/><jsp:param name="step" value="demographics"/></jsp:include>
             </div>
           </div>
           <div class="btn-group btn-group-sm">
-            <button type="button" class="btn btn-outline-secondary opacity-50" style="border-style: dashed; cursor: not-allowed;" aria-disabled="true" title="Preview — not built yet"><i class="bi bi-eye"></i></button>
-            <a href="${pageContext.request.contextPath}/SummitExport?proposalId=${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}&type=demographics" class="btn btn-outline-ssa" title="Download file 4"><i class="bi bi-download"></i></a>
-            <button type="submit" form="summitPush-demographics" class="btn btn-outline-ssa" title="Push to DataPath" data-summit-push="demographics" onclick="return confirm('Push the Demographics file to DataPath? Summit processes it automatically within about 15 minutes. There is no undo.');"><i class="bi bi-cloud-upload"></i></button>
-            <a href="${pageContext.request.contextPath}/SummitResponse?proposalId=${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}&step=demographics" class="btn btn-outline-ssa" title="Check response"><i class="bi bi-arrow-repeat"></i></a>
-            <button type="submit" form="summitDone-demographics" class="btn btn-outline-ssa" title="Mark done (manual)" onclick="return confirm('Mark Demographics done without a response review? Use this for a group already set up in Summit or entered by hand.');"><i class="bi bi-check2-circle"></i></button>
+            <c:choose>
+              <c:when test="${censusState == 'NOT_REQUESTED'}">
+                <a href="${pageContext.request.contextPath}/CensusRequest?proposalId=${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}" class="btn btn-outline-ssa" title="Request census from client"><i class="bi bi-envelope"></i></a>
+                <a href="${pageContext.request.contextPath}/CensusUpload?proposalId=${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}" class="btn btn-outline-ssa" title="Census upload"><i class="bi bi-people"></i></a>
+              </c:when>
+              <c:when test="${censusState == 'AWAITING_CLIENT'}">
+                <a href="${pageContext.request.contextPath}/CensusRequest?proposalId=${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}" class="btn btn-outline-ssa" title="Manage census request — revoke or renew"><i class="bi bi-envelope"></i></a>
+                <a href="${pageContext.request.contextPath}/CensusUpload?proposalId=${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}" class="btn btn-outline-ssa" title="Census upload"><i class="bi bi-people"></i></a>
+              </c:when>
+              <c:when test="${censusState == 'LINK_EXPIRED'}">
+                <a href="${pageContext.request.contextPath}/CensusRequest?proposalId=${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}" class="btn btn-outline-ssa" title="Renew the census request"><i class="bi bi-envelope"></i></a>
+                <a href="${pageContext.request.contextPath}/CensusUpload?proposalId=${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}" class="btn btn-outline-ssa" title="Census upload"><i class="bi bi-people"></i></a>
+              </c:when>
+              <c:when test="${censusState == 'REVOKED'}">
+                <a href="${pageContext.request.contextPath}/CensusRequest?proposalId=${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}" class="btn btn-outline-ssa" title="Request census again"><i class="bi bi-envelope"></i></a>
+                <a href="${pageContext.request.contextPath}/CensusUpload?proposalId=${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}" class="btn btn-outline-ssa" title="Census upload"><i class="bi bi-people"></i></a>
+              </c:when>
+              <c:when test="${censusState == 'AWAITING_REVIEW'}">
+                <a href="${pageContext.request.contextPath}/CensusUpload?proposalId=${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}" class="btn btn-outline-ssa" title="Census upload"><i class="bi bi-people"></i></a>
+              </c:when>
+              <c:when test="${censusState == 'ROSTER_LOADED'}">
+                <button type="button" class="btn btn-outline-secondary opacity-50" style="border-style: dashed; cursor: not-allowed;" aria-disabled="true" title="Preview — not built yet"><i class="bi bi-eye"></i></button>
+                <a href="${pageContext.request.contextPath}/SummitExport?proposalId=${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}&type=demographics" class="btn btn-outline-ssa" title="Download file 4"><i class="bi bi-download"></i></a>
+                <button type="submit" form="summitPush-demographics" class="btn btn-outline-ssa" title="Push to DataPath" data-summit-push="demographics" onclick="return confirm('Push the Demographics file to DataPath? Summit processes it automatically within about 15 minutes. There is no undo.');"><i class="bi bi-cloud-upload"></i></button>
+                <a href="${pageContext.request.contextPath}/SummitResponse?proposalId=${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}&step=demographics" class="btn btn-outline-ssa" title="Check response"><i class="bi bi-arrow-repeat"></i></a>
+                <button type="submit" form="summitDone-demographics" class="btn btn-outline-ssa" title="Mark done (manual)" onclick="return confirm('Mark Demographics done without a response review? Use this for a group already set up in Summit or entered by hand.');"><i class="bi bi-check2-circle"></i></button>
+                <a href="${pageContext.request.contextPath}/CensusUpload?proposalId=${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}" class="btn btn-outline-ssa" title="Census upload"><i class="bi bi-people"></i></a>
+              </c:when>
+              <c:when test="${censusState == 'TERMINAL'}">
+                <a href="${pageContext.request.contextPath}/SummitResponse?proposalId=${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}&step=demographics" class="btn btn-outline-ssa" title="Check response"><i class="bi bi-arrow-repeat"></i></a>
+                <button type="submit" form="summitPush-demographics" class="btn btn-outline-ssa" title="Push to DataPath" data-summit-push="demographics" onclick="return confirm('Push the Demographics file to DataPath? Summit processes it automatically within about 15 minutes. There is no undo.');"><i class="bi bi-cloud-upload"></i></button>
+              </c:when>
+              <c:otherwise>
+                <a href="${pageContext.request.contextPath}/CensusRequest?proposalId=${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}" class="btn btn-outline-ssa" title="Request census from client"><i class="bi bi-envelope"></i></a>
+                <a href="${pageContext.request.contextPath}/CensusUpload?proposalId=${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}" class="btn btn-outline-ssa" title="Census upload"><i class="bi bi-people"></i></a>
+                <button type="button" class="btn btn-outline-secondary opacity-50" style="border-style: dashed; cursor: not-allowed;" aria-disabled="true" title="Preview — not built yet"><i class="bi bi-eye"></i></button>
+                <a href="${pageContext.request.contextPath}/SummitExport?proposalId=${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}&type=demographics" class="btn btn-outline-ssa" title="Download file 4"><i class="bi bi-download"></i></a>
+                <button type="submit" form="summitPush-demographics" class="btn btn-outline-ssa" title="Push to DataPath" data-summit-push="demographics" onclick="return confirm('Push the Demographics file to DataPath? Summit processes it automatically within about 15 minutes. There is no undo.');"><i class="bi bi-cloud-upload"></i></button>
+                <a href="${pageContext.request.contextPath}/SummitResponse?proposalId=${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}&step=demographics" class="btn btn-outline-ssa" title="Check response"><i class="bi bi-arrow-repeat"></i></a>
+                <button type="submit" form="summitDone-demographics" class="btn btn-outline-ssa" title="Mark done (manual)" onclick="return confirm('Mark Demographics done without a response review? Use this for a group already set up in Summit or entered by hand.');"><i class="bi bi-check2-circle"></i></button>
+              </c:otherwise>
+            </c:choose>
           </div>
         </div>
 
