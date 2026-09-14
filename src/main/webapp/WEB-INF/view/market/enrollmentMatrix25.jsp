@@ -68,6 +68,14 @@
             <i class="bi bi-grid-3x3-gap me-1"></i>Enrollment Matrix
             <c:if test="${not empty prospectName}"> &mdash; <c:out value="${prospectName}"/></c:if>
         </h1>
+        <%-- S58-P1 -- export only; setupId is set solely on doGet's success path, so a guard
+             refusal renders no link. Read-only GET: never creates a matrix row. --%>
+        <c:if test="${not empty setupId}">
+            <a class="btn btn-sm btn-outline-secondary ms-auto"
+               href="${pageContext.request.contextPath}/EnrollmentMatrixExport?setupId=${setupId}">
+                <i class="bi bi-file-earmark-spreadsheet me-1"></i>Export to spreadsheet
+            </a>
+        </c:if>
     </div>
 
     <div class="rc-body">
@@ -144,6 +152,10 @@
                                     <c:if test="${not empty mp and mp.entryLocked}">
                                         <span class="locked-badge"><i class="bi bi-lock-fill"></i></span>
                                     </c:if>
+                                    <%-- S58-P7 (display only): agent picked an OTHER_* payroll option; PSP sets the real schedule. --%>
+                                    <c:if test="${not empty assessment and (assessment.byParticipantId[p.id].needsPspConfirmation or assessment.byParticipantId[p.id].scheduleNotApproved)}">
+                                        <span class="locked-badge" title="Needs PSP confirmation"><i class="bi bi-exclamation-circle-fill"></i></span>
+                                    </c:if>
                                 </button>
                             </c:forEach>
                         </div>
@@ -166,6 +178,23 @@
                                             <c:if test="${not empty mp.lockedAt}"> at <c:out value="${mp.lockedAt}"/></c:if>.
                                             <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 ms-2"
                                                     onclick="ammUnlock(${mp.id})" ${matrix.pushed ? 'disabled' : ''}>Unlock</button>
+                                        </div>
+                                    </c:if>
+
+                                    <%-- S58-P7 (display only): "Needs PSP confirmation" is derived from the OTHER_* sentinel on
+                                         payroll_frequency (MatrixCompletenessService), never stored -- selecting a real schedule
+                                         below clears it. The agent's note (V113) is what they learned; PSP turns it into the
+                                         custom schedule name. No new controls here. --%>
+                                    <c:if test="${not empty assessment and assessment.byParticipantId[p.id].needsPspConfirmation}">
+                                        <div class="lock-banner">
+                                            <i class="bi bi-exclamation-circle-fill me-1"></i>Needs PSP confirmation &mdash; the agent selected
+                                            &ldquo;<c:out value="${payrollFrequencyOptions[mp.payrollFrequency]}"/>&rdquo;; select the actual schedule below.
+                                        </div>
+                                    </c:if>
+                                    <c:if test="${not empty mp and not empty mp.agentScheduleNote}">
+                                        <div class="status-card" style="padding:0.5rem 0.75rem; margin-bottom:0.75rem;">
+                                            <span class="text-muted" style="font-size:0.72rem; text-transform:uppercase; letter-spacing:0.04em;">Agent note</span><br>
+                                            <c:out value="${mp.agentScheduleNote}"/>
                                         </div>
                                     </c:if>
 

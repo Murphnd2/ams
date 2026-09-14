@@ -131,4 +131,6 @@ INSERT IGNORE INTO schema_version (version, description, script_name) VALUES
 ('V108', 'summit_plan_template_map.import_file_type enrollment|elections, NULL=unassigned', 'V108__summit_plan_template_map_import_file_type.sql'),
 ('V109', 'coverage_tier reference table (DataPath Tier Structure 3), seeded EE/Only, EE/SP, EE/CN, EE/FAM, no consumer yet', 'V109__coverage_tier_reference.sql'),
 ('V110', 'payroll_frequency seed (14 PP- rows, closes TA-10) + filter metadata columns; new paycycle_frequency_alias table, no consumer yet', 'V110__payroll_frequency_seed_and_filter_metadata.sql'),
-('V111', 'Drop payroll_frequency.application_value, superseded by paycycle_frequency_alias (TA-16)', 'V111__drop_payroll_frequency_application_value.sql');
+('V111', 'Drop payroll_frequency.application_value, superseded by paycycle_frequency_alias (TA-16)', 'V111__drop_payroll_frequency_application_value.sql'),
+('V112', 'enrollment_matrix.access_guid, nullable unique, lazily issued for /matrix/{guid} agent access (S58-P3)', 'V112__enrollment_matrix_access_guid.sql'),
+('V113', 'enrollment_matrix_participant.agent_schedule_note, nullable free text from the agent matrix view (S58-P7)', 'V113__enrollment_matrix_participant_agent_note.sql');

@@ -43,6 +43,14 @@ public class EnrollmentMatrix {
     @Column(name = "setup_id", nullable = false)
     private Long setupId;
 
+    /**
+     * V112 (S58-P3) — the {@code /matrix/{guid}} address. Nullable and unique: NULL until a PSP
+     * admin issues the link, never backfilled. An identifier, not a credential — the page it
+     * addresses is authenticated and authorised per request by {@code MatrixAccessResolver}.
+     */
+    @Column(name = "access_guid", length = 36)
+    private String accessGuid;
+
     @Column(name = "is_pushed", nullable = false)
     private boolean pushed = false;
 
@@ -65,6 +73,9 @@ public class EnrollmentMatrix {
 
     public Long getSetupId() { return setupId; }
     public void setSetupId(Long setupId) { this.setupId = setupId; }
+
+    public String getAccessGuid() { return accessGuid; }
+    public void setAccessGuid(String accessGuid) { this.accessGuid = accessGuid; }
 
     public boolean isPushed() { return pushed; }
     public void setPushed(boolean pushed) { this.pushed = pushed; }

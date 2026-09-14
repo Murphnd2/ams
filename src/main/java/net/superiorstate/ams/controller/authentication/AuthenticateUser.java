@@ -6,6 +6,7 @@ import jakarta.persistence.Query;
 import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
+import net.superiorstate.ams.controller.market.EnrollmentMatrixServlet;
 import net.superiorstate.ams.data.AmsDataLocal;
 import net.superiorstate.ams.data.dao.AuthDAO;
 import net.superiorstate.ams.data.dao.TimeTrackingDAO;
@@ -49,6 +50,20 @@ public class AuthenticateUser extends HttpServlet {
     }
 
     private void goToPage(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        // S58-P5 -- the one post-login return AMS has: a /matrix/{guid} destination captured by
+        // EnrollmentMatrixServlet for a logged-out visitor. Single use: removed from the session
+        // whether or not it is honoured. Re-validated against the same anchored pattern on the
+        // way out -- a value that fails is discarded silently and the login routes exactly as
+        // it always has. Login proves identity only; the matrix page still authorises the
+        // viewer itself and answers 404 to anyone not entitled.
+        Object pendingReturn = request.getSession().getAttribute(EnrollmentMatrixServlet.MATRIX_RETURN_ATTR);
+        request.getSession().removeAttribute(EnrollmentMatrixServlet.MATRIX_RETURN_ATTR);
+        if (pendingReturn instanceof String destination
+                && EnrollmentMatrixServlet.MATRIX_RETURN_PATTERN.matcher(destination).matches()) {
+            response.sendRedirect(request.getContextPath() + destination);
+            return;
+        }
+
         boolean isPspUser = Boolean.TRUE.equals(request.getSession().getAttribute("isPspUser"));
         boolean isPspAdmin = Boolean.TRUE.equals(request.getSession().getAttribute("isPspAdmin"));
         boolean isAgent = Boolean.TRUE.equals(request.getSession().getAttribute("isAgent"));

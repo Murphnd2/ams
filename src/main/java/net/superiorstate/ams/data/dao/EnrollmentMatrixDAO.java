@@ -34,6 +34,22 @@ public abstract class EnrollmentMatrixDAO {
         return found.isEmpty() ? null : found.get(0);
     }
 
+    private static final String JPQL_BY_ACCESS_GUID =
+            "SELECT m FROM EnrollmentMatrix m WHERE m.accessGuid = :guid";
+
+    /**
+     * S58-P3 — the matrix a {@code /matrix/{guid}} address names, or null. Find only, never
+     * create: a viewer following a link must not cause an INSERT. A null or blank guid returns
+     * null without querying, so an unissued (NULL) column can never be matched.
+     */
+    public static EnrollmentMatrix findByAccessGuid(EntityManager em, String guid) {
+        if (guid == null || guid.isBlank()) return null;
+        java.util.List<EnrollmentMatrix> found = em.createQuery(JPQL_BY_ACCESS_GUID, EnrollmentMatrix.class)
+                .setParameter("guid", guid.trim())
+                .getResultList();
+        return found.isEmpty() ? null : found.get(0);
+    }
+
     /**
      * Persists a new matrix in its own transaction.
      *

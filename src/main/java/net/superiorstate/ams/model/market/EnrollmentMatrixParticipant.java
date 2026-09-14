@@ -55,6 +55,15 @@ public class EnrollmentMatrixParticipant {
     @Column(name = "custom_schedule_name")
     private String customScheduleName;
 
+    /**
+     * V113 (S58-P7) — the agent's free-text note about this participant's payroll schedule,
+     * written from the agent matrix view when they pick an {@code OTHER_*} option. PSP reads it
+     * to set {@link #customScheduleName}, the Summit-bound value the agent may never write. Never
+     * exported.
+     */
+    @Column(name = "agent_schedule_note", length = 500)
+    private String agentScheduleNote;
+
     @Column(name = "is_entry_locked", nullable = false)
     private boolean entryLocked = false;
 
@@ -86,6 +95,9 @@ public class EnrollmentMatrixParticipant {
 
     public String getCustomScheduleName() { return customScheduleName; }
     public void setCustomScheduleName(String customScheduleName) { this.customScheduleName = customScheduleName; }
+
+    public String getAgentScheduleNote() { return agentScheduleNote; }
+    public void setAgentScheduleNote(String agentScheduleNote) { this.agentScheduleNote = agentScheduleNote; }
 
     public boolean isEntryLocked() { return entryLocked; }
     public void setEntryLocked(boolean entryLocked) { this.entryLocked = entryLocked; }
