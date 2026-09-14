@@ -106,6 +106,17 @@ public final class SummitPageCatalog {
         register(pages, new SummitPage("participants", "Participants", Mode.DIRECT_PATH,
                 null, "/Area/Participant/ParticipantList?employerId={employerId}"));
 
+        // S61-P1 -- CONTEXT_THEN_PATH, no employer identifier of their own.
+        register(pages, new SummitPage("on-demand-processing", "On-Demand Processing", Mode.CONTEXT_THEN_PATH,
+                null, "/Area/OnDemandProcessing?processType=Events"));
+        // Note: singular "ReceiptManagementSetting.aspx" -- correct as given by Kevin.
+        register(pages, new SummitPage("receipt-management-settings", "Receipt Management Settings", Mode.CONTEXT_THEN_PATH,
+                null, "/ReceiptManagementModule/ReceiptManagementSetting.aspx?isEmpTab=true"));
+        register(pages, new SummitPage("receipt-management-request-settings", "Receipt Management Request Settings", Mode.CONTEXT_THEN_PATH,
+                null, "/ReceiptManagementModule/ReceiptManagementRequest.aspx?isEmpTab=true"));
+        register(pages, new SummitPage("receipt-management-processing", "Receipt Management Processing", Mode.CONTEXT_THEN_PATH,
+                null, "/ReceiptManagementModule/ReceiptManagementProcessing.aspx?isEmpTab=true"));
+
         return Map.copyOf(pages);
     }
 
