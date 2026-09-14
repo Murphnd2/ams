@@ -78,8 +78,9 @@ public class SummitEmployerLinkServlet extends HttpServlet {
                 String key = SummitExportServlet.resolveEmployerTpaCustomId(prospect);
                 String tab = request.getParameter("tab");
                 String label = request.getParameter("label");
+                String mode = request.getParameter("mode");
 
-                String html = renderLine(key, em, tab, label);
+                String html = renderLine(key, em, tab, label, mode);
                 if (html == null) return;
 
                 response.setContentType("text/html;charset=UTF-8");
@@ -99,17 +100,33 @@ public class SummitEmployerLinkServlet extends HttpServlet {
      * (step 2's call, e.g. {@code BenefitPlans}): only the success state renders, as a bare anchor
      * with no wrapping status line and no "· employer N" suffix -- step 1 already reports match
      * status, so step 2 repeating it would be noise. Every other state renders null (nothing).
+     * <p>
+     * S59-P2 -- {@code mode} selects an alternate output shape from the same resolution, evaluated
+     * exactly once regardless of mode. {@code mode} absent/anything other than the two values below
+     * is byte-for-byte the pre-S59-P2 behaviour just described.
+     * <ul>
+     *   <li>{@code mode=url} -- the resolved Summit URL alone, HTML-attribute-escaped the same way
+     *   the success anchor below already escapes it, no wrapper, no label. Null (nothing written)
+     *   on every failure path, including the ones that already return null in tabMode.</li>
+     *   <li>{@code mode=status} -- identical to absent, except the non-tab success case emits the
+     *   identity text with the anchor removed (same wrapper, same font size); tabMode emits nothing,
+     *   matching tabMode's existing null-on-non-primary-purpose shape.</li>
+     * </ul>
      */
-    private String renderLine(String key, EntityManager em, String tab, String label) {
+    private String renderLine(String key, EntityManager em, String tab, String label, String mode) {
         boolean tabMode = tab != null && !tab.isBlank();
+        boolean urlMode = "url".equals(mode);
+        boolean statusMode = "status".equals(mode);
         String linkLabel = (label != null && !label.isBlank()) ? label : "Open in Summit ↗";
 
         if (key == null) {
+            if (urlMode) return null;
             return tabMode ? null : line("Summit link unavailable — SUMMIT_TPA_ID_PREFIX not configured.");
         }
 
         List<Employer> matches = SummitEmployerLookupDAO.findByCustomId(em, key);
         if (matches.isEmpty()) {
+            if (urlMode) return null;
             return tabMode ? null : line("Not yet in Summit employer data (" + escape(key) + ").");
         }
 
@@ -119,10 +136,12 @@ public class SummitEmployerLinkServlet extends HttpServlet {
         }
 
         if (distinctAltIds.isEmpty()) {
+            if (urlMode) return null;
             return tabMode ? null : line("Found " + escape(key) + " but no Summit employer id.");
         }
 
         if (distinctAltIds.size() > 1) {
+            if (urlMode) return null;
             if (tabMode) return null;
             StringBuilder ids = new StringBuilder();
             for (Integer id : distinctAltIds) {
@@ -136,7 +155,14 @@ public class SummitEmployerLinkServlet extends HttpServlet {
         int altId = distinctAltIds.iterator().next();
         String url = SummitEmployerLinkResolver.buildEditEmployerUrl(getServletContext(), altId, tab);
         if (url == null) {
+            if (urlMode) return null;
             return tabMode ? null : line("Summit employer " + altId + " — link not configured (SUMMIT_PATH / SUMMIT_TPA_GUID).");
+        }
+
+        if (urlMode) return escape(url);
+
+        if (statusMode) {
+            return tabMode ? null : line("employer " + altId);
         }
 
         String anchor = "<a href=\"" + escape(url) + "\" target=\"_blank\" rel=\"noopener\">" + escape(linkLabel) + "</a>";

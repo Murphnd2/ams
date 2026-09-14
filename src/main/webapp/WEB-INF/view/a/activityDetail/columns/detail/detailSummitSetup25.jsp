@@ -1,6 +1,7 @@
 <%@ page pageEncoding="UTF-8" %>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 <%@ taglib prefix="fmt" uri="http://java.sun.com/jsp/jstl/fmt" %>
+<%@ taglib prefix="fn" uri="http://java.sun.com/jsp/jstl/functions" %>
 <%-- Summit setup panel (S41-G). Replaces the Census Upload card and the Summit export block formerly
      inline in detailSetup25.jsp. Carries its own PSP-admin gate, a verbatim copy of the caller's, so it
      cannot leak if included elsewhere. Live controls are the pre-existing URLs, copied verbatim. Dashed
@@ -25,13 +26,30 @@
       <div class="detail-section-body" style="font-size: 0.85rem;">
 
         <%-- 1. Employer --%>
+        <%-- S59-P2 -- the section title is the Summit link when one is available. mode=url asks
+             the same servlet/resolver/availability chain the status line below already uses for a
+             bare URL instead of markup; on any failure it yields nothing and the title stays plain
+             text. Two lookups per render (url + status) -- see technical_assumptions.md. --%>
+        <c:import var="employerSummitUrl" url="/SummitEmployerLink">
+          <c:param name="proposalId" value="${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}"/>
+          <c:param name="mode" value="url"/>
+        </c:import>
+        <c:set var="employerSummitUrl" value="${fn:trim(employerSummitUrl)}"/>
         <div class="d-flex align-items-center gap-2 py-1 border-bottom">
-          <span class="badge rounded-pill text-bg-light border" style="min-width: 1.5rem;">1</span>
           <div class="flex-grow-1 lh-sm">
-            <div class="fw-semibold">Employer</div>
+            <c:choose>
+              <c:when test="${not empty employerSummitUrl}">
+                <div class="fw-semibold"><a href="${employerSummitUrl}" target="_blank" rel="noopener">Employer <i class="bi bi-box-arrow-up-right" style="font-size: 0.7em;"></i></a><button type="button" class="btn btn-sm btn-link text-muted p-0 ms-1" style="line-height: 1;" data-bs-toggle="collapse" data-bs-target="#summitHelp-employer" aria-expanded="false" aria-controls="summitHelp-employer" aria-label="Show details for Employer" title="Show details for Employer"><i class="bi bi-info-circle" style="font-size: 0.75rem;"></i></button></div>
+              </c:when>
+              <c:otherwise>
+                <div class="fw-semibold">Employer<button type="button" class="btn btn-sm btn-link text-muted p-0 ms-1" style="line-height: 1;" data-bs-toggle="collapse" data-bs-target="#summitHelp-employer" aria-expanded="false" aria-controls="summitHelp-employer" aria-label="Show details for Employer" title="Show details for Employer"><i class="bi bi-info-circle" style="font-size: 0.75rem;"></i></button></div>
+              </c:otherwise>
+            </c:choose>
+            <div class="collapse" id="summitHelp-employer">
             <div class="text-muted" style="font-size: 0.72rem;">File 1 · creates or updates the employer</div>
             <jsp:include page="/SummitSetupStatus"><jsp:param name="proposalId" value="${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}"/><jsp:param name="step" value="employer"/></jsp:include>
-            <jsp:include page="/SummitEmployerLink"><jsp:param name="proposalId" value="${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}"/></jsp:include>
+            <jsp:include page="/SummitEmployerLink"><jsp:param name="proposalId" value="${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}"/><jsp:param name="mode" value="status"/></jsp:include>
+            </div>
           </div>
           <div class="btn-group btn-group-sm">
             <button type="button" class="btn btn-outline-secondary opacity-50" style="border-style: dashed; cursor: not-allowed;" aria-disabled="true" title="Preview — not built yet"><i class="bi bi-eye"></i></button>
@@ -43,13 +61,30 @@
         </div>
 
         <%-- 2. Plans (CDH), with the contribution-schedule checkpoint --%>
+        <%-- S59-P2 -- same title-as-link treatment as Employer above, tab=BenefitPlans. The old
+             "Open Benefit Plans ↗" anchor-only include (mode=null, tabMode) emitted nothing on any
+             failure and only a bare anchor on success -- entirely superseded by the title link, so
+             it is removed rather than kept alongside it. --%>
+        <c:import var="plansSummitUrl" url="/SummitEmployerLink">
+          <c:param name="proposalId" value="${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}"/>
+          <c:param name="tab" value="BenefitPlans"/>
+          <c:param name="mode" value="url"/>
+        </c:import>
+        <c:set var="plansSummitUrl" value="${fn:trim(plansSummitUrl)}"/>
         <div class="d-flex align-items-center gap-2 py-1">
-          <span class="badge rounded-pill text-bg-light border" style="min-width: 1.5rem;">2</span>
           <div class="flex-grow-1 lh-sm">
-            <div class="fw-semibold">Plans (CDH)</div>
+            <c:choose>
+              <c:when test="${not empty plansSummitUrl}">
+                <div class="fw-semibold"><a href="${plansSummitUrl}" target="_blank" rel="noopener">Plans (CDH) <i class="bi bi-box-arrow-up-right" style="font-size: 0.7em;"></i></a><button type="button" class="btn btn-sm btn-link text-muted p-0 ms-1" style="line-height: 1;" data-bs-toggle="collapse" data-bs-target="#summitHelp-cdhplan" aria-expanded="false" aria-controls="summitHelp-cdhplan" aria-label="Show details for Plans (CDH)" title="Show details for Plans (CDH)"><i class="bi bi-info-circle" style="font-size: 0.75rem;"></i></button></div>
+              </c:when>
+              <c:otherwise>
+                <div class="fw-semibold">Plans (CDH)<button type="button" class="btn btn-sm btn-link text-muted p-0 ms-1" style="line-height: 1;" data-bs-toggle="collapse" data-bs-target="#summitHelp-cdhplan" aria-expanded="false" aria-controls="summitHelp-cdhplan" aria-label="Show details for Plans (CDH)" title="Show details for Plans (CDH)"><i class="bi bi-info-circle" style="font-size: 0.75rem;"></i></button></div>
+              </c:otherwise>
+            </c:choose>
+            <div class="collapse" id="summitHelp-cdhplan">
             <div class="text-muted" style="font-size: 0.72rem;">File 2 · CDH plans elected on the application</div>
             <jsp:include page="/SummitSetupStatus"><jsp:param name="proposalId" value="${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}"/><jsp:param name="step" value="cdhplan"/></jsp:include>
-            <jsp:include page="/SummitEmployerLink"><jsp:param name="proposalId" value="${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}"/><jsp:param name="tab" value="BenefitPlans"/><jsp:param name="label" value="Open Benefit Plans ↗"/></jsp:include>
+            </div>
           </div>
           <div class="btn-group btn-group-sm">
             <button type="button" class="btn btn-outline-secondary opacity-50" style="border-style: dashed; cursor: not-allowed;" aria-disabled="true" title="Preview — not built yet"><i class="bi bi-eye"></i></button>
@@ -59,10 +94,12 @@
             <button type="submit" form="summitDone-cdhplan" class="btn btn-outline-ssa" title="Mark done (manual)" onclick="return confirm('Mark Plans (CDH) done without a response review? Use this for a group already set up in Summit or entered by hand.');"><i class="bi bi-check2-circle"></i></button>
           </div>
         </div>
-        <div class="d-flex align-items-center gap-2 pb-1 border-bottom" style="padding-left: 2rem;">
+        <div class="d-flex align-items-center gap-2 py-1 border-bottom">
           <div class="flex-grow-1 lh-sm">
-            <div>Contribution schedules</div>
+            <div>Contribution schedules<button type="button" class="btn btn-sm btn-link text-muted p-0 ms-1" style="line-height: 1;" data-bs-toggle="collapse" data-bs-target="#summitHelp-contribsched" aria-expanded="false" aria-controls="summitHelp-contribsched" aria-label="Show details for Contribution schedules" title="Show details for Contribution schedules"><i class="bi bi-info-circle" style="font-size: 0.75rem;"></i></button></div>
+            <div class="collapse" id="summitHelp-contribsched">
             <div class="text-muted" style="font-size: 0.72rem;">Created by hand in Summit before any election file</div>
+            </div>
           </div>
           <div class="btn-group btn-group-sm">
             <button type="submit" form="summitDone-schedules" class="btn btn-outline-ssa" title="Mark done (manual)" onclick="return confirm('Mark Contribution schedules done without a response review? Use this for a group already set up in Summit or entered by hand.');"><i class="bi bi-check2-circle"></i></button>
@@ -71,11 +108,12 @@
 
         <%-- 3. Request census --%>
         <div class="d-flex align-items-center gap-2 py-1 border-bottom">
-          <span class="badge rounded-pill text-bg-light border" style="min-width: 1.5rem;">3</span>
           <div class="flex-grow-1 lh-sm">
-            <div class="fw-semibold">Request census</div>
+            <div class="fw-semibold">Request census<button type="button" class="btn btn-sm btn-link text-muted p-0 ms-1" style="line-height: 1;" data-bs-toggle="collapse" data-bs-target="#summitHelp-censusrequest" aria-expanded="false" aria-controls="summitHelp-censusrequest" aria-label="Show details for Request census" title="Show details for Request census"><i class="bi bi-info-circle" style="font-size: 0.75rem;"></i></button></div>
+            <div class="collapse" id="summitHelp-censusrequest">
             <div class="text-muted" style="font-size: 0.72rem;">Secure link for the client · upload held for review</div>
             <jsp:include page="/CensusRequestStatus"><jsp:param name="proposalId" value="${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}"/></jsp:include>
+            </div>
           </div>
           <div class="btn-group btn-group-sm">
             <a href="${pageContext.request.contextPath}/CensusRequest?proposalId=${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}" class="btn btn-outline-ssa" title="Request census from client"><i class="bi bi-envelope"></i></a>
@@ -84,10 +122,11 @@
 
         <%-- 4. Census --%>
         <div class="d-flex align-items-center gap-2 py-1 border-bottom">
-          <span class="badge rounded-pill text-bg-light border" style="min-width: 1.5rem;">4</span>
           <div class="flex-grow-1 lh-sm">
-            <div class="fw-semibold">Census</div>
+            <div class="fw-semibold">Census<button type="button" class="btn btn-sm btn-link text-muted p-0 ms-1" style="line-height: 1;" data-bs-toggle="collapse" data-bs-target="#summitHelp-census" aria-expanded="false" aria-controls="summitHelp-census" aria-label="Show details for Census" title="Show details for Census"><i class="bi bi-info-circle" style="font-size: 0.75rem;"></i></button></div>
+            <div class="collapse" id="summitHelp-census">
             <div class="text-muted" style="font-size: 0.72rem;">Upload and review the roster</div>
+            </div>
           </div>
           <div class="btn-group btn-group-sm">
             <a href="${pageContext.request.contextPath}/CensusUpload?proposalId=${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}" class="btn btn-outline-ssa" title="Census upload"><i class="bi bi-people"></i></a>
@@ -96,11 +135,12 @@
 
         <%-- 5. Demographics --%>
         <div class="d-flex align-items-center gap-2 py-1 border-bottom">
-          <span class="badge rounded-pill text-bg-light border" style="min-width: 1.5rem;">5</span>
           <div class="flex-grow-1 lh-sm">
-            <div class="fw-semibold">Demographics</div>
+            <div class="fw-semibold">Demographics<button type="button" class="btn btn-sm btn-link text-muted p-0 ms-1" style="line-height: 1;" data-bs-toggle="collapse" data-bs-target="#summitHelp-demographics" aria-expanded="false" aria-controls="summitHelp-demographics" aria-label="Show details for Demographics" title="Show details for Demographics"><i class="bi bi-info-circle" style="font-size: 0.75rem;"></i></button></div>
+            <div class="collapse" id="summitHelp-demographics">
             <div class="text-muted" style="font-size: 0.72rem;">File 4 · creates or updates participants</div>
             <jsp:include page="/SummitSetupStatus"><jsp:param name="proposalId" value="${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}"/><jsp:param name="step" value="demographics"/></jsp:include>
+            </div>
           </div>
           <div class="btn-group btn-group-sm">
             <button type="button" class="btn btn-outline-secondary opacity-50" style="border-style: dashed; cursor: not-allowed;" aria-disabled="true" title="Preview — not built yet"><i class="bi bi-eye"></i></button>
@@ -113,7 +153,6 @@
 
         <%-- 6. Enrollment: one row per import template --%>
         <div class="d-flex align-items-center gap-2 pt-1">
-          <span class="badge rounded-pill text-bg-light border" style="min-width: 1.5rem;">6</span>
           <div class="flex-grow-1 lh-sm">
             <div class="fw-semibold">Enrollment</div>
           </div>
@@ -122,11 +161,22 @@
              one of the four core setup files, and the setup-sequence numbering above has no slot
              for it. Both controls always lead to a confirmation screen with an editable effective
              date (T201 shape, widened) -- the JSP itself never carries confirm or effectiveDate. --%>
-        <div class="d-flex align-items-center gap-2 py-1" style="padding-left: 2rem;">
+        <%-- S59-P3rev -- the row renders only when a card-issuer template association is elected
+             on this setup, or when that cannot be determined (fail open -- see
+             CardIssuerAvailabilityService). mode=absent means nothing: this fragment has only one
+             output shape, unlike the S59-P2 title-link fragments. --%>
+        <c:import var="cardIssuerAvailable" url="/CardIssuerAvailability">
+          <c:param name="proposalId" value="${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}"/>
+        </c:import>
+        <c:set var="cardIssuerAvailable" value="${fn:trim(cardIssuerAvailable)}"/>
+        <c:if test="${not empty cardIssuerAvailable}">
+        <div class="d-flex align-items-center gap-2 py-1">
           <div class="flex-grow-1 lh-sm">
-            <div>$1 card-issuer seed election</div>
+            <div>$1 card-issuer seed election<button type="button" class="btn btn-sm btn-link text-muted p-0 ms-1" style="line-height: 1;" data-bs-toggle="collapse" data-bs-target="#summitHelp-cardseed" aria-expanded="false" aria-controls="summitHelp-cardseed" aria-label="Show details for $1 card-issuer seed election" title="Show details for $1 card-issuer seed election"><i class="bi bi-info-circle" style="font-size: 0.75rem;"></i></button></div>
+            <div class="collapse" id="summitHelp-cardseed">
             <div class="text-muted" style="font-size: 0.72rem;">125 PI Elections · $1.00 annual to the Card Issuer plan · requires confirm</div>
             <jsp:include page="/SummitSetupStatus"><jsp:param name="proposalId" value="${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}"/><jsp:param name="step" value="cardseed"/></jsp:include>
+            </div>
           </div>
           <div class="btn-group btn-group-sm">
             <button type="button" class="btn btn-outline-secondary opacity-50" style="border-style: dashed; cursor: not-allowed;" aria-disabled="true" title="Preview — not built yet"><i class="bi bi-eye"></i></button>
@@ -134,6 +184,7 @@
             <button type="submit" form="summitPush-cardseed" class="btn btn-outline-ssa" title="Push to DataPath (opens a confirmation screen)"><i class="bi bi-cloud-upload"></i></button>
           </div>
         </div>
+        </c:if>
         <%-- S56-C -- the two matrix-sourced enrollment files. Both read the Enrollment Matrix
              (V106) and route each plan's rows by its 'Enrollment import file' (V108): HRA
              Enrollment for ICHRA/HRA/MERP, 125 PI Elections for PremiumPath/FSA/DCA. The servlet
@@ -146,9 +197,11 @@
              retype, gated by the buttons' own onclick confirm(). --%>
         <div class="d-flex align-items-center gap-2 py-1" style="padding-left: 2rem;">
           <div class="flex-grow-1 lh-sm">
-            <div>125 PI Elections</div>
+            <div>125 PI Elections<button type="button" class="btn btn-sm btn-link text-muted p-0 ms-1" style="line-height: 1;" data-bs-toggle="collapse" data-bs-target="#summitHelp-elections" aria-expanded="false" aria-controls="summitHelp-elections" aria-label="Show details for 125 PI Elections" title="Show details for 125 PI Elections"><i class="bi bi-info-circle" style="font-size: 0.75rem;"></i></button></div>
+            <div class="collapse" id="summitHelp-elections">
             <div class="text-muted" style="font-size: 0.72rem;">Section 125 plans: PremiumPath, FSA, DCA · from the Enrollment Matrix · requires confirm</div>
             <jsp:include page="/SummitSetupStatus"><jsp:param name="proposalId" value="${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}"/><jsp:param name="step" value="elections"/></jsp:include>
+            </div>
           </div>
           <div class="btn-group btn-group-sm">
             <button type="button" class="btn btn-outline-secondary opacity-50" style="border-style: dashed; cursor: not-allowed;" aria-disabled="true" title="Preview — not built yet"><i class="bi bi-eye"></i></button>
@@ -159,9 +212,11 @@
         </div>
         <div class="d-flex align-items-center gap-2 py-1" style="padding-left: 2rem;">
           <div class="flex-grow-1 lh-sm">
-            <div>HRA Enrollment</div>
+            <div>HRA Enrollment<button type="button" class="btn btn-sm btn-link text-muted p-0 ms-1" style="line-height: 1;" data-bs-toggle="collapse" data-bs-target="#summitHelp-enrollment" aria-expanded="false" aria-controls="summitHelp-enrollment" aria-label="Show details for HRA Enrollment" title="Show details for HRA Enrollment"><i class="bi bi-info-circle" style="font-size: 0.75rem;"></i></button></div>
+            <div class="collapse" id="summitHelp-enrollment">
             <div class="text-muted" style="font-size: 0.72rem;">HRA plans: ICHRA, QSEHRA, HRA, MERP · from the Enrollment Matrix · requires confirm</div>
             <jsp:include page="/SummitSetupStatus"><jsp:param name="proposalId" value="${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}"/><jsp:param name="step" value="enrollment"/></jsp:include>
+            </div>
           </div>
           <div class="btn-group btn-group-sm">
             <button type="button" class="btn btn-outline-secondary opacity-50" style="border-style: dashed; cursor: not-allowed;" aria-disabled="true" title="Preview — not built yet"><i class="bi bi-eye"></i></button>
@@ -193,11 +248,15 @@
     </form>
     <%-- V104 -- carries no confirm/effectiveDate; the servlet always renders the confirmation
          screen first, which carries its own onclick confirm() and posts back here with both. --%>
+    <%-- S59-P3rev -- a hidden form whose only submit button no longer renders is dead markup;
+         gated on the same cardIssuerAvailable capture as the row above. --%>
+    <c:if test="${not empty cardIssuerAvailable}">
     <form id="summitPush-cardseed" method="post" target="_blank"
           action="${pageContext.request.contextPath}/SummitExport">
       <input type="hidden" name="proposalId" value="${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}"/>
       <input type="hidden" name="type" value="cardseed"/>
     </form>
+    </c:if>
     <%-- S56-C -- the two matrix-sourced enrollment files pre-fill their confirm tokens: there is
          no HTML confirm screen for either and no URL a POST lets the operator retype, so the
          token is supplied here, gated by each button's own onclick confirm(). Keyed on
