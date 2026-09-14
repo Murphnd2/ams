@@ -157,6 +157,7 @@
             <c:if test="${censusState == 'ROSTER_LOADED' or censusState == 'TERMINAL' or censusState == 'INDETERMINATE'}">
               <button type="submit" form="summitPush-demographics" class="btn btn-outline-ssa" title="Push to DataPath" data-summit-push="demographics" onclick="return confirm('Push the Demographics file to DataPath? Summit processes it automatically within about 15 minutes. There is no undo.');"><i class="bi bi-cloud-upload"></i></button>
               <a href="${pageContext.request.contextPath}/SummitResponse?proposalId=${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}&step=demographics" class="btn btn-outline-ssa" title="Check response"><i class="bi bi-arrow-repeat"></i></a>
+              <a href="${pageContext.request.contextPath}/SummitVerifyDemographics?proposalId=${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}" class="btn btn-outline-ssa" title="Verify against Summit export"><i class="bi bi-clipboard-check"></i></a>
             </c:if>
             <c:if test="${censusState == 'ROSTER_LOADED' or censusState == 'INDETERMINATE'}">
               <button type="submit" form="summitDone-demographics" class="btn btn-outline-ssa" title="Mark done (manual)" onclick="return confirm('Mark Demographics done without a response review? Use this for a group already set up in Summit or entered by hand.');"><i class="bi bi-check2-circle"></i></button>
