@@ -164,6 +164,36 @@
           </div>
         </div>
 
+        <%-- V104 -- the $1 card-issuer seed election. No file number (T196's precedent): it is not
+             one of the four core setup files, and the setup-sequence numbering above has no slot
+             for it. Both controls always lead to a confirmation screen with an editable effective
+             date (T201 shape, widened) -- the JSP itself never carries confirm or effectiveDate. --%>
+        <%-- S59-P3rev -- the row renders only when a card-issuer template association is elected
+             on this setup, or when that cannot be determined (fail open -- see
+             CardIssuerAvailabilityService). mode=absent means nothing: this fragment has only one
+             output shape, unlike the S59-P2 title-link fragments. --%>
+        <%-- S59-P9 -- moved above the Enrollment line: a $1 seed election precedes real
+             elections, so it belongs before them, not after. --%>
+        <c:import var="cardIssuerAvailable" url="/CardIssuerAvailability">
+          <c:param name="proposalId" value="${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}"/>
+        </c:import>
+        <c:set var="cardIssuerAvailable" value="${fn:trim(cardIssuerAvailable)}"/>
+        <c:if test="${not empty cardIssuerAvailable}">
+        <div class="d-flex align-items-center gap-2 py-1 border-bottom">
+          <div class="flex-grow-1 lh-sm">
+            <div class="fw-semibold">Card Issuance<button type="button" class="btn btn-sm btn-link text-muted p-0 ms-1" style="line-height: 1;" data-bs-toggle="collapse" data-bs-target="#summitHelp-cardseed" aria-expanded="false" aria-controls="summitHelp-cardseed" aria-label="Show details for Card Issuance" title="Show details for Card Issuance"><i class="bi bi-info-circle" style="font-size: 0.75rem;"></i></button></div>
+            <div class="collapse" id="summitHelp-cardseed">
+            <div class="text-muted" style="font-size: 0.72rem;">125 PI Elections · $1.00 annual to the Card Issuer plan · requires confirm</div>
+            <jsp:include page="/SummitSetupStatus"><jsp:param name="proposalId" value="${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}"/><jsp:param name="step" value="cardseed"/></jsp:include>
+            </div>
+          </div>
+          <div class="btn-group btn-group-sm">
+            <button type="button" class="btn btn-outline-secondary opacity-50" style="border-style: dashed; cursor: not-allowed;" aria-disabled="true" title="Preview — not built yet"><i class="bi bi-eye"></i></button>
+            <a href="${pageContext.request.contextPath}/SummitExport?proposalId=${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}&type=cardseed" class="btn btn-outline-ssa" title="Generate (opens a confirmation screen)"><i class="bi bi-download"></i></a>
+            <button type="submit" form="summitPush-cardseed" class="btn btn-outline-ssa" title="Push to DataPath (opens a confirmation screen)"><i class="bi bi-cloud-upload"></i></button>
+          </div>
+        </div>
+        </c:if>
         <%-- 6. Enrollment (S59-P8) -- consolidates 125 PI Elections and HRA Enrollment onto one
              line; they differ only by file-type parameter (type=elections/enrollment,
              step=elections/enrollment), so Download/Check response/Push each become a chooser
@@ -193,9 +223,9 @@
             </div>
           </div>
           <div class="btn-group btn-group-sm">
-            <a class="btn btn-sm btn-outline-ssa" href="${pageContext.request.contextPath}/EnrollmentMatrix?setupId=${sessionScope.local.getCurrentActivity().getActivity().getId()}"><i class="bi bi-grid-3x3-gap me-1"></i>Enrollment Matrix</a>
-            <button type="button" class="btn btn-sm btn-outline-ssa" id="btnCopyMatrixLink" onclick="ammCopyMatrixLink(${sessionScope.local.getCurrentActivity().getActivity().getId()})" title="Copy a link an agent can open to view this matrix"><i class="bi bi-link-45deg me-1"></i>Copy matrix link</button>
-            <button type="button" class="btn btn-sm btn-outline-ssa" id="btnOpenAgentView" onclick="ammOpenAgentView(${sessionScope.local.getCurrentActivity().getActivity().getId()})" title="Open the read-only agent view of this matrix in a new tab"><i class="bi bi-box-arrow-up-right me-1"></i>Open agent view</button>
+            <a class="btn btn-sm btn-outline-ssa" href="${pageContext.request.contextPath}/EnrollmentMatrix?setupId=${sessionScope.local.getCurrentActivity().getActivity().getId()}" title="Open the enrollment matrix" aria-label="Open the enrollment matrix"><i class="bi bi-grid-3x3-gap"></i></a>
+            <button type="button" class="btn btn-sm btn-outline-ssa" id="btnCopyMatrixLink" onclick="ammCopyMatrixLink(${sessionScope.local.getCurrentActivity().getActivity().getId()})" title="Copy a link an agent can open to view this matrix" aria-label="Copy a link an agent can open to view this matrix"><i class="bi bi-link-45deg"></i></button>
+            <button type="button" class="btn btn-sm btn-outline-ssa" id="btnOpenAgentView" onclick="ammOpenAgentView(${sessionScope.local.getCurrentActivity().getActivity().getId()})" title="Open the agent view of this matrix in a new tab" aria-label="Open the agent view of this matrix in a new tab"><i class="bi bi-box-arrow-up-right"></i></button>
             <script>
               function ammIssueMatrixLink(setupId) {
                 return fetch('${pageContext.request.contextPath}/EnrollmentMatrix', {
@@ -259,34 +289,6 @@
             </div>
           </div>
         </div>
-        <%-- V104 -- the $1 card-issuer seed election. No file number (T196's precedent): it is not
-             one of the four core setup files, and the setup-sequence numbering above has no slot
-             for it. Both controls always lead to a confirmation screen with an editable effective
-             date (T201 shape, widened) -- the JSP itself never carries confirm or effectiveDate. --%>
-        <%-- S59-P3rev -- the row renders only when a card-issuer template association is elected
-             on this setup, or when that cannot be determined (fail open -- see
-             CardIssuerAvailabilityService). mode=absent means nothing: this fragment has only one
-             output shape, unlike the S59-P2 title-link fragments. --%>
-        <c:import var="cardIssuerAvailable" url="/CardIssuerAvailability">
-          <c:param name="proposalId" value="${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}"/>
-        </c:import>
-        <c:set var="cardIssuerAvailable" value="${fn:trim(cardIssuerAvailable)}"/>
-        <c:if test="${not empty cardIssuerAvailable}">
-        <div class="d-flex align-items-center gap-2 py-1">
-          <div class="flex-grow-1 lh-sm">
-            <div>$1 card-issuer seed election<button type="button" class="btn btn-sm btn-link text-muted p-0 ms-1" style="line-height: 1;" data-bs-toggle="collapse" data-bs-target="#summitHelp-cardseed" aria-expanded="false" aria-controls="summitHelp-cardseed" aria-label="Show details for $1 card-issuer seed election" title="Show details for $1 card-issuer seed election"><i class="bi bi-info-circle" style="font-size: 0.75rem;"></i></button></div>
-            <div class="collapse" id="summitHelp-cardseed">
-            <div class="text-muted" style="font-size: 0.72rem;">125 PI Elections · $1.00 annual to the Card Issuer plan · requires confirm</div>
-            <jsp:include page="/SummitSetupStatus"><jsp:param name="proposalId" value="${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}"/><jsp:param name="step" value="cardseed"/></jsp:include>
-            </div>
-          </div>
-          <div class="btn-group btn-group-sm">
-            <button type="button" class="btn btn-outline-secondary opacity-50" style="border-style: dashed; cursor: not-allowed;" aria-disabled="true" title="Preview — not built yet"><i class="bi bi-eye"></i></button>
-            <a href="${pageContext.request.contextPath}/SummitExport?proposalId=${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}&type=cardseed" class="btn btn-outline-ssa" title="Generate (opens a confirmation screen)"><i class="bi bi-download"></i></a>
-            <button type="submit" form="summitPush-cardseed" class="btn btn-outline-ssa" title="Push to DataPath (opens a confirmation screen)"><i class="bi bi-cloud-upload"></i></button>
-          </div>
-        </div>
-        </c:if>
       </div>
     </div>
 
