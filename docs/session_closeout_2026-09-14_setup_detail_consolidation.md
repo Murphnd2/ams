@@ -4,6 +4,10 @@ Branch `refactor/modernize-architecture`. Runs S59-P1 (Phase A, read-only), P2, 
 P4, P5 (hard-stop), P5rev, P6 (hard-stop), P6rev, P7, P8, P9, P10, P11 (this close-out). Every repo
 fact below was read from the tree at close-out time, not restated from the prompts.
 
+**This close-out's own commit:** `a156fd9` — "docs: S59 session close-out (Setup detail view
+consolidation)", docs-only, pushed to `refactor/modernize-architecture`. Recorded here in a second
+small commit after the first, since the hash could not be known before committing.
+
 ## Shipped
 
 Five commits, all on `refactor/modernize-architecture`, all pushed. **The build prompt that led into
