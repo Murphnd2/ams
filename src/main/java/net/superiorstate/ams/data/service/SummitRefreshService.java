@@ -45,6 +45,20 @@ import java.util.regex.Pattern;
  * temp file under {@code java.io.tmpdir} (never the repo, never {@code AMS_UPLOAD_DIR}), imported,
  * and the temp file deleted in a {@code finally}.
  * <p>
+ * <b>S61-P9 -- skip-if-already-imported.</b> Kevin runs the Summit-side J1 export four times a day
+ * (7/9/11/1); between the 1pm run and the next morning's 7am run the newest file is legitimately
+ * many hours old, so the guard that actually prevents redundant re-imports is file identity, not
+ * age. Before fetching bytes, the newest filename is compared against {@link #lastImportedFilename}
+ * -- an exact-match skip, recorded as {@code SKIPPED}, with no fetch, no import, no cache refresh.
+ * That field is set only on a successful import (never by a skip/error/no-op record, so it survives
+ * a run of skips unchanged) and is seeded at construction from the last persisted {@code audit_run}
+ * row <i>only if that row is itself a successful, parseable import</i> -- absent, wrong status, or
+ * unparseable all fall through to "proceed with the import" rather than a wrong skip. It is lost on
+ * restart, which costs at most one redundant idempotent re-import, never a missed one. The manual
+ * trigger has a {@code force} overload that bypasses this skip (never the age guard); the scheduled
+ * tick never forces. With the skip guard doing this work, the max-age guard's remaining job is
+ * narrow: catch an export that has stopped running entirely.
+ * <p>
  * <b>J1 only.</b> No J2/J3 (reverts AMS-typed contact names), no J4/J5/J7 (renewal and
  * {@code is_active} side-effects), no plan types, no employer inactivation propagation --
  * {@code SummitImportService.importEmployers} skips Inactive rows and that is left exactly as is.
@@ -65,7 +79,8 @@ import java.util.regex.Pattern;
  *   <li>{@code SUMMIT_AUDIT_EXPORT_MAX_BYTES} -- existing byte cap, reused (default 16 MiB).</li>
  *   <li>{@code SUMMIT_REFRESH_J1_PREFIX} -- filename prefix of the J1 export (default
  *       {@code ZZ_J1_Employer}).</li>
- *   <li>{@code SUMMIT_REFRESH_MAX_AGE_HOURS} -- ignore a file older than this (default 2).</li>
+ *   <li>{@code SUMMIT_REFRESH_MAX_AGE_HOURS} -- ignore a file older than this (default 26, wide
+ *       enough to span the overnight gap between a 1pm export and the next 7am one).</li>
  *   <li>{@code SUMMIT_REFRESH_INTERVAL_MINUTES} -- tick interval (default 60).</li>
  * </ul>
  */
@@ -92,7 +107,10 @@ public class SummitRefreshService {
     public static final String CFG_MAX_BYTES = "SUMMIT_AUDIT_EXPORT_MAX_BYTES";
 
     public static final String DEFAULT_PREFIX = "ZZ_J1_Employer";
-    public static final long DEFAULT_MAX_AGE_HOURS = 2;
+    /** S61-P9 -- widened from 2 to 26h: four daily Summit exports (7/9/11/1) leave an ~18h
+     *  overnight gap before the skip-if-already-imported guard (not this one) starts doing the
+     *  work of keeping a redundant re-import from happening. */
+    public static final long DEFAULT_MAX_AGE_HOURS = 26;
     public static final long DEFAULT_INTERVAL_MINUTES = 60;
     private static final long DEFAULT_MAX_BYTES = 16_777_216L;
     private static final long INITIAL_DELAY_MINUTES = 10;
@@ -102,6 +120,12 @@ public class SummitRefreshService {
     private static final Pattern TIMESTAMPED_NAME = Pattern.compile("^.+_(\\d{17})\\.[A-Za-z0-9]+$");
     private static final DateTimeFormatter TIMESTAMP_FMT = DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS");
 
+    /** S61-P9 -- leading marker on a successful-import {@code summary}, so
+     *  {@link #parseImportedFilename} can tell a real import apart from a no-op/skip/error summary
+     *  without guessing. Owned entirely by this class -- no other writer of {@code check_key}
+     *  {@link #CHECK_KEY} rows exists. */
+    private static final String IMPORTED_MARKER = "Imported ";
+
     private final ScheduledExecutorService executor;
     private final EntityManagerFactory emf;
     private final AmsDataGlobal global;
@@ -110,6 +134,16 @@ public class SummitRefreshService {
     private final AtomicBoolean running = new AtomicBoolean(false);
     private volatile boolean scheduled = false;
     private volatile AuditRun latestRun;
+
+    /** S61-P9 -- filename of the last successfully imported J1 export, or {@code null} if there
+     *  hasn't been one this JVM knows of. Updated only on a genuine successful import (step 7 of
+     *  {@link #runOnce}), never by a skip/error/no-op record, so it is stable across any number of
+     *  {@code SKIPPED} ticks in a row. Seeded at construction from the persisted {@code audit_run}
+     *  row, but that seed is used only when the row is itself a parseable success -- see
+     *  {@link #parseImportedFilename}. Lost on restart if the persisted row at that moment isn't a
+     *  success (e.g. the last row was a {@code SKIPPED}); the cost is one redundant, idempotent
+     *  re-import, never a missed one. */
+    private volatile String lastImportedFilename;
 
     /**
      * Loads the last stored run for {@link #CHECK_KEY}. Never throws -- a database problem at
@@ -129,6 +163,7 @@ public class SummitRefreshService {
             EntityManager em = emf.createEntityManager();
             try {
                 latestRun = AuditRunDAO.findLatestPerCheck(em, pspId).get(CHECK_KEY);
+                lastImportedFilename = parseImportedFilename(latestRun);
             } finally {
                 if (em.isOpen()) em.close();
             }
@@ -176,6 +211,13 @@ public class SummitRefreshService {
         return latestRun;
     }
 
+    /** S61-P9 -- filename the skip guard will compare the next newest export against, or
+     *  {@code null} if nothing has been successfully imported yet (this JVM's lifetime, or a
+     *  parseable persisted row at construction). */
+    public String getLastImportedFilename() {
+        return lastImportedFilename;
+    }
+
     public Long getPspId() {
         return pspId;
     }
@@ -183,12 +225,25 @@ public class SummitRefreshService {
     public enum TriggerResult { STARTED, ALREADY_RUNNING }
 
     /** Runs one refresh on this service's own executor and returns immediately. Shares the
-     *  {@code running} guard with the scheduled tick, so two rapid clicks cannot overlap. */
+     *  {@code running} guard with the scheduled tick, so two rapid clicks cannot overlap.
+     *  Equivalent to {@code triggerManual(false)}. */
     public TriggerResult triggerManual() {
+        return triggerManual(false);
+    }
+
+    /**
+     * S61-P9 -- same as {@link #triggerManual()}, but with {@code force} true the
+     * skip-if-already-imported check in {@link #runOnce} is bypassed for this one run (the max-age
+     * guard is not; a genuinely stale export still no-ops). For a PSP admin who corrected the same
+     * file on the Summit side and needs {@code /SummitRefresh}'s Run now to actually re-fetch it.
+     * The scheduled tick never calls this overload -- {@link #scheduledTick} always passes
+     * {@code false}.
+     */
+    public TriggerResult triggerManual(boolean force) {
         if (!running.compareAndSet(false, true)) {
             return TriggerResult.ALREADY_RUNNING;
         }
-        executor.execute(() -> runAcquired(TRIGGER_MANUAL));
+        executor.execute(() -> runAcquired(TRIGGER_MANUAL, force));
         return TriggerResult.STARTED;
     }
 
@@ -198,15 +253,15 @@ public class SummitRefreshService {
             record(TRIGGER_SCHEDULED, STATUS_SKIPPED, "Tick skipped — a refresh was already in progress.", null, 0);
             return;
         }
-        runAcquired(TRIGGER_SCHEDULED);
+        runAcquired(TRIGGER_SCHEDULED, false); // scheduled tick never forces
     }
 
     /** Precondition: caller has acquired {@code running}. Nothing thrown here may escape --
      *  {@code scheduleAtFixedRate} silently cancels all future ticks after one uncaught throw. */
-    private void runAcquired(String trigger) {
+    private void runAcquired(String trigger, boolean force) {
         long start = System.currentTimeMillis();
         try {
-            runOnce(trigger, start);
+            runOnce(trigger, start, force);
         } catch (Throwable t) {
             log.error("[SUMMIT-REFRESH] Run failed", t);
             record(trigger, STATUS_ERROR, null, scrub(t), elapsed(start));
@@ -217,7 +272,7 @@ public class SummitRefreshService {
 
     // ── One tick ─────────────────────────────────────────────────────
 
-    private void runOnce(String trigger, long start) {
+    private void runOnce(String trigger, long start, boolean force) {
         // 1. Config.
         String prefix = getPrefix();
         String exportDir = getExportDir();
@@ -260,13 +315,21 @@ public class SummitRefreshService {
             }
         }
 
-        // 3. No file, or a stale file, is a normal no-op.
+        // 3. No file is a normal no-op.
         if (newestName == null) {
             record(trigger, STATUS_OK, "No-op — no export matching prefix '" + prefix + "' in " + exportDir + ".",
                     null, elapsed(start));
             return;
         }
 
+        // 3a. S61-P9 -- skip when this exact file was already imported successfully. force
+        // (manual trigger only) bypasses this check; it never bypasses the age guard below.
+        if (!force && newestName.equals(lastImportedFilename)) {
+            record(trigger, STATUS_SKIPPED, "Skipped — " + newestName + " was already imported.", null, elapsed(start));
+            return;
+        }
+
+        // 4. A stale file (genuinely abandoned export) is also a normal no-op.
         LocalDateTime fileTimestamp;
         try {
             fileTimestamp = LocalDateTime.parse(String.valueOf(newestTimestamp), TIMESTAMP_FMT);
@@ -328,9 +391,12 @@ public class SummitRefreshService {
                 }
             }
 
-            // 7. Record. Warning text is never persisted or logged -- count only.
-            String summary = newestName + " (" + fileTimestamp + ") — " + result.summary()
+            // 7. Record. Warning text is never persisted or logged -- count only. The IMPORTED_MARKER
+            // prefix is what parseImportedFilename looks for on a restart; lastImportedFilename
+            // itself is set directly (no parsing needed) since newestName is already in hand.
+            String summary = IMPORTED_MARKER + newestName + " (" + fileTimestamp + ") — " + result.summary()
                     + (result.getWarnings().isEmpty() ? "" : ", " + result.getWarnings().size() + " warning(s)");
+            lastImportedFilename = newestName;
             record(trigger, STATUS_OK, summary, null, elapsed(start));
             log.info("[SUMMIT-REFRESH] {} — {}", newestName, result.summary());
         } catch (IOException e) {
@@ -443,6 +509,25 @@ public class SummitRefreshService {
     private static String truncate(String value, int max) {
         if (value == null) return null;
         return value.length() > max ? value.substring(0, max) : value;
+    }
+
+    /**
+     * S61-P9 -- recovers the filename of a successful import from a persisted {@code audit_run}
+     * summary, written in the {@link #IMPORTED_MARKER}{@code + filename + " (" + ...} shape step 7
+     * of {@link #runOnce} writes. Returns {@code null} for anything else -- absent row, non-{@code
+     * OK} status, a no-op/skip/error summary, or a shape that doesn't parse -- so a doubtful case
+     * always falls through to "proceed with the import" rather than a wrong skip. Used only at
+     * construction, to seed {@link #lastImportedFilename} across a restart; a live import sets that
+     * field directly, with the filename already in hand, needing no parsing at all.
+     */
+    private static String parseImportedFilename(AuditRun run) {
+        if (run == null || !STATUS_OK.equals(run.getStatus())) return null;
+        String summary = run.getSummary();
+        if (summary == null || !summary.startsWith(IMPORTED_MARKER)) return null;
+        int parenIdx = summary.indexOf(" (", IMPORTED_MARKER.length());
+        if (parenIdx < 0) return null;
+        String filename = summary.substring(IMPORTED_MARKER.length(), parenIdx);
+        return filename.isBlank() ? null : filename;
     }
 
     /** Exposed for the status page only -- what a matching filename must look like. */

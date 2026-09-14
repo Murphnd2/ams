@@ -28,6 +28,12 @@ import java.io.IOException;
  * {@code POST} triggers one refresh on the service's own executor (never on the request thread)
  * and redirects back here; two rapid clicks cannot overlap because the service's {@code running}
  * guard rejects the second with {@code ALREADY_RUNNING}. Every refusal is a visible HTML page.
+ * <p>
+ * S61-P10 -- a {@code force=true} POST parameter re-imports the newest file even if it was already
+ * imported, for a PSP admin re-running after a Summit-side correction to a file whose name hasn't
+ * changed; absent, malformed, or anything other than the exact string {@code true} means the
+ * ordinary non-forcing path. Only ever read here, on this request thread, before handing off to
+ * {@link SummitRefreshService#triggerManual(boolean)} -- the scheduled tick never forces.
  */
 @WebServlet(name = "SummitRefreshServlet", value = "/SummitRefresh")
 public class SummitRefreshServlet extends HttpServlet {
@@ -101,6 +107,11 @@ public class SummitRefreshServlet extends HttpServlet {
 
             body.append("<form method=\"post\" action=\"").append(escape(request.getContextPath()))
                     .append("/SummitRefresh\"><button type=\"submit\">Run now</button></form>");
+            body.append("<form method=\"post\" action=\"").append(escape(request.getContextPath()))
+                    .append("/SummitRefresh\"><input type=\"hidden\" name=\"force\" value=\"true\">"
+                            + "<button type=\"submit\">Force re-import</button></form>");
+            body.append("<p class=\"muted\">Force re-imports the newest file even if it was already imported "
+                    + "— use after a Summit-side correction to a file whose name hasn't changed.</p>");
             body.append("<p class=\"muted\">J1 only. The importer skips Inactive rows and re-merges rows with blank "
                     + "email/phone/contact on every run, so a non-zero \"updated\" count is not evidence of change.</p>");
 
@@ -119,7 +130,10 @@ public class SummitRefreshServlet extends HttpServlet {
             SummitRefreshService service = gate(request, response);
             if (service == null) return;
 
-            SummitRefreshService.TriggerResult result = service.triggerManual();
+            // S61-P10 -- default false on anything but an explicit "true": absent, malformed, or
+            // any other value all mean the ordinary non-forcing path.
+            boolean force = "true".equals(request.getParameter("force"));
+            SummitRefreshService.TriggerResult result = service.triggerManual(force);
             response.sendRedirect(request.getContextPath() + "/SummitRefresh?triggered=" + result.name());
         } catch (Exception e) {
             log.warn("[SUMMIT-REFRESH] manual trigger failed: {}", e.getMessage());

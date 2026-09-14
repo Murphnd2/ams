@@ -1861,12 +1861,16 @@ Set this key only if the Summit-side template is named something other than `ZZ_
 
 **Applies to:** all installations with a Summit tenant ⬜ — optional; Demo / BPO / Master — N/A.
 
-### D-104: `ssa.properties` may set `SUMMIT_REFRESH_MAX_AGE_HOURS` — optional, defaults to `2`
+### D-104: `ssa.properties` may set `SUMMIT_REFRESH_MAX_AGE_HOURS` — optional, defaults to `26` (S61-P9, was `2`)
 
 **Priority:** LOW — defaults safely
 **Status:** Not set anywhere. Read through `AppConfig.get`; Tomcat restart to pick up.
 
-A J1 export whose filename timestamp is older than this many hours is ignored — recorded as a no-op, not imported, not an error. Deliberately **not** the existing `SUMMIT_AUDIT_EXPORT_MAX_AGE_HOURS` (D-98, default 36): that key is named for the audit check and its 36-hour default is the wrong shape for an hourly refresh, so the two are kept separate. ⚠️ The filename timestamp is Summit's local time (CST); if the server runs UTC the computed age reads 5–6 hours too old — the safe direction, but a 2-hour guard on a UTC server would reject every file. Raise this value on a UTC host, or confirm the server clock, before enabling the scheduler.
+A J1 export whose filename timestamp is older than this many hours is ignored — recorded as a no-op, not imported, not an error. Deliberately **not** the existing `SUMMIT_AUDIT_EXPORT_MAX_AGE_HOURS` (D-98, default 36): that key is named for the audit check, not this one, so the two are kept separate even though their defaults are now close.
+
+⭐ **S61-P9: default widened from 2 to 26, because the age guard is no longer what stops redundant imports.** Kevin runs the Summit-side J1 export four times a day (7am/9am/11am/1pm local). Between the 1pm run and the next 7am run the newest file is legitimately ~18 hours old — a 2-hour guard refused it (and refused Run now) for most of every afternoon, evening and night, on a file that was perfectly usable and whose import is idempotent. `SummitRefreshService` now gates on **file identity** instead: it skips (`SKIPPED`, not `NOT_CONFIGURED`/no-op) when the newest matching filename is the one already imported successfully, so four daily exports produce four daily imports regardless of how wide this guard is set. This key's job has narrowed to one thing: **catch an export that has stopped running entirely** — 26 hours is a bit more than a day, wide enough to span the overnight gap with margin, tight enough to still flag a tenant that skipped a whole day's exports.
+
+⚠️ **Timezone/clock interaction — materially reduced, not fully resolved.** The filename timestamp is Summit's local time (CST); if the server runs UTC the computed age reads 5–6 hours too old. Worst case: an 18-hour-old file (the overnight gap) plus 6 hours of skew computes to ~24 hours — inside the 26-hour default, but by only a ~2-hour margin. A late morning run, or any additional delay, can still push a genuinely fresh file over the guard on a UTC-clocked server. Confirm the server clock, or raise this value further, before enabling the scheduler on a UTC host — do not treat the wider default as having eliminated the interaction.
 
 **Applies to:** all installations with a Summit tenant ⬜ — optional; Demo / BPO / Master — N/A.
 
