@@ -417,3 +417,80 @@ updated in place to say exactly this, not more.
   `ZZ_J1_Employer_Export_2026091410080821.CSV` — unless a newer export has since landed — should now
   report `STATUS_SKIPPED`, "Skipped — … was already imported." One click confirms the whole `ae2e196`
   design that has, until now, only been reasoned about from code.
+
+## Addendum 2 — verification results (post-addendum-1)
+
+Three of Addendum 1's five unverified items are now settled by direct observation — Kevin's own, via
+`/SummitRefresh` and a direct look at `beta_ssa.employer`. This addendum records what was observed;
+it does not edit Addendum 1 or the body above, and names each superseded claim as superseded rather
+than removing it.
+
+**1. The identity-skip guard works — verified, its first observation.** ⚠️ **This supersedes
+Addendum 1's "The identity-skip guard (`ae2e196`) has never been observed."** A second Run now
+against the same file reported `STATUS_SKIPPED`, 977 ms: "Skipped —
+ZZ_J1_Employer_Export_2026091410080821.CSV was already imported." No fetch, no import. The `ae2e196`
+design — a dedicated `lastImportedFilename` field, set only on success, immune to being overwritten
+by a skip's own record — is now exercised on the manual path exactly as designed, not merely reasoned
+about from code.
+
+**2. Rows 1400 and 1401 are repaired — verified, no SQL run to fix them.** ⚠️ **This supersedes
+Addendum 1's "Rows 1400 and 1401 … Unconfirmed."** `beta_ssa.employer`, ordered by `organization_id`
+(identifier columns only — no employer name, contact name, email, or phone reproduced here):
+
+| `organization_id` | `employer_id` |
+|---|---|
+| 1400 | **1385** |
+| 1401 | **1386** |
+| 1402 | **1387** |
+
+These match the file's `EmployerID` values exactly, as recorded in the session-open ground truth
+(S61-P1: 1400→1385, 1401→1386, 1402→1387 — 1402 was Kevin's own hand-correction before this session
+even began, now independently reproduced by the import for 1400/1401). **The pending repair this
+close-out's "Open questions" and "Next" both flagged is closed — via the refresh, with no SQL
+written or run.** Corroborating the import further: the table went from **1,472 to 1,477 rows**,
+matching the reported `5 inserted` exactly. TA-51 is upgraded in place (see
+`docs/analysis/technical_assumptions.md`) from "read, not runtime-verified" to runtime-verified, on
+this evidence.
+
+**3. T268's predicted breakage did not occur — recorded as a non-event, not a success.** ⚠️ **This
+supersedes Addendum 1's "Org 1402's `custom_id` should now hold … `S1387` … Unconfirmed."** Org
+1402's `custom_id` is **still `158E136748`** after the import — it did not become `S1387`, and
+`/SummitLink` still resolves that employer. **No cause is recorded here** — two remain open and the
+evidence does not distinguish them: either the export's `CustomID` cell for org 1402 now holds the
+AMS-composed key (a no-change write), or the cell was blank, and a blank skips the overwrite guard
+entirely (only an explicit `n/a` clears the column, per T241, confirmed by S61-P1). Two facts bear on
+this without settling it: **`S`-form values do land** — org 1395 carries `custom_id = S1383`, so the
+column is applied generally, not ignored — and orgs 1400 and 1401 both carry `custom_id` **NULL**,
+having never been set up through AMS at all. The cheap settling test, for the record and not
+performed here: look at the `CustomID` cell for org 1402 in the export file Kevin already holds. No
+SQL, no code. ⚠️ **T268 is not weakened or closed by this observation.** The mechanism that would
+overwrite `custom_id` with a Summit-side value is still in the code exactly as accepted; it simply
+was not triggered by this particular file. T268 stays accepted, with T272 (the mismatch audit) as
+its detection fallback — unchanged, per this run's own scope fence keeping the observation here
+rather than in `project_backlog.md`.
+
+**4. Still unverified — kept sharp, not upgraded:**
+
+- **The scheduled tick has never run.** `SUMMIT_REFRESH_ENABLED` does not exist as a `constant` row
+  (unchanged, not queried, not inserted, by this addendum either). Every observation in both
+  addenda — the false no-op, the fix, the successful import, the skip, the row repair — came from
+  the manual trigger. The timer has never fired once.
+- **T276** — `/SummitRefresh`'s status page still describes the expected timestamp as 17-digit only,
+  now wrong since `b6f1864` widened acceptance to 14–17. Filed, open, ships alone; not touched by
+  this addendum.
+
+**Revised Next**, narrowing further on what both addenda together leave open:
+
+- **Arm `SUMMIT_REFRESH_ENABLED` and observe one real scheduled tick.** The only remaining unexercised
+  path in the entire feature — fetch, selection, the widened pattern, the skip guard, and the row
+  repair are now all manual-path-verified; nothing has run off the timer.
+- **T276** — the one-line display-string fix, ships alone.
+- **The `CustomID` cell check for org 1402**, in the export file Kevin already holds — settles item 3
+  above without SQL or code.
+- **The larger goal: export-based push verification**, now on firmer ground than either close-out or
+  Addendum 1 stated it. Both identifiers this depended on are settled (`Employer.altId`'s sole writer
+  — TA-51, now runtime-verified, not merely read; `custom_id`'s accepted-overwrite status — T268,
+  unchanged and now once observed not to fire), and an export has been read, selected, fetched and
+  imported on demand successfully, with its skip guard also observed. The remaining gap for that
+  larger goal is the other three pushes (plans, card issuance, enrollments), not the mechanism this
+  session built.
