@@ -152,7 +152,6 @@
             <a href="${pageContext.request.contextPath}/CensusRequest?proposalId=${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}" class="btn btn-outline-ssa" title="${censusEnvelopeTitle}"><i class="bi bi-envelope"></i></a>
             <a href="${pageContext.request.contextPath}/CensusUpload?proposalId=${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}" class="btn btn-outline-ssa" title="Census upload"><i class="bi bi-people"></i></a>
             <c:if test="${censusState == 'ROSTER_LOADED' or censusState == 'INDETERMINATE'}">
-              <button type="button" class="btn btn-outline-secondary opacity-50" style="border-style: dashed; cursor: not-allowed;" aria-disabled="true" title="Preview — not built yet"><i class="bi bi-eye"></i></button>
               <a href="${pageContext.request.contextPath}/SummitExport?proposalId=${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}&type=demographics" class="btn btn-outline-ssa" title="Download file 4"><i class="bi bi-download"></i></a>
             </c:if>
             <c:if test="${censusState == 'ROSTER_LOADED' or censusState == 'TERMINAL' or censusState == 'INDETERMINATE'}">
@@ -165,10 +164,99 @@
           </div>
         </div>
 
-        <%-- 6. Enrollment: one row per import template --%>
-        <div class="d-flex align-items-center gap-2 pt-1">
+        <%-- 6. Enrollment (S59-P8) -- consolidates 125 PI Elections and HRA Enrollment onto one
+             line; they differ only by file-type parameter (type=elections/enrollment,
+             step=elections/enrollment), so Download/Check response/Push each become a chooser
+             offering both, rather than each file owning a row. Also relocates the Enrollment
+             Matrix / Copy matrix link / Open agent view controls in from detailSetup25.jsp, now
+             the first three elements on the line -- their prior isPspAdmin-or-isPspUser gate is
+             dropped on arrival in favor of this panel's own local.isPspAdmin() gate (Kevin's
+             decision: PSP user loses these three controls for now; opening the whole panel to
+             PSP user is separate future work).
+             The chooser offers both file types unconditionally and does not pre-filter which
+             actually applies -- that determination (import_file_type routing, the
+             unassigned-route refusal, the TIER-on-125 refusal) is computed inside
+             SummitExportServlet, which this run does not modify and does not reproduce; an
+             inapplicable choice returns the refusal the exporter already returns.
+             Push sits last, after a Bootstrap .vr divider and spacing, not adjacent to the
+             read-only Download/Check-response choosers -- positioning only, not a distinct
+             confirm surface. Both hidden push forms and their confirm tokens
+             (ELECT-ALL-P{proposalId} / ENROLL-ALL-P{proposalId}) are unmoved and unedited. --%>
+        <div class="d-flex align-items-center gap-2 py-1">
           <div class="flex-grow-1 lh-sm">
-            <div class="fw-semibold">Enrollment</div>
+            <div class="fw-semibold">Enrollment<button type="button" class="btn btn-sm btn-link text-muted p-0 ms-1" style="line-height: 1;" data-bs-toggle="collapse" data-bs-target="#summitHelp-enrollment" aria-expanded="false" aria-controls="summitHelp-enrollment" aria-label="Show details for Enrollment" title="Show details for Enrollment"><i class="bi bi-info-circle" style="font-size: 0.75rem;"></i></button></div>
+            <div class="collapse" id="summitHelp-enrollment">
+            <div class="text-muted" style="font-size: 0.72rem;">Section 125 plans: PremiumPath, FSA, DCA · from the Enrollment Matrix · requires confirm</div>
+            <div class="text-muted" style="font-size: 0.72rem;">HRA plans: ICHRA, QSEHRA, HRA, MERP · from the Enrollment Matrix · requires confirm</div>
+            <jsp:include page="/SummitSetupStatus"><jsp:param name="proposalId" value="${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}"/><jsp:param name="step" value="elections"/></jsp:include>
+            <jsp:include page="/SummitSetupStatus"><jsp:param name="proposalId" value="${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}"/><jsp:param name="step" value="enrollment"/></jsp:include>
+            </div>
+          </div>
+          <div class="btn-group btn-group-sm">
+            <a class="btn btn-sm btn-outline-ssa" href="${pageContext.request.contextPath}/EnrollmentMatrix?setupId=${sessionScope.local.getCurrentActivity().getActivity().getId()}"><i class="bi bi-grid-3x3-gap me-1"></i>Enrollment Matrix</a>
+            <button type="button" class="btn btn-sm btn-outline-ssa" id="btnCopyMatrixLink" onclick="ammCopyMatrixLink(${sessionScope.local.getCurrentActivity().getActivity().getId()})" title="Copy a link an agent can open to view this matrix"><i class="bi bi-link-45deg me-1"></i>Copy matrix link</button>
+            <button type="button" class="btn btn-sm btn-outline-ssa" id="btnOpenAgentView" onclick="ammOpenAgentView(${sessionScope.local.getCurrentActivity().getActivity().getId()})" title="Open the read-only agent view of this matrix in a new tab"><i class="bi bi-box-arrow-up-right me-1"></i>Open agent view</button>
+            <script>
+              function ammIssueMatrixLink(setupId) {
+                return fetch('${pageContext.request.contextPath}/EnrollmentMatrix', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                  body: 'action=issueLink&setupId=' + encodeURIComponent(setupId)
+                }).then(function (r) { return r.json(); }).then(function (data) {
+                  if (!data || !data.url) { throw new Error(data && data.error ? data.error : 'The link could not be issued.'); }
+                  return data.url;
+                });
+              }
+              function ammCopyMatrixLink(setupId) {
+                var btn = document.getElementById('btnCopyMatrixLink');
+                if (btn) btn.disabled = true;
+                ammIssueMatrixLink(setupId).then(function (url) {
+                  if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(url).then(function () {
+                      alert('Matrix link copied:\n' + url);
+                    }, function () { window.prompt('Copy this matrix link:', url); });
+                  } else {
+                    window.prompt('Copy this matrix link:', url);
+                  }
+                }).catch(function (e) {
+                  alert(e && e.message ? e.message : 'The link could not be issued.');
+                }).finally(function () { if (btn) btn.disabled = false; });
+              }
+              function ammOpenAgentView(setupId) {
+                var btn = document.getElementById('btnOpenAgentView');
+                if (btn) btn.disabled = true;
+                var tab = window.open('', '_blank');
+                ammIssueMatrixLink(setupId).then(function (url) {
+                  if (tab) { tab.location = url; } else { window.location = url; }
+                }).catch(function (e) {
+                  if (tab) tab.close();
+                  alert(e && e.message ? e.message : 'The link could not be issued.');
+                }).finally(function () { if (btn) btn.disabled = false; });
+              }
+            </script>
+            <button type="button" class="btn btn-outline-secondary opacity-50" style="border-style: dashed; cursor: not-allowed;" aria-disabled="true" title="Preview — not built yet"><i class="bi bi-eye"></i></button>
+            <div class="btn-group btn-group-sm">
+              <button type="button" class="btn btn-outline-ssa dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" title="Download"><i class="bi bi-download"></i></button>
+              <ul class="dropdown-menu dropdown-menu-end">
+                <li><a class="dropdown-item" href="${pageContext.request.contextPath}/SummitExport?proposalId=${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}&type=elections" title="Download 125 PI Elections (refuses without confirm)">125 PI Elections</a></li>
+                <li><a class="dropdown-item" href="${pageContext.request.contextPath}/SummitExport?proposalId=${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}&type=enrollment" title="Download HRA Enrollment (refuses without confirm)">HRA Enrollment</a></li>
+              </ul>
+            </div>
+            <div class="btn-group btn-group-sm">
+              <button type="button" class="btn btn-outline-ssa dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" title="Check response"><i class="bi bi-arrow-repeat"></i></button>
+              <ul class="dropdown-menu dropdown-menu-end">
+                <li><a class="dropdown-item" href="${pageContext.request.contextPath}/SummitResponse?proposalId=${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}&step=elections" title="Check response">125 PI Elections</a></li>
+                <li><a class="dropdown-item" href="${pageContext.request.contextPath}/SummitResponse?proposalId=${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}&step=enrollment" title="Check response">HRA Enrollment</a></li>
+              </ul>
+            </div>
+            <div class="vr mx-1"></div>
+            <div class="btn-group btn-group-sm">
+              <button type="button" class="btn btn-outline-ssa dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" title="Push to DataPath"><i class="bi bi-cloud-upload"></i></button>
+              <ul class="dropdown-menu dropdown-menu-end">
+                <li><button type="submit" form="summitPush-elections" class="dropdown-item" data-summit-push="elections" onclick="return confirm('Push the 125 PI Elections file to DataPath? This sends every non-declined Section 125 election recorded on the Enrollment Matrix. Summit processes it automatically within about 15 minutes. There is no undo.');">125 PI Elections</button></li>
+                <li><button type="submit" form="summitPush-enrollment" class="dropdown-item" data-summit-push="enrollment" onclick="return confirm('Push the HRA Enrollment file to DataPath? This sends every non-declined HRA election recorded on the Enrollment Matrix. Summit processes it automatically within about 15 minutes. There is no undo.');">HRA Enrollment</button></li>
+              </ul>
+            </div>
           </div>
         </div>
         <%-- V104 -- the $1 card-issuer seed election. No file number (T196's precedent): it is not
@@ -199,47 +287,6 @@
           </div>
         </div>
         </c:if>
-        <%-- S56-C -- the two matrix-sourced enrollment files. Both read the Enrollment Matrix
-             (V106) and route each plan's rows by its 'Enrollment import file' (V108): HRA
-             Enrollment for ICHRA/HRA/MERP, 125 PI Elections for PremiumPath/FSA/DCA. The servlet
-             refuses either file while the matrix is incomplete (every cell an election or a
-             waiver -- one matrix, one state, both files or neither) or while any plan with
-             elections has no import file assigned; both refusals name what to fix. Confirm
-             tokens are ENROLL-ALL-P{proposalId} / ELECT-ALL-P{proposalId}: the download links
-             carry none (first click shows the plain-text refusal naming the retry URL, the
-             established T201 friction); the push forms pre-fill them, since a POST has no URL to
-             retype, gated by the buttons' own onclick confirm(). --%>
-        <div class="d-flex align-items-center gap-2 py-1" style="padding-left: 2rem;">
-          <div class="flex-grow-1 lh-sm">
-            <div>125 PI Elections<button type="button" class="btn btn-sm btn-link text-muted p-0 ms-1" style="line-height: 1;" data-bs-toggle="collapse" data-bs-target="#summitHelp-elections" aria-expanded="false" aria-controls="summitHelp-elections" aria-label="Show details for 125 PI Elections" title="Show details for 125 PI Elections"><i class="bi bi-info-circle" style="font-size: 0.75rem;"></i></button></div>
-            <div class="collapse" id="summitHelp-elections">
-            <div class="text-muted" style="font-size: 0.72rem;">Section 125 plans: PremiumPath, FSA, DCA · from the Enrollment Matrix · requires confirm</div>
-            <jsp:include page="/SummitSetupStatus"><jsp:param name="proposalId" value="${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}"/><jsp:param name="step" value="elections"/></jsp:include>
-            </div>
-          </div>
-          <div class="btn-group btn-group-sm">
-            <button type="button" class="btn btn-outline-secondary opacity-50" style="border-style: dashed; cursor: not-allowed;" aria-disabled="true" title="Preview — not built yet"><i class="bi bi-eye"></i></button>
-            <a href="${pageContext.request.contextPath}/SummitExport?proposalId=${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}&type=elections" class="btn btn-outline-ssa" title="Download 125 PI Elections (refuses without confirm)"><i class="bi bi-download"></i></a>
-            <button type="submit" form="summitPush-elections" class="btn btn-outline-ssa" title="Push to DataPath" data-summit-push="elections" onclick="return confirm('Push the 125 PI Elections file to DataPath? This sends every non-declined Section 125 election recorded on the Enrollment Matrix. Summit processes it automatically within about 15 minutes. There is no undo.');"><i class="bi bi-cloud-upload"></i></button>
-            <a href="${pageContext.request.contextPath}/SummitResponse?proposalId=${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}&step=elections" class="btn btn-outline-ssa" title="Check response"><i class="bi bi-arrow-repeat"></i></a>
-          </div>
-        </div>
-        <div class="d-flex align-items-center gap-2 py-1" style="padding-left: 2rem;">
-          <div class="flex-grow-1 lh-sm">
-            <div>HRA Enrollment<button type="button" class="btn btn-sm btn-link text-muted p-0 ms-1" style="line-height: 1;" data-bs-toggle="collapse" data-bs-target="#summitHelp-enrollment" aria-expanded="false" aria-controls="summitHelp-enrollment" aria-label="Show details for HRA Enrollment" title="Show details for HRA Enrollment"><i class="bi bi-info-circle" style="font-size: 0.75rem;"></i></button></div>
-            <div class="collapse" id="summitHelp-enrollment">
-            <div class="text-muted" style="font-size: 0.72rem;">HRA plans: ICHRA, QSEHRA, HRA, MERP · from the Enrollment Matrix · requires confirm</div>
-            <jsp:include page="/SummitSetupStatus"><jsp:param name="proposalId" value="${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}"/><jsp:param name="step" value="enrollment"/></jsp:include>
-            </div>
-          </div>
-          <div class="btn-group btn-group-sm">
-            <button type="button" class="btn btn-outline-secondary opacity-50" style="border-style: dashed; cursor: not-allowed;" aria-disabled="true" title="Preview — not built yet"><i class="bi bi-eye"></i></button>
-            <a href="${pageContext.request.contextPath}/SummitExport?proposalId=${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}&type=enrollment" class="btn btn-outline-ssa" title="Download HRA Enrollment (refuses without confirm)"><i class="bi bi-download"></i></a>
-            <button type="submit" form="summitPush-enrollment" class="btn btn-outline-ssa" title="Push to DataPath" data-summit-push="enrollment" onclick="return confirm('Push the HRA Enrollment file to DataPath? This sends every non-declined HRA election recorded on the Enrollment Matrix. Summit processes it automatically within about 15 minutes. There is no undo.');"><i class="bi bi-cloud-upload"></i></button>
-            <a href="${pageContext.request.contextPath}/SummitResponse?proposalId=${sessionScope.local.getCurrentActivity().getActivity().getApplication().getProposal().id}&step=enrollment" class="btn btn-outline-ssa" title="Check response"><i class="bi bi-arrow-repeat"></i></a>
-          </div>
-        </div>
-
       </div>
     </div>
 
