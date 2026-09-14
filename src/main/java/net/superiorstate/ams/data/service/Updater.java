@@ -77,7 +77,10 @@ public abstract class Updater {
                 Employer employer = new Employer();
                 employer.setId(row.getOrganizationId());
                 employer.setEmployerName(row.getEmployerName().trim().toUpperCase());
-                employer.setAltId(row.getEmployerId());
+                // altId (Summit EmployerID) is deliberately not written here: import1employer.Employer_ID is
+                // loaded from J1 EmployerOrganizationID (== OrganizationID), so it never held the Summit
+                // employer id. SummitImportService.importEmployers (the /SummitImport wizard) is the sole
+                // writer of Employer.altId; it also repairs rows left at 0 or previously written wrong.
                 employer.setEmail(row.getEmail());
                 employer.setContactName(row.getPrimaryContact());
                 employer.setPhone(row.getPhone());
