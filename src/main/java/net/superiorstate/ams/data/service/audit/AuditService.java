@@ -50,7 +50,8 @@ public class AuditService {
     private static final List<AuditCheck> CHECKS = List.of(
             new IchraUncodedParticipantsCheck(),
             new FundedPurseNoDisbursementCheck(),
-            new CardDeclineCheck());
+            new CardDeclineCheck(),
+            new CardStatusCheck());
 
     private final ScheduledExecutorService executor;
     private final EntityManagerFactory emf;
