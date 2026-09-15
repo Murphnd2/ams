@@ -41,8 +41,16 @@ public class AuditService {
 
     public static final String TRIGGER_SCHEDULED = "SCHEDULED";
     public static final String TRIGGER_MANUAL = "MANUAL";
+    /** An acknowledgment-driven re-run of one check — see {@link #runOneCheck}. 9 characters fits
+     *  {@code audit_run.run_trigger}'s existing {@code VARCHAR(10)} (V099) with room to spare; no
+     *  schema change needed. Distinct from {@link #TRIGGER_MANUAL} so the run history stays honest
+     *  about why a count changed outside the hub's own "Run now" or the daily schedule. */
+    public static final String TRIGGER_ACK = "ACK_RERUN";
 
-    private static final List<AuditCheck> CHECKS = List.of(new IchraUncodedParticipantsCheck());
+    private static final List<AuditCheck> CHECKS = List.of(
+            new IchraUncodedParticipantsCheck(),
+            new FundedPurseNoDisbursementCheck(),
+            new CardDeclineCheck());
 
     private final ScheduledExecutorService executor;
     private final EntityManagerFactory emf;
@@ -121,6 +129,98 @@ public class AuditService {
         }
         executor.execute(() -> runAcquired(TRIGGER_MANUAL));
         return TriggerResult.STARTED;
+    }
+
+    /** {@link #runOneCheck}'s outcome. */
+    public enum SingleCheckRunResult { COMPLETED, ALREADY_RUNNING, NOT_REGISTERED }
+
+    /**
+     * Runs exactly one registered check, by key, synchronously on the caller's thread, and
+     * persists its result the same way {@link #runAll} does — for a rare, targeted re-run needed
+     * right after a state change nothing else would surface (an audit-finding acknowledgment;
+     * T237), not for the hub or the badge, which must never trigger a run on page render (see the
+     * class note). Synchronous, unlike {@link #triggerManual}, because the caller (the
+     * acknowledgment POST handler) needs to know the outcome before it redirects and builds its
+     * own flash message.
+     * <p>
+     * Shares {@link #running} with {@link #triggerManual} and the scheduled tick, so this can
+     * never race a full run in either direction: if one is already in flight,
+     * {@link SingleCheckRunResult#ALREADY_RUNNING} is returned and nothing runs here — the
+     * caller's own state change (e.g. the acknowledgment) is unaffected, since it was already
+     * saved before this is called, and the next scheduled or manual run picks up the correct
+     * count regardless.
+     * <p>
+     * Recorded with {@link #TRIGGER_ACK}, not {@link #TRIGGER_MANUAL} — this is not the hub's
+     * "Run now".
+     *
+     * @return {@link SingleCheckRunResult#NOT_REGISTERED} if no check has this key (nothing run);
+     * {@link SingleCheckRunResult#ALREADY_RUNNING} if a run was already in progress (nothing run);
+     * otherwise {@link SingleCheckRunResult#COMPLETED} once the check has been evaluated and its
+     * {@code audit_run} row written — a check that throws is still recorded, as {@code ERROR}, the
+     * same contract {@link #runAll} documents for every check it runs.
+     */
+    public SingleCheckRunResult runOneCheck(String checkKey) {
+        AuditCheck check = null;
+        for (AuditCheck candidate : CHECKS) {
+            if (candidate.key().equals(checkKey)) {
+                check = candidate;
+                break;
+            }
+        }
+        if (check == null) return SingleCheckRunResult.NOT_REGISTERED;
+
+        if (!running.compareAndSet(false, true)) {
+            return SingleCheckRunResult.ALREADY_RUNNING;
+        }
+        try {
+            runOneAcquired(check);
+        } finally {
+            running.set(false);
+        }
+        return SingleCheckRunResult.COMPLETED;
+    }
+
+    /**
+     * Precondition: caller has already acquired {@code running} via compareAndSet(false, true).
+     * Same per-check evaluate-then-persist shape as {@link #runAll}'s loop body — kept as its own
+     * copy rather than shared with it, since {@code runAll} is left unmodified by this build.
+     */
+    private void runOneAcquired(AuditCheck check) {
+        long start = System.currentTimeMillis();
+        AuditResult result;
+        EntityManager evalEm = emf.createEntityManager();
+        try {
+            result = check.evaluate(evalEm, pspId);
+        } catch (Exception e) {
+            log.error("[AUDIT] Check '{}' threw on acknowledgment re-run — this violates AuditCheck's contract",
+                    check.key(), e);
+            result = AuditResult.error(e.getClass().getSimpleName()
+                    + (e.getMessage() != null ? ": " + e.getMessage() : ""));
+        } finally {
+            if (evalEm.isOpen()) evalEm.close();
+        }
+        int durationMs = (int) Math.min(Integer.MAX_VALUE, System.currentTimeMillis() - start);
+
+        AuditRun run = new AuditRun();
+        run.setPspId(pspId);
+        run.setCheckKey(check.key());
+        run.setRunAt(LocalDateTime.now());
+        run.setRunTrigger(TRIGGER_ACK);
+        run.setStatus(result.status());
+        run.setFindingCount(result.findingCount());
+        run.setSummary(truncate(result.summary(), 500));
+        run.setError(truncate(result.error(), 500));
+        run.setDurationMs(durationMs);
+
+        EntityManager insertEm = emf.createEntityManager();
+        try {
+            AuditRunDAO.insert(insertEm, run);
+            latestResults.put(check.key(), run);
+        } catch (Exception e) {
+            log.error("[AUDIT] Could not record acknowledgment re-run for check '{}'", check.key(), e);
+        } finally {
+            if (insertEm.isOpen()) insertEm.close();
+        }
     }
 
     private void scheduledTick() {

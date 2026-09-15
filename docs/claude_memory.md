@@ -8,6 +8,38 @@
 > For full project architecture, see `CLAUDE.md` in the project root.
 
 ## Current State
+- ⭐ **Sessions S60–S64 (2026-09-14/15) — T237 audit framework grew from one check to four working
+  parts, latest migration is now V115.** Built on the phase-1 framework (`3ebf5da`, one check,
+  V099): **check #2** `FundedPurseNoDisbursementCheck` (contribution-funded purses with no
+  disbursement — ICHRA/Ins125+ signal; health-FSA plan types must stay out of
+  `SUMMIT_AUDIT_FUNDED_PLAN_TYPE_IDS` or the predicate is near-population noise, confirmed against
+  real exports: 2 purses/1 employer in August, 197 purses/38 employers in January on FSA data)
+  and **check #3** `CardDeclineCheck` (rolling-window card declines, one finding per participant,
+  runtime-verified: 22 participants in a 14-day window from 958 raw declines). Both read a real
+  Summit export via `SummitSftpService`, both registered in `AuditService.CHECKS`. **V114**
+  (`audit_decline_employer`) makes check #3's employer scope an AMS-side opt-in list (Summit
+  `EmployerID` = `employer.employer_id`/`Employer.altId`, **not** `organization_id` — settled by
+  comparing real exports), maintained through `/AuditDeclineEmployerAdmin`; zero designations →
+  `NOT_CONFIGURED`. Participant names resolve in-request from `Employee` (`Employee.id` =
+  `Participant System ID`, confirmed via 9-participant export overlap; `Participant Custom ID` is
+  a separate namespace, never the join key) — LA-43 added for the PHI-adjacency judgment. **V115**
+  (`audit_finding_ack`) adds a generic Handled/Ignored acknowledgment table, wired to check #3
+  only; `HANDLED` is state-scoped (re-surfaces once current activity exceeds what was observed at
+  acknowledgment), `IGNORED` is unconditional. A follow-up run closed the resulting stale-badge
+  gap: acknowledging now synchronously re-runs `CardDeclineCheck` alone
+  (`AuditService.runOneCheck`, new `TRIGGER_ACK` value, shares the framework's single-run guard so
+  it never races "Run now" or the daily schedule) before redirecting, so the hub and navbar badge
+  update immediately instead of waiting for the next full run. **Also shipped:**
+  `SummitParticipantLinkResolver` (Summit `EditParticipant.aspx` deep link on check #3's detail
+  page, mirroring the existing employer-link resolver — no new config key, reuses
+  `SUMMIT_PATH`/`SUMMIT_TPA_GUID`). ⚠️ **`AmsDataGlobal`'s catch-block fallbacks for
+  `SUMMIT_PATH`/`SUMMIT_TPA_GUID` are still hard-coded literals** (pre-existing, same class as
+  T243) — flagged, not fixed, highest-value open follow-up. **Nothing here is
+  runtime-verified against a live Tomcat/MySQL** — every check was exercised via reflective unit
+  tests against a real Summit export sample, never against a running deployment; `V114`/`V115` are
+  authored, not applied anywhere. Full detail:
+  `docs/session_closeout_2026-09-14_audit_checks_2_3.md` (supersedes the now-stale
+  `docs/session_closeout_2026-09-14_audit_funded_purse_check.md`, left in place with a pointer).
 - ⭐ **Corrected 2026-09-14 (S59-P11 close-out) — latest migration is V113, and the PSP admin Setup detail view's Summit setup panel (`detailSummitSetup25.jsp`) was restructured across five commits (S59-P2 through P10).** Current top-to-bottom row order, all top-level peers, no numbering, no indentation left anywhere in the panel: **Employer · Plans (CDH) · Contribution schedules · Census · Card Issuance · Enrollment.** `Census` merges the former Request-census/Census/Demographics rows behind one state-driven action set (`CensusLifecycleService`, eight states — see TA-33/34/35/36/37/38); `Card Issuance` (renamed from "$1 card-issuer seed election") is gated by `CardIssuerAvailabilityService`'s three-valued fail-open guard (TA-29/30/31); `Enrollment` absorbed the former `125 PI Elections`/`HRA Enrollment` rows behind file-type choosers plus the Enrollment Matrix/Copy-link/Open-agent-view controls relocated in from `detailSetup25.jsp` (now PSP-admin-only, a deliberate narrowing — TA-41, T252). Every section collapses behind a per-section help toggle (six `summitHelp-*` ids). **Four new files, all this session:** `CardIssuerAvailabilityService`/`Servlet` (`data/service`, `controller/market`), `CensusLifecycleService`/`Servlet` (same packages) — both read-only state-token fragment servlets matching the panel's existing `/SummitSetupStatus`-style idiom. Commits: `a9f027e` (P2/P3rev/P4/P5rev), `2efbe80` (P6rev), `e6079e2` (P7), `c18e753` (P8), `0489a0a` (P9/P10) — **five commits, not four**; full narrative and 18 new `TA-27`–`TA-44` entries in `docs/analysis/technical_assumptions.md`, six follow-ups filed as `T252`–`T258`. Full detail: `docs/session_closeout_2026-09-14_setup_detail_consolidation.md`. **Migration position:** tree's highest is **V113**; Production is at **V104**; **V105–V113 all pending everywhere**, including dev (V112/V113 specifically still need applying to dev per Kevin). No SQL, no migration, no schema change in this session's five commits.
 - ⭐ **Corrected 2026-09-13 (session S57 close, through P7b) — latest migration is V111**, not whatever the older "Latest migration" paragraph below says (that paragraph is stale from session 40 and pre-dates V097–V111 entirely). `docs/analysis/migration_tracker.md` is the always-current per-environment source. New this session: **V109** (`coverage_tier` — DataPath "Tier Structure 3" reference table, 4-row seed, feeds a matrix tier `<select>` replacing a free-text Tier ID input, S57-P1/P2), **V110** (`payroll_frequency` 14-row Summit `PP-` Contribution Schedule seed closing TA-10, six filter-metadata columns, new `paycycle_frequency_alias` table — S57-P3, alias seed corrected 7→5 rows in S57-P3b), **V111** (drops `payroll_frequency.application_value`, superseded by the alias table, TA-16 — S57-P4). **S57-P6** shipped the TA-15 matrix dropdown filter — day-of-week + bi-weekly-parity (`Math.floorMod`) narrowing into a "Suggested from application" `<optgroup>`, surfaced via a caption only and never preselected (TA-17 — a hidden participant panel's `<select>` still submits on Save, so `selected` would silently persist onto every unlocked row) — plus the `s125_fsa.json` `paycycle_frequency` option-list fix that filter depends on. New register `docs/analysis/technical_assumptions.md` created this session (TA-9–13 migrated from a session close-out doc, TA-14–17 new). ⭐ **Runtime-verified by Kevin in dev at V111 (his in-app check, not a repo fact):** the tier picker and payroll-frequency dropdown's full round trip — `(inactive)` passthrough survives V111's retirement, blank-tier default renders correctly, Save-with-no-changes is stable, a saved tier reopens preselected. **Dev's 15-row `payroll_frequency` grid vs. V110's 14-row seed is resolved, not a discrepancy**: the 15th row, `BIWEEKLY24`, is a hand-created row predating V110, now Enrollment-Approved-unchecked but still referenced by saved matrices — flagged as a cleanup item (re-pick each referencing matrix to a `PP-` name, then the row can be removed). The TA-15 filter itself, `PayrollFrequencyAdmin` under V111, and anything against a real Summit import remain unverified. Full detail: `docs/session_closeout_2026-09-13_tier_and_schedule_standards.md`. Commits: `d78cf44` (P1–P5), `9096dba` (P6 + close-out).
 - **Integration branch:** `refactor/modernize-architecture` — feature branches are cut from / merged back to it, so it trails the in-flight feature by only a few commits. `main` is ~345 commits stale and is **not** the working line.

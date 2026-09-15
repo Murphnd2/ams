@@ -133,4 +133,6 @@ INSERT IGNORE INTO schema_version (version, description, script_name) VALUES
 ('V110', 'payroll_frequency seed (14 PP- rows, closes TA-10) + filter metadata columns; new paycycle_frequency_alias table, no consumer yet', 'V110__payroll_frequency_seed_and_filter_metadata.sql'),
 ('V111', 'Drop payroll_frequency.application_value, superseded by paycycle_frequency_alias (TA-16)', 'V111__drop_payroll_frequency_application_value.sql'),
 ('V112', 'enrollment_matrix.access_guid, nullable unique, lazily issued for /matrix/{guid} agent access (S58-P3)', 'V112__enrollment_matrix_access_guid.sql'),
-('V113', 'enrollment_matrix_participant.agent_schedule_note, nullable free text from the agent matrix view (S58-P7)', 'V113__enrollment_matrix_participant_agent_note.sql');
+('V113', 'enrollment_matrix_participant.agent_schedule_note, nullable free text from the agent matrix view (S58-P7)', 'V113__enrollment_matrix_participant_agent_note.sql'),
+('V114', 'audit_decline_employer: PSP-scoped opt-in employer list for CardDeclineCheck, matched on employer.employer_id (Summit EmployerID), no seed rows (T237 check #3)', 'V114__audit_decline_employer.sql'),
+('V115', 'audit_finding_ack: generic PSP-scoped Handled/Ignored finding acknowledgment, wired to card_declines only (T237)', 'V115__audit_finding_ack.sql');

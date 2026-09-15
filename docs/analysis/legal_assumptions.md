@@ -2232,6 +2232,43 @@ plans exist in a production Summit installation.
 
 ---
 
+### LA-43 — Participant names joined to card-decline activity on the audit detail page
+
+**Assumption.** Displaying an AMS-held participant name and employer name beside a card decline's
+reason, merchant category code, amount and date — to a PSP admin, in-request, with nothing
+persisted — is permissible handling for a business associate, and does not change what AMS must
+retain, log, or disclose about that data.
+
+**Basis.** Thin, and stated as such: this is a business-associate handling judgment, not a
+reviewed position. The card-decline detail page (`auditCardDeclines25.jsp`, T237 check #3)
+previously carried only Summit ids and amounts. Joining a participant name to a decline reason
+and an MCC makes it a record of who attempted what kind of purchase and why it was refused —
+closer to PHI than anything the audit surfaces held before it. `auditIchraUncoded25.jsp` already
+renders export-sourced participant names under the same posture (LA-40), which is the precedent
+relied on; no authority beyond that has been read for this entry.
+
+**Design choice.** PSP-admin gated (the framework's own gate, no wider); names resolved
+in-request from AMS rows already in hand (`Employee` by `Participant System ID`, the designated
+employer by its Summit id) and discarded with the response; nothing persisted — `audit_run` stays
+counts-only; no SSN read from anywhere; no further identity join (`employer_participant` is
+deliberately not consulted). A missing name degrades to the bare id.
+
+**Risk if wrong.** If a BA agreement or a covered entity's policy treats "name + decline reason +
+MCC" as a disclosure requiring accounting or minimum-necessary review, every render of this page
+is an unlogged one. Exposure is bounded by the gate (PSP admins only) and the absence of
+persistence, but not eliminated.
+
+**Reversal cost.** Low — drop the two display columns and the `Employee` lookup; the check, the
+designation table, and the ids-only page all survive unchanged.
+
+**Confirm before.** Extending the page to any audience beyond PSP admin, persisting any resolved
+name, adding any further identity join, or the first real PremiumPath group going live on the
+check — whichever comes first.
+
+**Status.** Assumed, 2026-09-15.
+
+---
+
 ## Candidates considered and not adopted
 
 Recorded so the next reader knows they were seen and declined, rather than missed. **None of these
